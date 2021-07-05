@@ -46,6 +46,7 @@ ExternalProject_Add(
     ${BOOST_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     "${BOOST_DOWNLOAD_CMD}"
+    URL_MD5               f891e8c2c9424f0565f0129ad9ab4aff
     PREFIX                ${BOOST_PREFIX_DIR}
     DOWNLOAD_DIR          ${BOOST_SOURCE_DIR}
     SOURCE_DIR            ${BOOST_SOURCE_DIR}

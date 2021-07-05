@@ -26,7 +26,7 @@ import six
 import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -1502,6 +1502,9 @@ def conv2d(input,
 
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'conv2d')
+    if len(input.shape) != 4:
+        raise ValueError("Input size should be 4, "
+                         "but received {}".format(len(input.shape)))
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
         raise ValueError("Attr(use_cudnn) should be True or False. Received "
@@ -1520,6 +1523,20 @@ def conv2d(input,
             "Received: %s." % (str(input.shape), str(num_channels)))
     assert param_attr is not False, "param_attr should not be False here."
 
+    if groups is None:
+        num_filter_channels = num_channels
+    elif groups <= 0:
+        raise ValueError("the groups of input must be greater than 0, "
+                         "but received the groups of input is {}".format(
+                             groups))
+    else:
+        if num_channels % groups != 0:
+            raise ValueError(
+                "the channel of input must be divisible by groups,"
+                "received: the channel of input is {}, the shape of input is {}"
+                ", the groups is {}".format(num_channels, input.shape, groups))
+        num_filter_channels = num_channels // groups
+
     l_type = 'conv2d'
     if (num_channels == groups and num_filters % num_channels == 0 and
             not use_cudnn):
@@ -1531,16 +1548,6 @@ def conv2d(input,
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
-
-    if groups is None:
-        num_filter_channels = num_channels
-    else:
-        if num_channels % groups != 0:
-            raise ValueError(
-                "the channel of input must be divisible by groups,"
-                "received: the channel of input is {}, the shape of input is {}"
-                ", the groups is {}".format(num_channels, input.shape, groups))
-        num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
     stride = utils.convert_to_list(stride, 2, 'stride')
@@ -1597,6 +1604,11 @@ def conv2d(input,
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+        if filter_elem_num <= 0:
+            raise ValueError(
+                "Invalid filter number, excepted number is larger than 0, but"
+                " received {}, please check the input shape and "
+                "filter size.".format(filter_elem_num))
         std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
@@ -1878,6 +1890,12 @@ def conv3d(input,
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * filter_size[
             2] * num_channels
+        if filter_elem_num <= 0:
+            raise ValueError(
+                "Invalid filter number, excepted number is larger than 0, but"
+                " received {}, please check the input shape and "
+                "filter size.".format(filter_elem_num))
+
         std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
@@ -4406,7 +4424,8 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         if dim == None or dim == [] or len(dim) == len(input.shape) else False
     }
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'reduce_sum')
     helper = LayerHelper('reduce_sum', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
@@ -9482,7 +9501,7 @@ def relu6(x, threshold=6.0, name=None):
         outputs={'Out': out},
         attrs={
             'threshold': threshold,
-            'use_mkldnn': core.globals()["FLAGS_use_mkldnn"]
+            'use_mkldnn': _global_flags()["FLAGS_use_mkldnn"]
         })
     return out
 
@@ -11075,7 +11094,7 @@ def strided_slice(input, axes, starts, ends, strides):
             Then:
                 result = [ [2], ]
     Args:
-        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``bool``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
         starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
@@ -11126,7 +11145,7 @@ def strided_slice(input, axes, starts, ends, strides):
     helper = LayerHelper('strided_slice', **locals())
 
     check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int32', 'int64'],
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
                              'strided_slice')
     check_type(axes, 'axes', (list, tuple), 'strided_slice')
     check_type(starts, 'starts', (list, tuple, Variable), 'strided_slice')
@@ -11551,7 +11570,7 @@ Examples:
             axis=axis,
             act=act,
             op_name='elementwise_add',
-            use_mkldnn=core.globals()["FLAGS_use_mkldnn"])
+            use_mkldnn=_global_flags()["FLAGS_use_mkldnn"])
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
@@ -14412,6 +14431,11 @@ def deformable_conv(input,
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+        if filter_elem_num <= 0:
+            raise ValueError(
+                "Invalid filter number, excepted number is larger than 0, but"
+                " received {}, please check the input shape and "
+                "filter size.".format(filter_elem_num))
         std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
@@ -14772,7 +14796,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     the size of the last shard will be less than the calculated `shard_size`
 
     Args:
-        input (Tensor): Input indices with data type int64. It's last dimension must be 1.
+        input (Tensor): Input indices with data type int64 or int32. It's last dimension must be 1.
         index_num (int): An integer defining the range of the index.
         nshards (int): The number of shards.
         shard_id (int): The index of the current shard.
@@ -14793,7 +14817,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             print(shard_label)
             # [[-1], [1]]
     """
-    check_variable_and_dtype(input, 'input', ['int64'], 'shard_index')
+    check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
     if shard_id < 0 or shard_id >= nshards:

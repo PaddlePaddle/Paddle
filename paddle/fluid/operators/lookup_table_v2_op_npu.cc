@@ -29,6 +29,11 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
     auto *table_t = ctx.Input<framework::LoDTensor>("W");
 
+    // It seems cann 20.1 accepts int64, but cann 20.2+ not.
+    PADDLE_ENFORCE_EQ(ids_t->type(), framework::proto::VarType::INT32,
+                      platform::errors::Unimplemented(
+                          "The index of LookupTableV2 should be int32."));
+
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
         table_var->IsType<framework::LoDTensor>(), true,
@@ -36,7 +41,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     output_t->mutable_data<T>(ctx.GetPlace());
     framework::NPUAttributeMap attr_input = {{"validate_indices", false}};
 
-    auto runner =
+    const auto &runner =
         NpuOpRunner("Gather", {*table_t, *ids_t}, {*output_t}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -60,14 +65,14 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner_zeros =
+    const auto &runner_zeros =
         NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
     runner_zeros.Run(stream);
 
     // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
     // can be different tensor, but in cann 20.2+, it does inplace operation.
     // Thus, the first input and output should be same tensor.
-    auto runner_scatter =
+    const auto &runner_scatter =
         NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
                     {*table_grad_t}, {{"use_locking", true}});
     runner_scatter.Run(stream);

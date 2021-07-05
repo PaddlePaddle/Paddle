@@ -18,6 +18,7 @@ from paddle.fluid import compiler
 from .meta_optimizer_base import MetaOptimizerBase
 from ..base.private_helper_function import wait_server_ready
 import logging
+from paddle.static import BuildStrategy
 
 __all__ = []
 
@@ -63,9 +64,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         trainer_endpoints_env = ",".join(trainer_endpoints)
         trainers_num = self.role_maker._worker_num()
 
-        # FIXME(wangxi): approve this.
-        #if trainer_id == 0:
-        #    wait_server_ready(other_trainers)
+        # NOTE(wangxi): npu don't need to wait server ready
+        if trainer_id == 0 and not paddle.is_compiled_with_npu():
+            wait_server_ready(other_trainers)
 
         if core.is_compiled_with_cuda():
             comm_id_var = startup_program.global_block().create_var(
@@ -146,6 +147,17 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             dist_strategy.fuse_all_reduce_ops
         local_build_strategy.nccl_comm_num = \
             dist_strategy.nccl_comm_num
+
+        gradient_scale_configs = self.user_defined_strategy.gradient_scale_configs
+        scale_strategys = {
+            'avg': BuildStrategy.GradientScaleStrategy.CoeffNumDevice,
+            'sum': BuildStrategy.GradientScaleStrategy.One,
+            'customized': BuildStrategy.GradientScaleStrategy.Customized,
+        }
+        assert gradient_scale_configs['scale_strategy'] in scale_strategys, \
+            "gradient_scale_configs.scale_strategy must be 'avg', 'sum' or 'customized'"
+        local_build_strategy.gradient_scale_strategy = \
+            scale_strategys[gradient_scale_configs['scale_strategy']]
 
         if self.user_defined_strategy.recompute == True:
             logging.warn(

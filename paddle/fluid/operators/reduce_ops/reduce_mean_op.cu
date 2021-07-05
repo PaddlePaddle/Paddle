@@ -65,5 +65,6 @@ class ReduceMeanKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(reduce_mean, ops::ReduceMeanKernel<float>,
+REGISTER_OP_CUDA_KERNEL(reduce_mean, ops::ReduceMeanKernel<bool>,
+                        ops::ReduceMeanKernel<float>,
                         ops::ReduceMeanKernel<double>);

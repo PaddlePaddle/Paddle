@@ -38,7 +38,7 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
             << " ,bias_after_scale:" << bias_after_scale;
     if (bias_after_scale) {
       out->mutable_data<T>(ctx.GetPlace());
-      auto runner =
+      const auto& runner =
           NpuOpRunner("Power", {*x}, {*out},
                       {{"power", _power}, {"scale", scale}, {"shift", bias}});
 
@@ -47,12 +47,13 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
       Tensor tmp_x(x->type());
       tmp_x.Resize(x->dims());
       tmp_x.mutable_data<T>(ctx.GetPlace());
-      auto runner_tmp = NpuOpRunner("Adds", {*x}, {tmp_x}, {{"value", bias}});
+      const auto& runner_tmp =
+          NpuOpRunner("Adds", {*x}, {tmp_x}, {{"value", bias}});
       runner_tmp.Run(stream);
 
       out->mutable_data<T>(ctx.GetPlace());
       float _bias = 0.0;
-      auto runner =
+      const auto& runner =
           NpuOpRunner("Power", {tmp_x}, {*out},
                       {{"power", _power}, {"scale", scale}, {"shift", _bias}});
       runner.Run(stream);

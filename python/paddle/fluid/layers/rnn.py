@@ -880,6 +880,9 @@ class BeamSearchDecoder(Decoder):
     :code:`BeamSearchDecoder.tile_beam_merge_with_batch` . The most common case
     for this is the encoder output in attention mechanism.
 
+    Returns:
+        BeamSearchDecoder: An instance of decoder which can be used in \
+            `paddle.nn.dynamic_decode` to implement decoding. 
 
     Examples:
 

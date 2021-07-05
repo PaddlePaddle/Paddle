@@ -35,8 +35,8 @@ elif [[ "$SYSTEM" == "Windows_NT" ]];then
     git remote | grep upstream
     if [ $? != 0 ]; then 
         git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-        git fetch upstream develop
     fi
+    git fetch upstream ${BRANCH}
 fi
 CURBRANCH=`git rev-parse --abbrev-ref HEAD`
 echo $CURBRANCH
@@ -66,7 +66,7 @@ rm -rf prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
-    rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/get_added_ut.sh
+    rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/win_cmake.sh
 fi
 git checkout -f $CURBRANCH
 echo $CURBRANCH

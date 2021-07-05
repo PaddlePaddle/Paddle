@@ -1,6 +1,9 @@
 | Github account | name |
 |---|---|
 | abhinavarora | Abhinav Arora |
+| andreazanetti | Andrea Zanetti |
+| arlesniak | Artur Lesniak |
+| arogowie-intel | Adam Osewski |
 | backyes | Yan-Fei Wang |
 | baiyfbupt | Yi-Fan Bai |
 | beckett1124 | Bin Qi |
@@ -8,6 +11,7 @@
 | chengxiaohua1105 | Xiao-Hua Cheng |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
+| ddokupil | Dariusz Dokupil |
 | dzhwinter | Zhi-Hong Dong |
 | dragonwarrior | Long Wang |
 | dyning | Yuning Du |
@@ -21,6 +25,7 @@
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
 | jacquesqiao | Long-Fei Qiao |
+| jakpiase | Jakub Piasecki |
 | [jczaja](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg) | Jacek Czaja |
 | JiayiFeng | Jia-Yi Feng |
 | kbinias | Krzysztof Binias |
@@ -42,6 +47,7 @@
 | pakchoi | Chuan-Jiang Song |
 | panyx0718 | Xin Pan |
 | pengli09 | Peng Li |
+| pmajchrzak |Piotr Majchrzak |
 | pkuyym | Ya-Ming Yang |
 | pzelazko-intel | Pawel Zelazko |
 | [pawelpiotrowicz](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)  | Pawel Piotrowicz |

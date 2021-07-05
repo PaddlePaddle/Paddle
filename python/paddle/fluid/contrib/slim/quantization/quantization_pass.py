@@ -81,6 +81,7 @@ _out_scale_op_list = [
     "transpose",
     "pad2d",
     "reshape",
+    "layer_norm",
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
@@ -140,12 +141,21 @@ _channelwise_quant_axis1_ops = ['conv2d_transpose', 'mul']
 
 
 def _get_op_input_var_names(op):
-    """ """
+    """
+    Get the input var names of the op.
+    Args:
+        op(IrNode, Operator): the input op.
+    Returns:
+        input_var_names or None.
+    """
     assert isinstance(op, (IrNode, Operator)), \
         "The input op should be IrNode or Operator."
     var_names = []
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return []
+
     name_list = _op_real_in_out_name[op_name][0]
     for name in name_list:
         var_name = op.input(name)
@@ -162,6 +172,9 @@ def _get_input_name_index(op, input_var_name):
         "The input op should be IrNode or Operator."
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return None
+
     res = None
     for argname in _op_real_in_out_name[op_name][0]:
         var_names = op.input(argname)
@@ -178,6 +191,9 @@ def _get_op_output_var_names(op):
     var_names = []
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return []
+
     name_list = _op_real_in_out_name[op_name][1]
     for name in name_list:
         var_name = op.output(name)
@@ -194,6 +210,9 @@ def _get_output_name_index(op, output_var_name):
         "The input op should be IrNode or Operator."
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return None
+
     name_list = _op_real_in_out_name[op_name][1]
     res = None
     for name in name_list:
@@ -1147,7 +1166,7 @@ class QuantizationFreezePass(object):
                     ], "the dim of scale_v should be 1 or 2"
                     if scale_v.ndim == 2:
                         scale_v = scale_v[0]
-                    if scale_v.size == 1:
+                    if scale_v.size == 1 and self._weight_quantize_type == 'abs_max':
                         scale_v = scale_v[0]
                     else:
                         scale_v = scale_v.tolist()
@@ -1182,7 +1201,8 @@ class QuantizationFreezePass(object):
             if op_node_desc.has_attr("quantization_type") and \
                 op_node_desc.attr("quantization_type") == "qat_with_weight":
                 if self._weight_quantize_type == 'channel_wise_abs_max':
-                    self._insert_post_channel_dequant_op(graph, op_node)
+                    self._insert_post_channel_dequant_op(graph, op_node,
+                                                         quant_axis)
                 else:
                     self._insert_post_dequant_op(graph, op_node)
 
@@ -1209,7 +1229,7 @@ class QuantizationFreezePass(object):
                 v.node]
         graph.safe_remove_nodes(op_node)
 
-    def _insert_post_channel_dequant_op(self, graph, op_node):
+    def _insert_post_channel_dequant_op(self, graph, op_node, quant_axis):
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
         for var_node in op_node.inputs:
             name = var_node.name()
@@ -1257,6 +1277,7 @@ class QuantizationFreezePass(object):
             op_type='fake_channel_wise_dequantize_max_abs',
             attrs={
                 'quant_bits': [self._weight_bits, self._activation_bits],
+                'quant_axis': quant_axis,
                 'op_role': core.op_proto_and_checker_maker.OpRole.Forward
             },
             inputs={
