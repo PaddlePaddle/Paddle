@@ -12,27 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename T>
-class ReduceSumKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    Reduce<T, CustomSum>(context);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 REGISTER_OP_CUDA_KERNEL(
-    reduce_sum, ops::ReduceSumKernel<bool>, ops::ReduceSumKernel<float>,
-    ops::ReduceSumKernel<double>,
-    ops::ReduceSumKernel<paddle::platform::float16>, ops::ReduceSumKernel<int>,
-    ops::ReduceSumKernel<int64_t>,
-    ops::ReduceSumKernel<paddle::platform::complex<float>>,
-    ops::ReduceSumKernel<paddle::platform::complex<double>>);
+    reduce_sum, ops::ReduceCudaKernel<bool, paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<float, paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<double, paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<paddle::platform::float16,
+                          paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<int, paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<int64_t, paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<paddle::platform::complex<float>,
+                          paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<paddle::platform::complex<double>,
+                          paddle::operators::CustomSum>);
