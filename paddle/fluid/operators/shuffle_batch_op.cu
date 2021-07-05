@@ -48,10 +48,6 @@ template <typename T>
 class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "shuffle_batch does not support to run on HIP devices yet"));
-#else
     auto *x = ctx.Input<framework::Tensor>("X");
     auto *seed = ctx.Input<framework::Tensor>("Seed");
     auto *out = ctx.Output<framework::Tensor>("Out");
@@ -85,7 +81,11 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
     auto *shuffleidx_data = shuffleidx->mutable_data<int64_t>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+#ifdef PADDLE_WITH_CUDA
     const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+#else
+    const auto &exec_policy = thrust::hip::par.on(dev_ctx.stream());
+#endif
     thrust::default_random_engine engine(seed_int);
     thrust::counting_iterator<int64_t> cnt_iter(0);
     thrust::shuffle_copy(exec_policy, cnt_iter, cnt_iter + elem_size,
@@ -102,7 +102,6 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
     auto *seed_out_data = seed_out->mutable_data<int64_t>(
         framework::make_ddim({1}), platform::CPUPlace());
     *seed_out_data = engine();
-#endif
   }
 };
 
@@ -110,10 +109,6 @@ template <typename T>
 class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "shuffle_batch_grad does not support to run on HIP devices yet"));
-#else
     const auto *out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     const auto *shuffleidx = ctx.Input<framework::Tensor>("ShuffleIdx");
@@ -130,7 +125,6 @@ class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
     platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
                                                               x_grad->numel());
     for_range(functor);
-#endif
   }
 };
 

@@ -274,6 +274,7 @@ endif()
 
 if(WITH_GPU)
     include(cuda)
+    include(thrust)
     # lite subgraph compilation depends on CUDNN_ROOT,
     # so include(cudnn) needs to be in front of include(third_party/lite)
     include(cudnn)              # set cudnn libraries, must before configure
@@ -286,6 +287,7 @@ endif()
 
 if(WITH_ROCM)
     include(hip)
+    include(thrust)
     include(miopen) # set miopen libraries, must before configure
 endif(WITH_ROCM)
 
