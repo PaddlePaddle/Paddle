@@ -35,16 +35,10 @@ class SumNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     int n = static_cast<int>(x.size());
-    PADDLE_ENFORCE_EQ(n > 0, true,
-                      platform::errors::InvalidArgument(
-                          "The size of Input(x) list must be larger than 0."));
     if (n == 1) {
       TensorCopy(*x[0], place, out);
       return;
     }
-    PADDLE_ENFORCE_NOT_NULL(x[0],
-                            platform::errors::NotFound(
-                                "The first input tensor is not initalized."));
 
     std::vector<framework::Tensor> inputs;
     std::vector<std::string> names;
