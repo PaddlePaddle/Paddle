@@ -16,6 +16,7 @@
 
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
+#include <thrust/random.h>
 #include <thrust/shuffle.h>
 #include "paddle/fluid/operators/shuffle_batch_op.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -86,7 +87,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
 #else
     const auto &exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif
-    thrust::default_random_engine engine(seed_int);
+    thrust::random::default_random_engine engine(seed_int);
     thrust::counting_iterator<int64_t> cnt_iter(0);
     thrust::shuffle_copy(exec_policy, cnt_iter, cnt_iter + elem_size,
                          thrust::device_pointer_cast(shuffleidx_data), engine);
