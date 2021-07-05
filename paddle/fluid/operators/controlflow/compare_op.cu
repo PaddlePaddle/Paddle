@@ -60,7 +60,6 @@ template <typename Functor, typename InverseFunctor>
 class CompareOpKernel<platform::CUDADeviceContext, Functor, InverseFunctor>
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
- public:
   using InT = typename Functor::ELEMENT_TYPE;
   using OutT = bool;
   void Compute(const framework::ExecutionContext& ctx) const override {
