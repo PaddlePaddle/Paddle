@@ -101,6 +101,7 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .IsTensor()
       .End()
       .AddAttr("strides")
+      .IsOptional()
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("paddings")
