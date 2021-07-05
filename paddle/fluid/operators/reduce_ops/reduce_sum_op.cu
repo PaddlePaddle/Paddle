@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
-
 REGISTER_OP_CUDA_KERNEL(
     reduce_sum, ops::ReduceCudaKernel<bool, paddle::operators::CustomSum>,
     ops::ReduceCudaKernel<float, paddle::operators::CustomSum>,
