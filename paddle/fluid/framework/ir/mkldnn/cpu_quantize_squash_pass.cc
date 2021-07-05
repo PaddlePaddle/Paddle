@@ -76,6 +76,7 @@ CPUQuantizeSquashPass::CPUQuantizeSquashPass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
+      .IsOptional()
       .IsStringIn({"NCHW", "NHWC"})
       .End();
 }
