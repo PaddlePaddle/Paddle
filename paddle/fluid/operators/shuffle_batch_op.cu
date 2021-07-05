@@ -14,12 +14,11 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#include <thrust/device_ptr.h>
-#include <thrust/iterator/counting_iterator.h>
 #include "paddle/fluid/operators/shuffle_batch_op.h"
 #ifdef PADDLE_WITH_CUDA
+#include <thrust/device_ptr.h>
+#include <thrust/iterator/counting_iterator.h>
 #include <thrust/shuffle.h>
-#endif
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
