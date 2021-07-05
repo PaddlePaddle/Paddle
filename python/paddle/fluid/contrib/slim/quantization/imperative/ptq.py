@@ -32,16 +32,18 @@ _logger = get_logger(
 
 class ImperativePTQ(object):
     """
-    Applying static post_training quantization to the dgraph model.
+    Static post training quantization.
     """
 
     def __init__(self, quant_config=ptq_config.default_ptq_config):
         """
         Constructor.
+
         Args:
-            algo(str): The algorithm in post_training quantizaion to be used.
-            activation_bits(int): quantization bit number for activations.
-            weight_bits(int): quantization bit number for weights.
+            quant_config(PTQConfig): the config of post training quantization.
+                The config has weight_quantizer and activation_quantizer.
+                In default, the weight_quantizer and activation_quantizer are
+                AbsmaxQuantizer.
         """
         super(ImperativePTQ, self).__init__()
 
@@ -55,28 +57,30 @@ class ImperativePTQ(object):
 
         Args:
             model(paddle.nn.Layer): The model to be quantized.
+            inplace(bool): Whether apply quantization to the input model.
+                           Default: False.
         Returns:
-            None
+            quantized_model(paddle.nn.Layer): The quantized model.
         """
         assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
 
         if not inplace:
-            model = copy.deepcopy(model)
+            new_model = copy.deepcopy(model)
 
-        for name, layer in model.named_sublayers():
+        for name, layer in new_model.named_sublayers():
             if PTQRegistry.is_supported_layer(layer) \
                 and utils.is_leaf_layer(layer):
                 quant_config = copy.deepcopy(self._quant_config)
                 layer._quant_config = quant_config
 
                 hook = ptq_hooks.quant_forward_post_hook
-                hook_handle = layer.register_forward_post_hook(hook)
-                quant_config.hook_handle = hook_handle
+                quant_hook_handle = layer.register_forward_post_hook(hook)
+                quant_config.quant_hook_handle = quant_hook_handle
                 layer._forward_post_hooks.move_to_end(
-                    hook_handle._hook_id, last=False)
+                    quant_hook_handle._hook_id, last=False)
 
-        return model
+        return new_model
 
     def convert(self, model):
         """
@@ -85,7 +89,7 @@ class ImperativePTQ(object):
         Args:
             model(paddle.nn.Layer): The model to be quantized.
         Returns:
-            None
+            converted_model(paddle.nn.Layer): The converted model.
         """
         assert isinstance(model, paddle.nn.Layer), \
             "The input model must be the instance of paddle.nn.Layer."
@@ -96,7 +100,7 @@ class ImperativePTQ(object):
 
                 assert hasattr(sub_layer, "_quant_config")
                 quant_config = sub_layer._quant_config
-                quant_config.hook_handle.remove()
+                quant_config.quant_hook_handle.remove()
 
                 quant_config.in_act_quantizer.cal_thresholds()
                 quant_config.out_act_quantizer.cal_thresholds()
