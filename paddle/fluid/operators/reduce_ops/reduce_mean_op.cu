@@ -15,22 +15,9 @@
 #include <vector>
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename T>
-class ReduceMeanKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    Reduce<T, CustomMean>(context);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
-REGISTER_OP_CUDA_KERNEL(reduce_mean, ops::ReduceMeanKernel<bool>,
-                        ops::ReduceMeanKernel<float>,
-                        ops::ReduceMeanKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    reduce_mean, ops::ReduceCudaKernel<bool, paddle::operators::CustomMean>,
+    ops::ReduceCudaKernel<float, paddle::operators::CustomMean>,
+    ops::ReduceCudaKernel<double, paddle::operators::CustomMean>);
