@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+from paddle.fluid.framework import _global_flags
 
 import numpy as np
 from ...device import get_cudnn_version
@@ -85,6 +86,10 @@ def _update_padding_nd(padding, channel_last, num_dims):
     else:
         padding_algorithm = "EXPLICIT"
         padding = utils.convert_to_list(padding, num_dims, 'padding')
+    if not all([p >= 0 for p in padding]):
+        raise ValueError(
+            "Invalid padding, all value should be larger than or equal to 0, but received: {}".
+            format(padding))
     return padding, padding_algorithm
 
 
@@ -533,7 +538,7 @@ def conv2d(x,
     use_cudnn = True if (core.is_compiled_with_cuda() and
                          cudnn_version is not None) else False
 
-    use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+    use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)

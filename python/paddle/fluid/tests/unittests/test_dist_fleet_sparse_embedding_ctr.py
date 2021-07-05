@@ -45,7 +45,9 @@ class TestDistMnistSync2x2(TestFleetBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            "CPU_NUM": "2"
+            "CPU_NUM": "2",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -79,7 +81,9 @@ class TestDistMnistAsync2x2(TestFleetBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            "CPU_NUM": "2"
+            "CPU_NUM": "2",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -114,7 +118,9 @@ class TestDistMnistAsync2x2WithDecay(TestFleetBase):
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
             "CPU_NUM": "2",
-            "DECAY": "0"
+            "DECAY": "0",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -149,7 +155,9 @@ class TestDistMnistAsync2x2WithUnifrom(TestFleetBase):
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
             "CPU_NUM": "2",
-            "INITIALIZER": "1"
+            "INITIALIZER": "1",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -264,6 +272,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                          check_error_log=False,
                          need_envs={}):
         model_dir = tempfile.mkdtemp()
+
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -272,7 +281,9 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
             "http_proxy": "",
             "CPU_NUM": "2",
             "INITIALIZER": "2",
-            "MODEL_DIR": model_dir
+            "MODEL_DIR": model_dir,
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)

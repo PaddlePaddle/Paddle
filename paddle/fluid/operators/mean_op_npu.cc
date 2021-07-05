@@ -30,7 +30,7 @@ class MeanNPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("ReduceMeanD", {*x}, {*out}, attr_input);
+    const auto& runner = NpuOpRunner("ReduceMeanD", {*x}, {*out}, attr_input);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -61,7 +61,7 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
     // ones
     Tensor ones(grad->type());
     ones.mutable_data<T>(IG->dims(), context.GetPlace());
-    auto runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
+    const auto& runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
     runner_ones.Run(stream);
 
     // means
@@ -75,11 +75,12 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
     Tensor mean_ma(grad->type());
     mean_ma.Resize(IG->dims());
     mean_ma.mutable_data<T>(context.GetPlace());
-    auto runner_mul_1 = NpuOpRunner("Mul", {mean_tensor, ones}, {mean_ma}, {});
+    const auto& runner_mul_1 =
+        NpuOpRunner("Mul", {mean_tensor, ones}, {mean_ma}, {});
     runner_mul_1.Run(stream);
 
     // and mul grad
-    auto runner_mul_2 = NpuOpRunner("Mul", {mean_ma, *grad}, {*IG}, {});
+    const auto& runner_mul_2 = NpuOpRunner("Mul", {mean_ma, *grad}, {*IG}, {});
     runner_mul_2.Run(stream);
   }
 };
