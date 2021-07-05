@@ -32,7 +32,7 @@ import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder, Variable
+from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
 from paddle.fluid.tests.unittests.testsuite import (
     create_op,
     set_input,
@@ -1776,3 +1776,16 @@ class OpTest(unittest.TestCase):
                              fetch_list,
                              scope=scope,
                              return_numpy=False)))
+
+
+class OpTestTool:
+    @classmethod
+    def skipIf(cls, condition: object, reason: str):
+        return unittest.skipIf(condition, reason)
+
+    @classmethod
+    def skipIfNotBF16(cls):
+        return OpTestTool.skipIf(
+            not (isinstance(_current_expected_place(), core.CPUPlace) and
+                 core.supports_bfloat16()),
+            "Place does not support BF16 evaluation")
