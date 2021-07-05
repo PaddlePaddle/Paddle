@@ -1,4 +1,3 @@
-
 // Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,14 +14,18 @@
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/operators/jit/macro.h"
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
+
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
+
 template <typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
                       const LoDTensor& input, const LoDTensor& index,
@@ -166,17 +169,42 @@ struct IndexSelectAdd<
 
 #endif
 
+template <typename T>
+typename std::enable_if<std::is_floating_point<T>::value>::type
+elementwise_inner_add(const framework::ExecutionContext& ctx, int slice_size,
+                      const T* src_pointer, const T* dist_pointer,
+                      T* result_dist_pointer) {
+  auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+  blas.VADD(slice_size, src_pointer, dist_pointer, result_dist_pointer);
+}
+
+template <typename T>
+typename std::enable_if<!std::is_floating_point<T>::value>::type
+elementwise_inner_add(const framework::ExecutionContext& ctx, int slice_size,
+                      const T* src_pointer, const T* dist_pointer,
+                      T* result_dist_pointer) {
+  for (int i = 0; i < slice_size; i++) {
+    result_dist_pointer[i] = src_pointer[i] + dist_pointer[i];
+  }
+}
+
 template <typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
                           const LoDTensor& out_grad, const LoDTensor& index,
                           LoDTensor* x_grad, int dim) {
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();
+  const T* p_output = x_grad->mutable_data<T>(context.GetPlace());
   T* out_data = x_grad->mutable_data<T>(context.GetPlace());
   auto input_dim = out_grad.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
-  std::memset(out_data, 0.0, x_grad->numel() * sizeof(T));
+
+  auto& device_ctx =
+      context.template device_context<platform::CPUDeviceContext>();
+  math::SetConstant<platform::CPUDeviceContext, T> zero;
+  zero(device_ctx, x_grad, static_cast<T>(0.0));
+  // std::memset(out_data, 0.0, x_grad->numel() * sizeof(T));
 
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
@@ -199,19 +227,10 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_data[j];
       auto src = input_data + input_start_offset + j * slice_size;
+      auto p_out = p_output + output_start_offset + index_value * slice_size;
+
       auto dst = out_data + output_start_offset + index_value * slice_size;
-
-#if ((!defined __NVCC__) && (!defined __HIPCC__))
-
-#ifdef __AVX__
-      IndexSelectAdd<platform::avx, T> index_select_add_avx;
-      index_select_add_avx(slice_size, src, dst);
-#else
-      IndexSelectAdd<platform::isa_any, T> index_select_add_any;
-      index_select_add_any(slice_size, src, dst);
-#endif
-
-#endif
+      elementwise_inner_add<T>(context, slice_size, src, p_out, dst);
     }
   }
   x_grad->Resize(output_dim);
