@@ -57,7 +57,7 @@ class TRTFlattenDynamicTest(InferencePassTest):
             flatten_out = self.append_flatten(data)
             out = fluid.layers.batch_norm(flatten_out, is_test=True)
         self.feeds = {
-            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
+            "data": np.random.random([2, 6, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = TRTFlattenDynamicTest.TensorRTParam(
