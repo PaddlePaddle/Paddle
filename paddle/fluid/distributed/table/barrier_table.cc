@@ -46,17 +46,20 @@ void BarrierTable::update_pour_thread() {
     std::set<uint32_t> trainer_ids;
 
     while (trainer_ids.size() < trigger_.load() && !exit_) {
-      auto id = trainer_ids_->Pop();
-      trainer_ids.insert(id);
+      if (trainer_ids_->Size() != 0) {
+        auto id = trainer_ids_->Pop();
+        trainer_ids.insert(id);
 
-      std::vector<uint32_t> diffs(trainer_all_.size());
-      auto iter = std::set_difference(trainer_all_.begin(), trainer_all_.end(),
-                                      trainer_ids.begin(), trainer_ids.end(),
-                                      diffs.begin());
-      diffs.resize(iter - diffs.begin());
+        std::vector<uint32_t> diffs(trainer_all_.size());
+        auto iter = std::set_difference(trainer_all_.begin(),
+                                        trainer_all_.end(), trainer_ids.begin(),
+                                        trainer_ids.end(), diffs.begin());
+        diffs.resize(iter - diffs.begin());
 
-      auto diff = to_string<uint32_t>(diffs);
-      VLOG(1) << "receive trainer: " << id << ", still need trainers: " << diff;
+        auto diff = to_string<uint32_t>(diffs);
+        VLOG(1) << "receive trainer: " << id
+                << ", still need trainers: " << diff;
+      }
     }
 
     if (!exit_) {
