@@ -111,6 +111,7 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")
+      .IsOptional()
       .IsNumGE(1)
       .End()
       .AddAttr("dilations")
@@ -131,6 +132,7 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
+      .IsOptional()
       .IsIntIn({-1, 0})
       .End();
 }

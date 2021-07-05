@@ -67,6 +67,7 @@ CPUQuantizeSquashPass::CPUQuantizeSquashPass() {
       .AddAttr("paddings")
       .End()
       .AddAttr("padding_algorithm")
+      .IsOptional()
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")
