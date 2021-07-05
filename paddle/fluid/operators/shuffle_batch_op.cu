@@ -16,8 +16,10 @@
 
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
-#include <thrust/shuffle.h>
 #include "paddle/fluid/operators/shuffle_batch_op.h"
+#ifdef PADDLE_WITH_CUDA
+#include <thrust/shuffle.h>
+#endif
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
@@ -81,12 +83,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
     auto *shuffleidx_data = shuffleidx->mutable_data<int64_t>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-#ifdef PADDLE_WITH_CUDA
     const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
-#else
-    const auto &exec_policy = thrust::hip::par.on(dev_ctx.stream());
-#endif
-
     thrust::default_random_engine engine(seed_int);
     thrust::counting_iterator<int64_t> cnt_iter(0);
     thrust::shuffle_copy(exec_policy, cnt_iter, cnt_iter + elem_size,
@@ -128,6 +125,19 @@ class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
     for_range(functor);
   }
 };
+
+#else
+
+template <typename T>
+class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "shuffle_batch op is only supported in CUDA devices"));
+  }
+};
+
+#endif
 
 }  // namespace operators
 }  // namespace paddle
