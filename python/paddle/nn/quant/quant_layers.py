@@ -409,33 +409,24 @@ class QuantizedConv2D(layers.Layer):
                  weight_quant_layer=None,
                  act_quant_layer=None):
         super(QuantizedConv2D, self).__init__()
-        # For Conv2D
-        self._groups = getattr(layer, '_groups')
-        self._stride = getattr(layer, '_stride')
-        self._padding = getattr(layer, '_padding')
-        self._padding_mode = getattr(layer, '_padding_mode')
-        if self._padding_mode != 'zeros':
-            self._reversed_padding_repeated_twice = getattr(
-                layer, '_reversed_padding_repeated_twice')
-        self._dilation = getattr(layer, '_dilation')
-        self._data_format = getattr(layer, '_data_format')
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
 
-        # For FakeQuant
-        self._conv2d_quant_axis = 0
+        self._layer = layer
+        self._weight = getattr(layer, 'weight')
+        quant_axis = 0
+
         if weight_quant_layer is not None:
             self._fake_quant_weight = weight_quant_layer()
         else:
             self._fake_quant_weight = _get_fake_quant_type(
                 weight_quantize_type,
-                name=self.weight.name,
+                name=self._weight.name,
                 moving_rate=moving_rate,
                 quant_bits=weight_bits,
                 dtype=self._dtype,
                 quant_on_weight=True,
-                channel_num=self.weight.shape[self._conv2d_quant_axis],
-                quant_axis=self._conv2d_quant_axis)
+                channel_num=self._weight.shape[quant_axis],
+                quant_axis=quant_axis)
+
         if act_quant_layer is not None:
             self._fake_quant_input = act_quant_layer()
         else:
@@ -447,37 +438,24 @@ class QuantizedConv2D(layers.Layer):
                 dtype=self._dtype,
                 quant_on_weight=False)
 
-        self._act_preprocess = act_pre_layer(
-        ) if act_pre_layer is not None else None
-        self._weight_preprocess = weight_pre_layer(
-        ) if weight_pre_layer is not None else None
+        self._act_preprocess = act_pre_layer() \
+            if act_pre_layer is not None else None
+        self._weight_preprocess = weight_pre_layer() \
+            if weight_pre_layer is not None else None
 
     def forward(self, input):
         if self._act_preprocess is not None:
             input = self._act_preprocess(input)
         quant_input = self._fake_quant_input(input)
 
-        weight = self.weight
         if self._weight_preprocess is not None:
-            weight = self._weight_preprocess(self.weight)
-        quant_weight = self._fake_quant_weight(weight)
+            self._weight = self._weight_preprocess(self._weight)
+        quant_weight = self._fake_quant_weight(self._weight)
 
-        if self._padding_mode != 'zeros':
-            quant_input = F.pad(quant_input,
-                                self._reversed_padding_repeated_twice,
-                                mode=self._padding_mode,
-                                data_format=self._data_format)
-            self._padding = 0
+        self._layer.weight = quant_weight
+        out = self._layer(quant_input)
 
-        return F.conv2d(
-            quant_input,
-            quant_weight,
-            bias=self.bias,
-            padding=self._padding,
-            stride=self._stride,
-            dilation=self._dilation,
-            groups=self._groups,
-            data_format=self._data_format)
+        return out
 
 
 class QuantizedLinear(layers.Layer):
@@ -498,25 +476,23 @@ class QuantizedLinear(layers.Layer):
                  weight_quant_layer=None,
                  act_quant_layer=None):
         super(QuantizedLinear, self).__init__()
-        # For Linear
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
-        self.name = getattr(layer, 'name')
-        # For FakeQuant
-        self._linear_quant_axis = 1
+
+        self._layer = layer
+        self._weight = getattr(layer, 'weight')
+        quant_axis = 1
 
         if weight_quant_layer is not None:
             self._fake_quant_weight = weight_quant_layer()
         else:
             self._fake_quant_weight = _get_fake_quant_type(
                 weight_quantize_type,
-                name=self.weight.name,
+                name=self._weight.name,
                 moving_rate=moving_rate,
                 quant_bits=weight_bits,
                 dtype=self._dtype,
                 quant_on_weight=True,
-                channel_num=self.weight.shape[self._linear_quant_axis],
-                quant_axis=self._linear_quant_axis)
+                channel_num=self._weight.shape[quant_axis],
+                quant_axis=quant_axis)
 
         if act_quant_layer is not None:
             self._fake_quant_input = act_quant_layer()
@@ -529,23 +505,23 @@ class QuantizedLinear(layers.Layer):
                 dtype=self._dtype,
                 quant_on_weight=False)
 
-        self._act_preprocess = act_pre_layer(
-        ) if act_pre_layer is not None else None
-        self._weight_preprocess = weight_pre_layer(
-        ) if weight_pre_layer is not None else None
+        self._act_preprocess = act_pre_layer() \
+            if act_pre_layer is not None else None
+        self._weight_preprocess = weight_pre_layer() \
+            if weight_pre_layer is not None else None
 
     def forward(self, input):
         if self._act_preprocess is not None:
             input = self._act_preprocess(input)
         quant_input = self._fake_quant_input(input)
 
-        weight = self.weight
         if self._weight_preprocess is not None:
-            weight = self._weight_preprocess(self.weight)
-        quant_weight = self._fake_quant_weight(weight)
+            self._weight = self._weight_preprocess(self._weight)
+        quant_weight = self._fake_quant_weight(self._weight)
 
-        out = F.linear(
-            x=quant_input, weight=quant_weight, bias=self.bias, name=self.name)
+        self._layer.weight = quant_weight
+        out = self._layer(quant_input)
+
         return out
 
 

@@ -312,10 +312,10 @@ class ImperativeQuantizeInputs(object):
                     and cur_layer.skip_quant == True):
                 continue
 
+            cur_quant_layer = self._get_input_quantized_layer(cur_layer)
+
             parent_layer, sub_name = \
                 utils.find_parent_layer_and_sub_name(model, name)
-
-            cur_quant_layer = self._get_input_quantized_layer(cur_layer)
             setattr(parent_layer, sub_name, cur_quant_layer)
 
     def _get_input_quantized_layer(self, layer):
@@ -367,9 +367,6 @@ class ImperativeQuantizeOutputs(object):
             if not self._is_target_layer(cur_layer):
                 continue
 
-            parent_layer, sub_name = \
-                utils.find_parent_layer_and_sub_name(model, cur_name)
-
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
                 cur_quant_layer = quant_layers.FakeQuantMAOutputScaleLayer(
                     cur_layer, self._moving_rate)
@@ -377,6 +374,8 @@ class ImperativeQuantizeOutputs(object):
                 cur_quant_layer = quant_layers.MAOutputScaleLayer(
                     cur_layer, self._moving_rate)
 
+            parent_layer, sub_name = \
+                utils.find_parent_layer_and_sub_name(model, cur_name)
             setattr(parent_layer, sub_name, cur_quant_layer)
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
@@ -459,13 +458,8 @@ class ImperativeQuantizeOutputs(object):
             if utils.is_leaf_layer(layer) and \
                 not isinstance(layer, tuple(utils.fake_quant_leaf_layers)):
                 flag = True
-
-            if isinstance(layer, tuple(utils.fake_quant_wrap_layers)):
-                flag = True
-
             if isinstance(layer, paddle.nn.quant.FloatFunctionalLayer):
                 flag = True
-
         return flag
 
     def _gather_scales(self, program, scope):
