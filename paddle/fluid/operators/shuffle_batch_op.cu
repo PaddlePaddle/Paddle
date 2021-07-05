@@ -14,11 +14,10 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#include "paddle/fluid/operators/shuffle_batch_op.h"
-#ifdef PADDLE_WITH_CUDA
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/shuffle.h>
+#include "paddle/fluid/operators/shuffle_batch_op.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
@@ -49,6 +48,10 @@ template <typename T>
 class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "shuffle_batch does not support to run on HIP devices yet"));
+#else
     auto *x = ctx.Input<framework::Tensor>("X");
     auto *seed = ctx.Input<framework::Tensor>("Seed");
     auto *out = ctx.Output<framework::Tensor>("Out");
@@ -99,6 +102,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
     auto *seed_out_data = seed_out->mutable_data<int64_t>(
         framework::make_ddim({1}), platform::CPUPlace());
     *seed_out_data = engine();
+#endif
   }
 };
 
@@ -106,6 +110,10 @@ template <typename T>
 class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "shuffle_batch_grad does not support to run on HIP devices yet"));
+#else
     const auto *out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     const auto *shuffleidx = ctx.Input<framework::Tensor>("ShuffleIdx");
@@ -122,21 +130,9 @@ class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
     platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
                                                               x_grad->numel());
     for_range(functor);
-  }
-};
-
-#else
-
-template <typename T>
-class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "shuffle_batch op is only supported in CUDA devices"));
-  }
-};
-
 #endif
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
