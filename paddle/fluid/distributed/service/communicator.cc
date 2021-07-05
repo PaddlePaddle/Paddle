@@ -24,8 +24,8 @@ limitations under the License. */
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"
 
-constexpr int init_timeout = 60000;
-constexpr int barrier_timeout = 10800000;
+constexpr int barrier_timeout = 60000;
+constexpr int init_timeout = 10800000;
 
 namespace paddle {
 namespace distributed {
