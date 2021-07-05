@@ -14605,10 +14605,10 @@ def unfold(x, kernel_size, stride=1, padding=0, dilation=1, name=None):
         inputs={"X": x},
         outputs={"Y": out},
         attrs={
-            "kernel_sizes": kernel_size,
-            "strides": stride,
-            "paddings": padding,
-            "dilations": dilation
+            "kernel_size": kernel_size,
+            "stride": stride,
+            "padding": padding,
+            "dilation": dilation
         })
     return out
 
