@@ -13,6 +13,10 @@ extra {
     type: BOOLEAN
   }
   attrs {
+    name: "X0_threshold"
+    type: FLOAT
+  }
+  attrs {
     name: "out_threshold"
     type: FLOAT
   }
