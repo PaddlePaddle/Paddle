@@ -128,6 +128,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #ifdef PADDLE_WITH_XPU
   if (kernel_iter == kernels.end() &&
       is_xpu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing XPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
@@ -135,6 +138,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
       is_npu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing NPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }

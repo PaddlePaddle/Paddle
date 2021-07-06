@@ -10,12 +10,9 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the License. */
+limitations under the Licnse. */
 
-#include <memory>
-#include <string>
-
-#include "paddle/fluid/operators/gelu_op.h"
+#include "paddle/fluid/operators/abs_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
@@ -24,52 +21,43 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-class GeluNPUKernel : public framework::OpKernel<T> {
+class AbsNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
-
     auto* out = ctx.Output<Tensor>("Out");
 
-    auto place = ctx.GetPlace();
+    out->mutable_data<T>(ctx.GetPlace());
 
-    out->mutable_data<T>(place);
+    const auto& runner = NpuOpRunner("Abs",
+                                     {
+                                         *x,
+                                     },
+                                     {*out}, {});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-
-    const auto& runner = NpuOpRunner("Gelu", {*x}, {*out}, {});
     runner.Run(stream);
   }
 };
 
 template <typename DeviceContext, typename T>
-class GeluGradNPUKernel : public framework::OpKernel<T> {
+class AbsGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    auto place = ctx.GetPlace();
+    dx->mutable_data<T>(ctx.GetPlace());
 
-    dx->mutable_data<T>(place);
+    const auto& runner = NpuOpRunner("AbsGrad", {*x, *dout}, {*dx}, {});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-
-    // NOTE(pangyoki): In the original implementation of GeluGrad op, the input
-    // is {*dout, *x, out}, where out = Gelu(x). However, we find that variable
-    // `out` was not actually used. In order to improve performance, the
-    // useless GELU operation was deleted.
-    // We directly use `*dout` as a placeholder to replace `out`, it will not
-    // be used in calculations.
-    const auto& runner_dx =
-        NpuOpRunner("GeluGrad", {*dout, *x, *dout}, {*dx}, {});
-    runner_dx.Run(stream);
+    runner.Run(stream);
   }
 };
 
@@ -77,14 +65,12 @@ class GeluGradNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    gelu, ops::GeluNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::GeluNPUKernel<paddle::platform::NPUDeviceContext,
-                       paddle::platform::float16>);
+    abs, ops::AbsNPUKernel<plat::NPUDeviceContext, float>,
+    ops::AbsNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    gelu_grad,
-    ops::GeluGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::GeluGradNPUKernel<paddle::platform::NPUDeviceContext,
-                           paddle::platform::float16>);
+    abs_grad, ops::AbsGradNPUKernel<plat::NPUDeviceContext, float>,
+    ops::AbsGradNPUKernel<plat::NPUDeviceContext, plat::float16>);
