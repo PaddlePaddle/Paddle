@@ -18,6 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
+DECLARE_bool(convert_all_blocks);
+
 namespace paddle {
 namespace framework {
 class ProgramDesc;
@@ -27,6 +29,35 @@ class ProgramDesc;
 namespace paddle {
 namespace framework {
 namespace ir {
+
+void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE_EQ(graph->IsMainGraph(), true,
+                    platform::errors::InvalidArgument(
+                        "This graph is a sub_graph, "
+                        "and can't convert to program individually"));
+
+  ProgramDesc& program = Get<ProgramDesc>("program");
+
+  std::unique_ptr<proto::ProgramDesc> program_pb(
+      new proto::ProgramDesc(*program.Proto()));
+
+  auto block = program_pb->mutable_blocks(kRootBlockIndex);
+  block->set_idx(kRootBlockIndex);
+
+  if (FLAGS_convert_all_blocks) {
+    GraphToBlock(graph->GetSubGraph(kRootBlockIndex), block);
+  } else {
+    GraphToBlock(graph, block);
+  }
+
+  for (size_t idx = 1; idx < graph->SubGraphSize(); ++idx) {
+    block = program_pb->add_blocks();
+    block->set_idx(idx);
+    GraphToBlock(graph->GetSubGraph(idx), block);
+  }
+
+  program.CopyFrom(*program_pb);
+}
 
 void GraphToProgramPass::GraphToBlock(const Graph* graph,
                                       proto::BlockDesc* block) const {
@@ -66,35 +97,6 @@ void GraphToProgramPass::GraphToBlock(const Graph* graph,
 
     block->add_ops()->MergeFrom(*n->Op()->Proto());
   }
-}
-
-void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_EQ(graph->IsMainGraph(), true,
-                    platform::errors::InvalidArgument(
-                        "This graph is a sub_graph, "
-                        "and can't convert to program individually"));
-
-  ProgramDesc& program = Get<ProgramDesc>("program");
-
-  std::unique_ptr<proto::ProgramDesc> program_pb(
-      new proto::ProgramDesc(*program.Proto()));
-
-  auto block = program_pb->mutable_blocks(kRootBlockIndex);
-  block->set_idx(kRootBlockIndex);
-
-  if (FLAGS_convert_all_blocks) {
-    GraphToBlock(graph->GetSubGraph(kRootBlockIndex), block);
-  } else {
-    GraphToBlock(graph, block);
-  }
-
-  for (size_t idx = 1; idx < graph->SubGraphSize(); ++idx) {
-    block = program_pb->add_blocks();
-    block->set_idx(idx);
-    GraphToBlock(graph->GetSubGraph(idx), block);
-  }
-
-  program.CopyFrom(*program_pb);
 }
 
 }  // namespace ir
