@@ -159,7 +159,8 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
   Node* elementwise_add_identity;
   Node* elementwise_add_out;
   if (!pass_->IsCompat(subgraph, graph)) {
-    LOG(WARNING) << "Pass in op compat failed.";
+    LOG(WARNING)
+        << "conv_elementwise_add_mkldnn_fuse_pass in op compat failed.";
     return;
   }
 
@@ -218,7 +219,8 @@ void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
   Node* elementwise_add_out;
 
   if (!pass_->IsCompat(subgraph, graph)) {
-    LOG(WARNING) << "Pass in op compat failed.";
+    LOG(WARNING)
+        << "conv_elementwise_add_mkldnn_fuse_pass in op compat failed.";
     return;
   }
 
