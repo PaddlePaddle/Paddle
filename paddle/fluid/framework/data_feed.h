@@ -162,6 +162,7 @@ class DLManager {
 
   paddle::framework::CustomParser* Load(const std::string& name,
                                         std::vector<SlotConf>& conf) {
+#ifdef _LINUX
     std::lock_guard<std::mutex> lock(mutex_);
     DLHandle handle;
     std::map<std::string, DLHandle>::iterator it = handle_map_.find(name);
@@ -182,6 +183,9 @@ class DLManager {
     handle_map_.insert({name, handle});
 
     return handle.parser;
+#endif
+    VLOG(0) << "Not implement in windows";
+    return nullptr;
   }
 
   paddle::framework::CustomParser* ReLoad(const std::string& name,
