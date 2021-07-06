@@ -92,7 +92,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     auto* seed =
         context.HasInput("Seed") ? context.Input<Tensor>("Seed") : nullptr;
     auto* y = context.Output<Tensor>("Out");
-    const auto* x_data = x->data<T>();
+    // const auto* x_data = x->data<T>();
     auto* y_data = y->mutable_data<T>(context.GetPlace());
     const float dropout_prob = context.Attr<float>("dropout_prob");
 
@@ -121,30 +121,74 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
       auto engine = framework::GetCPURandomEngine(seed_data);
+      std::cout << "############################" << std::endl;
+      std::cout << engine << std::endl;
       std::uniform_real_distribution<float> dist(0, 1);
-      float factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
+      // float factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
 
-      int i = 0;
-      float rand_number = 0.0f;
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for private(i, rand_number) shared(mask_data, x_data, \
-                                                        y_data)
-#endif
-      for (i = 0; i < size; ++i) {
-        rand_number = dist(*engine);
-        if (rand_number < dropout_prob) {
-          mask_data[i] = 0;
-          y_data[i] = 0;
-        } else {
-          mask_data[i] = 1;
-          if (upscale_in_train) {
-            y_data[i] = x_data[i] * factor;
-          } else {
-            y_data[i] = x_data[i];
-          }
+      // int i = 0;
+      // float rand_number = 0.0f;
+      // std::cout << seed_data;
+      // std::uniform_real_distribution<float> dist(0, 1);
+      // float factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
+      // auto engine = framework::GetCPURandomEngine(seed_data);
+      //   platform::Timer timeline;
+      //   timeline.Start();
+      int num_threads = 1;
+#pragma omp parallel
+      {
+        int tid = omp_get_thread_num();
+        if (tid == 0) {
+          num_threads = omp_get_num_threads();
         }
       }
-#
+      std::shared_ptr<std::mt19937_64> engine_arr[num_threads];
+      for (std::shared_ptr<std::mt19937_64>& mt : engine_arr) {
+        mt = framework::GetCPURandomEngine(seed_data);
+      }
+      int L = (size / num_threads);
+// // std::vector<float> rand_vec;
+// // float* rand_vec = new float[size];
+// // float rand_number = 0.0f;
+#pragma omp parallel for
+      for (int i = 0; i < num_threads; i++) {
+        for (int j = 0; j < L; j++) {
+          dist(*engine_arr[i]);
+          //     // std::cout << rand_number << "\t";
+          //     // std::cout << dist(*engine_arr[i]) << "\t" ;
+          //     //   if (rand_number < dropout_prob) {
+          //     //     mask_data[i*L+j] = 0;
+          //     //     y_data[i*L+j] = 0;
+          //     //   } else {
+          //     //     mask_data[i*L+j] = 1;
+          //     //     if (upscale_in_train) {
+          //     //       y_data[i*L+j] = x_data[i*L+j] * factor;
+          //     //     } else {
+          //     //       y_data[i*L+j] = x_data[i*L+j];
+          //     //     }
+        }
+      }
+
+      // #ifdef PADDLE_WITH_MKLML
+      // #pragma omp parallel for private(i, rand_number) shared(mask_data,
+      // x_data,
+      //                                                         y_data)
+      // #endif
+      // for (i = 0; i < size; ++i) {
+      //   float rand_number = dist(*engine);
+      //   if (rand_number < dropout_prob) {
+      //     mask_data[i] = 0;
+      //     y_data[i] = 0;
+      //   } else {
+      //     mask_data[i] = 1;
+      //     if (upscale_in_train) {
+      //       y_data[i] = x_data[i] * factor;
+      //     } else {
+      //       y_data[i] = x_data[i];
+      //     }
+      //   }
+      // }
+
     } else {
       if (upscale_in_train) {
         const auto* X_data = x->data<T>();
