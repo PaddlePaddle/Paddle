@@ -140,7 +140,7 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   less_than_op_2->SetInput("X", {less_than_2_x->Name()});
   less_than_op_2->SetInput("Y", {less_than_2_y->Name()});
 
-  auto* less_than_2_out = global_block->Var("Less_than_2_out");
+  auto* less_than_2_out = global_block->Var("Less_than_2_Out");
   less_than_2_out->SetType(proto::VarType::BOOL);
   less_than_op_2->SetOutput("Out", {less_than_2_out->Name()});
 
@@ -200,30 +200,43 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   VLOG(3) << "inner_inputs().size():" << inner_inputs.size();
   VLOG(3) << "inner_outputs().size():" << inner_outputs.size();
 
-  ASSERT_EQ(4UL, inner_inputs.size());
+  ASSERT_EQ(5UL, inner_inputs.size());
   ASSERT_EQ(2UL, inner_outputs.size());
 
+  // varible "Less_than_2_Out" is the input of cond_op, it also is the output of
+  // less_than_op.
+  std::set<std::string> inner_inputs_{"Less_than_2_Out", "Less_than_2_X",
+                                      "Less_than_2_Y", "Mul_2_X", "Mul_2_Y"};
+  std::set<std::string> inner_outputs_{"Less_than_2_Out", "Mul_2_Out"};
+
+  ASSERT_EQ(inner_inputs, inner_inputs_);
+  ASSERT_EQ(inner_outputs, inner_outputs_);
+
+  // Test AddDepToBlockOp
   VLOG(3) << "Before AddDependency, while op's input kX size:"
           << while_op->Input("kX").size();
   VLOG(3) << "Before AddDependency, while op's output kOutPuts size:"
           << while_op->Output("kOutputs").size();
 
   program_processor.AddDepToBlockOp(*global_block);
+
   VLOG(3) << "After AddDependency, while op's input kX size:"
           << while_op->Input("kX").size();
   VLOG(3) << "After AddDependency, while op's output kOutPuts size:"
           << while_op->Output("kOutputs").size();
 
-  ASSERT_EQ(7UL, while_op->Input("kX").size());
+  ASSERT_EQ(8UL, while_op->Input("kX").size());
   ASSERT_EQ(4UL, while_op->Output("kOutputs").size());
 
-  //   auto var_input_vec = {"Less_than_1_Out", "While_X", "Less_than_2_X",
-  //   "Less_than_2_Y", "Less_than_2_out", "Mul_3_X", "Mul_3_Y"};
-  //   auto var_output_vec = {"While_Out", "Mul_2_Out", "Less_than_2_out",
-  //   "Mul_3_Out"};
+  std::vector<std::string> var_input_vec = {
+      "While_X", "Less_than_2_Out", "Less_than_2_X", "Less_than_2_Y",
+      "Mul_2_X", "Mul_2_Y",         "Mul_3_X",       "Mul_3_Y"};
 
-  //   ASSERT_EQ(var_input_vec, while_op->Input("kX"));
-  //   ASSERT_EQ(var_output_vec, while_op->Output("kOutputs"));
+  std::vector<std::string> var_output_vec = {"While_Out", "Less_than_2_Out",
+                                             "Mul_2_Out", "Mul_3_Out"};
+
+  ASSERT_EQ(var_input_vec, while_op->Input("kX"));
+  ASSERT_EQ(var_output_vec, while_op->Output("kOutputs"));
 }
 }  // namespace framework
 }  // namespace paddle

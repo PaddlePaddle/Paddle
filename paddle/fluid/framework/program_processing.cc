@@ -32,11 +32,8 @@ void ProgramProcessor::GetInputsOutputsInBlock(
   for (OpDesc *op : current_block.AllOps()) {
     for (auto iname : op->InputNames()) {
       for (auto in_var_name : op->Input(iname)) {
-        VLOG(3) << "in_var_name:" << in_var_name;
-        if (inner_outputs->find(in_var_name) == inner_outputs->end()) {
-          VLOG(3) << "insert inner_inputs_name:" << in_var_name;
-          inner_inputs->insert(in_var_name);
-        }
+        VLOG(3) << "insert inner_inputs_name:" << in_var_name;
+        inner_inputs->insert(in_var_name);
       }
     }
 
