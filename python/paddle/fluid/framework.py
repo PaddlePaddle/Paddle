@@ -1307,7 +1307,7 @@ class Variable(object):
     @property
     def is_parameter(self):
         """
-        Indicating if we current Variable is a Parameter
+        Indicating if current Variable is a Parameter
 
         Examples:
           .. code-block:: python
@@ -1317,9 +1317,11 @@ class Variable(object):
                                                 shape=[10, 23, 48],
                                                 dtype='float32')
             if new_parameter.is_parameter:
-                print("Current Var is a Parameter")
+                print("Current var is a Parameter")
             else:
-                print("Current Var is a Variable")
+                print("Current var is not a Parameter")
+
+            # Current var is a Parameter
         """
         return self.desc.is_parameter()
 

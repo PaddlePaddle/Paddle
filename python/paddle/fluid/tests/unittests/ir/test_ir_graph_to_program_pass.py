@@ -42,14 +42,10 @@ class GraphToProgramPass(unittest.TestCase):
             self.assertEqual(o_para.is_parameter, c_para.is_parameter)
 
     def test_check_stop_gradient(self):
-        origin_vars = []
-        for var in self.origin_program.list_vars():
-            origin_vars.append(var)
+        origin_vars = [var for var in self.origin_program.list_vars()]
         origin_vars = sorted(origin_vars, key=lambda v: v.name)
 
-        converted_vars = []
-        for var in self.converted_program.list_vars():
-            converted_vars.append(var)
+        converted_vars = [var for var in self.converted_program.list_vars()]
         converted_vars = sorted(converted_vars, key=lambda v: v.name)
 
         self.assertEqual(len(origin_vars), len(converted_vars))
