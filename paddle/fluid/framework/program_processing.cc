@@ -97,8 +97,8 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
         op_input_var_vec = &((*op_inputs)["kInputs"]);
       } else {
         // Only support while_op and conditinal_block_op now
-        throw std::invalid_argument(
-            "Currently, only support while_op and conditinal_block_op.\n");
+        LOG(WARNING)
+            << "Currently, only support while_op and conditinal_block_op.\n";
         continue;
       }
 
@@ -122,10 +122,6 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       }
     }
   }
-}
-
-void ProgramProcessor::ToSSAProgram(ProgramDesc *program) {
-  // TODO(huangxu96)
 }
 
 ProgramProcessor::ProgramProcessor() {}

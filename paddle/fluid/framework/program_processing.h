@@ -29,8 +29,6 @@ class ProgramProcessor {
                                std::set<std::string> *inner_outputs);
 
   void AddDepToBlockOp(const BlockDesc &block);
-
-  void ToSSAProgram(ProgramDesc *program);
 };
 }  // namespace framework
 }  // namespace paddle
