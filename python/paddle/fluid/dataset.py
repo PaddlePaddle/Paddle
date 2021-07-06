@@ -75,6 +75,7 @@ class DatasetBase(object):
         self.thread_num = 1
         self.filelist = []
         self.use_ps_gpu = False
+        self.psgpu = None
 
     def set_pipe_command(self, pipe_command):
         """
@@ -311,6 +312,11 @@ class DatasetBase(object):
             use_ps_gpu: bool
         """
         self.use_ps_gpu = use_ps_gpu
+        # if not defined heterps with paddle, users will not use psgpu
+        if not core._is_compiled_with_heterps():
+            self.use_ps_gpu = 0
+        elif self.use_ps_gpu:
+            self.psgpu = core.PSGPU()
 
     def _finish_to_run(self):
         self.dataset.destroy_readers()
@@ -694,9 +700,12 @@ class InMemoryDataset(DatasetBase):
     @deprecated(
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.load_into_memory")
-    def load_into_memory(self):
+    def load_into_memory(self, is_shuffle=False):
         """
         Load data into memory
+
+         Args:
+            is_shuffle(bool): whether to use local shuffle, default is False
 
         Examples:
             .. code-block:: python
@@ -708,7 +717,11 @@ class InMemoryDataset(DatasetBase):
               dataset.load_into_memory()
         """
         self._prepare_to_run()
-        self.dataset.load_into_memory()
+        if not self.use_ps_gpu:
+            self.dataset.load_into_memory()
+        elif core._is_compiled_with_heterps():
+            self.psgpu.set_dataset(self.dataset)
+            self.psgpu.load_into_memory(is_shuffle)
 
     @deprecated(
         since="2.0.0",
