@@ -128,7 +128,12 @@ class PartialProgramLayer:
         Layer: A Layer object that run all ops internally in static mode.
     """
 
-    def __init__(self, main_program, inputs, outputs, parameters=None):
+    def __init__(self,
+                 main_program,
+                 inputs,
+                 outputs,
+                 parameters=None,
+                 build_strategy=None):
         super(PartialProgramLayer, self).__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
@@ -141,6 +146,8 @@ class PartialProgramLayer:
         # Set default mode to train
         self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
+
+        build_strategy = paddle.static.BuildStrategy()
 
     @LazyInitialized
     def _infer_program(self):
@@ -160,6 +167,14 @@ class PartialProgramLayer:
         self._set_grad_type(self._params, train_program)
 
         return train_program
+
+    @LazyInitialized
+    def _infer_program_id(self):
+        return hash((id(self._infer_program), id(self)))
+
+    @LazyInitialized
+    def _train_program_id(self):
+        return hash((id(self._train_program), id(self)))
 
     def _verify_program(self, main_program):
         """
@@ -227,7 +242,7 @@ class PartialProgramLayer:
 
         attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
                  0, 'end_op_index', self._infer_program.desc.block(0).op_size(),
-                 'is_test', not self.training)
+                 'is_test', not self.training, 'program_id', self.program_id)
         core.ops.run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
@@ -240,6 +255,10 @@ class PartialProgramLayer:
     @property
     def program(self):
         return self._train_program if self.training else self._infer_program
+
+    @property
+    def program_id(self):
+        return self._train_program_id if self.training else self._infer_program_id
 
     def _prepare(self, inputs):
         """

@@ -824,7 +824,8 @@ def _run_dygraph(instance, input, program_holder):
             'global_block': trace_program.block(0),
             'start_op_index': 0,
             'end_op_index': end_op_index,
-            'is_test': instance._is_test
+            'is_test': instance._is_test,
+            'program_id': hash((id(trace_program)))
         })
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient
