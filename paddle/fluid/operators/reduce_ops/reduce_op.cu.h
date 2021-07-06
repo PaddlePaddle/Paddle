@@ -474,12 +474,12 @@ struct ReduceConfig {
   dim3 grid;
 };
 
-__device__ __forceinline__ int shared_memory_idx(int idx) {
-  return (threadIdx.y + idx) * blockDim.x + threadIdx.x;
+static __device__ int SharedMemoryIndex(int index) {
+  return (threadIdx.y + index) * blockDim.x + threadIdx.x;
 }
 
 template <typename T, typename ReduceOp>
-__device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
+static __device__ T WarpReduce(T val, ReduceOp reducer) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int stride = detail::kWarpSize / 2; stride > 0; stride >>= 1) {
@@ -499,7 +499,7 @@ __device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
  *        res                         to warp0 and process the second WarpReduce
  */
 template <typename T, typename ReduceOp>
-__device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
+static __device__ T BlockReduce(T val, ReduceOp reducer) {
   using detail::kWarpSize;
   __shared__ T shared[kWarpSize];
   int block_dim_x = blockDim.x;
@@ -528,10 +528,9 @@ __device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
 // function will be used
 // blockId.x -> left_num, threadId.x -> reduce_num
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
-__device__ __forceinline__ void ReduceLastDim(const Tx* x, Ty* y,
-                                              ReduceOp reducer,
-                                              TransformOp transformer, Ty init,
-                                              int reduce_num) {
+__device__ void ReduceLastDim(const Tx* x, Ty* y, ReduceOp reducer,
+                              TransformOp transformer, Ty init,
+                              int reduce_num) {
   int idx_x = blockIdx.x * reduce_num;
   int idx_y = threadIdx.x;
   Ty reduce_var = init;
@@ -554,11 +553,9 @@ __device__ __forceinline__ void ReduceLastDim(const Tx* x, Ty* y,
 //     if axis = 1 then grid.z = nz, grid.y = ny / block_size, grid.x = nx / 32
 //     else grid.z = 1, grid.y = ny / block_size, grid.x = nx /32
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
-__device__ __forceinline__ void ReduceHigherDim(const Tx* x, Ty* y,
-                                                ReduceOp reducer,
-                                                TransformOp transformer,
-                                                Ty init, int reduce_num,
-                                                int left_num, int block_size) {
+__device__ void ReduceHigherDim(const Tx* x, Ty* y, ReduceOp reducer,
+                                TransformOp transformer, Ty init,
+                                int reduce_num, int left_num, int block_size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int idy = blockIdx.y * block_size;
 
@@ -583,7 +580,7 @@ __device__ __forceinline__ void ReduceHigherDim(const Tx* x, Ty* y,
 // blockId.x -> left_num, threadId.x -> reduce_num
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int Rank, int ReduceRank>
-__device__ __forceinline__ void ReduceAny(
+__device__ void ReduceAny(
     const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer, Ty init,
     int reduce_num, int left_num, int block_size,
     paddle::framework::Array<int, Rank> x_strides,
@@ -609,7 +606,8 @@ __device__ __forceinline__ void ReduceAny(
 
     // load REDUCE_VEC data once, and then compute
     Tx inputs[REDUCE_VEC];
-    while (input_idx + (REDUCE_VEC - 1) * stride < reduce_num) {
+    int bound = reduce_num - (REDUCE_VEC - 1) * stride;
+    while (input_idx < bound) {
 #pragma unroll
       for (int i = 0; i < REDUCE_VEC; ++i) {
         int reduce_idx = input_idx + i * stride;
@@ -697,14 +695,14 @@ __device__ __forceinline__ void ReduceAny(
       }
     }
 
-    shared_memory[shared_memory_idx(0)] = reduce_var;
+    shared_memory[SharedMemoryIndex(0)] = reduce_var;
     for (int stride = blockDim.y / 2; stride > 0; stride >>= 1) {
       __syncthreads();
       if (threadIdx.y < stride && threadIdx.y + stride < blockDim.y) {
-        Ty temp = shared_memory[shared_memory_idx(stride)];
+        Ty temp = shared_memory[SharedMemoryIndex(stride)];
         reduce_var = reducer(reduce_var, temp);
       }
-      shared_memory[shared_memory_idx(0)] = reduce_var;
+      shared_memory[SharedMemoryIndex(0)] = reduce_var;
     }
 
     if (left_idx < left_num && threadIdx.y == 0) {
@@ -716,7 +714,7 @@ __device__ __forceinline__ void ReduceAny(
 // module function designed for global function
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int Rank, int ReduceRank, int ReduceType>
-__device__ __forceinline__ void ReduceModule(
+__device__ void ReduceModule(
     const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer, Ty init,
     int reduce_num, int left_num, int blocking_size,
     paddle::framework::Array<int, Rank> x_strides,
