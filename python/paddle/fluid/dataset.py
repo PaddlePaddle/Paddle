@@ -95,6 +95,23 @@ class DatasetBase(object):
         """
         self.proto_desc.pipe_command = pipe_command
 
+    def set_so_parser_name(self, so_parser_name):
+        """
+        Set so parser name of current dataset
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_so_parser_name("./abc.so")
+
+        Args:
+            pipe_command(str): pipe command
+
+        """
+        self.proto_desc.so_parser_name = so_parser_name
+
     def set_rank_offset(self, rank_offset):
         """
         Set rank_offset for merge_pv. It set the message of Pv.
