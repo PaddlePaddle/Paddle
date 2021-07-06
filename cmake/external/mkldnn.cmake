@@ -119,11 +119,11 @@ else(WIN32)
     SET(MKLDNN_SHARED_LIB_1 ${MKLDNN_INSTALL_DIR}/libdnnl.so.1)
     SET(MKLDNN_SHARED_LIB_2 ${MKLDNN_INSTALL_DIR}/libdnnl.so.2)
     ADD_CUSTOM_COMMAND(TARGET ${MKLDNN_PROJECT} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB_2})
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB})
     ADD_CUSTOM_COMMAND(TARGET ${MKLDNN_PROJECT} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink libdnnl.so.2 libdnnl.so.1
+            COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0 libdnnl.so.1
 	    WORKING_DIRECTORY ${MKLDNN_INSTALL_DIR})
     ADD_CUSTOM_COMMAND(TARGET ${MKLDNN_PROJECT} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink libdnnl.so.2 libmkldnn.so.0
+            COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.2 libdnnl.so.2
 	    WORKING_DIRECTORY ${MKLDNN_INSTALL_DIR})
 endif(WIN32)
