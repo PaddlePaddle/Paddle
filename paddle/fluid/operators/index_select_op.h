@@ -194,7 +194,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
                           LoDTensor* x_grad, int dim) {
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();
-  const T* p_output = x_grad->mutable_data<T>(context.GetPlace());
+  // const T* p_output = x_grad->mutable_data<T>(context.GetPlace());
   T* out_data = x_grad->mutable_data<T>(context.GetPlace());
   auto input_dim = out_grad.dims();
   auto input_dim_size = input_dim.size();
@@ -204,7 +204,6 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
       context.template device_context<platform::CPUDeviceContext>();
   math::SetConstant<platform::CPUDeviceContext, T> zero;
   zero(device_ctx, x_grad, static_cast<T>(0.0));
-  // std::memset(out_data, 0.0, x_grad->numel() * sizeof(T));
 
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
@@ -226,11 +225,23 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
     auto output_start_offset = i * output_width;
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_data[j];
-      auto src = input_data + input_start_offset + j * slice_size;
-      auto p_out = p_output + output_start_offset + index_value * slice_size;
 
+      auto src = input_data + input_start_offset + j * slice_size;
+      // auto p_out = p_output + output_start_offset + index_value * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
-      elementwise_inner_add<T>(context, slice_size, src, p_out, dst);
+
+#if ((!defined __NVCC__) && (!defined __HIPCC__))
+
+#ifdef __AVX__
+      IndexSelectAdd<platform::avx, T> index_select_add_avx;
+      index_select_add_avx(slice_size, src, dst);
+#else
+      IndexSelectAdd<platform::isa_any, T> index_select_add_any;
+      index_select_add_any(slice_size, src, dst);
+#endif
+
+#endif
+      // elementwise_inner_add<T>(context, slice_size, src, p_out, dst);
     }
   }
   x_grad->Resize(output_dim);
