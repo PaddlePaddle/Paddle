@@ -223,9 +223,6 @@ static inline void GetBlockDims(const platform::CUDADeviceContext& context,
   *grid_dims = dim3(grid_cols, grid_rows, 1);
 }
 
-int has_been_malloc_input = 0;
-int has_been_malloc_output = 0;
-
 /*
  * All tensors' dimension should be the same and the values of
  * each dimension must be the same, except the axis dimension.
