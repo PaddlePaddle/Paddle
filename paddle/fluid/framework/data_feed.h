@@ -144,20 +144,26 @@ class DLManager {
   DLManager() {}
 
   ~DLManager() {
+#ifdef _LINUX
     std::lock_guard<std::mutex> lock(mutex_);
     for (auto it = handle_map_.begin(); it != handle_map_.end(); ++it) {
       delete it->second.parser;
       dlclose(it->second.module);
     }
+#endif
   }
 
   bool Close(const std::string& name) {
+#ifdef _LINUX
     auto it = handle_map_.find(name);
     if (it == handle_map_.end()) {
       return true;
     }
     delete it->second.parser;
     dlclose(it->second.module);
+#endif
+    VLOG(0) << "Not implement in windows";
+    return false;
   }
 
   paddle::framework::CustomParser* Load(const std::string& name,
