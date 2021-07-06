@@ -399,8 +399,9 @@ std::vector<Node *> TopologyVarientSort(const Graph &graph,
 class TopologyComparator {
  public:
   bool operator()(const Node *n1, const Node *n2) {
-    return (n1->id() > n2->id()) ||
-           ((n1->id() == n2->id()) && (n1->Name() > n2->Name()));
+    return (n1->DescOrder() > n2->DescOrder()) ||
+           ((n1->DescOrder() == n2->DescOrder()) &&
+            (n1->ToString() > n2->ToString()));
   }
 };
 

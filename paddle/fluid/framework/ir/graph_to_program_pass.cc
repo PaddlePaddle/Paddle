@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gflags/gflags.h>
+
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -26,7 +28,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
+void GraphToProgramPass::GraphToBlock(const Graph* graph,
+                                      proto::BlockDesc* block) const {
   // Remove the unneeded variables after memory optimization.
   std::unordered_set<std::string> vars2remove;
   if (graph->Has(kGraphToProgramVarsToRemove)) {
@@ -35,13 +38,6 @@ void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
     VLOG(2) << "graph to program remove " << vars2remove.size() << " nodes";
   }
 
-  ProgramDesc& program = Get<ProgramDesc>("program");
-
-  std::unique_ptr<proto::ProgramDesc> program_pb(
-      new proto::ProgramDesc(*program.Proto()));
-
-  auto block = program_pb->mutable_blocks(kRootBlockIndex);
-  block->set_idx(kRootBlockIndex);
   block->clear_vars();
   std::unordered_set<std::string> visited_vars;
   for (ir::Node* n : graph->Nodes()) {
@@ -69,6 +65,33 @@ void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
     if (!n->Op()) continue;
 
     block->add_ops()->MergeFrom(*n->Op()->Proto());
+  }
+}
+
+void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE_EQ(graph->IsMainGraph(), true,
+                    platform::errors::InvalidArgument(
+                        "This graph is a sub_graph, "
+                        "and can't convert to program individually"));
+
+  ProgramDesc& program = Get<ProgramDesc>("program");
+
+  std::unique_ptr<proto::ProgramDesc> program_pb(
+      new proto::ProgramDesc(*program.Proto()));
+
+  auto block = program_pb->mutable_blocks(kRootBlockIndex);
+  block->set_idx(kRootBlockIndex);
+
+  if (FLAGS_convert_all_blocks) {
+    GraphToBlock(graph->GetSubGraph(kRootBlockIndex), block);
+  } else {
+    GraphToBlock(graph, block);
+  }
+
+  for (size_t idx = 1; idx < graph->SubGraphSize(); ++idx) {
+    block = program_pb->add_blocks();
+    block->set_idx(idx);
+    GraphToBlock(graph->GetSubGraph(idx), block);
   }
 
   program.CopyFrom(*program_pb);

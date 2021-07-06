@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <typeindex>
@@ -136,6 +137,15 @@ class Node {
     var_desc_->SetName(new_name);
   }
 
+  size_t DescOrder() const { return desc_order_; }
+
+  const std::string ToString() const {
+    if (IsOp()) {
+      return Op()->Proto()->ShortDebugString();
+    }
+    return Name();
+  }
+
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
@@ -146,9 +156,16 @@ class Node {
   Type type_;
   int id_;
 
+  static constexpr size_t NO_DESC_ORDER = SIZE_MAX;
+  size_t desc_order_;
+
  private:
   // ID can only set by a Graph.
   void SetId(int id) { id_ = id; }
+
+  // desc_order can only set by a Graph when constructing a Graph from a
+  // BlockDesc.
+  void SetDescOrder(size_t desc_order) { desc_order_ = desc_order; }
 
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
@@ -163,13 +180,15 @@ class Node {
       : name_(var_desc->Name()),
         var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
-        type_(Type::kVariable) {}
+        type_(Type::kVariable),
+        desc_order_(NO_DESC_ORDER) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
-        type_(Type::kOperation) {}
+        type_(Type::kOperation),
+        desc_order_(NO_DESC_ORDER) {}
 
   Node() = delete;
 
