@@ -1506,7 +1506,8 @@ class Executor(object):
         trainer._set_infer(is_infer)
         trainer._gen_trainer_desc()
 
-        self._dump_debug_info(program=program, trainer=trainer)
+        if program._pipeline_opt is None:
+            self._dump_debug_info(program=program, trainer=trainer)
         # in case of calling _set_use_ps_gpu explicitly
         if dataset.use_ps_gpu is False:
             dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)

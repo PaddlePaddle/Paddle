@@ -185,6 +185,14 @@ bool IsCompiledWithMKLDNN() {
 #endif
 }
 
+bool IsCompiledWithHETERPS() {
+#ifndef PADDLE_WITH_HETERPS
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
@@ -1910,6 +1918,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("op_supported_infos", OpSupportedInfos);
