@@ -439,7 +439,7 @@ std::vector<ir::Node *> TopologySortGraph(const Graph &graph) {
   }
 
   while (!q.empty()) {
-    auto cur_op = q.top();
+    const auto cur_op = q.top();
     q.pop();
 
     sorted_ops.push_back(cur_op);

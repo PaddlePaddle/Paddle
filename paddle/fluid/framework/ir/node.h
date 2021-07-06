@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <typeindex>
@@ -137,7 +136,7 @@ class Node {
     var_desc_->SetName(new_name);
   }
 
-  size_t DescOrder() const { return desc_order_; }
+  int DescOrder() const { return desc_order_; }
 
   const std::string ToString() const {
     if (IsOp()) {
@@ -149,6 +148,12 @@ class Node {
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
+  // Because NO_DESC_ORDER is a constexpr number,
+  // no one can change it, meanwhile, we need
+  // check whether the DescOrder invalid sometime,
+  // so expose it is a good idea
+  static constexpr int NO_DESC_ORDER = INT_MAX;
+
  protected:
   std::string name_;
   std::unique_ptr<VarDesc> var_desc_;
@@ -156,8 +161,7 @@ class Node {
   Type type_;
   int id_;
 
-  static constexpr size_t NO_DESC_ORDER = SIZE_MAX;
-  size_t desc_order_;
+  int desc_order_;
 
  private:
   // ID can only set by a Graph.
@@ -165,7 +169,7 @@ class Node {
 
   // desc_order can only set by a Graph when constructing a Graph from a
   // BlockDesc.
-  void SetDescOrder(size_t desc_order) { desc_order_ = desc_order; }
+  void SetDescOrder(int desc_order) { desc_order_ = desc_order; }
 
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,

@@ -38,7 +38,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
 
   auto not_visited_vars = all_vars;
 
-  size_t desc_order = 0;
+  int desc_order = 0;
   for (auto *op : program.Block(0).AllOps()) {
     ir::Node *node = CreateOpNode(op);
     node->SetDescOrder(desc_order);

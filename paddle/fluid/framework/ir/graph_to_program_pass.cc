@@ -18,7 +18,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
-DECLARE_bool(convert_all_blocks);
+// DECLARE_bool(convert_all_blocks);
+// TODO(jiangcheng): remove after PR33320 merged.
+// https://github.com/PaddlePaddle/Paddle/pull/33320
+DEFINE_bool(convert_all_blocks, false,
+            "Convert all blocks in program into SSAgraphs");
 
 namespace paddle {
 namespace framework {
@@ -46,14 +50,14 @@ void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
 
   if (FLAGS_convert_all_blocks) {
     GraphToBlock(graph->GetSubGraph(kRootBlockIndex), block);
+
+    for (size_t idx = 1; idx < graph->SubGraphSize(); ++idx) {
+      block = program_pb->add_blocks();
+      block->set_idx(idx);
+      GraphToBlock(graph->GetSubGraph(idx), block);
+    }
   } else {
     GraphToBlock(graph, block);
-  }
-
-  for (size_t idx = 1; idx < graph->SubGraphSize(); ++idx) {
-    block = program_pb->add_blocks();
-    block->set_idx(idx);
-    GraphToBlock(graph->GetSubGraph(idx), block);
   }
 
   program.CopyFrom(*program_pb);
