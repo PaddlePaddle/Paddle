@@ -33,22 +33,27 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   auto input_dim = input.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
+
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
     slice_size *= input_dim[i];
   }
+
   auto input_width = slice_size * input_dim[dim];
   auto output_width = slice_size * output_dim[dim];
   auto outer_nums = 1;
   for (auto i = 0; i < dim; i++) {
     outer_nums *= input_dim[i];
   }
+
   auto index_size = index.dims()[0];
+
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
   TensorToVector(input, context.device_context(), &input_vec);
   TensorToVector(index, context.device_context(), &index_vec);
   std::vector<T> out_vec(output->numel());
+
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
         index_vec[i], 0,
@@ -65,10 +70,12 @@ void IndexSelectInner(const framework::ExecutionContext& context,
             "value.",
             input_dim[dim], index_vec[i]));
   }
+
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
           << "; output_width: " << output_width
           << "; index_size: " << index_size;
+
   for (auto i = 0; i < outer_nums; i++) {
     auto input_start_offset = i * input_width;
     auto output_start_offset = i * output_width;
@@ -95,11 +102,13 @@ class IndexSelectKernel : public framework::OpKernel<T> {
     auto& inputs = inputs_var->Get<LoDTensor>();
     auto& index = index_var->Get<LoDTensor>();
     auto* output = output_var->GetMutable<framework::LoDTensor>();
+
     int dim = context.Attr<int>("dim");
     if (dim < 0) {
       dim += inputs.dims().size();
     }
     const auto& index_type = index.type();
+
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -111,6 +120,7 @@ class IndexSelectKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT32),
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
+
     if (index_type == framework::proto::VarType::INT32) {
       IndexSelectInner<T, int>(context, inputs, index, output, dim);
     } else if (index_type == framework::proto::VarType::INT64) {
@@ -159,23 +169,27 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   for (auto i = dim + 1; i < input_dim_size; i++) {
     slice_size *= input_dim[i];
   }
+
   auto input_width = slice_size * input_dim[dim];
   auto output_width = slice_size * output_dim[dim];
+
   auto outer_nums = 1;
   for (auto i = 0; i < dim; i++) {
     outer_nums *= input_dim[i];
   }
+
   auto index_size = index.dims()[0];
   VLOG(3) << "Index_Select_Grad_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
           << "; output_width: " << output_width
           << "; index_size: " << index_size;
+
   for (auto i = 0; i < outer_nums; i++) {
     auto input_start_offset = i * input_width;
     auto output_start_offset = i * output_width;
+
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_data[j];
-
       auto src = input_data + input_start_offset + j * slice_size;
       auto p_out = p_output + output_start_offset + index_value * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
@@ -192,6 +206,7 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
     auto* index_var = context.InputVar("Index");
     auto* x_grad_var = context.OutputVar(framework::GradVarName("X"));
     auto* out_grad_var = context.InputVar(framework::GradVarName("Out"));
+
     auto& index = index_var->Get<LoDTensor>();
     auto& out_grad = out_grad_var->Get<LoDTensor>();
     auto* x_grad = x_grad_var->GetMutable<framework::LoDTensor>();
@@ -200,6 +215,7 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
       dim += out_grad.dims().size();
     }
     const auto& index_type = index.type();
+
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -211,6 +227,7 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT32),
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
+
     if (index_type == framework::proto::VarType::INT32) {
       IndexSelectGradInner<T, int>(context, out_grad, index, x_grad, dim);
     } else if (index_type == framework::proto::VarType::INT64) {
@@ -218,5 +235,6 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
     }
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
