@@ -42,6 +42,30 @@ def {
 }
 extra {
   attrs {
+    name: "Input_scale"
+    type: FLOAT
+  }
+  attrs {
+    name: "quantization_type"
+    type: STRING
+  } 
+  attrs {
+    name: "bit_length"
+    type: INT
+  }
+  attrs {
+    name: "out_threshold"
+    type: FLOAT
+  }
+  attrs {
+    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
+    type: BOOLEAN
+  } 
+  attrs {
+    name: "skip_quant"
+    type: BOOLEAN
+  }
+  attrs {
     name: "is_test"
     type: BOOLEAN
   }

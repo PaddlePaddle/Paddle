@@ -88,7 +88,13 @@ class RollKernel : public framework::OpKernel<T> {
     TensorToVector(input, context.device_context(), &out_vec);
 
     size_t nums = shifts.size();
-    const DDim input_dim = input.dims();
+    DDim input_dim = input.dims();
+
+    // axis = none, reshape to 1-D tensor
+    if (dims.size() == 0) {
+      dims.push_back(0l);
+      input_dim = framework::Dim<1>(out_vec.size());
+    }
 
     for (size_t i = 0; i < nums; i++) {
       PADDLE_ENFORCE_EQ(
@@ -101,7 +107,7 @@ class RollKernel : public framework::OpKernel<T> {
     }
     output->mutable_data<T>(context.GetPlace());
     framework::TensorFromVector(out_vec, context.device_context(), output);
-    output->Resize(input_dim);
+    output->Resize(input.dims());
   }
 };
 
@@ -120,14 +126,20 @@ class RollGradKernel : public framework::OpKernel<T> {
     TensorToVector(input, context.device_context(), &out_vec);
 
     size_t nums = shifts.size();
-    const DDim input_dim = input.dims();
+    DDim input_dim = input.dims();
+
+    // axis = none, reshape to 1-D tensor
+    if (dims.size() == 0) {
+      dims.push_back(0l);
+      input_dim = framework::Dim<1>(out_vec.size());
+    }
 
     for (size_t i = 0; i < nums; i++) {
       shift_along_dim(out_vec.data(), input_dim, dims[i], 0 - shifts[i]);
     }
     output->mutable_data<T>(context.GetPlace());
     framework::TensorFromVector(out_vec, context.device_context(), output);
-    output->Resize(input_dim);
+    output->Resize(input.dims());
   }
 };
 

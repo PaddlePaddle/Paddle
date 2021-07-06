@@ -49,6 +49,11 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle " + conv_type() + "+" + activation_type() + " fuse";
+
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "conv_activation_mkldnn_fuse_pass op compat failed.";
+      return;
+    }
     GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight,
                               conv_activation_pattern);  // Filter
     GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out,
@@ -95,6 +100,117 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_conv_activation_count);
+}
+
+ConvActivationFusePass::ConvActivationFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      // IsStringIn({"EXPLICIT", "SAME", "VALID"}), MobileNetV2 has no this
+      // attribute
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      // IsStringIn({"NHWC", "NCHW"}) MobileNetV2 has no this attribute
+      .AddAttr("data_format")
+      .IsOptional()
+      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+Conv2DLeakyReLUFusePass::Conv2DLeakyReLUFusePass() {
+  AddOpCompat(OpCompat("leaky_relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      // float, default=0.02
+      .AddAttr("alpha")
+      .IsType<float>()
+      .End();
+}
+Conv2DReLU6FusePass::Conv2DReLU6FusePass() {
+  AddOpCompat(OpCompat("relu6"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      // default = 6.0f
+      .AddAttr("threshold")
+      .IsType<float>()
+      .End();
+}
+Conv2DSwishFusePass::Conv2DSwishFusePass() {
+  AddOpCompat(OpCompat("swish"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+Conv2DHardSwishFusePass::Conv2DHardSwishFusePass() {
+  AddOpCompat(OpCompat("hard_swish"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      // float, optional, default=6.0
+      .AddAttr("threshold")
+      .IsOptional()
+      .IsType<float>()
+      .End()
+      // float, optional, default=6.0
+      .AddAttr("scale")
+      .IsOptional()
+      .IsType<float>()
+      .End()
+      // float, optional, default=3.0
+      .AddAttr("offset")
+      .IsOptional()
+      .IsType<float>()
+      .End();
 }
 
 }  // namespace ir

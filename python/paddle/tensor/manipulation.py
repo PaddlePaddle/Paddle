@@ -21,7 +21,6 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 import numpy as np
-import six
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  # noqa: F401
 from ..fluid.layers import slice  # noqa: F401
@@ -119,6 +118,101 @@ def concat(x, axis=0, name=None):
             #  [14 15 16]]
     """
     return paddle.fluid.layers.concat(input=x, axis=axis, name=name)
+
+
+def broadcast_tensors(input, name=None):
+    """
+    This OP broadcast a list of tensors following broadcast semantics
+
+    .. note::
+        If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+
+    Args:
+        input(list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
+            float16, float32, float64, int32, int64. All the Tensors in ``input`` must have same data type.
+            Currently we only support tensors with rank no greater than 5.
+
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        list(Tensor): The list of broadcasted tensors following the same order as ``input``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x1 = paddle.rand([1, 2, 3, 4]).astype('float32')
+            x2 = paddle.rand([1, 2, 1, 4]).astype('float32')
+            x3 = paddle.rand([1, 1, 3, 1]).astype('float32')
+            out1, out2, out3 = paddle.broadcast_tensors(input=[x1, x2, x3])
+            # out1, out2, out3: tensors broadcasted from x1, x2, x3 with shape [1,2,3,4]
+    """
+
+    num_inputs = len(input)
+    if in_dygraph_mode():
+        return core.ops.broadcast_tensors(input, num_inputs)
+
+    check_type(input, 'input', (list, tuple), 'broadcast_tensors')
+    if num_inputs < 1:
+        raise TypeError(
+            "At least 1 tensor is needed to perform broadcast_tensors")
+
+    # Check input types
+    for id, x in enumerate(input):
+        check_variable_and_dtype(
+            x, 'input[' + str(id) + ']',
+            ['bool', 'float32', 'float64', 'int32', 'int64'],
+            'broadcast_tensors')
+        if x.dtype != input[0].dtype:
+            raise TypeError(
+                "All the Tensors in the input must have the same data type.")
+
+    # Check bcast semantics
+    output_shape_r_last_tensor_index = []
+    output_shape_r = []
+
+    # Use while loop due to weird behaviour of "range()"
+    j = 0
+    while j < len(input):
+        tensor = input[j]
+        shape = list(reversed(tensor.shape))
+
+        i = 0
+        while i < len(shape):
+            if len(output_shape_r) <= i:
+                output_shape_r.append(shape[i])
+                output_shape_r_last_tensor_index.append(j)
+            else:
+                invalid = (output_shape_r[i] != shape[i] and
+                           output_shape_r[i] != 1 and shape[i] != 1)
+                if invalid:
+                    last_index = output_shape_r_last_tensor_index[i]
+                    raise TypeError(
+                        "Input tensors to broadcast_tensors does not follow bcast semantics"
+                        f"Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
+                    )
+                if output_shape_r[i] <= shape[i]:
+                    output_shape_r[i] = shape[i]
+                    output_shape_r_last_tensor_index[i] = j
+            i += 1  # while i < len(shape)
+        j += 1  # while j < len(input)
+
+    helper = LayerHelper('broadcast_tensors', **locals())
+    i = 0
+    out = []
+    while i < num_inputs:
+        out.append(
+            helper.create_variable_for_type_inference(dtype=helper.input_dtype(
+            )))
+        i += 1
+
+    inputs = {'X': input}
+    helper.append_op(
+        type='broadcast_tensors', inputs=inputs, outputs={'Out': out},
+        attrs={})
+
+    return out
 
 
 def flip(x, axis, name=None):
@@ -365,20 +459,15 @@ def roll(x, shifts, axis=None, name=None):
 
     if axis:
         check_type(axis, 'axis', (list, tuple), 'roll')
+    else:
+        axis = []
+
     check_type(shifts, 'shifts', (list, tuple), 'roll')
 
     if in_dygraph_mode():
-        if axis is None:
-            x = core.ops.reshape(x, 'shape', [-1, 1])
-            axis = [0]
-        out = core.ops.roll(x, 'axis', axis, 'shifts', shifts)
-        return core.ops.reshape(out, 'shape', origin_shape)
+        return core.ops.roll(x, 'axis', axis, 'shifts', shifts)
 
     out = helper.create_variable_for_type_inference(x.dtype)
-
-    if axis is None:
-        x = reshape(x, shape=[-1, 1])
-        axis = [0]
 
     helper.append_op(
         type='roll',
@@ -386,7 +475,6 @@ def roll(x, shifts, axis=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis,
                'shifts': shifts})
-    out = layers.reshape(out, shape=origin_shape)
     return out
 
 
@@ -1218,10 +1306,7 @@ def tile(x, repeat_times, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
             else:
-                if six.PY3:
-                    type_tuple = (int, np.int32, np.int64)
-                elif six.PY2:
-                    type_tuple = (int, long, np.int32, np.int64)
+                type_tuple = (int, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
 
@@ -1357,10 +1442,7 @@ def broadcast_to(x, shape, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in shape must be 1-D Tensors or integers.')
             else:
-                if six.PY3:
-                    type_tuple = (int, np.int32, np.int64)
-                elif six.PY2:
-                    type_tuple = (int, long, np.int32, np.int64)
+                type_tuple = (int, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in shape must be 1-D Tensors or integers.')
 
@@ -1447,10 +1529,7 @@ def expand(x, shape, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in shape must be 1-D Tensors or integers.')
             else:
-                if six.PY3:
-                    type_tuple = (int, np.int32, np.int64)
-                elif six.PY2:
-                    type_tuple = (int, long, np.int32, np.int64)
+                type_tuple = (int, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in shape must be 1-D Tensors or integers.')
 
