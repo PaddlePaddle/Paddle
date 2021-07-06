@@ -14,18 +14,13 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-// For MSVC, define __cplusplus to 201402L directly,
-// otherwise, thrust would raise compilation error.
-// See:
-// https://docs.microsoft.com/en-us/cpp/build/reference/zc-cplusplus?view=msvc-160
-#if defined(_MSVC_LANG) && __cplusplus < 201103L
-#define __cplusplus 201402L
-#endif
-
+#ifndef _MSC_VER
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
 #include <thrust/shuffle.h>
+#endif
+
 #include "paddle/fluid/operators/shuffle_batch_op.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -57,6 +52,10 @@ template <typename T>
 class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#ifdef _MSC_VER
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "GPU shuffle_batch is not supported on Windows yet"));
+#else
     auto *x = ctx.Input<framework::Tensor>("X");
     auto *seed = ctx.Input<framework::Tensor>("Seed");
     auto *out = ctx.Output<framework::Tensor>("Out");
@@ -111,6 +110,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
     auto *seed_out_data = seed_out->mutable_data<int64_t>(
         framework::make_ddim({1}), platform::CPUPlace());
     *seed_out_data = engine();
+#endif
   }
 };
 
@@ -118,6 +118,10 @@ template <typename T>
 class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#ifdef _MSC_VER
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "GPU shuffle_batch_grad is not supported on Windows yet"));
+#else
     const auto *out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     const auto *shuffleidx = ctx.Input<framework::Tensor>("ShuffleIdx");
@@ -134,6 +138,7 @@ class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
     platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
                                                               x_grad->numel());
     for_range(functor);
+#endif
   }
 };
 
