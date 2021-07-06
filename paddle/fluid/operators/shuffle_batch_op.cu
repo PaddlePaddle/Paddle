@@ -14,6 +14,14 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+// For MSVC, define __cplusplus to 201402L directly,
+// otherwise, thrust would raise compilation error.
+// See:
+// https://docs.microsoft.com/en-us/cpp/build/reference/zc-cplusplus?view=msvc-160
+#if defined(_MSVC_LANG) && __cplusplus < 201103L
+#define __cplusplus 201402L
+#endif
+
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
