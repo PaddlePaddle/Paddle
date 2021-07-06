@@ -139,6 +139,17 @@ def find_parent_layer_and_sub_name(model, name):
     return parent_layer, sub_name
 
 
+def program_all_ops(program):
+    """
+    Return all ops for the input program.
+    """
+    all_ops = []
+    for block in program.blocks:
+        for op in block.ops:
+            all_ops.append(op)
+    return all_ops
+
+
 def is_leaf_layer(layer):
     """
     Whether the layer is leaf layer.

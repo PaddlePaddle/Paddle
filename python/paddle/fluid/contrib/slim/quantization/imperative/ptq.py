@@ -94,7 +94,9 @@ class ImperativePTQ(object):
 
     def save_quantized_model(self, model, path, input_spec=None, **config):
         """
-        Save the quantized model for the inference.
+        1. Convert the quantized model
+        2. Call jit.save to save the inference model
+        3. Load and postprocess the  inference model.
 
         Args:
             model (Layer): The model to be saved.
@@ -124,10 +126,12 @@ class ImperativePTQ(object):
         assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
 
+        # Convert and save dygraph quantized model
         self._convert(model)
 
         paddle.jit.save(layer=model, path=path, input_spec=input_spec, **config)
 
+        # Load inference program
         is_dynamic_mode = False
         if paddle.in_dynamic_mode():
             is_dynamic_mode = True
@@ -149,15 +153,12 @@ class ImperativePTQ(object):
                 model_filename=model_filename,
                 params_filename=params_filename))
 
-        # TODO(jc): 
-        # process the first moving_average_abs_max_scale layer
-        # fuse conv + bn
-        # propagate the threshold  
-        # support skip_quant
+        # Process inference program
+        self._clean_up(infer_program)
+        self._gather_input_thresholds(infer_program, scope)
+        self._remove_scale_op(infer_program)
 
-        # self._post_process_thresholds(infer_program, scope)
-        # self._set_skip_quant_attr(infer_program)
-
+        # Save final program
         paddle.fluid.io.save_inference_model(
             dirname=dirname,
             feeded_var_names=feed_target_names,
@@ -219,22 +220,6 @@ class ImperativePTQ(object):
                     quant_config.wt_quantizer.sample_data(sub_layer, weights)
                     quant_config.wt_quantizer.cal_thresholds()
 
-    def _save_thresholds(self, model):
-        """
-        For all layers in the model, save output activation and weight thresholds.
-
-        Args:
-            model(paddle.nn.Layer): The quantized model.
-        Returns:
-            None
-        """
-        assert isinstance(model, paddle.nn.Layer), \
-            "The input model must be the instance of paddle.nn.Layer."
-
-        for name, sub_layer in model.named_sublayers():
-            if self._is_quant_layer(sub_layer):
-                self._save_output_thresholds(sub_layer, sub_layer._quant_config)
-
     def _save_output_thresholds(self, sub_layer, quant_config):
         """
         Save the output thresholds to the layer.
@@ -257,36 +242,6 @@ class ImperativePTQ(object):
         save_name = output_names[0] + str(0) + "_threshold"
         sub_layer._set_op_attrs({save_name: output_thresholds[0]})
         sub_layer._set_op_attrs({"out_threshold": output_thresholds[0]})
-
-    def _save_input_thresholds(self, sub_layer, quant_config):
-        """
-        Save the input thresholds to the layer.
-
-        Args:
-            sub_layer(paddle.nn.Layer): The quantized layer.
-            quant_config(PTQConfig): the quant config for the layer.
-        Returns:
-            None
-        """
-        assert isinstance(sub_layer, paddle.nn.Layer), \
-            "The input model must be the instance of paddle.nn.Layer."
-        assert quant_config.enable_in_act_quantizer == True
-
-        layer_info = PTQRegistry.layer_info(sub_layer)
-
-        input_names = layer_info.input_names
-        input_thresholds = quant_config.in_act_quantizer.thresholds
-        assert len(input_names) == 1
-        assert len(input_thresholds) == 1
-        save_name = input_names[0] + str(0) + "_threshold"
-        sub_layer._set_op_attrs({save_name: input_thresholds[0]})
-
-        weight_names = layer_info.weight_names
-        weight_thresholds = quant_config.wt_quantizer.thresholds
-        assert len(weight_names) == 1
-        assert len(weight_thresholds) == 1
-        save_name = weight_names[0] + str(0) + "_threshold"
-        sub_layer._set_op_attrs({save_name: weight_thresholds[0]})
 
     def _wrap_simulated_layers(self, model):
         """
@@ -359,6 +314,103 @@ class ImperativePTQ(object):
                 parent_layer, sub_name = \
                     utils.find_parent_layer_and_sub_name(model, name)
                 setattr(parent_layer, sub_name, quant_layer)
+
+    def _gather_input_thresholds(self, program, scope):
+        """
+        Get and save input thresholds from the front ops.
+
+        Args:
+            program(Program): the input infer program.
+            scope(Scope): the corresponding scope for the program.
+        Returns:
+            None
+        """
+        for op in utils.program_all_ops(program):
+            for in_var_name in utils._get_op_input_var_names(op):
+                previous_op = utils.find_previous_op(op.block, in_var_name)
+                if previous_op is None:
+                    continue
+
+                if "quantize_dequantize" in previous_op.type or \
+                    previous_op.type == "moving_average_abs_max_scale":
+                    attr_name = previous_op.output('OutScale')[0]
+                    in_threshold = utils.load_variable_data(scope, attr_name)
+                    in_threshold = utils.fp_numpy_to_naive(in_threshold)
+                    argname, index = utils._get_input_name_index(op,
+                                                                 in_var_name)
+                    op._set_attr(argname + str(index) + "_threshold",
+                                 in_threshold)
+                else:
+                    for out_var_name in utils._get_op_output_var_names(
+                            previous_op):
+                        if out_var_name != in_var_name:
+                            continue
+                        argname, index = utils._get_output_name_index(
+                            previous_op, out_var_name)
+                        attr_name = argname + str(index) + "_threshold"
+                        if not previous_op.has_attr(attr_name):
+                            continue
+                        threshold = previous_op.attr(attr_name)
+
+                        argname, index = utils._get_input_name_index(
+                            op, in_var_name)
+                        attr_name = argname + str(index) + "_threshold"
+                        op._set_attr(attr_name, threshold)
+
+    def _clean_up(self, program):
+        """
+        Remove useless thresholds which are added in jit.save.
+
+        Args:
+            program(Program): the input infer program.
+        Returns:
+            None
+        """
+
+        def _helper(op, next_op, old_attr_name, new_attr_name):
+            if op.has_attr(old_attr_name) and next_op.has_attr(old_attr_name) \
+                and op.attr(old_attr_name) == next_op.attr(old_attr_name):
+                threshold = op.attr(old_attr_name)
+                op._remove_attr(old_attr_name)
+                next_op._remove_attr(old_attr_name)
+                next_op._set_attr(new_attr_name, threshold)
+
+        for op in utils.program_all_ops(program):
+            if "quantize_dequantize" in op.type:
+                # remove the thresholds in fake ops
+                for attr_name in op.attr_names:
+                    if "_threshold" in attr_name:
+                        op._remove_attr(attr_name)
+            elif op.type in ["conv2d", "matmul"]:
+                # change the thresholds in conv2d/matmul + eleadd
+                arg_name = "Output" if op.type == "conv2d" else "Out"
+                out_var_name = op.output(arg_name)[0]
+                next_ops = utils.find_next_ops(op.block, out_var_name)
+                if len(next_ops) > 1 or next_ops[0].type != "elementwise_add":
+                    continue
+                next_op = next_ops[0]
+
+                argname, index = utils._get_output_name_index(op, out_var_name)
+                old_attr_name = argname + str(index) + "_threshold"
+
+                argname, index = utils._get_output_name_index(
+                    next_op, next_op.output("Out")[0])
+                new_attr_name = argname + str(index) + "_threshold"
+
+                _helper(op, next_op, old_attr_name, new_attr_name)
+                _helper(op, next_op, "out_threshold", "out_threshold")
+
+    def _remove_scale_op(self, program):
+        """
+        Remove the moving_average_abs_max_scale op.
+        """
+        for op in utils.program_all_ops(program):
+            if op.type == "moving_average_abs_max_scale":
+                in_var_name = op.input("X")[0]
+                out_var_name = op.output("Out")[0]
+                next_ops = utils.find_next_ops(op.block, out_var_name)
+                for next_op in next_ops:
+                    next_op._rename_input(out_var_name, in_var_name)
 
     @staticmethod
     def _is_skip_layer(layer):
