@@ -39,13 +39,13 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         table_var->IsType<framework::LoDTensor>(), true,
         platform::errors::InvalidArgument("npu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
-    framework::NPUAttributeMap attr_input = {{"validate_indices", false}};
 
-    const auto &runner =
-        NpuOpRunner("Gather", {*table_t, *ids_t}, {*output_t}, attr_input);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
+    NpuOpRunner runner;
+    runner.SetName("GatherV2")
+        .AddInput(*table_t)
+        .AddInput(*ids_t)
+        .AddInput(std::vector<int32_t>{0})
+        .AddOutput(*output_t);
     runner.Run(stream);
   }
 };
