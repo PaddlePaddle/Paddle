@@ -16,6 +16,10 @@ def {
 }
 extra {
   attrs {
+    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
+    type: BOOLEAN
+  }
+  attrs {
     name: "out_threshold"
     type: FLOAT
   }
