@@ -36,7 +36,12 @@ void IndexSelectInner(const framework::ExecutionContext& context,
     slice_size *= input_dim[i];
   }
 
-  const size_t slice_bytes = slice_size * sizeof(T);
+  auto len = 1;
+  for (auto i = dim + 2; i < input_dim_size; i++) {
+    slice_size *= input_dim[i];
+  }
+
+  // const size_t slice_bytes = slice_size * sizeof(T);
   auto input_width = slice_size * input_dim[dim];
   auto output_width = slice_size * output_dim[dim];
 
@@ -46,9 +51,12 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   }
 
   auto index_size = index.dims()[0];
-  const T* input_data = input.data<T>();
+  // const T* input_data = input.data<T>();
+  // auto &input_tensor = input.Get<framework::LoDTensor>();
   const IndexT* index_data = index.data<IndexT>();
-  T* out_data = output->mutable_data<T>(platform::CPUPlace());
+
+  output->mutable_data<T>(context.GetPlace());
+  // auto &output_tensor = output.Get<framework::LoDTensor>();
 
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
@@ -78,9 +86,20 @@ void IndexSelectInner(const framework::ExecutionContext& context,
 
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_data[j];
-      auto dst = out_data + output_start_offset + j * slice_size;
-      auto src = input_data + input_start_offset + index_value * slice_size;
-      memcpy(dst, src, slice_bytes);
+      // auto dst = out_data + output_start_offset + j * slice_size;
+      // auto src = input_data + input_start_offset + index_value * slice_size;
+      // auto offset = output_start_offset + j * slice_size;
+      // auto end = input_start_offset + index_value * slice_size;
+      // out_data[offset:offset+slice_size] = x[end:end+slice_size]
+      // auto start = input_start_offset + index_value * slice_size;
+      // auto end = output_start_offset + j * slice_size;
+      int len = index_value * slice_size / input_dim[dim + 1];
+      auto src_slice = input.Slice(input_start_offset + index_value,
+                                   input_start_offset + index_value + 1);
+      auto dist_slice =
+          output->Slice(output_start_offset + j, output_start_offset + j + 1);
+      framework::TensorCopy(src_slice, context.GetPlace(), &dist_slice);
+      // memcpy(dst, src, slice_bytes);
     }
   }
   output->Resize(output_dim);
