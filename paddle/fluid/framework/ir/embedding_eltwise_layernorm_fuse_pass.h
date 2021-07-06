@@ -153,7 +153,8 @@ class EmbeddingEltwiseLayerNormFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(Graph* graph) const;
-
+  int BuildFusion(Graph* graph, const std::string& name_scope
+                  /*const Scope* scope*/) const;
   const std::string name_scope_{"embedding_eltwise_layernorm_fuse"};
 };
 

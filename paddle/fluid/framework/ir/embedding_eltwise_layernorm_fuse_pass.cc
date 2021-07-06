@@ -136,8 +136,12 @@ void SkipLayerNorm::operator()() {
       ->LinksFrom({eltwise_add_out, layer_norm_bias_var, layer_norm_scale_var})
       .LinksTo({layer_norm_out, layer_norm_mean_var, layer_norm_variance_var});
 }
-static int BuildFusion(Graph* graph, const std::string& name_scope
-                       /*const Scope* scope*/) {
+
+}  // namespace patterns
+
+int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
+    Graph* graph, const std::string& name_scope
+    /*const Scope* scope*/) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -146,7 +150,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
   std::vector<std::unordered_set<Node*>> start_pattern_remove_nodes;
 
   // Create pattern.
-  Embedding2Eltwise1Pattern start_pattern(pattern, name_scope + "/start");
+  patterns::Embedding2Eltwise1Pattern start_pattern(pattern,
+                                                    name_scope + "/start");
   start_pattern();
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -186,7 +191,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
 
   GraphPatternDetector gpd2;
   auto* pattern2 = gpd2.mutable_pattern();
-  Embedding1Eltwise1Pattern second_pattern(pattern2, name_scope + "/second");
+  patterns::Embedding1Eltwise1Pattern second_pattern(pattern2,
+                                                     name_scope + "/second");
   second_pattern();
   auto handler2 = [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* g) {
@@ -222,7 +228,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
   std::vector<std::unordered_set<Node*>> end_pattern_remove_nodes;
   GraphPatternDetector gpd3;
   auto* pattern3 = gpd3.mutable_pattern();
-  SkipLayerNorm skip_layernorm_pattern(pattern3, name_scope + "/third");
+  patterns::SkipLayerNorm skip_layernorm_pattern(pattern3,
+                                                 name_scope + "/third");
   skip_layernorm_pattern();
   auto handler3 = [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* g) {
@@ -361,8 +368,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
   return fusion_count;
 }
 
-}  // namespace patterns
-
 EmbeddingEltwiseLayerNormFusePass::EmbeddingEltwiseLayerNormFusePass() {
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
@@ -408,7 +413,8 @@ EmbeddingEltwiseLayerNormFusePass::EmbeddingEltwiseLayerNormFusePass() {
 
 void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
-  int fusion_count = patterns::BuildFusion(graph, name_scope_);
+  int fusion_count =
+      EmbeddingEltwiseLayerNormFusePass::BuildFusion(graph, name_scope_);
   if (fusion_count > 0) {
     graph->Set(kEmbEltwiseLayernormPass, new bool(true));
   }
