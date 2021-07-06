@@ -121,72 +121,24 @@ class IndexSelectKernel : public framework::OpKernel<T> {
 
 #if ((!defined __NVCC__) && (!defined __HIPCC__))
 
-template <typename platform::cpu_isa_t isa, typename T, class Enable = void>
-struct IndexSelectAdd {
-  void operator()(int n, const T* src, T* dst) {
-    for (int i = 0; i < n; i++) {
-      dst[i] += src[i];
-    }
-  }
-};
-
-#ifdef __AVX__
-// description: Index addition uses intel intrinsic instruction set to read and
-// write data in parallel
 template <typename T>
-struct IndexSelectAdd<
-    platform::avx, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const int n, const T* src, T* dst) {
-    int block = 0;
-    if (std::is_same<T, float>::value) {
-      block = YMM_FLOAT_BLOCK;
-    } else if (std::is_same<T, double>::value) {
-      block = XMM_FLOAT_BLOCK;
-    }
-    int i = 0;
-    int end = n & ~(block - 1);
-    if (std::is_same<T, float>::value) {
-      for (i = 0; i < end; i += block) {
-        _mm256_storeu_ps(reinterpret_cast<float*>(dst) + i,
-                         _mm256_add_ps(_mm256_loadu_ps((const float*)dst + i),
-                                       _mm256_loadu_ps((const float*)src + i)));
-      }
-    } else if (std::is_same<T, double>::value) {
-      for (i = 0; i < end; i += block) {
-        _mm256_storeu_pd(
-            reinterpret_cast<double*>(dst) + i,
-            _mm256_add_pd(_mm256_loadu_pd((const double*)dst + i),
-                          _mm256_loadu_pd((const double*)src + i)));
-      }
-    }
-    for (; i < n; i++) {
-      dst[i] += src[i];
-    }
-  }
-};
-#endif
-
-#endif
-
-template <typename T>
-typename std::enable_if<std::is_floating_point<T>::value>::type
-elementwise_inner_add(const framework::ExecutionContext& ctx, int slice_size,
-                      const T* src_pointer, const T* dist_pointer,
-                      T* result_dist_pointer) {
+typename std::enable_if<std::is_floating_point<T>::value>::type IndexSelectAdd(
+    const framework::ExecutionContext& ctx, int slice_size,
+    const T* src_pointer, const T* p_pointer, T* dist_pointer) {
   auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-  blas.VADD(slice_size, src_pointer, dist_pointer, result_dist_pointer);
+  blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
 }
 
 template <typename T>
-typename std::enable_if<!std::is_floating_point<T>::value>::type
-elementwise_inner_add(const framework::ExecutionContext& ctx, int slice_size,
-                      const T* src_pointer, const T* dist_pointer,
-                      T* result_dist_pointer) {
+typename std::enable_if<!std::is_floating_point<T>::value>::type IndexSelectAdd(
+    const framework::ExecutionContext& ctx, int slice_size,
+    const T* src_pointer, const T* p_pointer, T* dist_pointer) {
   for (int i = 0; i < slice_size; i++) {
-    result_dist_pointer[i] = src_pointer[i] + dist_pointer[i];
+    dist_pointer[i] = src_pointer[i] + p_pointer[i];
   }
 }
+
+#endif
 
 template <typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
@@ -194,7 +146,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
                           LoDTensor* x_grad, int dim) {
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();
-  // const T* p_output = x_grad->mutable_data<T>(context.GetPlace());
+  const T* p_output = x_grad->mutable_data<T>(context.GetPlace());
   T* out_data = x_grad->mutable_data<T>(context.GetPlace());
   auto input_dim = out_grad.dims();
   auto input_dim_size = input_dim.size();
@@ -227,21 +179,9 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
       IndexT index_value = index_data[j];
 
       auto src = input_data + input_start_offset + j * slice_size;
-      // auto p_out = p_output + output_start_offset + index_value * slice_size;
+      auto p_out = p_output + output_start_offset + index_value * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
-
-#if ((!defined __NVCC__) && (!defined __HIPCC__))
-
-#ifdef __AVX__
-      IndexSelectAdd<platform::avx, T> index_select_add_avx;
-      index_select_add_avx(slice_size, src, dst);
-#else
-      IndexSelectAdd<platform::isa_any, T> index_select_add_any;
-      index_select_add_any(slice_size, src, dst);
-#endif
-
-#endif
-      // elementwise_inner_add<T>(context, slice_size, src, p_out, dst);
+      IndexSelectAdd<T>(context, slice_size, src, p_out, dst);
     }
   }
   x_grad->Resize(output_dim);
