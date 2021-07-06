@@ -545,11 +545,16 @@ void HalfAsyncCommunicator::MainThread() {
   }
 
   while (running_) {
-    SendByCommunicator();
-    BarrierSend();
-    RecvByCommunicator();
-    BarrierRecv();
-    BarrierWeakUp();
+    if (!waiting_) {
+      SendByCommunicator();
+      BarrierSend();
+      RecvByCommunicator();
+      BarrierRecv();
+      BarrierWeakUp();
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      VLOG(3) << "wait for running";
+    }
   }
   VLOG(1) << "communicator stopped, send thread exit";
 }
@@ -698,12 +703,15 @@ void HalfAsyncCommunicator::Barrier() {
 
 int HalfAsyncCommunicator::BatchesCounter() {
   while (running_) {
-    if (barrier_counter_.load() >= barrier_trigger_.load() &&
-        barrier_trigger_.load() != 0) {
+    if (barrier_counter_.load() >= barrier_trigger_.load()) {
       break;
     } else {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+  }
+
+  if (barrier_trigger_.load() == 0) {
+    waiting_ = true;
   }
 
   return barrier_counter_.load();
