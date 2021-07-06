@@ -324,6 +324,9 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
           out_row, out_col, output->data<T>());
     }
 #ifdef PADDLE_WITH_HIP
+    // Prevent the pinned memory value from being covered and release the memory
+    // after the launch kernel of the stream is executed (reapply pinned memory
+    // next time)
     auto* data_alloc_released = data_alloc.release();
     auto* col_alloc_released = col_alloc.release();
     context.AddStreamCallback([data_alloc_released, col_alloc_released] {
@@ -443,6 +446,9 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
           static_cast<int>(outputs_cols_num), dev_out_gpu_data);
     }
 #ifdef PADDLE_WITH_HIP
+    // Prevent the pinned memory value from being covered and release the memory
+    // after the launch kernel of the stream is executed (reapply pinned memory
+    // next time)
     auto* data_alloc_released = data_alloc.release();
     auto* cols_alloc_released = cols_alloc.release();
     context.AddStreamCallback([data_alloc_released, cols_alloc_released] {
