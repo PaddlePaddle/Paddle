@@ -784,6 +784,7 @@ class Fleet(object):
             else:
                 if not strategy.a_sync:
                     os.environ["CPU_NUM"] = "1"
+                    os.environ["PS_TRAINING_MODE"] = "SYNC"
 
             self._user_defined_strategy = copy.deepcopy(strategy)
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 """This is definition of dataset class, which is high performance IO."""
 
+import os
 import paddle
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
@@ -117,6 +118,11 @@ class DatasetBase(object):
         Args:
             thread_num(int): thread num
         """
+
+        mode = os.getenv("PS_TRAINING_MODE", "NONE")
+        if mode == "SYNC":
+            thread_num = 1
+
         self.dataset.set_thread_num(thread_num)
         self.thread_num = thread_num
 
