@@ -489,7 +489,8 @@ def xpu_places(device_ids=None):
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
-        
+            # required: xpu
+
             import paddle
             import paddle.static as static
             
