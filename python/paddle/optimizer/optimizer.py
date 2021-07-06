@@ -286,6 +286,7 @@ class Optimizer(object):
         if isinstance(self._learning_rate, LRScheduler):
             self._learning_rate.set_state_dict(state_dict["LR_Scheduler"])
 
+        state_dict.pop("LR_Scheduler")
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
