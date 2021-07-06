@@ -16,9 +16,7 @@ from __future__ import print_function
 
 import math
 import numpy
-import six
 import warnings
-from six.moves import reduce
 
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
@@ -134,14 +132,9 @@ def create_parameter(shape,
     """
     check_type(shape, 'shape', (list, tuple, numpy.ndarray), 'create_parameter')
     for item in shape:
-        if six.PY2:
-            check_type(item, 'item of shape',
-                       (int, long, numpy.uint8, numpy.int8, numpy.int16,
-                        numpy.int32, numpy.int64), 'create_parameter')
-        else:
-            check_type(item, 'item of shape',
-                       (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
-                        numpy.int64), 'create_parameter')
+        check_type(item, 'item of shape',
+                   (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
+                    numpy.int64), 'create_parameter')
 
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
@@ -194,14 +187,9 @@ def create_global_var(shape,
     check_type(shape, 'shape', (list, tuple, numpy.ndarray),
                'create_global_var')
     for item in shape:
-        if six.PY2:
-            check_type(item, 'item of shape',
-                       (int, long, numpy.uint8, numpy.int8, numpy.int16,
-                        numpy.int32, numpy.int64), 'create_global_var')
-        else:
-            check_type(item, 'item of shape',
-                       (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
-                        numpy.int64), 'create_global_var')
+        check_type(item, 'item of shape',
+                   (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
+                    numpy.int64), 'create_global_var')
 
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',

@@ -23,21 +23,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-class XPUFPTypeTrait {
- public:
-  using Type = T;
-};
-
-template <>
-class XPUFPTypeTrait<platform::float16> {
- public:
-  using Type = float16;
-};
-
 template <typename DeviceContext, typename InT>
 class CastXPUKernel : public framework::OpKernel<InT> {
-  using XPUInTDType = typename XPUFPTypeTrait<InT>::Type;
+  using XPUInTDType = typename XPUTypeTrait<InT>::Type;
 
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -49,7 +37,6 @@ class CastXPUKernel : public framework::OpKernel<InT> {
         context.Attr<int>("out_dtype"));
     auto* in_data = in->data<InT>();
 
-    // using XPUOutTDType = typename XPUFPTypeTrait<InT>::Type;
     auto numel = in->numel();
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = -1;

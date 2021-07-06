@@ -26,22 +26,22 @@ if not defined cache_dir set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
-taskkill /f /im cmake.exe  2>NUL
-taskkill /f /im ninja.exe  2>NUL
-taskkill /f /im MSBuild.exe 2>NUL
-taskkill /f /im cl.exe 2>NUL
-taskkill /f /im lib.exe 2>NUL
-taskkill /f /im link.exe 2>NUL
-taskkill /f /im vctip.exe 2>NUL
-taskkill /f /im cvtres.exe 2>NUL
-taskkill /f /im rc.exe 2>NUL
-taskkill /f /im mspdbsrv.exe 2>NUL
-taskkill /f /im csc.exe 2>NUL
-taskkill /f /im python.exe  2>NUL
-taskkill /f /im nvcc.exe 2>NUL
-taskkill /f /im cicc.exe 2>NUL
-taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im op_function_generator.exe 2>NUL
+taskkill /f /im cmake.exe /t 2>NUL
+taskkill /f /im ninja.exe /t 2>NUL
+taskkill /f /im MSBuild.exe /t 2>NUL
+taskkill /f /im cl.exe /t 2>NUL
+taskkill /f /im lib.exe /t 2>NUL
+taskkill /f /im link.exe /t 2>NUL
+taskkill /f /im vctip.exe /t 2>NUL
+taskkill /f /im cvtres.exe /t 2>NUL
+taskkill /f /im rc.exe /t 2>NUL
+taskkill /f /im mspdbsrv.exe /t 2>NUL
+taskkill /f /im csc.exe /t 2>NUL
+taskkill /f /im python.exe /t 2>NUL
+taskkill /f /im nvcc.exe /t 2>NUL
+taskkill /f /im cicc.exe /t 2>NUL
+taskkill /f /im ptxas.exe /t 2>NUL
+taskkill /f /im op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
@@ -72,13 +72,13 @@ if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
-if not defined retry_times set retry_times=2
+if not defined retry_times set retry_times=3
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
 rmdir build\paddle\third_party\externalError /s/q
-rmdir build\paddle\fluid\pybind /s/q
+rem rmdir build\paddle\fluid\pybind /s/q
 rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
 rmdir build\paddle_inference_c_install_dir /s/q
@@ -161,6 +161,7 @@ set WITH_MKL=ON
 set WITH_GPU=ON
 set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
+set ON_INFER=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -177,12 +178,13 @@ set WITH_GPU=OFF
 set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
 set retry_times=1
+set ON_INFER=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
-call :test_inference || goto test_inference_error
+:: call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
@@ -215,9 +217,12 @@ rem ------Build windows inference library------
 set ON_INFER=ON
 set WITH_PYTHON=OFF
 set CUDA_ARCH_NAME=All
+python %work_dir%\tools\remove_grad_op_and_kernel.py
+if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
+call :test_inference || goto test_inference_error
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
 goto:success
@@ -265,7 +270,7 @@ if "%WITH_GPU%"=="ON" (
 )
 
 rem ------initialize the python environment------
-@ECHO ON
+@ECHO OFF
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
 if "%WITH_PYTHON%" == "ON" (
@@ -364,18 +369,26 @@ echo    ========================================
 
 for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
 echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
+
 set build_times=1
+rem MSbuild will build third_party first to improve compiler stability.
+if NOT %GENERATOR% == "Ninja" (
+    goto :build_tp
+) else (
+    goto :build_paddle
+)
+
 :build_tp
 echo Build third_party the %build_times% time:
-
 if %GENERATOR% == "Ninja" (
     ninja third_party
 ) else (
     MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% third_party.vcxproj
 )
+
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
-    if %build_times% GTR %retry_times% (
+    if %build_times% GEQ %retry_times% (
         exit /b 7
     ) else (
         echo Build third_party failed, will retry!
@@ -390,20 +403,20 @@ set build_times=1
 rem clcache.exe -z
 
 rem -------clean up environment again-----------
-taskkill /f /im cmake.exe  2>NUL
-taskkill /f /im MSBuild.exe 2>NUL
-taskkill /f /im cl.exe 2>NUL
-taskkill /f /im lib.exe 2>NUL
-taskkill /f /im link.exe 2>NUL
-taskkill /f /im vctip.exe 2>NUL
-taskkill /f /im cvtres.exe 2>NUL
-taskkill /f /im rc.exe 2>NUL
-taskkill /f /im mspdbsrv.exe 2>NUL
-taskkill /f /im csc.exe 2>NUL
-taskkill /f /im nvcc.exe 2>NUL
-taskkill /f /im cicc.exe 2>NUL
-taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im op_function_generator.exe 2>NUL
+taskkill /f /im cmake.exe /t 2>NUL
+taskkill /f /im MSBuild.exe /t 2>NUL
+taskkill /f /im cl.exe /t 2>NUL
+taskkill /f /im lib.exe /t 2>NUL
+taskkill /f /im link.exe /t 2>NUL
+taskkill /f /im vctip.exe /t 2>NUL
+taskkill /f /im cvtres.exe /t 2>NUL
+taskkill /f /im rc.exe /t 2>NUL
+taskkill /f /im mspdbsrv.exe /t 2>NUL
+taskkill /f /im csc.exe /t 2>NUL
+taskkill /f /im nvcc.exe /t 2>NUL
+taskkill /f /im cicc.exe /t 2>NUL
+taskkill /f /im ptxas.exe /t 2>NUL
+taskkill /f /im op_function_generator.exe /t 2>NUL
 wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
@@ -412,7 +425,7 @@ wmic process where name="cl.exe" call terminate 2>NUL
 wmic process where name="lib.exe" call terminate 2>NUL
 
 if "%WITH_TESTING%"=="ON" (
-    for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%#
+    for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
 )
 
 echo Build Paddle the %build_times% time:
@@ -420,7 +433,7 @@ if %GENERATOR% == "Ninja" (
     ninja all
 ) else (
     if "%WITH_CLCACHE%"=="OFF" (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     ) else (
         MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     )
@@ -428,7 +441,7 @@ if %GENERATOR% == "Ninja" (
 
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
-    if %build_times% GTR %retry_times% (
+    if %build_times% GEQ %retry_times% (
         exit /b 7
     ) else (
         echo Build Paddle failed, will retry!
@@ -648,12 +661,12 @@ echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_
 echo fi>>  check_change_of_unittest.sh
 echo git checkout -b origin_pr >>  check_change_of_unittest.sh
 echo git checkout -f $BRANCH >>  check_change_of_unittest.sh
-echo cmake .. -G %GENERATOR% -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
--DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
+echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% >>  check_change_of_unittest.sh
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% >>  check_change_of_unittest.sh
 echo cat ^<^<EOF>>  check_change_of_unittest.sh
 echo     ============================================       >>  check_change_of_unittest.sh
 echo     Generate unit tests.spec of develop.               >>  check_change_of_unittest.sh
@@ -781,24 +794,24 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Clean up environment  at the end ...
 echo    ========================================
-taskkill /f /im cmake.exe  2>NUL
-taskkill /f /im ninja.exe  2>NUL
-taskkill /f /im MSBuild.exe 2>NUL
-taskkill /f /im git.exe 2>NUL
-taskkill /f /im cl.exe 2>NUL
-taskkill /f /im lib.exe 2>NUL
-taskkill /f /im link.exe 2>NUL
-taskkill /f /im git-remote-https.exe 2>NUL
-taskkill /f /im vctip.exe 2>NUL
-taskkill /f /im cvtres.exe 2>NUL
-taskkill /f /im rc.exe 2>NUL
-taskkill /f /im mspdbsrv.exe 2>NUL
-taskkill /f /im csc.exe 2>NUL
-taskkill /f /im python.exe  2>NUL
-taskkill /f /im nvcc.exe 2>NUL
-taskkill /f /im cicc.exe 2>NUL
-taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im op_function_generator.exe 2>NUL
+taskkill /f /im cmake.exe /t 2>NUL
+taskkill /f /im ninja.exe /t 2>NUL
+taskkill /f /im MSBuild.exe /t 2>NUL
+taskkill /f /im git.exe /t 2>NUL
+taskkill /f /im cl.exe /t 2>NUL
+taskkill /f /im lib.exe /t 2>NUL
+taskkill /f /im link.exe /t 2>NUL
+taskkill /f /im git-remote-https.exe /t 2>NUL
+taskkill /f /im vctip.exe /t 2>NUL
+taskkill /f /im cvtres.exe /t 2>NUL
+taskkill /f /im rc.exe /t 2>NUL
+taskkill /f /im mspdbsrv.exe /t 2>NUL
+taskkill /f /im csc.exe /t 2>NUL
+taskkill /f /im python.exe /t 2>NUL
+taskkill /f /im nvcc.exe /t 2>NUL
+taskkill /f /im cicc.exe /t 2>NUL
+taskkill /f /im ptxas.exe /t 2>NUL
+taskkill /f /im op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
@@ -806,7 +819,7 @@ wmic process where name="cl.exe" call terminate 2>NUL
 wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 if "%WITH_TESTING%"=="ON" (
-    for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%#
+    for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
 )
 echo Windows CI run successfully!
 exit /b 0

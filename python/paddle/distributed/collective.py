@@ -19,6 +19,7 @@ from ..fluid.framework import Variable
 from ..fluid.framework import OpProtoHolder
 from ..fluid.framework import in_dygraph_mode
 from ..fluid.framework import convert_np_dtype_to_dtype_
+from ..fluid.framework import _varbase_creator
 from ..fluid.data_feeder import convert_dtype
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.data_feeder import check_type
@@ -31,6 +32,7 @@ import paddle
 from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.dygraph_utils as dygraph_utils
 
 __all__ = []
 
@@ -92,8 +94,6 @@ class Group():
         return True
 
     def get_group_rank(self, rank):
-        if self.id == 0:
-            return rank
         if self.is_member() and rank in self.ranks:
             return self.ranks.index(rank)
         else:
@@ -126,7 +126,8 @@ def _get_group_map():
     global _group_map
     if not _group_map:
         genv = _get_global_env()
-        _group_map[0] = Group(genv.rank, genv.world_size, 0)
+        _group_map[0] = Group(genv.rank, genv.world_size,
+                              list(range(genv.world_size)))
     return _group_map
 
 
@@ -159,7 +160,7 @@ def get_group(id=0):
     """
 
     gm = _get_group_map()
-    return gm[group] if group in gm else None
+    return gm[id] if id in gm else None
 
 
 def barrier(group=None):
@@ -267,7 +268,9 @@ def new_group(ranks=None, backend=None):
 
     # TODO(shenliang03): This is a temporary solution to solve the problem of 
     # hang caused by cross-creation of new_group
-    tmp = fill_constant([0], dtype="int32", value="1")
+    tmp = paddle.to_tensor(
+        [1], dtype="int32") if in_dygraph_mode() else fill_constant(
+            [0], dtype="int32", value="1")
     paddle.distributed.all_reduce(tmp, use_calc_stream=True)
     paddle.distributed.wait(tmp)
     return gp
@@ -461,7 +464,6 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
                 tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
-        return out
 
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -1012,6 +1014,27 @@ def _c_softmax_with_cross_entropy(logits,
         else:
             return loss, softmax
 
+    attrs = {
+        'ring_id': ring_id,
+        'rank': rank,
+        'nranks': nranks,
+    }
+    helper = LayerHelper('c_softmax_with_cross_entropy', **locals())
+    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    helper.append_op(
+        type='c_softmax_with_cross_entropy',
+        inputs={'Logits': logits,
+                'Label': label},
+        outputs={'Softmax': softmax,
+                 'Loss': loss},
+        attrs=attrs)
+
+    if return_softmax:
+        return loss, softmax
+
+    return loss
+
 
 def _linear(x, weight, bias=None, name=None):
     """
@@ -1197,6 +1220,65 @@ def _parallel_embedding(x,
     return out
 
 
+def _parallel_embedding_npu(x,
+                            per_part_embeddings,
+                            origin_size,
+                            param_attr,
+                            inner_rank,
+                            num_partitions,
+                            name,
+                            group=None):
+    """
+    NPU Parallel Embedding
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    origin_num_embeddings = origin_size[0]
+    embedding = paddle.nn.Embedding(
+        per_part_embeddings,
+        origin_size[1],
+        padding_idx=per_part_embeddings - 1,
+        sparse=False,
+        weight_attr=param_attr,
+        name=name)
+
+    origin_input_shape = x.shape
+    if len(origin_input_shape) == 2:
+        x = paddle.unsqueeze(x, axis=-1)
+    else:
+        assert origin_input_shape[-1] == 1, (
+            "The last dimension size of x must be 1.")
+    x_shard = paddle.shard_index(x, origin_num_embeddings, num_partitions,
+                                 inner_rank, per_part_embeddings - 1)
+    if len(origin_input_shape) == 2:
+        x_shard = paddle.squeeze(x_shard, axis=-1)
+    emb_out = embedding(x_shard)
+    startup_block = paddle.static.default_startup_program().global_block()
+    main_block = paddle.static.default_main_program().global_block()
+    startup_block.vars[embedding.weight.name].is_distributed = True
+    main_block.vars[embedding.weight.name].is_distributed = True
+    out = main_block.create_var(
+        shape=emb_out.shape,
+        dtype=emb_out.dtype,
+        type=emb_out.type,
+        lod_level=emb_out.lod_level,
+        persistable=False,
+        is_data=False,
+        need_check_feed=emb_out.desc.need_check_feed())
+    main_block.append_op(
+        type='c_allreduce_sum',
+        inputs={'X': emb_out},
+        outputs={'Out': out},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': True,
+            'use_model_parallel': True
+        })
+    return out
+
+
 def split(x,
           size,
           operation,
@@ -1310,16 +1392,28 @@ def split(x,
             "but received vocabulary={} num_partitions={}".format(size[0], num_partitions)
 
         per_part_size = size[0] // num_partitions
-        emb_out = _parallel_embedding(
-            x,
-            per_part_size,
-            size,
-            weight_attr,
-            inner_rank,
-            num_partitions,
-            name,
-            group=None)
-        return emb_out
+        if core.is_compiled_with_npu():
+            emb_out = _parallel_embedding_npu(
+                x,
+                per_part_size,
+                size,
+                weight_attr,
+                inner_rank,
+                num_partitions,
+                name,
+                group=None)
+            return emb_out
+        else:
+            emb_out = _parallel_embedding(
+                x,
+                per_part_size,
+                size,
+                weight_attr,
+                inner_rank,
+                num_partitions,
+                name,
+                group=None)
+            return emb_out
     else:
         should_split = False
         if axis == 0:
