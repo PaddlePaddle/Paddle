@@ -4897,7 +4897,7 @@ class PipelineOptimizer(object):
             input_names = op.input_arg_names
             output_names = op.output_arg_names
             in_out_names = input_names + output_names
-            if op.type == 'cast': continue
+            if op.type == 'cast' or op.type == "c_sync_comm_stream": continue
             # append "MERGED" to the names of parameter gradients,
             # and mofify the op_role_var attribute (by rename_arg func).
             for name in in_out_names:
