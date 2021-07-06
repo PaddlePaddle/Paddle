@@ -24,11 +24,9 @@ from . import utils
 from ..cal_kl_threshold import cal_kl_threshold
 
 __all__ = [
-    'BaseQuantizer',
-    'AbsmaxQuantizer',
-    'PerChannelAbsmaxQuantizer',
-    'KLQuantizer',
-    'HistQuantizer',
+    'BaseQuantizer', 'AbsmaxQuantizer', 'PerChannelAbsmaxQuantizer',
+    'KLQuantizer', 'HistQuantizer', 'SUPPORT_ACT_QUANTIZERS',
+    'SUPPORT_WT_QUANTIZERS'
 ]
 
 
@@ -263,3 +261,7 @@ class KLQuantizer(BaseHistQuantizer):
                 bin_width = abs_max_val / hist.shape[0]
                 threshold = cal_kl_threshold(hist, bin_width, self.quant_bits)
                 self.thresholds.append(threshold)
+
+
+SUPPORT_ACT_QUANTIZERS = [AbsmaxQuantizer, HistQuantizer, KLQuantizer]
+SUPPORT_WT_QUANTIZERS = [AbsmaxQuantizer, PerChannelAbsmaxQuantizer]

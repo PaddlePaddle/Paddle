@@ -69,7 +69,7 @@ fake_quant_wrap_layers = [
 ]
 
 # The weight format of these layers is Cin * Cout * H * W 
-spec_channel_axis_layers = [paddle.nn.Conv2D, paddle.nn.Conv2DTranspose]
+spec_channel_axis_layers = [paddle.nn.Conv2DTranspose, paddle.nn.Linear]
 
 weight_op_types = [
     "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose",

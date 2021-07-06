@@ -47,6 +47,13 @@ PTQ_LAYERS_INFO = [
     LayerInfo(paddle.nn.quant.add, ['X', 'Y'], [], ['Out']),
 ]
 
+QUANT_LAYERS_INFO = [
+    LayerInfo(paddle.nn.quant.quant_layers.QuantizedConv2D, ['Input'],
+              ['Filter'], ['Output']),
+    LayerInfo(paddle.nn.quant.quant_layers.QuantizedLinear, ['X'], ['Y'],
+              ['Out']),
+]
+
 SIMULATED_LAYERS = [paddle.nn.Conv2D, paddle.nn.Linear]
 
 
@@ -55,6 +62,7 @@ class PTQRegistry(object):
     Register the supported layers for PTQ and provide layers info.
     """
     supported_layers_map = {}
+    registered_layers_map = {}
     is_inited = False
 
     def __init__(self):
@@ -65,6 +73,10 @@ class PTQRegistry(object):
         if not cls.is_inited:
             for layer_info in PTQ_LAYERS_INFO:
                 cls.supported_layers_map[layer_info.layer] = layer_info
+
+            all_layers_info = PTQ_LAYERS_INFO + QUANT_LAYERS_INFO
+            for layer_info in all_layers_info:
+                cls.registered_layers_map[layer_info.layer] = layer_info
         cls.is_inited = True
 
     @classmethod
@@ -81,6 +93,19 @@ class PTQRegistry(object):
             isinstance(layer, tuple(cls.supported_layers_map.keys()))
 
     @classmethod
+    def is_registered_layer(cls, layer):
+        """
+        Analyze whether the layer is register layer_info.
+        Args:
+            layer(Layer): The input layer can be a python class or an instance.
+        Returns:
+            flag(bool): Wether the layer is register layer_info.
+        """
+        cls._init()
+        return layer in cls.registered_layers_map or \
+            isinstance(layer, tuple(cls.registered_layers_map.keys()))
+
+    @classmethod
     def is_simulated_quant_layer(cls, layer):
         """
         Analyze whether the layer is simulated quant layer.
@@ -95,15 +120,15 @@ class PTQRegistry(object):
     @classmethod
     def layer_info(cls, layer):
         """
-        Get the infomation for the supported layer.
+        Get the infomation for the layer.
         Args:
             layer(Layer): The input layer can be a python class or an instance.
         Returns:
             layer_info(LayerInfo): The layer info of the input layer.
         """
-        assert cls.is_supported_layer(
-            layer), "The input layer is not supported."
+        assert cls.is_registered_layer(layer), \
+            "The input layer is not register."
 
-        for layer_key, layer_info in cls.supported_layers_map.items():
+        for layer_key, layer_info in cls.registered_layers_map.items():
             if layer == layer_key or isinstance(layer, layer_key):
                 return layer_info

@@ -39,16 +39,18 @@ class PTQConfig(object):
                 It should be the instance of BaseQuantizer.    
         """
         super(PTQConfig, self).__init__()
+        assert isinstance(activation_quantizer, tuple(SUPPORT_ACT_QUANTIZERS))
+        assert isinstance(weight_quantizer, tuple(SUPPORT_WT_QUANTIZERS))
 
-        assert isinstance(activation_quantizer, BaseQuantizer)
-        assert isinstance(weight_quantizer, BaseQuantizer)
-
-        assert activation_quantizer.quant_bits == weight_quantizer.quant_bits
-
+        self.in_act_quantizer = copy.deepcopy(activation_quantizer)
         self.out_act_quantizer = copy.deepcopy(activation_quantizer)
         self.wt_quantizer = copy.deepcopy(weight_quantizer)
 
         self.quant_hook_handle = None
+
+        # In order to wrap simulated layers, use in_act_quantizer
+        # to calculate the input thresholds for conv2d, linear and etc.
+        self.enable_in_act_quantizer = False
 
 
 default_ptq_config = PTQConfig(AbsmaxQuantizer(), AbsmaxQuantizer())
