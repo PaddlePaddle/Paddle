@@ -56,22 +56,28 @@ class MishOpConverter : public OpConverter {
             ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
             : 20.0f;
 
-    std::vector<nvinfer1::ITensor*> inputs{input};
     nvinfer1::ILayer* layer = nullptr;
-
-    auto* mish_plugin = new plugin::MishPlugin(threshold);
-    auto mish_layer =
-        engine_->AddPlugin(inputs.data(), inputs.size(), mish_plugin);
-    layer = mish_layer;
+    if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      plugin::MishPluginDynamic* plugin =
+          new plugin::MishPluginDynamic(threshold, with_fp16);
+      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
+#else
+      PADDLE_THROW(platform::errors::Fatal(
+          "You are running the TRT Dynamic Shape mode, need to confirm that "
+          "your TRT version is no less than 6.0"));
+#endif
+    } else {
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      plugin::MishPlugin* plugin = new plugin::MishPlugin(threshold, with_fp16);
+      layer = engine_->AddPlugin(&input, input_num, plugin);
+    }
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "mish", {output_name}, test_mode);
-
-    // PADDLE_ENFORCE_EQ(
-    //     engine_->with_dynamic_shape(), true,
-    //     platform::errors::InvalidArgument(
-    //         "TRT mish plugin only accept the dynamic shape, because that "
-    //         "the mish will change the batch size."));
   }
 };
 
