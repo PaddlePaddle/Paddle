@@ -120,7 +120,6 @@ class IndexSelectKernel : public framework::OpKernel<T> {
 };
 
 #if ((!defined __NVCC__) && (!defined __HIPCC__))
-
 template <typename T>
 typename std::enable_if<std::is_floating_point<T>::value>::type IndexSelectAdd(
     const framework::ExecutionContext& ctx, int slice_size,
@@ -137,7 +136,6 @@ typename std::enable_if<!std::is_floating_point<T>::value>::type IndexSelectAdd(
     dist_pointer[i] = src_pointer[i] + p_pointer[i];
   }
 }
-
 #endif
 
 template <typename T, typename IndexT = int>
