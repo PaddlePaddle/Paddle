@@ -108,7 +108,10 @@ NpuOpRunner::~NpuOpRunner() {
 
 const std::string &NpuOpRunner::Type() { return op_type_; }
 
-NpuOpRunner &NpuOpRunner::SetType(const std::string &name) { op_type_ = name; }
+NpuOpRunner &NpuOpRunner::SetType(const std::string &name) {
+  op_type_ = name;
+  return *this;
+}
 
 NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
                                   const NPUAttribute &attr) {
@@ -204,7 +207,7 @@ NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor, aclMemType mem_type) {
   return *this;
 }
 
-NpuOpRunner &NpuOpRunner::AddInput(std::vector<int32_t> &dims) {
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<int32_t> &&dims) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx =
       static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
@@ -213,14 +216,14 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<int32_t> &dims) {
   host_tensors_.emplace_back(host_tensor);
 
   // create aclTensorDesc
-  input_descs_.emplace_back(CreateTensorDesc(tensor, mem_type));
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
   // create aclDataBuffer
-  input_buffers_.emplace_back(CreateDataBuffer(tensor));
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
 
   return *this;
 }
 
-NpuOpRunner &NpuOpRunner::AddInput(std::vector<int64_t> &dims) {
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<int64_t> &&dims) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx =
       static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
@@ -229,9 +232,9 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<int64_t> &dims) {
   host_tensors_.emplace_back(host_tensor);
 
   // create aclTensorDesc
-  input_descs_.emplace_back(CreateTensorDesc(tensor, mem_type));
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
   // create aclDataBuffer
-  input_buffers_.emplace_back(CreateDataBuffer(tensor));
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
 
   return *this;
 }

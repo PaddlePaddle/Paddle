@@ -67,9 +67,9 @@ class NpuOpRunner {
   // vector/list.
   NpuOpRunner &AddInput(const Tensor &tensor, aclMemType mem_type);
 
-  NpuOpRunner &AddInput(std::vector<int32_t> dims);
+  NpuOpRunner &AddInput(std::vector<int32_t> &&dims);
 
-  NpuOpRunner &AddInput(std::vector<int64_t> dims);
+  NpuOpRunner &AddInput(std::vector<int64_t> &&dims);
 
   NpuOpRunner &AddOutput(const Tensor &tensor);
 
@@ -96,8 +96,7 @@ class NpuOpRunner {
  private:
   aclTensorDesc *CreateTensorDesc(Tensor tensor,
                                   aclMemType mem_type = ACL_MEMTYPE_DEVICE);
-  aclDataBuffer *CreateDataBuffer(Tensor tensor,
-                                  aclMemType mem_type = ACL_MEMTYPE_DEVICE);
+  aclDataBuffer *CreateDataBuffer(Tensor tensor);
 
  private:
   std::string op_type_;

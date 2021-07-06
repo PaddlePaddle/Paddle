@@ -41,12 +41,12 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     output_t->mutable_data<T>(ctx.GetPlace());
 
     NpuOpRunner runner;
-    runner.SetName("GatherV2")
+    runner.SetType("GatherV2")
         .AddInput(*table_t)
         .AddInput(*ids_t)
         .AddInput(std::vector<int32_t>{0})
         .AddOutput(*output_t);
-    runner.Run(stream);
+    runner.Run();
   }
 };
 
