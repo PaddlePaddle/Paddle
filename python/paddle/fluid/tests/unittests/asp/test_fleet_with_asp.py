@@ -23,36 +23,33 @@ import os
 from paddle.fluid.contrib import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
+cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
+if cuda_visible_devices is None or cuda_visible_devices == "":
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+else:
+    os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices.split(',')[0]
 
 paddle.enable_static()
 
 
 class TestFleetWithASP(unittest.TestCase):
-    def setUp(self):
-        os.environ["PADDLE_TRAINER_ID"] = "0"
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36011"
-
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
-            img = fluid.data(
-                name='img', shape=[None, 3, 32, 32], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            hidden = fluid.layers.conv2d(
-                input=img, num_filters=4, filter_size=3, padding=2, act="relu")
-            hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
-            prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32')
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=label)
-            avg_cost = paddle.fluid.layers.mean(x=cost)
+            fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
+            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.asp = True
-        return avg_cost, strategy, img, label
+        return avg_cost, strategy, input_x, input_y
 
     def test_with_asp(self):
-        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-        fleet.init(role)
+        fleet.init(is_collective=True)
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy, input_x, input_y = self.net(train_prog,
                                                         startup_prog)
@@ -63,17 +60,16 @@ class TestFleetWithASP(unittest.TestCase):
                 optimizer, strategy=strategy)
             optimizer.minimize(avg_cost)
 
-        place = paddle.CPUPlace()
-        if core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        place = fluid.CUDAPlace(0) if paddle.fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+
         exe = fluid.Executor(place)
         feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
         exe.run(startup_prog)
 
         sparsity.prune_model(place, train_prog)
 
-        data = (np.random.randn(64, 3, 32, 32), np.random.randint(
-            10, size=(64, 1)))
+        data = (np.random.randn(64, 32), np.random.randint(2, size=(64, 1)))
         exe.run(train_prog, feed=feeder.feed([data]))
 
         for param in train_prog.global_block().all_parameters():

@@ -45,10 +45,10 @@ class ASPOptimizer(MetaOptimizerBase):
         return False
 
     def _disable_strategy(self, dist_strategy):
-        return
+        dist_strategy.asp = False
 
     def _enable_strategy(self, dist_strategy, context):
-        return
+        dist_strategy.asp = True
 
     def minimize_impl(self,
                       loss,
