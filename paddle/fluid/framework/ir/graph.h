@@ -261,9 +261,7 @@ class Graph {
     return nullptr;
   }
 
-  Graph *GetSubGraph(const size_t idx) const
-
-      size_t SubGraphSize() const {
+  size_t SubGraphSize() const {
     // wait for https://github.com/PaddlePaddle/Paddle/pull/33320 merged
     return 0;
   }
