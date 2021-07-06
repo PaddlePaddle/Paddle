@@ -1355,8 +1355,9 @@ class OpTest(unittest.TestCase):
             if self.op_type not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST:
                 self.check_compile_vs_runtime(fetch_list, outs)
 
-    def check_output_customized(self, checker):
-        places = self._get_places()
+    def check_output_customized(self, checker, places=None):
+        if places is None:
+            places = self._get_places()
         for place in places:
             outs = self.calc_output(place)
             outs = [np.array(out) for out in outs]
