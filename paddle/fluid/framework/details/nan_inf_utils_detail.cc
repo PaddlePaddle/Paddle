@@ -159,10 +159,6 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
 #pragma omp declare reduction(+ : paddle::platform::float16 : omp_out += omp_in)
 #pragma omp declare reduction(+ : paddle::platform::bfloat16 : omp_out += \
                               omp_in)
-#pragma omp declare reduction(+ : paddle::platform::complex64 : omp_out += \
-                              omp_in)
-#pragma omp declare reduction(+ : paddle::platform::complex128 : omp_out += \
-                              omp_in)
 #pragma omp declare reduction(+ : paddle::platform::complex < \
                                   float > : omp_out += omp_in)
 #pragma omp declare reduction(+ : paddle::platform::complex < \
@@ -219,58 +215,6 @@ void CheckNanInf<paddle::platform::bfloat16>(
 
   if (std::isnan(sum) || std::isinf(sum)) {
     PrintNanInf(value, numel, print_num, op_type, var_name);
-  }
-}
-
-template <>
-void CheckNanInf<paddle::platform::complex64>(
-    const paddle::platform::complex64* value, const size_t numel, int print_num,
-    const std::string& op_type, const std::string& var_name) {
-  float real_sum = 0.0f;
-#pragma omp parallel for reduction(+ : real_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    real_sum += (value[i].real - value[i].real);
-  }
-
-  float imag_sum = 0.0f;
-#pragma omp parallel for reduction(+ : imag_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    imag_sum += (value[i].imag - value[i].imag);
-  }
-
-  if (std::isnan(real_sum) || std::isinf(real_sum) || std::isnan(imag_sum) ||
-      std::isinf(imag_sum)) {
-    // hot fix for compile failed in gcc4.8
-    // here also need print detail info of nan or inf later
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
-        op_type));
-  }
-}
-
-template <>
-void CheckNanInf<paddle::platform::complex128>(
-    const paddle::platform::complex128* value, const size_t numel,
-    int print_num, const std::string& op_type, const std::string& var_name) {
-  double real_sum = 0.0;
-#pragma omp parallel for reduction(+ : real_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    real_sum += (value[i].real - value[i].real);
-  }
-
-  double imag_sum = 0.0;
-#pragma omp parallel for reduction(+ : imag_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    imag_sum += (value[i].imag - value[i].imag);
-  }
-
-  if (std::isnan(real_sum) || std::isinf(real_sum) || std::isnan(imag_sum) ||
-      std::isinf(imag_sum)) {
-    // hot fix for compile failed in gcc4.8
-    // here also need print detail info of nan or inf later
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
-        op_type));
   }
 }
 
@@ -353,13 +297,12 @@ void tensor_check<platform::CPUDeviceContext>(const std::string& op_type,
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,
-                         const framework::Scope& scope,
                          const std::string& var_name,
+                         const framework::Variable* var,
                          const platform::Place& place) {
-  auto* var = scope.FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound("In op=%s, can't find var:%s", op_type,
-                                      var_name));
+      var, platform::errors::NotFound("Cannot find var: `%s` in op `%s`.",
+                                      var_name, op_type));
 
   const Tensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
@@ -447,6 +390,14 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     return;
   }
   tensor_check<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
+}
+
+void CheckVarHasNanOrInf(const std::string& op_type,
+                         const framework::Scope& scope,
+                         const std::string& var_name,
+                         const platform::Place& place) {
+  auto* var = scope.FindVar(var_name);
+  CheckVarHasNanOrInf(op_type, var_name, var, place);
 }
 
 bool IsSkipOp(const framework::OperatorBase& op) {

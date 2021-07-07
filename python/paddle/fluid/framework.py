@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import collections
 from collections import defaultdict
-from collections import Iterable
+from collections.abc import Iterable
 import contextlib
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import os
@@ -53,6 +53,7 @@ __all__ = [
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
+    'is_compiled_with_rocm',
     'is_compiled_with_xpu',
     'Variable',
     'require_version',
@@ -71,6 +72,7 @@ _dygraph_tracer_ = None
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
+_global_flags_ = core.globals()
 
 
 def require_version(min_version, max_version=None):
@@ -285,6 +287,10 @@ def _dygraph_tracer():
     return _dygraph_tracer_
 
 
+def _global_flags():
+    return _global_flags_
+
+
 def _current_expected_place():
     global _global_expected_place_
     if _global_expected_place_ is None:
@@ -398,6 +404,21 @@ def is_compiled_with_cuda():
     return core.is_compiled_with_cuda()
 
 
+def is_compiled_with_rocm():
+    """
+    Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
+
+    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_gpu = paddle.is_compiled_with_rocm()
+    """
+    return core.is_compiled_with_rocm()
+
+
 def cuda_places(device_ids=None):
     """
     **Note**:
@@ -468,7 +489,8 @@ def xpu_places(device_ids=None):
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
-        
+            # required: xpu
+
             import paddle
             import paddle.static as static
             
@@ -926,35 +948,43 @@ class Variable(object):
         self._stop_gradient = stop_gradient
         self.is_data = is_data
 
-    @fake_interface_only
     def detach(self):
         """
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
-
         Returns a new Variable, detached from the current graph.
+        It will share data with origin Variable and without tensor copy.
+        In addition, the detached Variable doesn't provide gradient propagation.
 
         Returns:
              ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
 
-
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
-                import numpy as np
+                import paddle
 
-                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    y = x.detach()
+                paddle.enable_static()
 
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+
+                # create a detached Variable
+                y = x.detach()
         """
-        pass
+
+        assert self.type == core.VarDesc.VarType.SELECTED_ROWS or \
+            self.type == core.VarDesc.VarType.LOD_TENSOR, \
+            "only support a variable with SELECTED_ROWS or LOD_TENSOR to be detached"
+
+        output = self.block.create_var(
+            name=unique_name.generate_with_ignorable_key("detach_" + self.name),
+            dtype=self.dtype,
+            type=self.type,
+            persistable=self.persistable,
+            stop_gradient=True)
+
+        self.block.append_op(
+            type='share_data', inputs={'X': [self]}, outputs={'Out': [output]})
+        return output
 
     @fake_interface_only
     def numpy(self):
@@ -1789,6 +1819,35 @@ class Variable(object):
 
         t.set(value, place)
 
+    def size(self):
+        """
+        Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
+
+        Returns:
+            Variable: the number of elements for current Variable
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+
+                # get the number of elements of the Variable
+                y = x.size()
+        """
+
+        output = self.block.create_var(
+            name=unique_name.generate_with_ignorable_key(self.name + "_size"),
+            dtype=core.VarDesc.VarType.INT64)
+
+        self.block.append_op(
+            type='size', inputs={'Input': [self]}, outputs={'Out': [output]})
+        return output
+
 
 def get_all_op_protos():
     """
@@ -2126,7 +2185,7 @@ class Operator(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         outputs_str = "{"
         for i in range(0, len(self.output_names)):
@@ -2534,7 +2593,7 @@ class Block(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         block_str = "{ // block "
         block_str += "{}\n".format(self.idx)
@@ -4243,7 +4302,7 @@ class Program(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         program_str = ""
         for block in self.blocks:
@@ -5519,6 +5578,18 @@ class ParamBase(core.VarBase):
         core.varbase_copy(self, new_param, device, blocking)
         return new_param
 
+    def __reduce__(self):
+        value = self.numpy()
+        state = (self.name, self.persistable, self.stop_gradient)
+        return ParamBase, (self.shape, self.dtype), (self.__dict__, value,
+                                                     state)
+
+    def __setstate__(self, state):
+        self.__dict__.update(state[0])
+        t = self.value().get_tensor()
+        t.set(state[1], _current_expected_place())
+        self.name, self.persistable, self.stop_gradient = state[2]
+
     __repr__ = __str__
 
 
@@ -5817,8 +5888,8 @@ def set_flags(flags):
     if not isinstance(flags, dict):
         raise TypeError('flags in set_flags should be a dict')
     for key, value in flags.items():
-        if core.globals().is_public(key):
-            core.globals()[key] = value
+        if _global_flags().is_public(key):
+            _global_flags()[key] = value
         else:
             raise ValueError(
                 "Flag %s cannot set its value through this function." % (key))
@@ -5847,8 +5918,8 @@ def get_flags(flags):
     flags_value = {}
     if isinstance(flags, (list, tuple)):
         for key in flags:
-            if (core.globals().is_public(key)):
-                value = core.globals()[key]
+            if (_global_flags().is_public(key)):
+                value = _global_flags()[key]
                 temp = {key: value}
                 flags_value.update(temp)
             else:
@@ -5856,8 +5927,8 @@ def get_flags(flags):
                     'Flag %s cannot get its value through this function.' %
                     (key))
     elif isinstance(flags, str):
-        if (core.globals().is_public(flags)):
-            value = core.globals()[flags]
+        if (_global_flags().is_public(flags)):
+            value = _global_flags()[flags]
             temp = {flags: value}
             flags_value.update(temp)
         else:

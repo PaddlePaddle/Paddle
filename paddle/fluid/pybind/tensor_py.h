@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
@@ -402,8 +403,8 @@ void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
   auto out_dims = out->dims();
   auto in_dims = in->dims();
 
-  auto offsets = Eigen::array<int, D>();
-  auto extents = Eigen::array<int, D>();
+  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = out_dims[i];
@@ -423,7 +424,8 @@ void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
   auto out_t =
       framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
           *out);
-  out_t.device(eigen_place) = in_t.slice(offsets, extents);
+  operators::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+      eigen_place, out_t, in_t, offsets, extents);
 }
 
 template <typename T>

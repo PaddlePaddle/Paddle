@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
 #include <string>
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace framework {
@@ -155,3 +156,18 @@ REGISTER_OP_CPU_KERNEL(
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+REGISTER_OP_CUDA_KERNEL(
+    scale,
+    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, float>,
+    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, double>,
+    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
+                                   uint8_t>,
+    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, int8_t>,
+    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
+                                   int16_t>,
+    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, int>,
+    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
+                                   int64_t>,
+    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
+                                   paddle::platform::float16>);

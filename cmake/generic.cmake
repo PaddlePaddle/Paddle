@@ -92,7 +92,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # including io directory for inference lib paddle_api.h
 include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 
-if(NOT APPLE)
+if(NOT APPLE AND NOT WIN32)
   find_package(Threads REQUIRED)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
   if(WITH_PSLIB OR WITH_DISTRIBUTE)
@@ -100,7 +100,7 @@ if(NOT APPLE)
   else()
     set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
   endif()
-endif(NOT APPLE)
+endif()
 
 set_property(GLOBAL PROPERTY FLUID_MODULES "")
 # find all fluid modules is used for paddle fluid static library

@@ -42,10 +42,10 @@ bool GeluPlugin::supportsFormat(nvinfer1::DataType type,
   if (with_fp16_) {
     return ((type == nvinfer1::DataType::kFLOAT ||
              type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   } else {
     return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   }
 }
 
@@ -100,7 +100,11 @@ __global__ void no_exact_gelu_kernel(const T a, const T b, const T c, int n,
 }
 
 int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
+#if IS_TRT_VERSION_LT(8000)
                         void** outputs, void*, cudaStream_t stream) {
+#else
+                        void* const* outputs, void*, cudaStream_t stream) {
+#endif
   const auto& input_dims = this->getInputDims(0);
   int num = batch_size;
   for (int i = 0; i < input_dims.nbDims; i++) {

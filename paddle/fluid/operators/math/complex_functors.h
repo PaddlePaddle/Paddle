@@ -64,9 +64,7 @@ using select_t = typename select<Head, Tail...>::type;
 
 template <typename T>
 using Real =
-    select_t<cond<std::is_same<T, platform::complex64>::value, float>,
-             cond<std::is_same<T, platform::complex128>::value, double>,
-             cond<std::is_same<T, platform::complex<float>>::value, float>,
+    select_t<cond<std::is_same<T, platform::complex<float>>::value, float>,
              cond<std::is_same<T, platform::complex<double>>::value, double>,
              T>;
 
@@ -79,15 +77,11 @@ using NoComplex = typename std::enable_if<std::is_same<T, RealT>::value>::type;
 
 template <typename T>
 using EnableComplex = typename std::enable_if<
-    std::is_same<T, platform::complex64>::value ||
-    std::is_same<T, platform::complex128>::value ||
     std::is_same<T, platform::complex<float>>::value ||
     std::is_same<T, platform::complex<double>>::value>::type;
 
 template <typename T>
 using DisableComplex = typename std::enable_if<
-    !std::is_same<T, platform::complex64>::value &&
-    !std::is_same<T, platform::complex128>::value &&
     !std::is_same<T, platform::complex<float>>::value &&
     !std::is_same<T, platform::complex<double>>::value>::type;
 

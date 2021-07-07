@@ -69,7 +69,7 @@ class StackNPUKernel : public framework::OpKernel<T> {
       tmp_stack.Resize(framework::make_ddim(vec_dim_tmp));
       tmp_stack.mutable_data<T>(ctx.GetPlace());
 
-      auto runner =
+      const auto& runner =
           NpuOpRunner("Pack", {x_list}, {tmp_stack}, {{"axis", 0}, {"N", N}});
       runner.Run(stream);
 
@@ -81,12 +81,12 @@ class StackNPUKernel : public framework::OpKernel<T> {
         }
       }
 
-      auto runner_trans_final =
+      const auto& runner_trans_final =
           NpuOpRunner("TransposeD", {tmp_stack}, {*out}, {{"perm", vec_trans}});
       runner_trans_final.Run(stream);
 
     } else {
-      auto runner =
+      const auto& runner =
           NpuOpRunner("Pack", {x_list}, {*out}, {{"axis", axis}, {"N", N}});
       runner.Run(stream);
     }

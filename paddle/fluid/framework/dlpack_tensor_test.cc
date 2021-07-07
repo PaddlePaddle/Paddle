@@ -29,9 +29,7 @@ namespace {  // NOLINT
 template <typename T>
 constexpr uint8_t GetDLDataTypeCode() {
   if (std::is_same<T, platform::complex<float>>::value ||
-      std::is_same<T, platform::complex<double>>::value ||
-      std::is_same<T, platform::complex64>::value ||
-      std::is_same<T, platform::complex128>::value) {
+      std::is_same<T, platform::complex<double>>::value) {
     return static_cast<uint8_t>(5);
   }
 
