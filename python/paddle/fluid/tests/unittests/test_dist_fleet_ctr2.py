@@ -56,9 +56,9 @@ class TestDistMnistSync2x2(TestFleetBase):
 
 
 # @unittest.skip(reason="Skip unstable ut, reader need to be rewrite")
-class TestDistMnistAsyncDataset2x2(TestFleetBase):
+class TestDistMnistsyncDataset2x2(TestFleetBase):
     def _setup_config(self):
-        self._mode = "async"
+        self._mode = "sync"
         self._reader = "dataset"
 
     def check_with_place(self,
