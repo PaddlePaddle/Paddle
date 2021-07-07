@@ -297,7 +297,7 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                 continue
 
             if isinstance(data, _ResumeIteration):
-                out_queue.put((data, None))
+                out_queue.put((data, None, None))
                 iterator_drained = False
                 fetcher = _DatasetKind.create_fetcher(
                     dataset_kind, dataset, auto_collate_batch, collate_fn, True)
