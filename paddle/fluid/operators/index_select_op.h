@@ -131,25 +131,29 @@ class IndexSelectKernel : public framework::OpKernel<T> {
 };
 
 #if ((!defined __NVCC__) && (!defined __HIPCC__))
-template <typename T>
-typename std::enable_if<std::is_floating_point<T>::value>::type IndexSelectAdd(
-    const framework::ExecutionContext& ctx, int slice_size,
-    const T* src_pointer, const T* p_pointer, T* dist_pointer) {
-  auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-  blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
-}
-
-template <typename T>
-typename std::enable_if<!std::is_floating_point<T>::value>::type IndexSelectAdd(
-    const framework::ExecutionContext& ctx, int slice_size,
-    const T* src_pointer, const T* p_pointer, T* dist_pointer) {
-  for (int i = 0; i < slice_size; i++) {
-    dist_pointer[i] = src_pointer[i] + p_pointer[i];
+template <typename DeviceContext, typename T, class Enable = void>
+struct IndexSelectAdd {
+  void operator()(const framework::ExecutionContext& ctx, int slice_size,
+                  const T* src_pointer, const T* p_pointer, T* dist_pointer) {
+    for (int i = 0; i < slice_size; i++) {
+      dist_pointer[i] = src_pointer[i] + p_pointer[i];
+    }
   }
-}
+};
+
+template <typename DeviceContext, typename T>
+struct IndexSelectAdd<
+    DeviceContext, T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext& ctx, int slice_size,
+                  const T* src_pointer, const T* p_pointer, T* dist_pointer) {
+    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
+  }
+};
 #endif
 
-template <typename T, typename IndexT = int>
+template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
                           const LoDTensor& out_grad, const LoDTensor& index,
                           LoDTensor* x_grad, int dim) {
@@ -161,10 +165,9 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
 
-  auto& device_ctx =
-      context.template device_context<platform::CPUDeviceContext>();
-  math::SetConstant<platform::CPUDeviceContext, T> zero;
-  zero(device_ctx, x_grad, static_cast<T>(0.0));
+  auto& dev_ctx = context.template device_context<DeviceContext>();
+  math::SetConstant<DeviceContext, T> set_constant;
+  set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
 
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
@@ -194,7 +197,8 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
       auto src = input_data + input_start_offset + j * slice_size;
       auto p_out = p_output + output_start_offset + index_value * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
-      IndexSelectAdd<T>(context, slice_size, src, p_out, dst);
+      IndexSelectAdd<DeviceContext, T> index_select_add;
+      index_select_add(context, slice_size, src, p_out, dst);
     }
   }
   x_grad->Resize(output_dim);
@@ -230,9 +234,11 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT64)));
 
     if (index_type == framework::proto::VarType::INT32) {
-      IndexSelectGradInner<T, int>(context, out_grad, index, x_grad, dim);
+      IndexSelectGradInner<DeviceContext, T, int>(context, out_grad, index,
+                                                  x_grad, dim);
     } else if (index_type == framework::proto::VarType::INT64) {
-      IndexSelectGradInner<T, int64_t>(context, out_grad, index, x_grad, dim);
+      IndexSelectGradInner<DeviceContext, T, int64_t>(context, out_grad, index,
+                                                      x_grad, dim);
     }
   }
 };
