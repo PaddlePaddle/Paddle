@@ -320,6 +320,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       for (auto& input : inputs) {
         if (input == "Axis" && desc.Input("Axis").size() > 0) return false;
       }
+
       // current not support axis from input, use default 0
       if (desc.GetAttrIfExists<int>("axis")) return false;
     }
