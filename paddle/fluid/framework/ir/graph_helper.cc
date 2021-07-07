@@ -396,7 +396,7 @@ std::vector<Node *> TopologyVarientSort(const Graph &graph,
   }
 }
 
-class TopologyComparator {
+class DescOrderComparator {
  public:
   bool operator()(const Node *n1, const Node *n2) {
     return (n1->DescOrder() > n2->DescOrder()) ||
@@ -405,9 +405,9 @@ class TopologyComparator {
   }
 };
 
-std::vector<ir::Node *> TopologySortGraph(const Graph &graph) {
+std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
   std::vector<ir::Node *> sorted_ops;
-  std::priority_queue<Node *, std::vector<Node *>, TopologyComparator> q;
+  std::priority_queue<Node *, std::vector<Node *>, DescOrderComparator> q;
   std::unordered_map<Node *, std::unordered_set<Node *>> in_ops;
   std::unordered_map<Node *, std::unordered_set<Node *>> out_ops;
 
@@ -415,14 +415,15 @@ std::vector<ir::Node *> TopologySortGraph(const Graph &graph) {
   for (const auto &n : graph.Nodes()) {
     if (!n->IsOp()) continue;
 
-    in_ops[n] = std::unordered_set<Node *>();
-    out_ops[n] = std::unordered_set<Node *>();
+    in_ops.emplace(n, std::unordered_set<Node *>());
+    out_ops.emplace(n, std::unordered_set<Node *>());
   }
 
   // record all op's input op and output op
   for (const auto &n : graph.Nodes()) {
     if (!n->IsOp()) continue;
 
+    // traverse all input op
     for (const auto &var : n->inputs) {
       for (const auto &in : var->inputs) {
         // use at instead of [] to prevent no unrecorded op node
@@ -433,19 +434,28 @@ std::vector<ir::Node *> TopologySortGraph(const Graph &graph) {
   }
 
   // find topology entrance
-  for (const auto &in_pair : in_ops) {
-    if (in_pair.second.empty()) {
-      q.push(in_pair.first);
+  for (const auto &n : graph.Nodes()) {
+    if (!n->IsOp()) continue;
+
+    if (in_ops.at(n).empty()) {
+      q.push(n);
     }
   }
 
   // topological sorting
   while (!q.empty()) {
-    const auto &cur_op = q.top();
+    // Do not get by reference!!! The element will pop later.
+    const auto cur_op = q.top();
     q.pop();
 
     sorted_ops.push_back(cur_op);
     for (const auto &out : out_ops.at(cur_op)) {
+      PADDLE_ENFORCE_GT(in_ops.at(out).count(cur_op), 0,
+                        platform::errors::InvalidArgument(
+                            "We find %s is in %s's output, "
+                            "but cannot find %s in %s's input.",
+                            out->Name().c_str(), cur_op->Name().c_str(),
+                            cur_op->Name().c_str(), out->Name().c_str()));
       in_ops.at(out).erase(cur_op);
 
       // push if in-degree is 0
@@ -454,6 +464,12 @@ std::vector<ir::Node *> TopologySortGraph(const Graph &graph) {
       }
     }
   }
+
+  PADDLE_ENFORCE_EQ(
+      sorted_ops.size(), in_ops.size(),
+      platform::errors::InvalidArgument("Topological sorting incompletely, "
+                                        "only sorted %zd op but total %zd.",
+                                        sorted_ops.size(), in_ops.size()));
 
   return sorted_ops;
 }

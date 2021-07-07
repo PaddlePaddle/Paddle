@@ -178,7 +178,11 @@ class Node {
   friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 
   explicit Node(const std::string& name, Type type)
-      : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
+      : name_(name),
+        var_desc_(nullptr),
+        op_desc_(nullptr),
+        type_(type),
+        desc_order_(NO_DESC_ORDER) {}
 
   explicit Node(VarDesc* var_desc)
       : name_(var_desc->Name()),
