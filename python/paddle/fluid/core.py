@@ -271,6 +271,7 @@ if avx_supported():
         from .core_avx import _set_paddle_lib_path
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
+        from .core_avx import _is_compiled_with_heterps
         from .core_avx import _promote_types_if_complex_exists
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
@@ -290,17 +291,13 @@ if avx_supported():
         else:
             from .. import compat as cpt
             sys.stderr.write(
-                "WARNING: AVX is supported on local machine, but you have installed "
-                "paddlepaddle without avx core. Hence, no_avx core which has worse "
-                "preformance will be imported.\nYou could reinstall paddlepaddle by "
-                "'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' or rebuild "
-                "paddlepaddle WITH_AVX=ON to get better performance.\n"
-                "The original error is: %s\n" % cpt.get_exception_message(e))
+                "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
+                "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
+                "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
+                "to get better performance.\nThe original error is: %s\n" %
+                cpt.get_exception_message(e))
             load_noavx = True
 else:
-    sys.stderr.write(
-        "WARNING: AVX is not support on your machine. Hence, no_avx core will be imported, "
-        "It has much worse preformance than avx core.\n")
     load_noavx = True
 
 if load_noavx:
@@ -322,6 +319,7 @@ if load_noavx:
         from .core_noavx import _set_paddle_lib_path
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
+        from .core_noavx import _is_compiled_with_heterps
         from .core_noavx import _promote_types_if_complex_exists
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
@@ -339,17 +337,14 @@ if load_noavx:
                 current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
         elif avx_supported():
             sys.stderr.write(
-                "Error: AVX is support on your machine, but you have installed "
-                "paddlepaddle without avx core, you should reinstall paddlepaddle by "
-                "'python -m pip install --force-reinstall paddlepaddle-gpu[==version]\n"
+                "Error: The installed PaddlePaddle is incorrect. You should reinstall it by "
+                "'python -m pip install --force-reinstall paddlepaddle-gpu[==version]'\n"
             )
         else:
             sys.stderr.write(
-                "Error: AVX is not support on your machine, but you have installed "
-                "paddlepaddle without no_avx core, you should reinstall paddlepaddle by "
-                "'python -m pip install --force-reinstall paddlepaddle-gpu[==version] -f "
-                "https://paddlepaddle.org.cn/whl/mkl/stable/noavx.html or "
-                "https://paddlepaddle.org.cn/whl/openblas/stable/noavx.html\n")
+                "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "
+                "you should reinstall paddlepaddle with no-avx core.\n")
+
         raise e
 
 

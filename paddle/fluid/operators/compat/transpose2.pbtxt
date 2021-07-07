@@ -13,12 +13,12 @@ def {
     name: "axis"
     type: INTS
   }
+}
+extra {
   attrs {
     name: "data_format"
     type: STRING
   }
-}
-extra {
   attrs {
     name: "use_mkldnn"
     type: BOOLEAN

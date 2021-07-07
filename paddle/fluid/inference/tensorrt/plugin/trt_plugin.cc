@@ -68,7 +68,7 @@ size_t PluginTensorRT::getBaseSerializationSize() {
 bool PluginTensorRT::supportsFormat(nvinfer1::DataType type,
                                     nvinfer1::PluginFormat format) const {
   return ((type == nvinfer1::DataType::kFLOAT) &&
-          (format == nvinfer1::PluginFormat::kNCHW));
+          (format == nvinfer1::PluginFormat::kLINEAR));
 }
 
 void PluginTensorRT::configureWithFormat(

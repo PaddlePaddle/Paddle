@@ -192,7 +192,7 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   void* p;
 // PINNED memory is visible to all CUDA contexts.
 #ifdef PADDLE_WITH_HIP
-  hipError_t result = hipHostMalloc(&p, size);
+  hipError_t result = hipHostMalloc(&p, size, hipHostMallocPortable);
 #else
   cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
 #endif

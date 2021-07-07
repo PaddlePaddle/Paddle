@@ -82,8 +82,13 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   int initialize() override { return 0; }
   // Shutdown the layer. This is called when the engine is destroyed
   void terminate() override {}
-  // Execute the layer
+// Execute the layer
+#if IS_TRT_VERSION_LT(8000)
   virtual int enqueue(int batch_size, const void* const* inputs, void** outputs,
+#else
+  virtual int enqueue(int batch_size, const void* const* inputs,
+                      void* const* outputs,
+#endif
                       void* workspace, cudaStream_t stream) = 0;
 
   // Find the size of the serialization buffer required
@@ -176,7 +181,7 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   bool supportsFormat(nvinfer1::DataType type,
                       nvinfer1::PluginFormat format) const override {
     return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   }
   // Initialize the layer for execution.
   // This is called when the engine is created.
@@ -188,8 +193,13 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   // Find the workspace size required by the layer
   size_t getWorkspaceSize(int) const override { return 0; }
 
-  // Execute the layer
+// Execute the layer
+#if IS_TRT_VERSION_LT(8000)
   virtual int enqueue(int batch_size, const void* const* inputs, void** outputs,
+#else
+  virtual int enqueue(int batch_size, const void* const* inputs,
+                      void* const* outputs,
+#endif
                       void* workspace, cudaStream_t stream) = 0;
 
   // Find the size of the serialization buffer required

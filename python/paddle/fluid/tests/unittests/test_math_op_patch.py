@@ -271,7 +271,6 @@ class TestMathOpPatches(unittest.TestCase):
                        fetch_list=[b])
         self.assertTrue(numpy.allclose(a_np.astype('float32'), b_np))
 
-    @prog_scope()
     def test_bitwise_and(self):
         x_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
         y_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
@@ -335,6 +334,28 @@ class TestMathOpPatches(unittest.TestCase):
                       feed={"x": x_np},
                       fetch_list=[z])
         self.assertTrue(np.array_equal(out[0], out_np))
+
+    @prog_scope()
+    def test_ndim(self):
+        a = paddle.static.data(name="a", shape=[10, 1])
+        self.assertEqual(a.dim(), 2)
+        self.assertEqual(a.ndimension(), 2)
+        self.assertEqual(a.ndim, 2)
+
+    @prog_scope()
+    def test_matmul(self):
+        a = paddle.static.data(name='a', shape=[2, 3], dtype='float32')
+        b = paddle.static.data(name='b', shape=[3, 5], dtype='float32')
+        c = a @b  # __matmul__
+        a_np = numpy.random.uniform(-1, 1, size=[2, 3]).astype('float32')
+        b_np = numpy.random.uniform(-1, 1, size=[3, 5]).astype('float32')
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        c_np = exe.run(paddle.static.default_main_program(),
+                       feed={"a": a_np,
+                             "b": b_np},
+                       fetch_list=[c])
+        self.assertTrue(numpy.allclose(a_np @b_np, c_np))
 
 
 if __name__ == '__main__':

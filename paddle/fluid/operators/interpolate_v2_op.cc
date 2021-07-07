@@ -35,7 +35,12 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
                         interp_method));
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
-
+  for (int i = 0; i < dim_x.size(); ++i) {
+    PADDLE_ENFORCE_NE(dim_x[i], 0, platform::errors::InvalidArgument(
+                                       "The shape of input(x) should be larged "
+                                       "than 0, bug received shape[%d] is %d ",
+                                       i, dim_x[i]));
+  }
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
     auto inputs_name = ctx->Inputs("SizeTensor");
@@ -133,6 +138,13 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
           interp_method));
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
+
+  for (int i = 0; i < dim_x.size(); ++i) {
+    PADDLE_ENFORCE_NE(dim_x[i], 0, platform::errors::InvalidArgument(
+                                       "The shape of input(x) should be larged "
+                                       "than 0, bug received shape[%d] is %d ",
+                                       i, dim_x[i]));
+  }
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -245,6 +257,13 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
           interp_method));
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
+
+  for (int i = 0; i < dim_x.size(); ++i) {
+    PADDLE_ENFORCE_NE(dim_x[i], 0, platform::errors::InvalidArgument(
+                                       "The shape of input(x) should be larged "
+                                       "than 0, bug received shape[%d] is %d ",
+                                       i, dim_x[i]));
+  }
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size

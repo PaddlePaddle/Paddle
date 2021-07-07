@@ -21,7 +21,7 @@ PaddlePaddle is originated from industrial practices with dedication and commitm
 
 ## Installation
 
-### Latest PaddlePaddle Release: [v2.0](https://github.com/PaddlePaddle/Paddle/tree/release/2.0)
+### Latest PaddlePaddle Release: [v2.1](https://github.com/PaddlePaddle/Paddle/tree/release/2.1)
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest features of PaddlePaddle.
@@ -33,9 +33,9 @@ pip install paddlepaddle
 pip install paddlepaddle-gpu
 
 ```
-More infomation about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
+For more information about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
 
-Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 10 hours to train models online per day. [Click here to start](https://aistudio.baidu.com/aistudio/index).
+Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 8 hours to train models online per day. [Click here to start](https://aistudio.baidu.com/aistudio/index).
 
 ## FOUR LEADING TECHNOLOGIES
 
@@ -46,13 +46,13 @@ Now our developers can acquire Tesla V100 online computing resources for free. I
 
 -  **Support Ultra-Large-Scale Training of Deep Neural Networks**
 
-    PaddlePaddle has made breakthroughs in ultra-large-scale deep neural networks training. It launched the world's first large-scale open-source training platform that supports the training of deep networks with 100 billions of features and trillions of parameters using data sources distributed over hundreds of nodes. PaddlePaddle overcomes the online deep learning challenges for ultra-large-scale deep learning models, and further achieved the real-time model updating with more than 1 trillion parameters.
+    PaddlePaddle has made breakthroughs in ultra-large-scale deep neural networks training. It launched the world's first large-scale open-source training platform that supports the training of deep networks with 100 billion features and trillions of parameters using data sources distributed over hundreds of nodes. PaddlePaddle overcomes the online deep learning challenges for ultra-large-scale deep learning models, and further achieved real-time model updating with more than 1 trillion parameters.
      [Click here to learn more](https://github.com/PaddlePaddle/Fleet)
 
 
 - **High-Performance Inference Engines for Comprehensive Deployment Enviroments**
 
-   PaddlePaddle is not only compatible with models trained in 3rd party open-source frameworks , but also offers complete inference products for various production scenarios. Our inference product line includes [Paddle Inference](https://paddle-inference.readthedocs.io/en/latest/product_introduction/summary.html): Native inference library for high performance server and cloud inference; [Paddle Serving](https://github.com/PaddlePaddle/Serving): A service-oriented framework suitable for distributed and pipeline productions; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite): Ultra-Lightweight inference engine for mobile and IoT enviroments; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs): A frontend inference engine for browser and mini apps. Futhermore, by great amounts of optimization with leading hardwares in each scenarios, Paddle inference engines outperform most of the other mainstream frameworks.
+   PaddlePaddle is not only compatible with models trained in 3rd party open-source frameworks , but also offers complete inference products for various production scenarios. Our inference product line includes [Paddle Inference](https://paddle-inference.readthedocs.io/en/latest/product_introduction/summary.html): Native inference library for high-performance server and cloud inference; [Paddle Serving](https://github.com/PaddlePaddle/Serving): A service-oriented framework suitable for distributed and pipeline productions; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite): Ultra-Lightweight inference engine for mobile and IoT environments; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs): A frontend inference engine for browser and mini-apps. Furthermore, by great amounts of optimization with leading hardware in each scenario, Paddle inference engines outperform most of the other mainstream frameworks.
      
      
 - **Industry-Oriented Models and Libraries with Open Source Repositories**
@@ -87,6 +87,11 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 - [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
 - QQ discussion group: 793866180 (PaddlePaddle).
 - [Forums](https://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
+    
+## Courses
+
+- [Server Deployments](https://aistudio.baidu.com/aistudio/course/introduce/19084): Courses intorducing high performance server deployments via local and remote services.
+- [Edge Deployments](https://aistudio.baidu.com/aistudio/course/introduce/22690): Courses intorducing edge deployments from mobile, IoT to web and applets.   
 
 ## Copyright and License
 PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).

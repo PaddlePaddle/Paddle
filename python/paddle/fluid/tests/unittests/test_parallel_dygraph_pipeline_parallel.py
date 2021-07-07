@@ -30,6 +30,9 @@ class TestHybridPipeParallel(TestMultipleGpus):
     def test_hybrid_parallel_pp_tuple_inputs(self):
         self.run_mnist_2gpu('hybrid_parallel_shared_weight.py')
 
+    def test_pipeline_parallel(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_amp.py')
+
 
 if __name__ == "__main__":
     unittest.main()
