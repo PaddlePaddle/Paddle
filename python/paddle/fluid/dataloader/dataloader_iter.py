@@ -37,7 +37,8 @@ from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
 from .collate import default_collate_fn, default_convert_fn
 from .worker import ParentWatchDog, get_worker_info, _worker_loop, \
-        _DatasetKind, _IterableDatasetStopIteration, _WorkerException
+        _DatasetKind, _IterableDatasetStopIteration, _WorkerException, \
+        _ResumeIteration
 from .flat import _flatten_batch, _restore_batch
 
 __all__ = ['get_worker_info']
@@ -248,6 +249,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def __init__(self, loader):
         super(_DataLoaderIterMultiProcess, self).__init__(loader)
+        self._persistent_workers = loader._persistent_workers
 
         assert self._num_workers > 0,  "Multi-process DataLoader " \
                     "invalid num_workers({})".format(self._num_workers)
@@ -354,15 +356,63 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._pin_memory)
 
         self._thread_done_event = threading.Event()
+        # thread event is only need in multi-processing mode
         self._thread = threading.Thread(
             target=self._thread_loop, args=(_current_expected_place(), ))
         self._thread.daemon = True
         self._thread.start()
 
-    def _shutdown_worker(self, worker_id):
-        if self._worker_status[worker_id]:
-            self._indices_queues[worker_id].put(None)
-            self._worker_status[worker_id] = False
+    def _reset(self):
+        # data get from _data_queue will be reordered by _rcvd_idx
+        # for data order keeping, data index not equal _rcvd_idx 
+        # will be cached in _task_infos
+        self._send_idx = 0
+        self._rcvd_idx = 0
+        self._batches_outstanding = 0
+        self._task_infos = {}
+        self._structure_infos = []
+
+        # set all worker status available
+        self._worker_status = [True] * self._num_workers
+
+        # resume iteration in following steps
+        # 1. Resume workers, clear worker caches
+        # put _ResumeIteration to all worker as resume iteration flag
+        for worker_id in range(self._num_workers):
+            self._indices_queues[worker_id].put(_ResumeIteration())
+        # clear all cache until _ResumeIteration flag
+        resume_worker_cnt = self._num_workers
+        while resume_worker_cnt > 0:
+            idx, data = self._get_data()
+            if isinstance(idx, _ResumeIteration):
+                assert data is None
+                resume_worker_cnt -= 1
+
+        # 2. Resume blocking_queue, clear blocking_queue caches
+        # reset blocking_queue and py_reader
+        self._blocking_queue.reset()
+        self._reader.reset()
+
+        # 3. put prefetch indices to start next epoch
+        # init workers and indices queues and put 2 indices in each indices queue
+        for _ in range(self._outstanding_capacity):
+            self._try_put_indices()
+
+    def _clear_and_remove_data_queue(self):
+        if self._data_queue is not None:
+            while True:
+                try:
+                    self._data_queue.get_nowait()
+                except:
+                    self._data_queue.cancel_join_thread()
+                    self._data_queue.close()
+                    break
+
+    def _shutdown_worker(self, worker_id, shutdown=False):
+        assert self._worker_status[worker_id] or (self._persistent_workers and
+                                                  shutdown)
+        self._indices_queues[worker_id].put(None)
+        self._worker_status[worker_id] = False
 
     def _try_shutdown_all(self, timeout=None):
         if not self._shutdown:
@@ -375,7 +425,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 # indices_queue
                 self._workers_done_event.set()
                 for i in range(self._num_workers):
-                    self._shutdown_worker(i)
+                    self._shutdown_worker(i, shutdown=True)
 
                 if not self._shutdown:
                     for w in self._workers:
@@ -457,7 +507,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     # NOTE: _rcvd_idx and _send_idx only record batches among
                     #       workers, if batches among workers drained, there
                     #       may also be data in blocking queue
-                    if self._batches_outstanding < len(self._places):
+                    if self._batches_outstanding < len(
+                            self._places) and not self._persistent_workers:
                         return None
                     continue
 
@@ -511,7 +562,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     # is discard, outstanding batch number should be decrease
                     # and another indices should be put for other workers
                     # may still working.
-                    self._shutdown_worker(data.worker_id)
+                    if self._persistent_workers:
+                        self._worker_status[data.worker_id] = False
+                    else:
+                        self._shutdown_worker(data.worker_id)
+
                     self._batches_outstanding -= 1
                     self._try_put_indices()
                     continue
