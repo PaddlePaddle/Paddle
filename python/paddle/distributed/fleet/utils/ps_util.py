@@ -207,7 +207,7 @@ class DistributedInfer:
 
 def sparse_sharding_merge(dirname, varname):
     def save_selectedrows(shards, param_dim, save_path):
-        sharding_merge = paddle.utils.cpp_extension.ShardingMerge()
+        sharding_merge = paddle.fluid.core.ShardingMerge()
         sharding_merge.merge(shards, save_path, param_dim)
 
     def get_distributed_shard(shard_dirname, shard_varname):
