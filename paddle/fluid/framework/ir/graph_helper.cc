@@ -411,42 +411,45 @@ std::vector<ir::Node *> TopologySortGraph(const Graph &graph) {
   std::unordered_map<Node *, std::unordered_set<Node *>> in_ops;
   std::unordered_map<Node *, std::unordered_set<Node *>> out_ops;
 
-  // record all op's input op and output op
-  for (auto &n : graph.Nodes()) {
+  // ensure all op node in 'in_ops' and 'out_ops'
+  for (const auto &n : graph.Nodes()) {
     if (!n->IsOp()) continue;
 
-    if (in_ops.count(n) == 0) {
-      in_ops[n] = std::unordered_set<Node *>();
-    }
+    in_ops[n] = std::unordered_set<Node *>();
+    out_ops[n] = std::unordered_set<Node *>();
+  }
 
-    if (out_ops.count(n) == 0) {
-      out_ops[n] = std::unordered_set<Node *>();
-    }
+  // record all op's input op and output op
+  for (const auto &n : graph.Nodes()) {
+    if (!n->IsOp()) continue;
 
-    for (auto &var : n->inputs) {
-      for (auto &in : var->inputs) {
-        in_ops[n].insert(in);
-        out_ops[in].insert(n);
+    for (const auto &var : n->inputs) {
+      for (const auto &in : var->inputs) {
+        // use at instead of [] to prevent no unrecorded op node
+        in_ops.at(n).insert(in);
+        out_ops.at(in).insert(n);
       }
     }
   }
 
-  // find root op
-  for (auto &in_pair : in_ops) {
+  // find topology entrance
+  for (const auto &in_pair : in_ops) {
     if (in_pair.second.empty()) {
       q.push(in_pair.first);
     }
   }
 
+  // topological sorting
   while (!q.empty()) {
-    const auto cur_op = q.top();
+    const auto &cur_op = q.top();
     q.pop();
 
     sorted_ops.push_back(cur_op);
-    for (auto &out : out_ops[cur_op]) {
-      in_ops[out].erase(cur_op);
+    for (const auto &out : out_ops.at(cur_op)) {
+      in_ops.at(out).erase(cur_op);
 
-      if (in_ops[out].empty()) {
+      // push if in-degree is 0
+      if (in_ops.at(out).empty()) {
         q.push(out);
       }
     }
