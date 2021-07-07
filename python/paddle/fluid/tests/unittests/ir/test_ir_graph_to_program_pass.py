@@ -56,6 +56,21 @@ class GraphToProgramPass(unittest.TestCase):
             self.assertEqual(o_var.name, c_var.name)
             self.assertEqual(o_var.stop_gradient, c_var.stop_gradient)
 
+    def test_check_ops(self):
+        o_block = self.origin_program.global_block()
+        c_block = self.converted_program.global_block()
+        self.assertEqual(len(o_block.ops), len(c_block.ops))
+
+        # ensure op ordering and content same
+        for i in range(len(o_block.ops)):
+            o_op = o_block.ops[i]
+            c_op = c_block.ops[i]
+
+            self.assertEqual(o_op.type, c_op.type)
+            self.assertEqual(o_op.input_names, c_op.input_names)
+            self.assertEqual(o_op.output_names, c_op.output_names)
+            # how to check attr same?
+
 
 def build_program():
     program = fluid.default_main_program()
