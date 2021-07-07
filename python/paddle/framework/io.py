@@ -245,7 +245,8 @@ def _pickle_save(obj, f, protocol):
         return (eval, ('data', {'data': data}))
 
     def reduce_Layer(self):
-        raise ValueError("paddle do not support saving layer object.")
+        raise ValueError(
+            "paddle do not support saving `paddle.nn.Layer` object.")
 
     dispatch_table_layer = dict()
 
@@ -563,7 +564,7 @@ def save(obj, path, protocol=4, **configs):
     Save an object to the specified path.
     
     .. note::
-        Now supports saving ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor, Program.
+        Now supports saving ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
     .. note::
         Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file, 
@@ -779,7 +780,7 @@ def load(path, **configs):
     Load an object can be used in paddle from specified path.
 
     .. note::
-        Now supports loading ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor, Program.
+        Now supports loading ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
     .. note::
         In order to use the model parameters saved by paddle more efficiently, 
