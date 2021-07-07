@@ -360,7 +360,9 @@ class OpTest(unittest.TestCase):
     def is_bfloat16_op(self):
         return self.dtype == np.uint16 or (
             hasattr(self, 'mkldnn_data_type') and
-            getattr(self, 'mkldnn_data_type') is "bfloat16")
+            getattr(self, 'mkldnn_data_type') is "bfloat16") or (
+                hasattr(self, 'attrs') and 'mkldnn_data_type' in self.attrs and
+                self.attrs['mkldnn_data_type'] == 'bfloat16')
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def is_np_data(input):
@@ -1435,6 +1437,9 @@ class OpTest(unittest.TestCase):
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+
+        if self.is_bfloat16_op():
+            check_dygraph = False
 
         self._check_grad_helper()
         if self.dtype == np.float64 and \
