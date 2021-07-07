@@ -29,14 +29,22 @@ using framework::Tensor;
 using platform::DeviceContext;
 
 template <typename T, typename IndexT = int>
-__global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
-                                 T* output, size_t index_size,
-                                 size_t slice_size) {
+__global__ void GatherCUDAKernel(const T* params, const int* input_dims,
+                                 const IndexT* indices, T* output,
+                                 size_t index_size, size_t slice_size,
+                                 size_t end_size) {
   CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT gather_i = indices[indices_i];
     IndexT params_i = gather_i * slice_size + slice_i;
+    PADDLE_ENFORCE(
+        gather_i >= 0 && gather_i < input_dims[0],
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater or equal to 0, but received [%d]",
+        input_dims[0], gather_i);
     *(output + i) = *(params + params_i);
   }
 }
@@ -91,12 +99,21 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                           " the second dimension should be 1."));
   }
 
+  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+  auto cplace = platform::CPUPlace();
+  auto index_dims = index.dims();
+  auto index_dims_size = index_dims.size();
+  auto input_dims = src.dims();
+  auto input_dims_size = input_dims.size();
+
   int index_size = index.dims()[0];
 
   auto src_dims = src.dims();
   framework::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
+  // final dim
+  int64_t end_size = index_dims[index_dims_size - 1];
   // slice size
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
@@ -105,6 +122,20 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
 
+  // source dim
+  std::vector<int> v_input_dims(input_dims_size);
+  for (int i = 0; i < input_dims_size; ++i) {
+    v_input_dims[i] = static_cast<int>(input_dims[i]);
+  }
+
+  auto& dev_ctx = reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
+  int bytes = input_dims_size * sizeof(int);
+  auto p_input_dims = memory::Alloc(dev_ctx, bytes);
+  int* g_input_dims = reinterpret_cast<int*>(p_input_dims->ptr());
+  memory::Copy(
+      gplace, g_input_dims, cplace, v_input_dims.data(), bytes,
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+
   int block = 512;
   int n = slice_size * index_size;
   int grid = (n + block - 1) / block;
@@ -112,7 +143,7 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   GatherCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_src, p_index, p_output, index_size, slice_size);
+      p_src, g_input_dims, p_index, p_output, index_size, slice_size, end_size);
 }
 
 template <typename DeviceContext, typename T, typename IndexT = int>
@@ -217,7 +248,20 @@ void GatherV2CUDAFunction(const Tensor* input, const Tensor* index,
 
   int axis_index = axis;
   int index_dim_size = input_dim[axis_index];
-
+  for (int i = 0; i < index_size; i++) {
+    PADDLE_ENFORCE_LT(index_data[i], index_dim_size,
+                      platform::errors::OutOfRange(
+                          "The element of Index must be less than the size of "
+                          "input dim size of axis which is %d, but received "
+                          "index element which is %d in the %d index.",
+                          index_dim_size, index_data[i], i));
+    PADDLE_ENFORCE_GE(index_data[i], 0UL,
+                      platform::errors::OutOfRange(
+                          "The element of Index must be greater than or equal "
+                          "to 0, but received index element which is %d in the "
+                          "%d index.",
+                          index_data[i], i));
+  }
   int inner_dim_size = 1;
   int outer_dim_size = 1;
   std::vector<int> out_dim_vec;
