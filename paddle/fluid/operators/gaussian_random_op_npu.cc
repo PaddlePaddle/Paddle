@@ -53,8 +53,10 @@ class NPUGaussianRandomKernel : public framework::OpKernel<T> {
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, context.GetPlace()), data,
                  platform::CPUPlace(), reinterpret_cast<void*>(data_cpu.get()),
                  size * sizeof(T), stream);
+    context.template device_context<paddle::platform::NPUDeviceContext>()
+        .Wait();
   }
-};  // namespace operators
+};
 
 }  // namespace operators
 }  // namespace paddle
