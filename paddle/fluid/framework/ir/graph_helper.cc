@@ -160,7 +160,7 @@ BuildOperationAdjList(const Graph &graph) {
             platform::errors::InvalidArgument(
                 "Node(%s)'s type(%d) must be kOperation type.", adj_n->Name(),
                 static_cast<int>(adj_n->NodeType())));
-        VLOG(4) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
+        VLOG(6) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
                 << " -> " << n->Name() << reinterpret_cast<void *>(n)
                 << "  via " << var->Name() << reinterpret_cast<void *>(var);
         adj_list[n].insert(adj_n);
