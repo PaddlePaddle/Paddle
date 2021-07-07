@@ -63,6 +63,7 @@ class TestLookupTableV2(OpTest):
         self.dtype = np.float32
 
     def init_dim(self):
+        # embedding_dim is not multiple of 32
         self.dim = 20
 
     def test_check_output(self):
@@ -92,7 +93,8 @@ class TestLookupTableV2FP16(TestLookupTableV2):
                  "core is not compiled with NPU")
 class TestLookupTableV2Dim32(TestLookupTableV2):
     def init_dim(self):
-        self.dim = 32
+        # embedding_dim is multiple of 32
+        self.dim = 64
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -104,7 +106,7 @@ class TestLookupTableV2Dim32FP16(TestLookupTableV2):
         self.dtype = np.float16
 
     def init_dim(self):
-        self.dim = 32
+        self.dim = 64
 
     def set_npu(self):
         self.__class__.use_npu = True

@@ -65,9 +65,11 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    int embedding_dim = table_grad_t->dims()[-1];
+    int embedding_dim = table_grad_t->dims()[1];
 
     if (embedding_dim % 32 == 0) {
+      // NOTE(pangyoki): The embedding_dim of Tensor used in
+      // EmbeddingDenseGrad must be an integer multiple of 32.
       int num_weights = table_grad_t->dims()[0];
       const auto &runner =
           NpuOpRunner("EmbeddingDenseGrad", {*output_grad_t, *ids_t},
