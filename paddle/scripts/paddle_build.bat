@@ -67,6 +67,7 @@ if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
 if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
 if not defined WITH_CLCACHE set WITH_CLCACHE=OFF
 if not defined WITH_CACHE set WITH_CACHE=OFF
+if not defined WITH_SCCACHE set WITH_SCCACHE=OFF
 if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 if not defined LOG_LEVEL set LOG_LEVEL=normal
@@ -75,7 +76,7 @@ if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
 if not defined retry_times set retry_times=3
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
-rem -------set cache build directory-----------
+rem -------Caching strategy 1: keep build directory for incremental compilation-----------
 rmdir build\python /s/q
 rmdir build\paddle\third_party\externalError /s/q
 rem rmdir build\paddle\fluid\pybind /s/q
@@ -123,12 +124,6 @@ if %day_now% NEQ %day_before% (
     goto :mkbuild
 )
 
-:: git diff HEAD origin/develop --stat --name-only
-:: git diff HEAD origin/develop --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
-:: if %ERRORLEVEL% EQU 0 (
-::     rmdir build /s/q
-:: )
-
 :mkbuild
 if not exist build (
     echo Windows build cache FALSE
@@ -143,9 +138,34 @@ cd /d build
 dir .
 dir %cache_dir%
 dir paddle\fluid\pybind\Release
+rem -------Caching strategy 1: keep build directory for incremental compilation-----------
+
+rem -------Caching strategy 2: sccache decorate compiler-----------
+if "%WITH_SCCACHE%"=="ON" (
+    cmd /C sccache -V > nul 2> nul || call :download_sccache
+    sccache --stop-server
+    if not exit D:\sccache mkdir D:\sccache
+    set SCCACHE_DIR=D:\sccache\.cache
+    set SCCACHE_CACHE_SIZE=30G
+    set SCCACHE_ERROR_LOG=D:\sccache\sccache_log.txt
+    set SCCACHE_LOG=trace
+    sccache --start-server
+    if !errorlevel! NEQ 0 exit /b 1
+    sccache -z
+    goto :CASE_%1
+) else (
+    del %PYTHON_ROOT%\sccache.exe
+    goto :CASE_%1
+)
+
+:download_sccache
+echo There is not sccache in this PC, will install sccache.
+echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
+%PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
+copy sccache.exe %PYTHON_ROOT%\sccache.exe /Y
+rem -------Caching strategy 2: sccache decorate compiler-----------
 
 goto :CASE_%1
-
 echo "Usage: paddle_build.bat [OPTION]"
 echo "OPTION:"
 echo "wincheck_mkl: run Windows MKL/GPU PR CI tasks on Windows"
@@ -454,7 +474,9 @@ echo 0 > %cache_dir%\error_code.txt
 type %cache_dir%\error_code.txt
 
 :: ci will collect clcache hit rate
-rem goto :collect_clcache_hits
+if "%WITH_SCCACHE%"=="ON" (
+    call :collect_sccache_hits
+)
 
 goto:eof
 
@@ -776,16 +798,14 @@ echo ipipe_log_param_Windows_%tempTaskName: =_%_Time: %cost_secs%s
 goto:eof
 
 
-:collect_clcache_hits
-for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
-if %hits% EQU 0 (
-    echo "clcache hit rate: 0%%"
-    echo ipipe_log_param_Clcache_Hit_Rate: 0%%
-) else (
-    set /a rate=%hits%*10000/%entries%
-    echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
-    echo ipipe_log_param_Clcache_Hit_Hate: %rate:~0,-2%.%rate:~-2%%%
-)
+:collect_sccache_hits
+sccache -s > sccache_summary.txt
+type sccache_summary.txt
+for /f "tokens=2,3" %%i in ('type sccache_summary.txt ^| findstr "requests hits" ^| findstr /V "executed C/C++ CUDA"') do set %%i=%%j
+set /a rate=%hits%*10000/%requests%
+echo "sccache hit rate: %rate:~0,2%.%rate:~2,2%%"
+echo ipipe_log_param_Clcache_Hit_Hate: %rate:~0,2%.%rate:~2,2%%
+
 goto:eof
 
 

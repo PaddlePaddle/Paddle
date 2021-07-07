@@ -30,17 +30,14 @@ extra {
   attrs {
     name: "x_data_format"
     type: STRING
-    # no longer to use
   }
   attrs {
     name: "y_data_format"
     type: STRING
-    # no longer to use
   }
   attrs {
     name: "use_quantizer"
     type: BOOLEAN
-    # no longer to use, Use 'mkldnn_data_type' instead.
   }
   attrs {
     name: "use_mkldnn"
