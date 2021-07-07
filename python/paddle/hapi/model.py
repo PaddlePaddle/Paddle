@@ -1582,7 +1582,8 @@ class Model(object):
                 during training process before optimizer updates. It can mimic large batch
                 size. Default: 1.
             num_iters (int|None): Integer number. The number of iterations to train
-                the model. If None, follow `epochs` to train the model. Default: None.
+                the model. If None, follow `epochs` to train the model, otherwise, train
+                the model `num_iters` times. Default: None.
             
         Returns:
             None
@@ -1709,6 +1710,7 @@ class Model(object):
         steps = self._len_data_loader(train_loader)
         self.num_iters = num_iters
         if num_iters is not None and isinstance(num_iters, int):
+            assert num_iters > 0, "num_iters must be greater than 0!"
             epochs = (num_iters // steps) + 1
             steps = min(num_iters, steps)
         cbks = config_callbacks(
@@ -1778,8 +1780,8 @@ class Model(object):
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
             num_iters (int|None): Integer number. The number of iterations to
-                evaluate the model. If None, evaluate on input dataset.
-                Default: None.
+                evaluate the model. If None, evaluate on whole input dataset,
+                otherwise, evaluate `num_iters` times. Default: None.
         Returns:
             dict: Result of metric. The key is the names of Metric,
                 value is a scalar or numpy.array.
@@ -1831,6 +1833,7 @@ class Model(object):
         eval_steps = self._len_data_loader(eval_loader)
         self.num_iters = num_iters
         if num_iters is not None and isinstance(num_iters, int):
+            assert num_iters > 0, "num_iters must be greater than 0!"
             eval_steps = min(num_iters, eval_steps)
             self.num_iters = eval_steps
         cbks.on_begin('eval',
