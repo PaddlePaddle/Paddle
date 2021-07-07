@@ -113,19 +113,19 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   this_worker->SetRootScope(root_scope_);
   this_worker->SetMinibatchScope(minibatch_scope_);
   this_worker->SetMicrobatchScopes(microbatch_scopes_);
+  this_worker->PrepareUnusedVar();
 }
 
 void PipelineTrainer::Run() {
   VLOG(5) << "Going to run PipelineTrainer::Run()";
-  section_thread_ = std::async(&DeviceWorker::TrainFiles, worker_.get());
-}
-
-void PipelineTrainer::Finalize() {
   try {
-    section_thread_.get();
+    worker_->TrainFiles();
   } catch (platform::EOFException& e) {
     std::rethrow_exception(std::current_exception());
   }
+}
+
+void PipelineTrainer::Finalize() {
   if (need_dump_field_) {
     FinalizeDumpEnv();
   }
