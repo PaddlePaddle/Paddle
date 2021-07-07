@@ -128,78 +128,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
 std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
     const ProgramDesc &program) {
   VLOG(3) << "block in program:" << program_.Size();
-  std::unordered_map<std::string, VarDesc *> all_vars;
-  // var nodes for each var name, will have multiple versions in SSA
-  std::map<std::string, std::vector<ir::Node *>> var_nodes;
-  for (auto *var : program.Block(0).AllVars()) {
-    all_vars.emplace(var->Name(), var);
-  }
-
-  auto not_visited_vars = all_vars;
-
-  for (auto *op : program.Block(0).AllOps()) {
-    ir::Node *node = CreateOpNode(op);
-    // For input args, reuse the same var name if it was created before.
-    // Otherwise, create a new one.
-    for (auto &each_var_name : op->InputArgumentNames()) {
-      not_visited_vars.erase(each_var_name);
-      ir::Node *var = nullptr;
-      if (var_nodes.find(each_var_name) != var_nodes.end()) {
-        var = var_nodes.at(each_var_name).back();
-      } else if (all_vars.count(each_var_name) != 0) {
-        var = CreateVarNode(all_vars.at(each_var_name));
-        var_nodes[each_var_name].push_back(var);
-      } else {
-        // Operation input var can be optional (dispensable). Which means
-        // the operation doesn't really need the var at runtime. In this
-        // case, the no-existed var is ready at the beginning.
-        var = CreateEmptyNode(each_var_name, ir::Node::Type::kVariable);
-        var_nodes[each_var_name].push_back(var);
-      }
-      node->inputs.push_back(var);
-      var->outputs.push_back(node);
-    }
-    // For output args, always create a new var.
-    std::unordered_set<std::string> out_arg_set;
-    for (auto &each_var_name : op->OutputArgumentNames()) {
-      not_visited_vars.erase(each_var_name);
-      if (each_var_name != kEmptyVarName) {
-        PADDLE_ENFORCE_EQ(out_arg_set.count(each_var_name), 0,
-                          platform::errors::InvalidArgument(
-                              "The input Program is invalid. Variable %s occurs"
-                              " in output of %s multiple times.",
-                              each_var_name, op->Type()));
-        out_arg_set.insert(each_var_name);
-      }
-
-      ir::Node *var = nullptr;
-      if (all_vars.count(each_var_name) != 0) {
-        var = CreateVarNode(all_vars.at(each_var_name));
-      } else {
-        // Operation output vars can be @EMPTY@. For example, while_grad
-        // can have multi @EMPTY@ outputs with no VarDesc.
-        // TODO(panyx0718): Add a test.
-        var = CreateEmptyNode(each_var_name, ir::Node::Type::kVariable);
-      }
-      var_nodes[each_var_name].push_back(var);
-      node->outputs.push_back(var);
-      var->inputs.push_back(node);
-    }
-  }
-
-  for (auto &pair : not_visited_vars) {
-    const auto &var_name = pair.first;
-    auto *var_desc = pair.second;
-    if (var_name != kEmptyVarName) {
-      VLOG(10) << "Create isolated var node " << var_name;
-      var_nodes[var_name].push_back(CreateVarNode(var_desc));
-    }
-  }
-
-  Set<const std::vector<OpDesc *>>(
-      details::kStaleProgramOpDescs,
-      new std::vector<OpDesc *>(program.Block(0).AllOps()));
-  return var_nodes;
+  return InitFromBlock(program.Block(0));
 }
 
 void Graph::ResolveHazard(

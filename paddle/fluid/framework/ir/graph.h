@@ -351,6 +351,13 @@ class Graph {
     return sub_graphs_.at(idx).get();
   }
 
+  size_t SubGraphsSize() const {
+    PADDLE_ENFORCE_EQ(
+        this->IsMainGraph(), true,
+        platform::errors::InvalidArgument("This graph is not main_graph"));
+    return sub_graphs_.size();
+  }
+
  private:
   std::map<std::string, std::vector<ir::Node *>> InitFromBlock(
       const BlockDesc &block);

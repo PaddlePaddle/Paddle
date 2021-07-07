@@ -369,6 +369,7 @@ TEST(GraphTest, TestMultiBlock) {
   // Step2: Convert program into graph, 3 blocks corresponding 3 sub_graphs.
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   ASSERT_EQ(g->IsMainGraph(), true);
+  ASSERT_EQ(g->SubGraphsSize(), 3UL);
 
   // Check contents in sub_graph_0.
   const ir::Graph *g0 = g->GetSubGraph(0);
@@ -433,6 +434,7 @@ TEST(GraphTest, TestMultiBlock) {
   // Step3: Clone graph.
   std::shared_ptr<ir::Graph> clone_g = g->Clone();
   ASSERT_EQ(clone_g->IsMainGraph(), true);
+  ASSERT_EQ(clone_g->SubGraphsSize(), 3UL);
 
   // Recover FLAGS_convert_all_blocks.
   FLAGS_convert_all_blocks = flag_temp;
