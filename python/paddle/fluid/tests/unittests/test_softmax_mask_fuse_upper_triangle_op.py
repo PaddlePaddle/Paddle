@@ -57,7 +57,30 @@ class TestSoftmaxMaskFuseOp(OpTest):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestDropoutBiasFuseOp1(unittest.TestCase):
+class TestSoftmaxMaskFuseOp1(OpTest):
+    def setUp(self):
+        self.op_type = "softmax_mask_fuse_upper_triangle"
+        x = np.random.random((1, 1, 32, 32))
+        self.inputs = {'X': x}
+        rst = _get_softmax_upper(x)
+        self.outputs = {'Out': rst}
+
+    def test_check_output(self):
+        try:
+            self.check_output_with_place(core.CPUPlace())
+        except NotImplementedError:
+            pass
+
+    def test_check_grad(self):
+        try:
+            self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
+        except NotImplementedError:
+            pass
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestDropoutBiasFuseOp2(unittest.TestCase):
     # test the python side API for softmax_mask_fuse op
     def setUp(self):
         np.random.seed(123)

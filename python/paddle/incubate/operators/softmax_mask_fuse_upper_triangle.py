@@ -24,7 +24,7 @@ def softmax_mask_fuse_upper_triangle(x):
     Fuse softmax mask together without even give a mask.
     Under GPT model, the mask is always be a upper triangle
     so we can simply mask the upper triangle part of x to get the mask result
-    :param x: the input x
+    :param x: the input x (rst of QK)
     :return: the result of softmax mask fuse (upper triangle)
     """
     if in_dygraph_mode():
