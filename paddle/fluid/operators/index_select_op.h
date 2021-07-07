@@ -140,7 +140,6 @@ struct IndexSelectAdd {
     }
   }
 };
-
 template <typename DeviceContext, typename T>
 struct IndexSelectAdd<
     DeviceContext, T,
