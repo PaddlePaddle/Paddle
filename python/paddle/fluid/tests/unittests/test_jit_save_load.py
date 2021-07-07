@@ -1159,7 +1159,7 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
 # `unittest.TestCase`, functions will affect each other, 
 # and there is a risk of random failure. 
 # So divided into three TestCase: TestJitSaveLoadFunctionCase1, 
-# TestJitSaveLoadFunctionCase2, TestJitSaveLoadFunctionCase3
+# TestJitSaveLoadFunctionCase2, TestJitSaveLoadFunctionCase3.
 class TestJitSaveLoadFunctionCase1(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
