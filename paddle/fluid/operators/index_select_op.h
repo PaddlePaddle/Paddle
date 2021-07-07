@@ -196,8 +196,10 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
       auto src = input_data + input_start_offset + j * slice_size;
       auto p_out = p_output + output_start_offset + index_value * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
+#if ((!defined __NVCC__) && (!defined __HIPCC__))
       IndexSelectAdd<DeviceContext, T> index_select_add;
       index_select_add(context, slice_size, src, p_out, dst);
+#endif
     }
   }
   x_grad->Resize(output_dim);
