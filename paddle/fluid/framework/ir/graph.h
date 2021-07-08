@@ -43,7 +43,8 @@ constexpr char kStaleProgramOpDescs[] = "stale_program_op_descs";
 }  //  namespace details
 
 namespace ir {
-
+bool GetGflagConvertAllBlocks();
+void SetGflagConvertAllBlocks(bool convert_all_blocks);
 /*
  * The graph is a Directed Acyclic Single Static Assignment Graph.
  *

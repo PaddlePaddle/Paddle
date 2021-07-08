@@ -485,6 +485,8 @@ PYBIND11_MODULE(core_noavx, m) {
   BindException(&m);
 
   m.def("set_num_threads", &platform::SetNumThreads);
+  m.def("convert_all_blocks", &ir::GetGflagConvertAllBlocks);
+  m.def("set_convert_all_blocks", &ir::SetGflagConvertAllBlocks);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);

@@ -21,6 +21,12 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+bool GetGflagConvertAllBlocks() { return FLAGS_convert_all_blocks; }
+
+void SetGflagConvertAllBlocks(bool convert_all_blocks) {
+  FLAGS_convert_all_blocks = convert_all_blocks;
+}
+
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   auto var_nodes = InitFromProgram(program_);
   ResolveHazard(var_nodes);
