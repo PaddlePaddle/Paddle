@@ -9387,15 +9387,15 @@ def pad2d(input,
             #    [5. 4. 5. 6. 5.]
             #    [2. 1. 2. 3. 2.]]]]
     """
-    check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        "pad2d")
-
     if in_dygraph_mode():
         _paddings = paddings.numpy().tolist() if isinstance(
             paddings, Variable) else paddings
         return core.ops.pad2d(input, 'mode', mode, 'pad_value', pad_value,
                               'data_format', data_format, 'paddings', _paddings)
+
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        "pad2d")
 
     attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
     inputs = {'X': [input]}
