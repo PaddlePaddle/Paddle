@@ -190,7 +190,7 @@ def broadcast_tensors(input, name=None):
                     last_index = output_shape_r_last_tensor_index[i]
                     raise TypeError(
                         "Input tensors to broadcast_tensors does not follow bcast semantics"
-                        f"Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
+                        "Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
                     )
                 if output_shape_r[i] <= shape[i]:
                     output_shape_r[i] = shape[i]
@@ -339,10 +339,10 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
 
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
-        'flatten')
-    helper = LayerHelper('flatten', **locals())
+    if not in_dygraph_mode():
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+            'flatten')
 
     x_dim = len(x.shape)
     if not (isinstance(start_axis, int)) or (
@@ -365,6 +365,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             x, 'start_axis', start_axis, 'stop_axis', stop_axis)
         return dy_out
 
+    helper = LayerHelper('flatten', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     x_shape = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
@@ -442,7 +443,6 @@ def roll(x, shifts, axis=None, name=None):
             # [1. 2. 3.]
             # [4. 5. 6.]]
     """
-    helper = LayerHelper("roll", **locals())
     origin_shape = x.shape
     if type(shifts) == int:
         shifts = [shifts]
@@ -456,17 +456,15 @@ def roll(x, shifts, axis=None, name=None):
                 raise ValueError(
                     "axis is out of range, it should be in range [{}, {}), but received {}".
                     format(-len_origin_shape, len_origin_shape, axis))
-
-    if axis:
-        check_type(axis, 'axis', (list, tuple), 'roll')
     else:
         axis = []
-
-    check_type(shifts, 'shifts', (list, tuple), 'roll')
 
     if in_dygraph_mode():
         return core.ops.roll(x, 'axis', axis, 'shifts', shifts)
 
+    helper = LayerHelper("roll", **locals())
+    check_type(axis, 'axis', (list, tuple), 'roll')
+    check_type(shifts, 'shifts', (list, tuple), 'roll')
     out = helper.create_variable_for_type_inference(x.dtype)
 
     helper.append_op(
@@ -1017,11 +1015,6 @@ def unbind(input, axis=0):
             # x3.shape [3, 5]
 
     """
-    helper = LayerHelper("unbind", **locals())
-    check_type(input, 'input', (Variable), 'unbind')
-    dtype = helper.input_dtype()
-    check_dtype(dtype, 'unbind', ['float32', 'float64', 'int32', 'int64'],
-                'unbind')
     if not isinstance(axis, (int)):
         raise TypeError("The type of 'axis'  must be int, but received %s." %
                         (type(axis)))
@@ -1037,6 +1030,11 @@ def unbind(input, axis=0):
     if in_dygraph_mode():
         return core.ops.unbind(input, num, 'axis', axis)
 
+    helper = LayerHelper("unbind", **locals())
+    check_type(input, 'input', (Variable), 'unbind')
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'unbind', ['float32', 'float64', 'int32', 'int64'],
+                'unbind')
     helper.append_op(
         type="unbind",
         inputs={"X": input},

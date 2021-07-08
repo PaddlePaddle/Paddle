@@ -322,7 +322,6 @@ class Uniform(Distribution):
           Tensor: log probability.The data type is same with value.
 
         """
-        name = self.name + '_log_prob'
         value = self._check_values_dtype_in_probs(self.low, value)
         if in_dygraph_mode():
             # ensure value in [low, high]
@@ -335,6 +334,7 @@ class Uniform(Distribution):
                                value.dtype)
             return nn.log(lb * ub) - nn.log(self.high - self.low)
 
+        name = self.name + '_log_prob'
         lb_bool = self.low < value
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
@@ -352,7 +352,6 @@ class Uniform(Distribution):
           Tensor: probability.The data type is same with value.
 
         """
-        name = self.name + '_probs'
         value = self._check_values_dtype_in_probs(self.low, value)
         if in_dygraph_mode():
             lb_bool = self.low < value
@@ -364,6 +363,7 @@ class Uniform(Distribution):
                                value.dtype)
             return (lb * ub) / (self.high - self.low)
 
+        name = self.name + '_probs'
         lb_bool = self.low < value
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)

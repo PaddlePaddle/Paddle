@@ -1538,19 +1538,18 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=True)
 
     """
-    helper = LayerHelper("bilateral_slice", **locals())
+    if paddle.fluid.in_dygraph_mode():
+        attrs = ('has_offset', has_offset)
+        return getattr(core.ops, "bilateral_slice")(x, grid, guide, *attrs)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'bilateral_slice')
     check_variable_and_dtype(guide, 'guide', ['float32', 'float64'],
                              'bilateral_slice')
     check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
                              'bilateral_slice')
-
+    helper = LayerHelper("bilateral_slice", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     inputs = {'X': x, 'Guide': guide, 'Grid': grid}
-    if paddle.fluid.in_dygraph_mode():
-        attrs = ('has_offset', has_offset)
-        return getattr(core.ops, "bilateral_slice")(x, grid, guide, *attrs)
     helper.append_op(
         type='bilateral_slice',
         inputs=inputs,
@@ -1613,14 +1612,14 @@ def correlation(x,
 
     """
 
-    helper = LayerHelper("correlation", **locals())
-    output = helper.create_variable_for_type_inference(dtype=x.dtype)
     if paddle.fluid.in_dygraph_mode():
         attrs = ("pad_size", pad_size, "kernel_size", kernel_size,
                  "max_displacement", max_displacement, "stride1", stride1,
                  "stride2", stride2, "corr_type_multiply", corr_type_multiply)
         output = getattr(core.ops, "correlation")(x, y, *attrs)
     else:
+        helper = LayerHelper("correlation", **locals())
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type="correlation",
             inputs={"Input1": x,
