@@ -42,10 +42,10 @@ class GraphToProgramPass(unittest.TestCase):
             self.assertEqual(o_para.is_parameter, c_para.is_parameter)
 
     def test_check_stop_gradient(self):
-        origin_vars = [var for var in self.origin_program.list_vars()]
+        origin_vars = list(self.origin_program.list_vars())
         origin_vars = sorted(origin_vars, key=lambda v: v.name)
 
-        converted_vars = [var for var in self.converted_program.list_vars()]
+        converted_vars = list(self.converted_program.list_vars())
         converted_vars = sorted(converted_vars, key=lambda v: v.name)
 
         self.assertEqual(len(origin_vars), len(converted_vars))
@@ -90,6 +90,112 @@ def program_to_IRGraph(program):
 
 def IRGraph_to_program(ir_graph):
     return ir_graph.to_program()
+
+
+class MultiBlockGraphToProgramPass(unittest.TestCase):
+    def setUp(self):
+        self.origin_program = build_multiblock_program()
+        ir_graph = program_to_IRGraph(self.origin_program)
+        self.converted_program = IRGraph_to_program(ir_graph)
+
+    def check_vars_equal(self, o_block, c_block):
+        o_params = sorted(o_block.all_parameters(), key=lambda p: p.name)
+        c_params = sorted(c_block.all_parameters(), key=lambda p: p.name)
+        self.assertEqual(len(o_params), len(c_params))
+        for p_idx in range(len(o_params)):
+            self.assertEqual(o_params[p_idx].name, c_params[p_idx].name)
+
+        o_vars = sorted(o_block.vars.values(), key=lambda v: v.name)
+        c_vars = sorted(c_block.vars.values(), key=lambda v: v.name)
+        self.assertEqual(len(o_vars), len(c_vars))
+        for v_idx in range(len(o_params)):
+            self.assertEqual(o_vars[v_idx].name, c_vars[v_idx].name)
+
+    def check_op_output_equal(self, o_op, c_op):
+        self.assertEqual(len(o_op.output_names), len(c_op.output_names))
+        for out_idx in range(len(o_op.output_names)):
+            o_out = o_op.output_names[out_idx]
+            c_out = c_op.output_names[out_idx]
+            self.assertEqual(o_out, c_out)
+            self.assertEqual(o_op.output(o_out), c_op.output(c_out))
+
+    def check_op_input_equal(self, o_op, c_op):
+        self.assertEqual(len(o_op.input_names), len(c_op.input_names))
+        for in_idx in range(len(o_op.input_names)):
+            o_in = o_op.input_names[in_idx]
+            c_in = c_op.input_names[in_idx]
+            self.assertEqual(o_in, c_in)
+            self.assertEqual(o_op.input(o_in), c_op.input(c_in))
+
+    def check_op_attrs_equal(self, o_op, c_op):
+        o_attrs = sorted(o_op.attr_names)
+        c_attrs = sorted(c_op.attr_names)
+        self.assertEqual(len(o_attrs), len(c_attrs))
+        for attr_idx in range(len(o_attrs)):
+            o_attr = o_attrs[attr_idx]
+            c_attr = c_attrs[attr_idx]
+            self.assertEqual(o_attr, c_attr)
+            self.assertEqual(
+                o_op.desc.attr_type(o_attr), c_op.desc.attr_type(c_attr))
+
+    def check_ops_equal(self, o_block, c_block):
+        o_ops = o_block.ops
+        c_ops = c_block.ops
+        self.assertEqual(len(o_ops), len(c_ops))
+        for op_idx in range(len(o_ops)):
+            o_op = o_ops[op_idx]
+            c_op = c_ops[op_idx]
+            self.assertEqual(o_op.type, c_op.type)
+
+            self.check_op_input_equal(o_op, c_op)
+            self.check_op_output_equal(o_op, c_op)
+            self.check_op_attrs_equal(o_op, c_op)
+
+    def check_block_equal(self, o_block, c_block):
+        self.check_vars_equal(o_block, c_block)
+        self.check_ops_equal(o_block, c_block)
+
+    def test_check_block(self):
+        self.assertEqual(self.origin_program.num_blocks,
+                         self.converted_program.num_blocks)
+
+        for block_idx in range(self.origin_program.num_blocks):
+            o_block = self.origin_program.block(block_idx)
+            c_block = self.converted_program.block(block_idx)
+
+            self.assertEqual(o_block.idx, c_block.idx)
+
+            self.check_block_equal(o_block, c_block)
+
+
+def multiblock_model():
+    data = fluid.data(name='t', shape=[None, 10], dtype='float32')
+
+    a = fluid.layers.data(
+        name='a', shape=[10, 1], dtype='int64', append_batch_size=False)
+    b = fluid.layers.data(
+        name='b', shape=[10, 1], dtype='int64', append_batch_size=False)
+
+    cond = fluid.layers.greater_than(a, b)
+    ie = fluid.layers.IfElse(cond)
+    with ie.true_block():
+        hidden = fluid.layers.relu(data)
+        ie.output(hidden)
+    with ie.false_block():
+        hidden = fluid.layers.softmax(data)
+        ie.output(hidden)
+
+    hidden = ie()
+    return hidden[0]
+
+
+def build_multiblock_program():
+    program = fluid.default_main_program()
+    with fluid.program_guard(program):
+        hidden = multiblock_model()
+        loss = fluid.layers.mean(hidden)
+        fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+    return program
 
 
 if __name__ == "__main__":
