@@ -99,6 +99,13 @@ class TestInverseAPI(unittest.TestCase):
                               fetch_list=[result])
             self.assertTrue(np.allclose(fetches[0], np.linalg.inv(input_np)))
 
+            result_inv = paddle.inv(x=input)
+            fetches_inv = exe.run(fluid.default_main_program(),
+                                  feed={"input": input_np},
+                                  fetch_list=[result_inv])
+            self.assertTrue(
+                np.allclose(fetches_inv[0], np.linalg.inv(input_np)))
+
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -112,6 +119,10 @@ class TestInverseAPI(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(result.numpy(), np.linalg.inv(input_np)))
 
+                result_inv = paddle.inv(input)
+                self.assertTrue(
+                    np.allclose(result_inv.numpy(), np.linalg.inv(input_np)))
+
 
 class TestInverseAPIError(unittest.TestCase):
     def test_errors(self):
@@ -119,20 +130,24 @@ class TestInverseAPIError(unittest.TestCase):
 
         # input must be Variable.
         self.assertRaises(TypeError, paddle.inverse, input_np)
+        self.assertRaises(TypeError, paddle.inv, input_np)
 
         # The data type of input must be float32 or float64.
         for dtype in ["bool", "int32", "int64", "float16"]:
             input = fluid.data(name='input_' + dtype, shape=[4, 4], dtype=dtype)
             self.assertRaises(TypeError, paddle.inverse, input)
+            self.assertRaises(TypeError, paddle.inv, input)
 
         # When out is set, the data type must be the same as input.
         input = fluid.data(name='input_1', shape=[4, 4], dtype="float32")
         out = fluid.data(name='output', shape=[4, 4], dtype="float64")
         self.assertRaises(TypeError, paddle.inverse, input, out)
+        self.assertRaises(TypeError, paddle.inv, input)
 
         # The number of dimensions of input must be >= 2.
         input = fluid.data(name='input_2', shape=[4], dtype="float32")
         self.assertRaises(ValueError, paddle.inverse, input)
+        self.assertRaises(ValueError, paddle.inv, input)
 
 
 class TestInverseSingularAPI(unittest.TestCase):
@@ -160,6 +175,18 @@ class TestInverseSingularAPI(unittest.TestCase):
                 print("The mat is singular")
                 pass
 
+            result_inv = paddle.inv(x=input)
+            try:
+                fetches_inv = exe.run(fluid.default_main_program(),
+                                      feed={"input": input_np},
+                                      fetch_list=[result_inv])
+            except RuntimeError as ex:
+                print("The mat is singular")
+                pass
+            except ValueError as ex:
+                print("The mat is singular")
+                pass
+
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -171,6 +198,15 @@ class TestInverseSingularAPI(unittest.TestCase):
                 input = fluid.dygraph.to_variable(input_np)
                 try:
                     result = paddle.inverse(input)
+                except RuntimeError as ex:
+                    print("The mat is singular")
+                    pass
+                except ValueError as ex:
+                    print("The mat is singular")
+                    pass
+
+                try:
+                    result_inv = paddle.inv(input)
                 except RuntimeError as ex:
                     print("The mat is singular")
                     pass

@@ -832,9 +832,11 @@ def bmm(x, y, name=None):
         raise ValueError(
             "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".
             format(x_shape, y_shape))
-    helper = LayerHelper('bmm', **locals())
+
     if in_dygraph_mode():
         return core.ops.bmm(x, y)
+
+    helper = LayerHelper('bmm', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
     return out
@@ -937,4 +939,52 @@ def mv(x, vec, name=None):
     helper.append_op(
         type='mv', inputs={'X': x,
                            'Vec': vec}, outputs={'Out': out})
+    return out
+
+
+def inv(x, name=None):
+    """
+    Takes the inverse of the square matrix. A square matrix is a matrix with
+    the same number of rows and columns. The input can be a square matrix
+    (2-D Tensor) or batches of square matrices. See also: paddle.inverse
+
+    Args:
+        x (Tensor): The input tensor. The last two
+            dimensions should be equal. When the number of dimensions is
+            greater than 2, it is treated as batches of square matrix. The data
+            type can be float32 and float64.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information,
+            please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: A Tensor holds the inverse of x. The shape and data type
+                        is the same as x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            mat = paddle.to_tensor([[2, 0], [0, 2]], dtype='float32')
+            inv_mat = paddle.inv(mat)
+            print(inv_mat) # [[0.5, 0], [0, 0.5]]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.inverse(x)
+
+    def _check_input(x):
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'inverse')
+        if len(x.shape) < 2:
+            raise ValueError(
+                "The input of inverse is expected to be a Tensor whose number "
+                "of dimensions is no less than 2. But reviced: %d, "
+                "x's shape: %s." % (len(x.shape), x.shape))
+
+    _check_input(x)
+    helper = LayerHelper('inverse', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='inverse', inputs={'Input': [x]}, outputs={'Output': [out]})
     return out
