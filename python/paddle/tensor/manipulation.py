@@ -1023,10 +1023,6 @@ def unbind(input, axis=0):
     input_shape = input.shape
     axis_ = axis if axis >= 0 else len(input_shape) + axis
     num = input_shape[axis_]
-    outs = [
-        helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-        for i in range(num)
-    ]
     if in_dygraph_mode():
         return core.ops.unbind(input, num, 'axis', axis)
 
@@ -1035,6 +1031,10 @@ def unbind(input, axis=0):
     dtype = helper.input_dtype()
     check_dtype(dtype, 'unbind', ['float32', 'float64', 'int32', 'int64'],
                 'unbind')
+    outs = [
+        helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+        for i in range(num)
+    ]
     helper.append_op(
         type="unbind",
         inputs={"X": input},
