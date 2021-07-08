@@ -72,8 +72,8 @@ class SliceNPUKernel : public framework::OpKernel<T> {
 
     UpdateAttr(in_dims, axes, starts, ends, &offsets, &size);
 
-    auto runner = NpuOpRunner("SliceD", {*input}, {*out},
-                              {{"offsets", offsets}, {"size", size}});
+    const auto& runner = NpuOpRunner("SliceD", {*input}, {*out},
+                                     {{"offsets", offsets}, {"size", size}});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -111,7 +111,7 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner =
+    const auto& runner =
         NpuOpRunner("PadD", {*dout}, {*dinput}, {{"paddings", paddings}});
     runner.Run(stream);
   }

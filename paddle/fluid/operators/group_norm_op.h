@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+#include <array>
+#include <numeric>
 #include <string>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
@@ -73,6 +75,11 @@ class GroupNormKernel : public framework::OpKernel<T> {
     auto* iter_y_data = y_data;
     for (int bid = 0; bid < x_dims[0]; bid++) {
       for (int gid = 0; gid < groups; gid++) {
+        const int64_t M = 8;
+        std::array<T, M> x_mean_arr;
+        std::array<T, M> x_var_arr;
+        std::fill(x_mean_arr.begin(), x_mean_arr.end(), T(0));
+        std::fill(x_var_arr.begin(), x_var_arr.end(), T(0));
         T x_mean = 0, x_var = 0;
         int number =
             std::min(group_size, static_cast<int>(C - gid * group_size));
@@ -83,7 +90,37 @@ class GroupNormKernel : public framework::OpKernel<T> {
 
         if (data_layout == DataLayout::kNCHW) {
           for (int cid = 0; cid < number; cid++) {
-            for (int imid = 0; imid < imsize; imid++, iter_x_data++) {
+            int imid;
+            for (imid = 0; imid < imsize - (imsize % M);
+                 imid += M, iter_x_data += M) {
+              // TODO(gaoxiang) ：Because AVX/AVX2/AVX512 can not directly used
+              // in template class/function, before we complete high
+              // performance cpu vector extension, temporarily unrolling
+              // loop to get high precision and performance
+              x_mean_arr[0] += iter_x_data[0];
+              x_var_arr[0] += iter_x_data[0] * iter_x_data[0];
+              x_mean_arr[1] += iter_x_data[1];
+              x_var_arr[1] += iter_x_data[1] * iter_x_data[1];
+              x_mean_arr[2] += iter_x_data[2];
+              x_var_arr[2] += iter_x_data[2] * iter_x_data[2];
+              x_mean_arr[3] += iter_x_data[3];
+              x_var_arr[3] += iter_x_data[3] * iter_x_data[3];
+              x_mean_arr[4] += iter_x_data[4];
+              x_var_arr[4] += iter_x_data[4] * iter_x_data[4];
+              x_mean_arr[5] += iter_x_data[5];
+              x_var_arr[5] += iter_x_data[5] * iter_x_data[5];
+              x_mean_arr[6] += iter_x_data[6];
+              x_var_arr[6] += iter_x_data[6] * iter_x_data[6];
+              x_mean_arr[7] += iter_x_data[7];
+              x_var_arr[7] += iter_x_data[7] * iter_x_data[7];
+            }
+            x_mean =
+                std::accumulate(x_mean_arr.cbegin(), x_mean_arr.cend(), x_mean);
+            x_var =
+                std::accumulate(x_var_arr.cbegin(), x_var_arr.cend(), x_var);
+            std::fill(x_mean_arr.begin(), x_mean_arr.end(), T(0));
+            std::fill(x_var_arr.begin(), x_var_arr.end(), T(0));
+            for (; imid < imsize; imid++, iter_x_data++) {
               x_mean += iter_x_data[0];
               x_var += iter_x_data[0] * iter_x_data[0];
             }
@@ -91,7 +128,37 @@ class GroupNormKernel : public framework::OpKernel<T> {
         } else {
           for (int cid = 0; cid < number; cid++) {
             iter_x_data = tmp_x + cid;
-            for (int imid = 0; imid < imsize; imid++, iter_x_data += C) {
+            int imid;
+            for (imid = 0; imid < imsize - (imsize % M);
+                 imid += M, iter_x_data += M * C) {
+              // TODO(gaoxiang) ：Because AVX/AVX2/AVX512 can not directly used
+              // in template class/function, before we complete high
+              // performance cpu vector extension, temporarily unrolling
+              // loop to get high precision and performance
+              x_mean_arr[0] += iter_x_data[0 * C];
+              x_var_arr[0] += iter_x_data[0 * C] * iter_x_data[0 * C];
+              x_mean_arr[1] += iter_x_data[1 * C];
+              x_var_arr[1] += iter_x_data[1 * C] * iter_x_data[1 * C];
+              x_mean_arr[2] += iter_x_data[2 * C];
+              x_var_arr[2] += iter_x_data[2 * C] * iter_x_data[2 * C];
+              x_mean_arr[3] += iter_x_data[3 * C];
+              x_var_arr[3] += iter_x_data[3 * C] * iter_x_data[3 * C];
+              x_mean_arr[4] += iter_x_data[4 * C];
+              x_var_arr[4] += iter_x_data[4 * C] * iter_x_data[4 * C];
+              x_mean_arr[5] += iter_x_data[5 * C];
+              x_var_arr[5] += iter_x_data[5 * C] * iter_x_data[5 * C];
+              x_mean_arr[6] += iter_x_data[6 * C];
+              x_var_arr[6] += iter_x_data[6 * C] * iter_x_data[6 * C];
+              x_mean_arr[7] += iter_x_data[7 * C];
+              x_var_arr[7] += iter_x_data[7 * C] * iter_x_data[7 * C];
+            }
+            x_mean =
+                std::accumulate(x_mean_arr.cbegin(), x_mean_arr.cend(), x_mean);
+            x_var =
+                std::accumulate(x_var_arr.cbegin(), x_var_arr.cend(), x_var);
+            std::fill(x_mean_arr.begin(), x_mean_arr.end(), T(0));
+            std::fill(x_var_arr.begin(), x_var_arr.end(), T(0));
+            for (; imid < imsize; imid++, iter_x_data += C) {
               x_mean += iter_x_data[0];
               x_var += iter_x_data[0] * iter_x_data[0];
             }
@@ -101,8 +168,8 @@ class GroupNormKernel : public framework::OpKernel<T> {
 
         x_mean /= number * imsize;
         x_var /= number * imsize;
-        x_var = x_var - x_mean * x_mean;
-        T var_inv = 1.0 / sqrt(x_var + epsilon);
+        x_var = std::max(x_var - x_mean * x_mean, T(0));
+        T var_inv = T(1) / std::sqrt(x_var + epsilon);
         mean_data[bid * groups + gid] = x_mean;
         var_data[bid * groups + gid] = x_var;
 

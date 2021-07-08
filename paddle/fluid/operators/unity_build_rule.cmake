@@ -30,6 +30,7 @@ register_unity_group(cc
     bmm_op.cc
     bpr_loss_op.cc
     cast_op.cc
+    mkldnn/cast_mkldnn_op.cc
     cholesky_op.cc
     chunk_eval_op.cc
     clip_by_norm_op.cc
@@ -234,6 +235,7 @@ register_unity_group(cc
     save_combine_op.cc
     save_op.cc
     scale_op.cc
+    mkldnn/scale_mkldnn_op.cc
     scatter_nd_add_op.cc
     scatter_op.cc
     seed_op.cc

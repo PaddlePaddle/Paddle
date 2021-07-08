@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import collections
 from collections import defaultdict
-from collections import Iterable
+from collections.abc import Iterable
 import contextlib
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import os
@@ -39,6 +39,7 @@ from . import unique_name
 import paddle.version as fluid_version
 import warnings
 import functools
+from .variable_index import _getitem_impl_, _setitem_impl_
 
 __all__ = [
     'Program',
@@ -52,6 +53,7 @@ __all__ = [
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
+    'is_compiled_with_rocm',
     'is_compiled_with_xpu',
     'Variable',
     'require_version',
@@ -70,6 +72,7 @@ _dygraph_tracer_ = None
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
+_global_flags_ = core.globals()
 
 
 def require_version(min_version, max_version=None):
@@ -284,6 +287,10 @@ def _dygraph_tracer():
     return _dygraph_tracer_
 
 
+def _global_flags():
+    return _global_flags_
+
+
 def _current_expected_place():
     global _global_expected_place_
     if _global_expected_place_ is None:
@@ -397,6 +404,21 @@ def is_compiled_with_cuda():
     return core.is_compiled_with_cuda()
 
 
+def is_compiled_with_rocm():
+    """
+    Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
+
+    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_gpu = paddle.is_compiled_with_rocm()
+    """
+    return core.is_compiled_with_rocm()
+
+
 def cuda_places(device_ids=None):
     """
     **Note**:
@@ -467,7 +489,8 @@ def xpu_places(device_ids=None):
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
-        
+            # required: xpu
+
             import paddle
             import paddle.static as static
             
@@ -778,141 +801,6 @@ class ParameterMetaClass(VariableMetaClass):
             return issubclass(t, Parameter)
 
 
-def _getitem_impl_(var, item):
-    """
-    Slice the variable.
-
-    Args:
-        item(int/slice/tuple) : the index.
-
-    Returns:
-        Sliced variable
-    """
-
-    if not isinstance(item, tuple):
-        item = [item]
-
-    decrease_axes = []
-    axes = []
-    starts = []
-    ends = []
-    steps = []
-
-    use_strided_slice = False
-    reverse_axis = []
-
-    max_integer = 2**31 - 1
-    for dim, slice_item in enumerate(item):
-        if isinstance(slice_item, slice):
-            start = slice_item.start
-            end = slice_item.stop
-            step = slice_item.step
-
-            if start is None and end is None and step is None:
-                continue
-
-            step = 1 if step is None else step
-
-            if start is None and end is None:
-                assert (step == -1)
-                reverse_axis.append(dim)
-                continue
-
-            if start is None:
-                start = 0
-
-            if end is None:
-                end = max_integer
-
-        else:
-            decrease_axes.append(dim)
-            start = slice_item
-            step = 1
-            end = slice_item + 1 if slice_item != -1 else max_integer
-
-        axes.append(dim)
-        starts.append(start)
-        ends.append(end)
-        steps.append(step)
-        use_strided_slice = True if step != 1 else use_strided_slice
-
-    inputs = {'Input': [var]}
-    attrs = {
-        'axes': axes,
-        'starts': [],
-        'ends': [],
-        'decrease_axis': decrease_axes
-    }
-    if use_strided_slice == True:
-        attrs['strides'] = []
-
-    infer_flags = list(1 for i in range(len(axes)))
-    from .layers import utils
-
-    def deal_attrs(attr, attr_name, tensor_attr_name, inputs, infer_flags):
-        if utils._contain_var(attr):
-            inputs[tensor_attr_name] = utils._convert_to_tensor_list(
-                attr, dtype="int64")
-            for i, dim in enumerate(attr):
-                if isinstance(dim, Variable):
-                    attrs[attr_name].append(-1)
-                    infer_flags[i] = -1
-                else:
-                    attrs[attr_name].append(dim)
-        else:
-            attrs[attr_name] = attr
-
-    deal_attrs(starts, "starts", "StartsTensorList", inputs, infer_flags)
-    deal_attrs(ends, "ends", "EndsTensorList", inputs, infer_flags)
-    deal_attrs(steps, "strides", "StridesTensorList", inputs, infer_flags)
-
-    # infer_flags
-    attrs['infer_flags'] = infer_flags
-
-    out = var
-    target_block = default_main_program().current_block()
-    if use_strided_slice == False and len(axes) > 0:
-        # append slice_op here
-        slice_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name + "_slice"),
-            dtype=var.dtype)
-
-        target_block.append_op(
-            type="slice",
-            inputs=inputs,
-            outputs={'Out': [slice_out_var]},
-            attrs=attrs)
-
-        out = slice_out_var
-    elif use_strided_slice == True and len(axes) > 0:
-        strided_slice_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name +
-                                                         "_strided_slice"),
-            dtype=var.dtype)
-        target_block.append_op(
-            type="strided_slice",
-            inputs=inputs,
-            outputs={'Out': [strided_slice_out_var]},
-            attrs=attrs)
-
-        out = strided_slice_out_var
-
-    if len(reverse_axis) > 0:
-        reverse_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name +
-                                                         "_slice_reverse"),
-            dtype=var.dtype)
-        target_block.append_op(
-            type="reverse",
-            inputs={'X': out},
-            outputs={'Out': [reverse_out_var]},
-            attrs={'axis': reverse_axis})
-
-        out = reverse_out_var
-
-    return out
-
-
 @six.add_metaclass(VariableMetaClass)
 class Variable(object):
     """
@@ -1060,35 +948,43 @@ class Variable(object):
         self._stop_gradient = stop_gradient
         self.is_data = is_data
 
-    @fake_interface_only
     def detach(self):
         """
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
-
         Returns a new Variable, detached from the current graph.
+        It will share data with origin Variable and without tensor copy.
+        In addition, the detached Variable doesn't provide gradient propagation.
 
         Returns:
              ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
 
-
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
-                import numpy as np
+                import paddle
 
-                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    y = x.detach()
+                paddle.enable_static()
 
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+
+                # create a detached Variable
+                y = x.detach()
         """
-        pass
+
+        assert self.type == core.VarDesc.VarType.SELECTED_ROWS or \
+            self.type == core.VarDesc.VarType.LOD_TENSOR, \
+            "only support a variable with SELECTED_ROWS or LOD_TENSOR to be detached"
+
+        output = self.block.create_var(
+            name=unique_name.generate_with_ignorable_key("detach_" + self.name),
+            dtype=self.dtype,
+            type=self.type,
+            persistable=self.persistable,
+            stop_gradient=True)
+
+        self.block.append_op(
+            type='share_data', inputs={'X': [self]}, outputs={'Out': [output]})
+        return output
 
     @fake_interface_only
     def numpy(self):
@@ -1768,160 +1664,7 @@ class Variable(object):
         return _getitem_impl_(self, item)
 
     def __setitem__(self, item, value):
-        inputs = {'Input': self}
-
-        # 1. Parse item
-        if not isinstance(item, tuple):
-            item = [item]
-
-        decrease_axes = []
-        axes = []
-        starts = []
-        ends = []
-        steps = []
-
-        max_integer = sys.maxsize
-
-        def replace_ellipsis(item):
-            # Use slice(None) to replace Ellipsis.
-            # For var, var.shape = [3,4,5,6]
-            #
-            #   var[..., 1:2] -> var[:, :, :, 1:2]
-            #   var[0, ...] -> var[0]
-            #   var[0, ..., 1:2] -> var[0, :, :, 1:2]
-
-            item = list(item)
-
-            # Remove Variable to skip bug when counting Ellipsis
-            item_remove_var = [
-                ele for ele in item if not isinstance(ele, Variable)
-            ]
-            ell_count = item_remove_var.count(Ellipsis)
-            if ell_count == 0:
-                return item
-            elif ell_count > 1:
-                raise IndexError(
-                    "An index can only have a single ellipsis ('...')")
-
-            ell_idx = item.index(Ellipsis)
-
-            if ell_idx == len(item) - 1:
-                return item[:-1]
-            else:
-                item[ell_idx:ell_idx + 1] = [slice(None)] * (
-                    len(self.shape) - len(item) + 1)
-
-            return item
-
-        item = replace_ellipsis(item)
-
-        for dim, slice_item in enumerate(item):
-            if isinstance(slice_item, slice):
-                start = slice_item.start
-                end = slice_item.stop
-                step = slice_item.step
-
-                if start is None and end is None and step is None:
-                    continue
-
-                step = 1 if step is None else step
-
-                # TODO: support cases when step < 1
-                if not isinstance(step, Variable) and step == 0:
-                    raise ValueError(
-                        "When assign a value to a paddle.Tensor, step can not be 0, "
-                        "but received step is {}.".format(step))
-
-                if isinstance(step, Variable) and (start is None or
-                                                   end is None):
-                    raise ValueError(
-                        "When assign a value to a paddle.Tensor, it's not supported that "
-                        "the start or end is None when the type of step is paddle.Tensor."
-                    )
-
-                if start is None:
-                    start = 0 if step > 0 else max_integer
-
-                if end is None:
-                    end = max_integer if step > 0 else (0 - max_integer)
-            else:
-                decrease_axes.append(dim)
-                start = slice_item
-                end = slice_item + 1 if slice_item != -1 else max_integer
-                step = 1
-
-            axes.append(dim)
-            starts.append(start)
-            ends.append(end)
-            steps.append(step)
-
-        attrs = {
-            'axes': axes,
-            'starts': starts,
-            'ends': ends,
-            'steps': steps,
-            'decrease_axes': decrease_axes
-        }
-
-        from .layers import utils
-        if utils._contain_var(starts):
-            inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
-            del attrs['starts']
-        if utils._contain_var(ends):
-            inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
-            del attrs['ends']
-        if utils._contain_var(steps):
-            inputs['StepsTensorList'] = utils._convert_to_tensor_list(steps)
-            del attrs['steps']
-
-        # 2. Parse value
-        dtype = self.dtype
-        attrs['dtype'] = dtype
-
-        from .data_feeder import convert_dtype
-        #  2.1 value is an integer of float
-        if isinstance(value, (int, float)):
-            value = np.array([value]).astype(convert_dtype(dtype))
-
-        #  2.2 value is a np.ndarray
-        if isinstance(value, np.ndarray):
-            shape = list(value.shape)
-            if dtype == core.VarDesc.VarType.BOOL:
-                value_name = "bool_values"
-                values = [bool(v) for v in value.flat]
-            elif dtype == core.VarDesc.VarType.FP32:
-                value_name = "fp32_values"
-                values = [float(v) for v in value.flat]
-            elif dtype == core.VarDesc.VarType.FP64:
-                value_name = "fp64_values"
-                values = [float(v) for v in value.flat]
-            elif dtype == core.VarDesc.VarType.INT32:
-                value_name = "int32_values"
-                values = [int(v) for v in value.flat]
-            elif dtype == core.VarDesc.VarType.INT64:
-                value_name = "int64_values"
-                values = [int(v) for v in value.flat]
-            else:
-                raise TypeError(
-                    "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
-                    "the data type of the paddle.Tensor must be bool, float32, int32 or int64, but "
-                    "received %s." % convert_dtype(dtype))
-            attrs[value_name] = values
-            attrs["shape"] = shape
-
-        elif isinstance(value, Variable):
-            inputs["ValueTensor"] = value
-        else:
-            raise TypeError(
-                "Only support to assign an integer, float, numpy.ndarray or "
-                "paddle.Tensor to a paddle.Tensor, but received {}".format(
-                    type(value)))
-
-        cur_block = default_main_program().current_block()
-        cur_block.append_op(
-            type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
-
-        return self
+        return _setitem_impl_(self, item, value)
 
     def get_value(self, scope=None):
         """
@@ -2075,6 +1818,35 @@ class Variable(object):
             place = core.CUDAPlace(p.gpu_device_id())
 
         t.set(value, place)
+
+    def size(self):
+        """
+        Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
+
+        Returns:
+            Variable: the number of elements for current Variable
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+
+                # get the number of elements of the Variable
+                y = x.size()
+        """
+
+        output = self.block.create_var(
+            name=unique_name.generate_with_ignorable_key(self.name + "_size"),
+            dtype=core.VarDesc.VarType.INT64)
+
+        self.block.append_op(
+            type='size', inputs={'Input': [self]}, outputs={'Out': [output]})
+        return output
 
 
 def get_all_op_protos():
@@ -2413,7 +2185,7 @@ class Operator(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         outputs_str = "{"
         for i in range(0, len(self.output_names)):
@@ -2821,7 +2593,7 @@ class Block(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         block_str = "{ // block "
         block_str += "{}\n".format(self.idx)
@@ -4530,7 +4302,7 @@ class Program(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         program_str = ""
         for block in self.blocks:
@@ -5806,6 +5578,18 @@ class ParamBase(core.VarBase):
         core.varbase_copy(self, new_param, device, blocking)
         return new_param
 
+    def __reduce__(self):
+        value = self.numpy()
+        state = (self.name, self.persistable, self.stop_gradient)
+        return ParamBase, (self.shape, self.dtype), (self.__dict__, value,
+                                                     state)
+
+    def __setstate__(self, state):
+        self.__dict__.update(state[0])
+        t = self.value().get_tensor()
+        t.set(state[1], _current_expected_place())
+        self.name, self.persistable, self.stop_gradient = state[2]
+
     __repr__ = __str__
 
 
@@ -6104,8 +5888,8 @@ def set_flags(flags):
     if not isinstance(flags, dict):
         raise TypeError('flags in set_flags should be a dict')
     for key, value in flags.items():
-        if core.globals().is_public(key):
-            core.globals()[key] = value
+        if _global_flags().is_public(key):
+            _global_flags()[key] = value
         else:
             raise ValueError(
                 "Flag %s cannot set its value through this function." % (key))
@@ -6134,8 +5918,8 @@ def get_flags(flags):
     flags_value = {}
     if isinstance(flags, (list, tuple)):
         for key in flags:
-            if (core.globals().is_public(key)):
-                value = core.globals()[key]
+            if (_global_flags().is_public(key)):
+                value = _global_flags()[key]
                 temp = {key: value}
                 flags_value.update(temp)
             else:
@@ -6143,8 +5927,8 @@ def get_flags(flags):
                     'Flag %s cannot get its value through this function.' %
                     (key))
     elif isinstance(flags, str):
-        if (core.globals().is_public(flags)):
-            value = core.globals()[flags]
+        if (_global_flags().is_public(flags)):
+            value = _global_flags()[flags]
             temp = {flags: value}
             flags_value.update(temp)
         else:

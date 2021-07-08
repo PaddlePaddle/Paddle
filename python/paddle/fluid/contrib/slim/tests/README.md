@@ -207,13 +207,29 @@ Run the following commands to download and extract Quant model:
 ```bash
 mkdir -p /PATH/TO/DOWNLOAD/MODEL/
 cd /PATH/TO/DOWNLOAD/MODEL/
-export QUANT_MODEL_NAME=resnet50
-export QUANT_MODEL_ARCHIVE=${QUANT_MODEL_NAME}_quant.tar.gz
-wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT2_models/${QUANT_MODEL_ARCHIVE}
+export QUANT_MODEL_NAME=ResNet50
+export QUANT_MODEL_ARCHIVE=${QUANT_MODEL_NAME}_qat_model.tar.gz
+wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT_models/${QUANT_MODEL_ARCHIVE}
 mkdir ${QUANT_MODEL_NAME} && tar -xvf ${QUANT_MODEL_ARCHIVE} -C ${QUANT_MODEL_NAME}
 ```
 
-To download other Quant models, set the `QUANT_MODEL_NAME` variable in the above commands to one of the values: `resnet101`, `mobilenetv1`, `mobilenetv2`, `vgg16`, `vgg19`.
+To download other Quant models, set the `QUANT_MODEL_NAME` variable in the above commands to one of the values: `ResNet101`, `MobileNetV1`, `MobileNetV2`, `VGG16`, `VGG19`.
+
+Moreover, there are other variations of these Quant models that use different methods to obtain scales during training, run these commands to download and extract Quant model:
+
+```bash
+mkdir -p /PATH/TO/DOWNLOAD/MODEL/
+cd /PATH/TO/DOWNLOAD/MODEL/
+export QUANT_MODEL_NAME=ResNet50_qat_perf
+export QUANT_MODEL_ARCHIVE=${QUANT_MODEL_NAME}.tar.gz
+wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT_models/${QUANT_MODEL_ARCHIVE}
+mkdir ${QUANT_MODEL_NAME} && tar -xvf ${QUANT_MODEL_ARCHIVE} -C ${QUANT_MODEL_NAME}
+```
+
+To download other Quant models, set the `QUANT_MODEL_NAME` variable to on of the values: `ResNet50_qat_perf`, `ResNet50_qat_range`, `ResNet50_qat_channelwise`, `MobileNet_qat_perf`, where:
+- `ResNet50_qat_perf`, `MobileNet_qat_perf` with input/output scales in `fake_quantize_moving_average_abs_max` operators, with weight scales in `fake_dequantize_max_abs` operators
+- `ResNet50_qat_range`, with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes, with weight scales in `fake_dequantize_max_abs` operators
+- `ResNet50_qat_channelwise`, with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes, with weight scales in `fake_channel_wise_dequantize_max_abs` operators
 
 Download clean FP32 model for accuracy comparison against the INT8 model:
 
