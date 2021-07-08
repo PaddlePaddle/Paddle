@@ -35,23 +35,28 @@ class SumNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     int n = static_cast<int>(x.size());
-
     if (n == 1) {
       TensorCopy(*x[0], place, out);
       return;
     }
 
+    std::vector<framework::Tensor> inputs;
+    std::vector<std::string> names;
+    for (int i = 0; i < n; ++i) {
+      if (x[i] && x[i]->numel() > 0) {
+        inputs.push_back(*x[i]);
+        names.push_back("x" + std::to_string(i));
+      } else {
+        continue;
+      }
+    }
+
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-
-    const auto& runner = NpuOpRunner("Add", {*x[0], *x[1]}, {*out}, {});
-
+    NpuOpRunner runner{"AddN", {inputs}, {*out}, {{"N", n}}};
+    runner.AddInputNames(names);
     runner.Run(stream);
-    for (int i = 2; i < n; i++) {
-      const auto& runner1 = NpuOpRunner("Add", {*out, *x[i]}, {*out}, {});
-      runner1.Run(stream);
-    }
   }
 };
 

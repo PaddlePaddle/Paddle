@@ -186,6 +186,14 @@ bool IsCompiledWithMKLDNN() {
 #endif
 }
 
+bool IsCompiledWithHETERPS() {
+#ifndef PADDLE_WITH_HETERPS
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
@@ -226,7 +234,9 @@ OpSupportedInfos(const std::string &place,
                  [](unsigned char c) { return std::toupper(c); });
   using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
-      {"GPU", &platform::is_gpu_place}, {"CPU", &platform::is_cpu_place},
+      {"GPU", &platform::is_gpu_place},
+      {"CPU", &platform::is_cpu_place},
+      {"XPU", &platform::is_xpu_place},
   };
   PADDLE_ENFORCE_NE(
       is_target_place.count(query_place), 0,
@@ -1309,7 +1319,7 @@ All parameter, weight, gradient are variables in Paddle.
           if (info != nullptr) {
             if (info->HasOpProtoAndChecker()) {
               auto op_checker = info->Checker();
-              res = op_checker->GetAttrsDefaultValuesMap();
+              res = op_checker->GetDefaultAttrsMap();
             }
           }
           return res;
@@ -1717,6 +1727,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::NPUPlace, platform::NPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::NPUPlace, platform::CUDAPinnedPlace>)
+      .def("get_device_id",
+           [](const platform::NPUPlace &self) { return self.GetDeviceId(); })
       .def("__str__", string::to_string<const platform::NPUPlace &>);
 
   py::class_<platform::Place>(m, "Place")
@@ -1907,6 +1919,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("op_supported_infos", OpSupportedInfos);

@@ -21,11 +21,216 @@
 namespace paddle {
 namespace framework {
 namespace ir {
-
+QuantDequantFusePass::QuantDequantFusePass() {
+  AddOpCompat(OpCompat("fake_quantize_range_abs_max"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("InScale")
+      .IsTensor()
+      .End()
+      .AddInput("Iter")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("OutScale")
+      .IsTensor()
+      .End()
+      .AddOutput("OutScales")
+      .IsTensor()
+      .End()
+      .AddAttr("window_size")
+      .IsType<int>()
+      .IsNumGT(0)
+      .End()
+      .AddAttr("bit_length")
+      .IsIntIn({8, 16})
+      .End();
+  AddOpCompat(OpCompat("fake_quantize_moving_average_abs_max"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("InScale")
+      .IsTensor()
+      .End()
+      .AddInput("InAccum")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("InState")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("OutScale")
+      .IsTensor()
+      .End()
+      .AddOutput("OutState")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("OutAccum")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddAttr("moving_rate")
+      .IsType<float>()
+      .IsNumGT(0.0f)
+      .End()
+      .AddAttr("bit_length")
+      .IsIntIn({8, 16})
+      .End();
+  AddOpCompat(OpCompat("fake_dequantize_max_abs"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("max_range")
+      .IsType<float>()
+      .IsNumGT(0.0f)
+      .End();
+  AddOpCompat(OpCompat("fake_channel_wise_dequantize_max_abs"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scales")  // "Scales" is a vector with at most two tensors
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("quant_bits")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("quant_axis")
+      .IsIntIn({0, 1})
+      .IsOptional()
+      .End();
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+  AddOpCompat(OpCompat("fc"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("W")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("in_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("activation_type")
+      .IsStringIn({"relu", ""})
+      .End();
+  AddOpCompat(OpCompat("conv2d_transpose"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("output_padding")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("output_size")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+}
 // Delete quant op before quantized ops, and set input scale in the attr of
 // quantized ops
-void DeleteQuant(ir::Graph* graph, Scope* scope,
-                 const std::string& quant_type) {
+void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
+                                       const std::string& quant_type) const {
   const std::string pattern_name = "delete_quant_fuse";
   GraphPatternDetector gpd;
   auto* input_act_node = gpd.mutable_pattern()
@@ -41,6 +246,10 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
   // ops linked from it
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     PADDLE_ENFORCE_EQ(
         subgraph.count(input_act_node), true,
         platform::errors::NotFound(
@@ -103,9 +312,9 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
 
 // Delete dequant op after quantized ops, and convert weight from fp32 range to
 // int8 range
-void FuseDequant(ir::Graph* graph, Scope* scope,
-                 const std::string& quantized_op_type,
-                 const std::string& dequant_type) {
+void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
+                                       const std::string& quantized_op_type,
+                                       const std::string& dequant_type) const {
   std::string weight_name = "";
   std::string input_name = "";
   if (quantized_op_type == "conv2d" ||
@@ -142,6 +351,10 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
   // Create new op desc
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     PADDLE_ENFORCE_EQ(
         subgraph.count(quantized_op_input), true,
         platform::errors::NotFound("Quantized op input node(%s) did not find "

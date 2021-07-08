@@ -208,24 +208,26 @@ class TestImperativePTQ(unittest.TestCase):
             model_state_dict = paddle.load(params_path)
             model.set_state_dict(model_state_dict)
 
-            self.ptq.quantize(model, inplace=True)
+            quant_model = self.ptq.quantize(model)
 
-            acc_top1 = self.model_test(model, self.batch_num, self.batch_size)
+            acc_top1 = self.model_test(quant_model, self.batch_num,
+                                       self.batch_size)
             print('acc_top1: %s' % acc_top1)
             self.assertTrue(
                 acc_top1 > self.eval_acc_top1,
                 msg="The test acc {%f} is less than {%f}." %
                 (acc_top1, self.eval_acc_top1))
 
-        self.ptq.convert(model)
+            final_model = self.ptq.convert(quant_model)
 
-        self.check_thresholds(model)
+        self.check_thresholds(final_model)
 
         input_spec = [
             paddle.static.InputSpec(
                 shape=[None, 1, 28, 28], dtype='float32')
         ]
-        paddle.jit.save(layer=model, path=self.save_path, input_spec=input_spec)
+        paddle.jit.save(
+            layer=final_model, path=self.save_path, input_spec=input_spec)
         print('Quantized model saved in {%s}' % self.save_path)
 
         end_time = time.time()
@@ -233,9 +235,6 @@ class TestImperativePTQ(unittest.TestCase):
 
 
 class TestImperativePTQHist(TestImperativePTQ):
-    """
-    """
-
     def set_vars(self):
         config = PTQConfig(HistQuantizer(), AbsmaxQuantizer())
         self.ptq = ImperativePTQ(config)
@@ -257,9 +256,6 @@ class TestImperativePTQHist(TestImperativePTQ):
 
 
 class TestImperativePTQKL(TestImperativePTQ):
-    """
-    """
-
     def set_vars(self):
         config = PTQConfig(KLQuantizer(), PerChannelAbsmaxQuantizer())
         self.ptq = ImperativePTQ(config)

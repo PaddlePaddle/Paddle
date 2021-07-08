@@ -133,12 +133,20 @@ def _convert_to_place(device):
         selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
         device_id = int(selected_xpus[0])
         place = core.XPUPlace(device_id)
+    elif lower_device == 'npu':
+        if not core.is_compiled_with_npu():
+            raise ValueError("The device should not be 'npu', "
+                             "since PaddlePaddle is not compiled with NPU")
+        selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
+        device_id = int(selected_npus[0])
+        place = core.NPUPlace(device_id)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
-        if not avaliable_gpu_device and not avaliable_xpu_device:
+        avaliable_npu_device = re.match(r'npu:\d+', lower_device)
+        if not avaliable_gpu_device and not avaliable_xpu_device and not avaliable_npu_device:
             raise ValueError(
-                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu' or 'xpu:x'"
+                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu', 'xpu:x', 'npu' or 'npu:x'"
             )
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
@@ -158,19 +166,28 @@ def _convert_to_place(device):
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.XPUPlace(device_id)
+        if avaliable_npu_device:
+            if not core.is_compiled_with_npu():
+                raise ValueError(
+                    "The device should not be {}, since PaddlePaddle is "
+                    "not compiled with NPU".format(avaliable_npu_device))
+            device_info_list = device.split(':', 1)
+            device_id = device_info_list[1]
+            device_id = int(device_id)
+            place = core.NPUPlace(device_id)
     return place
 
 
 def set_device(device):
     """
-    Paddle supports running calculations on various types of devices, including CPU, GPU and XPU.
+    Paddle supports running calculations on various types of devices, including CPU, GPU, XPU and NPU.
     They are represented by string identifiers. This function can specify the global device
     which the OP will run.
 
     Parameters:
         device(str): This parameter determines the specific running device.
-            It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
-            index of the GPUs or XPUs. 
+            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x`` and ``npu:x``,
+            where ``x`` is the index of the GPUs, XPUs or NPUs.
 
     Examples:
 
@@ -191,7 +208,7 @@ def set_device(device):
 def get_device():
     """
     This funciton can get the current global device of the program is running.
-    It's a string which is like 'cpu', 'gpu:x' and 'xpu:x'. if the global device is not
+    It's a string which is like 'cpu', 'gpu:x', 'xpu:x' and 'npu:x'. if the global device is not
     set, it will return a string which is 'gpu:x' when cuda is avaliable or it 
     will return a string which is 'cpu' when cuda is not avaliable.
 
@@ -213,5 +230,8 @@ def get_device():
     elif isinstance(place, core.XPUPlace):
         device_id = place.get_device_id()
         device = 'xpu:' + str(device_id)
+    elif isinstance(place, core.NPUPlace):
+        device_id = place.get_device_id()
+        device = 'npu:' + str(device_id)
 
     return device

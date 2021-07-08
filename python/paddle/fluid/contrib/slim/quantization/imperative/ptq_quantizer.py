@@ -21,6 +21,7 @@ import numpy as np
 import paddle
 
 from . import utils
+from ..cal_kl_threshold import cal_kl_threshold
 
 __all__ = [
     'BaseQuantizer',
@@ -256,6 +257,8 @@ class KLQuantizer(BaseHistQuantizer):
             if self.hists[idx] is None:
                 self.thresholds.append(self.abs_max_vals[idx])
             else:
-                threshold = utils.cal_kl_scaling_factor(
-                    self.hists[idx], self.abs_max_vals[idx], self.quant_bits)
+                hist = self.hists[idx]
+                abs_max_val = self.abs_max_vals[idx]
+                bin_width = abs_max_val / hist.shape[0]
+                threshold = cal_kl_threshold(hist, bin_width, self.quant_bits)
                 self.thresholds.append(threshold)
