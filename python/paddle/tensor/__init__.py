@@ -18,6 +18,7 @@ from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
+from .creation import diagflat  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
 from .creation import ones  # noqa: F401
@@ -25,7 +26,6 @@ from .creation import ones_like  # noqa: F401
 from .creation import zeros  # noqa: F401
 from .creation import zeros_like  # noqa: F401
 from .creation import arange  # noqa: F401
-from .creation import eye  # noqa: F401
 from .creation import full  # noqa: F401
 from .creation import full_like  # noqa: F401
 from .creation import triu  # noqa: F401
@@ -54,6 +54,10 @@ from .logic import logical_and  # noqa: F401
 from .logic import logical_not  # noqa: F401
 from .logic import logical_or  # noqa: F401
 from .logic import logical_xor  # noqa: F401
+from .logic import bitwise_and  # noqa: F401
+from .logic import bitwise_or  # noqa: F401
+from .logic import bitwise_xor  # noqa: F401
+from .logic import bitwise_not  # noqa: F401
 from .logic import not_equal  # noqa: F401
 from .logic import allclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
@@ -62,9 +66,11 @@ from .manipulation import cast  # noqa: F401
 from .manipulation import concat  # noqa: F401
 from .manipulation import expand  # noqa: F401
 from .manipulation import broadcast_to  # noqa: F401
+from .manipulation import broadcast_tensors  # noqa: F401
 from .manipulation import expand_as  # noqa: F401
 from .manipulation import tile  # noqa: F401
 from .manipulation import flatten  # noqa: F401
+from .manipulation import flatten_  # noqa: F401
 from .manipulation import gather  # noqa: F401
 from .manipulation import gather_nd  # noqa: F401
 from .manipulation import reshape  # noqa: F401
@@ -81,7 +87,6 @@ from .manipulation import squeeze  # noqa: F401
 from .manipulation import squeeze_  # noqa: F401
 from .manipulation import stack  # noqa: F401
 from .manipulation import strided_slice  # noqa: F401
-from .manipulation import transpose  # noqa: F401
 from .manipulation import unique  # noqa: F401
 from .manipulation import unsqueeze  # noqa: F401
 from .manipulation import unsqueeze_  # noqa: F401
@@ -95,24 +100,33 @@ from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
 from .math import atan  # noqa: F401
 from .math import ceil  # noqa: F401
+from .math import ceil_  # noqa: F401
 from .math import cos  # noqa: F401
 from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
 from .math import exp  # noqa: F401
+from .math import exp_  # noqa: F401
+from .math import expm1  # noqa: F401
 from .math import floor  # noqa: F401
+from .math import floor_  # noqa: F401
 from .math import increment  # noqa: F401
 from .math import log  # noqa: F401
 from .math import multiplex  # noqa: F401
 from .math import pow  # noqa: F401
 from .math import reciprocal  # noqa: F401
+from .math import reciprocal_  # noqa: F401
 from .math import round  # noqa: F401
+from .math import round_  # noqa: F401
 from .math import rsqrt  # noqa: F401
+from .math import rsqrt_  # noqa: F401
 from .math import scale  # noqa: F401
+from .math import scale_  # noqa: F401
 from .math import sign  # noqa: F401
 from .math import sin  # noqa: F401
 from .math import sinh  # noqa: F401
 from .math import sqrt  # noqa: F401
+from .math import sqrt_  # noqa: F401
 from .math import square  # noqa: F401
 from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
@@ -131,8 +145,10 @@ from .math import mod  # noqa: F401
 from .math import floor_mod  # noqa: F401
 from .math import multiply  # noqa: F401
 from .math import add  # noqa: F401
+from .math import add_  # noqa: F401
 from .math import subtract  # noqa: F401
-from .math import atan  # noqa: F401
+from .math import subtract_  # noqa: F401
+from .math import atan2  # noqa: F401
 from .math import logsumexp  # noqa: F401
 from .math import inverse  # noqa: F401
 from .math import log2  # noqa: F401
@@ -141,6 +157,7 @@ from .math import log1p  # noqa: F401
 from .math import erf  # noqa: F401
 from .math import addmm  # noqa: F401
 from .math import clip  # noqa: F401
+from .math import clip_  # noqa: F401
 from .math import trace  # noqa: F401
 from .math import kron  # noqa: F401
 from .math import isfinite  # noqa: F401
@@ -151,6 +168,11 @@ from .math import all  # noqa: F401
 from .math import any  # noqa: F401
 from .math import broadcast_shape  # noqa: F401
 from .math import conj  # noqa: F401
+from .math import trunc  # noqa: F401
+from .math import digamma  # noqa: F401
+from .math import neg  # noqa: F401
+from .math import lgamma  # noqa: F401
+from .math import diagonal  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -202,28 +224,35 @@ tensor_method_func  = [ #noqa
            'asin',
            'atan',
            'ceil',
+           'ceil_',
            'cos',
            'cosh',
            'cumsum',
            'exp',
+           'exp_',
            'floor',
+           'floor_',
            'increment',
            'log',
            'log2',
            'log10',
            'logsumexp',
-           'mul',
            'multiplex',
            'pow',
            'prod',
            'reciprocal',
+           'reciprocal_',
            'round',
+           'round_',
            'rsqrt',
+           'rsqrt_',
            'scale',
+           'scale_',
            'sign',
            'sin',
            'sinh',
            'sqrt',
+           'sqrt_',
            'square',
            'stanh',
            'sum',
@@ -242,7 +271,9 @@ tensor_method_func  = [ #noqa
            'floor_mod',
            'multiply',
            'add',
+           'add_',
            'subtract',
+           'subtract_',
            'atan',
            'logsumexp',
            'inverse',
@@ -250,6 +281,7 @@ tensor_method_func  = [ #noqa
            'erf',
            'addmm',
            'clip',
+           'clip_',
            'trace',
            'kron',
            'isfinite',
@@ -257,6 +289,8 @@ tensor_method_func  = [ #noqa
            'isnan',
            'broadcast_shape',
            'conj',
+           'neg',
+           'lgamma',
            'equal',
            'equal_all',
            'greater_equal',
@@ -277,6 +311,7 @@ tensor_method_func  = [ #noqa
            'broadcast_to',
            'expand_as',
            'flatten',
+           'flatten_',
            'gather',
            'gather_nd',
            'reshape',
@@ -321,5 +356,21 @@ tensor_method_func  = [ #noqa
            'rank',
            'shape',
            'real',
-           'imag'
+           'imag',
+           'digamma',
+           'diagonal'
+           'trunc'
+           'bitwise_and',
+           'bitwise_or',
+           'bitwise_xor',
+           'bitwise_not',
+           'broadcast_tensors',
+]
+
+#this list used in math_op_patch.py for magic_method bind
+magic_method_func = [
+    ('__and__', 'bitwise_and'),
+    ('__or__', 'bitwise_or'),
+    ('__xor__', 'bitwise_xor'),
+    ('__invert__', 'bitwise_not'),
 ]

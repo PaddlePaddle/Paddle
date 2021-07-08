@@ -53,6 +53,15 @@ class TestDygraphGroupNormv2(unittest.TestCase):
                         weight_attr=False,
                         bias_attr=False)
 
+            def test_nn_exception():
+                with fluid.dygraph.guard(p):
+
+                    def attr_data_format():
+                        out = paddle.nn.GroupNorm(
+                            num_groups=2, num_channels=2, data_format="NHWC")
+
+                    self.assertRaises(ValueError, attr_data_format)
+
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
@@ -61,6 +70,7 @@ class TestDygraphGroupNormv2(unittest.TestCase):
                 print("y1:", y1, "\ty2:", y2)
             self.assertTrue(result)
             test_weight_bias_false()
+            test_nn_exception()
 
     def test_static(self):
         places = [fluid.CPUPlace()]

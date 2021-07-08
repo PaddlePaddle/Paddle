@@ -64,14 +64,29 @@ class TestCheckCompiler(TestABIBase):
         # clear environ
         self.del_environ()
         compiler = 'python'  # fake wrong compiler
-        with warnings.catch_warnings(record=True) as error:
-            flag = utils.check_abi_compatibility(compiler, verbose=True)
-            # check return False
-            self.assertFalse(flag)
-            # check Compiler Compatibility WARNING
-            self.assertTrue(len(error) == 1)
-            self.assertTrue(
-                "Compiler Compatibility WARNING" in str(error[0].message))
+        if not utils.IS_WINDOWS:
+            with warnings.catch_warnings(record=True) as error:
+                flag = utils.check_abi_compatibility(compiler, verbose=True)
+                # check return False
+                self.assertFalse(flag)
+                # check Compiler Compatibility WARNING
+                self.assertTrue(len(error) == 1)
+                self.assertTrue(
+                    "Compiler Compatibility WARNING" in str(error[0].message))
+
+    def test_exception_windows(self):
+        # clear environ
+        self.del_environ()
+        compiler = 'fake compiler'  # fake command
+        if utils.IS_WINDOWS:
+            with warnings.catch_warnings(record=True) as error:
+                flag = utils.check_abi_compatibility(compiler, verbose=True)
+                # check return False
+                self.assertFalse(flag)
+                # check ABI Compatibility WARNING
+                self.assertTrue(len(error) == 1)
+                self.assertTrue("Failed to check compiler version for" in
+                                str(error[0].message))
 
     def test_exception_linux(self):
         # clear environ

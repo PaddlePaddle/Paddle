@@ -58,6 +58,8 @@ import os
 import tarfile
 import six.moves.cPickle as pickle
 
+__all__ = []
+
 
 def _check_cv2():
     if cv2 is None:
@@ -91,8 +93,8 @@ def batch_images_from_tar(data_file,
     :rtype: string
     """
     batch_dir = data_file + "_batch"
-    out_path = "%s/%s" % (batch_dir, dataset_name)
-    meta_file = "%s/%s.txt" % (batch_dir, dataset_name)
+    out_path = "%s/%s_%s" % (batch_dir, dataset_name, os.getpid())
+    meta_file = "%s/%s_%s.txt" % (batch_dir, dataset_name, os.getpid())
 
     if os.path.exists(out_path):
         return meta_file

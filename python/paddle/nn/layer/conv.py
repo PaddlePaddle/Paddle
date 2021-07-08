@@ -25,6 +25,8 @@ from .. import functional as F
 from ...fluid.layers import utils
 from ..functional.conv import _update_padding_nd
 
+__all__ = []
+
 
 def _get_default_param_initializer(num_channels, filter_size):
     filter_elem_num = num_channels * np.prod(filter_size)
@@ -162,7 +164,7 @@ class _ConvNd(layers.Layer):
         if self._padding_mode is not 'zeros':
             main_str += ', padding_mode={_padding_mode}'
         if self.output_padding != 0:
-            main_str += ', output_padding={_output_padding}'
+            main_str += ', output_padding={output_padding}'
         if self._dilation != [1] * len(self._dilation):
             main_str += ', dilation={_dilation}'
         if self._groups != 1:
@@ -197,7 +199,7 @@ class Conv1D(_ConvNd):
     * :math:`X`: Input value, a ``Tensor`` with 'NCL' format or 'NLC' format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCK] .
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
+    * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
@@ -257,11 +259,15 @@ class Conv1D(_ConvNd):
             is not set, the bias is initialized zero. Default: None.
 
     Attribute:
+
         **weight** (Parameter): the learnable weights of filter of this layer.
+
         **bias** (Parameter or None): the learnable bias of this layer.
 
     Shape:
         - x: 3-D tensor with shape: (batch, in_channels, length) or (batch, length, in_channels).
+        - weight: 3-D tensor with shape: (out_channels, in_channels, kernel_size)
+        - bias: 1-D tensor with shape: (out_channels)
         - output: 3-D tensor with same shape as input x.
     
     Raises:
@@ -442,6 +448,8 @@ class Conv1DTranspose(_ConvNd):
     Shape:
 
         - x(Tensor): 3-D tensor with shape (batch, in_channels, length) when data_format is "NCL" or shape (batch, length, in_channels) when data_format is "NLC".
+        - weight(Tensor): 3-D tensor with shape (in_channels, out_channels, kernel_length).
+        - bias(Tensor): 1-D tensor with shape (out_channels).
         - output_size(int|tuple|list, optional): The output image size. If output size is a tuple/list, it must contain one integer, (feature_length). None if use kernel_size, padding, output_padding and stride to calculate output_size. If output_size and kernel_size are specified at the same time, They should follow the formula above. Default: None. output_size and kernel_size should not be None at the same time.
         - output(Tensor): 3-D tensor with same shape as input x.
 
@@ -538,7 +546,7 @@ class Conv2D(_ConvNd):
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
+    * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
     
@@ -587,6 +595,10 @@ class Conv2D(_ConvNd):
     Shape:
 
         - x: :math:`(N, C_{in}, H_{in}, W_{in})`
+
+        - weight: :math:`(C_{out}, C_{in}, K_{h}, K_{w})`
+
+        - bias: :math:`(C_{out})`
 
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
 
@@ -674,15 +686,15 @@ class Conv2DTranspose(_ConvNd):
     filter, and dilations, strides, paddings. Input and output
     are in NCHW format. Where N is batch size, C is the number of feature map,
     H is the height of the feature map, and W is the width of the feature map.
-    Filter's shape is [MCHW] , where M is the number of input feature map,
-    C is the number of output feature map, H is the height of the filter,
+    Filter's shape is [CMHW] , where C is the number of input feature map,
+    M is the number of output feature map, H is the height of the filter,
     and W is the width of the filter. If the groups is greater than 1,
     C will equal the number of input feature map divided by the groups.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
     The details of convolution transpose layer, please refer to the following explanation and references
-    `conv2dtranspose <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_ .
+    `conv2dtranspose <https://arxiv.org/pdf/1603.07285.pdf>`_ .
     For each input :math:`X`, the equation is:
 
     ..  math::
@@ -692,9 +704,9 @@ class Conv2DTranspose(_ConvNd):
     Where:
 
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
-    * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
+    * :math:`W`: Filter value, a ``Tensor`` with shape [CMHW] .
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
+    * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
     
@@ -746,6 +758,10 @@ class Conv2DTranspose(_ConvNd):
     Shape:
 
         - x: :math:`(N, C_{in}, H_{in}, W_{in})`
+
+        - weight: :math:`(C_{in}, C_{out}, K_{h}, K_{w})`
+
+        - bias: :math:`(C_{out})`
 
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
 
@@ -849,7 +865,7 @@ class Conv3D(_ConvNd):
     * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
@@ -898,6 +914,10 @@ class Conv3D(_ConvNd):
     Shape:
 
         - x: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
+        - weight: :math:`(C_{out}, C_{in}, K_{d}, K_{h}, K_{w})`
+
+        - bias: :math:`(C_{out})`
 
         - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
 
@@ -993,7 +1013,7 @@ class Conv3DTranspose(_ConvNd):
     is the width of the feature. Parameters(dilations, strides, paddings) are
     two elements. These two elements represent height and width, respectively.
     The details of convolution transpose layer, please refer to the following
-    explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    explanation and references `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
@@ -1006,9 +1026,9 @@ class Conv3DTranspose(_ConvNd):
     In the above equation:
 
     * :math:`X`: Input value, a tensor with NCDHW format.
-    * :math:`W`: Filter value, a tensor with MCDHW format.
+    * :math:`W`: Filter value, a tensor with CMDHW format.
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
@@ -1074,6 +1094,10 @@ class Conv3DTranspose(_ConvNd):
     Shape:
 
         - x: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
+        - weight: :math:`(C_{in}, C_{out}, K_{d}, K_{h}, K_{w})`
+
+        - bias: :math:`(C_{out})`
 
         - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
 

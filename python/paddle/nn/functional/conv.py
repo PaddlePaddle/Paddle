@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+from paddle.fluid.framework import _global_flags
 
 import numpy as np
 from ...device import get_cudnn_version
@@ -21,6 +22,8 @@ from ...fluid.layers import nn, utils
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.param_attr import ParamAttr
 from ...fluid.layer_helper import LayerHelper
+
+__all__ = []
 
 
 def _is_list_or_tuple(input):
@@ -83,6 +86,10 @@ def _update_padding_nd(padding, channel_last, num_dims):
     else:
         padding_algorithm = "EXPLICIT"
         padding = utils.convert_to_list(padding, num_dims, 'padding')
+    if not all([p >= 0 for p in padding]):
+        raise ValueError(
+            "Invalid padding, all value should be larger than or equal to 0, but received: {}".
+            format(padding))
     return padding, padding_algorithm
 
 
@@ -102,7 +109,6 @@ def _conv_nd(x,
              name=None):
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
-    origin_format = data_format
     if in_dygraph_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn',
@@ -325,18 +331,6 @@ def conv1d(x,
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
-    inputs = {'Input': [x], 'Filter': [weight]}
-    attrs = {
-        'strides': stride,
-        'paddings': padding,
-        'dilations': dilation,
-        'groups': groups,
-        'use_cudnn': use_cudnn,
-        'use_mkldnn': False,
-        'fuse_relu_before_depthwise_conv': False,
-        "padding_algorithm": padding_algorithm,
-        "data_format": conv2d_data_format
-    }
     squeeze_aixs = -2 if channel_last else -1
     x = nn.unsqueeze(input=x, axes=[squeeze_aixs])
     weight = nn.unsqueeze(input=weight, axes=[-1])
@@ -531,7 +525,7 @@ def conv2d(x,
     use_cudnn = True if (core.is_compiled_with_cuda() and
                          cudnn_version is not None) else False
 
-    use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+    use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)

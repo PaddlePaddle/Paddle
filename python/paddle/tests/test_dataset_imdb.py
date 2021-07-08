@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 
-from paddle.text.datasets import *
+from paddle.text.datasets import Imdb
 
 
 class TestImdbTrain(unittest.TestCase):

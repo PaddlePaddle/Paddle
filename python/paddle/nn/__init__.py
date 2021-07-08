@@ -138,6 +138,7 @@ from ..fluid.dygraph.container import Sequential  # noqa: F401
 from . import utils  # noqa: F401
 from . import functional  # noqa: F401
 from . import initializer  # noqa: F401
+from . import quant  # noqa: F401
 
 #TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
 import paddle.utils.deprecated as deprecated
@@ -146,7 +147,8 @@ import paddle.utils.deprecated as deprecated
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.funcitional.diag_embed",
-    reason="diag_embed in paddle.nn will removed in future")
+    level=1,
+    reason="diag_embed in paddle.nn will be removed in future")
 def diag_embed(*args):
     '''
         alias name of paddle.nn.functional.diag_embed
@@ -157,7 +159,8 @@ def diag_embed(*args):
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.utils.remove_weight_norm",
-    reason="remove_weight_norm in paddle.nn will removed in future")
+    level=1,
+    reason="remove_weight_norm in paddle.nn will be removed in future")
 def remove_weight_norm(*args):
     '''
         alias name of paddle.nn.utils.remove_weight_norm
@@ -168,7 +171,8 @@ def remove_weight_norm(*args):
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.utils.weight_norm",
-    reason="weight_norm in paddle.nn will removed in future")
+    level=1,
+    reason="weight_norm in paddle.nn will be removed in future")
 def weight_norm(*args):
     '''
         alias name of paddle.nn.utils.weight_norm
@@ -203,7 +207,7 @@ __all__ = [     #noqa
            'Dropout3D',
            'Bilinear',
            'AlphaDropout',
-           'Unfold'
+           'Unfold',
            'RNNCellBase',
            'SimpleRNNCell',
            'LSTMCell',
@@ -229,10 +233,8 @@ __all__ = [     #noqa
            'MaxPool3D',
            'AdaptiveMaxPool2D',
            'Hardshrink',
-           'clip',
            'Softplus',
            'KLDivLoss',
-           'clip_by_norm',
            'AvgPool2D',
            'L1Loss',
            'LeakyReLU',
@@ -285,5 +287,6 @@ __all__ = [     #noqa
            'Swish',
            'PixelShuffle',
            'ELU',
-           'ReLU6'
+           'ReLU6',
+           'LayerDict'
 ]

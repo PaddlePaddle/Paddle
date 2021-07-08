@@ -39,6 +39,7 @@ ExternalProject_Add(
         && cp ${DGC_SOURCES_DIR}/build/lib/libdgc.a ${DGC_LIBRARIES}
         && cp ${DGC_SOURCES_DIR}/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/
     BUILD_IN_SOURCE 1
+    BUILD_BYPRODUCTS ${DGC_LIBRARIES}
 )
 
 ADD_LIBRARY(dgc STATIC IMPORTED GLOBAL)

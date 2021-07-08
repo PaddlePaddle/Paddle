@@ -72,9 +72,7 @@ class InferencePassTest(unittest.TestCase):
                 feeded_var_names=list(self.feeds.keys()),
                 target_vars=self.fetch_list,
                 executor=executor,
-                main_program=program,
-                model_filename="model",
-                params_filename="params")
+                main_program=program)
 
         return outs
 
@@ -111,8 +109,7 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return a new object of AnalysisConfig. 
         '''
-        config = AnalysisConfig(
-            os.path.join(self.path, "model"), os.path.join(self.path, "params"))
+        config = AnalysisConfig(self.path)
         config.disable_gpu()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
@@ -160,7 +157,8 @@ class InferencePassTest(unittest.TestCase):
                                  use_gpu,
                                  atol=1e-5,
                                  flatten=False,
-                                 quant=False):
+                                 quant=False,
+                                 rtol=1e-5):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT 
         or disable TensorRT, enable MKLDNN or disable MKLDNN 
@@ -260,7 +258,7 @@ class InferencePassTest(unittest.TestCase):
 
                 self.assertTrue(
                     np.allclose(
-                        out, tensorrt_output, atol=atol),
+                        out, tensorrt_output, rtol=rtol, atol=atol),
                     "Output has diff between GPU and TensorRT. ")
 
         # Check whether the mkldnn results and the CPU results are the same. 

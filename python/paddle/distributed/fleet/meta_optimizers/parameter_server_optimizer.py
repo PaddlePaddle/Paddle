@@ -20,6 +20,8 @@ import os
 import platform
 from ..base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 class ParameterServerOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

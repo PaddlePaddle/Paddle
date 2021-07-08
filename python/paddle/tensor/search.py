@@ -25,6 +25,8 @@ from paddle.common_ops_import import VarDesc
 # from ..fluid.layers import has_inf  #DEFINE_ALIAS
 # from ..fluid.layers import has_nan  #DEFINE_ALIAS
 
+__all__ = []
+
 
 def argsort(x, axis=-1, descending=False, name=None):
     """
@@ -157,7 +159,6 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         )
 
     var_dtype = convert_np_dtype_to_dtype_(dtype)
-    check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
     flatten = False
     if axis is None:
         flatten = True
@@ -172,6 +173,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
         'paddle.argmax')
+    check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
     attrs = {}
     out = helper.create_variable_for_type_inference(var_dtype)
     attrs['keepdims'] = keepdim
@@ -234,7 +236,6 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         )
 
     var_dtype = convert_np_dtype_to_dtype_(dtype)
-    check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
     flatten = False
     if axis is None:
         flatten = True
@@ -249,6 +250,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
         'paddle.argmin')
+    check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
     out = helper.create_variable_for_type_inference(var_dtype)
     attrs = {}
     attrs['keepdims'] = keepdim

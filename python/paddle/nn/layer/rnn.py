@@ -33,6 +33,8 @@ from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
 
+__all__ = []
+
 
 def split_states(states, bidirectional=False, state_components=1):
     r"""

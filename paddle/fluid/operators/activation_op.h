@@ -258,6 +258,43 @@ struct SigmoidGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
+/*
+    Out
+    DOut -> SigmoidGradGrad -> DOutNew
+    DDX                        DDOut
+
+    DDOut = (1-Out)*Out*DDX
+    DOutNew = (1-2*Out)*DOut*DDX
+*/
+template <typename T>
+struct SigmoidGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev, const framework::Tensor* Out,
+                  const framework::Tensor* ddX, const framework::Tensor* dOut,
+                  framework::Tensor* dOutNew, framework::Tensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SigmoidGradGrad"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "SigmoidGradGrad"));
+
+    if (dOutNew) {
+      auto dout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Input", "DOut", "SigmoidGradGrad"));
+      auto dout_new = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOutNew, "Output", "DOutNew", "SquareGradGrad"));
+      dout_new.device(*d) =
+          (static_cast<T>(1) - static_cast<T>(2) * out) * dout * ddx;
+    }
+    if (ddOut) {
+      auto ddout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SquareGradGrad"));
+      ddout.device(*d) = (static_cast<T>(1) - out) * out * ddx;
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+};
+
 // silu(x) = x / (1 + exp(-x))
 template <typename T>
 struct SiluFunctor : public BaseActivationFunctor<T> {
@@ -336,6 +373,26 @@ struct ExpGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) = dout * out;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+};
+
+// expm1(x) = e^x - 1
+template <typename T>
+struct Expm1Functor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.expm1();
+  }
+};
+
+template <typename T>
+struct Expm1GradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * out + dout;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
@@ -1790,6 +1847,50 @@ inline void ExtractDoubleGradTensorWithInputDOut(
 }
 
 template <typename DeviceContext, typename Functor>
+class SigmoidDoubleGradKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const framework::Tensor *Out, *ddX, *dOut;
+    framework::Tensor *dOutNew, *ddOut;
+    Out = ddX = dOut = nullptr;
+    dOutNew = ddOut = nullptr;
+
+    // extract ddx(input) and out(input)
+    ddX = ctx.Input<framework::Tensor>("DDX");
+    Out = ctx.Input<framework::Tensor>("Out");
+    PADDLE_ENFORCE_NOT_NULL(
+        ddX, platform::errors::NotFound(
+                 "Cannot get input Variable ddX, variable name = %s",
+                 ctx.InputName("DDX")));
+    PADDLE_ENFORCE_NOT_NULL(
+        Out, platform::errors::NotFound(
+                 "Cannot get input Variable Out, variable name = %s",
+                 ctx.InputName("Out")));
+
+    // set output ddout
+    ddOut = ctx.Output<framework::Tensor>("DDOut");
+
+    // extract dOut(intput)
+    dOut = ctx.Input<framework::Tensor>("DOut");
+    PADDLE_ENFORCE_NOT_NULL(
+        dOut, platform::errors::NotFound(
+                  "Cannot get input Variable dOut, variable name = %s",
+                  ctx.InputName("DOut")));
+
+    // set output dout_new
+    dOutNew = ctx.Output<framework::Tensor>("DOutNew");
+
+    if (dOutNew) dOutNew->mutable_data<T>(Out->dims(), ctx.GetPlace());
+    if (ddOut) ddOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
+    auto& place = ctx.template device_context<DeviceContext>();
+    Functor functor;
+    functor(place, Out, ddX, dOut, dOutNew, ddOut);
+  }
+};
+
+template <typename DeviceContext, typename Functor>
 class TanhDoubleGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
@@ -2153,7 +2254,6 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
 }  // namespace paddle
 
 #define FOR_EACH_ACTIVATION_OP(__macro)                                       \
-  __macro(sigmoid, Sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
   __macro(silu, Silu, SiluFunctor, SiluGradFunctor);                          \
   __macro(logsigmoid, LogSigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);  \
   __macro(atan, Atan, AtanFunctor, AtanGradFunctor);                          \

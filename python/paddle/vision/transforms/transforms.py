@@ -35,13 +35,7 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
-__all__ = [
-    "BaseTransform", "Compose", "Resize", "RandomResizedCrop", "CenterCrop",
-    "RandomHorizontalFlip", "RandomVerticalFlip", "Transpose", "Normalize",
-    "BrightnessTransform", "SaturationTransform", "ContrastTransform",
-    "HueTransform", "ColorJitter", "RandomCrop", "Pad", "RandomRotation",
-    "Grayscale", "ToTensor"
-]
+__all__ = []
 
 
 def _get_image_size(img):
@@ -49,6 +43,8 @@ def _get_image_size(img):
         return img.size
     elif F._is_numpy_image(img):
         return img.shape[:2][::-1]
+    elif F._is_tensor_image(img):
+        return img.shape[1:][::-1]  # chw
     else:
         raise TypeError("Unexpected type {}".format(type(img)))
 
@@ -559,6 +555,7 @@ class RandomHorizontalFlip(BaseTransform):
 
     def __init__(self, prob=0.5, keys=None):
         super(RandomHorizontalFlip, self).__init__(keys)
+        assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
 
     def _apply_image(self, img):
@@ -593,6 +590,7 @@ class RandomVerticalFlip(BaseTransform):
 
     def __init__(self, prob=0.5, keys=None):
         super(RandomVerticalFlip, self).__init__(keys)
+        assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
 
     def _apply_image(self, img):
@@ -690,6 +688,9 @@ class Transpose(BaseTransform):
         self.order = order
 
     def _apply_image(self, img):
+        if F._is_tensor_image(img):
+            return img.transpose(self.order)
+
         if F._is_pil_image(img):
             img = np.asarray(img)
 
@@ -849,13 +850,13 @@ class ColorJitter(BaseTransform):
     """Randomly change the brightness, contrast, saturation and hue of an image.
 
     Args:
-        brightness: How much to jitter brightness.
+        brightness (float): How much to jitter brightness.
             Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. Should be non negative numbers.
-        contrast: How much to jitter contrast.
+        contrast (float): How much to jitter contrast.
             Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. Should be non negative numbers.
-        saturation: How much to jitter saturation.
+        saturation (float): How much to jitter saturation.
             Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. Should be non negative numbers.
-        hue: How much to jitter hue.
+        hue (float): How much to jitter hue.
             Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 

@@ -15,6 +15,7 @@
 from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
@@ -39,13 +40,33 @@ class DotOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        if core.is_compiled_with_rocm():
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                user_defined_grads=[self.inputs['Y'], self.inputs['X']])
+        else:
+            self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+        if core.is_compiled_with_rocm():
+            self.check_grad(
+                ['Y'],
+                'Out',
+                no_grad_set=set("X"),
+                user_defined_grads=[self.inputs['X']])
+        else:
+            self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        if core.is_compiled_with_rocm():
+            self.check_grad(
+                ['X'],
+                'Out',
+                no_grad_set=set('Y'),
+                user_defined_grads=[self.inputs['Y']])
+        else:
+            self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [121]).astype(self.dtype)
@@ -63,6 +84,15 @@ class DotOpBatch(DotOp):
         self.y = np.random.uniform(1, 3, [132]).astype(self.dtype).reshape(
             [11, 12])
         self.out = np.sum(self.x * self.y, axis=1).reshape([11, 1])
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestDotOpError(unittest.TestCase):

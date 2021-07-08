@@ -15,6 +15,36 @@
 # limitations under the License.
 
 
+function check_whl {
+    bash -x paddle/scripts/paddle_build.sh build
+    [ $? -ne 0 ] && echo "build paddle failed." && exit 1
+    pip uninstall -y paddlepaddle_gpu
+    pip install build/python/dist/*.whl
+    [ $? -ne 0 ] && echo "install paddle failed." && exit 1
+
+    mkdir -p /tmp/pr && mkdir -p /tmp/develop
+    unzip -q build/python/dist/*.whl -d /tmp/pr
+    rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
+
+    git checkout .
+    git checkout -b develop_base_pr upstream/$BRANCH
+    bash -x paddle/scripts/paddle_build.sh build
+    [ $? -ne 0 ] && echo "install paddle failed." && exit 1
+    cd build
+    unzip -q python/dist/*.whl -d /tmp/develop
+
+    sed -i '/version.py/d' /tmp/pr/*/RECORD
+    sed -i '/version.py/d' /tmp/develop/*/RECORD
+    diff_whl=`diff /tmp/pr/*/RECORD /tmp/develop/*/RECORD|wc -l`
+    if [ ${diff_whl} -eq 0 ];then
+        echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
+        echo "ipipe_log_param_isSkipTest_model_benchmark: 1" 
+        exit 0
+    else
+        echo "ipipe_log_param_isSkipTest_model_benchmark: 0"
+    fi
+}
+
 function compile_install_paddle {
     export CUDA_ARCH_NAME=Auto
     export PY_VERSION=3.7
@@ -23,11 +53,7 @@ function compile_install_paddle {
     export WITH_TENSORRT=OFF
     export WITH_TESTING=OFF
     export WITH_UNITY_BUILD=ON
-    bash -x paddle/scripts/paddle_build.sh build
-    [ $? -ne 0 ] && echo "build paddle failed." && exit 1
-    pip uninstall -y paddlepaddle_gpu
-    pip install build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
-    [ $? -ne 0 ] && echo "install paddle failed." && exit 1
+    check_whl
 }
 
 function prepare_data {

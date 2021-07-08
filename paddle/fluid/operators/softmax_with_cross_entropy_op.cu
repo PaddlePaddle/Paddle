@@ -772,10 +772,10 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(context.GetPlace()), true,
         platform::errors::Unavailable("softmax_with_cross_entropy operator's "
                                       "CUDA kernel only runs on GPU device."));
-    const bool softmax_switch = context.Attr<bool>("softmax_switch");
+    const bool use_softmax = context.Attr<bool>("use_softmax");
 
     // do not with softmax op, and input is softmax
-    if (!softmax_switch) {
+    if (!use_softmax) {
       const Tensor* softmax = context.Input<Tensor>("Logits");
       const Tensor* labels = context.Input<Tensor>("Label");
       Tensor* softmax_out = context.Output<Tensor>("Softmax");
@@ -925,10 +925,10 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     int block = 512;
     auto stream = context.cuda_device_context().stream();
     auto ignore_index = context.Attr<int>("ignore_index");
-    auto softmax_switch = context.Attr<bool>("softmax_switch");
+    auto use_softmax = context.Attr<bool>("use_softmax");
 
     // do not with softmax op, and input is softmax
-    if (!softmax_switch) {
+    if (!use_softmax) {
       if (context.Attr<bool>("soft_label")) {
         int grid = (n * d + block - 1) / block;
         const T* label_data = labels->data<T>();

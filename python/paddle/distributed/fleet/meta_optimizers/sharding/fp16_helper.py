@@ -17,6 +17,8 @@ from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 
 from paddle.fluid import core
 
+__all__ = []
+
 
 class FP16Utils(object):
     def __init__(self):

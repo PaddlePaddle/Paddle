@@ -38,6 +38,9 @@ void SetOp(ProgramDesc *prog, const std::string &type,
   if (type == "matmul") {
     op->SetInput("Y", {inputs[1]});
     op->SetAttr("use_mkldnn", true);
+    op->SetAttr("alpha", 1.0f);
+    op->SetAttr("transpose_X", true);
+    op->SetAttr("transpose_Y", true);
   }
 }
 
