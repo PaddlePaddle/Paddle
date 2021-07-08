@@ -16,10 +16,6 @@ def {
 }
 extra {
   attrs {
-    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
-    type: BOOLEAN
-  }
-  attrs {
     name: "out_threshold"
     type: FLOAT
   }
@@ -36,18 +32,6 @@ extra {
     type: STRING
   }
   attrs {
-    name: "use_quantizer"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "use_mkldnn"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "mkldnn_data_type"
-    type: STRING
-  }
-  attrs {
     name: "Scale_x"
     type: FLOAT
   }
@@ -58,25 +42,5 @@ extra {
   attrs {
     name: "Scale_out"
     type: FLOAT
-  }
-  attrs {
-    name: "op_role"
-    type: INT
-  }
-  attrs {
-    name: "op_role_var"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_namescope"
-    type: STRING
-  }
-  attrs {
-    name: "op_callstack"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_device"
-    type: STRING
   }
 }
