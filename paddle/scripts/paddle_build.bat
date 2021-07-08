@@ -705,6 +705,7 @@ exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :zip_cc_file
+cd /d %work_dir%\build
 tree /F %cd%\paddle_inference_install_dir\paddle
 if exist paddle_inference.zip del paddle_inference.zip
 python -c "import shutil;shutil.make_archive('paddle_inference', 'zip', root_dir='paddle_inference_install_dir')"
@@ -722,6 +723,7 @@ exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :zip_c_file
+cd /d %work_dir%\build
 tree /F %cd%\paddle_inference_c_install_dir\paddle
 if exist paddle_inference_c.zip del paddle_inference_c.zip
 python -c "import shutil;shutil.make_archive('paddle_inference_c', 'zip', root_dir='paddle_inference_c_install_dir')"
