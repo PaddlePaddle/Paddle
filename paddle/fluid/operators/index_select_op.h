@@ -15,7 +15,6 @@
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-
 namespace paddle {
 namespace operators {
 
@@ -23,41 +22,15 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 
-template <typename T>
-std::vector<T> slice(std::vector<T> const& v, int m, int n) {
-  auto first = v.cbegin() + m;
-  auto last = v.cbegin() + n;
-
-  std::vector<T> vec(first, last);
-  return vec;
-}
-
-template <typename T, typename IndexT = int>
+template <typename DeviceContext, typename T, typename IndexT = int, size_t D>
 void IndexSelectInner(const framework::ExecutionContext& context,
                       const LoDTensor& input, const LoDTensor& index,
                       LoDTensor* output, int dim) {
   auto input_dim = input.dims();
-  auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
-
-  auto slice_size = 1;
-  for (auto i = dim + 1; i < input_dim_size; i++) {
-    slice_size *= input_dim[i];
-  }
-
-  auto input_width = slice_size * input_dim[dim];
-  auto output_width = slice_size * output_dim[dim];
-
-  auto outer_nums = 1;
-  for (auto i = 0; i < dim; i++) {
-    outer_nums *= input_dim[i];
-  }
-
   auto index_size = index.dims()[0];
-  const T* input_data = input.data<T>();
   const IndexT* index_data = index.data<IndexT>();
-
-  T* out_data = output->mutable_data<T>(context.GetPlace());
+  output->mutable_data<T>(context.GetPlace());
 
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
@@ -76,27 +49,18 @@ void IndexSelectInner(const framework::ExecutionContext& context,
             input_dim[dim], index_data[i]));
   }
 
-  VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
-          << "; slice_size: " << slice_size << "; input_width: " << input_width
-          << "; output_width: " << output_width
-          << "; index_size: " << index_size;
+  auto input_tensor = framework::EigenTensor<T, D>::From(input);
+  auto output_tensor = framework::EigenTensor<T, D>::From(*output, output_dim);
+  auto& place =
+      *context.template device_context<DeviceContext>().eigen_device();
 
-  for (auto i = 0; i < outer_nums; i++) {
-    auto input_start_offset = i * input_width;
-    auto output_start_offset = i * output_width;
-
-    for (auto j = 0; j < index_size; j++) {
-      IndexT index_value = index_data[j];
-      auto dst = out_data + output_start_offset + j * slice_size;
-      auto src = input_data + input_start_offset + index_value * slice_size;
-      framework::Tensor input_tensor;
-      framework::Tensor output_tensor;
-      TensorFromArray(dst, slice_size, context.device_context(),
-                      &output_tensor);
-      TensorFromArray(src, slice_size, context.device_context(), &input_tensor);
-      framework::TensorCopy(input_tensor, context.GetPlace(), &output_tensor);
-    }
+  for (auto j = 0; j < index_size; j++) {
+    IndexT index_value = index_data[j];
+    auto input_t = input_tensor.chip(index_value, dim);
+    auto output_t = output_tensor.chip(j, dim);
+    output_t.device(place) = input_t;
   }
+
   output->Resize(output_dim);
 }
 
@@ -113,8 +77,9 @@ class IndexSelectKernel : public framework::OpKernel<T> {
     auto* output = output_var->GetMutable<framework::LoDTensor>();
 
     int dim = context.Attr<int>("dim");
+    int rank = inputs.dims().size();
     if (dim < 0) {
-      dim += inputs.dims().size();
+      dim += rank;
     }
 
     const auto& index_type = index.type();
@@ -130,10 +95,67 @@ class IndexSelectKernel : public framework::OpKernel<T> {
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
 
-    if (index_type == framework::proto::VarType::INT32) {
-      IndexSelectInner<T, int>(context, inputs, index, output, dim);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      IndexSelectInner<T, int64_t>(context, inputs, index, output, dim);
+    switch (rank) {
+      case 1:
+        if (index_type == framework::proto::VarType::INT32) {
+          IndexSelectInner<DeviceContext, T, int, 1>(context, inputs, index,
+                                                     output, dim);
+        } else if (index_type == framework::proto::VarType::INT64) {
+          IndexSelectInner<DeviceContext, T, int64_t, 1>(context, inputs, index,
+                                                         output, dim);
+        }
+
+        break;
+      case 2:
+        if (index_type == framework::proto::VarType::INT32) {
+          IndexSelectInner<DeviceContext, T, int, 2>(context, inputs, index,
+                                                     output, dim);
+        } else if (index_type == framework::proto::VarType::INT64) {
+          IndexSelectInner<DeviceContext, T, int64_t, 2>(context, inputs, index,
+                                                         output, dim);
+        }
+        break;
+      case 3:
+        if (index_type == framework::proto::VarType::INT32) {
+          IndexSelectInner<DeviceContext, T, int, 3>(context, inputs, index,
+                                                     output, dim);
+        } else if (index_type == framework::proto::VarType::INT64) {
+          IndexSelectInner<DeviceContext, T, int64_t, 3>(context, inputs, index,
+                                                         output, dim);
+        }
+        break;
+      case 4:
+        if (index_type == framework::proto::VarType::INT32) {
+          IndexSelectInner<DeviceContext, T, int, 4>(context, inputs, index,
+                                                     output, dim);
+        } else if (index_type == framework::proto::VarType::INT64) {
+          IndexSelectInner<DeviceContext, T, int64_t, 4>(context, inputs, index,
+                                                         output, dim);
+        }
+        break;
+      case 5:
+        if (index_type == framework::proto::VarType::INT32) {
+          IndexSelectInner<DeviceContext, T, int, 5>(context, inputs, index,
+                                                     output, dim);
+        } else if (index_type == framework::proto::VarType::INT64) {
+          IndexSelectInner<DeviceContext, T, int64_t, 5>(context, inputs, index,
+                                                         output, dim);
+        }
+        break;
+      case 6:
+        if (index_type == framework::proto::VarType::INT32) {
+          IndexSelectInner<DeviceContext, T, int, 6>(context, inputs, index,
+                                                     output, dim);
+        } else if (index_type == framework::proto::VarType::INT64) {
+          IndexSelectInner<DeviceContext, T, int64_t, 6>(context, inputs, index,
+                                                         output, dim);
+        }
+        break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "index_select operator doesn't supports tensors whose ranks are "
+            "greater "
+            "than 6."));
     }
   }
 };
