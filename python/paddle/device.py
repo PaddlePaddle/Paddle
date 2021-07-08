@@ -22,7 +22,7 @@ from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
 
 
-__all__ = [  # npqa
+__all__ = [  # noqa
     'get_cudnn_version',
     'set_device',
     'get_device',
