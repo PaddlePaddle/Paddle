@@ -28,7 +28,7 @@ add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
-proto_library(op_def_proto SRCS op_def.proto)
+proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto boost)
 
 FILE(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
