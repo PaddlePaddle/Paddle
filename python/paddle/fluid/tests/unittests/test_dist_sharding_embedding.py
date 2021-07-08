@@ -18,9 +18,30 @@ import os
 import unittest
 import tempfile
 import shutil
+from paddle.distributed.fleet.utils.ps_util import sparse_sharding_merge
 
 
 class ShardingEmbeddingMerge(unittest.TestCase):
+    def _write_error_meta2(self, metafile):
+        meta = """param=emb_0
+shard_id=0
+row_names=Moment1,Moment2,Beta1Pow,Beta2Pow,LearningRate
+row_dims=3,3,1,1,1
+count=4
+"""
+        with open(metafile, 'w') as wb:
+            wb.write(meta)
+
+    def _write_error_meta(self, metafile):
+        meta = """param=error_emb
+shard_id=0
+row_names=Param,Moment1,Moment2,Beta1Pow,Beta2Pow,LearningRate
+row_dims=3,3,3,1,1,1
+count=4
+"""
+        with open(metafile, 'w') as wb:
+            wb.write(meta)
+
     def _write_meta(self, metafile):
         meta = """param=emb_0
 shard_id=0
@@ -45,19 +66,54 @@ count=4
         self.shards = 2
         self.embedding = "emb_0"
 
+    def test_error(self):
+        with self.assertRaises(ValueError):
+            sparse_sharding_merge(self.dirname, self.embedding)
+
         dirname = "{}/{}.shard".format(self.dirname, self.embedding)
         os.mkdir(dirname)
 
-        print(dirname)
+        emb = "{}/{}".format(self.dirname, self.embedding)
+        os.mkdir(emb)
+
+        with self.assertRaises(ValueError):
+            sparse_sharding_merge(self.dirname, self.embedding)
+
+        shutil.rmtree(emb)
+
+        sparse_sharding_merge(self.dirname, self.embedding)
+        os.remove(emb)
+
+        for i in range(self.shards):
+            emb = "{}/{}.block{}.txt".format(dirname, self.embedding, i)
+            self._write_embedding(emb)
+
+        for i in range(self.shards):
+            meta = "{}/{}.block{}.meta".format(dirname, self.embedding, i)
+            self._write_error_meta2(meta)
+
+        with self.assertRaises(ValueError):
+            sparse_sharding_merge(self.dirname, self.embedding)
+
+        for i in range(self.shards):
+            meta = "{}/{}.block{}.meta".format(dirname, self.embedding, i)
+            os.remove(meta)
+            self._write_error_meta(meta)
+
+        with self.assertRaises(ValueError):
+            sparse_sharding_merge(self.dirname, self.embedding)
+
+        shutil.rmtree(dirname)
+
+    def test_right(self):
+        dirname = "{}/{}.shard".format(self.dirname, self.embedding)
+        os.mkdir(dirname)
 
         for i in range(self.shards):
             meta = "{}/{}.block{}.meta".format(dirname, self.embedding, i)
             emb = "{}/{}.block{}.txt".format(dirname, self.embedding, i)
             self._write_meta(meta)
             self._write_embedding(emb)
-
-    def test(self):
-        from paddle.distributed.fleet.utils.ps_util import sparse_sharding_merge
         sparse_sharding_merge(self.dirname, self.embedding)
 
     def tearDown(self):

@@ -206,6 +206,12 @@ class DistributedInfer:
 
 
 def sparse_sharding_merge(dirname, varname):
+    def save_empty_selectedrows(save_path):
+        selected_rows = paddle.fluid.core.SelectedRows([], 100)
+        tx = selected_rows.get_tensor()
+        tx.set([], paddle.fluid.CPUPlace())
+        paddle.save(selected_rows, save_path, use_binary_format=True)
+
     def save_selectedrows(shards, param_dim, save_path):
         sharding_merge = paddle.fluid.core.ShardingMerge()
         sharding_merge.merge(shards, save_path, param_dim)
@@ -230,9 +236,12 @@ def sparse_sharding_merge(dirname, varname):
                     if line.startswith("row_dims"):
                         row_dims = line.split("=")[1]
 
-                param_dim = row_dims.split(",")[row_names.split(",").index(
-                    "Param")]
-                param_dim = int(param_dim)
+                try:
+                    param_dim = row_dims.split(",")[row_names.split(",").index(
+                        "Param")]
+                    param_dim = int(param_dim)
+                except Exception as e:
+                    param_dim = -1
 
             if varname is None or param_dim == -1:
                 raise ValueError("can not get right information from {}".format(
@@ -250,7 +259,7 @@ def sparse_sharding_merge(dirname, varname):
         shards = get_shard()
 
         if len(shards) == 0:
-            return None, None
+            return [], None
 
         meta_txt = os.path.join(shard_dirname,
                                 "{}.block0.meta".format(shard_varname))
@@ -275,12 +284,12 @@ def sparse_sharding_merge(dirname, varname):
         shard_txt, selected_rows))
 
     shards, param_dim = get_distributed_shard(shard_txt, varname)
-
-    print(shards)
-    print(param_dim)
-
     save_path = os.path.join(dirname, varname)
-    save_selectedrows(shards, param_dim, save_path)
+
+    if not shards or param_dim is None:
+        save_empty_selectedrows(save_path)
+    else:
+        save_selectedrows(shards, param_dim, save_path)
 
     print("save {} with {} shards to {}".format(varname, len(shards),
                                                 save_path))
