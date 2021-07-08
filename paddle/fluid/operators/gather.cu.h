@@ -29,14 +29,22 @@ using framework::Tensor;
 using platform::DeviceContext;
 
 template <typename T, typename IndexT = int>
-__global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
-                                 T* output, size_t index_size,
-                                 size_t slice_size) {
+__global__ void GatherCUDAKernel(const T* params, const int* input_dims,
+                                 const IndexT* indices, T* output,
+                                 size_t index_size, size_t slice_size,
+                                 size_t end_size) {
   CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT gather_i = indices[indices_i];
     IndexT params_i = gather_i * slice_size + slice_i;
+    PADDLE_ENFORCE(
+        gather_i >= 0 && gather_i < input_dims[0],
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater than or equal to 0, but received [%d]",
+        input_dims[0], gather_i);
     *(output + i) = *(params + params_i);
   }
 }
@@ -58,7 +66,7 @@ __global__ void GatherNdCUDAKernel(const T* input, const int* input_dims,
           "The index is out of bounds, "
           "please check whether the dimensions of index and "
           "input meet the requirements. It should "
-          "be less than [%d] and greater or equal to 0, but received [%d]",
+          "be less than [%d] and greater than or equal to 0, but received [%d]",
           input_dims[j], index_value);
       gather_i += (index_value * temp);
       temp *= input_dims[j];
@@ -91,12 +99,21 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                           " the second dimension should be 1."));
   }
 
+  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+  auto cplace = platform::CPUPlace();
+  auto index_dims = index.dims();
+  auto index_dims_size = index_dims.size();
+  auto input_dims = src.dims();
+  auto input_dims_size = input_dims.size();
+
   int index_size = index.dims()[0];
 
   auto src_dims = src.dims();
   framework::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
+  // final dim
+  int64_t end_size = index_dims[index_dims_size - 1];
   // slice size
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
@@ -105,6 +122,20 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
 
+  // source dim
+  std::vector<int> v_input_dims(input_dims_size);
+  for (int i = 0; i < input_dims_size; ++i) {
+    v_input_dims[i] = static_cast<int>(input_dims[i]);
+  }
+
+  auto& dev_ctx = reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
+  int bytes = input_dims_size * sizeof(int);
+  auto p_input_dims = memory::Alloc(dev_ctx, bytes);
+  int* g_input_dims = reinterpret_cast<int*>(p_input_dims->ptr());
+  memory::Copy(
+      gplace, g_input_dims, cplace, v_input_dims.data(), bytes,
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+
   int block = 512;
   int n = slice_size * index_size;
   int grid = (n + block - 1) / block;
@@ -112,7 +143,7 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   GatherCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_src, p_index, p_output, index_size, slice_size);
+      p_src, g_input_dims, p_index, p_output, index_size, slice_size, end_size);
 }
 
 template <typename DeviceContext, typename T, typename IndexT = int>
@@ -177,6 +208,15 @@ __global__ void GatherGPUKernel(const T* input, const U* index, T* out,
     int next_idx = idx - outer_size * inner_dim_index;
     int index_dim_index = next_idx / outer_dim_size;
     int index_val = index[index_dim_index];
+
+    PADDLE_ENFORCE(
+        index_val >= 0 && index_val < input_index_dim_size,
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater than or equal to 0, but received [%d]",
+        input_index_dim_size, index_val);
+
     int out_dim_index = next_idx - outer_dim_size * index_dim_index;
     int input_index =
         inner_dim_index * (outer_dim_size * input_index_dim_size) +
