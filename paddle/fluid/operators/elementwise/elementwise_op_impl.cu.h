@@ -73,7 +73,7 @@ struct ElementwiseDataWrapper {
   using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
 
   const InT *__restrict__ in_data[ET];
-  OutT *out;
+  OutT *out_data;
   uint32_t scalar_cal_offset;
 
   HOSTDEVICE ElementwiseDataWrapper(
@@ -84,7 +84,7 @@ struct ElementwiseDataWrapper {
     for (int i = 0; i < ET; ++i) {
       in_data[i] = ins[i]->data<InT>();
     }
-    out = (*outs)[0]->data<OutT>();
+    out_data = (*outs)[0]->data<OutT>();
   }
 
   inline __device__ void LoadVectorizedData(InVecType vec_args[], int tid) {
@@ -103,13 +103,13 @@ struct ElementwiseDataWrapper {
     }
   }
 
-  inline __device__ void StoreVectorizedData(OutVecType res, int idx) {
-    OutVecType *out_vec = reinterpret_cast<OutVecType *>(out);
-    out_vec[idx] = res;
+  inline __device__ void StoreVectorizedData(OutVecType res, int tid) {
+    OutVecType *out_vec = reinterpret_cast<OutVecType *>(out_data);
+    out_vec[tid] = res;
   }
 
-  inline __device__ void StoreScalarizedData(OutT res, int idx) {
-    out[idx + scalar_cal_offset] = res;
+  inline __device__ void StoreScalarizedData(OutT res, int tid) {
+    out_data[tid + scalar_cal_offset] = res;
   }
 };
 
