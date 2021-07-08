@@ -229,13 +229,9 @@ def _pickle_save(obj, f, protocol):
         raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
                          format(protocol))
 
-    list_params = set()
-
     def reduce_varbase(self):
         data = self.numpy()
         name = self.name
-        if name in list_params:
-            return self.__reduce__()
 
         return (tuple, ((name, data), ))
 
@@ -245,19 +241,8 @@ def _pickle_save(obj, f, protocol):
         return (eval, ('data', {'data': data}))
 
     def reduce_Layer(self):
-        is_param_or_layer = lambda v: isinstance(v, ParamBase) or isinstance(v, core.Layer)
-
-        def collect_params(param_or_layer):
-            if isinstance(param_or_layer, ParamBase):
-                list_params.add(param_or_layer.name)
-            else:
-                # param_or_layer is layer
-                _parse_every_object(param_or_layer.__dict__, is_param_or_layer,
-                                    collect_params)
-            return param_or_layer
-
-        _parse_every_object(self.__dict__, is_param_or_layer, collect_params)
-        return self.__reduce_ex__(protocol)
+        raise ValueError(
+            "paddle do not support saving `paddle.nn.Layer` object.")
 
     dispatch_table_layer = dict()
 
@@ -567,7 +552,7 @@ def save(obj, path, protocol=4, **configs):
     Save an object to the specified path.
     
     .. note::
-        Now supports saving ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor, Program.
+        Now supports saving ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
     .. note::
         Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file, 
@@ -783,7 +768,7 @@ def load(path, **configs):
     Load an object can be used in paddle from specified path.
 
     .. note::
-        Now supports loading ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor, Program.
+        Now supports loading ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
     .. note::
         In order to use the model parameters saved by paddle more efficiently, 
