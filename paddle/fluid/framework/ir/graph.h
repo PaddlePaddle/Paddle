@@ -251,21 +251,6 @@ class Graph {
   // WARN: The method only clones the graph structure, not its attributes.
   std::shared_ptr<Graph> Clone();
 
-  bool IsMainGraph() const {
-    // wait for https://github.com/PaddlePaddle/Paddle/pull/33320 merged
-    return true;
-  }
-
-  Graph *GetSubGraph(const size_t idx) const {
-    // wait for https://github.com/PaddlePaddle/Paddle/pull/33320 merged
-    return nullptr;
-  }
-
-  size_t SubGraphSize() const {
-    // wait for https://github.com/PaddlePaddle/Paddle/pull/33320 merged
-    return 0;
-  }
-
  private:
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
       const ProgramDesc &program);
