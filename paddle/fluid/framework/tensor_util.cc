@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "dnnl_debug.h"
 #endif
 
 namespace paddle {
@@ -1181,7 +1181,8 @@ std::ostream& operator<<(std::ostream& os, const Tensor& t) {
   os << "  - layout: " << DataLayoutToString(t.layout()) << "\n";
 
 #ifdef PADDLE_WITH_MKLDNN
-  os << "  - format: " << platform::MKLDNNFormatToString(t.format()) << "\n";
+  os << "  - format: "
+     << dnnl_fmt_tag2str(static_cast<dnnl_format_tag_t>(t.format())) << "\n";
 #endif
 
   Tensor tensor;
