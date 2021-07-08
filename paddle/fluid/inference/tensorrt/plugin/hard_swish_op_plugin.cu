@@ -1,4 +1,5 @@
 // Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,21 +16,11 @@
 #include <cassert>
 #include <cstring>
 #include "paddle/fluid/inference/tensorrt/plugin/hard_swish_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-#if false
-HardSwishPlugin* CreateHardSwishPluginDeserialize(const void* buffer,
-                                                  size_t length) {
-  return new HardSwishPlugin(buffer, length);
-}
-
-REGISTER_TRT_PLUGIN("hard_swish_plugin", CreateHardSwishPluginDeserialize);
-#endif
 
 nvinfer1::Dims HardSwishPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* in_dims, int nb_inputs) {

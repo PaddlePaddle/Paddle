@@ -1,4 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,6 +67,20 @@ class SlicePlugin : public PluginTensorRT {
   cudaStream_t copy_stream_;
 };
 
+class SlicePluginCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const override { return "slice_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    return new SlicePlugin(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(SlicePluginCreator);
+
 #if IS_TRT_VERSION_GE(6000)
 class SlicePluginDynamic : public DynamicPluginTensorRT {
  public:
@@ -78,7 +93,7 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
 
   SlicePluginDynamic(void const* serialData, size_t serialLength);
 
-  const char* getPluginType() const override { return "slice_plugin"; }
+  const char* getPluginType() const override { return "slice_plugin_dynamic"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
 
@@ -124,40 +139,18 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
   cudaStream_t copy_stream_;
 };
 
-class SlicePluginDynamicCreator : public nvinfer1::IPluginCreator {
+class SlicePluginDynamicCreator : public TensorRTPluginCreator {
  public:
-  SlicePluginDynamicCreator() {}
-  const char* getPluginName() const override { return "slice_plugin"; }
+  const char* getPluginName() const override { return "slice_plugin_dynamic"; }
 
   const char* getPluginVersion() const override { return "1"; }
-
-  const nvinfer1::PluginFieldCollection* getFieldNames() override {
-    return &field_collection_;
-  }
-
-  nvinfer1::IPluginV2* createPlugin(
-      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    return nullptr;
-  }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serialData,
                                          size_t serialLength) override {
-    auto plugin = new SlicePluginDynamic(serialData, serialLength);
-    return plugin;
+    return new SlicePluginDynamic(serialData, serialLength);
   }
-
-  void setPluginNamespace(const char* libNamespace) override {
-    namespace_ = libNamespace;
-  }
-
-  const char* getPluginNamespace() const override { return namespace_.c_str(); }
-
- private:
-  std::string namespace_;
-  nvinfer1::PluginFieldCollection field_collection_;
 };
-
 REGISTER_TRT_PLUGIN_V2(SlicePluginDynamicCreator);
 
 #endif

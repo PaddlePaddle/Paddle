@@ -1,4 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,17 +59,16 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
 class PoolPlugin : public PluginTensorRT {
  public:
   size_t getSerializationSize() const override {
-    return SerializedSize(getPluginType()) + SerializedSize(ceil_mode_) +
+    return getBaseSerializationSize() + SerializedSize(ceil_mode_) +
            SerializedSize(pool_type_) + SerializedSize(adaptive_) +
            SerializedSize(ksize_) + SerializedSize(strides_) +
            SerializedSize(paddings_) + SerializedSize(input_shape_) +
-           SerializedSize(output_shape_) + getBaseSerializationSize();
+           SerializedSize(output_shape_);
   }
 
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   void serialize(void* buffer) const override {
-    SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, ceil_mode_);
     SerializeValue(&buffer, pool_type_);
@@ -145,6 +145,20 @@ class PoolPlugin : public PluginTensorRT {
   std::vector<int> output_shape_;
 };
 
+class PoolPluginCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const override { return "pool_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    return new PoolPlugin(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(PoolPluginCreator);
+
 #if IS_TRT_VERSION_GE(6000)
 class PoolPluginDynamic : public DynamicPluginTensorRT {
  public:
@@ -161,25 +175,14 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
         paddings_(paddings),
         is_global_(is_global) {}
 
-  PoolPluginDynamic(void const* serialData, size_t serialLength) {
-    deserializeBase(serialData, serialLength);
-    DeserializeValue(&serialData, &serialLength, &ceil_mode_);
-    const char* pool_type;
-    DeserializeValue(&serialData, &serialLength, &pool_type);
-    pool_type_ = std::string(pool_type);
-    DeserializeValue(&serialData, &serialLength, &adaptive_);
-    DeserializeValue(&serialData, &serialLength, &ksize_);
-    DeserializeValue(&serialData, &serialLength, &strides_);
-    DeserializeValue(&serialData, &serialLength, &paddings_);
-    DeserializeValue(&serialData, &serialLength, &is_global_);
-  }
+  PoolPluginDynamic(void const* serialData, size_t serialLength);
   ~PoolPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new PoolPluginDynamic(ceil_mode_, pool_type_, adaptive_, ksize_,
                                  strides_, paddings_, is_global_);
   }
 
-  const char* getPluginType() const override { return "pool_plugin"; }
+  const char* getPluginType() const override { return "pool_plugin_dynamic"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override { return 0; }
 
@@ -225,6 +228,20 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> paddings_;
   bool is_global_;
 };
+
+class PoolPluginDynamicCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const override { return "pool_plugin_dynamic"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    return new PoolPluginDynamic(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(PoolPluginDynamicCreator);
 #endif
 
 }  // namespace plugin

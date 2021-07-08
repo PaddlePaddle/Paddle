@@ -1,4 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,20 +14,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/plugin/pool_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/operators/math/pooling.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-#if false
-PoolPlugin *CreatePoolPluginDeserialize(const void *buffer, size_t length) {
-  return new PoolPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("pool_plugin", CreatePoolPluginDeserialize);
-#endif
 
 nvinfer1::Dims PoolPlugin::getOutputDimensions(int index,
                                                const nvinfer1::Dims *inputDims,
@@ -82,9 +75,35 @@ int PoolPlugin::enqueue(int batchSize, const void *const *inputs,
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
 
-size_t PoolPluginDynamic::getSerializationSize() const { return 0; }
+PoolPluginDynamic::PoolPluginDynamic(void const *serialData,
+                                     size_t serialLength) {
+  DeserializeValue(&serialData, &serialLength, &ceil_mode_);
+  const char *pool_type;
+  DeserializeValue(&serialData, &serialLength, &pool_type);
+  pool_type_ = std::string(pool_type);
+  DeserializeValue(&serialData, &serialLength, &adaptive_);
+  DeserializeValue(&serialData, &serialLength, &ksize_);
+  DeserializeValue(&serialData, &serialLength, &strides_);
+  DeserializeValue(&serialData, &serialLength, &paddings_);
+  DeserializeValue(&serialData, &serialLength, &is_global_);
+}
 
-void PoolPluginDynamic::serialize(void *buffer) const {}
+size_t PoolPluginDynamic::getSerializationSize() const {
+  return SerializedSize(ceil_mode_) + SerializedSize(pool_type_.c_str()) +
+         SerializedSize(adaptive_) + SerializedSize(ksize_) +
+         SerializedSize(strides_) + SerializedSize(paddings_) +
+         SerializedSize(is_global_);
+}
+
+void PoolPluginDynamic::serialize(void *buffer) const {
+  SerializeValue(&buffer, ceil_mode_);
+  SerializeValue(&buffer, pool_type_.c_str());
+  SerializeValue(&buffer, adaptive_);
+  SerializeValue(&buffer, ksize_);
+  SerializeValue(&buffer, strides_);
+  SerializeValue(&buffer, paddings_);
+  SerializeValue(&buffer, is_global_);
+}
 
 nvinfer1::DimsExprs PoolPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,

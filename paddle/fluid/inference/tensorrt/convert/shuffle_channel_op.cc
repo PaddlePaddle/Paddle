@@ -1,4 +1,5 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+ * Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -61,7 +62,8 @@ class ShuffleChannelOpConverter : public OpConverter {
     reshape_layer->setReshapeDimensions(reshape_dim2);
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(reshape_layer, "concat", {output_name}, test_mode);
+    RreplenishLayerAndOutput(reshape_layer, "shuffle_channel", {output_name},
+                             test_mode);
   }
 };
 

@@ -1,4 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,15 +42,13 @@ class InstanceNormPlugin : public PluginTensorRT {
  public:
   size_t getSerializationSize() const override {
     return getBaseSerializationSize() + SerializedSize(eps_) +
-           SerializedSize(scale_) + SerializedSize(bias_) +
-           SerializedSize(getPluginType());
+           SerializedSize(scale_) + SerializedSize(bias_);
   }
 
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
   void serialize(void *buffer) const override {
-    SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, eps_);
     SerializeValue(&buffer, scale_);
@@ -90,6 +89,7 @@ class InstanceNormPlugin : public PluginTensorRT {
     platform::dynload::cudnnDestroyTensorDescriptor(y_desc_);
     platform::dynload::cudnnDestroyTensorDescriptor(b_desc_);
   }
+
   int initialize() override;
 
   InstanceNormPlugin *clone() const override {
@@ -100,6 +100,7 @@ class InstanceNormPlugin : public PluginTensorRT {
   int getNbOutputs() const override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
                                      int nbInputDims) override;
+
 #if IS_TRT_VERSION_LT(8000)
   int enqueue(int batchSize, const void *const *inputs, void **outputs,
 #else
@@ -108,12 +109,22 @@ class InstanceNormPlugin : public PluginTensorRT {
               void *workspace, cudaStream_t stream) override;
 
   bool supportsFormat(nvinfer1::DataType type,
-                      nvinfer1::PluginFormat format) const override {
-    return ((type == nvinfer1::DataType::kFLOAT ||
-             type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kLINEAR));
+                      nvinfer1::PluginFormat format) const override;
+};
+
+class InstanceNormPluginCreator : public TensorRTPluginCreator {
+ public:
+  const char *getPluginName() const override { return "instance_norm_plugin"; }
+
+  const char *getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2 *deserializePlugin(const char *name,
+                                         const void *serial_data,
+                                         size_t serial_length) override {
+    return new InstanceNormPlugin(serial_data, serial_length);
   }
 };
+REGISTER_TRT_PLUGIN_V2(InstanceNormPluginCreator);
 
 }  // namespace plugin
 }  // namespace tensorrt

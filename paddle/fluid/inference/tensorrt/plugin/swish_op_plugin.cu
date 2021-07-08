@@ -1,4 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,19 +18,11 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/swish_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-#if false
-SwishPlugin *CreateSwishPluginDeserialize(const void *buffer, size_t length) {
-  return new SwishPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("swish_plugin", CreateSwishPluginDeserialize);
-#endif
 
 int SwishPlugin::initialize() { return 0; }
 

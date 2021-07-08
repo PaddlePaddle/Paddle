@@ -1,4 +1,5 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+ * Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -251,10 +252,10 @@ class ElementwiseTensorOpConverter : public OpConverter {
       } else {
         plugin::ElementWisePlugin* plugin =
             new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
-        plugin->AddInput(X);
-        plugin->AddInput(Y);
+
+        std::vector<nvinfer1::ITensor*> inputs{X, Y};
         auto* plugin_layer = engine_->AddPlugin(
-            plugin->GetInputs().data(), 2,
+            inputs.data(), inputs.size(),
             reinterpret_cast<plugin::PluginTensorRT*>(plugin));
 
         layer = plugin_layer;
