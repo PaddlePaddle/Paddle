@@ -1523,8 +1523,7 @@ class Model(object):
         if not in_dygraph_mode():
             self._adapter.prepare()
 
-    def fit(
-            self,
+    def fit(self,
             train_data=None,
             eval_data=None,
             batch_size=1,
@@ -1537,7 +1536,8 @@ class Model(object):
             drop_last=False,
             shuffle=True,
             num_workers=0,
-            callbacks=None, ):
+            callbacks=None,
+            num_iters=None):
         """
         Trains the model for a fixed number of epochs. If `eval_data` is set,
         evaluation will be done at the end of each epoch.
@@ -1580,6 +1580,9 @@ class Model(object):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
+            num_iters (int|None): Integer number. The number of iterations to train
+                the model. If None, follow `epochs` to train the model, otherwise, train
+                the model `num_iters` times. Default: None.
 
         Returns:
             None
@@ -1702,6 +1705,11 @@ class Model(object):
         self._test_dataloader = eval_loader
 
         steps = self._len_data_loader(train_loader)
+        self.num_iters = num_iters
+        if num_iters is not None and isinstance(num_iters, int):
+            assert num_iters > 0, "num_iters must be greater than 0!"
+            epochs = (num_iters // steps) + 1
+            steps = min(num_iters, steps)
         cbks = config_callbacks(
             callbacks,
             model=self,
@@ -1739,14 +1747,14 @@ class Model(object):
         cbks.on_end('train', logs)
         self._test_dataloader = None
 
-    def evaluate(
-            self,
-            eval_data,
-            batch_size=1,
-            log_freq=10,
-            verbose=2,
-            num_workers=0,
-            callbacks=None, ):
+    def evaluate(self,
+                 eval_data,
+                 batch_size=1,
+                 log_freq=10,
+                 verbose=2,
+                 num_workers=0,
+                 callbacks=None,
+                 num_iters=None):
         """
         Evaluate the loss and metrics of the model on input dataset.
 
@@ -1768,6 +1776,9 @@ class Model(object):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
+            num_iters (int|None): Integer number. The number of iterations to
+                evaluate the model. If None, evaluate on whole input dataset,
+                otherwise, evaluate `num_iters` times. Default: None.
         Returns:
             dict: Result of metric. The key is the names of Metric,
                 value is a scalar or numpy.array.
@@ -1817,6 +1828,11 @@ class Model(object):
             metrics=self._metrics_name(), )
 
         eval_steps = self._len_data_loader(eval_loader)
+        self.num_iters = num_iters
+        if num_iters is not None and isinstance(num_iters, int):
+            assert num_iters > 0, "num_iters must be greater than 0!"
+            eval_steps = min(num_iters, eval_steps)
+            self.num_iters = eval_steps
         cbks.on_begin('eval',
                       {'steps': eval_steps,
                        'metrics': self._metrics_name()})
@@ -2058,6 +2074,10 @@ class Model(object):
                 logs['batch_size'] = self._adapter._merge_count[mode + '_batch']
 
             callbacks.on_batch_end(mode, step, logs)
+            if hasattr(self, 'num_iters') and self.num_iters is not None:
+                self.num_iters -= 1
+                if self.num_iters == 0:
+                    break
         self._reset_metrics()
 
         if mode == 'predict':
@@ -2073,7 +2093,7 @@ class Model(object):
                     one input, input_size can be tuple or InputSpec. if model have multiple 
                     input, input_size must be a list which contain every input's shape. 
                     Default: None.
-            dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
+            dtype (str, optional): if dtype is None, 'float32' will be used, Default: None.
 
         Returns:
             Dict: a summary of the network including total params and total trainable params.
