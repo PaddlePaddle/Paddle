@@ -25,15 +25,14 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-void UpdateAttr(const framework::DDim in_dims, const std::vector<int> axes,
+void UpdateAttr(const framework::DDim& in_dims, const std::vector<int> axes,
                 const std::vector<int> starts, const std::vector<int> ends,
                 std::vector<int>* offsets, std::vector<int>* size) {
   int cnt = 0;
   for (int i = 0; i < in_dims.size(); ++i) {
     int start = 0;
     int end = in_dims[i];
-    int axis = axes[cnt];
-
+    int axis = cnt < axes.size() ? axes[cnt] : -1;
     if (axis == i) {
       start = starts[cnt];
       if (start < 0) {
@@ -63,10 +62,10 @@ class SliceNPUKernel : public framework::OpKernel<T> {
     auto axes = ctx.Attr<std::vector<int>>("axes");
     auto starts = ctx.Attr<std::vector<int>>("starts");
     auto ends = ctx.Attr<std::vector<int>>("ends");
+    const auto in_dims& = input->dims();
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto in_dims = input->dims();
     std::vector<int> offsets(in_dims.size());
     std::vector<int> size(in_dims.size());
 
@@ -93,18 +92,35 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
     auto axes = ctx.Attr<std::vector<int>>("axes");
     auto starts = ctx.Attr<std::vector<int>>("starts");
     auto ends = ctx.Attr<std::vector<int>>("ends");
-
-    auto in_dims = input->dims();
+    const auto in_dims& = input->dims();
     int rank = in_dims.size();
+
+    VLOG(4) << "in_dims:" << in_dims.Get();
+    VLOG(4) << in_dims;
+
+    VLOG(4) << "axes:" << axes.data();
+    for (auto i : axes) {
+      VLOG(4) << i;
+    }
+    VLOG(4) << "starts:" << starts.data();
+    for (auto i : starts) {
+      VLOG(4) << i;
+    }
+    VLOG(4) << "ends:" << ends.data();
+    for (auto i : ends) {
+      VLOG(4) << i;
+    }
 
     std::vector<int> offsets(rank);
     std::vector<int> size(rank);
     UpdateAttr(in_dims, axes, starts, ends, &offsets, &size);
 
     std::vector<std::vector<int64_t>> paddings(rank, std::vector<int64_t>(2));
+    VLOG(4) << "paddings";
     for (int i = 0; i < rank; ++i) {
       paddings[i][0] = static_cast<int64_t>(offsets[i]);
       paddings[i][1] = static_cast<int64_t>(in_dims[i] - size[i] - offsets[i]);
+      VLOG(4) << i << " " << paddings[i][0] << " " << paddings[i][1];
     }
 
     dinput->mutable_data<T>(ctx.GetPlace());
