@@ -743,7 +743,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 #pragma omp parallel for
 #endif
         for (int nc = 0; nc < N * C; ++nc) {
-          // int c = nc % C;
           dy_sum_arr(nc % C) += d_y_arr.col(nc).sum();
           dy_mul_x_sub_mean_mul_invstd_sum_arr(nc % C) +=
               ((x_arr.col(nc) - mean_arr(nc % C)) * inv_var_arr(nc % C) *
@@ -761,7 +760,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 #pragma omp parallel for
 #endif
           for (int nc = 0; nc < N * C; ++nc) {
-            // int c = nc % C;
             d_x_arr.col(nc) =
                 scale_inv_var_nhw(nc % C) *
                 (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(nc % C) -
@@ -771,8 +769,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           }
         } else {
           for (int nc = 0; nc < N * C; ++nc) {
-            int c = nc % C;
-            d_x_arr.col(nc) = scale_inv_var_nhw(c) * d_y_arr.col(nc);
+            d_x_arr.col(nc) = scale_inv_var_nhw(nc % C) * d_y_arr.col(nc);
           }
         }
         break;
