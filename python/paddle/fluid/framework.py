@@ -2597,7 +2597,7 @@ class Block(object):
             type(skip_op_callstack))
         block_str = "{ // block "
         block_str += "{}\n".format(self.idx)
-        for var in list(self.vars.values()):
+        for var in sorted(list(self.vars.values()), key=lambda v: v.name):
             block_str += "    {}\n".format(var._to_readable_code())
         block_str += "\n"
         for op in self.ops:
@@ -2626,7 +2626,7 @@ class Block(object):
             re_add_indent = re.compile(r"\n(.)")
             res_str = "blocks {\n  idx: %d\n  parent_idx: %d" % (
                 self.idx, self.parent_idx)
-            for var in list(self.vars.values()):
+            for var in sorted(list(self.vars.values()), key=lambda v: v.name):
                 res_str += "\n  vars {\n    %s  }" % re_add_indent.sub(
                     r"\n    \1", var.to_string(throw_on_error, with_details))
             for op in self.ops:
