@@ -914,6 +914,9 @@ class Optimizer(object):
 
         assert regularization_term is not None
 
+        if framework.in_dygraph_mode():
+            return core.ops.sum([grad, regularization_term])
+
         new_grad = grad
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
             # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
@@ -929,10 +932,7 @@ class Optimizer(object):
 
         inputs = {"X": [grad, regularization_term]}
         outputs = {"Out": [new_grad]}
-        if framework.in_dygraph_mode():
-            new_grad = core.ops.sum([grad, regularization_term])
-        else:
-            grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
+        grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
 
         return new_grad
 
