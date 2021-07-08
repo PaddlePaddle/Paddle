@@ -143,6 +143,7 @@ class PRChecker(object):
                            PADDLE_ROOT + 'tools/windows/',
                            PADDLE_ROOT + 'tools/test_runner.py',
                            PADDLE_ROOT + 'tools/parallel_UT_rule.py',
+                           PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
                            PADDLE_ROOT + 'paddle/scripts/paddle_build.bat')
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
