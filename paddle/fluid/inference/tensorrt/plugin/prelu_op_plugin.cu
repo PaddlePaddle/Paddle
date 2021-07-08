@@ -59,7 +59,12 @@ nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,
 }
 
 int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
+#if IS_TRT_VERSION_LT(8000)
                          void **outputs, void *workspace, cudaStream_t stream) {
+#else
+                         void *const *outputs, void *workspace,
+                         cudaStream_t stream) {
+#endif
   // input dims is CHW.
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);
@@ -126,7 +131,7 @@ bool PReluPluginDynamic::supportsFormatCombination(
   (in_out && pos < (nb_inputs + nb_outputs));
 
   return ((in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
-          in_out[pos].format == nvinfer1::PluginFormat::kNCHW);
+          in_out[pos].format == nvinfer1::PluginFormat::kLINEAR);
 }
 
 nvinfer1::DataType PReluPluginDynamic::getOutputDataType(

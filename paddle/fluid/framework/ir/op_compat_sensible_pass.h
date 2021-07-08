@@ -31,7 +31,13 @@ class AttrCompat {
   AttrCompat(const std::string& attr_name, OpCompat* op_compat)
       : optional_(false), attr_name_(attr_name), op_compat_(op_compat) {}
 
+  //! Assert the attribute type is `T`.
+  template <typename T>
+  AttrCompat& IsType();
+
   // @{ String-related methods
+  //! Assert the attribute is an string in the `candidates` domain.
+  AttrCompat& IsStringEQ(const std::string& value);
   //! Assert the attribute is an string in the `candidates` domain.
   AttrCompat& IsStringIn(const std::set<std::string>& candidates);
   //! Assert the attribute is a string and match a custom judging function.
@@ -206,6 +212,13 @@ class OpCompatSensiblePass : public Pass {
  private:
   std::map<std::string, std::unique_ptr<OpCompat>> op_compat_judgers_;
 };
+
+template <typename T>
+AttrCompat& AttrCompat::IsType() {
+  conditions_.emplace_back(
+      [](const Attribute& attr) -> bool { return attr.type() == typeid(T); });
+  return *this;
+}
 
 template <typename T>
 AttrCompat& AttrCompat::IsNumGT(T v) {

@@ -19,9 +19,25 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_def_api.h"
 #include "paddle/fluid/framework/op_info.h"
 
+namespace {
+std::unordered_set<std::string> global_extra_attrs = {
+    "op_role",       "op_role_var",      "op_namescope",
+    "op_callstack",  "op_device",        "@ENABLE_CACHE_RUNTIME_CONTEXT@",
+    "is_test",       "use_mkldnn",       "mkldnn_data_type",
+    "use_quantizer", "mkldnn_data_type", "use_cudnn",
+    "name"};
+}
+
 namespace paddle {
 namespace framework {
 namespace ir {
+
+AttrCompat& AttrCompat::IsStringEQ(const std::string& value) {
+  conditions_.emplace_back([value](const Attribute& attr) -> bool {
+    return value == BOOST_GET_CONST(std::string, attr);
+  });
+  return *this;
+}
 
 AttrCompat& AttrCompat::IsStringIn(const std::set<std::string>& candidates) {
   conditions_.emplace_back([candidates](const Attribute& attr) -> bool {
@@ -61,7 +77,7 @@ AttrCompat& AttrCompat::IsLeftDefault() {
     return *this;
   }
   const OpInfo& op_info = OpInfoMap::Instance().Get(op_name);
-  const AttributeMap attrs = op_info.Checker()->GetAttrsDefaultValuesMap();
+  const AttributeMap attrs = op_info.Checker()->GetDefaultAttrsMap();
   if (attrs.find(attr_name_) == attrs.end()) {
     LOG(WARNING) << "Op (" << op_name << ") has no default attr:" << attr_name_;
     conditions_.emplace_back([](const Attribute& attr) { return false; });
@@ -164,7 +180,8 @@ bool OpCompat::Judge(const OpDesc& op_desc) {
 
   for (auto& attr_map : op_desc.GetAttrMap()) {
     if (attr_compats_.find(attr_map.first) == attr_compats_.end()) {
-      if (extra_attrs_.find(attr_map.first) != extra_attrs_.end()) {
+      if (global_extra_attrs.find(attr_map.first) != global_extra_attrs.end() ||
+          extra_attrs_.find(attr_map.first) != extra_attrs_.end()) {
         continue;
       }
       if (!AttrCompat(attr_map.first, this).IsLeftDefault()(op_desc)) {
@@ -260,7 +277,7 @@ bool OpCompatSensiblePass::IsCompat(
     auto op_type = node_pair.second->Op()->Type();
     if (!op_compat_judgers_.count(op_type)) {
       if (HasOpDef(op_type)) {
-        LOG(WARNING) << op_type << "compat not registered!";
+        LOG(WARNING) << op_type << " compat not registered!";
         return false;
       }
       continue;

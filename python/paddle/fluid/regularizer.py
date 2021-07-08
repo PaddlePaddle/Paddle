@@ -132,9 +132,6 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
-        inputs = {"X": [param]}
-        attrs = {"scale": self._regularization_coeff}
-
         if framework.in_dygraph_mode():
             return core.ops.scale(param, "scale", self._regularization_coeff)
         else:
