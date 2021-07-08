@@ -104,7 +104,6 @@ class IndexSelectKernel : public framework::OpKernel<T> {
           IndexSelectInner<DeviceContext, T, int64_t, 1>(context, inputs, index,
                                                          output, dim);
         }
-
         break;
       case 2:
         if (index_type == framework::proto::VarType::INT32) {
