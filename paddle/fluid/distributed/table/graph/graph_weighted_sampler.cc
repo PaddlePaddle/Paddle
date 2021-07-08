@@ -22,8 +22,13 @@ void RandomSampler::build(GraphEdgeBlob *edges) { this->edges = edges; }
 
 std::vector<int> RandomSampler::sample_k(int k) {
   int n = edges->size();
-  if (k > n) {
+  if (k >= n) {
     k = n;
+    std::vector<int> sample_result;
+    for (int i = 0; i < k; i++) {
+      sample_result.push_back(i);
+    }
+    return sample_result;
   }
   struct timespec tn;
   clock_gettime(CLOCK_REALTIME, &tn);
@@ -99,8 +104,13 @@ void WeightedSampler::build_one(WeightedGraphEdgeBlob *edges, int start,
   }
 }
 std::vector<int> WeightedSampler::sample_k(int k) {
-  if (k > count) {
+  if (k >= count) {
     k = count;
+    std::vector<int> sample_result;
+    for (int i = 0; i < k; i++) {
+      sample_result.push_back(i);
+    }
+    return sample_result;
   }
   std::vector<int> sample_result;
   float subtract;
