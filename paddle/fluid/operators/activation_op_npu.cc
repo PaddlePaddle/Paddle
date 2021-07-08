@@ -303,6 +303,77 @@ class SquareNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class SigmoidNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+
+    auto* out = ctx.Output<Tensor>("Out");
+
+    LOG(WARNING) << "x: " << x;
+    LOG(WARNING) << "out: " << out;
+
+    LOG(WARNING) << "x numel: " << x->numel();
+    LOG(WARNING) << "out numel: " << out->numel();
+    LOG(WARNING) << "x dims: " << x->dims();
+    LOG(WARNING) << "out dims: " << out->dims();
+
+    auto place = ctx.GetPlace();
+
+    out->mutable_data<T>(place);
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner = NpuOpRunner("Sigmoid", {*x}, {*out}, {});
+    runner.Run(stream);
+
+    LOG(WARNING) << "out: " << out;
+    LOG(WARNING) << "out numel: " << out->numel();
+    LOG(WARNING) << "out dims: " << out->dims();
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SigmoidGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<Tensor>("Out");
+
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    LOG(WARNING) << "dout: " << dout;
+    LOG(WARNING) << "out: " << out;
+    LOG(WARNING) << "dx: " << dx;
+
+    LOG(WARNING) << "dout numel: " << dout->numel();
+    LOG(WARNING) << "out numel: " << out->numel();
+    LOG(WARNING) << "dx numel: " << dx->numel();
+    LOG(WARNING) << "dout dims: " << dout->dims();
+    LOG(WARNING) << "out dims: " << out->dims();
+    LOG(WARNING) << "dx dims: " << dx->dims();
+
+    auto place = ctx.GetPlace();
+
+    dx->mutable_data<T>(place);
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner_dx =
+        NpuOpRunner("SigmoidGrad", {*out, *dout}, {*dx}, {});
+    runner_dx.Run(stream);
+
+    LOG(WARNING) << "dx: " << dx;
+    LOG(WARNING) << "dx numel: " << dx->numel();
+    LOG(WARNING) << "dx dims: " << dx->dims();
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -366,3 +437,14 @@ REGISTER_OP_NPU_KERNEL(
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>,
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, int>);
+
+REGISTER_OP_NPU_KERNEL(
+    sigmoid, ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext,
+                          paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    sigmoid_grad,
+    ops::SigmoidGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SigmoidGradNPUKernel<paddle::platform::NPUDeviceContext,
+                              paddle::platform::float16>);
