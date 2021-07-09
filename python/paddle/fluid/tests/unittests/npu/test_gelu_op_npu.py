@@ -58,12 +58,9 @@ class TestGelu(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
 
-    # TODO(ascendrc): Add grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', check_dygraph=False)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -115,10 +112,10 @@ class TestGeluNet(unittest.TestCase):
                 name="label", shape=[32, 1], dtype='int64')
 
             c = paddle.multiply(a, b)
-            d = fluid.layers.gelu(c)
 
-            fc_1 = fluid.layers.fc(input=d, size=128)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            fc_1 = fluid.layers.fc(input=c, size=128)
+            fc_1_gelu = fluid.layers.gelu(fc_1)
+            prediction = fluid.layers.fc(input=fc_1_gelu, size=2, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.reduce_mean(cost)

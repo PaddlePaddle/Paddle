@@ -34,19 +34,6 @@ extra {
     # no longer to use
   }
   attrs {
-    name: "use_quantizer"
-    type: BOOLEAN
-    # no longer to use, Use 'mkldnn_data_type' instead.
-  }
-  attrs {
-    name: "use_mkldnn"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "mkldnn_data_type"
-    type: STRING
-  }
-  attrs {
     name: "Scale_x"
     type: FLOAT
   }
