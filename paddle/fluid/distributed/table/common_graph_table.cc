@@ -20,7 +20,10 @@
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/graph/graph_node.h"
 #include "paddle/fluid/string/printf.h"
+#include <chrono>
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/framework/generator.h"
+
 namespace paddle {
 namespace distributed {
 
@@ -399,7 +402,11 @@ int32_t GraphTable::random_sample_neighboors(
     uint64_t &node_id = node_ids[idx];
     std::unique_ptr<char[]> &buffer = buffers[idx];
     int &actual_size = actual_sizes[idx];
-    tasks.push_back(_shards_task_pool[get_thread_pool_index(node_id)]->enqueue(
+
+    int thread_pool_index = get_thread_pool_index(node_id);
+    auto rng = _shards_task_rng_pool[thread_pool_index];
+
+    tasks.push_back(_shards_task_pool[thread_pool_index]->enqueue(
         [&]() -> int {
           Node *node = find_node(node_id);
 
@@ -407,7 +414,7 @@ int32_t GraphTable::random_sample_neighboors(
             actual_size = 0;
             return 0;
           }
-          std::vector<int> res = node->sample_k(sample_size);
+          std::vector<int> res = node->sample_k(sample_size, rng);
           actual_size = res.size() * (Node::id_size + Node::weight_size);
           int offset = 0;
           uint64_t id;
@@ -546,6 +553,7 @@ int32_t GraphTable::initialize() {
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
+    _shards_task_rng_pool.push_back(paddle::framework::GetCPURandomEngine(0));
   }
   server_num = _shard_num;
   // VLOG(0) << "in init graph table server num = " << server_num;
