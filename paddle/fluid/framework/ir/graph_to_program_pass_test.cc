@@ -298,8 +298,6 @@ void CheckBlockVarsEqual(const BlockDesc& before_block,
     EXPECT_EQ(before_var->Name(), after_var->Name());
     EXPECT_EQ(before_var->GetType(), after_var->GetType());
     EXPECT_EQ(before_var->Persistable(), after_var->Persistable());
-    EXPECT_EQ(before_var->IsParameter(), after_var->IsParameter());
-    EXPECT_EQ(before_var->StopGradient(), after_var->StopGradient());
   }
 }
 
