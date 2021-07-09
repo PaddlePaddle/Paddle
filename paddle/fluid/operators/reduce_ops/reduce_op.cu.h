@@ -407,9 +407,6 @@ struct ReduceConfig {
     grid_dim->x = grid_num;
     grid_dim->y = std::max(std::min(input_split_num_1, input_split_num_3),
                            input_split_num_2);
-
-    blocking_size = detail::AlignUp(reduce_num_per_thread, grid_dim->y);
-
     // if grid.y > 1, we need launch reduce kernel again.
     if (grid_dim->y > 1) {
       should_reduce_again = true;
@@ -621,7 +618,7 @@ __device__ void ReduceHigherDim(const Tx* x, Ty* y, ReduceOp reducer,
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
 __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
                           TransformOp transformer, Ty init, int reduce_num,
-                          int left_num, int block_size, bool reduce_lastdim,
+                          int left_num, bool reduce_lastdim,
                           const IndexCalculator& reduce_index_calculator,
                           const IndexCalculator& left_index_calculator) {
   int input_idx, left_idx, stride;
@@ -721,8 +718,8 @@ __device__ void ReduceModule(const Tx* x, Ty* y, ReduceOp reducer,
     // reduce_rank >= 2
   } else {
     ReduceAny<Tx, Ty, ReduceOp, TransformOp>(
-        x, y, reducer, transformer, init, reduce_num, left_num, blocking_size,
-        reduce_lastdim, reduce_index_calculator, left_index_calculator);
+        x, y, reducer, transformer, init, reduce_num, left_num, reduce_lastdim,
+        reduce_index_calculator, left_index_calculator);
   }
 }
 
