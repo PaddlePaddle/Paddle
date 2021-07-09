@@ -73,6 +73,11 @@ if(WITH_MUSL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy")
 endif()
 
+if(APPLE AND WITH_ARM)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin20.5.0")
+    set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin20.5.0")
+endif()
+
 if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
