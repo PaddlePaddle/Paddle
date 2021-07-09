@@ -981,7 +981,7 @@ class RNNBase(LayerList):
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
         if fluid.framework.in_dygraph_mode():
-            _, _, out, state = framework._C_ops.rnn(
+            _, _, out, state = _C_ops.rnn(
                 inputs, initial_states, self._all_weights, sequence_length,
                 self._dropout_state, self.state_components, 'dropout_prob',
                 self.dropout, 'is_bidirec', self.num_directions == 2,
