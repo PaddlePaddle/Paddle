@@ -53,4 +53,4 @@ class PTQConfig(object):
         self.enable_in_act_quantizer = False
 
 
-default_ptq_config = PTQConfig(AbsmaxQuantizer(), AbsmaxQuantizer())
+default_ptq_config = PTQConfig(KLQuantizer(), PerChannelAbsmaxQuantizer())
