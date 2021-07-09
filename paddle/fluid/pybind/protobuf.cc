@@ -177,10 +177,10 @@ void BindVarDsec(pybind11::module *m) {
       .def("set_persistable", &pd::VarDesc::SetPersistable)
       .def("need_check_feed", &pd::VarDesc::NeedCheckFeed)
       .def("set_need_check_feed", &pd::VarDesc::SetNeedCheckFeed)
-      .def("has_attr", &pd::VarDesc::HasDistributedAttr)
-      .def("_set_attr", &pd::VarDesc::SetDistributedAttr)
-      .def("remove_attr", &pd::VarDesc::RemoveDistributedAttr)
-      .def("attr", &pd::VarDesc::GetDistributedAttr);
+      .def("has_distributed_attr", &pd::VarDesc::HasDistributedAttr)
+      .def("_set_distributed_attr", &pd::VarDesc::SetDistributedAttr)
+      .def("remove_distributed_attr", &pd::VarDesc::RemoveDistributedAttr)
+      .def("distributed_attr", &pd::VarDesc::GetDistributedAttr);
 
   pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
   g_vartype_pytype = (PyTypeObject *)vartype.ptr();  // NOLINT
