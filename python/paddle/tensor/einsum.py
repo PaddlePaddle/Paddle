@@ -112,7 +112,6 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
         f"Invalid equation: duplicate output labels are found.")
 
 
-# def bcastable_test(args, f=None):
 #     '''
 #     Tests if the two operands can perform a broadcast operation on the given ranges of dimensions. 
 #     We follow the Numpy broadcasting convention which states that, by lining up the shape arrays
@@ -170,7 +169,6 @@ def build_view(in_labels, out_labels):
     in_labels = 'ij..', out_labels = '..kji'
     inv_map = [2, 3, -1, 1, 0]
     '''
-    # print(f"in labels: '{in_labels}'     out labels: '{out_labels}'")
 
     inv_map = [-1] * len(out_labels)
 
@@ -196,45 +194,6 @@ def build_view(in_labels, out_labels):
         inv_map[i] = in_labels.find(out_labels[i])
 
     return inv_map
-
-
-# def part_labels(nop_labels, rhs, n_bcast_dims):
-#     '''
-#     Part labels in two strings, the output label string and the combined label string. 
-#     Infer output labels in case no explicit right hand side is given. In this case
-#     the output label string is formed by labels that count only once, in alphabetical order.
-#     Returns
-#     -------
-#     output:
-#         output label string
-#     combine:
-#         combine label string
-#     count:
-#         combine labels' count
-#     '''
-#     # Put all labels in alphabetical order
-#     concat = sorted(''.join(nop_labels).replace('.', ''))
-#     labels, count = [], []
-#     for a, b in zip(['.'] + concat, concat):
-#         if a != b:
-#             labels.append(b)
-#             count.append(1)
-#         else:
-#             count[-1] += 1
-#     if rhs != None:
-#         validate_rhs(rhs, labels, n_bcast_dims)
-#         output = rhs.replace('...', '.' * n_bcast_dims)
-#     else:
-#         output = '.' * n_bcast_dims + ''.join(l for l, c in zip(labels, count) if c == 1)
-#
-#     for i in range(len(count))[::-1]:  # Ouch ... it hurts to get confused with [-1:]
-#         if labels[i] in output:
-#             labels.pop(i)
-#             count.pop(i)
-#
-#     combine = ''.join(labels)
-#
-#     return output, combine, count
 
 
 def build_global_view(nop_labels, rhs, n_bcast_dims):
@@ -799,19 +758,18 @@ def einsum(equation, *operands):
     Example:
     .. code-block::
         import paddle
-        import paddlenlp
         import numpy as np
         np.random.seed(102)
         x = paddle.to_tensor(np.random.rand(4))
         y = paddle.to_tensor(np.random.rand(5))
         # sum
-        print(paddlenlp.ops.einsum('i->', x))
+        print(paddle.einsum('i->', x))
         # Tensor(shape=[], dtype=float64, place=CUDAPlace(0), stop_gradient=True, 2.30369050)
         # dot
-        print(paddlenlp.ops.einsum('i,i->', x, x))
+        print(paddle.einsum('i,i->', x, x))
         # Tensor(shape=[], dtype=float64, place=CUDAPlace(0), stop_gradient=True, 1.43773247)
         # outer
-        print(paddlenlp.ops.einsum("i,j->ij", x, y)),
+        print(paddle.einsum("i,j->ij", x, y)),
         # Tensor(shape=[4, 5], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #         [[0.34590188, 0.48353496, 0.09996135, 0.18656330, 0.21392910],
         #         [0.39122025, 0.54688535, 0.11305780, 0.21100591, 0.24195704],
@@ -820,7 +778,7 @@ def einsum(equation, *operands):
         A = paddle.to_tensor(np.random.rand(2, 3, 2))
         B = paddle.to_tensor(np.random.rand(2, 2, 3))
         # transpose
-        print(paddlenlp.ops.einsum('ijk->kji', A))
+        print(paddle.einsum('ijk->kji', A))
         #  Tensor(shape=[2, 3, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #        [[[0.49174730, 0.33344683],
         #          [0.89440989, 0.26162022],
@@ -829,7 +787,7 @@ def einsum(equation, *operands):
         #          [0.18241053, 0.13092809],
         #          [0.81059146, 0.55165734]]])
         # batch matrix multiplication
-        print(paddlenlp.ops.einsum('ijk, ikl->ijl', A,B))
+        print(paddle.einsum('ijk, ikl->ijl', A,B))
         # Tensor(shape=[2, 3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #     [[[0.13654339, 0.39331432, 0.65059661],
         #      [0.07171420, 0.57518653, 0.77629221],
@@ -838,14 +796,14 @@ def einsum(equation, *operands):
         #      [0.30368265, 0.25778348, 0.21630400],
         #      [0.39587265, 0.58031243, 0.51824755]]])
         # Ellipsis transpose
-        print(paddlenlp.ops.einsum('...jk->...kj', A))
+        print(paddle.einsum('...jk->...kj', A))
         # Tensor(shape=[2, 2, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #     [[[0.49174730, 0.89440989, 0.36116209],
         #         [0.49019824, 0.18241053, 0.81059146]],
         #         [[0.33344683, 0.26162022, 0.12241719],
         #         [0.51895050, 0.13092809, 0.55165734]]])
         # Ellipsis batch matrix multiplication
-        print(paddlenlp.ops.einsum('...jk, ...kl->...jl', A,B))
+        print(paddle.einsum('...jk, ...kl->...jl', A,B))
         # Tensor(shape=[2, 3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         # [[[0.13654339, 0.39331432, 0.65059661],
         #     [0.07171420, 0.57518653, 0.77629221],

@@ -510,4 +510,5 @@ __all__ = [  # noqa
            'standard_normal',
            'diagonal',
            'broadcast_tensors',
+           'einsum'
 ]
