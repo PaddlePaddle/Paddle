@@ -219,7 +219,7 @@ const char* AnchorGeneratorPlugin::getPluginNamespace() const {
 
 nvinfer1::DataType AnchorGeneratorPlugin::getOutputDataType(
     int index, const nvinfer1::DataType* input_type, int nb_inputs) const {
-  return data_type_;
+  return input_type[0];
 }
 
 bool AnchorGeneratorPlugin::isOutputBroadcastAcrossBatch(
@@ -460,7 +460,7 @@ int AnchorGeneratorPluginDynamic::enqueue(
 
 nvinfer1::DataType AnchorGeneratorPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType* inputTypes, int nbInputs) const {
-  return data_type_;
+  return inputTypes[0];
 }
 
 const char* AnchorGeneratorPluginDynamic::getPluginType() const {
