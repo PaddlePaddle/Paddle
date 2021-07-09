@@ -249,7 +249,7 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor). The input tensor of reshape operator.");
     AddInput("Shape",
-             "(Tensor<int32>, optional). Target shape of reshape operator. "
+             "(Tensor<int32>, optional). Target st shape of reshape operator. "
              "It has a higher priority than Attr(shape) but a lower priority "
              "than Input(ShapeTensor). The Attr(shape) still should be "
              "set correctly to guarantee shape inference in compile time.")
