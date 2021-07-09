@@ -314,8 +314,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "gather") {
+      if (!with_dynamic_shape) return false;
+      auto inputs = desc.InputArgumentNames();
+      for (auto& input : inputs) {
+        if (input == "Axis" && desc.Input("Axis").size() > 0) return false;
+      }
       // current not support axis from input, use default 0
-      if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
+      if (desc.GetAttrIfExists<int>("axis")) return false;
     }
 
     if (op_type == "gather_nd") {
@@ -692,15 +697,16 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "reshape" || op_type == "reshape2") {
       if (!desc.HasAttr("shape")) {
         return false;
-        // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
-      } else if (desc.Input("Shape").size() >= 1 ||
-                 desc.Input("ShapeTensor").size() >= 1) {
-        return false;
-      } else {
-        std::vector<int> shape =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
-        if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       }
+      // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
+      if (desc.Input("Shape").size() >= 1 ||
+          desc.Input("ShapeTensor").size() >= 1) {
+        return false;
+      }
+      std::vector<int> shape =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+      if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      if (!with_dynamic_shape && shape[0] == -1) return false;
     }
 
     if (op_type == "reduce_sum") {

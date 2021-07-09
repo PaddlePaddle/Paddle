@@ -67,8 +67,7 @@ class TestNPUUniformRandomOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        places = [self.place]
-        self.check_output_customized(self.verify_output, places=places)
+        self.check_output_customized(self.verify_output, self.place)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
