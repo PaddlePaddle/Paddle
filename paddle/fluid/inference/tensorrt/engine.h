@@ -236,6 +236,7 @@ class TensorRTEngine {
           infer_engine_,
           platform::errors::InvalidArgument(
               "You should build engine first and then set the context."));
+      infer_context_.clear();
       infer_context_[tid].reset(infer_engine_->createExecutionContext());
     }
     return infer_context_[tid].get();
