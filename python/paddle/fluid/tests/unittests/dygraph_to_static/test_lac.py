@@ -500,7 +500,7 @@ def do_train(args, to_static):
             fluid.dygraph.jit.save(
                 layer=model,
                 path=args.model_save_prefix,
-                input_spec=[words, length],
+                input_spec=[input_specs[0], input_specs[-1]],
                 output_spec=[crf_decode])
         else:
             fluid.dygraph.save_dygraph(model.state_dict(), args.dy_param_path)

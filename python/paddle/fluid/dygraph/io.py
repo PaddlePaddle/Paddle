@@ -27,6 +27,7 @@ from paddle.fluid import backward
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
 from paddle.fluid.layers import nn
+from paddle.fluid.layers.utils import _hash32_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import in_dygraph_mode
 
@@ -825,7 +826,7 @@ def _run_dygraph(instance, input, program_holder):
             'start_op_index': 0,
             'end_op_index': end_op_index,
             'is_test': instance._is_test,
-            'program_id': hash((id(trace_program)))
+            'program_id': _hash32_id(trace_program)
         })
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient

@@ -24,6 +24,8 @@ from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
+from paddle.fluid.layers.utils import _hash32_id
+from paddle.fluid.compiler import BuildStrategy
 import paddle.compat as cpt
 
 
@@ -147,7 +149,7 @@ class PartialProgramLayer:
         self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
 
-        build_strategy = paddle.static.BuildStrategy()
+        self._set_strategy(build_strategy)
 
     @LazyInitialized
     def _infer_program(self):
@@ -170,11 +172,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_program_id(self):
-        return hash((id(self._infer_program), id(self)))
+        return _hash32_id(self._infer_program, self)
 
     @LazyInitialized
     def _train_program_id(self):
-        return hash((id(self._train_program), id(self)))
+        return _hash32_id(self._train_program, self)
 
     def _verify_program(self, main_program):
         """
@@ -316,6 +318,15 @@ class PartialProgramLayer:
         inner_scope = core.Scope()
         tmp_scope_vec.value().set_scope(inner_scope)
         return tmp_scope_vec
+
+    # def _set_strategy(self, build_strategy):
+    #     if build_strategy is None or not isinstance(build_strategy, BuildStrategy):
+    #         build_strategy = BuildStrategy()
+
+    #     build_strategy.fuse_elewise_add_act_ops = True
+    #     build_strategy.enable_addto = True
+    #     core._set_cached_executor_build_strategy(self._train_program_id, build_strategy)
+    #     core._set_cached_executor_build_strategy(self._infer_program_id, build_strategy)
 
     def _restore_out(self, out_vars):
         """
