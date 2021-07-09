@@ -716,20 +716,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
-    attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
-        'keep_dim': keepdim,
-        'reduce_all': reduce_all_flag
-    }
     dtype_flag = False
     if dtype is not None:
         if dtype in ['float64', 'int64']:
             if (convert_dtype(x.dtype) == "float32" and dtype == "float64") or \
                (convert_dtype(x.dtype) == "int32" and dtype == "int64"):
-                attrs.update({
-                    'in_dtype': x.dtype,
-                    'out_dtype': convert_np_dtype_to_dtype_(dtype)
-                })
                 dtype_flag = True
 
     if in_dygraph_mode():
@@ -742,6 +733,22 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag)
+
+    attrs = {
+        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'keep_dim': keepdim,
+        'reduce_all': reduce_all_flag
+    }
+
+    if dtype is not None:
+        if dtype in ['float64', 'int64']:
+            if (convert_dtype(x.dtype) == "float32" and dtype == "float64") or \
+               (convert_dtype(x.dtype) == "int32" and dtype == "int64"):
+                attrs.update({
+                    'in_dtype': x.dtype,
+                    'out_dtype': convert_np_dtype_to_dtype_(dtype)
+                })
+
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sum')
 
@@ -1649,6 +1656,9 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
     """
+    if in_dygraph_mode():
+        return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
+
     inputs = {'Input': [x]}
     attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
 
@@ -1679,11 +1689,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                "axis1 and axis2 cannot be the same axis." \
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
-    if in_dygraph_mode():
-        return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
-
-    if not in_dygraph_mode():
-        __check_input(input, offset, axis1, axis2)
+    __check_input(input, offset, axis1, axis2)
     helper = LayerHelper('trace', **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1762,6 +1768,9 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             #        [0.17020577, 0.27325270]])
             
     """
+    if in_dygraph_mode():
+        return _C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
+
     def __check_input(input, offset, dim1, dim2):
         check_dtype(x.dtype, 'Input',
                     ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
@@ -1787,9 +1796,6 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         assert  axis1_ != axis2_,   \
                "axis1 and axis2 cannot be the same axis." \
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
-
-    if in_dygraph_mode():
-        return _C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
     __check_input(input, offset, axis1, axis2)
     helper = LayerHelper('diagonal', **locals())
@@ -2248,18 +2254,16 @@ def all(x, axis=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
+    if in_dygraph_mode():
+        axis = axis if axis != None and axis != [] else [0]
+        return _C_ops.reduce_all(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag)
+
     attrs = {
         'dim': axis if axis != None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag
     }
-    dtype_flag = False
-
-
-    if in_dygraph_mode():
-        axis = axis if axis != None and axis != [] else [0]
-        return _C_ops.reduce_all(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag)
     check_variable_and_dtype(x, 'x', ['bool'], 'all')
 
 
@@ -2342,18 +2346,17 @@ def any(x, axis=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
+    if in_dygraph_mode():
+        axis = axis if axis != None and axis != [] else [0]
+        return _C_ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag)
+
     attrs = {
         'dim': axis if axis != None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag
     }
-    dtype_flag = False
 
-
-    if in_dygraph_mode():
-        axis = axis if axis != None and axis != [] else [0]
-        return _C_ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag)
     check_variable_and_dtype(x, 'x', ['bool'], 'any')
 
 

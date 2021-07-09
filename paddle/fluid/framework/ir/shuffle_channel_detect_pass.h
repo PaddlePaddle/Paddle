@@ -26,6 +26,7 @@ class Graph;
 
 class ShuffleChannelDetectPass : public FusePassBase {
  public:
+  ShuffleChannelDetectPass();
   virtual ~ShuffleChannelDetectPass() {}
 
  protected:

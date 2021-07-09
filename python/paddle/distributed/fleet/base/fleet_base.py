@@ -30,7 +30,7 @@ from paddle.fluid.dygraph import parallel_helper
 from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
-from ..meta_parallel import PipelineParallel
+from ..meta_parallel import PipelineParallel, ShardingParallel
 from ..meta_optimizers import HybridParallelOptimizer
 from ..meta_optimizers import HybridParallelGradScaler
 
@@ -295,9 +295,11 @@ class Fleet(object):
         self.dp_degree = self.hybrid_configs["dp_degree"]
         self.mp_degree = self.hybrid_configs["mp_degree"]
         self.pp_degree = self.hybrid_configs["pp_degree"]
+        self.sharding_degree = self.hybrid_configs["sharding_degree"]
 
         assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
         assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
+        assert self.sharding_degree >= 0, "sharding_degree should be greater or equal to 0"
 
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
@@ -309,8 +311,11 @@ class Fleet(object):
         self.dp_degree = max(self.dp_degree, 1)
 
         self._topology = tp.CommunicateTopology(
-            hybrid_group_names=["data", "pipe", "model"],
-            dims=[self.dp_degree, self.pp_degree, self.mp_degree])
+            hybrid_group_names=["data", "pipe", "sharding", "model"],
+            dims=[
+                self.dp_degree, self.pp_degree, self.sharding_degree,
+                self.mp_degree
+            ])
 
         self._hcg = tp.HybridCommunicateGroup(self._topology)
 
@@ -886,7 +891,11 @@ class Fleet(object):
         assert model is not None, "model should not be None"
         if self.worker_num() <= 1:
             return model
-        if self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
+
+        if self._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
+            distributed_model = ShardingParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        elif self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
             distributed_model = paddle.DataParallel(
                 model,
                 comm_buffer_size=self._user_defined_strategy.
@@ -901,6 +910,7 @@ class Fleet(object):
         elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
             distributed_model = PipelineParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
+
         return distributed_model
 
     @dygraph_only

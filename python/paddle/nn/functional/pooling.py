@@ -198,7 +198,8 @@ def avg_pool1d(x,
     """
     """NCL to NCHW"""
     data_format = "NCHW"
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool1d')
+    if not in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool1d')
     _check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = utils.convert_to_list(kernel_size, 1, 'kernel_size')
@@ -317,7 +318,6 @@ def avg_pool2d(x,
                             stride=2, padding=0)
             # out.shape [1, 3, 16, 16]
     """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -343,6 +343,7 @@ def avg_pool2d(x,
 
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool2d')
     dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
@@ -436,7 +437,6 @@ def avg_pool3d(x,
                                             padding=0)
           # out.shape: [1, 3, 16, 16, 16]
     """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -463,6 +463,7 @@ def avg_pool3d(x,
 
     op_type = "pool3d"
     helper = LayerHelper(op_type, **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
     dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out}
@@ -549,7 +550,8 @@ def max_pool1d(x,
     """
     """NCL to NCHW"""
     data_format = "NCHW"
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
+    if not in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
     _check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = [1] + utils.convert_to_list(kernel_size, 1, 'pool_size')
@@ -681,8 +683,6 @@ def max_pool2d(x,
                                                return_mask=True)
             # out.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                             'max_pool2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -724,6 +724,8 @@ def max_pool2d(x,
 
     op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
     helper = LayerHelper(op_type, **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'max_pool2d')
     dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     mask = helper.create_variable_for_type_inference(dtype)
@@ -817,7 +819,6 @@ def max_pool3d(x,
                                           return_mask=True)
             # output.shape [None, 3, 16, 16, 16], max_indices.shape [None, 3, 16, 16, 16],
     """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -854,6 +855,7 @@ def max_pool3d(x,
 
     op_type = "max_pool3d_with_index" if return_mask else "pool3d"
     helper = LayerHelper(op_type, **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
     dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     mask = helper.create_variable_for_type_inference(dtype)
@@ -923,19 +925,20 @@ def adaptive_avg_pool1d(x, output_size, name=None):
               # pool_out shape: [1, 3, 16])
     """
     pool_type = 'avg'
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                             'adaptive_pool2d')
+    if not in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'adaptive_pool2d')
+        check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
     _check_input(x, 3)
-    check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
-
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
-    l_type = "pool2d"
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
         pool_out = _C_ops.pool2d(x, 'pooling_type', pool_type, 'ksize',
                                  pool_size, 'adaptive', True)
         return squeeze(pool_out, [2])
+
+    l_type = "pool2d"
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -1008,7 +1011,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'adaptive_avg_pool2d')
-    check_type(data_format, 'data_format', str, 'adaptive_avg_pool2d')
+        check_type(data_format, 'data_format', str, 'adaptive_avg_pool2d')
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
@@ -1112,7 +1115,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_avg_pool3d')
-    check_type(data_format, 'data_format', str, 'adaptive_avg_pool3d')
+        check_type(data_format, 'data_format', str, 'adaptive_avg_pool3d')
 
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
@@ -1209,15 +1212,14 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
               # pool_out shape: [1, 3, 16] indices  shape: [1, 3, 16]
     """
     pool_type = 'max'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'],
-                             'adaptive_max_pool1d')
+    if not in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'adaptive_max_pool1d')
+        check_type(output_size, 'pool_size', int, 'adaptive_max_pool1d')
+        check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool1d')
     _check_input(x, 3)
-    check_type(output_size, 'pool_size', int, 'adaptive_max_pool1d')
-    check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool1d')
 
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
-
-    l_type = 'max_pool2d_with_index'
 
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
@@ -1225,6 +1227,8 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
             x, 'pooling_type', pool_type, 'ksize', pool_size, 'adaptive', True)
         return (squeeze(pool_out[0], [2]), squeeze(
             pool_out[1], [2])) if return_mask else squeeze(pool_out[0], [2])
+
+    l_type = 'max_pool2d_with_index'
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -1293,9 +1297,9 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
     if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_max_pool2d')
+        check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool2d')
+        #check_type(output_size, 'pool_size', (int), 'adaptive_max_pool2d')
     _check_input(x, 4)
-    #check_type(output_size, 'pool_size', (int), 'adaptive_max_pool2d')
-    check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool2d')
 
     in_h, in_w = x.shape[2:4]
     if isinstance(output_size, int):
@@ -1384,9 +1388,9 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_max_pool3d')
+        check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool3d')
+        #check_type(output_size, 'pool_size', (int), 'adaptive_max_pool3d')
     _check_input(x, 5)
-    #check_type(output_size, 'pool_size', (int), 'adaptive_max_pool3d')
-    check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool3d')
 
     in_l, in_h, in_w = x.shape[2:5]
     if isinstance(output_size, int):

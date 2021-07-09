@@ -340,10 +340,10 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
 
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
-        'flatten')
-    helper = LayerHelper('flatten', **locals())
+    if not in_dygraph_mode():
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+            'flatten')
 
     x_dim = len(x.shape)
     if not (isinstance(start_axis, int)) or (
@@ -366,6 +366,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
                                                     'stop_axis', stop_axis)
         return dy_out
 
+    helper = LayerHelper('flatten', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     x_shape = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
@@ -443,7 +444,6 @@ def roll(x, shifts, axis=None, name=None):
             # [1. 2. 3.]
             # [4. 5. 6.]]
     """
-    helper = LayerHelper("roll", **locals())
     origin_shape = x.shape
     if type(shifts) == int:
         shifts = [shifts]
@@ -457,23 +457,16 @@ def roll(x, shifts, axis=None, name=None):
                 raise ValueError(
                     "axis is out of range, it should be in range [{}, {}), but received {}".
                     format(-len_origin_shape, len_origin_shape, axis))
-
-    if axis:
-        check_type(axis, 'axis', (list, tuple), 'roll')
-    check_type(shifts, 'shifts', (list, tuple), 'roll')
+    else:
+        axis = []
 
     if in_dygraph_mode():
-        if axis is None:
-            x = _C_ops.reshape(x, 'shape', [-1, 1])
-            axis = [0]
-        out = _C_ops.roll(x, 'axis', axis, 'shifts', shifts)
-        return _C_ops.reshape(out, 'shape', origin_shape)
+        return _C_ops.roll(x, 'axis', axis, 'shifts', shifts)
 
+    helper = LayerHelper("roll", **locals())
+    check_type(axis, 'axis', (list, tuple), 'roll')
+    check_type(shifts, 'shifts', (list, tuple), 'roll')
     out = helper.create_variable_for_type_inference(x.dtype)
-
-    if axis is None:
-        x = reshape(x, shape=[-1, 1])
-        axis = [0]
 
     helper.append_op(
         type='roll',
@@ -481,7 +474,6 @@ def roll(x, shifts, axis=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis,
                'shifts': shifts})
-    out = layers.reshape(out, shape=origin_shape)
     return out
 
 
@@ -1024,11 +1016,6 @@ def unbind(input, axis=0):
             # x3.shape [3, 5]
 
     """
-    helper = LayerHelper("unbind", **locals())
-    check_type(input, 'input', (Variable), 'unbind')
-    dtype = helper.input_dtype()
-    check_dtype(dtype, 'unbind', ['float32', 'float64', 'int32', 'int64'],
-                'unbind')
     if not isinstance(axis, (int)):
         raise TypeError("The type of 'axis'  must be int, but received %s." %
                         (type(axis)))
@@ -1037,13 +1024,18 @@ def unbind(input, axis=0):
     input_shape = input.shape
     axis_ = axis if axis >= 0 else len(input_shape) + axis
     num = input_shape[axis_]
+    if in_dygraph_mode():
+        return _C_ops.unbind(input, num, 'axis', axis)
+
+    helper = LayerHelper("unbind", **locals())
+    check_type(input, 'input', (Variable), 'unbind')
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'unbind', ['float32', 'float64', 'int32', 'int64'],
+                'unbind')
     outs = [
         helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
-    if in_dygraph_mode():
-        return _C_ops.unbind(input, num, 'axis', axis)
-
     helper.append_op(
         type="unbind",
         inputs={"X": input},

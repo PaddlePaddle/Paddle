@@ -74,12 +74,9 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             #   [-0.16666666  1.9000001 ]
             #   [-0.43333334  2.2333333 ]]]]
     """
-    helper = LayerHelper('affine_grid')
-
     if not isinstance(theta, Variable):
         raise ValueError("The theta should be a Tensor.")
-    check_variable_and_dtype(theta, 'theta', ['float32', 'float64'],
-                             'affine_grid')
+
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None and cudnn_version >= 6000 and align_corners:
         use_cudnn = True
@@ -99,6 +96,9 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                                   "align_corners", align_corners, "use_cudnn",
                                   use_cudnn)
 
+    helper = LayerHelper('affine_grid')
+    check_variable_and_dtype(theta, 'theta', ['float32', 'float64'],
+                             'affine_grid')
     out = helper.create_variable_for_type_inference(theta.dtype)
     ipts = {'Theta': theta}
     attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
@@ -244,10 +244,6 @@ def grid_sample(x,
             #    [ 0.55  -0.076  0.35   0.59 ]
             #    [ 0.596  0.38   0.52   0.24 ]]]]
     """
-    helper = LayerHelper("grid_sample", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')
-    check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
-                             'grid_sample')
 
     _modes = ['bilinear', 'nearest']
     _padding_modes = ['zeros', 'reflection', 'border']
@@ -273,19 +269,23 @@ def grid_sample(x,
         # CUDNN always computes gradients for all inputs
         x.stop_gradient = False
         grid.stop_gradient = False
-    ipts = {'X': x, 'Grid': grid}
-    attrs = {
-        'mode': mode,
-        'padding_mode': padding_mode,
-        'align_corners': align_corners,
-        'use_cudnn': use_cudnn
-    }
 
     if in_dygraph_mode():
         attrs = ('mode', mode, 'padding_mode', padding_mode, 'align_corners',
                  align_corners, 'use_cudnn', use_cudnn)
         out = getattr(_C_ops, 'grid_sampler')(x, grid, *attrs)
     else:
+        helper = LayerHelper("grid_sample", **locals())
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')
+        check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
+                                 'grid_sample')
+        ipts = {'X': x, 'Grid': grid}
+        attrs = {
+            'mode': mode,
+            'padding_mode': padding_mode,
+            'align_corners': align_corners,
+            'use_cudnn': use_cudnn
+        }
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
             type='grid_sampler',
@@ -320,10 +320,6 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
             out = out_var.numpy()
             # (2, 1, 12, 12)
     """
-    if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
-                                 'pixel_shuffle')
-
     if not isinstance(upscale_factor, int):
         raise TypeError("upscale factor must be int type")
 
@@ -337,7 +333,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
                                     "data_format", data_format)
 
     helper = LayerHelper("pixel_shuffle", **locals())
-
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_shuffle')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="pixel_shuffle",
