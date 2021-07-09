@@ -82,7 +82,8 @@ class TestImperativePTQ(unittest.TestCase):
         return data_cache_folder
 
     def set_vars(self):
-        self.ptq = ImperativePTQ(default_ptq_config)
+        config = PTQConfig(AbsmaxQuantizer(), AbsmaxQuantizer())
+        self.ptq = ImperativePTQ(config)
 
         self.batch_num = 10
         self.batch_size = 10
