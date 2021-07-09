@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 __all__ = []
 
 
@@ -26,7 +28,7 @@ class ProcessMesh:
             dp_degree=pp_degree=mp_degree=2
             mesh = ProcessMesh([dp_degree, pp_degree, mp_degree])
         """
-        process_num = product(mesh)
+        process_num = np.prod(mesh)
         if process_group is None:
             process_group = list(range(process_num))
         assert len(process_group) == process_num

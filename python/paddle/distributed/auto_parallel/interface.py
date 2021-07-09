@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = []
+
+def validate_check():
+    pass
 
 
 def shard_tensor(tensor, mesh, dims_mapping):
@@ -26,8 +28,9 @@ def shard_tensor(tensor, mesh, dims_mapping):
         The tensor itself.
     """
     validate_check()
-    tensor.distributed_attr['mesh'] = mesh
-    tensor.distributed_attr['dims_mapping'] = dims_mapping
+    tensor.desc._set_distributed_attr('mesh_topology', mesh.get_mesh())
+    tensor.desc._set_distributed_attr('mesh_group', mesh.get_process_group())
+    tensor.desc._set_distributed_attr('dims_mapping', dims_mapping)
     return tensor
 
 
@@ -41,7 +44,8 @@ def set_shard_mask(tensor, mask):
         The tensor itself.
     """
     validate_check()
-    tensor.distributed_attr['mask'] = mask
+    tensor.desc._set_distributed_attr('mask_shape', mask.shape)
+    tensor.desc._set_distributed_attr('mask_value', mask.tolist())
     return tensor
 
 
@@ -58,9 +62,10 @@ def shard_op(op_name, mesh, input_dims_mapping, output_dims_mapping):
     """
     validate_check()
     # op_mapping[op_name](parameter list from input_dims_mapping)
-    op.distributed_attr['mesh'] = mesh
-    op.distributed_attr['input_dims_mapping'] = input_dims_mapping
-    op.distributed_attr['output_dims_mapping'] = output_dims_mapping
+    op.desc._set_distributed_attr('mesh_topology', mesh.get_mesh())
+    op.desc._set_distributed_attr('mesh_group', mesh.get_process_group())
+    op.desc._set_distributed_attr('input_dims_mapping', input_dims_mapping)
+    op.desc._set_distributed_attr('output_dims_mapping', output_dims_mapping)
     # input_dims_mapping = {index: {'name': in_name, 'dims_mapping': dims_mapping}}
 
 
@@ -73,7 +78,7 @@ def set_offload_device(tensor, dst_device):
     Returns:
         None.
     """
-    tensor.distributed_attr['offload_device'] = dst_device
+    tensor.desc._set_distributed_attr('offload_device', dst_device)
 
 
 def set_pipeline_stage(stage):

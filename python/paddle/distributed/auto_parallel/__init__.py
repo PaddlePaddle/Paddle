@@ -12,4 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .interface import shard_tensor  # noqa: F401
+from .interface import shard_op  # noqa: F401
+from .interface import set_shard_mask  # noqa: F401
+from .interface import set_offload_device  # noqa: F401
+from .interface import set_pipeline_stage  # noqa: F401
+from .utils import ProcessMesh  # noqa: F401
+
 __all__ = []
