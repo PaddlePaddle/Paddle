@@ -320,7 +320,7 @@ if load_noavx:
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
         from .core_noavx import _promote_types_if_complex_exists
-        from .core_avx import _set_cached_executor_build_strategy
+        from .core_noavx import _set_cached_executor_build_strategy
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids
