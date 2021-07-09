@@ -18,7 +18,7 @@ import numpy as np
 from ....log_helper import get_logger
 
 _logger = get_logger(
-    name, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 __all__ = ['cal_kl_threshold']
 
