@@ -40,8 +40,7 @@ namespace framework {
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
 
-void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
-                             uint64_t table_id, int feature_dim) {
+void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
   platform::Timer timeline;
   timeline.Start();
@@ -68,8 +67,6 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
   thread_keys_.resize(thread_keys_thread_num_);
   for (int i = 0; i < thread_keys_thread_num_; i++) {
     thread_keys_[i].resize(thread_keys_shard_num_);
-    for (int j = 0; j < thread_keys_shard_num_; j++) {
-    }
   }
   const std::deque<Record>& vec_data = input_channel->GetData();
   size_t total_len = vec_data.size();
@@ -139,17 +136,16 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
     local_ptr[i].resize(local_keys[i].size());
   }
   timeline.Start();
-  auto ptl_func = [this, &local_keys, &local_ptr, &table_id,
-                   &fleet_ptr](int i) {
+  auto ptl_func = [this, &local_keys, &local_ptr, &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
 #ifdef PADDLE_WITH_PSLIB
     auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
-        reinterpret_cast<char**>(local_ptr[i].data()), table_id,
+        reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
         local_keys[i].data(), key_size);
 #endif
 #ifdef PADDLE_WITH_PSCORE
     auto tt = fleet_ptr->_worker_ptr->pull_sparse_ptr(
-        reinterpret_cast<char**>(local_ptr[i].data()), table_id,
+        reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
         local_keys[i].data(), key_size);
 #endif
     tt.wait();
@@ -255,7 +251,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
         }
       }
 #endif
-      VLOG(1) << "GpuPs build hbmps done";
+      VLOG(3) << "GpuPs build hbmps done";
 
       device_mutex[dev]->unlock();
     }
@@ -272,11 +268,8 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
           << " seconds.";
 }
 
-void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
+void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   int device_num = heter_devices_.size();
-  std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
-  gpu_task->Reset();
-  BuildTask(gpu_task, table_id, feature_dim);
   platform::Timer timeline;
   timeline.Start();
 
@@ -291,15 +284,21 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
     delete HeterPs_;
     HeterPs_ = nullptr;
   }
+  if (size_max <= 0) {
+    VLOG(1) << "Skip build gpu ps cause feasign nums = " << size_max;
+    return;
+  }
   std::vector<std::thread> threads(device_num);
   HeterPs_ = HeterPsBase::get_instance(size_max, resource_);
   HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
   auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
-    std::cout << "building table: " << i << std::endl;
+    VLOG(3) << "building table: " << i;
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
-    HeterPs_->show_one_table(i);
+    if (feature_keys_count[i] > 0) {
+      HeterPs_->show_one_table(i);
+    }
   };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(build_func, i);
@@ -310,7 +309,109 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
   timeline.Pause();
   VLOG(1) << "GpuPs build table total costs: " << timeline.ElapsedSec()
           << " s.";
-  gpu_task_pool_.Push(gpu_task);
+}
+
+void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
+  platform::Timer timer;
+  VLOG(3) << "Begin LoadIntoMemory(), dataset[" << dataset_ << "]";
+  timer.Start();
+  dataset_->LoadIntoMemory();
+  timer.Pause();
+  VLOG(0) << "LoadIntoMemory cost: " << timer.ElapsedSec() << "s";
+
+  // local shuffle
+  if (is_shuffle) {
+    dataset_->LocalShuffle();
+  }
+
+  std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
+  gpu_task->Reset();
+  data_ready_channel_->Put(gpu_task);
+  VLOG(3) << "End LoadIntoMemory(), dataset[" << dataset_ << "]";
+}
+
+void PSGPUWrapper::start_build_thread() {
+  running_ = true;
+  VLOG(3) << "start build CPU&GPU ps thread.";
+  build_cpu_threads_ = std::thread([this] { build_cpu_thread(); });
+  build_gpu_threads_ = std::thread([this] { build_gpu_thread(); });
+}
+
+void PSGPUWrapper::build_cpu_thread() {
+  while (running_) {
+    std::shared_ptr<HeterContext> gpu_task = nullptr;
+    if (!data_ready_channel_->Get(gpu_task)) {
+      continue;
+    }
+    VLOG(3) << "thread BuildTask start.";
+    platform::Timer timer;
+    timer.Start();
+    // build cpu ps data process
+    BuildTask(gpu_task);
+    timer.Pause();
+    VLOG(1) << "thread BuildTask end, cost time: " << timer.ElapsedSec() << "s";
+    buildcpu_ready_channel_->Put(gpu_task);
+  }
+  VLOG(3) << "build cpu thread end";
+}
+
+void PSGPUWrapper::build_gpu_thread() {
+  while (running_) {
+    std::shared_ptr<HeterContext> gpu_task = nullptr;
+    if (!gpu_free_channel_->Get(gpu_task)) {
+      continue;
+    }
+    if (!buildcpu_ready_channel_->Get(gpu_task)) {
+      continue;
+    }
+    VLOG(3) << "thread BuildGPUTask start.";
+    platform::Timer timer;
+    timer.Start();
+    BuildGPUTask(gpu_task);
+    timer.Pause();
+    VLOG(1) << "thread BuildGPUTask end, cost time: " << timer.ElapsedSec()
+            << "s";
+
+    gpu_task_pool_.Push(gpu_task);
+    train_ready_channel_->Put(gpu_task);
+  }
+  VLOG(3) << "build gpu thread end";
+}
+
+void PSGPUWrapper::BeginPass() {
+  platform::Timer timer;
+  timer.Start();
+  if (current_task_) {
+    PADDLE_THROW(
+        platform::errors::Fatal("[BeginPass] current task is not ended."));
+  }
+  // load+build done
+  if (!train_ready_channel_->Get(current_task_)) {
+    PADDLE_THROW(platform::errors::Fatal("train_ready_channel_ failed."));
+  }
+  timer.Pause();
+  VLOG(1) << "BeginPass end, cost time: " << timer.ElapsedSec() << "s";
+}
+
+void PSGPUWrapper::EndPass() {
+  if (!current_task_) {
+    PADDLE_THROW(
+        platform::errors::Fatal("[EndPass] current task has been ended."));
+  }
+  platform::Timer timer;
+  timer.Start();
+  size_t keysize_max = 0;
+  // in case of feasign_num = 0, skip dump_to_cpu
+  for (size_t i = 0; i < heter_devices_.size(); i++) {
+    keysize_max = std::max(keysize_max, current_task_->device_keys_[i].size());
+  }
+  if (keysize_max != 0) {
+    HeterPs_->end_pass();
+  }
+  current_task_ = nullptr;
+  gpu_free_channel_->Put(current_task_);
+  timer.Pause();
+  VLOG(1) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,

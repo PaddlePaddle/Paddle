@@ -115,7 +115,7 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
   path_.resize(total_gpu);
 
   if (!topo_aware_) {
-    VLOG(1) << "init path without topo aware";
+    VLOG(3) << "init path without topo aware";
     for (int i = 0; i < total_gpu; ++i) {
       path_[i].resize(total_gpu);
       for (int j = 0; j < total_gpu; ++j) {
@@ -130,7 +130,7 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
       }
     }
   } else {
-    VLOG(1) << "init path with topo aware";
+    VLOG(3) << "init path with topo aware";
     for (int i = 0; i < total_gpu; ++i) {
       path_[i].resize(total_gpu);
       for (int j = 0; j < total_gpu; ++j) {

@@ -74,15 +74,15 @@ aclrtStream GetCurrentNPUStream(int device_id) {
   return dev_ctx->stream();
 }
 
-NpuOpRunner::NpuOpRunner(std::string op_type) : op_type_(op_type) {
-  attr_ = aclopCreateAttr();
-}
+NpuOpRunner::NpuOpRunner() {}
 
-NpuOpRunner::NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs,
+NpuOpRunner::NpuOpRunner(const std::string &op_type) : op_type_(op_type) {}
+
+NpuOpRunner::NpuOpRunner(const std::string &op_type,
+                         const std::vector<Tensor> &inputs,
                          const std::vector<Tensor> &outputs,
                          const NPUAttributeMap &attrs)
     : op_type_(op_type) {
-  attr_ = aclopCreateAttr();
   AddInputs(inputs);
   AddOutputs(outputs);
   AddAttrs(attrs);
@@ -108,8 +108,16 @@ NpuOpRunner::~NpuOpRunner() {
 
 const std::string &NpuOpRunner::Type() { return op_type_; }
 
+NpuOpRunner &NpuOpRunner::SetType(const std::string &name) {
+  op_type_ = name;
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
                                   const NPUAttribute &attr) {
+  if (!attr_) {
+    attr_ = aclopCreateAttr();
+  }
   if (attr.type() == typeid(bool)) {
     PADDLE_ENFORCE_NPU_SUCCESS(
         aclopSetAttrBool(attr_, name.c_str(), BOOST_GET_CONST(bool, attr)));
@@ -188,6 +196,46 @@ NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor) {
   input_descs_.emplace_back(CreateTensorDesc(tensor));
   // create aclDataBuffer
   input_buffers_.emplace_back(CreateDataBuffer(tensor));
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor, aclMemType mem_type) {
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(tensor, mem_type));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(tensor));
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<int32_t> &&dims) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(dims, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<int64_t> &&dims) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(dims, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
   return *this;
 }
 
@@ -272,7 +320,8 @@ std::vector<aclDataBuffer *> &NpuOpRunner::GetOutputBuffers() {
   return output_buffers_;
 }
 
-aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
+aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
+                                             aclMemType mem_type) {
   auto dtype = ConvertToNpuDtype(tensor.type());
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
@@ -287,6 +336,9 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, format));
   PADDLE_ENFORCE_NPU_SUCCESS(
       aclSetTensorStorageShape(desc, dims.size(), dims.data()));
+  if (mem_type == ACL_MEMTYPE_HOST) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorPlaceMent(desc, mem_type));
+  }
   return desc;
 }
 
