@@ -403,10 +403,20 @@ configure_file(commit.h.in commit.h)
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
 
-cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+if(WITH_ROCM)
+  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+else()
+  cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+endif()
+
 cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_tensor)
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
-cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+
+if(WITH_ROCM)
+  hip_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+else()
+  cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+endif()
 
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
