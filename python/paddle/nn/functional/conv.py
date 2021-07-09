@@ -22,6 +22,7 @@ from ...fluid.layers import nn, utils
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.param_attr import ParamAttr
 from ...fluid.layer_helper import LayerHelper
+from paddle import _C_ops
 
 __all__ = []
 
@@ -116,7 +117,7 @@ def _conv_nd(x,
                  use_mkldnn, 'fuse_relu_before_depthwise_conv', False,
                  "padding_algorithm", padding_algorithm, "data_format",
                  data_format)
-        pre_bias = getattr(core.ops, op_type)(x, weight, *attrs)
+        pre_bias = getattr(_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:
@@ -352,7 +353,7 @@ def conv1d(x,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
                  'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
                  padding_algorithm, "data_format", conv2d_data_format)
-        out = getattr(core.ops, l_type)(x, weight, *attrs)
+        out = getattr(_C_ops, l_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     else:
@@ -788,7 +789,7 @@ def conv1d_transpose(x,
                  'strides', stride, 'paddings', padding, 'padding_algorithm',
                  padding_algorithm, 'dilations', dilation, 'groups', groups,
                  'use_cudnn', use_cudnn, 'data_format', conv2d_data_format)
-        out = getattr(core.ops, op_type)(x, weight, *attrs)
+        out = getattr(_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     else:
@@ -1023,7 +1024,7 @@ def conv2d_transpose(x,
                  'strides', stride, 'paddings', padding, 'padding_algorithm',
                  padding_algorithm, 'dilations', dilation, 'groups', groups,
                  'use_cudnn', use_cudnn, 'data_format', data_format)
-        pre_bias = getattr(core.ops, op_type)(x, weight, *attrs)
+        pre_bias = getattr(_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:
@@ -1415,7 +1416,7 @@ def conv3d_transpose(x,
                  'paddings', padding, "padding_algorithm", padding_algorithm,
                  'strides', stride, 'dilations', dilation, 'groups', groups,
                  'use_cudnn', use_cudnn, "data_format", data_format_)
-        pre_bias = getattr(core.ops, op_type)(x, weight, *attrs)
+        pre_bias = getattr(_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:

@@ -18,6 +18,7 @@ from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid import dygraph_utils
 import numpy as np
+from paddle import _C_ops
 
 __all__ = []
 
@@ -94,9 +95,9 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if in_dygraph_mode():
         _out_shape = out_shape.numpy().tolist() if isinstance(
             out_shape, Variable) else out_shape
-        return core.ops.affine_grid(theta, "output_shape", _out_shape,
-                                    "align_corners", align_corners, "use_cudnn",
-                                    use_cudnn)
+        return _C_ops.affine_grid(theta, "output_shape", _out_shape,
+                                  "align_corners", align_corners, "use_cudnn",
+                                  use_cudnn)
 
     out = helper.create_variable_for_type_inference(theta.dtype)
     ipts = {'Theta': theta}
@@ -283,7 +284,7 @@ def grid_sample(x,
     if in_dygraph_mode():
         attrs = ('mode', mode, 'padding_mode', padding_mode, 'align_corners',
                  align_corners, 'use_cudnn', use_cudnn)
-        out = getattr(core.ops, 'grid_sampler')(x, grid, *attrs)
+        out = getattr(_C_ops, 'grid_sampler')(x, grid, *attrs)
     else:
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
@@ -332,8 +333,8 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
                              data_format))
 
     if in_dygraph_mode():
-        return core.ops.pixel_shuffle(x, "upscale_factor", upscale_factor,
-                                      "data_format", data_format)
+        return _C_ops.pixel_shuffle(x, "upscale_factor", upscale_factor,
+                                    "data_format", data_format)
 
     helper = LayerHelper("pixel_shuffle", **locals())
 

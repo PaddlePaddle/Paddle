@@ -41,6 +41,7 @@ from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 from .lr import LRScheduler
 import copy
+from paddle import _C_ops
 
 __all__ = []
 
@@ -926,7 +927,7 @@ class Optimizer(object):
         inputs = {"X": [grad, regularization_term]}
         outputs = {"Out": [new_grad]}
         if framework.in_dygraph_mode():
-            new_grad = core.ops.sum([grad, regularization_term])
+            new_grad = _C_ops.sum([grad, regularization_term])
         else:
             grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
 

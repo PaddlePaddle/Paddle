@@ -50,6 +50,7 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
 import warnings
+from paddle import _C_ops
 
 __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
@@ -1550,7 +1551,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     inputs = {'X': x, 'Guide': guide, 'Grid': grid}
     if paddle.fluid.in_dygraph_mode():
         attrs = ('has_offset', has_offset)
-        return getattr(core.ops, "bilateral_slice")(x, grid, guide, *attrs)
+        return getattr(_C_ops, "bilateral_slice")(x, grid, guide, *attrs)
     helper.append_op(
         type='bilateral_slice',
         inputs=inputs,
@@ -1619,7 +1620,7 @@ def correlation(x,
         attrs = ("pad_size", pad_size, "kernel_size", kernel_size,
                  "max_displacement", max_displacement, "stride1", stride1,
                  "stride2", stride2, "corr_type_multiply", corr_type_multiply)
-        output = getattr(core.ops, "correlation")(x, y, *attrs)
+        output = getattr(_C_ops, "correlation")(x, y, *attrs)
     else:
         helper.append_op(
             type="correlation",

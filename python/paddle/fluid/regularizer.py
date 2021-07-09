@@ -18,6 +18,7 @@ import logging
 from . import framework
 from .framework import in_dygraph_mode, _varbase_creator
 from . import core
+from paddle import _C_ops
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 
@@ -136,7 +137,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         attrs = {"scale": self._regularization_coeff}
 
         if framework.in_dygraph_mode():
-            return core.ops.scale(param, "scale", self._regularization_coeff)
+            return _C_ops.scale(param, "scale", self._regularization_coeff)
         else:
             decay = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
