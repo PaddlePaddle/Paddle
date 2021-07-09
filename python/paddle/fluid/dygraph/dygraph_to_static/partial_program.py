@@ -149,7 +149,7 @@ class PartialProgramLayer:
         self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
 
-        self._set_strategy(build_strategy)
+        # self._set_strategy(build_strategy)
 
     @LazyInitialized
     def _infer_program(self):
