@@ -364,8 +364,11 @@ EOF
         cp -r paddle_inference_install_dir paddle_inference
         tar -czf paddle_inference.tgz paddle_inference
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
+        soLibSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
         echo "Paddle_Inference Size: $buildSize"
+        echo "Paddle_Inference Dynamic Library Size: $soLibSize"
         echo "ipipe_log_param_Paddle_Inference_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
+        echo "ipipe_log_param_Paddle_Inference_So_Size: $soLibSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     elif [ "$1" == "paddle_inference_c" ]; then
         cd ${PADDLE_ROOT}/build
         cp -r paddle_inference_c_install_dir paddle_inference_c
