@@ -1641,7 +1641,7 @@ class Executor(object):
         trainer_instance = self._default_executor.init_for_dataset(
             program.desc, trainer_desc, scope, dataset.dataset)
 
-        ctx = [trainer_desc, dataset, scope, real_fetch_list, trainer_instance]
+        ctx = [scope, real_fetch_list, trainer_instance]
         if use_program_cache: self._add_ctx_cache(cache_key, ctx)
 
         return ctx
@@ -1658,13 +1658,16 @@ class Executor(object):
                       print_period=100,
                       fetch_handler=None,
                       use_program_cache=False):
-        trainer_desc, dataset, scope, real_fetch_list, trainer_instance = \
+        scope, real_fetch_list, trainer_instance = \
             self._prepare_pipeline_ctx(program, dataset, scope, thread,
                                        is_infer, debug, fetch_list, fetch_info,
                                        print_period, fetch_handler,
                                        use_program_cache)
 
         self._default_executor.run_from_dataset(trainer_instance)
+
+        if not use_program_cache:
+            self._default_executor.release_trainer(trainer_instance)
 
         if real_fetch_list:
             arr = scope.find_var('fetch').get_fetch_list()
