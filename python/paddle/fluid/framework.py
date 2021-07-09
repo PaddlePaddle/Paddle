@@ -2857,12 +2857,14 @@ class Block(object):
         del self.vars[name]
 
     def create_parameter(self, *args, **kwargs):
-        return self._create_parameter_or_buffer(
-            is_parameter=True, *args, **kwargs)
+        kwargs = dict(kwargs)
+        kwargs['is_parameter'] = True
+        return self._create_parameter_or_buffer(*args, **kwargs)
 
-    def _create_parameter_or_buffer(self, is_parameter=True, *args, **kwargs):
+    def _create_parameter_or_buffer(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = None
+        is_parameter = kwargs.get("is_parameter", True)
         if not is_parameter:  # buffer case
             assert in_dygraph_mode(), "cannot create buffer on static mode"
             # buffer should be persistable by default

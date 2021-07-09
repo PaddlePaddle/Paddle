@@ -606,7 +606,6 @@ class _BatchNormBase(layers.Layer):
                 trainable=False,
                 do_model_average=True),
             'shape': param_shape,
-            'dtype': self._dtype
         }
 
         variance_kwargs = {
@@ -616,7 +615,6 @@ class _BatchNormBase(layers.Layer):
                 trainable=False,
                 do_model_average=True),
             'shape': param_shape,
-            'dtype': self._dtype
         }
         if in_dygraph_mode():
             self.register_buffer('_mean', self._create_buffer(**mean_kwargs))
