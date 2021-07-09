@@ -1227,6 +1227,37 @@ class TestJitSaveLoadFunctionCase3(unittest.TestCase):
         self.assertTrue((load_result - origin).abs().max() < 1e-10)
 
 
+class TestJitSaveLoadFunctionWithParam(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function_function(self):
+        class LinearNet(paddle.nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = paddle.nn.Linear(5, 6)
+
+            def forward(self, x):
+                return paddle.tanh(x)
+
+            def anothor_forward(self, x):
+                return self._linear(x)
+
+        layer = LinearNet()
+
+        inps = paddle.rand([3, 5])
+        origin = layer.anothor_forward(inps)
+
+        func = paddle.jit.to_static(
+            layer.anothor_forward, [paddle.static.InputSpec(shape=[-1, 5])])
+        path = 'test_jit_save_load_function_with_params/func'
+        paddle.jit.save(func, path)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue(np.array_equal(load_result.numpy(), origin.numpy()))
+
+
 class TestJitSaveLoadDataParallel(unittest.TestCase):
     def verify_inference_correctness(self, layer, path):
         layer.eval()
