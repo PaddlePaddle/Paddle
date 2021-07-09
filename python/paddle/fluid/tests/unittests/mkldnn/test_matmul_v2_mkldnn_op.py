@@ -238,7 +238,7 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
-    @OpTestTool.skip_if_not_bf16()
+    @OpTestTool.skip_if_not_cpu_bf16()
     class TestMatMulV2Bf16OneDNNOp(parent):
         def set_inputs(self, x, y):
             self.inputs = {

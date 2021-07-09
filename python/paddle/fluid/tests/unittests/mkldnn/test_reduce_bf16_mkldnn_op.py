@@ -23,7 +23,7 @@ import paddle
 paddle.enable_static()
 
 
-@OpTestTool.skip_if_not_bf16()
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestReduceSumDefaultBF16OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"

@@ -1784,7 +1784,7 @@ class OpTestTool:
         return unittest.skipIf(condition, reason)
 
     @classmethod
-    def skip_if_not_bf16(cls):
+    def skip_if_not_cpu_bf16(cls):
         return OpTestTool.skip_if(
             not (isinstance(_current_expected_place(), core.CPUPlace) and
                  core.supports_bfloat16()),
