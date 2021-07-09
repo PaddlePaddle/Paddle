@@ -1780,12 +1780,12 @@ class OpTest(unittest.TestCase):
 
 class OpTestTool:
     @classmethod
-    def skipIf(cls, condition: object, reason: str):
+    def skip_if(cls, condition: object, reason: str):
         return unittest.skipIf(condition, reason)
 
     @classmethod
-    def skipIfNotBF16(cls):
-        return OpTestTool.skipIf(
+    def skip_if_not_bf16(cls):
+        return OpTestTool.skip_if(
             not (isinstance(_current_expected_place(), core.CPUPlace) and
                  core.supports_bfloat16()),
             "Place does not support BF16 evaluation")
