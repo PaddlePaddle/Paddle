@@ -253,6 +253,7 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
              "It has a higher priority than Attr(shape) but a lower priority "
              "than Input(ShapeTensor). The Attr(shape) still should be "
              "set correctly to guarantee shape inference in compile time.")
+        .AsDuplicable()
         .AsDispensable();
     AddInput(
         "ShapeTensor",
