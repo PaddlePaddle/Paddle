@@ -79,6 +79,7 @@ disable_wingpu_test="^test_model$|\
 ^test_fuse_bn_add_act_pass$|\
 ^disable_wingpu_test$"
 
+
 # /*============================================================================*/
 
 # /*==================Fixed Disabled Windows CPU OPENBLAS unittests==============================*/
