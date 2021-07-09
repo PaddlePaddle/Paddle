@@ -19,6 +19,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_def_api.h"
 #include "paddle/fluid/framework/op_info.h"
 
+namespace {
+std::unordered_set<std::string> global_extra_attrs = {
+    "op_role",       "op_role_var",      "op_namescope",
+    "op_callstack",  "op_device",        "@ENABLE_CACHE_RUNTIME_CONTEXT@",
+    "is_test",       "use_mkldnn",       "mkldnn_data_type",
+    "use_quantizer", "mkldnn_data_type", "use_cudnn",
+    "name"};
+}
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -171,7 +180,8 @@ bool OpCompat::Judge(const OpDesc& op_desc) {
 
   for (auto& attr_map : op_desc.GetAttrMap()) {
     if (attr_compats_.find(attr_map.first) == attr_compats_.end()) {
-      if (extra_attrs_.find(attr_map.first) != extra_attrs_.end()) {
+      if (global_extra_attrs.find(attr_map.first) != global_extra_attrs.end() ||
+          extra_attrs_.find(attr_map.first) != extra_attrs_.end()) {
         continue;
       }
       if (!AttrCompat(attr_map.first, this).IsLeftDefault()(op_desc)) {
