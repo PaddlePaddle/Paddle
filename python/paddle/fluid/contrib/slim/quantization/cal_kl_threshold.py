@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ....log_helper import get_logger
 import math
 import numpy as np
 
 __all__ = ['cal_kl_threshold']
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def expand_quantized_bins(quantized_bins, reference_bins):
