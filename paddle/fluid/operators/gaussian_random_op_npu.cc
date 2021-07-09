@@ -33,26 +33,23 @@ class NPUGaussianRandomKernel : public framework::OpKernel<T> {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
+    tensor->mutable_data<T>(context.GetPlace());
 
+    Tensor cpu_tensor(tensor->type());
+    cpu_tensor.Resize(tensor->dims());
+    T* cpu_data = cpu_tensor.mutable_data<T>(platform::CPUPlace());
     std::normal_distribution<T> dist(mean, std);
-    auto shape = GetShape(context);
-    tensor->Resize(shape);
+
     int64_t size = tensor->numel();
-    T* data = tensor->mutable_data<T>(context.GetPlace());
-    std::unique_ptr<T[]> data_cpu(new T[size]);
+
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     auto engine = framework::GetCPURandomEngine(seed);
-
     for (int64_t i = 0; i < size; ++i) {
-      data_cpu[i] = dist(*engine);
+      cpu_data[i] = dist(*engine);
     }
-    // copy to NPU
-    auto stream =
-        context.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, context.GetPlace()), data,
-                 platform::CPUPlace(), reinterpret_cast<void*>(data_cpu.get()),
-                 size * sizeof(T), stream);
+    framework::TensorCopy(
+        cpu_tensor, context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(), tensor);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
   }

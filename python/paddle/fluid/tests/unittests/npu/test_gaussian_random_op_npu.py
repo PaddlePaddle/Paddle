@@ -59,8 +59,7 @@ class TestNPUGaussianRandomOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        places = [self.place]
-        self.check_output_customized(self.verify_output, places=places)
+        self.check_output_customized(self.verify_output, self.place)
 
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
