@@ -65,7 +65,7 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
 
     def set_npu(self):
         self.__class__.use_npu = True
-        self.place = paddle.NPUPlace(5)
+        self.place = paddle.NPUPlace(0)
 
     def init_dtype(self):
         self.dtype = np.float32

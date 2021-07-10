@@ -54,7 +54,7 @@ class TestNPUSigmoid(OpTest):
 
     def set_npu(self):
         self.__class__.use_npu = True
-        self.place = paddle.NPUPlace(5)
+        self.place = paddle.NPUPlace(0)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -80,7 +80,7 @@ class TestNPUSigmoidFp16(OpTest):
 
     def set_npu(self):
         self.__class__.use_npu = True
-        self.place = paddle.NPUPlace(5)
+        self.place = paddle.NPUPlace(0)
         self.__class__.no_need_check_grad = True
 
     def init_dtype(self):
