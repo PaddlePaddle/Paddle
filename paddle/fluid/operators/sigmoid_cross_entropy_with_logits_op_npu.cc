@@ -24,23 +24,10 @@ template <typename DeviceContext, typename T>
 class SigmoidCrossEntropyWithLogitsNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(WARNING) << "SigmoidCrossEntropyWithLogitsNPUKernel";
-
     auto* x = ctx.Input<Tensor>("X");
     auto* label = ctx.Input<Tensor>("Label");
 
     auto* out = ctx.Output<Tensor>("Out");
-
-    LOG(WARNING) << "x: " << x;
-    LOG(WARNING) << "label: " << label;
-    LOG(WARNING) << "out: " << out;
-
-    LOG(WARNING) << "x numel: " << x->numel();
-    LOG(WARNING) << "label numel: " << label->numel();
-    LOG(WARNING) << "out numel: " << out->numel();
-    LOG(WARNING) << "x dims: " << x->dims();
-    LOG(WARNING) << "label dims: " << label->dims();
-    LOG(WARNING) << "out dims: " << out->dims();
 
     auto place = ctx.GetPlace();
 
@@ -53,10 +40,6 @@ class SigmoidCrossEntropyWithLogitsNPUKernel : public framework::OpKernel<T> {
     const auto& runner =
         NpuOpRunner("SigmoidCrossEntropyWithLogits", {*x, *label}, {*out}, {});
     runner.Run(stream);
-
-    LOG(WARNING) << "out: " << out;
-    LOG(WARNING) << "out numel: " << out->numel();
-    LOG(WARNING) << "out dims: " << out->dims();
   }
 };
 
@@ -65,28 +48,11 @@ class SigmoidCrossEntropyWithLogitsNPUGradKernel
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(WARNING) << "SigmoidCrossEntropyWithLogitsNPUGradKernel";
-
     auto* x = ctx.Input<Tensor>("X");
     auto* label = ctx.Input<Tensor>("Label");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-
-    LOG(WARNING) << "x: " << x;
-    LOG(WARNING) << "label: " << label;
-    LOG(WARNING) << "dout: " << dout;
-    LOG(WARNING) << "dx: " << dx;
-
-    LOG(WARNING) << "x numel: " << x->numel();
-    LOG(WARNING) << "label numel: " << label->numel();
-    LOG(WARNING) << "dout numel: " << dout->numel();
-    LOG(WARNING) << "dx numel: " << dx->numel();
-
-    LOG(WARNING) << "x dims: " << x->dims();
-    LOG(WARNING) << "label dims: " << label->dims();
-    LOG(WARNING) << "dout dims: " << dout->dims();
-    LOG(WARNING) << "dx dims: " << dx->dims();
 
     auto place = ctx.GetPlace();
 
@@ -99,10 +65,6 @@ class SigmoidCrossEntropyWithLogitsNPUGradKernel
     const auto& runner_dx = NpuOpRunner("SigmoidCrossEntropyWithLogitsGrad",
                                         {*x, *label, *dout}, {*dx}, {});
     runner_dx.Run(stream);
-
-    LOG(WARNING) << "dx: " << dx;
-    LOG(WARNING) << "dx numel: " << dx->numel();
-    LOG(WARNING) << "dx dims: " << dx->dims();
   }
 };
 
