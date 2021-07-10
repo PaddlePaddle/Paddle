@@ -307,6 +307,8 @@ template <typename DeviceContext, typename T>
 class SigmoidNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    LOG(WARNING) << "SigmoidNPUKernel";
+
     auto* x = ctx.Input<Tensor>("X");
 
     auto* out = ctx.Output<Tensor>("Out");
@@ -340,6 +342,8 @@ template <typename DeviceContext, typename T>
 class SigmoidGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    LOG(WARNING) << "SigmoidGradNPUKernel";
+
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* out = ctx.Input<Tensor>("Out");
 
