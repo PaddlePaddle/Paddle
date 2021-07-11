@@ -124,7 +124,7 @@ class FleetWrapper {
 
   void PushDenseVarsAsync(const Scope& scope, const uint64_t table_id,
                           const std::vector<std::string>& var_names,
-                          std::vector<std::future<int32_t>>* push_sparse_status,
+                          std::vector<std::future<int32_t>>* push_dense_status,
                           float scale_datanorm, int batch_size);
 
   // push dense variables to server in sync mode
