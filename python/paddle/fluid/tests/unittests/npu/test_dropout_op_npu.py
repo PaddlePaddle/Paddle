@@ -20,6 +20,7 @@ import sys
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -228,6 +229,68 @@ class TestDropoutOpFp16(TestDropoutOp):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True
         self.place = paddle.NPUPlace(0)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestDropoutAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = [fluid.CPUPlace(), paddle.NPUPlace(0)]
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[40, 40], dtype="float32")
+            res1 = paddle.nn.functional.dropout(
+                x=input, p=0., training=False, mode='upscale_in_train')
+            res2 = paddle.nn.functional.dropout(
+                x=input, p=0., axis=0, training=True, mode='upscale_in_train')
+            res3 = paddle.nn.functional.dropout(
+                x=input, p=0., axis=0, training=False, mode='upscale_in_train')
+            res4 = paddle.nn.functional.dropout(
+                x=input,
+                p=0.,
+                axis=[0, 1],
+                training=True,
+                mode='upscale_in_train')
+            res5 = paddle.nn.functional.dropout(
+                x=input,
+                p=0.,
+                axis=[0, 1],
+                training=False,
+                mode='upscale_in_train')
+            res6 = paddle.nn.functional.dropout(
+                x=input, p=1., training=True, mode='upscale_in_train')
+            res7 = paddle.fluid.layers.dropout(
+                x=input,
+                dropout_prob=0.,
+                dropout_implementation='upscale_in_train')
+            res8 = paddle.nn.functional.dropout(
+                x=input,
+                p=0.,
+                axis=(0, 1),
+                training=False,
+                mode='upscale_in_train')
+
+            in_np = np.random.random([40, 40]).astype("float32")
+            res_np = in_np
+            res_np2 = np.zeros_like(in_np)
+
+            exe = fluid.Executor(place)
+            res_list = [res1, res2, res3, res4, res5, res7, res8]
+            for res in res_list:
+                fetches = exe.run(fluid.default_main_program(),
+                                  feed={"input": in_np},
+                                  fetch_list=[res])
+                self.assertTrue(np.allclose(fetches[0], res_np))
+            fetches2 = exe.run(fluid.default_main_program(),
+                               feed={"input": in_np},
+                               fetch_list=[res6])
+            self.assertTrue(np.allclose(fetches2[0], res_np2))
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
 
 
 if __name__ == '__main__':

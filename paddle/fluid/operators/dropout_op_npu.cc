@@ -56,6 +56,18 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
     // only achive the default `upscale_in_train` method
     if (!is_test) {
+      Tensor tmp_x(x->type());
+      Tensor tmp_out(out->type());
+      tmp_x.ShareDataWith(*x);
+      tmp_out.ShareDataWith(*out);
+      if (x->dims().size() == 1) {
+        // DropOutDoMask will get error result when input
+        // is 1-D. Make it become 2-D.
+        std::vector<int> vec_dim = framework::vectorize<int>(x->dims());
+        tmp_x.Resize(framework::make_ddim({vec_dim[0], 1}));
+        tmp_out.Resize(framework::make_ddim({vec_dim[0], 1}));
+      }
+
       int seed = 0;
       int seed2 = 0;
       float keep_prob = 1. - dropout_prob;
@@ -87,7 +99,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       // in `npu_op_runner.cc`, which needs to be optimized later.
       NpuOpRunner runner_gen_mask;
       runner_gen_mask.SetType("DropOutGenMask")
-          .AddInput(framework::vectorize(mask->dims()))
+          .AddInput(framework::vectorize(tmp_out.dims()))
           .AddInput(keep_prob_tensor)
           .AddOutput(npu_mask)
           .AddAttr("seed", seed)
@@ -96,10 +108,10 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
       NpuOpRunner runner_dropout;
       runner_dropout.SetType("DropOutDoMask")
-          .AddInput(*x)
+          .AddInput(tmp_x)
           .AddInput(npu_mask)
           .AddInput(keep_prob_tensor)
-          .AddOutput(*out);
+          .AddOutput(tmp_out);
       runner_dropout.Run(stream);
 
       // cast `out` from float/float16 to bool
