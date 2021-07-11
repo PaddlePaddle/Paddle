@@ -39,7 +39,6 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
     auto is_test = ctx.Attr<bool>("is_test");
 
     out->mutable_data<T>(ctx.GetPlace());
-    mask->mutable_data<uint8_t>(ctx.GetPlace());
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -48,6 +47,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
     if (dropout_prob == 1.) {
       const auto& runner_zeros_out = NpuOpRunner("ZerosLike", {*out}, {*out});
       runner_zeros_out.Run(stream);
+      mask->mutable_data<uint8_t>(ctx.GetPlace());
       const auto& runner_zeros_mask =
           NpuOpRunner("ZerosLike", {*mask}, {*mask});
       runner_zeros_mask.Run(stream);
@@ -67,10 +67,12 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
         seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;
       }
 
-      Tensor keep_prob_tensor(framework::proto::VarType::FP32);
-      keep_prob_tensor.mutable_data<float>({1}, ctx.GetPlace());
-      FillNpuTensorWithConstant<float>(&keep_prob_tensor,
-                                       static_cast<float>(keep_prob));
+      Tensor keep_prob_tensor(x->type());
+      keep_prob_tensor.mutable_data<T>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(&keep_prob_tensor,
+                                   static_cast<T>(keep_prob));
+
+      mask->mutable_data<uint8_t>(ctx.GetPlace());
 
       // mask used in `DropOutGenMask` NPU OP is different from
       // the output `Mask`.
@@ -144,6 +146,12 @@ class DropoutGradNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
+
+    if (dropout_prob == 1.) {
+      const auto& runner_zeros = NpuOpRunner("ZerosLike", {*dx}, {*dx});
+      runner_zeros.Run(stream);
+      return;
+    }
 
     // cast mask from uint8 to float32/float16
     Tensor cast_mask(dx->type());

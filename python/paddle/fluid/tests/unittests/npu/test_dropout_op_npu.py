@@ -66,6 +66,27 @@ class TestDropoutOp(OpTest):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestDropoutOpInput1d(TestDropoutOp):
+    # change input shape
+    def setUp(self):
+        self.op_type = "dropout"
+        self.set_npu()
+        self.init_dtype()
+        self.inputs = {'X': np.random.random((3, 62)).astype(self.dtype)}
+        self.attrs = {
+            'dropout_prob': 0.0,
+            'fix_seed': True,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((3, 62)).astype('uint8')
+        }
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestDropoutOpInput1d(TestDropoutOp):
     # the input is 1-D
     def setUp(self):
         self.op_type = "dropout"
@@ -108,7 +129,7 @@ class TestDropoutOp2(TestDropoutOp):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestDropoutOp3(TestDropoutOp):
-    # the dropout_prob is 1.0
+    # the input dim is 3
     def setUp(self):
         self.op_type = "dropout"
         self.set_npu()
@@ -130,6 +151,7 @@ class TestDropoutOp3(TestDropoutOp):
                  "core is not compiled with NPU")
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
 class TestDropoutOpInference(OpTest):
+    # is_test = True
     def setUp(self):
         self.op_type = "dropout"
         self.set_npu()
@@ -174,7 +196,7 @@ class TestDropoutOpInference2(TestDropoutOpInference):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestDropoutOpWithSeed(TestDropoutOp):
-    # the input is 1-D
+    # the seed is a Tensor
     def setUp(self):
         self.op_type = "dropout"
         self.set_npu()
@@ -198,6 +220,7 @@ class TestDropoutOpWithSeed(TestDropoutOp):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestDropoutOpFp16(TestDropoutOp):
+    # float16
     def init_dtype(self):
         self.dtype = np.float16
 
