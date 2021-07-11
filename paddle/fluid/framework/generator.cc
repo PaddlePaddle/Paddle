@@ -77,7 +77,7 @@ std::shared_ptr<std::mt19937> OpDefaultCPUEngine_32() {
 
 std::shared_ptr<std::mt19937> GetCPURandomEngine_32(uint64_t seed) {
   if (DefaultCPUGenerator()->GetIsInitPy() && seed == 0) {
-    VLOG(4) << "Use random engine from generator";
+    VLOG(4) << "Use random engine 32 from generator";
     return DefaultCPUGenerator()->GetCPUEngine_32();
   } else {
     // NOTE(zhiqiu): creating an engine instance everytime instead of using
@@ -168,8 +168,8 @@ void Generator::SetCurrentSeed(uint64_t seed) {
   std::lock_guard<std::mutex> lock(this->mu_);
   this->state_.current_seed = seed;
   this->state_.thread_offset = 0;
-  // std::seed_seq seq({seed});
-  this->engine_->seed(seed);
+  std::seed_seq seq({seed});
+  this->engine_->seed(seq);
   this->engine_32->seed(seed);
 }
 
