@@ -9,12 +9,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
 namespace paddle {
 namespace operators {
 

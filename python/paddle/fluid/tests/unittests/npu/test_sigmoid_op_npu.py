@@ -41,16 +41,13 @@ class TestNPUSigmoid(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
-            self.place, ['X'],
-            'Out',
-            max_relative_error=0.01,
-            check_dygraph=False)
+            self.place, ['X'], 'Out', max_relative_error=0.01)
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -76,7 +73,7 @@ class TestNPUSigmoidFp16(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-3, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-3)
 
     def set_npu(self):
         self.__class__.use_npu = True

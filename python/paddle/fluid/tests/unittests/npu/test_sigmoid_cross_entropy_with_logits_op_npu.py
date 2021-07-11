@@ -57,11 +57,10 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -101,11 +100,10 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -145,11 +143,10 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -189,11 +186,10 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def set_npu(self):
         self.__class__.use_npu = True
