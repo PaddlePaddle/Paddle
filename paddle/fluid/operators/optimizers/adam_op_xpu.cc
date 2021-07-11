@@ -75,6 +75,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
     // skip_update=true, just copy input to output, and TensorCopy will call
     // mutable_data
     if (skip_update) {
+      VLOG(4) << "Adam skip update";
       framework::TensorCopy(
           *param, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), param_out);
