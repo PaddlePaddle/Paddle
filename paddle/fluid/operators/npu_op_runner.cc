@@ -327,6 +327,10 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
   int size = dims.size();
+  // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
+  // OP must be a scalar with shape[0]. At present, the shape
+  // of the `prob` Tensor of this OP is forced to be set to 0
+  // in `npu_op_runner.cc`, which needs to be optimized later.
   if (op_type_ == "DropOutGenMask" && size == 1 && *(dims.data()) == 1) {
     size = 0;
   }

@@ -31,7 +31,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     auto* seed_tensor =
-        context.HasInput("Seed") ? ctx.Input<Tensor>("Seed") : nullptr;
+        ctx.HasInput("Seed") ? ctx.Input<Tensor>("Seed") : nullptr;
     auto* out = ctx.Output<Tensor>("Out");
     auto* mask = ctx.Output<Tensor>("Mask");
 
@@ -40,6 +40,10 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
     mask->mutable_data<uint8_t>(ctx.GetPlace());
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
 
     if (dropout_prob == 1.) {
       const auto& runner_zeros_out = NpuOpRunner("ZerosLike", {*out}, {*out});
@@ -57,7 +61,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       float keep_prob = 1. - dropout_prob;
       if (seed_tensor) {
         std::vector<int> seed_data;
-        TensorToVector(*seed_tensor, ctx, &seed_data);
+        TensorToVector(*seed_tensor, ctx.device_context(), &seed_data);
         seed = seed_data[0];
       } else {
         seed = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;
@@ -75,17 +79,13 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       npu_mask.Resize(framework::make_ddim({length / 8}));
       npu_mask.mutable_data<uint8_t>(ctx.GetPlace());
 
-      auto stream =
-          ctx.template device_context<paddle::platform::NPUDeviceContext>()
-              .stream();
-
       // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
       // OP must be a scalar with shape[0]. At present, the shape
       // of the `prob` Tensor of this OP is forced to be set to 0
       // in `npu_op_runner.cc`, which needs to be optimized later.
       NpuOpRunner runner_gen_mask;
       runner_gen_mask.SetType("DropOutGenMask")
-          .AddInput(framework::vectorize(npu_mask.dims()))
+          .AddInput(framework::vectorize(mask->dims()))
           .AddInput(keep_prob_tensor)
           .AddOutput(npu_mask)
           .AddAttr("seed", seed)
@@ -145,8 +145,18 @@ class DropoutGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+    // cast mask from uint8 to float32/float16
+    Tensor cast_mask(dx->type());
+    cast_mask.Resize(mask->dims());
+    cast_mask.mutable_data<T>(ctx.GetPlace());
+    auto dst_dtype = ConvertToNpuDtype(dx->type());
+    const auto& runner_cast_mask =
+        NpuOpRunner("Cast", {*mask}, {cast_mask},
+                    {{"dst_type", static_cast<int>(dst_dtype)}});
+    runner_cast_mask.Run(stream);
+
     const auto& runner =
-        NpuOpRunner("MaskedScale", {*dout, *mask}, {*dx},
+        NpuOpRunner("MaskedScale", {*dout, cast_mask}, {*dx},
                     {{"value", static_cast<float>(1. / (1 - dropout_prob))}});
     runner.Run(stream);
   }
