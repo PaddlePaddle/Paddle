@@ -4677,7 +4677,7 @@ class PipelineOptimizer(object):
                     op_role,
                     op.type,
                     valid_op_role_value)
-            if op_role == self._op_role.Optimize:
+            if int(op_role) == int(self._op_role.Optimize):
                 in_optimize = True
 
             assert op.has_attr(self._op_device_key), (
@@ -4699,9 +4699,7 @@ class PipelineOptimizer(object):
                 device_list.append(device)
 
             if not in_optimize:
-                if pre_stage_id is None:
-                    pre_stage_id = stage_id
-                else:
+                if pre_stage_id is not None:
                     interval = stage_id - pre_stage_id
                     assert abs(interval) <= 1, \
                         "The stage interval of two consecutive ops in the pipeline must be < = 1," \
@@ -4714,6 +4712,7 @@ class PipelineOptimizer(object):
                         assert decrease_flag is False, \
                             "Pipeline stage must be in order, " \
                             "please check the stage of op={}".format(op)
+                pre_stage_id = stage_id
 
         return device_list
 
@@ -4857,10 +4856,6 @@ class PipelineOptimizer(object):
                         extra_index_info['index'] += 1
                         insert_index = None
 
-                        sync_comm_attr = {
-                            self._op_device_key: prev_dev,
-                            'ring_id': ring_id,
-                        }
                         if int(op_role) == int(self._op_role.Backward):
                             insert_index = extra_index_info[
                                 'first_optimize_index']
@@ -4868,17 +4863,22 @@ class PipelineOptimizer(object):
                         else:
                             insert_index = index
                             new_op_role = self._op_role.Backward
-                            sync_comm_attr['pipeline_flag'] = ''
-                        sync_comm_attr[self._op_role_key] = new_op_role
 
-                        block._insert_op_without_sync(
+                        sync_comm_op = block._insert_op_without_sync(
                             index=insert_index + extra_index_info['index'],
                             type='c_sync_comm_stream',
                             inputs={'X': [var]},
                             outputs={'Out': [var]},
-                            attrs=sync_comm_attr)
+                            attrs={
+                                self._op_device_key: prev_dev,
+                                self._op_role_key: new_op_role,
+                                'ring_id': ring_id,
+                            })
+
                         if int(op_role) == int(self._op_role.Forward):
+                            sync_comm_op._set_attr('pipeline_flag', '')
                             extra_index_info['index'] += 1
+
                         var_shape = list(var.shape)
                         var_shape[0] = self.micro_batch_size if var_shape[
                             0] < 0 else var_shape[0]
@@ -5235,6 +5235,7 @@ class PipelineOptimizer(object):
                     inputs={'X': [var]},
                     outputs={'Out': [var]},
                     attrs={self._op_role_key: self._op_role.Backward})
+        block._sync_with_cpp()
 
     def minimize(self,
                  loss,
