@@ -136,7 +136,6 @@ uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
 std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
   VLOG(3) << "Going to get client info";
   return pserver_ptr_->get_client_info();
-  return std::vector<uint64_t>();
 }
 
 void FleetWrapper::CreateClient2ClientConnection() {
@@ -295,6 +294,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
   if (ret != 0) {
     LOG(ERROR) << "fleet pull sparse failed, status[" << ret << "]";
     sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
   }
 }
 
@@ -368,7 +368,7 @@ void FleetWrapper::PushDenseVarsSync(
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,
-    std::vector<std::future<int32_t>>* push_sparse_status, float scale_datanorm,
+    std::vector<std::future<int32_t>>* push_dense_status, float scale_datanorm,
     int batch_size) {
   auto* communicator = Communicator::GetInstance();
   PADDLE_ENFORCE_EQ(
