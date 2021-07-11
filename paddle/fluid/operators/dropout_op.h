@@ -123,8 +123,9 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       auto engine = framework::GetCPURandomEngine_32(seed_data);
       float factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
       std::uniform_real_distribution<float> dist(0, 1);
-      float* mask_temp = new float[size];
+
 #ifdef __AVX__
+      float* mask_temp = new float[size];
       constexpr unsigned int block = YMM_FLOAT_BLOCK;
       int end = size & ~(block - 1);
       int i = 0;
@@ -164,6 +165,9 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
           }
         }
       }
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
       for (int i = 0; i < size; i++) {
         mask_data[i] = static_cast<uint8_t>(mask_temp[i]);
       }
