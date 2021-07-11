@@ -59,26 +59,9 @@ class TestNPUSigmoid(OpTest):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestNPUSigmoidFp16(OpTest):
-    def setUp(self):
-        self.op_type = "sigmoid"
-        self.set_npu()
-        self.init_dtype()
-
-        np.random.seed(SEED)
-        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        out = 1 / (1 + np.exp(-x))
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.outputs = {'Out': out}
-
+class TestNPUSigmoidFp16(TestNPUSigmoid):
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.place = paddle.NPUPlace(0)
-        self.__class__.no_need_check_grad = True
 
     def init_dtype(self):
         self.dtype = np.float16

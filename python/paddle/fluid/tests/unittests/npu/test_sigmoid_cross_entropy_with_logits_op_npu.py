@@ -72,7 +72,8 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
+class TestSigmoidCrossEntropyWithLogitsOp3(
+        TestSigmoidCrossEntropyWithLogitsOp1):
     """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
     """
 
@@ -99,23 +100,11 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
         self.outputs = {'Out': -term1 - term2}
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5)
-
-    def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out')
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.place = paddle.NPUPlace(0)
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
+class TestSigmoidCrossEntropyWithLogitsOp5(
+        TestSigmoidCrossEntropyWithLogitsOp1):
     """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
     """
 
@@ -142,23 +131,11 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
         term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
         self.outputs = {'Out': -term1 - term2}
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5)
-
-    def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out')
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.place = paddle.NPUPlace(0)
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
+class TestSigmoidCrossEntropyWithLogitsOp6(
+        TestSigmoidCrossEntropyWithLogitsOp1):
     """Test sigmoid_cross_entropy_with_logit_op with binary label
     """
 
@@ -184,19 +161,6 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
         term1 = self.inputs['Label'] * np.log(sigmoid_X)
         term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
         self.outputs = {'Out': -term1 - term2}
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5)
-
-    def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out')
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.place = paddle.NPUPlace(0)
-
-    def init_dtype(self):
-        self.dtype = np.float32
 
 
 if __name__ == '__main__':
