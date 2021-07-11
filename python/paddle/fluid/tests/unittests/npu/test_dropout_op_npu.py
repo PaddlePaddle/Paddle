@@ -18,7 +18,7 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle
 
 paddle.enable_static()
@@ -34,24 +34,17 @@ class TestDropoutOp(OpTest):
         self.op_type = "dropout"
         self.set_npu()
         self.init_dtype()
-        self.config()
-        self.inputs = {'X': self.x, 'Seed': self.seed}
+        self.inputs = {'X': np.random.random((32, 64)).astype(self.dtype)}
+        self.attrs = {
+            'dropout_prob': 0.0,
+            'fix_seed': True,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
         self.outputs = {
-            'Out': self.out,
+            'Out': self.inputs['X'],
             'Mask': np.ones((32, 64)).astype('uint8')
         }
-        self.attrs = {
-            'dropout_prob': self.dropout_prob,
-            'fix_seed': True,
-            'is_test': self.is_test
-        }
-
-    def config(self):
-        self.x = np.random.random((32, 64)).astype(self.dtype)
-        self.seed = np.asarray([125], dtype="int32")
-        self.dropout_prob = 0.0
-        self.is_test = False
-        self.out = self.x
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -72,45 +65,139 @@ class TestDropoutOp(OpTest):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestDropoutOp4(TestDropoutOp):
+class TestDropoutOpInput1d(TestDropoutOp):
+    # the input is 1-D
     def setUp(self):
         self.op_type = "dropout"
         self.set_npu()
         self.init_dtype()
-        self.config()
-        self.inputs = {'X': self.x, 'Seed': self.seed}
-        self.outputs = {'Out': self.out}
+        self.inputs = {'X': np.random.random((2000, )).astype(self.dtype)}
         self.attrs = {
-            'dropout_prob': self.dropout_prob,
+            'dropout_prob': 0.0,
             'fix_seed': True,
-            'is_test': self.is_test
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
         }
-
-    def config(self):
-        self.x = np.random.random((32, 64)).astype(self.dtype)
-        self.seed = np.asarray([125], dtype="int32")
-        self.dropout_prob = 0.35
-        self.is_test = True
-        self.out = self.x * (1.0 - self.dropout_prob)
-
-    def test_check_grad_normal(self):
-        pass
-
-
-"""
-class TestSliceOp2(TestSliceOp):
-    def config(self):
-        self.input = np.random.random([10, 5, 6]).astype(self.dtype)
-        self.starts = [0]
-        self.ends = [1]
-        self.axes = [1]
-        self.infer_flags = [1]
-        self.out = self.input[:, 0:1, :]
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((2000)).astype('uint8')
+        }
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestSliceOpFp16(TestSliceOp):
+class TestDropoutOp2(TestDropoutOp):
+    # the dropout_prob is 1.0
+    def setUp(self):
+        self.op_type = "dropout"
+        self.set_npu()
+        self.init_dtype()
+        self.inputs = {'X': np.random.random((32, 64)).astype(self.dtype)}
+        self.attrs = {
+            'dropout_prob': 1.0,
+            'fix_seed': True,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {
+            'Out': np.zeros((32, 64)).astype('float32'),
+            'Mask': np.zeros((32, 64)).astype('uint8')
+        }
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestDropoutOp3(TestDropoutOp):
+    # the dropout_prob is 1.0
+    def setUp(self):
+        self.op_type = "dropout"
+        self.set_npu()
+        self.init_dtype()
+        self.inputs = {'X': np.random.random((32, 64, 2)).astype(self.dtype)}
+        self.attrs = {
+            'dropout_prob': 0.0,
+            'fix_seed': True,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((32, 64, 2)).astype('uint8')
+        }
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+@skip_check_grad_ci(reason="For inference, check_grad is not required.")
+class TestDropoutOpInference(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.set_npu()
+        self.init_dtype()
+        self.inputs = {'X': np.random.random((32, 64)).astype(self.dtype)}
+        self.attrs = {
+            'dropout_prob': 0.35,
+            'fix_seed': True,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {'Out': self.inputs['X']}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.place = paddle.NPUPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+@skip_check_grad_ci(reason="For inference, check_grad is not required.")
+class TestDropoutOpInference2(TestDropoutOpInference):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.set_npu()
+        self.init_dtype()
+        self.inputs = {'X': np.random.random((32, 64, 3)).astype(self.dtype)}
+        self.attrs = {
+            'dropout_prob': 0.75,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {'Out': self.inputs['X']}
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestDropoutOpWithSeed(TestDropoutOp):
+    # the input is 1-D
+    def setUp(self):
+        self.op_type = "dropout"
+        self.set_npu()
+        self.init_dtype()
+        self.inputs = {
+            "X": np.random.random((32, 64)).astype(self.dtype),
+            "Seed": np.asarray(
+                [125], dtype="int32")
+        }
+        self.attrs = {
+            'dropout_prob': 0.0,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((32, 64)).astype('uint8')
+        }
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestDropoutOpFp16(TestDropoutOp):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -118,7 +205,7 @@ class TestSliceOpFp16(TestSliceOp):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True
         self.place = paddle.NPUPlace(0)
-"""
+
 
 if __name__ == '__main__':
     unittest.main()
