@@ -13,39 +13,58 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/graph/graph_weighted_sampler.h"
+#include "paddle/fluid/framework/generator.h"
 #include <iostream>
 #include <unordered_map>
+#include <memory>
 namespace paddle {
 namespace distributed {
 
 void RandomSampler::build(GraphEdgeBlob *edges) { this->edges = edges; }
 
-std::vector<int> RandomSampler::sample_k(int k) {
+std::vector<int> RandomSampler::sample_k(int k, const std::shared_ptr<std::mt19937_64> rng) {
   int n = edges->size();
   if (k > n) {
     k = n;
   }
-  struct timespec tn;
-  clock_gettime(CLOCK_REALTIME, &tn);
-  srand(tn.tv_nsec);
   std::vector<int> sample_result;
-  std::unordered_map<int, int> replace_map;
-  while (k--) {
-    int rand_int = rand() % n;
-    auto iter = replace_map.find(rand_int);
-    if (iter == replace_map.end()) {
-      sample_result.push_back(rand_int);
-    } else {
-      sample_result.push_back(iter->second);
-    }
+  for(int i = 0;i < k;i ++ ) {
+      sample_result.push_back(i);
+  }
+  if (k == n) {
+      return sample_result;
+  }
 
-    iter = replace_map.find(n - 1);
-    if (iter == replace_map.end()) {
-      replace_map[rand_int] = n - 1;
+  std::uniform_int_distribution<int> distrib(0, n - 1);
+  std::unordered_map<int, int> replace_map;
+
+  for(int i = 0; i < k; i ++) {
+    int j = distrib(*rng);
+    if (j >= i) {
+      //  buff_nid[offset + i] = nid[j] if m.find(j) == m.end() else nid[m[j]]
+      auto iter_j = replace_map.find(j);
+      if(iter_j == replace_map.end()) {
+        sample_result[i] = j;
+      } else {
+        sample_result[i] = iter_j -> second;
+      }
+      //  m[j] = i if m.find(i) == m.end() else m[i]
+      auto iter_i = replace_map.find(i);
+      if(iter_i == replace_map.end()) {
+        replace_map[j] = i;
+      } else {
+        replace_map[j] = (iter_i -> second);
+      }
     } else {
-      replace_map[rand_int] = iter->second;
+      sample_result[i] = sample_result[j];
+      // buff_nid[offset + j] = nid[i] if m.find(i) == m.end() else nid[m[i]] 
+      auto iter_i = replace_map.find(i);
+      if(iter_i == replace_map.end()) {
+        sample_result[j] = i;
+      } else {
+        sample_result[j] = (iter_i -> second);
+      }
     }
-    --n;
   }
   return sample_result;
 }
@@ -98,19 +117,22 @@ void WeightedSampler::build_one(WeightedGraphEdgeBlob *edges, int start,
     count = left->count + right->count;
   }
 }
-std::vector<int> WeightedSampler::sample_k(int k) {
-  if (k > count) {
+std::vector<int> WeightedSampler::sample_k(int k, const std::shared_ptr<std::mt19937_64> rng) {
+  if (k >= count) {
     k = count;
+    std::vector<int> sample_result;
+    for (int i = 0; i < k; i++) {
+      sample_result.push_back(i);
+    }
+    return sample_result;
   }
   std::vector<int> sample_result;
   float subtract;
   std::unordered_map<WeightedSampler *, float> subtract_weight_map;
   std::unordered_map<WeightedSampler *, int> subtract_count_map;
-  struct timespec tn;
-  clock_gettime(CLOCK_REALTIME, &tn);
-  srand(tn.tv_nsec);
+  std::uniform_real_distribution<float> distrib(0, 1.0);
   while (k--) {
-    float query_weight = rand() % 100000 / 100000.0;
+    float query_weight = distrib(*rng);
     query_weight *= weight - subtract_weight_map[this];
     sample_result.push_back(sample(query_weight, subtract_weight_map,
                                    subtract_count_map, subtract));

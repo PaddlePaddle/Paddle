@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/distributed/table/graph/graph_edge.h"
+#include <random>
+#include <memory>
 namespace paddle {
 namespace distributed {
 
@@ -24,14 +26,14 @@ class Sampler {
  public:
   virtual ~Sampler() {}
   virtual void build(GraphEdgeBlob *edges) = 0;
-  virtual std::vector<int> sample_k(int k) = 0;
+  virtual std::vector<int> sample_k(int k, const std::shared_ptr<std::mt19937_64> rng) = 0;
 };
 
 class RandomSampler : public Sampler {
  public:
   virtual ~RandomSampler() {}
   virtual void build(GraphEdgeBlob *edges);
-  virtual std::vector<int> sample_k(int k);
+  virtual std::vector<int> sample_k(int k, const std::shared_ptr<std::mt19937_64> rng);
   GraphEdgeBlob *edges;
 };
 
@@ -46,7 +48,7 @@ class WeightedSampler : public Sampler {
   GraphEdgeBlob *edges;
   virtual void build(GraphEdgeBlob *edges);
   virtual void build_one(WeightedGraphEdgeBlob *edges, int start, int end);
-  virtual std::vector<int> sample_k(int k);
+  virtual std::vector<int> sample_k(int k, const std::shared_ptr<std::mt19937_64> rng);
 
  private:
   int sample(float query_weight,
