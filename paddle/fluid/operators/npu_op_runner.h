@@ -66,6 +66,8 @@ class NpuOpRunner {
   // Specifically, the tensor of shape, tensor of dims, etc, which are are small
   // vector/list.
   NpuOpRunner &AddInput(const Tensor &tensor, aclMemType mem_type);
+  
+  NpuOpRunner &AddInput(std::vector<float> &&dims);
 
   NpuOpRunner &AddInput(std::vector<int32_t> &&dims);
 

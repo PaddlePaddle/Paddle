@@ -32,6 +32,7 @@ namespace operators {
 static std::map<framework::proto::VarType::Type, aclDataType>
     DTYPE_2_ACL_DTYPE = {
         {framework::proto::VarType::BOOL, ACL_BOOL},
+        {framework::proto::VarType::UINT8, ACL_UINT8},
         {framework::proto::VarType::INT16, ACL_INT16},
         {framework::proto::VarType::INT32, ACL_INT32},
         {framework::proto::VarType::INT64, ACL_INT64},
@@ -207,6 +208,22 @@ NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor, aclMemType mem_type) {
   return *this;
 }
 
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<float> &&dims) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(dims, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddInput(std::vector<int32_t> &&dims) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx =
@@ -325,17 +342,24 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
   auto dtype = ConvertToNpuDtype(tensor.type());
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
+  int size = dims.size();
+  if (op_type_ == "DropOutGenMask") {
+    if (size == 1 && *(dims.data()) == 1)
+    {
+      size = 0;
+    }
+  }
 
   VLOG(4) << "NPU dtype:" << dtype << " "
           << "rank:" << dims.size() << " dims:" << tensor.dims()
           << " format:" << format;
 
-  auto *desc = aclCreateTensorDesc(dtype, dims.size(), dims.data(), format);
+  auto *desc = aclCreateTensorDesc(dtype, size, dims.data(), format);
   PADDLE_ENFORCE_NOT_NULL(
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
   PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, format));
   PADDLE_ENFORCE_NPU_SUCCESS(
-      aclSetTensorStorageShape(desc, dims.size(), dims.data()));
+      aclSetTensorStorageShape(desc, size, dims.data()));
   if (mem_type == ACL_MEMTYPE_HOST) {
     PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorPlaceMent(desc, mem_type));
   }
@@ -374,3 +398,4 @@ void NpuOpRunner::Run(aclrtStream stream) const {
 
 }  // namespace operators
 }  // namespace paddle
+
