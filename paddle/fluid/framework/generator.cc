@@ -1,8 +1,11 @@
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,32 +55,52 @@ const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
 #endif
 }
 
-// const std::shared_ptr<Generator>& DefaultCPUGenerator() {
-//   static auto default_cpu_generator =
-//       std::make_shared<Generator>(GetRandomSeed());
-//   VLOG(4) << "initial seed: " << default_cpu_generator->GetCurrentSeed()
-//           << ", cpu engine: " << default_cpu_generator->GetCPUEngine().get();
-//   return default_cpu_generator;
-// }
+const std::shared_ptr<Generator>& DefaultCPUGenerator() {
+  static auto default_cpu_generator =
+      std::make_shared<Generator>(GetRandomSeed());
+  VLOG(4) << "initial seed: " << default_cpu_generator->GetCurrentSeed()
+          << ", cpu engine: " << default_cpu_generator->GetCPUEngine().get()
+          << ", cpu engine 32: "
+          << default_cpu_generator->GetCPUEngine_32().get();
+  return default_cpu_generator;
+}
 
 std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine() {
   static auto op_default_cpu_engine = std::make_shared<std::mt19937_64>();
   return op_default_cpu_engine;
 }
 
-std::shared_ptr<Generator> Generator::s_instance_ = nullptr;
-const std::shared_ptr<Generator>& DefaultCPUGenerator() {
-  // std::shared_ptr<Generator> default_cpu_generator =
-  // Generator::GetInstance();
-  // std::make_shared<Generator>(GetRandomSeed());
-  // std::cout <<" #####default_cpu_generator:  " << Generator::GetInstance() <<
-  // std::endl;
-  VLOG(4) << "initial seed: " << Generator::GetInstance()->GetCurrentSeed()
-          << ", cpu engine: " << Generator::GetInstance()->GetCPUEngine().get();
-  return Generator::GetInstance();
+std::shared_ptr<std::mt19937> OpDefaultCPUEngine_32() {
+  static auto op_default_cpu_engine = std::make_shared<std::mt19937>();
+  return op_default_cpu_engine;
 }
 
-std::shared_ptr<std::mt19937_64> Generator::engine_ = nullptr;
+std::shared_ptr<std::mt19937> GetCPURandomEngine_32(uint64_t seed) {
+  if (DefaultCPUGenerator()->GetIsInitPy() && seed == 0) {
+    VLOG(4) << "Use random engine from generator";
+    return DefaultCPUGenerator()->GetCPUEngine_32();
+  } else {
+    // NOTE(zhiqiu): creating an engine instance everytime instead of using
+    // OpDefaultCPUEngine(), this is the legacy behavior of random operators.
+    // The benefit is that when runing PE with fixed-seed in multiple thrads,
+    // each thread has their own engine, and doesn't affect each other.
+    //
+    // And we need to measure the determinacy of Generator in PE.
+    auto engine_32 = std::make_shared<std::mt19937>();
+    if (seed == 0) {
+      seed = GetRandomSeed();
+      VLOG(4) << "Use default random engine with random seed = " << seed;
+    } else {
+      VLOG(4) << "Use default random engine with fixed random seed = " << seed;
+    }
+    static std::mutex mu_;
+    {
+      std::lock_guard<std::mutex> lock(mu_);
+      engine_32->seed(seed);
+    }
+    return engine_32;
+  }
+}
 
 // NOTE(zhiqiu): there are 3 conditions:
 // (1) op seed is not set and DefaultCPUGenerator is inited, use
@@ -86,9 +109,9 @@ std::shared_ptr<std::mt19937_64> Generator::engine_ = nullptr;
 // OpDefaultCPUEngine() and set a radnom seed
 // (3) op seed is set, use OpDefaultCPUEngine() and set the seed
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
-  if (true && seed == 0) {
+  if (DefaultCPUGenerator()->GetIsInitPy() && seed == 0) {
     VLOG(4) << "Use random engine from generator";
-    return Generator::GetCPUEngine();
+    return DefaultCPUGenerator()->GetCPUEngine();
   } else {
     // NOTE(zhiqiu): creating an engine instance everytime instead of using
     // OpDefaultCPUEngine(), this is the legacy behavior of random operators.
@@ -137,7 +160,7 @@ uint64_t Generator::Seed() {
   this->state_.current_seed = seed;
   std::seed_seq seq({seed});
   this->engine_->seed(seq);
-
+  this->engine_32->seed(seq);
   return this->state_.current_seed;
 }
 
@@ -145,19 +168,25 @@ void Generator::SetCurrentSeed(uint64_t seed) {
   std::lock_guard<std::mutex> lock(this->mu_);
   this->state_.current_seed = seed;
   this->state_.thread_offset = 0;
-  std::seed_seq seq({seed});
-  this->engine_->seed(seq);
+  // std::seed_seq seq({seed});
+  this->engine_->seed(seed);
+  this->engine_32->seed(seed);
 }
 
 std::shared_ptr<std::mt19937_64> Generator::GetCPUEngine() {
-  // std::lock_guard<std::mutex> lock(this->mu_);
-  return Generator::engine_;
+  std::lock_guard<std::mutex> lock(this->mu_);
+  return this->engine_;
 }
 
-// void Generator::SetCPUEngine(std::shared_ptr<std::mt19937_64> engine) {
-//   // std::lock_guard<std::mutex> lock(this->mu_);
-//   this->engine_ = engine;
-// }
+std::shared_ptr<std::mt19937> Generator::GetCPUEngine_32() {
+  std::lock_guard<std::mutex> lock(this->mu_);
+  return this->engine_32;
+}
+
+void Generator::SetCPUEngine(std::shared_ptr<std::mt19937_64> engine) {
+  std::lock_guard<std::mutex> lock(this->mu_);
+  this->engine_ = engine;
+}
 
 uint64_t Generator::Random64() {
   std::lock_guard<std::mutex> lock(this->mu_);
