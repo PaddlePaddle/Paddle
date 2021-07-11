@@ -101,7 +101,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     bool upscale_in_train = (dropout_implementation == "upscale_in_train");
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
-      auto* mask_data = mask->mutable_data<float>(context.GetPlace());
+      auto* mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
       int size = framework::product(mask->dims());
 
       // Special case when dropout_prob is 1.0
@@ -120,11 +120,10 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         seed_data =
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
-
       auto engine = framework::GetCPURandomEngine_32(seed_data);
       float factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
       std::uniform_real_distribution<float> dist(0, 1);
-
+      float* mask_temp = new float[size];
 #ifdef __AVX__
       constexpr unsigned int block = YMM_FLOAT_BLOCK;
       int end = size & ~(block - 1);
@@ -138,7 +137,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
             dist(*engine), dist(*engine), dist(*engine), dist(*engine));
         __m256 _mask =
             _mm256_and_ps(_mm256_cmp_ps(_rand, _dropout, _CMP_GE_OS), one);
-        _mm256_storeu_ps(reinterpret_cast<float*>(mask_data) + i, _mask);
+        _mm256_storeu_ps(reinterpret_cast<float*>(mask_temp + i), _mask);
         if (upscale_in_train) {
           __m256 _temp = _mm256_mul_ps(
               _mm256_mul_ps(_mm256_loadu_ps((const float*)x_data + i), _mask),
@@ -150,23 +149,30 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
               _mm256_mul_ps(_mm256_loadu_ps((const float*)x_data + i), _mask));
         }
       }
+
       for (; i < size; ++i) {
         float rand = dist(*engine);
         if (rand < dropout_prob) {
-          mask_data[i] = 0;
+          mask_temp[i] = 0;
           y_data[i] = 0;
         } else {
-          mask_data[i] = 1;
+          mask_temp[i] = 1;
           if (upscale_in_train) {
-            y_data[i] = x_data[i] / static_cast<T>(1.0f - dropout_prob);
+            y_data[i] = x_data[i] * factor;
           } else {
             y_data[i] = x_data[i];
           }
         }
       }
+      for (int i = 0; i < size; i++) {
+        mask_data[i] = static_cast<uint8_t>(mask_temp[i]);
+      }
 #else
-      for (auto i = 0; i < size; ++i) {
-        if (dist(*engine) < dropout_prob) {
+      int i = 0;
+      float rand_number = 0.0f;
+      for (i = 0; i < size; ++i) {
+        rand_number = dist(*engine);
+        if (rand_number < dropout_prob) {
           mask_data[i] = 0;
           y_data[i] = 0;
         } else {
@@ -214,7 +220,7 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     grad_x->mutable_data<T>(context.GetPlace());
     auto size = grad_x->numel();
 
-    auto M = EigenVector<float>::Flatten(*mask);
+    auto M = EigenVector<uint8_t>::Flatten(*mask);
     auto dX = EigenVector<T>::Flatten(*grad_x);
     auto dY = EigenVector<T>::Flatten(*grad_y);
 
