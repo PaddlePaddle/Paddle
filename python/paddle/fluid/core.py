@@ -271,6 +271,7 @@ if avx_supported():
         from .core_avx import _set_paddle_lib_path
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
+        from .core_avx import _is_compiled_with_heterps
         from .core_avx import _promote_types_if_complex_exists
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
@@ -318,6 +319,7 @@ if load_noavx:
         from .core_noavx import _set_paddle_lib_path
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
+        from .core_noavx import _is_compiled_with_heterps
         from .core_noavx import _promote_types_if_complex_exists
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids

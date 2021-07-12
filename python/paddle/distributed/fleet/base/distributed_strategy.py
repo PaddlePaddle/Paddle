@@ -1,4 +1,5 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -445,6 +446,31 @@ class DistributedStrategy(object):
     def amp_configs(self, configs):
         check_configs_key(self.strategy.amp_configs, configs, "amp_configs")
         assign_configs_value(self.strategy.amp_configs, configs)
+
+    @property
+    def asp(self):
+        """
+        Indicating whether we are using automatic sparsity training
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.asp = True # by default this is false
+
+        """
+        return self.strategy.asp
+
+    @asp.setter
+    @is_strict_auto
+    def asp(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.asp = flag
+        else:
+            print("WARNING: asp should have value of bool type")
 
     @property
     def recompute(self):

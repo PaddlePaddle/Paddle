@@ -70,7 +70,7 @@ ConvBiasFusePass::ConvBiasFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(-1)
+      .IsIntIn({-1, 0})
       .End();
 }
 
