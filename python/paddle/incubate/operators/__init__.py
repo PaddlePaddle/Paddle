@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import LookAhead  # noqa: F401
-from .optimizer import ModelAverage  # noqa: F401
-from .checkpoint import auto_checkpoint  # noqa: F401
-from ..fluid.layer_helper import LayerHelper  # noqa: F401
-from .operators import softmax_mask_fuse_upper_triangle  # noqa: F401
-
-__all__ = [  # noqa
-    'LookAhead', 'ModelAverage', 'softmax_mask_fuse_upper_triangle'
-]
+from .softmax_mask_fuse_upper_triangle import softmax_mask_fuse_upper_triangle  # noqa: F401
