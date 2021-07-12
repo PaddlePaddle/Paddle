@@ -14,10 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/compat/mixed_vector.h"
 #include "paddle/pten/core/base_tensor.h"
 
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/fluid/platform/device_context.h"
+
 namespace pt {
+
+using Vector = paddle::framework::Vector;
 
 /*
  * LoD is short for Level of Details.

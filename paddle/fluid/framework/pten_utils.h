@@ -32,7 +32,7 @@ std::shared_ptr<TensorImplT> MakeTensorImpl(const Tensor& tensor,
       pt::TensorMeta(tensor.dims(), pt::TransToPtenBackend(place),
                      pt::TransToPtenDataType(type),
                      pt::TransToPtenLayout(tensor.layout()), tensor.offset());
-  auto tensor_impl = std::make_shared<TensorImplT>(meta);
+  auto tensor_impl = std::make_shared<TensorImplT>(std::move(meta));
   if (holder != nullptr) {
     tensor_impl->template ShareAllocation(tensor.Holder());
   } else {

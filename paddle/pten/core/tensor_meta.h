@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/pten/core/dtype.h"
 #include "paddle/pten/core/layout.h"
 
-// fluid headers [may be replaced by new impl]
+// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/ddim.h"
 
 namespace pt {

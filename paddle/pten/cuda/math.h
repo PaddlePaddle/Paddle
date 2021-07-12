@@ -14,10 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
+
 #include "paddle/pten/core/base_tensor.h"
 #include "paddle/pten/module/sign.h"
 
-// fluid headers [may be replaced by new impl]
+// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
 
 namespace pt {
@@ -32,3 +34,5 @@ void Sign(const CUDADeviceContext& dev_ctx,
 }
 
 }  // namespace pt
+
+#endif

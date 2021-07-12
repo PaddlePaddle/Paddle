@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/pten/core/base_tensor.h"
 
-// fluid headers [may be replaced by new impl]
+// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 

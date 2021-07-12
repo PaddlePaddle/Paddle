@@ -14,6 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-/**
- * TODO(chenweihang): Design DDim Interface for new Tensor
- */
+#ifdef PADDLE_WITH_ASCEND_CL
+
+#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/module/sign.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/device_context.h"
+
+namespace pt {}  // namespace pt
+
+#endif

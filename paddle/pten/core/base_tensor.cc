@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/pten/core/base_tensor.h"
 #include "paddle/pten/core/convert_utils.h"
 
-// fluid headers [may be replaced by new impl]
+// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/enforce.h"
