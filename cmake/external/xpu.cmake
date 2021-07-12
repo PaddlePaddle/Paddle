@@ -27,19 +27,18 @@ ELSEIF(WITH_CENTOS)
   SET(XPU_XRE_DIR_NAME "xre-centos7_x86_64")
   SET(XPU_XDNN_DIR_NAME "xdnn-centos7_x86_64")
   SET(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
+
 ELSE ()
   SET(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
   SET(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
   SET(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
 ENDIF()
 
-IF(NOT XPU_BASE_URL)
-  SET(XPU_BASE_URL "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210527")
-ENDIF()
-
+SET(XPU_BASE_URL_WITHOUT_DATE "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev")
+SET(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20210701")
 SET(XPU_XRE_URL  "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
 SET(XPU_XDNN_URL "${XPU_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
-SET(XPU_XCCL_URL "${XPU_BASE_URL}/${XPU_XCCL_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
+SET(XPU_XCCL_URL "${XPU_BASE_URL_WITHOUT_DATE}/20210623/${XPU_XCCL_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
 SET(XPU_PACK_DEPENCE_URL "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh" CACHE STRING "" FORCE)
 
 SET(XPU_SOURCE_DIR              "${THIRD_PARTY_PATH}/xpu")
@@ -96,7 +95,11 @@ ELSE(WITH_XPU_BKCL)
   TARGET_LINK_LIBRARIES(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
 ENDIF(WITH_XPU_BKCL)
 
-ADD_DEPENDENCIES(xpulib ${XPU_PROJECT})
+if(NOT XPU_SDK_ROOT)
+  ADD_DEPENDENCIES(xpulib ${XPU_PROJECT})
+else()
+  ADD_CUSTOM_TARGET(extern_xpu DEPENDS xpulib)
+endif()
 
 # Ensure that xpu/api.h can be included without dependency errors.
 file(GENERATE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/.xpu_headers_dummy.cc CONTENT "")

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include <unordered_map>
 
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/fluid/platform/float16.h"
 #include "xpu/api.h"
 #include "xpu/refactor/fusion.h"
 #include "xpu/refactor/math.h"
@@ -57,5 +58,17 @@ static std::map<int, std::string> XPUAPIErrorMsg = {
     {xpu::Error_t::INVALID_PARAM, "xpu api invalid param"},
     {xpu::Error_t::RUNTIME_ERROR, "xpu api runtime error"},
     {xpu::Error_t::NO_ENOUGH_WORKSPACE, "xpu api no enough workspace"}};
+
+template <typename T>
+class XPUTypeTrait {
+ public:
+  using Type = T;
+};
+
+template <>
+class XPUTypeTrait<paddle::platform::float16> {
+ public:
+  using Type = float16;
+};
 
 #endif

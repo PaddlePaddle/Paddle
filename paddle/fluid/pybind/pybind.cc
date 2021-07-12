@@ -224,7 +224,9 @@ OpSupportedInfos(const std::string &place,
                  [](unsigned char c) { return std::toupper(c); });
   using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
-      {"GPU", &platform::is_gpu_place}, {"CPU", &platform::is_cpu_place},
+      {"GPU", &platform::is_gpu_place},
+      {"CPU", &platform::is_cpu_place},
+      {"XPU", &platform::is_xpu_place},
   };
   PADDLE_ENFORCE_NE(
       is_target_place.count(query_place), 0,
