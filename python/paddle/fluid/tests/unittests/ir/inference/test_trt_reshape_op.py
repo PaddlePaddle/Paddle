@@ -91,8 +91,7 @@ class TRTReshapeTest2(TRTReshapeTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name='data', shape=self.data_shape, dtype='float32')
-            conv = fluid.layers.conv2d(data, 14, 3, padding=1)
-            bn_out = fluid.layers.batch_norm(conv, is_test=True)
+            bn_out = fluid.layers.batch_norm(data, is_test=True)
             out = self.append_reshape(bn_out, self.reshape)
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),
