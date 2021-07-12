@@ -464,9 +464,6 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
                  "BatchNormGrad");
 
   // check output
-  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                 framework::GradVarName("X"), "BatchNormGrad");
-
   const bool has_scale_grad = ctx->HasOutput(framework::GradVarName("Scale"));
   const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("Bias"));
 
@@ -496,7 +493,6 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
            ? x_dims[1]
            : x_dims[x_dims.size() - 1]);
 
-  ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
   if (has_scale_grad) {
     ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
@@ -596,15 +592,19 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     if (ctx.HasInput("Y")) {
       x = ctx.Input<Tensor>("Y");
       is_inplace = true;
+      if (d_x) {
       PADDLE_ENFORCE_EQ(d_x, d_y,
                         platform::errors::InvalidArgument(
                             "X@GRAD and Y@GRAD not inplace in inplace mode"));
+      }
     } else {
       x = ctx.Input<Tensor>("X");
       is_inplace = false;
-      PADDLE_ENFORCE_NE(d_x, d_y,
-                        platform::errors::InvalidArgument(
-                            "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
+      if (d_x) {
+        PADDLE_ENFORCE_NE(d_x, d_y,
+                          platform::errors::InvalidArgument(
+                              "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
+      }
     }
 
     // Get the size for each dimension.
@@ -673,7 +673,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       d_scale_arr.setZero();
     }
 
-    if ((N * sample_size) == 1 && !use_global_stats) {
+    if (d_x && (N * sample_size) == 1 && !use_global_stats) {
       framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
       return;
     }
@@ -718,8 +718,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
-        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
-                                 sample_size, N * C);
+        //EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
+        //                         sample_size, N * C);
 
         for (int nc = 0; nc < N * C; ++nc) {
           int c = nc % C;
@@ -734,19 +734,23 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
         }
 
-        if (!use_global_stats) {
-          for (int nc = 0; nc < N * C; ++nc) {
-            int c = nc % C;
-            d_x_arr.col(nc) =
-                scale_inv_var_nhw(c) *
-                (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(c) -
-                 (x_arr.col(nc) - mean_arr[c]) *
-                     dy_mul_x_sub_mean_mul_invstd_sum_arr(c) * inv_var_arr(c));
-          }
-        } else {
-          for (int nc = 0; nc < N * C; ++nc) {
-            int c = nc % C;
-            d_x_arr.col(nc) = scale_inv_var_nhw(c) * d_y_arr.col(nc);
+        if (d_x) {
+          EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
+                                   sample_size, N * C);
+          if (!use_global_stats) {
+            for (int nc = 0; nc < N * C; ++nc) {
+              int c = nc % C;
+              d_x_arr.col(nc) =
+                  scale_inv_var_nhw(c) *
+                  (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(c) -
+                   (x_arr.col(nc) - mean_arr[c]) *
+                       dy_mul_x_sub_mean_mul_invstd_sum_arr(c) * inv_var_arr(c));
+            }
+          } else {
+            for (int nc = 0; nc < N * C; ++nc) {
+              int c = nc % C;
+              d_x_arr.col(nc) = scale_inv_var_nhw(c) * d_y_arr.col(nc);
+            }
           }
         }
         break;
@@ -765,8 +769,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
-        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
-                                 N * sample_size);
+        //EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
+        //                         N * sample_size);
 
         for (int nhw = 0; nhw < N * sample_size; ++nhw) {
           dy_sum_arr += d_y_arr.col(nhw);
@@ -779,17 +783,21 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
         }
 
-        if (!use_global_stats) {
-          for (int nhw = 0; nhw < N * sample_size; ++nhw) {
-            d_x_arr.col(nhw) =
-                scale_inv_var_nhw *
-                (d_y_arr.col(nhw) * N * sample_size - dy_sum_arr -
-                 (x_arr.col(nhw) - mean_arr) *
-                     dy_mul_x_sub_mean_mul_invstd_sum_arr * inv_var_arr);
-          }
-        } else {
-          for (int nhw = 0; nhw < N * sample_size; ++nhw) {
-            d_x_arr.col(nhw) = scale_inv_var_nhw * d_y_arr.col(nhw);
+        if (d_x) {
+          EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
+                                   N * sample_size);
+          if (!use_global_stats) {
+            for (int nhw = 0; nhw < N * sample_size; ++nhw) {
+              d_x_arr.col(nhw) =
+                  scale_inv_var_nhw *
+                  (d_y_arr.col(nhw) * N * sample_size - dy_sum_arr -
+                   (x_arr.col(nhw) - mean_arr) *
+                       dy_mul_x_sub_mean_mul_invstd_sum_arr * inv_var_arr);
+            }
+          } else {
+            for (int nhw = 0; nhw < N * sample_size; ++nhw) {
+              d_x_arr.col(nhw) = scale_inv_var_nhw * d_y_arr.col(nhw);
+            }
           }
         }
         break;
