@@ -61,7 +61,8 @@ class ShuffleChannelOpConverter : public OpConverter {
     reshape_layer->setReshapeDimensions(reshape_dim2);
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(reshape_layer, "concat", {output_name}, test_mode);
+    RreplenishLayerAndOutput(reshape_layer, "shuffle_channel", {output_name},
+                             test_mode);
   }
 };
 
