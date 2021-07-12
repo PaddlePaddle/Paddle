@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/garbage_collector.h"
@@ -1848,6 +1849,8 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference)
       .def("finalize", &TrainerBase::Finalize);
+
+  m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
