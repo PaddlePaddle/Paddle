@@ -831,22 +831,22 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     // by inverse operation of batch_norm on Y
     const Tensor *x;
     bool is_inplace;
-    if (d_x) {
-      if (ctx.HasInput("Y")) {
-        x = ctx.Input<Tensor>("Y");
-        is_inplace = true;
+    if (ctx.HasInput("Y")) {
+      x = ctx.Input<Tensor>("Y");
+      is_inplace = true;
+      if (d_x) {
         PADDLE_ENFORCE_EQ(d_x, d_y,
                           platform::errors::InvalidArgument(
                               "X@GRAD and Y@GRAD not inplace in inplace mode"));
-      } else {
-        x = ctx.Input<Tensor>("X");
-        is_inplace = false;
-        PADDLE_ENFORCE_NE(d_x, d_y,
-                          platform::errors::InvalidArgument(
-                              "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
       }
     } else {
+      x = ctx.Input<Tensor>("X");
       is_inplace = false;
+      if (d_x) {
+        PADDLE_ENFORCE_NE(
+            d_x, d_y, platform::errors::InvalidArgument(
+                          "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
+      }
     }
 
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -865,7 +865,9 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     // init output
-    if (d_x) {d_x->mutable_data<T>(ctx.GetPlace());}
+    if (d_x) {
+      d_x->mutable_data<T>(ctx.GetPlace());
+    }
 
     if (d_scale && d_bias) {
       d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
@@ -918,14 +920,16 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                                                            &transformed_d_y);
       TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, d_y,
                                                           &transformed_d_y);
-      if (d_x) { 
+      if (d_x) {
         ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, d_x,
-                                                           &transformed_d_x);
+                                                             &transformed_d_x);
       }
     } else {
       transformed_x.ShareDataWith(*x);
       transformed_d_y.ShareDataWith(*d_y);
-      if (d_x) { transformed_d_x.ShareDataWith(*d_x); }
+      if (d_x) {
+        transformed_d_x.ShareDataWith(*d_x);
+      }
     }
 
     std::vector<int> dims;
@@ -954,7 +958,9 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
     if (!use_global_stats) {
       if ((N * H * W * D) == 1) {
-        if (d_x) { framework::TensorCopy(*d_y, ctx.GetPlace(), d_x); }
+        if (d_x) {
+          framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+        }
         math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
             functor;
         functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
@@ -1186,7 +1192,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                 T, block,
                 framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
                 d_y->data<T>(), x->data<T>(), saved_mean_data, saved_var_data,
-                epsilon, N, C, H * W * D, d_scale->data<BatchNormParamType<T>>(),
+                epsilon, N, C, H * W * D,
+                d_scale->data<BatchNormParamType<T>>(),
                 d_bias->data<BatchNormParamType<T>>());
           }
         } else {
@@ -1202,7 +1209,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                 T, block,
                 framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
                 d_y->data<T>(), x->data<T>(), saved_mean_data, saved_var_data,
-                epsilon, N, C, H * W * D, d_scale->data<BatchNormParamType<T>>(),
+                epsilon, N, C, H * W * D,
+                d_scale->data<BatchNormParamType<T>>(),
                 d_bias->data<BatchNormParamType<T>>());
           }
         }
