@@ -18,8 +18,6 @@ import sys
 import re
 import logging
 
-import paddle
-
 logger = logging.getLogger()
 if logger.handlers:
     # we assume the first handler is the one we want to configure
@@ -58,13 +56,17 @@ def check_compatible(old_api_dict, new_api_dict):
     new_argdefaults = new_api_dict['args_defaults']
     new_dn = 0 if (new_argdefaults == None) else len(new_argdefaults)
 
+    # 如果参数减少了，需要提醒关注
     if old_argcount > new_argcount:
         return False
+    # 参数改名了，也要提醒关注
     for idx in range(min(len(old_argnames), len(new_argnames))):
         if old_argnames[idx] != new_argnames[idx]:
             return False
+    # 新增加了参数，必须提供默认值。以及不能减少默认值数量
     if ((new_argcount - new_dn) > (old_argcount - old_dn)):
         return False
+    # 默认值必须相等
     for idx in range(
             max((new_argcount - new_dn), (old_argcount - old_dn)),
             min(new_argcount, old_argcount)):
