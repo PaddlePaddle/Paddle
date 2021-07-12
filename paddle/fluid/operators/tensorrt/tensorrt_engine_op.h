@@ -281,15 +281,16 @@ class TensorRTEngineOp : public framework::OperatorBase {
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
-    int num_inputs = 0;
-
-    for (const auto &x : Inputs("Xs")) {
-      if (param_names_.count(x)) continue;
-      num_inputs += 1;
+    int binding_offset = 0;
+    if (engine->with_dynamic_shape()) {
+      // Initilize context and get offset by profile index
+      auto *trt_context = engine->context();
+      binding_offset = engine->GetBindingsOffset();
     }
-    const int num_bindings = num_inputs + Outputs("Ys").size();
-    std::vector<void *> buffers(num_bindings);
 
+    // This method returns the total over all profiles.
+    const int num_bindings = engine->GetNbBindings();
+    std::vector<void *> buffers(num_bindings, nullptr);
     // Bind input tensor to TRT.
     for (const auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
@@ -298,7 +299,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
       auto t_shape = framework::vectorize<int64_t>(t.dims());
       runtime_batch = t_shape[0];
-      const int bind_index = engine->engine()->getBindingIndex(x.c_str());
+      // Get index of profile 0 first, then plus binding offset
+      const int bind_index =
+          engine->engine()->getBindingIndex(x.c_str()) + binding_offset;
       PADDLE_ENFORCE_LT(
           bind_index, num_bindings,
           platform::errors::InvalidArgument(
@@ -360,8 +363,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
         Attr<std::vector<int>>("origin_output_dims");
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
+      // Get index of profile 0 first, then plus binding offset
       const int bind_index =
-          engine->engine()->getBindingIndex(output_maps[output_index].c_str());
+          engine->engine()->getBindingIndex(output_maps[output_index].c_str()) +
+          binding_offset;
       std::vector<int> ddim;
 
       if (!engine->with_dynamic_shape()) {
