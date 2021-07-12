@@ -291,6 +291,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     // This method returns the total over all profiles.
     const int num_bindings = engine->GetNbBindings();
     std::vector<void *> buffers(num_bindings, nullptr);
+
     // Bind input tensor to TRT.
     for (const auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
