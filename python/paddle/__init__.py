@@ -283,6 +283,7 @@ from . import callbacks  # noqa: F401
 from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
 from . import hub  # noqa: F401
+from . import linalg  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401

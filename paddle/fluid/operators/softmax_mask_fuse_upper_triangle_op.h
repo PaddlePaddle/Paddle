@@ -1,5 +1,4 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,20 +12,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
 
-#if !defined(_MSC_VER) && __cplusplus < 201402L
-#error C++14 or later compatible compiler is required to use Paddle.
-#endif
-
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif
-#endif
-
-#include "ext_dispatch.h"      // NOLINT
-#include "ext_dtype.h"         // NOLINT
-#include "ext_exception.h"     // NOLINT
-#include "ext_op_meta_info.h"  // NOLINT
-#include "ext_place.h"         // NOLINT
-#include "ext_tensor.h"        // NOLINT
+namespace paddle {
+namespace operators {
+template <typename DeviceContext, typename T>
+class SoftmaxMaskFuseUpperTriangleCPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::Unimplemented(
+                          "Softmax mask fuse op only supports GPU now."));
+  }
+};
+}  // namespace operators
+}  // namespace paddle

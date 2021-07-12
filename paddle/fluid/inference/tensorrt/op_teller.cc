@@ -314,8 +314,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "gather") {
+      if (!with_dynamic_shape) return false;
+      auto inputs = desc.InputArgumentNames();
+      for (auto& input : inputs) {
+        if (input == "Axis" && desc.Input("Axis").size() > 0) return false;
+      }
       // current not support axis from input, use default 0
-      if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
+      if (desc.GetAttrIfExists<int>("axis")) return false;
     }
 
     if (op_type == "gather_nd") {

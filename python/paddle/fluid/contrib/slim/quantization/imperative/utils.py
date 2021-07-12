@@ -69,7 +69,7 @@ fake_quant_wrap_layers = [
 ]
 
 # The weight format of these layers is Cin * Cout * H * W 
-spec_channel_axis_layers = [paddle.nn.Conv2D, paddle.nn.Conv2DTranspose]
+spec_channel_axis_layers = [paddle.nn.Conv2DTranspose, paddle.nn.Linear]
 
 weight_op_types = [
     "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose",
@@ -137,6 +137,17 @@ def find_parent_layer_and_sub_name(model, name):
         idx += 1
     sub_name = name[last_idx:idx]
     return parent_layer, sub_name
+
+
+def program_all_ops(program):
+    """
+    Return all ops for the input program.
+    """
+    all_ops = []
+    for block in program.blocks:
+        for op in block.ops:
+            all_ops.append(op)
+    return all_ops
 
 
 def is_leaf_layer(layer):
