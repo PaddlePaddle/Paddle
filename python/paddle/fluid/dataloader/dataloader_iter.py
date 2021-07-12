@@ -383,9 +383,15 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             time.sleep(0.5)
 
         # 2. Resume blocking_queue, clear blocking_queue caches
-        # reset blocking_queue and py_reader
+        # reset blocking_queue to clear cache
         # self._blocking_queue.reset()
-        # self._reader.reset()
+        while self._blocking_queue.size() >= len(self._places):
+            if in_dygraph_mode():
+                self._reader.read_next_var_list()
+            elif self._return_list:
+                self._reader.read_next_list()
+            else:
+                data = self._reader.read_next()
 
         # 3. reset all states
         # data get from _data_queue will be reordered by _rcvd_idx
@@ -522,9 +528,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         # NOTE: _rcvd_idx and _send_idx only record batches among
                         #       workers, if batches among workers drained, there
                         #       may also be data in blocking queue
-                        if self._batches_outstanding < len(
-                                # self._places) and not self._persistent_workers:
-                                self._places):
+                        if self._batches_outstanding < len(self._places):
                             return None
                         continue
 
