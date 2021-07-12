@@ -270,10 +270,12 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 #endif
     } else {
 #ifdef PADDLE_WITH_ASCEND_CL
+      auto *dev_ctx =
+          static_cast<const platform::NPUDeviceContext *>(pool.Get(place_));
       auto dst_npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
       memory::Copy(dst_npu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
-                   inputs[i].data.length());
+                   inputs[i].data.length(), dev_ctx->stream());
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "Not compile with NPU, should not reach here."));
