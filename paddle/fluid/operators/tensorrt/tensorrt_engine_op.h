@@ -288,7 +288,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
       auto *trt_context = engine->context();
       binding_offset = engine->GetBindingsOffset();
     }
-
     // This method returns the total over all profiles.
     const int num_bindings = engine->GetNbBindings();
     std::vector<void *> buffers(num_bindings, nullptr);
