@@ -452,8 +452,9 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
     for (const auto &out : out_ops.at(cur_op)) {
       PADDLE_ENFORCE_GT(in_ops.at(out).count(cur_op), 0,
                         platform::errors::InvalidArgument(
-                            "We find %s is in %s's output, "
-                            "but cannot find %s in %s's input.",
+                            "We find %s in %s's output list, "
+                            "but cannot find %s in %s's input list. "
+                            "Please ensure graph completely.",
                             out->Name().c_str(), cur_op->Name().c_str(),
                             cur_op->Name().c_str(), out->Name().c_str()));
       in_ops.at(out).erase(cur_op);

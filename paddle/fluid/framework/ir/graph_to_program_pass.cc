@@ -47,7 +47,12 @@ void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
   if (FLAGS_convert_all_blocks) {
     GraphToBlock(graph->GetSubGraph(kRootBlockIndex), block);
 
-    for (size_t idx = 1; idx < graph->SubGraphsSize(); ++idx) {
+    VLOG(3) << "Graph to program need convert " << graph->SubGraphsSize()
+            << " sub graph";
+    for (size_t idx = 0; idx < graph->SubGraphsSize(); ++idx) {
+      // avoid kRootBlockIndex not 0
+      if (idx == kRootBlockIndex) continue;
+
       block = program_pb->add_blocks();
       block->set_idx(idx);
       GraphToBlock(graph->GetSubGraph(idx), block);
@@ -66,7 +71,8 @@ void GraphToProgramPass::GraphToBlock(const Graph* graph,
   if (graph->Has(kGraphToProgramVarsToRemove)) {
     vars2remove = graph->Get<std::unordered_set<std::string>>(
         kGraphToProgramVarsToRemove);
-    VLOG(2) << "graph to program remove " << vars2remove.size() << " nodes";
+    VLOG(2) << "graph (id: " << block->idx() << ") to program remove "
+            << vars2remove.size() << " nodes";
   }
 
   block->clear_vars();

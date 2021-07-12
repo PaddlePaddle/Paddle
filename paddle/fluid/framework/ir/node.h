@@ -140,7 +140,24 @@ class Node {
 
   const std::string ToString() const {
     if (IsOp()) {
-      return Op()->Proto()->ShortDebugString();
+      const auto& op = Op();
+      std::string op_str(op->Type());
+
+      for (const auto& input : op->InputNames()) {
+        op_str.append(input);
+        for (const auto& arg : op->Input(input)) {
+          op_str.append(arg);
+        }
+      }
+
+      for (const auto& output : op->OutputNames()) {
+        op_str.append(output);
+        for (const auto& arg : op->Output(output)) {
+          op_str.append(arg);
+        }
+      }
+
+      return op_str;
     }
     return Name();
   }
