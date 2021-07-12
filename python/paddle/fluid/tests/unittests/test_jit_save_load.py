@@ -1155,7 +1155,12 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
 
 
-class TestJitSaveLoadFunction(unittest.TestCase):
+# NOTE(weixin): When there are multiple test functions in an 
+# `unittest.TestCase`, functions will affect each other, 
+# and there is a risk of random failure. 
+# So divided into three TestCase: TestJitSaveLoadFunctionCase1, 
+# TestJitSaveLoadFunctionCase2, TestJitSaveLoadFunctionCase3.
+class TestJitSaveLoadFunctionCase1(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
 
@@ -1174,6 +1179,11 @@ class TestJitSaveLoadFunction(unittest.TestCase):
         load_result = load_func(inps)
         self.assertTrue((load_result - origin).abs().max() < 1e-10)
 
+
+class TestJitSaveLoadFunctionCase2(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
     def test_jit_save_load_function_input_spec(self):
         @paddle.jit.to_static(input_spec=[
             InputSpec(
@@ -1190,6 +1200,11 @@ class TestJitSaveLoadFunction(unittest.TestCase):
         load_func = paddle.jit.load(path)
         load_result = load_func(inps)
         self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+
+class TestJitSaveLoadFunctionCase3(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
 
     def test_jit_save_load_function_function(self):
         def fun(inputs):

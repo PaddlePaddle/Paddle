@@ -189,10 +189,12 @@ def barrier(group=None):
 
     ring_id = 0 if group is None else group.id
 
-    op_type = 'barrier'
     temp = fill_constant([1], dtype="int32", value="1")
     if in_dygraph_mode():
         return core.ops.barrier(temp, temp, 'ring_id', ring_id)
+
+    op_type = 'barrier'
+
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'group' for barrier must be int.")
     helper = LayerHelper(op_type, **locals())
@@ -717,8 +719,6 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     rank = _get_global_group().rank if group is None else group.rank
     nranks = _get_global_group().nranks if group is None else group.nranks
 
-    op_type = 'c_scatter'
-
     if rank != gsrc:
         tensor_list = []
         for _ in range(nranks):
@@ -728,6 +728,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         return core.ops.c_scatter(temp, tensor, 'use_calc_stream',
                                   use_calc_stream, 'ring_id', ring_id, 'nranks',
                                   nranks, 'root', gsrc)
+    op_type = 'c_scatter'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'scatter')
@@ -1488,16 +1489,17 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         return
 
     ring_id = 0 if group is None else group.id
-    op_type = 'alltoall'
     temp = paddle.concat(in_tensor_list, axis=0)
-    helper = LayerHelper(op_type, **locals())
-    nranks = len(in_tensor_list)
-    out = helper.create_variable_for_type_inference(
-        dtype=in_tensor_list[0].dtype)
     if in_dygraph_mode():
         core.ops.alltoall_(temp, 'use_calc_stream', use_calc_stream, 'ring_id',
                            ring_id)
     else:
+        op_type = 'alltoall'
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=in_tensor_list[0].dtype)
+        nranks = len(in_tensor_list)
+
         if not isinstance(in_tensor_list, list):
             raise ValueError("The type of 'in_tensor_list' for all_to_all "
                              "should be list.")
@@ -1554,10 +1556,10 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         return
     ring_id = 0 if group is None else group.id
 
-    op_type = 'send_v2'
     if in_dygraph_mode():
         return core.ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
                                 'ring_id', ring_id, 'peer', dst)
+    op_type = 'send_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'send')
@@ -1604,11 +1606,11 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         return
     ring_id = 0 if group is None else group.id
 
-    op_type = 'recv_v2'
     if in_dygraph_mode():
         return core.ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
                                 'ring_id', ring_id, 'peer', src, 'dtype',
                                 tensor.dtype, 'out_shape', tensor.shape)
+    op_type = 'recv_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'recv')

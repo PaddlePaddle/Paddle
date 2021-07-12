@@ -71,12 +71,12 @@ class TestSliceOp(OpTest):
 
 class TestSliceOp2(TestSliceOp):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
-        self.starts = [1, 0, -3]
-        self.ends = [3, 3, -1]
-        self.axes = [0, 1, 2]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[1:3, 0:3, -3:-1, :]
+        self.input = np.random.random([10, 5, 6]).astype(self.dtype)
+        self.starts = [0]
+        self.ends = [1]
+        self.axes = [1]
+        self.infer_flags = [1]
+        self.out = self.input[:, 0:1, :]
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -118,8 +118,8 @@ class TestSliceNet(unittest.TestCase):
 
             prediction = paddle.static.nn.fc(z, size=2, activation='softmax')
 
-            cost = paddle.nn.functional.cross_entropy(
-                input=prediction, label=label)
+            cost = paddle.fluid.layers.softmax_with_cross_entropy(
+                logits=prediction, label=label)
             loss = paddle.mean(cost)
             sgd = paddle.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
