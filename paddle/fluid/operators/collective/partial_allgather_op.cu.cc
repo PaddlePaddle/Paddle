@@ -33,7 +33,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
 
     int nranks = ctx.Attr<int>("nranks");
-    int rank = ctx->Attrs().Get<int>("rank");
+    int rank = ctx.Attr<int>("rank");
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);

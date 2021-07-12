@@ -77,8 +77,9 @@ namespace plat = paddle::platform;
 REGISTER_OP_WITHOUT_GRADIENT(partial_allgather, ops::PartialAllGatherOp,
                              ops::PartialAllGatherOpMaker);
 
-REGISTER_OP_CPU_KERNEL(partial_allgather, ops::PartialSendOpCPUKernel<float>,
-                       ops::PartialSendOpCPUKernel<double>,
-                       ops::PartialSendOpCPUKernel<int>,
-                       ops::PartialSendOpCPUKernel<int64_t>,
-                       ops::PartialSendOpCPUKernel<plat::float16>);
+REGISTER_OP_CPU_KERNEL(partial_allgather,
+                       ops::PartialAllGatherOpCPUKernel<float>,
+                       ops::PartialAllGatherOpCPUKernel<double>,
+                       ops::PartialAllGatherOpCPUKernel<int>,
+                       ops::PartialAllGatherOpCPUKernel<int64_t>,
+                       ops::PartialAllGatherOpCPUKernel<plat::float16>);
