@@ -78,7 +78,7 @@ def read_argspec_from_file(specfile):
         r'^(paddle[^,]+)\s+\((ArgSpec.*),\s\(\'document\W*([0-9a-z]{32})')
     for line in specfile.readlines():
         mo = patArgSpec.search(line)
-        if mo:
+        if mo and mo.group(2) != 'ArgSpec()':
             res_dict[mo.group(1)] = mo.group(2)
     return res_dict
 
