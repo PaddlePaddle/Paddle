@@ -13,16 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/graph/graph_weighted_sampler.h"
-#include "paddle/fluid/framework/generator.h"
 #include <iostream>
-#include <unordered_map>
 #include <memory>
+#include <unordered_map>
+#include "paddle/fluid/framework/generator.h"
 namespace paddle {
 namespace distributed {
 
 void RandomSampler::build(GraphEdgeBlob *edges) { this->edges = edges; }
 
-std::vector<int> RandomSampler::sample_k(int k, const std::shared_ptr<std::mt19937_64> rng) {
+std::vector<int> RandomSampler::sample_k(
+    int k, const std::shared_ptr<std::mt19937_64> rng) {
   int n = edges->size();
   if (k >= n) {
     k = n;
@@ -103,7 +104,8 @@ void WeightedSampler::build_one(WeightedGraphEdgeBlob *edges, int start,
     count = left->count + right->count;
   }
 }
-std::vector<int> WeightedSampler::sample_k(int k, const std::shared_ptr<std::mt19937_64> rng) {
+std::vector<int> WeightedSampler::sample_k(
+    int k, const std::shared_ptr<std::mt19937_64> rng) {
   if (k >= count) {
     k = count;
     std::vector<int> sample_result;
@@ -154,5 +156,5 @@ int WeightedSampler::sample(
   subtract_count_map[this]++;
   return return_idx;
 }
-}
-}
+}  // namespace distributed
+}  // namespace paddle
