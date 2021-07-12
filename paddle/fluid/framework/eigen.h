@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
+#include "paddle/pten/core/base_tensor.h"
+
 namespace paddle {
 namespace framework {
 
@@ -67,6 +69,28 @@ struct EigenTensor {
   static ConstType From(const Tensor& tensor) {
     return From(tensor, tensor.dims_);
   }
+
+  // for pt::BaseTensor
+  static Type From(pt::BaseTensor& tensor, DDim dims) {  // NOLINT
+    // why tensor.data<T>() not work?
+    // return Type(const_cast<T*>(reinterpret_cast<const T*>(tensor.data())),
+    // EigenDim<D>::From(dims));
+    return Type(const_cast<T*>(tensor.data<T>()), EigenDim<D>::From(dims));
+  }
+
+  static Type From(pt::BaseTensor& tensor) {  // NOLINT
+    return From(tensor, tensor.dims());
+  }  // NOLINT
+
+  static ConstType From(const pt::BaseTensor& tensor, DDim dims) {
+    // return ConstType(reinterpret_cast<const T*>(tensor.data()),
+    // EigenDim<D>::From(dims));
+    return ConstType(tensor.data<T>(), EigenDim<D>::From(dims));
+  }
+
+  static ConstType From(const pt::BaseTensor& tensor) {
+    return From(tensor, tensor.dims());
+  }
 };
 
 template <typename T, int MajorType = Eigen::RowMajor,
@@ -108,6 +132,16 @@ struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
   static typename EigenVector::ConstType Flatten(
       const Tensor& tensor) {  // NOLINT
     return EigenVector::From(tensor, {product(tensor.dims_)});
+  }
+
+  // for pt::BaseTensor
+  static typename EigenVector::Type Flatten(pt::BaseTensor& tensor) {  // NOLINT
+    return EigenVector::From(tensor, {product(tensor.dims())});
+  }
+
+  static typename EigenVector::ConstType Flatten(
+      const pt::BaseTensor& tensor) {  // NOLINT
+    return EigenVector::From(tensor, {product(tensor.dims())});
   }
 };
 

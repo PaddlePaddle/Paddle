@@ -18,22 +18,31 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
+#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/cpu/math.h"
+#include "paddle/pten/cuda/math.h"
+
 namespace paddle {
 namespace operators {
 template <typename DeviceContext, typename T>
 class SignKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& context) const {
+    auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
-    auto* in = context.Input<framework::Tensor>("X");
-    out->mutable_data<T>(in->place());
+    auto& dev_ctx = context.device_context<DeviceContext>();
 
-    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    EigenSign<std::decay_t<decltype(place)>, T>::Eval(place, eigen_out,
-                                                      eigen_in);
+    auto pt_x =
+        framework::MakeTensorImpl<pt::BaseTensor>(*x, x->place(), x->type());
+    auto pt_out =
+        framework::MakeTensorImpl<pt::BaseTensor>(*out, x->place(), x->type());
+
+    // call new kernel
+    pt::Sign<T>(dev_ctx, *pt_x.get(), pt_out.get());
+
+    // share pt_out data to out
+    framework::ShareTensorImpl(pt_out.get(), out);
   }
 };
 

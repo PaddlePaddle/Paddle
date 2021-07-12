@@ -75,7 +75,7 @@ if(WITH_UNITY_BUILD)
 endif()
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op lstm_op run_program_op eye_op recurrent_op
-        sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+        sync_batch_norm_op sign_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
 
@@ -94,7 +94,8 @@ else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
-op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
+op_library(sign_op DEPS ${OP_HEADER_DEPS} base_tensor)
+op_library(lstm_op DEPS ${OP_HEADER_DEPS} lstm_compute)
 op_library(eye_op DEPS ${OP_HEADER_DEPS})
 op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
 
