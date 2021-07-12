@@ -189,7 +189,9 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
             if gen_doc_anno:
                 api_info_dict[fc_id]["gen_doc_anno"] = gen_doc_anno
             if inspect.isfunction(obj):
-                api_info_dict[fc_id]["signature"] = str(inspect.signature(obj))
+                api_info_dict[fc_id]["signature"] = repr(
+                    inspect.getfullargspec(obj)).replace('FullArgSpec',
+                                                         'ArgSpec', 1)
         return api_info_dict[fc_id]
 
 
@@ -346,7 +348,7 @@ if __name__ == '__main__':
             print("{0} ({2}, ('document', '{1}'))".format(
                 api_name,
                 md5(api_info['docstring']), api_info['signature']
-                if 'signature' in api_info else ''))
+                if 'signature' in api_info else 'ArgSpec()'))
 
     if len(ErrorSet) == 0:
         sys.exit(0)
