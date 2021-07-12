@@ -255,6 +255,28 @@ class DistributedStrategy(object):
                         f.name).extend(getattr(strategy, f.name))
 
     @property
+    def gradient_scale_configs(self):
+        """
+        Set the strategy of gradient scale
+        Examples:
+
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.gradient_scale_configs = {'scale_strategy': 'avg'}
+
+        Note that, strategy must be in 'avg', 'sum' or 'customized'
+        """
+        return get_msg_dict(self.strategy.gradient_scale_configs)
+
+    @gradient_scale_configs.setter
+    @is_strict_auto
+    def gradient_scale_configs(self, config):
+        check_configs_key(self.strategy.gradient_scale_configs, config,
+                          'gradient_scale_configs')
+        assign_configs_value(self.strategy.gradient_scale_configs, config)
+
+    @property
     def a_sync(self):
         """
         Indicating whether we are using asynchronous stocastic gradient descent updates
@@ -852,6 +874,51 @@ class DistributedStrategy(object):
             print(
                 "WARNING: without_graph_optimization should have value of bool type"
             )
+
+    @property
+    def _calc_comm_same_stream(self):
+        """
+        This based on raw_program_optimizer program
+        Set whether use same stream for calc and comm when fuse allreduce
+        The default value for the calc_comm_same_stream is False
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.calc_comm_same_stream = True
+        """
+        return self.strategy.calc_comm_same_stream
+
+    @_calc_comm_same_stream.setter
+    @is_strict_auto
+    def _calc_comm_same_stream(self, same):
+        if isinstance(same, bool):
+            self.strategy.calc_comm_same_stream = same
+        else:
+            print(
+                "WARNING: calc_comm_same_stream should have value of boolean type"
+            )
+
+    @property
+    def fuse_grad_size_in_num(self):
+        """
+        This based on raw_program_optimizer program and allreduce the num of the fused op
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_grad_size_in_num = 2
+        """
+        return self.strategy.fuse_grad_size_in_num
+
+    @fuse_grad_size_in_num.setter
+    @is_strict_auto
+    def fuse_grad_size_in_num(self, num):
+        if isinstance(num, int):
+            self.strategy.fuse_grad_size_in_num = num
+        else:
+            print(
+                "WARNING: fuse_grad_size_in_num should have value of int32 type")
 
     @property
     def pipeline(self):

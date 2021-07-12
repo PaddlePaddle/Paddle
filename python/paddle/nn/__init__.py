@@ -287,5 +287,6 @@ __all__ = [     #noqa
            'Swish',
            'PixelShuffle',
            'ELU',
-           'ReLU6'
+           'ReLU6',
+           'LayerDict'
 ]

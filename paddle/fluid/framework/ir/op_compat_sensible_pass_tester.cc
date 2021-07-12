@@ -151,6 +151,10 @@ class OpCompatSensiblePassTest : public OpCompatSensiblePass {
  public:
   OpCompatSensiblePassTest();
   bool TestIsCompat(const OpDesc& op_desc) { return IsCompat(op_desc); }
+  bool TestIsCompat(const GraphPatternDetector::subgraph_t& subgraph,
+                    Graph* g) {
+    return IsCompat(subgraph, g);
+  }
 };
 
 OpCompatSensiblePassTest::OpCompatSensiblePassTest() {
@@ -190,6 +194,23 @@ TEST(OpCompatSensiblePass, IsCompat) {
   fc_op.SetOutput("Out", std::vector<std::string>{"test_output"});
 
   EXPECT_TRUE(test.TestIsCompat(fc_op));
+}
+
+TEST(OpCompatSensiblePass, IsCompatFail) {
+  OpCompatSensiblePassTest test;
+  GraphPatternDetector::subgraph_t subgraph;
+  PDPattern pattern;
+  PDNode* pd_node = pattern.NewNode();
+  ProgramDesc prog;
+  Graph g(prog);
+  OpDesc fc_op;
+  fc_op.SetType("op1");
+  subgraph[pd_node] = g.CreateOpNode(&fc_op);
+  EXPECT_TRUE(test.TestIsCompat(subgraph, &g));
+
+  fc_op.SetType("mul");
+  subgraph[pd_node] = g.CreateOpNode(&fc_op);
+  EXPECT_FALSE(test.TestIsCompat(subgraph, &g));
 }
 
 }  // namespace ir

@@ -31,13 +31,12 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
     int ids_rank = ids_dims.size();
 
     VLOG(5) << "ids rank is " << ids_rank << std::endl;
-    PADDLE_ENFORCE_EQ(
-        table_dims.size(), 2,
-        platform::errors::InvalidArgument(
-            "ShapeError: The dimensions of the 'c_embedding' must be 2. "
-            "But received c_embedding's dimensions = %d, "
-            "c_embedding's shape = [%s].",
-            table_dims.size(), table_dims));
+    PADDLE_ENFORCE_EQ(table_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of the 'c_embedding' must be 2. "
+                          "But received c_embedding's dimensions = %d, "
+                          "c_embedding's shape = [%s].",
+                          table_dims.size(), table_dims));
 
     auto output_dims = framework::vectorize(ids_dims);
     output_dims.push_back(table_dims[1]);

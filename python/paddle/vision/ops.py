@@ -22,8 +22,12 @@ from ..fluid.initializer import Normal
 
 from paddle.common_ops_import import *
 
-__all__ = [
-    'yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D', 'read_file',
+__all__ = [ #noqa
+    'yolo_loss',
+    'yolo_box',
+    'deform_conv2d',
+    'DeformConv2D',
+    'read_file',
     'decode_jpeg'
 ]
 

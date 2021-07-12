@@ -18,6 +18,7 @@ from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 from paddle import framework
 from ...base import topology as tp
+from paddle.autograd import PyLayer
 
 __all__ = []
 
@@ -55,7 +56,7 @@ class VocabParallelEmbedding(Layer):
         self._weight_attr = weight_attr
         self._name = name
 
-        if self.is_mp:
+        if self.is_mp and paddle.in_dynamic_mode():
             with get_rng_state_tracker().rng_state():
                 self.weight = self.create_parameter(
                     attr=self._weight_attr,
@@ -120,7 +121,7 @@ class ColumnParallelLinear(Layer):
         self._weight_attr = weight_attr
         self._dtype = self._helper.get_default_dtype()
 
-        if self.is_mp:
+        if self.is_mp and paddle.in_dynamic_mode():
             with get_rng_state_tracker().rng_state():
                 self.weight = self.create_parameter(
                     shape=[in_features, self.output_size_per_partition],
@@ -197,7 +198,7 @@ class RowParallelLinear(Layer):
 
         self.input_size_per_partition = in_features // self.world_size
 
-        if self.is_mp:
+        if self.is_mp and paddle.in_dynamic_mode():
             with get_rng_state_tracker().rng_state():
                 self.weight = self.create_parameter(
                     shape=[self.input_size_per_partition, self.out_features],
@@ -243,3 +244,19 @@ class RowParallelLinear(Layer):
 
         output = output_ + self.bias if self.bias is not None else output_
         return output
+
+
+class ParallelCrossEntropy(Layer):
+    def __init__(self, name=None):
+        super(ParallelCrossEntropy, self).__init__()
+        self.name = name
+        self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
+        )
+        self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
+        )
+        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+
+    def forward(self, input, label):
+        loss = paddle.distributed.collective._c_softmax_with_cross_entropy(
+            input, label, group=self.model_parallel_group)
+        return loss
