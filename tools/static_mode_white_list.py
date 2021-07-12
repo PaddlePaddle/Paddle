@@ -390,6 +390,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_positive_negative_pair_op',
     'test_precision_recall_op',
     'test_prelu_op',
+    'test_prelu_mkldnn_op',
     'test_print_op',
     'test_prior_box_op',
     'test_profiler',

@@ -1403,11 +1403,6 @@ def range(start, end, step, dtype, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    out_shape = None
-    if not isinstance(start, Variable) and not isinstance(
-            end, Variable) and not isinstance(step, Variable):
-        out_shape = [int(math.ceil((end - start) / step))]
-
     if not isinstance(start, Variable):
         with device_guard("cpu"):
             start = fill_constant([1], dtype, start, force_cpu=True)
@@ -1428,6 +1423,11 @@ def range(start, end, step, dtype, name=None):
 
     if in_dygraph_mode():
         return core.ops.range(start, end, step)
+
+    out_shape = None
+    if not isinstance(start, Variable) and not isinstance(
+            end, Variable) and not isinstance(step, Variable):
+        out_shape = [int(math.ceil((end - start) / step))]
 
     check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
                 'range/arange')
