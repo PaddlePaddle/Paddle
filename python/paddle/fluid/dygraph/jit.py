@@ -659,6 +659,10 @@ def save(layer, path, input_spec=None, **configs):
         raise TypeError(
             "The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is %s."
             % type(layer))
+    elif inspect.isfunction(layer) or isinstance(layer, StaticFunction):
+        warnings.warn(
+            'What you save is a function, and `jit.save` will generate the name of the model file according to `path` you specify. When loading these files with `jit.load`, you get a `TranslatedLayer` whose inference result is the same as the inference result of the function you saved.'
+        )
 
     # NOTE(chenweihang): If the input layer be wrapped by DataParallel,
     # the args and kwargs of forward method will can't be parsed by
@@ -753,6 +757,11 @@ def save(layer, path, input_spec=None, **configs):
                 static_function = declarative(
                     attr_func, input_spec=inner_input_spec)
                 concrete_program = static_function.concrete_program
+
+                if static_function._class_instance is None:
+                    warnings.warn(
+                        'Only when {} does not contain parameters, `jit.save` can succeed. If it contains parameters, please confirm that it is a member function of `paddle.nn.Layer` and these parameters are in `state_dict`, otherwise it cannot be saved with `jit.save`'.
+                        format(layer))
 
         dygraph_state_dict = None
         if isinstance(inner_layer, Layer):
