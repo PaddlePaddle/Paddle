@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -36,6 +37,8 @@ PassStrategy *AnalysisConfig::pass_builder() const {
       pass_builder_.reset(new GpuPassStrategy);
     } else if (use_xpu_) {
       pass_builder_.reset(new XpuPassStrategy);
+    } else if (use_npu_) {
+      pass_builder_.reset(new NpuPassStrategy);
     } else {
       LOG(INFO) << "Create CPU IR passes";
       pass_builder_.reset(new CpuPassStrategy);
@@ -110,6 +113,11 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
   Update();
 }
 
+void AnalysisConfig::EnableNpu(int device_id) {
+  npu_device_id_ = device_id;
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
@@ -127,7 +135,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_gpu_);
   CP_MEMBER(use_cudnn_);
   CP_MEMBER(gpu_device_id_);
-  CP_MEMBER(xpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
   CP_MEMBER(enable_memory_optim_);
@@ -167,13 +174,19 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(lite_ops_filter_);
   CP_MEMBER(lite_zero_copy_);
 
+  // XPU related.
   CP_MEMBER(use_xpu_);
+  CP_MEMBER(xpu_device_id_);
   CP_MEMBER(xpu_l3_workspace_size_);
   CP_MEMBER(xpu_locked_);
   CP_MEMBER(xpu_autotune_);
   CP_MEMBER(xpu_autotune_file_);
   CP_MEMBER(xpu_precision_);
   CP_MEMBER(xpu_adaptive_seqlen_);
+
+  // NPU related.
+  CP_MEMBER(use_npu_);
+  CP_MEMBER(npu_device_id_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -202,6 +215,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   } else if (use_xpu_) {
     pass_builder_.reset(new XpuPassStrategy(
         *static_cast<XpuPassStrategy *>(other.pass_builder())));
+  } else if (use_npu_) {
+    pass_builder_.reset(new NpuPassStrategy(
+        *static_cast<NpuPassStrategy *>(other.pass_builder())));
   } else {
     pass_builder_.reset(new CpuPassStrategy(
         *static_cast<CpuPassStrategy *>(other.pass_builder())));
@@ -390,6 +406,12 @@ void AnalysisConfig::Update() {
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
       pass_builder_.reset(new XpuPassStrategy);
+    } else if (use_npu()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and NPU."));
+      pass_builder_.reset(new NpuPassStrategy);
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
@@ -405,6 +427,13 @@ void AnalysisConfig::Update() {
               "Only one choice can be made between CPU and XPU."));
       pass_builder_.reset(new XpuPassStrategy(
           *static_cast<XpuPassStrategy *>(pass_builder_.get())));
+    } else if (use_npu()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and NPU."));
+      pass_builder_.reset(new NpuPassStrategy(
+          *static_cast<NpuPassStrategy *>(pass_builder_.get())));
     } else {
       pass_builder_.reset(new CpuPassStrategy(
           *static_cast<CpuPassStrategy *>(pass_builder_.get())));
@@ -502,6 +531,19 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (use_npu_) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    PADDLE_ENFORCE_EQ(use_gpu_, false,
+                      platform::errors::Unavailable(
+                          "Currently, NPU and GPU cannot be enabled in the "
+                          "same analysis configuration."));
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use an NPU device, but Paddle was not compiled "
+        "with NPU-runtime."));
+#endif
+  }
+
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
@@ -565,6 +607,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_autotune_file_;
   ss << xpu_precision_;
   ss << xpu_adaptive_seqlen_;
+
+  ss << use_npu_;
+  ss << npu_device_id_;
 
   ss << thread_local_stream_;
 
