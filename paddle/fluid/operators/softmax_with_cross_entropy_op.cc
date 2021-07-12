@@ -135,9 +135,10 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
         ctx->HasInput("Label"), true,
         platform::errors::InvalidArgument("Input(Label) should be not null."));
 
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Softmax"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Softmax) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Softmax"), true,
+        platform::errors::InvalidArgument(
+            "Output(Softmax) should be not null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Loss"), true,
         platform::errors::InvalidArgument("Output(Loss) should be not null."));
