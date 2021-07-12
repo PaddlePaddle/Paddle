@@ -186,6 +186,8 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
                 api_info_dict[fc_id]["docstring"] = inspect.cleandoc(docstr)
             if gen_doc_anno:
                 api_info_dict[fc_id]["gen_doc_anno"] = gen_doc_anno
+            if inspect.isfunction(obj):
+                api_info_dict[fc_id]["signature"] = str(inspect.signature(obj))
         return api_info_dict[fc_id]
 
 
@@ -334,10 +336,15 @@ if __name__ == '__main__':
         for name in member_dict:
             print(name, member_dict[name])
     elif args.method == 'get_all_api':
-        api_signs = get_all_api()
-        for api_sign in api_signs:
-            print("{0} ({0}, ('document', '{1}'))".format(api_sign[0], api_sign[
-                1]))
+        get_all_api()
+        for api_info in api_info_dict:
+            # 1. the shortest suggested_name may be renamed;
+            # 2. some api's fullname is not accessable, the module name of it is overrided by the function with the same name;
+            api_name = sorted(list(api_info['all_names']))[0]
+            print("{0} ({1}, ('document', '{2}'))".format(
+                api_name,
+                md5(api_info['docstring']), api_info['signature']
+                if 'signature' in api_info else ''))
 
     if len(ErrorSet) == 0:
         sys.exit(0)
