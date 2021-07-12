@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
+import inspect
+import sys
 import paddle
 
 #1) 原api有的参数新api都有，且顺序一致
 #2）无默认参数api数量，原api大于等于新api
 
-# apilist = [paddle.cast, paddle.nn.functional.relu]
 
-all_apis_dict = {}
-for api in apilist:
+# apilist = [paddle.cast, paddle.nn.functional.relu]
+def get_api_dict(api):
     api_dict = {}
     api_argcount = api.__code__.co_argcount  #输入参数数量
     api_dict['count'] = api_argcount
@@ -28,7 +30,7 @@ for api in apilist:
     api_dict['args'] = api_argnames
     api_defaults = api.__defaults__  #输入参数默认值tuple
     api_dict['args_defaults'] = api_defaults
-    all_apis_dict[api.__name__] = api_dict
+    return api_dict
 
 
 def check_compatible(old_api_dict, new_api_dict):
@@ -59,11 +61,40 @@ def check_compatible(old_api_dict, new_api_dict):
     return True
 
 
-old_api_dict = {'count': 3, 'args': ('x', 'y', 'name'), 'args_defaults': None}
+arguments = [
+    # flags, dest, type, default, help
+]
 
-new_api_dict = {
-    'count': 4,
-    'args': ('y', 'x', 'name'),
-    'args_defaults': (None, )
-}
-print(check_compatible(old_api_dict, new_api_dict))
+
+def parse_args():
+    """
+    Parse input arguments
+    """
+    global arguments
+    parser = argparse.ArgumentParser(
+        description='check api compatible across versions')
+    parser.add_argument('--debug', dest='debug', action="store_true")
+    parser.add_argument(
+        'prev',
+        type=str,
+        help='the previous version (the version from develop branch)',
+        default=None)
+    parser.add_argument(
+        'post',
+        type=str,
+        help='the post version (the version from PullRequest)',
+        default=None)
+    for item in arguments:
+        parser.add_argument(
+            item[0], dest=item[1], help=item[4], type=item[2], default=item[3])
+
+    if len(sys.argv) < 2:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == '__main__':
+    args = parse_args()
