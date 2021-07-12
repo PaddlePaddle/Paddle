@@ -285,7 +285,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     nvinfer1::IExecutionContext *trt_context = nullptr;
     if (engine->with_dynamic_shape()) {
       // Initilize context and get offset by profile index
-      auto *trt_context = engine->context();
+      trt_context = engine->context();
       binding_offset = engine->GetBindingsOffset();
     }
     // This method returns the total over all profiles.
