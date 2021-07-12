@@ -21,11 +21,73 @@ from paddle import fluid
 paddle.enable_static()
 
 
-class GraphToProgramPass(unittest.TestCase):
+def program_to_IRGraph(program):
+    graph = fluid.core.Graph(program.desc)
+    ir_graph = fluid.framework.IrGraph(graph, for_test=False)
+    return ir_graph
+
+
+def IRGraph_to_program(ir_graph):
+    return ir_graph.to_program()
+
+
+class GraphToProgramPassTest(unittest.TestCase):
+    def check_vars_equal(self, o_block, c_block):
+        o_params = sorted(o_block.all_parameters(), key=lambda p: p.name)
+        c_params = sorted(c_block.all_parameters(), key=lambda p: p.name)
+        self.assertEqual(len(o_params), len(c_params))
+        for p_idx in range(len(o_params)):
+            self.assertEqual(o_params[p_idx].name, c_params[p_idx].name)
+
+        o_vars = sorted(o_block.vars.values(), key=lambda v: v.name)
+        c_vars = sorted(c_block.vars.values(), key=lambda v: v.name)
+        self.assertEqual(len(o_vars), len(c_vars))
+        for v_idx in range(len(o_vars)):
+            self.assertEqual(o_vars[v_idx].name, c_vars[v_idx].name)
+
+    def check_op_output_equal(self, o_op, c_op):
+        self.assertEqual(len(o_op.output_names), len(c_op.output_names))
+        for out_idx in range(len(o_op.output_names)):
+            o_out = o_op.output_names[out_idx]
+            c_out = c_op.output_names[out_idx]
+            self.assertEqual(o_out, c_out)
+            self.assertEqual(o_op.output(o_out), c_op.output(c_out))
+
+    def check_op_input_equal(self, o_op, c_op):
+        self.assertEqual(len(o_op.input_names), len(c_op.input_names))
+        for in_idx in range(len(o_op.input_names)):
+            o_in = o_op.input_names[in_idx]
+            c_in = c_op.input_names[in_idx]
+            self.assertEqual(o_in, c_in)
+            self.assertEqual(o_op.input(o_in), c_op.input(c_in))
+
+    def check_op_attrs_equal(self, o_op, c_op):
+        o_attrs = sorted(o_op.attr_names)
+        c_attrs = sorted(c_op.attr_names)
+        self.assertEqual(len(o_attrs), len(c_attrs))
+        for attr_idx in range(len(o_attrs)):
+            o_attr = o_attrs[attr_idx]
+            c_attr = c_attrs[attr_idx]
+            self.assertEqual(o_attr, c_attr)
+            self.assertEqual(
+                o_op.desc.attr_type(o_attr), c_op.desc.attr_type(c_attr))
+
+
+class SingleGraphToProgramPass(GraphToProgramPassTest):
     def setUp(self):
-        self.origin_program = build_program()
+        self.origin_program = self.build_program()
         ir_graph = program_to_IRGraph(self.origin_program)
         self.converted_program = IRGraph_to_program(ir_graph)
+
+    @staticmethod
+    def build_program():
+        program = fluid.default_main_program()
+        with fluid.program_guard(program):
+            data = fluid.data(name='x', shape=[None, 13], dtype='float32')
+            hidden = fluid.layers.fc(input=data, size=10)
+            loss = fluid.layers.mean(hidden)
+            fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+        return program
 
     def test_check_parameter(self):
         origin_parameter = sorted(
@@ -67,76 +129,48 @@ class GraphToProgramPass(unittest.TestCase):
             c_op = c_block.ops[i]
 
             self.assertEqual(o_op.type, c_op.type)
-            self.assertEqual(o_op.input_names, c_op.input_names)
-            self.assertEqual(o_op.output_names, c_op.output_names)
-            # how to check attr same?
+
+            self.check_op_input_equal(o_op, c_op)
+            self.check_op_output_equal(o_op, c_op)
+            self.check_op_attrs_equal(o_op, c_op)
 
 
-def build_program():
-    program = fluid.default_main_program()
-    with fluid.program_guard(program):
-        data = fluid.data(name='x', shape=[None, 13], dtype='float32')
-        hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
-        fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
-    return program
-
-
-def program_to_IRGraph(program):
-    graph = fluid.core.Graph(program.desc)
-    ir_graph = fluid.framework.IrGraph(graph, for_test=False)
-    return ir_graph
-
-
-def IRGraph_to_program(ir_graph):
-    return ir_graph.to_program()
-
-
-class MultiBlockGraphToProgramPass(unittest.TestCase):
+'''
+#TODO(jiangcheng): Open after PR33949 and PR33949 merged
+class MultiBlockGraphToProgramPass(GraphToProgramPassTest):
     def setUp(self):
-        self.origin_program = build_multiblock_program()
+        self.origin_program = self.build_program()
         ir_graph = program_to_IRGraph(self.origin_program)
         self.converted_program = IRGraph_to_program(ir_graph)
 
-    def check_vars_equal(self, o_block, c_block):
-        o_params = sorted(o_block.all_parameters(), key=lambda p: p.name)
-        c_params = sorted(c_block.all_parameters(), key=lambda p: p.name)
-        self.assertEqual(len(o_params), len(c_params))
-        for p_idx in range(len(o_params)):
-            self.assertEqual(o_params[p_idx].name, c_params[p_idx].name)
+    @staticmethod
+    def multiblock_model():
+        data = fluid.data(name='t', shape=[None, 10], dtype='float32')
+        a = fluid.layers.data(
+            name='a', shape=[10, 1], dtype='int64', append_batch_size=False)
+        b = fluid.layers.data(
+            name='b', shape=[10, 1], dtype='int64', append_batch_size=False)
 
-        o_vars = sorted(o_block.vars.values(), key=lambda v: v.name)
-        c_vars = sorted(c_block.vars.values(), key=lambda v: v.name)
-        self.assertEqual(len(o_vars), len(c_vars))
-        for v_idx in range(len(o_params)):
-            self.assertEqual(o_vars[v_idx].name, c_vars[v_idx].name)
+        cond = fluid.layers.greater_than(a, b)
+        ie = fluid.layers.IfElse(cond)
+        with ie.true_block():
+            hidden = fluid.layers.relu(data)
+            ie.output(hidden)
+        with ie.false_block():
+            hidden = fluid.layers.softmax(data)
+            ie.output(hidden)
 
-    def check_op_output_equal(self, o_op, c_op):
-        self.assertEqual(len(o_op.output_names), len(c_op.output_names))
-        for out_idx in range(len(o_op.output_names)):
-            o_out = o_op.output_names[out_idx]
-            c_out = c_op.output_names[out_idx]
-            self.assertEqual(o_out, c_out)
-            self.assertEqual(o_op.output(o_out), c_op.output(c_out))
+        hidden = ie()
+        return hidden[0]
 
-    def check_op_input_equal(self, o_op, c_op):
-        self.assertEqual(len(o_op.input_names), len(c_op.input_names))
-        for in_idx in range(len(o_op.input_names)):
-            o_in = o_op.input_names[in_idx]
-            c_in = c_op.input_names[in_idx]
-            self.assertEqual(o_in, c_in)
-            self.assertEqual(o_op.input(o_in), c_op.input(c_in))
-
-    def check_op_attrs_equal(self, o_op, c_op):
-        o_attrs = sorted(o_op.attr_names)
-        c_attrs = sorted(c_op.attr_names)
-        self.assertEqual(len(o_attrs), len(c_attrs))
-        for attr_idx in range(len(o_attrs)):
-            o_attr = o_attrs[attr_idx]
-            c_attr = c_attrs[attr_idx]
-            self.assertEqual(o_attr, c_attr)
-            self.assertEqual(
-                o_op.desc.attr_type(o_attr), c_op.desc.attr_type(c_attr))
+    @staticmethod
+    def build_program():
+        program = fluid.default_main_program()
+        with fluid.program_guard(program):
+            hidden = MultiBlockGraphToProgramPass.multiblock_model()
+            loss = fluid.layers.mean(hidden)
+            fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+        return program
 
     def check_ops_equal(self, o_block, c_block):
         o_ops = o_block.ops
@@ -156,10 +190,6 @@ class MultiBlockGraphToProgramPass(unittest.TestCase):
         self.check_ops_equal(o_block, c_block)
 
     def test_check_block(self):
-        # delete "if True:return" after PR33949 merged
-        # https://github.com/PaddlePaddle/Paddle/pull/33949
-        if True:
-            return
         self.assertEqual(self.origin_program.num_blocks,
                          self.converted_program.num_blocks)
 
@@ -168,39 +198,8 @@ class MultiBlockGraphToProgramPass(unittest.TestCase):
             c_block = self.converted_program.block(block_idx)
 
             self.assertEqual(o_block.idx, c_block.idx)
-
             self.check_block_equal(o_block, c_block)
-
-
-def multiblock_model():
-    data = fluid.data(name='t', shape=[None, 10], dtype='float32')
-
-    a = fluid.layers.data(
-        name='a', shape=[10, 1], dtype='int64', append_batch_size=False)
-    b = fluid.layers.data(
-        name='b', shape=[10, 1], dtype='int64', append_batch_size=False)
-
-    cond = fluid.layers.greater_than(a, b)
-    ie = fluid.layers.IfElse(cond)
-    with ie.true_block():
-        hidden = fluid.layers.relu(data)
-        ie.output(hidden)
-    with ie.false_block():
-        hidden = fluid.layers.softmax(data)
-        ie.output(hidden)
-
-    hidden = ie()
-    return hidden[0]
-
-
-def build_multiblock_program():
-    program = fluid.default_main_program()
-    with fluid.program_guard(program):
-        hidden = multiblock_model()
-        loss = fluid.layers.mean(hidden)
-        fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
-    return program
-
+'''
 
 if __name__ == "__main__":
     unittest.main()
