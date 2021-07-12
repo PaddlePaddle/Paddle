@@ -160,14 +160,16 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
     Return:
         api_info object or None
     """
+    import paddle
     try:
         obj = eval(full_name)
         fc_id = id(obj)
     except AttributeError:
         logger.warning("AttributeError occurred when `id(eval(%s))`", full_name)
         return None
-    except:
-        logger.warning("Exception occurred when `id(eval(%s))`", full_name)
+    except Exception as e:
+        logger.warning("Exception(%s) occurred when `id(eval(%s))`",
+                       str(e), full_name)
         return None
     else:
         logger.debug("adding %s to api_info_dict.", full_name)
@@ -337,11 +339,11 @@ if __name__ == '__main__':
             print(name, member_dict[name])
     elif args.method == 'get_all_api':
         get_all_api()
-        for api_info in api_info_dict:
+        for api_info in api_info_dict.values():
             # 1. the shortest suggested_name may be renamed;
             # 2. some api's fullname is not accessable, the module name of it is overrided by the function with the same name;
             api_name = sorted(list(api_info['all_names']))[0]
-            print("{0} ({1}, ('document', '{2}'))".format(
+            print("{0} ({2}, ('document', '{1}'))".format(
                 api_name,
                 md5(api_info['docstring']), api_info['signature']
                 if 'signature' in api_info else ''))
