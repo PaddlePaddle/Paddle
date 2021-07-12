@@ -328,6 +328,7 @@ template <typename DeviceContext, typename T>
 class SigmoidGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* out = ctx.Input<Tensor>("Out");
 
@@ -351,6 +352,8 @@ template <typename DeviceContext, typename T>
 class HardSigmoidNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+=======
+>>>>>>> [NPU] delete debug codes
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
     float slope = ctx.Attr<float>("slope");
