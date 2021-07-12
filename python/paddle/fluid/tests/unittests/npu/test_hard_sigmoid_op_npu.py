@@ -38,9 +38,6 @@ class TestNPUHardSigmoid(OpTest):
         self.init_dtype()
         self.set_attrs()
 
-        self.slope = 0.166666666666667
-        self.offset = 0.5
-
         x = np.random.uniform(-5, 5, [10, 12]).astype(self.dtype)
         lower_threshold = -self.offset / self.slope
         upper_threshold = (1. - self.offset) / self.slope
@@ -57,27 +54,24 @@ class TestNPUHardSigmoid(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad_with_place(
-            self.place, ['X'],
-            'Out',
-            max_relative_error=0.02,
-            check_dygraph=False)
+
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
-        self.__class__.no_need_check_grad = True
 
     def init_dtype(self):
         self.dtype = np.float32
 
     def set_attrs(self):
-        pass
+        self.slope = 0.166666666666667
+        self.offset = 0.5
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
