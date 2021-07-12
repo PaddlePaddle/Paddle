@@ -100,6 +100,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"run_program", {"DOut"}},
+    {"softmax_with_cross_entropy", {"Softmax", "Backprop", "Loss"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
