@@ -22,108 +22,73 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 template <typename T>
 class ClassCenterSampleCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
-    auto* sampled_class = context.Output<LoDTensor>("SampledClass");
-    int num_class = context.Attr<int>("num_class");
-    float ratio = context.Attr<float>("ratio");
-    int ignore_label = context.Attr<int>("ignore_label");
-    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    PADDLE_ENFORCE_GT(num_class, 0,
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* label = ctx.Input<Tensor>("Label");
+    auto* remapped_label = ctx.Output<Tensor>("RemappedLabel");
+    auto* sampled_local_class_center =
+        ctx.Output<Tensor>("SampledLocalClassCenter");
+    int num_classes = ctx.Attr<int>("num_classes");
+    int num_sample = ctx.Attr<int>("num_sample");
+
+    int seed = ctx.Attr<int>("seed");
+    PADDLE_ENFORCE_GT(num_classes, 0,
                       platform::errors::InvalidArgument(
-                          "The value 'num_class' for Op(class_center_sample) "
+                          "The value 'num_classes' for Op(class_center_sample) "
                           "must be greater than 0, "
                           "but the value given is %d.",
-                          num_class));
-    PADDLE_ENFORCE_GT(ratio, 0.0f,
+                          num_classes));
+
+    PADDLE_ENFORCE_GT(num_sample, 0,
                       platform::errors::InvalidArgument(
-                          "The value 'ratio' for Op(class_center_sample) must "
-                          "be greater than 0.0f, "
+                          "The value 'num_sample' for Op(class_center_sample) "
+                          "must be greater than 0, "
                           "but the value given is %d.",
-                          ratio));
-    PADDLE_ENFORCE_LE(
-        ratio, 1.0f,
-        platform::errors::InvalidArgument(
-            "The value 'ratio' for Op(class_center_sample) must be less or "
-            "equal to 1.0f, but the value given is %d.",
-            ratio));
+                          num_sample));
 
-    auto place = in->place();
+    PADDLE_ENFORCE_LE(num_sample, num_classes,
+                      platform::errors::InvalidArgument(
+                          "The value 'num_sample' for Op(class_center_sample) "
+                          "must be less than %d, "
+                          "but the value given is %d.",
+                          num_classes, num_sample));
 
-    // remaped label
-    out->Resize(in->dims());
-    out->set_lod(in->lod());
+    int64_t numel = label->numel();
+    auto* label_ptr = label->data<T>();
 
-    T* out_data = out->mutable_data<T>(context.GetPlace());
-    framework::Tensor cpu_out_tensor;
-    if (platform::is_gpu_place(place) || platform::is_xpu_place(place)) {
-      cpu_out_tensor.Resize(out->dims());
-      out_data = cpu_out_tensor.mutable_data<T>(platform::CPUPlace());
-    }
-
-    auto* in_data = in->data<T>();
-    int64_t numel = in->numel();
-
-    framework::Tensor cpu_in_tensor;
-    if (platform::is_gpu_place(place) || platform::is_xpu_place(place)) {
-      TensorCopySync(*in, platform::CPUPlace(), &cpu_in_tensor);
-      in_data = cpu_in_tensor.data<T>();
-    }
-
-    // get unique class exclude ignore class
-    std::set<T> unique_label;
+    // get unique positive class center by ascending
+    std::set<T, std::less<T>> unique_label;
     for (int64_t i = 0; i < numel; ++i) {
-      if (in_data[i] == ignore_label) continue;
-      unique_label.insert(in_data[i]);
+      unique_label.insert(label_ptr[i]);
     }
 
-    std::uniform_int_distribution<T> dist(0, num_class - 1);
-    auto engine = framework::GetCPURandomEngine(seed);
-    size_t num_sample_class = static_cast<size_t>(num_class * ratio);
-
-    // sample randomly
-    while (unique_label.size() < num_sample_class) {
-      unique_label.insert(dist(*engine));
-    }
-
-    // sampled class
-    std::vector<int64_t> sampled_class_dim(1, unique_label.size());
-    sampled_class->Resize(framework::make_ddim(sampled_class_dim));
-    sampled_class->set_lod(in->lod());
-    T* sampled_class_data = sampled_class->mutable_data<T>(context.GetPlace());
-    framework::Tensor cpu_sampled_class_tensor;
-    if (platform::is_gpu_place(place) || platform::is_xpu_place(place)) {
-      cpu_sampled_class_tensor.Resize(sampled_class->dims());
-      sampled_class_data =
-          cpu_sampled_class_tensor.mutable_data<T>(platform::CPUPlace());
-    }
-
-    // constrcut a lookup table
+    // constrcut a lookup table and get sampled_local_class_center
+    int actual_num_sample = unique_label.size();
+    T* sampled_local_class_center_ptr =
+        sampled_local_class_center->mutable_data<T>({actual_num_sample},
+                                                    ctx.GetPlace());
     std::map<T, T> new_class_dict;
     T idx = 0;
     for (auto& t : unique_label) {
       new_class_dict[t] = idx;
-      sampled_class_data[idx] = t;
+      sampled_local_class_center_ptr[idx] = t;
       idx++;
     }
 
-    // remap the input label to sampled class
-    for (int64_t i = 0; i < numel; ++i) {
-      if (in_data[i] == ignore_label) {
-        out_data[i] = ignore_label;
-      } else {
-        out_data[i] = new_class_dict[in_data[i]];
-      }
+    std::uniform_int_distribution<T> dist(0, num_classes - 1);
+    auto engine = framework::GetCPURandomEngine(seed);
+    // sample negative class center randomly
+    while (unique_label.size() < static_cast<size_t>(num_sample)) {
+      unique_label.insert(dist(*engine));
     }
 
-    if (platform::is_gpu_place(place) || platform::is_xpu_place(place)) {
-      TensorCopySync(cpu_out_tensor, place, out);
-      TensorCopySync(cpu_sampled_class_tensor, place, sampled_class);
+    // remap the input label to sampled class
+    auto* remmaped_label_ptr = remapped_label->mutable_data<T>(ctx.GetPlace());
+    for (int64_t i = 0; i < numel; ++i) {
+      remmaped_label_ptr[i] = new_class_dict[label_ptr[i]];
     }
   }
 };
