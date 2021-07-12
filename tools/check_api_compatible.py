@@ -45,34 +45,26 @@ def get_api_dict(api):
     return api_dict
 
 
-def check_compatible(old_api_dict, new_api_dict):
-    old_argcount = old_api_dict['count']
-    old_argnames = old_api_dict['args']
-    old_argdefaults = old_api_dict['args_defaults']
-    old_dn = 0 if (old_argdefaults == None) else len(old_argdefaults)
-
-    new_argcount = new_api_dict['count']
-    new_argnames = new_api_dict['args']
-    new_argdefaults = new_api_dict['args_defaults']
-    new_dn = 0 if (new_argdefaults == None) else len(new_argdefaults)
-
+def check_compatible(old_api_spec, new_api_spec):
+    """
+    check compatible, FullArgSpec
+    """
     # 如果参数减少了，需要提醒关注
-    if old_argcount > new_argcount:
+    if len(old_api_spec.args) > len(new_api_spec.args):
         return False
     # 参数改名了，也要提醒关注
-    for idx in range(min(len(old_argnames), len(new_argnames))):
-        if old_argnames[idx] != new_argnames[idx]:
+    for idx in range(min(len(old_api_spec.args), len(new_api_spec.args))):
+        if old_api_spec.args[idx] != new_api_spec.args[idx]:
             return False
     # 新增加了参数，必须提供默认值。以及不能减少默认值数量
-    if ((new_argcount - new_dn) > (old_argcount - old_dn)):
+    if (len(new_api_spec.args) - len(new_api_spec.defaults)) > (
+            len(old_api_spec.args) - len(old_api_spec.defaults)):
         return False
     # 默认值必须相等
     for idx in range(
-            max((new_argcount - new_dn), (old_argcount - old_dn)),
-            min(new_argcount, old_argcount)):
-        newargidx = idx - (new_argcount - new_dn)
-        oldargidx = idx - (old_argcount - old_dn)
-        if (new_argdefaults[newargidx] != old_argdefaults[oldargidx]):
+            min(len(old_api_spec.defaults), len(new_api_spec.defaults))):
+        nidx = -1 - idx
+        if (old_api_spec.defaults[nidx] != new_api_spec.defaults[nidx]):
             return False
     return True
 

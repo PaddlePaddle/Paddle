@@ -20,8 +20,44 @@ import unittest
 import sys
 import os
 import tempfile
+import inspect
 
 from check_api_compatible import read_argspec_from_file
+from check_api_compatible import check_compatible
+
+
+class Test_check_compatible(unittest.TestCase):
+    def setUp(self) -> None:
+        self.fullargspec_prefix = 'inspect.Full'
+        self.argspec_str_o = self.fullargspec_prefix + '''ArgSpec(args=['shape', 'dtype', 'name'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
+        return super().setUp()
+
+    def test_normal_not_changed(self):
+        argspec_o = eval(self.argspec_str_o)
+        argspec_n = eval(self.argspec_str_o)
+        self.assertTrue(check_compatible(argspec_o, argspec_n))
+
+    def test_args_added(self):
+        argspec_str_n = '''ArgSpec(args=['shape', 'dtype', 'name', 'arg4'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
+        argspec_o = eval(self.argspec_str_o)
+        argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
+        self.assertFalse(check_compatible(argspec_o, argspec_n))
+
+        argspec_str_n = '''ArgSpec(args=['shape', 'dtype', 'name', 'arg4'], varargs=None, varkw=None, defaults=(None, None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
+        argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
+        self.assertTrue(check_compatible(argspec_o, argspec_n))
+
+    def test_args_places_exchanged(self):
+        argspec_str_n = '''ArgSpec(args=['shape', 'name', 'dtype'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
+        argspec_o = eval(self.argspec_str_o)
+        argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
+        self.assertFalse(check_compatible(argspec_o, argspec_n))
+
+    def test_args_reduced(self):
+        argspec_str_n = '''ArgSpec(args=['shape', 'name'], varargs=None, varkw=None, defaults=(None,), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
+        argspec_o = eval(self.argspec_str_o)
+        argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
+        self.assertFalse(check_compatible(argspec_o, argspec_n))
 
 
 class Test_read_argspec_from_file(unittest.TestCase):
