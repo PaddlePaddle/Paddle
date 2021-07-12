@@ -90,10 +90,10 @@ bool SlicePlugin::supportsFormat(nvinfer1::DataType type,
   if (with_fp16_) {
     return ((type == nvinfer1::DataType::kFLOAT ||
              type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   } else {
     return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   }
 }
 
@@ -111,7 +111,12 @@ nvinfer1::Dims SlicePlugin::getOutputDimensions(int index,
 }
 
 int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
+#if IS_TRT_VERSION_LT(8000)
                          void **outputs, void *workspace, cudaStream_t stream) {
+#else
+                         void *const *outputs, void *workspace,
+                         cudaStream_t stream) {
+#endif
   auto input_dims = getInputDims(0);
 
   // notice input dims is [C, H, W], add input batch dim here

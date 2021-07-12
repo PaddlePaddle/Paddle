@@ -25,15 +25,16 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-void UpdateAttr(const framework::DDim in_dims, const std::vector<int> axes,
+void UpdateAttr(const framework::DDim& in_dims, const std::vector<int> axes,
                 const std::vector<int> starts, const std::vector<int> ends,
                 std::vector<int>* offsets, std::vector<int>* size) {
   int cnt = 0;
   for (int i = 0; i < in_dims.size(); ++i) {
     int start = 0;
     int end = in_dims[i];
-    int axis = axes[cnt];
-
+    // NOTE(zhiqiu): Becareful that cnt may > axes.size() and result in
+    // overflow.
+    int axis = cnt < static_cast<int>(axes.size()) ? axes[cnt] : -1;
     if (axis == i) {
       start = starts[cnt];
       if (start < 0) {
@@ -63,17 +64,17 @@ class SliceNPUKernel : public framework::OpKernel<T> {
     auto axes = ctx.Attr<std::vector<int>>("axes");
     auto starts = ctx.Attr<std::vector<int>>("starts");
     auto ends = ctx.Attr<std::vector<int>>("ends");
+    const auto& in_dims = input->dims();
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto in_dims = input->dims();
     std::vector<int> offsets(in_dims.size());
     std::vector<int> size(in_dims.size());
 
     UpdateAttr(in_dims, axes, starts, ends, &offsets, &size);
 
-    auto runner = NpuOpRunner("SliceD", {*input}, {*out},
-                              {{"offsets", offsets}, {"size", size}});
+    const auto& runner = NpuOpRunner("SliceD", {*input}, {*out},
+                                     {{"offsets", offsets}, {"size", size}});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -93,8 +94,7 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
     auto axes = ctx.Attr<std::vector<int>>("axes");
     auto starts = ctx.Attr<std::vector<int>>("starts");
     auto ends = ctx.Attr<std::vector<int>>("ends");
-
-    auto in_dims = input->dims();
+    const auto& in_dims = input->dims();
     int rank = in_dims.size();
 
     std::vector<int> offsets(rank);
@@ -111,7 +111,7 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner =
+    const auto& runner =
         NpuOpRunner("PadD", {*dout}, {*dinput}, {{"paddings", paddings}});
     runner.Run(stream);
   }

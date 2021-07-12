@@ -73,7 +73,17 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
           "the filter's dimension is %d.",
           in_dims, in_dims.size(), filter_dims, filter_dims.size()));
 
-  int in_sub_stride_size = in_dims.size() - strides.size();
+  int stride_size = strides.size();
+  for (int i = 0; i < stride_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i], 0,
+        platform::errors::InvalidArgument(
+            "The stride of Op(Conv) should be larget than 0, but received "
+            "stride is %d.",
+            strides[i]));
+  }
+
+  int in_sub_stride_size = in_dims.size() - stride_size;
   PADDLE_ENFORCE_EQ(
       in_dims.size(), strides.size() + 2U,
       platform::errors::InvalidArgument(
@@ -189,6 +199,15 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
                       platform::errors::InvalidArgument(
                           "float16 can only be used when CUDNN is used"));
   }
+#if PADDLE_WITH_CUDA
+  if (input_data_type == framework::proto::VarType::BF16 &&
+      library == framework::LibraryType::kCUDNN) {
+    PADDLE_ENFORCE_GE(
+        platform::CudnnVersion(), 8100,
+        platform::errors::InvalidArgument(
+            "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
+  }
+#endif  // PADDLE_WITH_CUDA
 
   auto type = framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                       library, customized_type_value);

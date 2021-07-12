@@ -18,11 +18,11 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(real,
                         ops::RealKernel<paddle::platform::CUDADeviceContext,
-                                        paddle::platform::complex64>,
+                                        paddle::platform::complex<float>>,
                         ops::RealKernel<paddle::platform::CUDADeviceContext,
-                                        paddle::platform::complex128>);
+                                        paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(real_grad,
                         ops::RealGradKernel<paddle::platform::CUDADeviceContext,
-                                            paddle::platform::complex64>,
+                                            paddle::platform::complex<float>>,
                         ops::RealGradKernel<paddle::platform::CUDADeviceContext,
-                                            paddle::platform::complex128>);
+                                            paddle::platform::complex<double>>);

@@ -1,4 +1,5 @@
 // Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,6 +48,7 @@ message HybridConfig {
   optional int32 dp_degree = 1 [ default = -1 ];
   optional int32 mp_degree = 2 [ default = 1 ];
   optional int32 pp_degree = 3 [ default = 1 ];
+  optional int32 sharding_degree = 4 [ default = 1 ];
 }
 
 message AMPConfig {
@@ -118,6 +120,16 @@ message ExecutionStrategy {
   optional bool use_thread_barrier = 4 [ default = false ];
 }
 
+message GradientScaleConfig {
+  // Optional value ['avg', 'sum', 'customized']
+  // If avg, loss@grad will be divided by the number of devices,
+  // that is, the gradient will be accumulated and averaged among
+  // multiple devices.
+  // Else if sum, the gradient will accumulated among multiple
+  // devices.
+  optional string scale_strategy = 1 [ default = 'avg' ];
+}
+
 message AsyncConfig {
   optional int32 k_steps = 1 [ default = -1 ];
   optional int32 max_merge_var_num = 2 [ default = 1 ];
@@ -176,6 +188,9 @@ message DistributedStrategy {
   optional bool find_unused_parameters = 28 [ default = false ];
   optional bool tensor_parallel = 29 [ default = false ];
   optional bool without_graph_optimization = 30 [ default = false ];
+  optional int32 fuse_grad_size_in_num = 31 [ default = 1 ];
+  optional bool calc_comm_same_stream = 32 [ default = false ];
+  optional bool asp = 33 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -192,6 +207,7 @@ message DistributedStrategy {
   optional TensorParallelConfig tensor_parallel_configs = 113;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
+  optional GradientScaleConfig gradient_scale_configs = 203;
 }
 
 message DistributedJobInfo {

@@ -121,5 +121,31 @@ class TestAdamWOp(unittest.TestCase):
             adam.clear_gradients()
 
 
+class TestAdamWOpGroup(TestAdamWOp):
+    def test_adamw_op_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
+        adam = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=[{
+                'params': linear_1.parameters()
+            }, {
+                'params': linear_2.parameters(),
+                'weight_decay': 0.001
+            }],
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01)
+
+        for _ in range(2):
+            out = linear_1(a)
+            out = linear_2(out)
+            out.backward()
+            adam.step()
+            adam.clear_gradients()
+
+
 if __name__ == "__main__":
     unittest.main()

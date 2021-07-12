@@ -194,5 +194,9 @@ __all__ = [     #noqa
            'embedding',
            'gather_tree',
            'one_hot',
-           'normalize'
+           'normalize',
+           'temporal_shift',
+           'batch_norm',
+           'layer_norm',
+           'instance_norm'
 ]

@@ -375,7 +375,7 @@ class GroupNorm(layers.Layer):
         self._num_channels = num_channels
         self._num_groups = num_groups
         if data_format != 'NCHW':
-            raise ValueError("unsupported data layout:" + data_layout)
+            raise ValueError("unsupported data layout:" + data_format)
 
         param_shape = [self._num_channels]
 
@@ -1057,7 +1057,18 @@ class SyncBatchNorm(_BatchNormBase):
               self).__init__(num_features, momentum, epsilon, weight_attr,
                              bias_attr, data_format, None, name)
 
+    def _check_data_format(self):
+        if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
+            self._data_format = 'NCHW'
+        elif self._data_format in ["NHWC", "NDHWC", 'NLC']:
+            self._data_format = 'NHWC'
+        else:
+            raise ValueError(
+                'expected \'NCDHW\', \'NDHWC\', \'NCL\', \'NLC\', \'NC\', \'NCHW\', \'NHWC\' for data_format'
+            )
+
     def forward(self, x):
+        self._check_data_format()
         # create output
         # mean and mean_out share the same memory
         mean_out = self._mean
@@ -1142,11 +1153,12 @@ class SyncBatchNorm(_BatchNormBase):
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            if layer._weight_attr != None and not isinstance(layer._weight_attr,
-                                                             bool):
+            if layer._weight_attr != None and not isinstance(
+                    layer._weight_attr,
+                    bool) and layer._weight_attr.name != None:
                 layer._weight_attr.name = layer._weight_attr.name + '_sync'
-            if layer._bias_attr != None and not isinstance(layer._weight_attr,
-                                                           bool):
+            if layer._bias_attr != None and not isinstance(
+                    layer._bias_attr, bool) and layer._bias_attr.name != None:
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 
             layer_output = SyncBatchNorm(layer._num_features, layer._momentum,

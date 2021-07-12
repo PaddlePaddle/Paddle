@@ -20,6 +20,13 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
 
+# Note(zhouwei): Ninja Generator will set CMAKE_BUILD_TYPE to Debug
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
+      FORCE)
+endif()
+
 project(paddle CXX C)
 
 # enable language CUDA
@@ -209,16 +216,10 @@ option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 2.7)
+  set(PY_VERSION 3.6)
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
-# CMAKE_BUILD_TYPE
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-      FORCE)
-endif()
 
 # the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined. Default: OFF
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
@@ -283,6 +284,27 @@ if(WITH_GPU)
     endif()
 endif()
 
+if(WITH_ROCM)
+    include(hip)
+    include(miopen) # set miopen libraries, must before configure
+endif(WITH_ROCM)
+
+if (NOT WITH_ROCM AND WITH_RCCL)
+    MESSAGE(WARNING
+        "Disable RCCL when compiling without ROCM. Force WITH_RCCL=OFF.")
+    set(WITH_RCCL OFF CACHE STRING
+        "Disable RCCL when compiling without ROCM" FORCE)
+endif()
+
+if(WITH_RCCL)
+     add_definitions("-DPADDLE_WITH_RCCL")
+     include(rccl)
+else()
+     if(WITH_ROCM)
+         MESSAGE(WARNING "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used.")
+     endif()
+endif()
+
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 include(flags)              # set paddle compile flags
@@ -306,26 +328,6 @@ include(coveralls)          # set code coverage
 include(configure)          # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
-
-if(WITH_ROCM)
-    include(hip)
-endif(WITH_ROCM)
-
-if (NOT WITH_ROCM AND WITH_RCCL)
-    MESSAGE(WARNING
-        "Disable RCCL when compiling without ROCM. Force WITH_RCCL=OFF.")
-    set(WITH_RCCL OFF CACHE STRING
-        "Disable RCCL when compiling without ROCM" FORCE)
-endif()
-
-if(WITH_RCCL)
-     add_definitions("-DPADDLE_WITH_RCCL")
-     include(rccl)
-else()
-     if(WITH_ROCM)
-         MESSAGE(WARNING "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used.")
-     endif()
-endif()
 
 if(WITH_NV_JETSON)
     set(WITH_ARM ON CACHE STRING "Set WITH_ARM=ON when compiling WITH_NV_JETSON=ON." FORCE)

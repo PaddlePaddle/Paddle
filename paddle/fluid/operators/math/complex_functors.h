@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include <type_traits>
 
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
@@ -65,8 +64,9 @@ using select_t = typename select<Head, Tail...>::type;
 
 template <typename T>
 using Real =
-    select_t<cond<std::is_same<T, platform::complex64>::value, float>,
-             cond<std::is_same<T, platform::complex128>::value, double>, T>;
+    select_t<cond<std::is_same<T, platform::complex<float>>::value, float>,
+             cond<std::is_same<T, platform::complex<double>>::value, double>,
+             T>;
 
 template <typename T, typename RealT>
 using Complex = typename std::enable_if<!std::is_same<T, RealT>::value>::type;
@@ -76,14 +76,14 @@ template <typename T, typename RealT>
 using NoComplex = typename std::enable_if<std::is_same<T, RealT>::value>::type;
 
 template <typename T>
-using EnableComplex =
-    typename std::enable_if<std::is_same<T, platform::complex64>::value ||
-                            std::is_same<T, platform::complex128>::value>::type;
+using EnableComplex = typename std::enable_if<
+    std::is_same<T, platform::complex<float>>::value ||
+    std::is_same<T, platform::complex<double>>::value>::type;
 
 template <typename T>
 using DisableComplex = typename std::enable_if<
-    !std::is_same<T, platform::complex64>::value &&
-    !std::is_same<T, platform::complex128>::value>::type;
+    !std::is_same<T, platform::complex<float>>::value &&
+    !std::is_same<T, platform::complex<double>>::value>::type;
 
 template <typename T, typename Enable = void>
 struct RealFunctor;
@@ -173,44 +173,45 @@ struct AbsGradFunctor {
 };
 
 template <>
-struct AbsGradFunctor<paddle::platform::complex64> {
-  AbsGradFunctor(const float* dout, const paddle::platform::complex64* x,
-                 paddle::platform::complex64* output, int64_t numel)
+struct AbsGradFunctor<paddle::platform::complex<float>> {
+  AbsGradFunctor(const float* dout, const paddle::platform::complex<float>* x,
+                 paddle::platform::complex<float>* output, int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == paddle::platform::complex64(0)) {
-      output_[idx] = paddle::platform::complex64(0);
+    if (x_[idx] == paddle::platform::complex<float>(0)) {
+      output_[idx] = paddle::platform::complex<float>(0);
     } else {
-      output_[idx] = paddle::platform::complex64(dout_[idx]) *
-                     (x_[idx] / paddle::platform::complex64(abs(x_[idx])));
+      output_[idx] = paddle::platform::complex<float>(dout_[idx]) *
+                     (x_[idx] / paddle::platform::complex<float>(abs(x_[idx])));
     }
   }
 
   const float* dout_;
-  const paddle::platform::complex64* x_;
-  paddle::platform::complex64* output_;
+  const paddle::platform::complex<float>* x_;
+  paddle::platform::complex<float>* output_;
   int64_t numel_;
 };
 
 template <>
-struct AbsGradFunctor<paddle::platform::complex128> {
-  AbsGradFunctor(const double* dout, const paddle::platform::complex128* x,
-                 paddle::platform::complex128* output, int64_t numel)
+struct AbsGradFunctor<paddle::platform::complex<double>> {
+  AbsGradFunctor(const double* dout, const paddle::platform::complex<double>* x,
+                 paddle::platform::complex<double>* output, int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == paddle::platform::complex128(0)) {
-      output_[idx] = paddle::platform::complex128(0);
+    if (x_[idx] == paddle::platform::complex<double>(0)) {
+      output_[idx] = paddle::platform::complex<double>(0);
     } else {
-      output_[idx] = paddle::platform::complex128(dout_[idx]) *
-                     (x_[idx] / paddle::platform::complex128(abs(x_[idx])));
+      output_[idx] =
+          paddle::platform::complex<double>(dout_[idx]) *
+          (x_[idx] / paddle::platform::complex<double>(abs(x_[idx])));
     }
   }
 
   const double* dout_;
-  const paddle::platform::complex128* x_;
-  paddle::platform::complex128* output_;
+  const paddle::platform::complex<double>* x_;
+  paddle::platform::complex<double>* output_;
   int64_t numel_;
 };
 
@@ -234,46 +235,46 @@ struct AbsGradGradFunctor {
 };
 
 template <>
-struct AbsGradGradFunctor<paddle::platform::complex128> {
-  AbsGradGradFunctor(const paddle::platform::complex128* ddx,
-                     const paddle::platform::complex128* x,
-                     paddle::platform::complex128* output, int64_t numel)
+struct AbsGradGradFunctor<paddle::platform::complex<double>> {
+  AbsGradGradFunctor(const paddle::platform::complex<double>* ddx,
+                     const paddle::platform::complex<double>* x,
+                     paddle::platform::complex<double>* output, int64_t numel)
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == paddle::platform::complex128(0)) {
-      output_[idx] = paddle::platform::complex128(0);
+    if (x_[idx] == paddle::platform::complex<double>(0)) {
+      output_[idx] = paddle::platform::complex<double>(0);
     } else {
-      output_[idx] = paddle::platform::complex128(ddx_[idx]) * x_[idx] /
-                     paddle::platform::complex128(abs(x_[idx]));
+      output_[idx] = paddle::platform::complex<double>(ddx_[idx]) * x_[idx] /
+                     paddle::platform::complex<double>(abs(x_[idx]));
     }
   }
 
-  const paddle::platform::complex128* ddx_;
-  const paddle::platform::complex128* x_;
-  paddle::platform::complex128* output_;
+  const paddle::platform::complex<double>* ddx_;
+  const paddle::platform::complex<double>* x_;
+  paddle::platform::complex<double>* output_;
   int64_t numel_;
 };
 
 template <>
-struct AbsGradGradFunctor<paddle::platform::complex64> {
-  AbsGradGradFunctor(const paddle::platform::complex64* ddx,
-                     const paddle::platform::complex64* x,
-                     paddle::platform::complex64* output, int64_t numel)
+struct AbsGradGradFunctor<paddle::platform::complex<float>> {
+  AbsGradGradFunctor(const paddle::platform::complex<float>* ddx,
+                     const paddle::platform::complex<float>* x,
+                     paddle::platform::complex<float>* output, int64_t numel)
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == paddle::platform::complex64(0)) {
-      output_[idx] = paddle::platform::complex64(0);
+    if (x_[idx] == paddle::platform::complex<float>(0)) {
+      output_[idx] = paddle::platform::complex<float>(0);
     } else {
-      output_[idx] = paddle::platform::complex64(ddx_[idx]) * x_[idx] /
-                     paddle::platform::complex64(abs(x_[idx]));
+      output_[idx] = paddle::platform::complex<float>(ddx_[idx]) * x_[idx] /
+                     paddle::platform::complex<float>(abs(x_[idx]));
     }
   }
 
-  const paddle::platform::complex64* ddx_;
-  const paddle::platform::complex64* x_;
-  paddle::platform::complex64* output_;
+  const paddle::platform::complex<float>* ddx_;
+  const paddle::platform::complex<float>* x_;
+  paddle::platform::complex<float>* output_;
   int64_t numel_;
 };
 template <typename T, typename Enable = void>

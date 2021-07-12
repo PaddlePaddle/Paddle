@@ -39,14 +39,14 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         table_var->IsType<framework::LoDTensor>(), true,
         platform::errors::InvalidArgument("npu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
-    framework::NPUAttributeMap attr_input = {{"validate_indices", false}};
 
-    auto runner =
-        NpuOpRunner("Gather", {*table_t, *ids_t}, {*output_t}, attr_input);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
+    NpuOpRunner runner;
+    runner.SetType("GatherV2")
+        .AddInput(*table_t)
+        .AddInput(*ids_t)
+        .AddInput(std::vector<int32_t>{0})
+        .AddOutput(*output_t);
+    runner.Run();
   }
 };
 
@@ -65,14 +65,14 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner_zeros =
+    const auto &runner_zeros =
         NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
     runner_zeros.Run(stream);
 
     // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
     // can be different tensor, but in cann 20.2+, it does inplace operation.
     // Thus, the first input and output should be same tensor.
-    auto runner_scatter =
+    const auto &runner_scatter =
         NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
                     {*table_grad_t}, {{"use_locking", true}});
     runner_scatter.Run(stream);

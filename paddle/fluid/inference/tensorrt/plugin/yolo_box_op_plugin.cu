@@ -243,7 +243,11 @@ int YoloBoxPlugin::enqueue_impl(int batch_size, const void* const* inputs,
 }
 
 int YoloBoxPlugin::enqueue(int batch_size, const void* const* inputs,
+#if IS_TRT_VERSION_LT(8000)
                            void** outputs, void* workspace,
+#else
+                           void* const* outputs, void* workspace,
+#endif
                            cudaStream_t stream) {
   if (data_type_ == nvinfer1::DataType::kFLOAT) {
     return enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
@@ -295,7 +299,7 @@ const char* YoloBoxPlugin::getPluginNamespace() const {
 
 nvinfer1::DataType YoloBoxPlugin::getOutputDataType(
     int index, const nvinfer1::DataType* input_type, int nb_inputs) const {
-  return data_type_;
+  return input_type[0];
 }
 
 bool YoloBoxPlugin::isOutputBroadcastAcrossBatch(int output_index,
