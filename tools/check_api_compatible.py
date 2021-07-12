@@ -15,7 +15,21 @@
 import argparse
 import inspect
 import sys
+import re
+import logging
+
 import paddle
+
+logger = logging.getLogger()
+if logger.handlers:
+    # we assume the first handler is the one we want to configure
+    console = logger.handlers[0]
+else:
+    console = logging.StreamHandler(sys.stderr)
+    logger.addHandler(console)
+console.setFormatter(
+    logging.Formatter(
+        "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
 
 #1) 原api有的参数新api都有，且顺序一致
 #2）无默认参数api数量，原api大于等于新api
@@ -59,6 +73,20 @@ def check_compatible(old_api_dict, new_api_dict):
         if (new_argdefaults[newargidx] != old_argdefaults[oldargidx]):
             return False
     return True
+
+
+def read_argspec_from_file(specfile):
+    """
+    read FullArgSpec from spec file
+    """
+    res_dict = {}
+    patArgSpec = re.compile(
+        r'^(paddle[^,]+)\s+\((ArgSpec.*),\s\(\'document\W*([0-9a-z]{32})')
+    for line in specfile.readlines():
+        mo = patArgSpec.search(line)
+        if mo:
+            res_dict[mo.group(1)] = mo.group(2)
+    return res_dict
 
 
 arguments = [
