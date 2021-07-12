@@ -43,27 +43,29 @@ static inline int ConvOutputSize(int input_size, int filter_size, int dilation,
 
 nvinfer1::Weights DeformableConvPlugin::copyToDevice(const void* hostData,
                                                      size_t count) {
+  int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
   void* deviceData;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&deviceData, count * sizeof(float)));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&deviceData, count * num_bytes));
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
-      deviceData, hostData, count * sizeof(float), cudaMemcpyHostToDevice));
-  return nvinfer1::Weights{nvinfer1::DataType::kFLOAT, deviceData,
-                           int64_t(count)};
+      deviceData, hostData, count * num_bytes, cudaMemcpyHostToDevice));
+  return nvinfer1::Weights{data_type_, deviceData, int64_t(count)};
 }
 
 void DeformableConvPlugin::serializeFromDevice(
     void** hostBuffer, const nvinfer1::Weights& deviceWeights) const {
+  int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaMemcpy(static_cast<char*>(*hostBuffer), deviceWeights.values,
-                 deviceWeights.count * sizeof(float), cudaMemcpyDeviceToHost));
-  hostBuffer += deviceWeights.count * sizeof(float);
+                 deviceWeights.count * num_bytes, cudaMemcpyDeviceToHost));
+  hostBuffer += deviceWeights.count * num_bytes;
 }
 
 nvinfer1::Weights DeformableConvPlugin::deserializeToDevice(
     const void** hostBuffer, size_t count) {
+  int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
   nvinfer1::Weights w =
       copyToDevice(static_cast<const char*>(*hostBuffer), count);
-  hostBuffer += count * sizeof(float);
+  hostBuffer += count * num_bytes;
   return w;
 }
 
@@ -392,7 +394,8 @@ size_t DeformableConvPlugin::getSerializationSize() const {
   serialize_size += SerializedSize(im2col_step_);
   serialize_size += SerializedSize(kernel_dims_);
   serialize_size += SerializedSize(weights_.count);
-  serialize_size += weights_.count * sizeof(float);
+  int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
+  serialize_size += weights_.count * num_bytes;
   serialize_size += SerializedSize(input_dim_);
   serialize_size += SerializedSize(offset_dim_);
   serialize_size += SerializedSize(mask_dim_);
@@ -444,7 +447,6 @@ bool DeformableConvPlugin::canBroadcastInputAcrossBatch(int input_index) const {
 void DeformableConvPlugin::attachToContext(
     cudnnContext* cudnnContext, cublasContext* cublasContext,
     nvinfer1::IGpuAllocator* gpuAllocator) {
-  cudnnHandle_ = cudnnContext;
   cublasHandle_ = cublasContext;
 }
 
@@ -507,17 +509,17 @@ nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::createPlugin(
     const char* name, const nvinfer1::PluginFieldCollection* fc) {
   const nvinfer1::PluginField* fields = fc->fields;
 
-  int type_id = -1;
+  nvinfer1::DataType data_type;
   std::vector<int> strides, paddings, dilations, kernel_dims;
-  std::vector<float> weightValues;
+  nvinfer1::Weights weights;
   int groups = -1;
   int deformable_groups = -1;
   int im2col_step = -1;
 
   for (int i = 0; i < fc->nbFields; ++i) {
     const std::string field_name(fc->fields[i].name);
-    if (field_name.compare("type_id") == 0) {
-      type_id = *static_cast<const int*>(fc->fields[i].data);
+    if (field_name.compare("data_type") == 0) {
+      data_type = *static_cast<const nvinfer1::DataType*>(fc->fields[i].data);
     } else if (field_name.compare("strides")) {
       const int length = fc->fields[i].length;
       const int* data = static_cast<const int*>(fc->fields[i].data);
@@ -541,24 +543,16 @@ nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::createPlugin(
       const int* data = static_cast<const int*>(fc->fields[i].data);
       kernel_dims.insert(kernel_dims.end(), data, data + length);
     } else if (field_name.compare("weights")) {
-      const int length = fc->fields[i].length;
-      weightValues.reserve(length);
-      const float* data = static_cast<const float*>(fc->fields[i].data);
-      for (int j = 0; j < length; j++) {
-        weightValues.push_back(*data);
-        data++;
-      }
+      weights.count = fc->fields[i].length;
+      weights.values = fc->fields[i].data;
     } else {
       assert(false && "unknown plugin field name.");
     }
   }
-
-  nvinfer1::Weights weights{nvinfer1::DataType::kFLOAT, weightValues.data(),
-                            (int64_t)weightValues.size()};
-  return new DeformableConvPlugin(
-      type_id ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT, weights,
-      kernel_dims, strides, paddings, dilations, groups, deformable_groups,
-      im2col_step);
+  weights.type = data_type;
+  return new DeformableConvPlugin(data_type, weights, kernel_dims, strides,
+                                  paddings, dilations, groups,
+                                  deformable_groups, im2col_step);
 }
 
 nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::deserializePlugin(

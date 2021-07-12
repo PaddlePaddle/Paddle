@@ -46,9 +46,6 @@ class DeformableConvOpConverter : public OpConverter {
 
     float* filter_data =
         engine_->GetWeightCPUData(filter_name, filter_tensor, false);
-    nvinfer1::Weights weights{nvinfer1::DataType::kFLOAT,
-                              static_cast<void*>(filter_data),
-                              static_cast<int64_t>(filter_tensor->numel())};
     PADDLE_ENFORCE_EQ(
         filter_tensor->dims().size(), 4UL,
         platform::errors::InvalidArgument(
@@ -72,9 +69,22 @@ class DeformableConvOpConverter : public OpConverter {
         BOOST_GET_CONST(int, op_desc.GetAttr("deformable_groups"));
     auto im2col_step = BOOST_GET_CONST(int, op_desc.GetAttr("im2col_step"));
 
-    int type_id = static_cast<int>(engine_->WithFp16());
+    nvinfer1::Weights weights;
+    weights.count = filter_tensor->numel();
+    if (engine_->WithFp16()) {
+      auto half_filter_data = new half[filter_tensor->numel()];
+      for (int i = 0; i < filter_tensor->numel(); i++) {
+        half_filter_data[i] = static_cast<half>(filter_data[i]);
+      }
+      weights.type = nvinfer1::DataType::kHALF;
+      weights.values = half_filter_data;
+    } else {
+      weights.type = nvinfer1::DataType::kFLOAT;
+      weights.values = filter_data;
+    }
     auto* deformable_conv_plugin = new plugin::DeformableConvPlugin(
-        type_id ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+        engine_->WithFp16() ? nvinfer1::DataType::kHALF
+                            : nvinfer1::DataType::kFLOAT,
         weights, kernel_dims, strides, paddings, dilations, groups,
         deformable_groups, im2col_step);
 

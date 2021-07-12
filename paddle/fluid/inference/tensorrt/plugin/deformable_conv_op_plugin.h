@@ -109,7 +109,6 @@ class DeformableConvPlugin : public nvinfer1::IPluginV2Ext {
   std::vector<int> output_dim_;
 
   cublasHandle_t cublasHandle_;
-  cudnnHandle_t cudnnHandle_;
 };
 
 class DeformableConvPluginCreator : public nvinfer1::IPluginCreator {
