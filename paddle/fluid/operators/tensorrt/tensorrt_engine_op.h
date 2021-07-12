@@ -282,6 +282,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("output_name_mapping");
 
     int binding_offset = 0;
+    nvinfer1::IExecutionContext *trt_context = nullptr;
     if (engine->with_dynamic_shape()) {
       // Initilize context and get offset by profile index
       auto *trt_context = engine->context();
@@ -340,7 +341,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto x_max_input_shape = max_input_shape[x];
         RuntimeDynamicShapeCheck(x, t_shape, x_min_input_shape,
                                  x_max_input_shape);
-        auto *trt_context = engine->context();
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
 #endif
@@ -378,7 +378,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
-        auto *trt_context = engine->context();
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
