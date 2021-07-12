@@ -64,13 +64,11 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
 
-  // input size
-  int input_size = 1;
-  for (int i = 0; i < src_dims.size(); i++) input_size *= src_dims[i];
   // slice size
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
-
+  // input size
+  int input_size = src_dims[0] * slice_size;
   const size_t slice_bytes = slice_size * sizeof(T);
 
   for (int64_t i = 0; i < index_size; ++i) {
