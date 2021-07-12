@@ -69,6 +69,7 @@ def lstm_np(input,
         return new_hidden, new_cell
 
     mask = None
+
     if batch_first:
         input = np.tranpose(input, [1, 0, 2])
         if mask is not None:
