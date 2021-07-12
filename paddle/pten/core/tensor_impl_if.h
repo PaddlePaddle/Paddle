@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/pten/core/backend.h"
-#include "paddle/pten/core/ddim.h"
 #include "paddle/pten/core/dtype.h"
 #include "paddle/pten/core/layout.h"
 
@@ -30,12 +29,12 @@ class Place;
 
 namespace pt {
 
-// TODO(chenweihang): DDim still link to framework, design abstract interface
-// of DDim?
+// TODO(chenweihang): Use the existing DDim directly?
+// or design a abstract interface of DDim?
 using DDim = paddle::framework::DDim;
 
-// TODO(chenweihang): Place still link to framework, design abstract interface
-// of place?
+// TODO(chenweihang): Use the existing Place directly?
+// or design a abstract interface of Place?
 using Place = paddle::platform::Place;
 
 /**

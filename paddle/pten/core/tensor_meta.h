@@ -41,6 +41,17 @@ class InplaceVersion {
  */
 struct TensorMeta {
   TensorMeta() = delete;
+  TensorMeta(const TensorMeta&) = delete;
+  TensorMeta& operator=(const TensorMeta&) = delete;
+  // TensorMeta(TensorMeta&&) = delete;
+  TensorMeta& operator=(TensorMeta&&) = delete;
+
+  TensorMeta(TensorMeta&& meta)
+      : dims(meta.dims),
+        backend(meta.backend),
+        type(meta.type),
+        layout(meta.layout),
+        offset(meta.offset) {}
 
   // May introduce bug
   explicit TensorMeta(DDim dims) : dims(dims) {}

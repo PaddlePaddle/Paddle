@@ -34,9 +34,9 @@ namespace pt {
 using Allocation = paddle::memory::allocation::Allocation;
 
 /**
- * The implementation of general Tensor (For CPU, CUDA, HIP, etc.),
- * contains a pointer to Allocation and a series of descriptive metadata
- * required by Tensor.
+ * The implementation of general Tensor (For CPU, CUDA, HIP, etc.), similar
+ * to the Tensor in fluid, contains a pointer to Allocation and a series of
+ * descriptive metadata required by Tensor.
  *
  * BaseTensor is still a base class, it may have mutiple inherited classes,
  * such as LoDTensor, SelectedRows, etc. The memory layout
@@ -65,7 +65,7 @@ class BaseTensor : public TensorImplInterface {
    *
    * Note: Tensor objects lacking meta information are not allowed to exist.
    */
-  explicit BaseTensor(TensorMeta meta);
+  explicit BaseTensor(TensorMeta&& meta);
 
   ~BaseTensor() override {}
 

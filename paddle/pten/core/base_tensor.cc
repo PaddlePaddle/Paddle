@@ -23,8 +23,7 @@ limitations under the License. */
 
 namespace pt {
 
-// TODO(chenweihang): Place still link to framework, design abstract interface
-// of place?
+// TODO(chenweihang): design abstract interface of each place?
 using CPUPlace = paddle::platform::CPUPlace;
 using CUDAPlace = paddle::platform::CUDAPlace;
 using CUDAPinnedPlace = paddle::platform::CUDAPinnedPlace;
@@ -32,7 +31,7 @@ using XPUPlace = paddle::platform::XPUPlace;
 using NPUPlace = paddle::platform::NPUPlace;
 using NPUPinnedPlace = paddle::platform::NPUPinnedPlace;
 
-BaseTensor::BaseTensor(TensorMeta meta)
+BaseTensor::BaseTensor(TensorMeta&& meta)
     : meta_(std::forward<TensorMeta>(meta)) {}
 
 int64_t BaseTensor::numel() const { return product(meta_.dims); }
