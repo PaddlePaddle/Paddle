@@ -270,6 +270,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 #endif
     } else {
 #ifdef PADDLE_WITH_ASCEND_CL
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
       auto *dev_ctx =
           static_cast<const platform::NPUDeviceContext *>(pool.Get(place_));
       auto dst_npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);

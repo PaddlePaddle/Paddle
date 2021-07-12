@@ -301,13 +301,13 @@ TEST(inference_api_native, image_classification_xpu) {
 }
 #endif
 
-#ifdef
+#ifdef PADDLE_WITH_ASCEND_CL
 TEST(inference_api_native, word2vec_npu) {
   MainWord2Vec(paddle::PaddlePlace::kNPU);
 }
-TEST(inference_api_native, image_classification_npu) {
-  MainImageClassification(paddle::PaddlePlace::kNPU);
-}
+// TEST(inference_api_native, image_classification_npu) {
+//   MainImageClassification(paddle::PaddlePlace::kNPU);
+// }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
