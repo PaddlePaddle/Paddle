@@ -16,7 +16,6 @@
 #include <cstring>
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/stack_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
