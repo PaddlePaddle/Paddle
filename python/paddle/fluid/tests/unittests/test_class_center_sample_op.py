@@ -19,6 +19,7 @@ import numpy as np
 import math
 import random
 import paddle
+import paddle.fluid.core as core
 from op_test import OpTest
 from paddle.fluid import Program, program_guard
 
