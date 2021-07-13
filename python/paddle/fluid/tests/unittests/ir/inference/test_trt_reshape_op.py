@@ -99,9 +99,11 @@ class TRTReshapeTest2(TRTReshapeTest):
         self.enable_trt = True
         self.trt_parameters = TRTReshapeTest.TensorRTParam(
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+        '''
         self.dynamic_shape_params = TRTReshapeTest.DynamicShapeParam({
             'data': [1, 3, 8, 8]
         }, {'data': [5, 100, 100, 100]}, {'data': [1, 3, 16, 16]}, False)
+        '''
         self.fetch_list = [out]
 
 

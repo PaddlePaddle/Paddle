@@ -99,6 +99,8 @@ black_list = {
     # fp16 is slower than fp32, though fp16 is supported.
     'lookup_table',
     'lookup_table_v2',
+    # default fp32 can avoid return inf when the sum value large than 65504
+    'reduce_sum',
 }
 
 # This set contains two types of ops. All ops supported fp16 calculation. One 
