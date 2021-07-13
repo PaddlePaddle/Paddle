@@ -154,10 +154,10 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       for (; i < size; ++i) {
         float rand = dist(*engine);
         if (rand < dropout_prob) {
-          mask_temp[i] = 0;
+          mask_data[i] = 0;
           y_data[i] = 0;
         } else {
-          mask_temp[i] = 1;
+          mask_data[i] = 1;
           if (upscale_in_train) {
             y_data[i] = x_data[i] * factor;
           } else {
@@ -168,7 +168,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-      for (int i = 0; i < size; i++) {
+      for (int i = 0; i < end; i++) {
         mask_data[i] = static_cast<uint8_t>(mask_temp[i]);
       }
 #else
