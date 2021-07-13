@@ -76,9 +76,6 @@ DECLARE_INPLACE_OP_INFERER(PartialAllGatherOpInplaceInferer, {"X", "Out"});
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-// REGISTER_OP_WITHOUT_GRADIENT(partial_allgather, ops::PartialAllGatherOp,
-//                              ops::PartialAllGatherOpMaker);
-
 REGISTER_OPERATOR(
     partial_allgather, ops::PartialAllGatherOp, ops::PartialAllGatherOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,

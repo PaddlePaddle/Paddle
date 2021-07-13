@@ -84,12 +84,8 @@ def partial_allgather(tensor,
 def send(tensor, dest_stage):
     global _groups, _hcg
     src_stage = _hcg.get_stage_id()
-    # src_rank = _hcg.get_rank_from_stage(stage_id=src_stage)
     _is_valid_communciate(src_stage, dest_stage)
     group = _get_send_recv_group(src_stage, dest_stage)
-    # dst_rank = _hcg.get_rank_from_stage(stage_id=dest_stage)
-    # paddle.distributed.send(tensor, src_rank, group=group)
-    # return paddle.distributed.broadcast(tensor, src_rank, group=group)
     return paddle.distributed.send(
         tensor, dst=1 if dest_stage > src_stage else 0, group=group)
 
