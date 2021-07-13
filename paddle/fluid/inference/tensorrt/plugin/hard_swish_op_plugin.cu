@@ -15,19 +15,11 @@
 #include <cassert>
 #include <cstring>
 #include "paddle/fluid/inference/tensorrt/plugin/hard_swish_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-HardSwishPlugin* CreateHardSwishPluginDeserialize(const void* buffer,
-                                                  size_t length) {
-  return new HardSwishPlugin(buffer, length);
-}
-
-REGISTER_TRT_PLUGIN("hard_swish_plugin", CreateHardSwishPluginDeserialize);
 
 nvinfer1::Dims HardSwishPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* in_dims, int nb_inputs) {
@@ -59,7 +51,11 @@ __global__ void hard_swish_kernel(float threshold, float scale, float offset,
 }
 
 int HardSwishPlugin::enqueue(int batch_size, const void* const* inputs,
+#if IS_TRT_VERSION_LT(8000)
                              void** outputs, void*, cudaStream_t stream) {
+#else
+                             void* const* outputs, void*, cudaStream_t stream) {
+#endif
   const auto& input_dims = this->getInputDims(0);
   int num = batch_size;
   for (int i = 0; i < input_dims.nbDims; i++) {

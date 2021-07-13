@@ -575,6 +575,13 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.std))
         self.assertTrue(inspect.ismethod(a.numel))
 
+    def test_complex_scalar(self):
+        a_np = np.random.random(self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res = 1J * a
+            self.assertTrue(np.array_equal(res.numpy(), 1J * a_np))
+
 
 if __name__ == '__main__':
     unittest.main()

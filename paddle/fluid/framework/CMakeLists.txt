@@ -29,7 +29,7 @@ add_subdirectory(io)
 proto_library(framework_proto SRCS framework.proto)
 
 proto_library(op_def_proto SRCS op_def.proto)
-cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto)
+cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto boost)
 
 FILE(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
 FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt 
@@ -110,7 +110,7 @@ cc_test(reader_test SRCS reader_test.cc DEPS reader)
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
-cc_library(var_type_traits SRCS var_type_traits DEPS lod_tensor selected_rows framework_proto)
+cc_library(var_type_traits SRCS var_type_traits.cc DEPS lod_tensor selected_rows framework_proto)
 if (WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -254,14 +254,14 @@ cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
 cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry denormal device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
 
-cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
+cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector op_registry while_op_helper recurrent_op_helper conditional_block_op_helper)
 if(WITH_DISTRIBUTE)
   if(WITH_PSLIB)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
     dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
     heterxpu_trainer.cc
     data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-    heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+    ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
@@ -282,7 +282,7 @@ if(WITH_DISTRIBUTE)
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-            heterbox_worker.cc heterbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+            downpour_worker.cc downpour_worker_opt.cc
             pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
@@ -296,7 +296,7 @@ if(WITH_DISTRIBUTE)
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-            heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+            ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
             pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
@@ -316,7 +316,7 @@ elseif(WITH_PSLIB)
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-  heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+  ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
@@ -326,7 +326,7 @@ else()
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-  heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+  ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
@@ -370,10 +370,10 @@ endif (NOT WIN32)
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
 
-cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper proto_desc)
+cc_library(op_compatible_info SRCS op_compatible_info.cc DEPS string_helper proto_desc)
 cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info proto_desc string_helper glog)
 
-cc_library(save_load_util SRCS save_load_util DEPS tensor scope layer)
+cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
