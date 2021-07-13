@@ -29,25 +29,6 @@ from .pp_utils import p2p_communication as p2p
 __all__ = []
 
 
-def split_tensor_for_tensor_parallel(tensor, hcg):
-    data = tensor.flatten()
-    partition_size = paddle.numel(data) // hcg.get_model_parallel_world_size()
-    start_index = partition_size * hcg.get_model_parallel_rank()
-    end_index = start_index + partition_size
-    return data[start_index:end_index]
-
-
-def gather_split_for_tensor_parallel(tensor, hcg):
-    world_size = hcg.get_model_parallel_world_size()
-    numel = paddle.numel(tensor)
-    numel_gathered = world_size * numel
-    tensor_list = []
-    paddle.distributed.all_gather(
-        tensor_list, tensor, group=hcg.get_model_parallel_group())
-    gathered = paddle.concat(x=tensor_list, axis=-1)
-    return gathered
-
-
 class PipelineParallel(MetaParallelBase):
     def __init__(self, layers, hcg, strategy):
         if not isinstance(layers, PipelineLayer):
@@ -90,6 +71,9 @@ class PipelineParallel(MetaParallelBase):
         self.is_first_stage = self.stage_id == 0
         self.is_last_stage = (self.stage_id == (self.num_stages - 1))
         self.global_rank = self._hcg.get_global_rank()
+
+        self.mp_degree = self._hcg.get_model_parallel_world_size()
+        self.mp_rank = self._hcg.get_model_parallel_rank()
 
         logger.info("Pipeline Info -- num_stages: {}, stage_id: {}".format(
             self.num_stages, self.stage_id))
@@ -398,25 +382,38 @@ class PipelineParallel(MetaParallelBase):
             self._send_meta(outputs, self.next_stage_id)
 
         if isinstance(outputs, paddle.Tensor):
-            if self.is_pipe_partitioned and not self.is_last_stage:
-                #print("send act before outputs", outputs.shape)
-                outputs = split_tensor_for_tensor_parallel(outputs, self._hcg)
-                #print("send act after outputs", outputs.shape)
-            p2p.send(outputs, self.next_stage_id)
+            if self.is_pipe_partitioned:
+                p2p.send_partial(
+                    outputs,
+                    self.next_stage_id,
+                    mp_degree=self.mp_degree,
+                    mp_rank=self.mp_rank)
+            else:
+                p2p.send(outputs, self.next_stage_id)
 
         elif isinstance(outputs, tuple):
             for output in outputs:
-                if self.is_pipe_partitioned and not self.is_last_stage:
-                    output = split_tensor_for_tensor_parallel(output, self._hcg)
-                p2p.send(output.detach(), self.next_stage_id)
+                if self.is_pipe_partitioned:
+                    p2p.send_partial(
+                        output,
+                        self.next_stage_id,
+                        mp_degree=self.mp_degree,
+                        mp_rank=self.mp_rank)
+                else:
+                    p2p.send(output.detach(), self.next_stage_id)
 
     def _send_gradients(self, cache_id):
         inputs = self.caches['inputs'][cache_id]
         if isinstance(inputs, paddle.Tensor):
             assert inputs.grad is not None
             if self.is_pipe_partitioned:
-                grad = split_tensor_for_tensor_parallel(inputs.grad, self._hcg)
-            p2p.send(grad, self.prev_stage_id)
+                grad = p2p.send_partial(
+                    inputs.grad,
+                    self.prev_stage_id,
+                    mp_degree=self.mp_degree,
+                    mp_rank=self.mp_rank)
+            else:
+                p2p.send(inputs.grad, self.prev_stage_id)
         else:
             for idx, d in enumerate(inputs):
                 # Skip tensors that will not produce a grad
@@ -425,9 +422,13 @@ class PipelineParallel(MetaParallelBase):
                     continue
 
                 if self.is_pipe_partitioned:
-                    grad = split_tensor_for_tensor_parallel(d.grad, self._hcg)
-
-                p2p.send(grad, self.prev_stage_id)
+                    grad = p2p.send_partial(
+                        d.grad,
+                        self.prev_stage_id,
+                        mp_degree=self.mp_degree,
+                        mp_rank=self.mp_rank)
+                else:
+                    p2p.send(d.grad, self.prev_stage_id)
 
         self.caches['inputs'][cache_id] = None
 
@@ -437,35 +438,38 @@ class PipelineParallel(MetaParallelBase):
             self.recv_cache = self._recv_meta(self.prev_stage_id)
 
         if isinstance(self.recv_cache, paddle.Tensor):
-            if self.is_pipe_partitioned and not self.is_first_stage:
-                partition_size = paddle.numel(
-                    self.recv_cache) // self._hcg.get_model_parallel_world_size(
-                    )
-                tmp = paddle.zeros([partition_size], self.recv_cache.dtype)
-                p2p.recv(tmp, self.prev_stage_id)
-                inputs = gather_split_for_tensor_parallel(tmp, self._hcg)
+            if self.is_pipe_partitioned:
+                p2p.recv_partial(self.recv_cache, self.prev_stage_id,
+                                 self.mp_degree, self.mp_rank)
+                p2p.partial_allgather(
+                    self.recv_cache,
+                    mp_ranks=self.mp_degree,
+                    mp_rank_id=self.mp_rank,
+                    group=self._hcg.get_model_parallel_group(),
+                    use_calc_stream=True)
             else:
                 p2p.recv(self.recv_cache, self.prev_stage_id)
-                inputs = self.recv_cache.clone().detach()
 
-            inputs = paddle.reshape(inputs, self.recv_cache.shape)
+            inputs = self.recv_cache.clone().detach()
             inputs.stop_gradient = not is_float_tensor(inputs)
 
         else:
             assert isinstance(self.recv_cache, tuple)
             inputs = [None] * len(self.recv_cache)
             for idx, d in enumerate(self.recv_cache):
-                partition_size = paddle.numel(
-                    d) // self._hcg.get_model_parallel_world_size()
-                assert isinstance(d, paddle.Tensor)
-                tmp = paddle.zeros([partition_size], d.dtype)
-                p2p.recv(tmp, self.prev_stage_id)
-                if self.is_pipe_partitioned and not self.is_first_stage:
-                    inputs[idx] = gather_split_for_tensor_parallel(
-                        tmp.clone().detach(), self._hcg)
+                if self.is_pipe_partitioned:
+                    p2p.recv_partial(d, self.prev_stage_id, self.mp_degree,
+                                     self.mp_rank)
+                    p2p.partial_allgather(
+                        d,
+                        mp_ranks=self.mp_degree,
+                        mp_rank_id=self.mp_rank,
+                        group=self._hcg.get_model_parallel_group(),
+                        use_calc_stream=True)
                 else:
-                    inputs[idx] = tmp.clone().detach()
-                inputs[idx].reshape_(d.shape)
+                    assert isinstance(d, paddle.Tensor)
+                    p2p.recv(d, self.prev_stage_id)
+                inputs[idx] = d.clone().detach()
 
             inputs = tuple(inputs)
 
@@ -492,24 +496,32 @@ class PipelineParallel(MetaParallelBase):
                     sizes, dtypes, num_caches=1)[0]
 
         if isinstance(self.grad_tensors, paddle.Tensor):
-            partition_size = paddle.numel(
-                self.grad_tensors) // self._hcg.get_model_parallel_world_size()
-            tmp = paddle.zeros([partition_size], self.grad_tensors.dtype)
-            p2p.recv(tmp, self.next_stage_id)
-            self.grad_tensors = gather_split_for_tensor_parallel(
-                tmp.clone().detach(), self._hcg)
-            #p2p.recv(self.grad_tensors, self.next_stage_id)
+            if self.is_pipe_partitioned:
+                p2p.recv_partial(self.grad_tensors, self.next_stage_id,
+                                 self.mp_degree, self.mp_rank)
+                p2p.partial_allgather(
+                    self.grad_tensors,
+                    mp_ranks=self.mp_degree,
+                    mp_rank_id=self.mp_rank,
+                    group=self._hcg.get_model_parallel_group(),
+                    use_calc_stream=True)
+            else:
+                p2p.recv(self.grad_tensors, self.next_stage_id)
 
         else:
             assert isinstance(outputs, tuple)
             for d in self.grad_tensors:
-                partition_size = paddle.numel(
-                    d) // self._hcg.get_model_parallel_world_size()
-                assert isinstance(d, paddle.Tensor)
-                tmp = paddle.zeros([partition_size], d.dtype)
-                p2p.recv(tmp, self.next_stage_id)
-                d = gather_split_for_tensor_parallel(tmp.clone().detach(),
-                                                     self._hcg)
+                if self.is_pipe_partitioned:
+                    p2p.recv_partial(d, self.next_stage_id, self.mp_degree,
+                                     self.mp_rank)
+                    p2p.partial_allgather(
+                        d,
+                        mp_ranks=self.mp_degree,
+                        mp_rank_id=self.mp_rank,
+                        group=self._hcg.get_model_parallel_group(),
+                        use_calc_stream=True)
+                else:
+                    p2p.recv(d, self.next_stage_id)
 
     def _step(self):
         if self.scaler:
