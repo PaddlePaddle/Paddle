@@ -318,6 +318,7 @@ class TensorRTEngine {
             "on the same GPU architecture;\n2. The Paddle Inference version of "
             "generating serialization file and doing inference are "
             "consistent."));
+    binding_num_ = infer_engine_->getNbBindings();
   }
 
   void SetRuntimeBatch(size_t batch_size);
