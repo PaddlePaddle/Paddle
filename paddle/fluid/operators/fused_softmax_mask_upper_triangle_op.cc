@@ -10,7 +10,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/softmax_mask_fuse_upper_triangle_op.h"
+#include "paddle/fluid/operators/fused_softmax_mask_upper_triangle_op.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 namespace paddle {
@@ -82,7 +82,7 @@ class SoftmaxMaskFuseUpperTriangleGradOpMaker
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("softmax_mask_fuse_upper_triangle_grad");
+    op->SetType("fused_softmax_mask_upper_triangle_grad");
     op->SetInput("Softmax", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -94,13 +94,13 @@ class SoftmaxMaskFuseUpperTriangleGradOpMaker
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    softmax_mask_fuse_upper_triangle, ops::SoftmaxMaskFuseUpperTriangleOp,
+    fused_softmax_mask_upper_triangle, ops::SoftmaxMaskFuseUpperTriangleOp,
     ops::SoftmaxMaskFuseUpperTriangleOpMaker,
     ops::SoftmaxMaskFuseUpperTriangleGradOpMaker<paddle::framework::OpDesc>,
     ops::SoftmaxMaskFuseUpperTriangleGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(softmax_mask_fuse_upper_triangle_grad,
+REGISTER_OPERATOR(fused_softmax_mask_upper_triangle_grad,
                   ops::SoftmaxMaskFuseUpperTriangleOpGrad);
-REGISTER_OP_CPU_KERNEL(softmax_mask_fuse_upper_triangle,
+REGISTER_OP_CPU_KERNEL(fused_softmax_mask_upper_triangle,
                        ops::SoftmaxMaskFuseUpperTriangleCPUKernel<
                            paddle::platform::CPUDeviceContext, float>,
                        ops::SoftmaxMaskFuseUpperTriangleCPUKernel<
