@@ -29,21 +29,6 @@ console.setFormatter(
     logging.Formatter(
         "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
 
-#1) 原api有的参数新api都有，且顺序一致
-#2）无默认参数api数量，原api大于等于新api
-
-
-# apilist = [paddle.cast, paddle.nn.functional.relu]
-def get_api_dict(api):
-    api_dict = {}
-    api_argcount = api.__code__.co_argcount  #输入参数数量
-    api_dict['count'] = api_argcount
-    api_argnames = api.__code__.co_varnames  #输入参数名称tuple
-    api_dict['args'] = api_argnames
-    api_defaults = api.__defaults__  #输入参数默认值tuple
-    api_dict['args_defaults'] = api_defaults
-    return api_dict
-
 
 def check_compatible(old_api_spec, new_api_spec):
     """
@@ -76,10 +61,11 @@ def read_argspec_from_file(specfile):
     res_dict = {}
     patArgSpec = re.compile(
         r'^(paddle[^,]+)\s+\((ArgSpec.*),\s\(\'document\W*([0-9a-z]{32})')
+    fullargspec_prefix = 'inspect.Full'
     for line in specfile.readlines():
         mo = patArgSpec.search(line)
         if mo and mo.group(2) != 'ArgSpec()':
-            res_dict[mo.group(1)] = mo.group(2)
+            res_dict[mo.group(1)] = eval(fullargspec_prefix + mo.group(2))
     return res_dict
 
 
@@ -98,14 +84,12 @@ def parse_args():
     parser.add_argument('--debug', dest='debug', action="store_true")
     parser.add_argument(
         'prev',
-        type=str,
-        help='the previous version (the version from develop branch)',
-        default=None)
+        type=argparse.FileType('r'),
+        help='the previous version (the version from develop branch)')
     parser.add_argument(
         'post',
-        type=str,
-        help='the post version (the version from PullRequest)',
-        default=None)
+        type=argparse.FileType('r'),
+        help='the post version (the version from PullRequest)')
     for item in arguments:
         parser.add_argument(
             item[0], dest=item[1], help=item[4], type=item[2], default=item[3])
@@ -120,3 +104,15 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
+    if args.prev and args.post:
+        prev_spec = read_argspec_from_file(args.prev)
+        post_spec = read_argspec_from_file(args.post)
+        diff_api_names = []
+        for as_post_name, as_post in post_spec.items():
+            as_prev = prev_spec.get(as_post_name)
+            if as_prev is None:  # the api is deleted
+                continue
+            if not check_compatible(as_prev, as_post):
+                diff_api_names.append(as_post_name)
+        if diff_api_names:
+            print('\n'.join(diff_api_names))

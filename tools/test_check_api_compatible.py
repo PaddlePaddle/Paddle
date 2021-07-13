@@ -61,6 +61,11 @@ class Test_check_compatible(unittest.TestCase):
 
 
 class Test_read_argspec_from_file(unittest.TestCase):
+    def setUp(self) -> None:
+        self.fullargspec_prefix = 'inspect.Full'
+        self.argspec_str_o = self.fullargspec_prefix + '''ArgSpec(args=['shape', 'dtype', 'name'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
+        return super().setUp()
+
     def setUp(self):
         self.api_spec_file = tempfile.TemporaryFile('w+t')
         if self.api_spec_file:
@@ -72,17 +77,18 @@ class Test_read_argspec_from_file(unittest.TestCase):
             self.api_spec_file.seek(0)
 
     def tearDown(self):
-        pass
+        if self.api_spec_file:
+            self.api_spec_file.close()
 
     def test_case_normal(self):
         if self.api_spec_file:
             api_argspec_dict = read_argspec_from_file(self.api_spec_file)
+            argspec = eval(self.argspec_str_o)
             self.assertEqual(
-                api_argspec_dict.get('paddle.ones'),
-                '''ArgSpec(args=['shape', 'dtype', 'name'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
-            )
+                api_argspec_dict.get('paddle.ones').args, argspec.args)
             self.assertEqual(
-                api_argspec_dict.get('paddle.five_plus_five'), '''ArgSpec()''')
+                api_argspec_dict.get('paddle.ones').defaults, argspec.defaults)
+            self.assertIsNone(api_argspec_dict.get('paddle.five_plus_five'))
         else:
             self.fail('api_spec_file error')
 
