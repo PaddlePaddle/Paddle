@@ -62,6 +62,9 @@ class PD_DLL_DECL Tensor {
   /// \param shape The shape to set.
   void reshape(const std::vector<int64_t>& shape);
 
+  /// \brief Return a sub-tensor of the given tensor.
+  Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const;
+
   /// \brief Get the memory pointer in CPU or GPU with
   /// specific data type.
   /// Please Reshape the tensor first before call this.

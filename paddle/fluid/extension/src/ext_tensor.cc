@@ -105,6 +105,13 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
   tensor->Resize(new_dim);
 }
 
+Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
+  GET_CASTED_TENSOR
+  tensor = tensor->Slice(begin_idx, end_idx);
+  auto *target = static_cast<paddle::Tensor *>(tensor.get());
+  return target
+}
+
 Tensor::Tensor(const PlaceType &place)
     : tensor_(std::make_shared<framework::LoDTensor>()),
       place_(place),

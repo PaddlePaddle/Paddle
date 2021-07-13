@@ -235,6 +235,21 @@ void TestInitilized() {
   }
 }
 
+void TestSlice() {
+  auto t1 = InitCPUTensorForTest<float>();
+  float* t1_ptr = t1.mutable_data<float>(paddle::PlaceType::kCPU);
+  for (int64_t i = 0; i < 5; i++) {
+    t1_ptr[i] = 0.5;
+  }
+  t2 = t1.slice(0, 1);
+  CHECK_EQ(t2.shape()[0], 1);
+  CHECK_EQ(t2.shape()[1], 5);
+  float* tensor_data = t2.data<float>();
+  for (int64_t i = 0; i < 5; i++) {
+    CHECK_EQ(tensor_data[i], 0.5);
+  }
+}
+
 TEST(CustomTensor, copyTest) {
   VLOG(2) << "TestCopy";
   GroupTestCopy();
@@ -250,4 +265,6 @@ TEST(CustomTensor, copyTest) {
   GroupTestDtypeConvert();
   VLOG(2) << "TestInitilized";
   TestInitilized();
+  VLOG(2) << "TestSlice";
+  TestSlice();
 }
