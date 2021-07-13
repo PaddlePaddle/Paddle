@@ -20,10 +20,27 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+void CheckAttrs(const framework::ExecutionContext& ctx) {
+  // Add this check is is due to Ascend SigmoidCrossEntropyWithLogits
+  // and SigmoidCrossEntropyWithLogitsGrad does't supoort
+  // attr normalize and ignore_index
+  bool normalize = ctx.Attr<bool>("normalize");
+  int ignore_index = ctx.Attr<int>("ignore_index");
+  PADDLE_ENFORCE_EQ(normalize, false,
+                    platform::errors::InvalidArgument(
+                        "attr normalize must be false, but got true"));
+  PADDLE_ENFORCE_EQ(ignore_index, kIgnoreIndex,
+                    platform::errors::InvalidArgument(
+                        "attr ignore_index must be default %d, but got %d",
+                        kIgnoreIndex, ignore_index));
+}
+
 template <typename DeviceContext, typename T>
 class SigmoidCrossEntropyWithLogitsNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    CheckAttrs(ctx);
+
     auto* x = ctx.Input<Tensor>("X");
     auto* label = ctx.Input<Tensor>("Label");
 
@@ -48,6 +65,8 @@ class SigmoidCrossEntropyWithLogitsNPUGradKernel
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    CheckAttrs(ctx);
+
     auto* x = ctx.Input<Tensor>("X");
     auto* label = ctx.Input<Tensor>("Label");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
