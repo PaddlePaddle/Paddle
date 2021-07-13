@@ -83,5 +83,6 @@ def is_grad_api_node(node):
     assert isinstance(node, gast.Call)
     api_name = utils.ast_to_source_code(node.func).strip()
     if utils.is_paddle_api(node):
-        return api_name.endswith("grad")
+        # NOTE: ignore paddle.no_grad
+        return api_name.endswith("grad") and 'no_' not in api_name
     return False

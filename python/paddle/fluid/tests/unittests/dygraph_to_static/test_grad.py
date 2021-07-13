@@ -48,6 +48,22 @@ class GradLinearLayer(paddle.nn.Layer):
         return dx
 
 
+class NoGradLinearLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(NoGradLinearLayer, self).__init__()
+        self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        x.stop_gradient = False
+
+        with paddle.no_grad():
+            y = self.linear(x)
+
+        out = y + x
+        return out
+
+
 class TestGrad(unittest.TestCase):
     def setUp(self):
         self.func = GradLayer()
@@ -99,6 +115,46 @@ class TestGradLinear(TestGrad):
             self.func.clear_gradients()
 
         path = "double_grad_train_model"
+        paddle.jit.save(self.func, path)
+        load_func = paddle.jit.load(path)
+
+        origin_res = self.func(self.x).numpy()
+        load_res = load_func(self.x).numpy()
+        self.assertTrue(np.allclose(origin_res, load_res))
+
+
+class TestNoGradLinear(TestGrad):
+    def setUp(self):
+        self.func = NoGradLinearLayer()
+        self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
+        self.x.stop_gradient = False
+
+    def test_save_infer_program(self):
+        path = "no_grad_infer_model"
+        input_spec = [
+            paddle.static.InputSpec(
+                shape=[10, 2, 5], dtype='float32')
+        ]
+        paddle.jit.save(self.func, path, input_spec=input_spec)
+        load_func = paddle.jit.load(path)
+
+        origin_res = self.func(self.x).numpy()
+        load_res = load_func(self.x).numpy()
+        self.assertTrue(np.allclose(origin_res, load_res))
+
+    def test_save_train_program(self):
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                         grad_clip=grad_clip,
+                                         parameters=self.func.parameters())
+        for i in range(10):
+            out = self.func(self.x)
+            avg_loss = paddle.mean(paddle.abs(out - 1))
+            avg_loss.backward()
+            optimizer.minimize(avg_loss)
+            self.func.clear_gradients()
+
+        path = "no_grad_train_model"
         paddle.jit.save(self.func, path)
         load_func = paddle.jit.load(path)
 
