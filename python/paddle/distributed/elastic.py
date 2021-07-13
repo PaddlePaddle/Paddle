@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,6 +30,12 @@ class Command(object):
 
     def set_np(self, np):
         self.etcd.put(self.np_path, six.b('{}'.format(np)))
+
+    def scale_np(self, np):
+        if self.etcd.get(self.np_path)[0] != None:
+            self.set_np(np)
+            return True
+        return False
 
     def close(self):
         self.etcd.close()
@@ -61,7 +67,7 @@ if __name__ == '__main__':
     cmd = Command(server, name)
 
     if args.action == "scale":
-        cmd.set_np(np)
+        cmd.scale_np(np)
 
     print("action {} done".format(args.action))
 
