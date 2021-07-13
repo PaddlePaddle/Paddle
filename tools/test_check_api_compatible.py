@@ -64,9 +64,6 @@ class Test_read_argspec_from_file(unittest.TestCase):
     def setUp(self) -> None:
         self.fullargspec_prefix = 'inspect.Full'
         self.argspec_str_o = self.fullargspec_prefix + '''ArgSpec(args=['shape', 'dtype', 'name'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
-        return super().setUp()
-
-    def setUp(self):
         self.api_spec_file = tempfile.TemporaryFile('w+t')
         if self.api_spec_file:
             self.api_spec_file.write("\n".join([
@@ -75,6 +72,7 @@ class Test_read_argspec_from_file(unittest.TestCase):
                 """paddle.five_plus_five (ArgSpec(), ('document', 'ff0f188c95030158cc6398d2a6c5five'))""",
             ]))
             self.api_spec_file.seek(0)
+        return super().setUp()
 
     def tearDown(self):
         if self.api_spec_file:
