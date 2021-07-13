@@ -20,7 +20,6 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/plugin/emb_eltwise_layernorm_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 
 namespace paddle {

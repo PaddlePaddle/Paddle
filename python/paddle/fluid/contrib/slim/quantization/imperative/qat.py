@@ -20,6 +20,7 @@ import os
 import warnings
 
 import paddle
+import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid import dygraph, core, framework, unique_name
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.param_attr import ParamAttr
@@ -28,7 +29,6 @@ from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.io import load_inference_model, save_inference_model
 from paddle.fluid.log_helper import get_logger
 from .. import quantization_pass
-from . import quant_nn
 from . import utils
 
 __all__ = ['ImperativeQuantAware']
@@ -39,7 +39,7 @@ _logger = get_logger(
 
 class ImperativeQuantAware(object):
     """
-    Applying quantization aware training (QAT) to dgraph model.
+    Applying quantization aware training (QAT) to the dgraph model.
     """
 
     def __init__(self,
@@ -329,12 +329,12 @@ class ImperativeQuantizeInputs(object):
             "The layer %s is unsupported to be quantized." \
             % layer.full_name()
 
-        return quant_nn.__dict__[quant_layer_name](layer, **self._kwargs)
+        return quant_layers.__dict__[quant_layer_name](layer, **self._kwargs)
 
 
 class ImperativeQuantizeOutputs(object):
     """
-    Calculate the output scales for some layers.
+    Calculate the output scales for target layers.
     """
 
     def __init__(self, moving_rate=0.9):
@@ -371,20 +371,20 @@ class ImperativeQuantizeOutputs(object):
                 utils.find_parent_layer_and_sub_name(model, cur_name)
 
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
-                cur_quant_layer = quant_nn.FakeQuantMAOutputScaleLayer(
+                cur_quant_layer = quant_layers.FakeQuantMAOutputScaleLayer(
                     cur_layer, self._moving_rate)
             else:
-                cur_quant_layer = quant_nn.MAOutputScaleLayer(cur_layer,
-                                                              self._moving_rate)
+                cur_quant_layer = quant_layers.MAOutputScaleLayer(
+                    cur_layer, self._moving_rate)
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
-    def save_quantized_model(self, layer, path, input_spec=None, **config):
+    def save_quantized_model(self, model, path, input_spec=None, **config):
         """
         Save the quantized model for the inference.
 
         Args:
-            layer (Layer): The Layer to be saved.
+            model (Layer): The model to be saved.
             path (str): The path prefix to save model. The format is 
                 ``dirname/file_prefix`` or ``file_prefix``.
             input_spec (list[InputSpec|Tensor], optional): Describes the input
@@ -407,10 +407,10 @@ class ImperativeQuantizeOutputs(object):
         Returns:
             None
         """
-        assert isinstance(layer, dygraph.Layer), \
+        assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
 
-        paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
+        paddle.jit.save(layer=model, path=path, input_spec=input_spec, **config)
 
         is_dynamic_mode = False
         if paddle.in_dynamic_mode():
@@ -433,7 +433,7 @@ class ImperativeQuantizeOutputs(object):
                 model_filename=model_filename,
                 params_filename=params_filename))
 
-        self._save_output_scale(infer_program, scope)
+        self._gather_scales(infer_program, scope)
 
         self._set_skip_quant_attr(infer_program)
 
@@ -455,36 +455,79 @@ class ImperativeQuantizeOutputs(object):
         """
         flag = False
         if isinstance(layer, dygraph.Layer):
-            # exclude fake_quant ops in quant_nn file
+            # exclude fake_quant ops in quant_layers file
             if utils.is_leaf_layer(layer) and \
                 not isinstance(layer, tuple(utils.fake_quant_leaf_layers)):
                 flag = True
-            # consider QuantizedConv2D and QuantizedLinear ops
+
             if isinstance(layer, tuple(utils.fake_quant_wrap_layers)):
                 flag = True
-        if isinstance(layer, paddle.nn.quant.FloatFunctionalLayer):
-            flag = True
+
+            if isinstance(layer, paddle.nn.quant.FloatFunctionalLayer):
+                flag = True
+
         return flag
 
-    def _save_output_scale(self, program, scope):
+    def _gather_scales(self, program, scope):
         """
-        Save all output scales to the corresponding ops in static
-        inference program and delete 'moving_average_abs_max_scale' ops.
+        Get all scales from fake ops, save them into the corresponding ops
+        and delete all moving_average_abs_max_scale ops. 
         """
-        for block in program.blocks:
-            for op in block.ops:
-                if op.type == "moving_average_abs_max_scale":
-                    in_var_name = op.input('X')[0]
-                    out_var_name = op.output('Out')[0]
-                    out_scale_name = op.output('OutScale')[0]
 
-                    out_scale = utils.load_variable_data(scope, out_scale_name)
-                    previous_op = utils.find_previous_op(block, in_var_name)
-                    previous_op._set_attr("out_threshold", float(out_scale))
+        def _gather_input_scale():
+            target_ops = []
+            skip_ops = utils.fake_quantize_dequantize_op_types + \
+                ["moving_average_abs_max_scale"]
+            for block in program.blocks:
+                for op in block.ops:
+                    if op.type not in skip_ops:
+                        target_ops.append(op)
 
-                    next_ops = utils.find_next_ops(block, out_var_name)
-                    for next_op in next_ops:
-                        next_op._rename_input(out_var_name, in_var_name)
+            for op in target_ops:
+                for in_var_name in utils._get_op_input_var_names(op):
+                    previous_op = utils.find_previous_op(op.block, in_var_name)
+
+                    if previous_op is not None and \
+                        ("quantize_dequantize" in previous_op.type or \
+                        previous_op.type == "moving_average_abs_max_scale"):
+                        scale_name = previous_op.output('OutScale')[0]
+                        in_scale = utils.load_variable_data(scope, scale_name)
+                        in_scale = utils.fp_numpy_to_naive(in_scale)
+                        argname, index = utils._get_input_name_index(
+                            op, in_var_name)
+                        op._set_attr(argname + str(index) + "_threshold",
+                                     in_scale)
+
+        def _gather_output_scale():
+            target_ops = []
+            for block in program.blocks:
+                for op in block.ops:
+                    if op.type == "moving_average_abs_max_scale":
+                        target_ops.append(op)
+
+            for op in target_ops:
+                in_var_name = op.input('X')[0]
+                out_var_name = op.output('Out')[0]
+                block = op.block
+                previous_op = utils.find_previous_op(block, in_var_name)
+                next_ops = utils.find_next_ops(block, out_var_name)
+
+                out_scale_name = op.output('OutScale')[0]
+                out_scale = utils.load_variable_data(scope, out_scale_name)
+                out_scale = utils.fp_numpy_to_naive(out_scale)
+
+                if previous_op.type != "feed":
+                    argname, index = utils._get_output_name_index(previous_op,
+                                                                  in_var_name)
+                    previous_op._set_attr(argname + str(index) + "_threshold",
+                                          out_scale)
+                    previous_op._set_attr("out_threshold", out_scale)
+
+                for next_op in next_ops:
+                    next_op._rename_input(out_var_name, in_var_name)
+
+        _gather_input_scale()
+        _gather_output_scale()
 
     def _set_skip_quant_attr(self, program):
         """

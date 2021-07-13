@@ -330,11 +330,11 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
 
 int TensorRTEngine::GetRuntimeBatch() { return runtime_batch_; }
 
-nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
+nvinfer1::IPluginV2Layer *TensorRTEngine::AddPlugin(
     nvinfer1::ITensor *const *inputs, int num_inputs,
     plugin::PluginTensorRT *plugin) {
   owned_plugin_.emplace_back(plugin);
-  return network()->addPluginExt(inputs, num_inputs, *plugin);
+  return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 
 nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(

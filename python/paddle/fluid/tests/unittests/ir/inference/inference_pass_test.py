@@ -72,9 +72,7 @@ class InferencePassTest(unittest.TestCase):
                 feeded_var_names=list(self.feeds.keys()),
                 target_vars=self.fetch_list,
                 executor=executor,
-                main_program=program,
-                model_filename="model",
-                params_filename="params")
+                main_program=program)
 
         return outs
 
@@ -111,8 +109,7 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return a new object of AnalysisConfig. 
         '''
-        config = AnalysisConfig(
-            os.path.join(self.path, "model"), os.path.join(self.path, "params"))
+        config = AnalysisConfig(self.path)
         config.disable_gpu()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
