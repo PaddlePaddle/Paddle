@@ -137,7 +137,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                                              "reduce_mean",
                                              "conv3d",
                                              "conv3d_transpose",
-                                             "mish"};
+                                             "mish",
+                                             "nearest_interp_v2"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
