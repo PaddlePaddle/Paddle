@@ -424,8 +424,6 @@ struct ReduceConfig {
       grid_dim->x = block_num;
       grid_dim->y = 1;
       should_reduce_again = (block_num > 1);
-      printf("block %d\n", thread_num);
-      printf("grid %d\n", block_num);
     }
   }
 
