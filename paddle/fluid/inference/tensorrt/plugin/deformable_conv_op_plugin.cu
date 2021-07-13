@@ -19,7 +19,6 @@
 #include <cstdio>
 
 #include "paddle/fluid/inference/tensorrt/plugin/deformable_conv_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
