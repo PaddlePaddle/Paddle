@@ -33,18 +33,25 @@ console.setFormatter(
 def _check_compatible(args_o, args_n, defaults_o, defaults_n):
     # 如果参数减少了，需要提醒关注
     if len(args_o) > len(args_n):
+        logger.debug("args num less then previous: %s vs %s", args_o, args_n)
         return False
     # 参数改名了，也要提醒关注
     for idx in range(min(len(args_o), len(args_n))):
         if args_o[idx] != args_n[idx]:
+            logger.debug("args's %d parameter diff with previous: %s vs %s",
+                         idx, args_o, args_n)
             return False
     # 新增加了参数，必须提供默认值。以及不能减少默认值数量
     if (len(args_n) - len(defaults_n)) > (len(args_o) - len(defaults_o)):
+        logger.debug("defaults num less then previous: %s vs %s", defaults_o,
+                     defaults_n)
         return False
     # 默认值必须相等
     for idx in range(min(len(defaults_o), len(defaults_n))):
         nidx = -1 - idx
         if (defaults_o[nidx] != defaults_n[nidx]):
+            logger.debug("defaults's %d value diff with previous: %s vs %s",
+                         nidx, defaults_o, defaults_n)
             return False
     return True
 
