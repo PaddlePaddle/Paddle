@@ -51,8 +51,8 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
 
 class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
     def config(self):
-        self.x_shape = (100, )
-        self.y_shape = (100, )
+        self.x_shape = (2, 3, 10, 5)
+        self.y_shape = (2, 3, 5, 10)
         self.trans_x = False
         self.trans_y = False
 
@@ -89,150 +89,150 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
 
-class TestMatMulV2VectorXMatrixTransposeYOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (100, )
-        self.y_shape = (1, 3, 2, 100)
-        self.trans_x = False
-        self.trans_y = True
-
-
-class TestMatMulV2VectorXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (100, )
-        self.y_shape = (1, 1, 100, 2)
-        self.trans_x = False
-        self.trans_y = False
-
-
-class TestMatMulV2MatrixXVectorTransposeXOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (1, 1, 100, 1)
-        self.y_shape = (100, )
-        self.trans_x = True
-        self.trans_y = False
-
-
-class TestMatMulV2MatrixXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (1, 2, 1, 100)
-        self.y_shape = (100, )
-        self.trans_x = False
-        self.trans_y = False
-
-
-class TestMatMulV2MatrixXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (1, 1, 2, 100)
-        self.y_shape = (1, 1, 100, 1)
-        self.trans_x = False
-        self.trans_y = False
-
-
-class TestMatMulV2MatrixXMatrixTransposeYOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (1, 1, 1, 100)
-        self.y_shape = (2, 1, 2, 100)
-        self.trans_x = False
-        self.trans_y = True
-
-
-class TestMatMulV2MatrixXMatrix2OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (1, 1, 12, 4)
-        self.y_shape = (1, 2, 4, 12)
-        self.trans_x = False
-        self.trans_y = False
-
-
-class TestMatMulV2MatrixXMatrix3OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (2, 1, 2, 100)
-        self.y_shape = (1, 1, 100, 2)
-        self.trans_x = False
-        self.trans_y = False
-
-
-class TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2(
-        TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (2, 1, 4, 25)
-        self.y_shape = (1, 1, 4, 25)
-        self.trans_x = True
-        self.trans_y = False
-
-
-class TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3(
-        TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (2, 2, 5, 4)
-        self.y_shape = (2, 2, 5, 3)
-        self.trans_x = True
-        self.trans_y = False
-
-
-class TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (3, 1, 6, 5)
-        self.y_shape = (1, 2, 6, 9)
-        self.trans_x = True
-        self.trans_y = False
-
-
-class TestMatMulV2MatrixXMatrix4OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (3, 1, 6, 6)
-        self.y_shape = (1, 2, 6, 9)
-        self.trans_x = False
-        self.trans_y = False
-
-
-class TestMatMulV2VectorXMatrix5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (100)
-        self.y_shape = (1, 2, 2, 100, 2)
-        self.trans_x = False
-        self.trans_y = False
-
-
-class TestMatMulV2Matrix3DXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (2, 1, 40)
-        self.y_shape = (40)
-        self.trans_x = False
-        self.trans_y = False
-
-
-class TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (3, 1, 10, 8)
-        self.y_shape = (1, 2, 9, 10)
-        self.trans_x = True
-        self.trans_y = True
-
-
-class TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (3, 1, 10, 10)
-        self.y_shape = (1, 2, 9, 10)
-        self.trans_x = False
-        self.trans_y = True
-
-
-class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (1, 3, 1, 10, 10)
-        self.y_shape = (3, 1, 2, 9, 10)
-        self.trans_x = False
-        self.trans_y = True
-
+#class TestMatMulV2VectorXMatrixTransposeYOneDNNOp(
+#        TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (100, )
+#        self.y_shape = (1, 3, 2, 100)
+#        self.trans_x = False
+#        self.trans_y = True
+#
+#
+#class TestMatMulV2VectorXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (100, )
+#        self.y_shape = (1, 1, 100, 2)
+#        self.trans_x = False
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2MatrixXVectorTransposeXOneDNNOp(
+#        TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (1, 1, 100, 1)
+#        self.y_shape = (100, )
+#        self.trans_x = True
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2MatrixXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (1, 2, 1, 100)
+#        self.y_shape = (100, )
+#        self.trans_x = False
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2MatrixXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (1, 1, 2, 100)
+#        self.y_shape = (1, 1, 100, 1)
+#        self.trans_x = False
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2MatrixXMatrixTransposeYOneDNNOp(
+#        TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (1, 1, 1, 100)
+#        self.y_shape = (2, 1, 2, 100)
+#        self.trans_x = False
+#        self.trans_y = True
+#
+#
+#class TestMatMulV2MatrixXMatrix2OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (1, 1, 12, 4)
+#        self.y_shape = (1, 2, 4, 12)
+#        self.trans_x = False
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2MatrixXMatrix3OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (2, 1, 2, 100)
+#        self.y_shape = (1, 1, 100, 2)
+#        self.trans_x = False
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2(
+#        TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (2, 1, 4, 25)
+#        self.y_shape = (1, 1, 4, 25)
+#        self.trans_x = True
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3(
+#        TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (2, 2, 5, 4)
+#        self.y_shape = (2, 2, 5, 3)
+#        self.trans_x = True
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp(
+#        TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (3, 1, 6, 5)
+#        self.y_shape = (1, 2, 6, 9)
+#        self.trans_x = True
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2MatrixXMatrix4OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (3, 1, 6, 6)
+#        self.y_shape = (1, 2, 6, 9)
+#        self.trans_x = False
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2VectorXMatrix5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (100)
+#        self.y_shape = (1, 2, 2, 100, 2)
+#        self.trans_x = False
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2Matrix3DXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (2, 1, 40)
+#        self.y_shape = (40)
+#        self.trans_x = False
+#        self.trans_y = False
+#
+#
+#class TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp(
+#        TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (3, 1, 10, 8)
+#        self.y_shape = (1, 2, 9, 10)
+#        self.trans_x = True
+#        self.trans_y = True
+#
+#
+#class TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp(
+#        TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (3, 1, 10, 10)
+#        self.y_shape = (1, 2, 9, 10)
+#        self.trans_x = False
+#        self.trans_y = True
+#
+#
+#class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
+#        TestMatMulV2VectorXVectorOneDNNOp):
+#    def config(self):
+#        self.x_shape = (1, 3, 1, 10, 10)
+#        self.y_shape = (3, 1, 2, 9, 10)
+#        self.trans_x = False
+#        self.trans_y = True
+#
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
@@ -265,23 +265,23 @@ def create_bf16_test_class(parent):
     globals()[cls_name] = TestMatMulV2Bf16OneDNNOp
 
 
-create_bf16_test_class(TestMatMulV2VectorXMatrixTransposeYOneDNNOp)
-create_bf16_test_class(TestMatMulV2VectorXMatrixOneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXVectorTransposeXOneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXVectorOneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrixOneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeYOneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrix2OneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrix3OneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2)
-create_bf16_test_class(TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3)
-create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrix4OneDNNOp)
-create_bf16_test_class(TestMatMulV2VectorXMatrix5DOneDNNOp)
-create_bf16_test_class(TestMatMulV2Matrix3DXVectorOneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp)
+#create_bf16_test_class(TestMatMulV2VectorXMatrixTransposeYOneDNNOp)
+#create_bf16_test_class(TestMatMulV2VectorXMatrixOneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXVectorTransposeXOneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXVectorOneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrixOneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeYOneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrix2OneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrix3OneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrix4OneDNNOp)
+#create_bf16_test_class(TestMatMulV2VectorXMatrix5DOneDNNOp)
+#create_bf16_test_class(TestMatMulV2Matrix3DXVectorOneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp)
+#create_bf16_test_class(TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp)
 
 if __name__ == "__main__":
     paddle.enable_static()

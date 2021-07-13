@@ -12,10 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
 
 namespace paddle {
 namespace operators {
@@ -37,7 +34,7 @@ class MatMulV2MKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::matmul> {
                         const mkldnn::engine engine, platform::Place cpu_place,
                         std::vector<int64_t>& x_dims, bool trans_x,
                         std::vector<int64_t>& y_dims, bool trans_y,
-                        const std::string& uniq_name)
+                        const std::string& uniq_name, float scale = 1.0f)
       : platform::MKLDNNHandlerT<T, dnnl::matmul>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, x_dims, uniq_name)) {
@@ -104,7 +101,61 @@ class MatMulV2MKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::matmul> {
 };
 
 template <typename T>
-class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
+class MatMulV2MKLDNNKernel : public MatMulGradMKLDNNKernel<T> {
+ public:
+  void Compute(const ExecutionContext& ctx) const override { RunKernel(ctx); }
+
+ private:
+  void RunKernel(const ExecutionContext& ctx) const {
+    const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+    const auto& onednn_engine = dev_ctx.GetEngine();
+
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>("Out");
+    bool trans_x = ctx.Attr<bool>("trans_x");
+    bool trans_y = ctx.Attr<bool>("trans_y");
+
+    auto x_dims = framework::vectorize(x->dims());
+    auto y_dims = framework::vectorize(y->dims());
+    auto out_dims = framework::vectorize(out->dims());
+
+    int ndims = std::max(x->dims().size(), y->dims().size());
+    ndims = std::max(ndims, 3);
+
+    std::vector<int64_t> x_bd_dims(ndims, 1);
+    std::vector<int64_t> y_bd_dims(ndims, 1);
+
+    this->CalculateMatrixDims(ctx, x_dims, y_dims, x_bd_dims, y_bd_dims, out_dims,
+                        out);
+
+    MatMulV2MKLDNNHandler<T> handler(dev_ctx, onednn_engine, ctx.GetPlace(),
+                                     x_bd_dims, trans_x, y_bd_dims, trans_y,
+                                     ctx.InputName("X"));
+
+    const auto src_memory_p = handler.AcquireSrcMemory(x);
+    const auto weights_memory_p = handler.AcquireWeightsMemory(y);
+    const auto dst_memory_p = handler.AcquireDstMemory(out);
+
+    auto matmul_p = handler.AcquireForwardPrimitive();
+
+    std::unordered_map<int, memory> matmul_args = {
+        {DNNL_ARG_SRC, *src_memory_p},
+        {DNNL_ARG_WEIGHTS, *weights_memory_p},
+        {DNNL_ARG_DST, *dst_memory_p}};
+
+    auto& astream = MKLDNNDeviceContext::tls().get_stream();
+    matmul_p->execute(astream, matmul_args);
+    astream.wait();
+
+    out->set_layout(framework::DataLayout::kMKLDNN);
+    out->set_format(
+        GetMKLDNNFormat(dst_memory_p->get_desc().reshape(out_dims)));
+  }
+};
+
+template <typename T>
+class MatMulV2GradMKLDNNKernel : public MatMulGradMKLDNNKernel<T> {
  public:
   void Compute(const ExecutionContext& ctx) const override { RunKernel(ctx); }
 
@@ -151,13 +202,32 @@ class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
 
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Output<Tensor>("Out");
-    bool trans_x = ctx.Attr<bool>("trans_x");
-    bool trans_y = ctx.Attr<bool>("trans_y");
 
     auto x_dims = framework::vectorize(x->dims());
     auto y_dims = framework::vectorize(y->dims());
-    auto out_dims = framework::vectorize(out->dims());
+
+    bool is_broadcast = true;
+    if (x_dims.size() <= 2 || y_dims.size() <= 2) {
+      is_broadcast = false;
+    } else if (x_dims.size() != y_dims.size()) {
+      is_broadcast = true;
+    } else {
+      is_broadcast = !std::equal(x_dims.cbegin(), x_dims.cbegin() + x_dims.size() - 2,
+                                 y_dims.cbegin());
+    }
+
+    if(!is_broadcast){
+      MatMulGradMKLDNNKernel<T>::Compute(ctx);
+      return;
+    }
+
+    auto* dout=ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+  
+    bool trans_x = ctx.Attr<bool>("trans_x");
+    bool trans_y = ctx.Attr<bool>("trans_y");
+    auto dout_dims = framework::vectorize(dout->dims());
 
     int ndims = std::max(x->dims().size(), y->dims().size());
     ndims = std::max(ndims, 3);
@@ -165,33 +235,32 @@ class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
     std::vector<int64_t> x_bd_dims(ndims, 1);
     std::vector<int64_t> y_bd_dims(ndims, 1);
 
-    CalculateMatrixDims(ctx, x_dims, y_dims, x_bd_dims, y_bd_dims, out_dims,
-                        out);
+    //CalculateMatrixDims(ctx, x_dims, y_dims, x_bd_dims, y_bd_dims, dout_dims,
+    //                    dout);
 
-    MatMulV2MKLDNNHandler<T> handler(dev_ctx, onednn_engine, ctx.GetPlace(),
-                                     x_bd_dims, trans_x, y_bd_dims, trans_y,
-                                     ctx.InputName("X"));
+    //MatMulV2MKLDNNHandler<T> handler(dev_ctx, onednn_engine, ctx.GetPlace(),
+    //                                 x_bd_dims, trans_x, y_bd_dims, trans_y,
+    //                                 ctx.InputName("X"));
+    //const auto src_memory_p = handler.AcquireSrcMemory(x);
+    //const auto weights_memory_p = handler.AcquireWeightsMemory(y);
+    //const auto dst_memory_p = handler.AcquireDstMemory(dout);
+    //auto matmul_p = handler.AcquireForwardPrimitive();
 
-    const auto src_memory_p = handler.AcquireSrcMemory(x);
-    const auto weights_memory_p = handler.AcquireWeightsMemory(y);
-    const auto dst_memory_p = handler.AcquireDstMemory(out);
+    //std::unordered_map<int, memory> matmul_args = {
+    //    {DNNL_ARG_SRC, *src_memory_p},
+    //    {DNNL_ARG_WEIGHTS, *weights_memory_p},
+    //    {DNNL_ARG_DST, *dst_memory_p}};
 
-    auto matmul_p = handler.AcquireForwardPrimitive();
+    //auto& astream = MKLDNNDeviceContext::tls().get_stream();
+    //matmul_p->execute(astream, matmul_args);
+    //astream.wait();
 
-    std::unordered_map<int, memory> matmul_args = {
-        {DNNL_ARG_SRC, *src_memory_p},
-        {DNNL_ARG_WEIGHTS, *weights_memory_p},
-        {DNNL_ARG_DST, *dst_memory_p}};
-
-    auto& astream = MKLDNNDeviceContext::tls().get_stream();
-    matmul_p->execute(astream, matmul_args);
-    astream.wait();
-
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(
-        GetMKLDNNFormat(dst_memory_p->get_desc().reshape(out_dims)));
+    //dout->set_layout(framework::DataLayout::kMKLDNN);
+    //dout->set_format(
+    //    GetMKLDNNFormat(dst_memory_p->get_desc().reshape(dout_dims)));
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
@@ -200,6 +269,6 @@ REGISTER_OP_KERNEL(matmul_v2, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::MatMulV2MKLDNNKernel<float>,
                    ops::MatMulV2MKLDNNKernel<paddle::platform::bfloat16>);
 
-// REGISTER_OP_KERNEL(matmul_grad_v2, MKLDNN, ::paddle::platform::CPUPlace,
-//                   ops::MatMulV2GradMKLDNNKernel<float>,
-//                   ops::MatMulV2GradMKLDNNKernel<paddle::platform::bfloat16>);
+REGISTER_OP_KERNEL(matmul_v2_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                  ops::MatMulV2GradMKLDNNKernel<float>,
+                  ops::MatMulV2GradMKLDNNKernel<paddle::platform::bfloat16>);
