@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/dynload/hccl.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
 namespace operators {
