@@ -48,10 +48,11 @@ def _check_compatible(args_o, args_n, defaults_o, defaults_n):
         return False
     # 默认值必须相等
     for idx in range(min(len(defaults_o), len(defaults_n))):
-        nidx = -1 - idx
-        if (defaults_o[nidx] != defaults_n[nidx]):
+        nidx_o = -1 - idx
+        nidx_n = -1 - idx - (len(defaults_n) - len(defaults_o))
+        if (defaults_o[nidx_o] != defaults_n[nidx_n]):
             logger.debug("defaults's %d value diff with previous: %s vs %s",
-                         nidx, defaults_o, defaults_n)
+                         nidx_n, defaults_o, defaults_n)
             return False
     return True
 
