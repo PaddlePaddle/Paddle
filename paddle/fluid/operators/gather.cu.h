@@ -31,8 +31,7 @@ using platform::DeviceContext;
 template <typename T, typename IndexT = int>
 __global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
                                  T* output, size_t input_size,
-                                 size_t index_size, size_t slice_size,
-                                 size_t end_size) {
+                                 size_t index_size, size_t slice_size) {
   CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
@@ -99,21 +98,13 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                           " the second dimension should be 1."));
   }
 
-  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
-  auto cplace = platform::CPUPlace();
-  auto index_dims = index.dims();
-  auto index_dims_size = index_dims.size();
-  auto input_dims = src.dims();
-  auto input_dims_size = input_dims.size();
-
+  // index size
   int index_size = index.dims()[0];
 
   auto src_dims = src.dims();
   framework::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
-  // final dim
-  int64_t end_size = index_dims[index_dims_size - 1];
   // slice size
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
@@ -131,7 +122,7 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   GatherCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_src, p_index, p_output, input_size, index_size, slice_size, end_size);
+      p_src, p_index, p_output, input_size, index_size, slice_size);
 }
 
 template <typename DeviceContext, typename T, typename IndexT = int>
