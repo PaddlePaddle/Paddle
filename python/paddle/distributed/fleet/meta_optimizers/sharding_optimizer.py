@@ -195,23 +195,28 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree > 1:
             pp_optimizer = fluid.optimizer.PipelineOptimizer(
                 self.inner_opt, self._gradient_merge_acc_step)
-            main_program = loss.block.program
-            main_program._pipeline_opt = dict()
-            self.schedule_mode = self.user_defined_strategy.pipeline_configs[
-                'schedule_mode']
-            main_program._pipeline_opt['schedule_mode'] = self.schedule_mode
-            main_program._pipeline_opt[
-                'micro_batch_size'] = self.user_defined_strategy.pipeline_configs[
-                    'micro_batch_size']
+
+            strategy = self.user_defined_strategy
+            self.schedule_mode = strategy.pipeline_configs['schedule_mode']
             self.pp_rank_ = self.role_maker._worker_index() // (
                 self.sharding_degree * self.mp_degree) % self.pp_degree
-            main_program._pipeline_opt['local_rank'] = self.pp_rank_
-            main_program._pipeline_opt[
-                'global_rank'] = self.role_maker._worker_index()
-            main_program._pipeline_opt['use_sharding'] = True
+
+            pipeline_opt = dict()
+            pipeline_opt['schedule_mode'] = self.schedule_mode
+            pipeline_opt['micro_batch_size'] = strategy.pipeline_configs[
+                'micro_batch_size']
+            pipeline_opt['local_rank'] = self.pp_rank_
+            pipeline_opt['global_rank'] = self.role_maker._worker_index()
+            pipeline_opt['use_sharding'] = True
             # TODO (JZ-LIANG) should revise here for support mix parallelism with pipeline
-            main_program._pipeline_opt['ring_id'] = 20
-            main_program._pipeline_opt['global_ring_id'] = 3
+            pipeline_opt['ring_id'] = 20
+            pipeline_opt['global_ring_id'] = 3
+            pipeline_opt['mp_degree'] = self.mp_degree
+            pipeline_opt['mp_rank'] = self.role_maker._worker_index(
+            ) % self.mp_degree
+
+            main_program = loss.block.program
+            main_program._pipeline_opt = pipeline_opt
 
             optimize_ops, params_grads, program_list, self.pipeline_pair, self.pp_ring_map = pp_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set)
