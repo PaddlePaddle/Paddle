@@ -431,7 +431,7 @@ def try_get_constant_shape_from_tensor(shape_tensor):
         return None
 
 
-def get_inputs_outputs_in_block(block, program):
+def get_inputs_outputs_in_block(block):
     """
     Returns the inputs and outputs variable used in this block but not
     created in this block.
