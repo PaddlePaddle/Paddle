@@ -18,9 +18,11 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-from op_test import OpTest, _set_use_system_allocator
+from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import compiler, Program, program_guard
 
 paddle.enable_static()
 
@@ -97,62 +99,52 @@ class TestElementwiseAddOp(OpTest):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestElementwiseAddOpFp16(TestElementwiseAddOp):
+class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
     def init_dtype(self):
         self.dtype = np.float16
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestElementwiseAddOp2(TestElementwiseAddOp):
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
-        self.y = np.random.rand(100).astype(self.dtype)
-        self.out = self.x + self.y.reshape(100, 1, 1)
-
-    def init_axis(self):
-        self.axis = 0
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestElementwiseAddOp3(TestElementwiseAddOp):
-    def init_input_output(self):
-        self.x = np.random.rand(2, 100, 3).astype(self.dtype)
-        self.y = np.random.rand(100).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 100, 1)
-
-    def init_axis(self):
-        self.axis = 1
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestElementwiseAddOp4(TestElementwiseAddOp):
-    def init_input_output(self):
-        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
-        self.y = np.random.rand(100).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 1, 100)
-
-    def init_axis(self):
-        self.axis = 2
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestElementwiseAddOp5(TestElementwiseAddOp):
-    def init_input_output(self):
-        self.x = np.random.rand(1, 1, 20, 5).astype(self.dtype)
-        self.y = np.random.rand(20, 5, 1, 1).astype(self.dtype)
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(1).astype(self.dtype)
         self.out = self.x + self.y
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestElementwiseAddOp6(TestElementwiseAddOp):
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(10, 3, 1, 4).astype(self.dtype)
-        self.y = np.random.rand(10, 1, 12, 1).astype(self.dtype)
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(1).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
+class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
+class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(1, 1).astype(self.dtype)
         self.out = self.x + self.y
 
 
@@ -218,6 +210,555 @@ class TestAddError(unittest.TestCase):
             y2 = paddle.static.data(
                 name='y2', shape=[3, 4, 5, 6], dtype="uint8")
             self.assertRaises(TypeError, paddle.add, x2, y2)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.random((100, )).astype(self.dtype)
+        self.y = np.random.random((100, )).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestFP16ElementwiseAddOp_Vector(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.random((100, )).astype(self.dtype)
+        self.y = np.random.random((100, )).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1)
+
+    def init_axis(self):
+        self.axis = 0
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1)
+
+    def init_axis(self):
+        self.axis = 0
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 100, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 100, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestFP16ElementwiseAddOp_broadcast_1(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 100, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 100, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 1, 100)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestFP16ElementwiseAddOp_broadcast_2(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 1, 100)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 10, 12, 1).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestFP16ElementwiseAddOp_broadcast_3(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 1, 2).astype(self.dtype)
+        self.y = np.random.rand(100, 1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1, 1)
+
+    def init_axis(self):
+        self.axis = 0
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestFP16ElementwiseAddOp_broadcast_4(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 1, 2).astype(self.dtype)
+        self.y = np.random.rand(100, 1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1, 1)
+
+    def init_axis(self):
+        self.axis = 0
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_broadcast_5(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 3, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 1, 12).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestFP16ElementwiseAddOp_broadcast_5(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 3, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 1, 12).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_broadcast_7(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(1, 1, 20, 5).astype(self.dtype)
+        self.y = np.random.rand(20, 5, 1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestFP16ElementwiseAddOp_broadcast_6(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 10, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 10, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 1).astype(self.dtype)
+        self.y = np.random.rand(1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 1).astype(self.dtype)
+        self.y = np.random.rand(1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100, 1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100, 1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(1, 1, 100).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseFP16AddOp_commonuse_add1(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(1, 1, 100).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 3, 1, 4).astype(self.dtype)
+        self.y = np.random.rand(10, 1, 12, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 12).astype(self.dtype)
+        self.y = np.random.rand(2, 2, 10, 12).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = 2
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 1, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 2, 12).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = 0
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestElementwiseAddOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input of elementwise_add must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
+
+            # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="uint8")
+            y2 = fluid.layers.data(name='y2', shape=[3, 4, 5, 6], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.elementwise_add, x2, y2)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestAddApi(unittest.TestCase):
+    def _executed_api(self, x, y, name=None):
+        return paddle.add(x, y, name)
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
+            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+
+            y_1 = self._executed_api(x, y, name='add_res')
+            self.assertEqual(('add_res' in y_1.name), True)
+
+    def test_declarative(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32')
+                }
+
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
+            z = self._executed_api(x, y)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+            z_expected = np.array([3., 8., 6.])
+            self.assertEqual((z_value == z_expected).all(), True)
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([2, 3, 4]).astype('float64')
+            np_y = np.array([1, 5, 2]).astype('float64')
+            x = fluid.dygraph.to_variable(np_x)
+            y = fluid.dygraph.to_variable(np_y)
+            z = self._executed_api(x, y)
+            np_z = z.numpy()
+            z_expected = np.array([3., 8., 6.])
+            self.assertEqual((np_z == z_expected).all(), True)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestAddInplaceApi(TestAddApi):
+    def _executed_api(self, x, y, name=None):
+        return x.add_(y, name)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestAddInplaceBroadcastSuccess(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 4).astype('float')
+        self.y_numpy = np.random.rand(3, 4).astype('float')
+
+    def test_broadcast_success(self):
+        paddle.disable_static()
+        self.init_data()
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
+        inplace_result = x.add_(y)
+        numpy_result = self.x_numpy + self.y_numpy
+        self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
+        paddle.enable_static()
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestAddInplaceBroadcastSuccess2(TestAddInplaceBroadcastSuccess):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
+        self.y_numpy = np.random.rand(3, 1).astype('float')
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestAddInplaceBroadcastSuccess3(TestAddInplaceBroadcastSuccess):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
+        self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestAddInplaceBroadcastError(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(3, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
+    def test_broadcast_errors(self):
+        paddle.disable_static()
+        self.init_data()
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
+
+        def broadcast_shape_error():
+            x.add_(y)
+
+        self.assertRaises(ValueError, broadcast_shape_error)
+        paddle.enable_static()
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestAddInplaceBroadcastError2(TestAddInplaceBroadcastError):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 1, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestAddInplaceBroadcastError3(TestAddInplaceBroadcastError):
+    def init_data(self):
+        self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestComplexElementwiseAddOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.dtype = np.float64
+        self.shape = (2, 3, 4, 5)
+        self.init_input_output()
+        self.init_grad_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.float64
+
+    def init_input_output(self):
+        self.x = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
+            self.shape, self.dtype)
+        self.grad_x = self.grad_out
+        self.grad_y = self.grad_out
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[self.grad_x, self.grad_y],
+            user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[self.grad_y],
+            user_defined_grad_outputs=[self.grad_out])
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out])
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
+            self.shape, self.dtype)
+        self.grad_x = np.real(self.grad_out)
+        self.grad_y = self.grad_out
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
+    def test_static_add(self):
+        paddle.enable_static()
+        a = 1.5
+        b = paddle.full([4, 5, 6], True, dtype='bool')
+        c = a + b
+        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        paddle.enable_static()
+
+    def test_dygraph_add(self):
+        paddle.disable_static()
+        a = 1.5
+        b = paddle.full([4, 5, 6], True, dtype='bool')
+        c = a + b
+        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
 
 
 if __name__ == '__main__':
