@@ -21,13 +21,14 @@ from paddle.fluid.layers import utils
 
 paddle.enable_static()
 
+
 class TestGetInputsOutputsInBlock(unittest.TestCase):
     def test_ordered(self):
         # Program variable names may be different when test order is different
         # This helper makes the test ordered.
         self._test_while_loop()
         self._test_cond()
-    
+
     def _test_while_loop(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -38,17 +39,20 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
             def while_cond(i):
                 # use ten in parent block without passing it
                 return i < ten
+
             def while_body(i):
                 # variable created in sub block
                 one = paddle.assign(np.array([1]))
                 i = i + one
                 return [i]
+
             i = paddle.static.nn.while_loop(while_cond, while_body, [i])
 
         sub_block = main_program.block(1)
-        inner_inputs, inner_outputs = utils.get_inputs_outputs_in_block(sub_block, main_program)
+        inner_inputs, inner_outputs = utils.get_inputs_outputs_in_block(
+            sub_block, main_program)
         # 'assign_0.tmp_0', 'assign_1.tmp_0' are name of i and ten in program
-        self.assertTrue(inner_inputs == {'assign_0.tmp_0', 'assign_1.tmp_0'}) 
+        self.assertTrue(inner_inputs == {'assign_0.tmp_0', 'assign_1.tmp_0'})
         # 'tmp_0', 'assign_0.tmp_0' are name of i < ten and i in program
         self.assertTrue(inner_outputs == {'tmp_0', 'assign_0.tmp_0'})
 
@@ -62,11 +66,13 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
             out = paddle.static.nn.cond(a < b, lambda: a + c, lambda: b * b)
 
         sub_block = main_program.block(1)
-        inner_inputs, inner_outputs = utils.get_inputs_outputs_in_block(sub_block, main_program)
+        inner_inputs, inner_outputs = utils.get_inputs_outputs_in_block(
+            sub_block, main_program)
         #'fill_constant_1.tmp_0', 'tmp_3' are names of a, c 
         self.assertTrue(inner_inputs == {'fill_constant_1.tmp_0', 'tmp_3'})
         #'_generated_var_1', is name of a + c
         self.assertTrue(inner_outputs == {'_generated_var_1'})
+
 
 if __name__ == "__main__":
     unittest.main()
