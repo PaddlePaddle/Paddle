@@ -113,7 +113,14 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
 }
 
 void AnalysisConfig::EnableNpu(int device_id) {
+#ifdef PADDLE_WITH_ASCEND_CL
+  use_npu_ = true;
   npu_device_id_ = device_id;
+#else
+  LOG(ERROR) << "Please compile with npu to EnableNpu()";
+  use_npu_ = false;
+#endif
+
   Update();
 }
 
@@ -391,7 +398,9 @@ void AnalysisConfig::Update() {
   if (info == serialized_info_cache_) return;
 
   // Transfer pass_builder and copy the existing compatible passes.
-  if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu()))) {
+  if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
+      ((use_xpu() ^ pass_builder_->use_xpu())) ||
+      ((use_npu() ^ pass_builder_->use_npu()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
 

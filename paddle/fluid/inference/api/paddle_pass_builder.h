@@ -241,7 +241,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 /// mode.
 class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
  public:
-  XpuPassStrategy() : PassStrategy({}) {}
+  XpuPassStrategy() : PassStrategy({}) { use_xpu_ = true; }
 };
 
 /// \class NpuPassStrategy
@@ -249,7 +249,14 @@ class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
 /// mode.
 class PD_INFER_DECL NpuPassStrategy final : public PassStrategy {
  public:
-  NpuPassStrategy() : PassStrategy({}) {}
+  NpuPassStrategy() : PassStrategy({}) { use_npu_ = true; }
+
+  /// \brief Construct by copying another NpuPassStrategy object.
+  /// \param[in] other The NpuPassStrategy object we want to copy.
+  explicit NpuPassStrategy(const NpuPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {
+    use_npu_ = true;
+  }
 };
 
 /// \brief List of tensorRT subgraph passes.
