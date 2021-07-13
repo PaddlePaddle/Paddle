@@ -48,6 +48,14 @@ class Test_check_compatible(unittest.TestCase):
         argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
         self.assertTrue(check_compatible(argspec_o, argspec_n))
 
+        argspec_str_n = '''ArgSpec(args=['shape', 'dtype', 'name', 'arg4'], varargs=None, varkw=None, defaults=(None, None, 1, True), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
+        argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
+        self.assertFalse(check_compatible(argspec_o, argspec_n))
+
+        argspec_str_n = '''ArgSpec(args=['shape', 'dtype', 'name', 'arg4'], varargs=None, varkw=None, defaults=(True, None, None, 1), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
+        argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
+        self.assertTrue(check_compatible(argspec_o, argspec_n))
+
     def test_args_places_exchanged(self):
         argspec_str_n = '''ArgSpec(args=['shape', 'name', 'dtype'], varargs=None, varkw=None, defaults=(None, None), kwonlyargs=[], kwonlydefaults=None, annotations={})'''
         argspec_o = eval(self.argspec_str_o)
