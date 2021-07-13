@@ -125,13 +125,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
         self._init_thread()
 
-        # if user exit python program when dataloader is still
-        # iterating, resource may no release safely, so we
-        # add __del__ function to to CleanupFuncRegistrar
-        # to make sure __del__ is always called when program
-        # exit for resoure releasing safely
-        CleanupFuncRegistrar.register(self.__del__)
-
     def _init_thread(self):
         self._var_names = [v.name for v in self._feed_list]
         self._shapes = [v.shape for v in self._feed_list]
@@ -231,7 +224,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._thread_done_event.set()
             if self._thread is not threading.current_thread():
                 self._thread.join()
-                self._thread = None
+            self._thread = None
 
     # python2 compatibility
     def next(self):
@@ -286,13 +279,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         self._init_thread()
         self._shutdown = False
-
-        # if user exit python program when dataloader is still
-        # iterating, resource may no release safely, so we
-        # add __del__ function to to CleanupFuncRegistrar
-        # to make sure __del__ is always called when program
-        # exit for resoure releasing safely
-        CleanupFuncRegistrar.register(self.__del__)
 
     def _init_workers(self):
         # multiprocess worker and indice queue list initial as empty
