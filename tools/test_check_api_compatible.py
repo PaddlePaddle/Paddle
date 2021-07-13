@@ -24,6 +24,7 @@ import inspect
 
 from check_api_compatible import read_argspec_from_file
 from check_api_compatible import check_compatible
+from check_api_compatible import check_compatible_str
 
 
 class Test_check_compatible(unittest.TestCase):
@@ -58,6 +59,41 @@ class Test_check_compatible(unittest.TestCase):
         argspec_o = eval(self.argspec_str_o)
         argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
         self.assertFalse(check_compatible(argspec_o, argspec_n))
+
+
+class Test_check_compatible_str(unittest.TestCase):
+    def setUp(self) -> None:
+        self.fullargspec_prefix = 'inspect.Full'
+        # paddle.fluid.layer_helper_base.LayerHelperBase.create_parameter
+        self.argspec_str_o = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        return super().setUp()
+
+    def test_normal_not_changed(self):
+        argspec_o = self.argspec_str_o
+        argspec_n = self.argspec_str_o
+        self.assertTrue(check_compatible_str(argspec_o, argspec_n))
+
+    def test_args_added(self):
+        argspec_str_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type', 'argadded'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        argspec_o = eval(self.argspec_str_o)
+        argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
+        self.assertFalse(check_compatible_str(argspec_o, argspec_n))
+
+        argspec_str_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type', 'argadded'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR, argadded), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
+        self.assertTrue(check_compatible_str(argspec_o, argspec_n))
+
+    def test_args_places_exchanged(self):
+        argspec_str_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'type', 'stop_gradient'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        argspec_o = eval(self.argspec_str_o)
+        argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
+        self.assertFalse(check_compatible_str(argspec_o, argspec_n))
+
+    def test_args_reduced(self):
+        argspec_str_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        argspec_o = eval(self.argspec_str_o)
+        argspec_n = eval(self.fullargspec_prefix + argspec_str_n)
+        self.assertFalse(check_compatible_str(argspec_o, argspec_n))
 
 
 class Test_read_argspec_from_file(unittest.TestCase):

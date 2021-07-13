@@ -30,28 +30,55 @@ console.setFormatter(
         "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
 
 
+def _check_compatible(args_o, args_n, defaults_o, defaults_n):
+    # 如果参数减少了，需要提醒关注
+    if len(args_o) > len(args_n):
+        return False
+    # 参数改名了，也要提醒关注
+    for idx in range(min(len(args_o), len(args_n))):
+        if args_o[idx] != args_n[idx]:
+            return False
+    # 新增加了参数，必须提供默认值。以及不能减少默认值数量
+    if (len(args_n) - len(defaults_n)) > (len(args_o) - len(defaults_o)):
+        return False
+    # 默认值必须相等
+    for idx in range(min(len(defaults_o), len(defaults_n))):
+        nidx = -1 - idx
+        if (defaults_o[nidx] != defaults_n[nidx]):
+            return False
+    return True
+
+
 def check_compatible(old_api_spec, new_api_spec):
     """
     check compatible, FullArgSpec
     """
-    # 如果参数减少了，需要提醒关注
-    if len(old_api_spec.args) > len(new_api_spec.args):
+    if not (isinstance(old_api_spec, inspect.FullArgSpec) and isinstance(
+            new_api_spec, inspect.FullArgSpec)):
+        logger.warning(
+            "new_api_spec or old_api_spec is not instance of inspect.FullArgSpec"
+        )
         return False
-    # 参数改名了，也要提醒关注
-    for idx in range(min(len(old_api_spec.args), len(new_api_spec.args))):
-        if old_api_spec.args[idx] != new_api_spec.args[idx]:
-            return False
-    # 新增加了参数，必须提供默认值。以及不能减少默认值数量
-    if (len(new_api_spec.args) - len(new_api_spec.defaults)) > (
-            len(old_api_spec.args) - len(old_api_spec.defaults)):
+    return _check_compatible(old_api_spec.args, new_api_spec.args,
+                             old_api_spec.defaults, new_api_spec.defaults)
+
+
+def check_compatible_str(old_api_spec_str, new_api_spec_str):
+    patArgSpec = re.compile(
+        r'args=(.*), varargs=.*defaults=\((.*)\), kwonlyargs=.*')
+    mo_o = patArgSpec.search(old_api_spec_str)
+    mo_n = patArgSpec.search(new_api_spec_str)
+    if not (mo_o and mo_n):
+        # error
+        logger.warning("old_api_spec_str: %s", old_api_spec_str)
+        logger.warning("new_api_spec_str: %s", new_api_spec_str)
         return False
-    # 默认值必须相等
-    for idx in range(
-            min(len(old_api_spec.defaults), len(new_api_spec.defaults))):
-        nidx = -1 - idx
-        if (old_api_spec.defaults[nidx] != new_api_spec.defaults[nidx]):
-            return False
-    return True
+
+    args_o = eval(mo_o.group(1))
+    args_n = eval(mo_n.group(1))
+    defaults_o = mo_o.group(2).split(', ')
+    defaults_n = mo_n.group(2).split(', ')
+    return _check_compatible(args_o, args_n, defaults_o, defaults_n)
 
 
 def read_argspec_from_file(specfile):
@@ -65,7 +92,11 @@ def read_argspec_from_file(specfile):
     for line in specfile.readlines():
         mo = patArgSpec.search(line)
         if mo and mo.group(2) != 'ArgSpec()':
-            res_dict[mo.group(1)] = eval(fullargspec_prefix + mo.group(2))
+            logger.debug("%s argspec: %s", mo.group(1), mo.group(2))
+            try:
+                res_dict[mo.group(1)] = eval(fullargspec_prefix + mo.group(2))
+            except NameError:
+                res_dict[mo.group(1)] = fullargspec_prefix + mo.group(2)
     return res_dict
 
 
@@ -104,6 +135,10 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
     if args.prev and args.post:
         prev_spec = read_argspec_from_file(args.prev)
         post_spec = read_argspec_from_file(args.post)
@@ -112,7 +147,15 @@ if __name__ == '__main__':
             as_prev = prev_spec.get(as_post_name)
             if as_prev is None:  # the api is deleted
                 continue
-            if not check_compatible(as_prev, as_post):
-                diff_api_names.append(as_post_name)
+            if isinstance(as_prev, str) or isinstance(as_post, str):
+                as_prev_str = as_prev if isinstance(as_prev,
+                                                    str) else repr(as_prev)
+                as_post_str = as_post if isinstance(as_post,
+                                                    str) else repr(as_post)
+                if not check_compatible_str(as_prev_str, as_post_str):
+                    diff_api_names.append(as_post_name)
+            else:
+                if not check_compatible(as_prev, as_post):
+                    diff_api_names.append(as_post_name)
         if diff_api_names:
             print('\n'.join(diff_api_names))
