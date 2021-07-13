@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,19 +16,11 @@
 #include <cstring>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/mish_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-MishPlugin* CreateMishPluginDeserialize(const void* buffer, size_t length) {
-  return new MishPlugin(buffer, length);
-}
-
-REGISTER_TRT_PLUGIN("mish_plugin", CreateMishPluginDeserialize);
 
 int MishPlugin::initialize() { return 0; }
 
@@ -97,8 +89,13 @@ __global__ void mish_kernel<half>(float threshold, int n, const half* input,
 #endif
 }
 
+#if IS_TRT_VERSION_LT(8000)
 int MishPlugin::enqueue(int batch_size, const void* const* inputs,
-                        void** outputs, void*, cudaStream_t stream) {
+                        void** outputs, void* workspace,
+#else
+                        void* const* outputs, void* workspace,
+#endif
+                        cudaStream_t stream) {
   const auto& input_dims = this->getInputDims(0);
   int num = batch_size;
   for (int i = 0; i < input_dims.nbDims; i++) {
