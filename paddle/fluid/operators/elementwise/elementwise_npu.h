@@ -62,6 +62,8 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx, const Tensor* src,
     runner.Run(stream);
     tmp_src.ShareDataWith(tmp_tensor);
     tmp_src.Resize(tmp_tensor_dims);
+  } else {
+    tmp_src.Resize(framework::slice_ddim(dst_dims, 0, axis + src_dims.size()));
   }
 
   // 3.expand the tail axis
