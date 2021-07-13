@@ -109,7 +109,6 @@ def _conv_nd(x,
              name=None):
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
-    origin_format = data_format
     if in_dygraph_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn',
@@ -332,18 +331,6 @@ def conv1d(x,
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
-    inputs = {'Input': [x], 'Filter': [weight]}
-    attrs = {
-        'strides': stride,
-        'paddings': padding,
-        'dilations': dilation,
-        'groups': groups,
-        'use_cudnn': use_cudnn,
-        'use_mkldnn': False,
-        'fuse_relu_before_depthwise_conv': False,
-        "padding_algorithm": padding_algorithm,
-        "data_format": conv2d_data_format
-    }
     squeeze_aixs = -2 if channel_last else -1
     x = nn.unsqueeze(input=x, axes=[squeeze_aixs])
     weight = nn.unsqueeze(input=weight, axes=[-1])

@@ -432,7 +432,6 @@ def prelu(x, weight, name=None):
     check_variable_and_dtype(weight, 'weight',
                              ['float16', 'float32', 'float64'], 'prelu')
 
-    helper = LayerHelper('prelu', **locals())
     assert len(weight.shape
                ) == 1, "The dim count of weight shape should be 1 in prelu()."
 
@@ -450,6 +449,7 @@ def prelu(x, weight, name=None):
     if in_dygraph_mode():
         return core.ops.prelu(x, weight, 'mode', mode)
 
+    helper = LayerHelper('prelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type="prelu",

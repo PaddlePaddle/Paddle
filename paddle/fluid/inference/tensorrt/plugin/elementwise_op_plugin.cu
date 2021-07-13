@@ -14,18 +14,11 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include "paddle/fluid/inference/tensorrt/plugin/elementwise_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-ElementWisePlugin *CreateElementWisePluginDeserialize(const void *buffer,
-                                                      size_t length) {
-  return new ElementWisePlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("elementwise_plugin", CreateElementWisePluginDeserialize);
 
 namespace details {
 template <typename T>
@@ -122,7 +115,11 @@ int ElementWisePlugin::initialize() {
 }
 
 int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
+#if IS_TRT_VERSION_LT(8000)
                                void **outputs, void *workspace,
+#else
+                               void *const *outputs, void *workspace,
+#endif
                                cudaStream_t stream) {
   const float *x = reinterpret_cast<const float *>(inputs[0]);
   const float *y = reinterpret_cast<const float *>(inputs[1]);

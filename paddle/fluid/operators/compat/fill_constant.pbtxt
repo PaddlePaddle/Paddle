@@ -24,12 +24,12 @@ def {
     name: "value"
     type: FLOAT
   }
-  attrs {
+}
+extra {
+    attrs {
     name: "str_value"
     type: STRING
   }
-}
-extra {
   attrs {
     name: "force_cpu"
     type: BOOLEAN

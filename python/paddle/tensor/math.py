@@ -715,20 +715,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
-    attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
-        'keep_dim': keepdim,
-        'reduce_all': reduce_all_flag
-    }
     dtype_flag = False
     if dtype is not None:
         if dtype in ['float64', 'int64']:
             if (convert_dtype(x.dtype) == "float32" and dtype == "float64") or \
                (convert_dtype(x.dtype) == "int32" and dtype == "int64"):
-                attrs.update({
-                    'in_dtype': x.dtype,
-                    'out_dtype': convert_np_dtype_to_dtype_(dtype)
-                })
                 dtype_flag = True
 
     if in_dygraph_mode():
@@ -741,6 +732,22 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             return core.ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
                                        'reduce_all', reduce_all_flag)
+
+    attrs = {
+        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'keep_dim': keepdim,
+        'reduce_all': reduce_all_flag
+    }
+
+    if dtype is not None:
+        if dtype in ['float64', 'int64']:
+            if (convert_dtype(x.dtype) == "float32" and dtype == "float64") or \
+               (convert_dtype(x.dtype) == "int32" and dtype == "int64"):
+                attrs.update({
+                    'in_dtype': x.dtype,
+                    'out_dtype': convert_np_dtype_to_dtype_(dtype)
+                })
+
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sum')
 
@@ -1648,6 +1655,9 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
     """
+    if in_dygraph_mode():
+        return core.ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
+
     inputs = {'Input': [x]}
     attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
 
@@ -1678,11 +1688,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                "axis1 and axis2 cannot be the same axis." \
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
-    if in_dygraph_mode():
-        return core.ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
-
-    if not in_dygraph_mode():
-        __check_input(input, offset, axis1, axis2)
+    __check_input(input, offset, axis1, axis2)
     helper = LayerHelper('trace', **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1695,6 +1701,114 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                'axis2': axis2},
         outputs={'Out': [out]})
     return out
+
+def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
+    """
+    This OP computes the diagonals of the input tensor x.
+
+    If ``x`` is 2D, returns the diagonal.
+    If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2. 
+    By default, the 2D planes formed by the first and second axis of the input tensor x.
+
+    The argument ``offset`` determines where diagonals are taken from input tensor x:
+
+    - If offset = 0, it is the main diagonal.
+    - If offset > 0, it is above the main diagonal.
+    - If offset < 0, it is below the main diagonal.
+    
+    Args:
+        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32, int64, float16, float32, float64.
+        offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
+        axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
+        axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
+        name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand([2,2,3],'float32')
+            print(x)
+            # Tensor(shape=[2, 2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[[0.45661032, 0.03751532, 0.90191704],
+            #          [0.43760979, 0.86177313, 0.65221709]],
+
+            #         [[0.17020577, 0.00259554, 0.28954273],
+            #          [0.51795638, 0.27325270, 0.18117726]]])
+
+            out1 = paddle.diagonal(x)
+            print(out1)
+            #Tensor(shape=[3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[0.45661032, 0.51795638],
+            #        [0.03751532, 0.27325270],
+            #        [0.90191704, 0.18117726]])
+
+            out2 = paddle.diagonal(x, offset=0, axis1=2, axis2=1)
+            print(out2)
+            #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[0.45661032, 0.86177313],
+            #        [0.17020577, 0.27325270]])
+
+            out3 = paddle.diagonal(x, offset=1, axis1=0, axis2=1)
+            print(out3)
+            #Tensor(shape=[3, 1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[0.43760979],
+            #        [0.86177313],
+            #        [0.65221709]])
+
+            out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
+            print(out4)
+            #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[0.45661032, 0.86177313],
+            #        [0.17020577, 0.27325270]])
+            
+    """
+    if in_dygraph_mode():
+        return core.ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
+
+    def __check_input(input, offset, dim1, dim2):
+        check_dtype(x.dtype, 'Input',
+                    ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
+                    'diagonal')
+
+        input_shape = list(x.shape)
+        assert len(input_shape) >= 2,                     \
+                "The x must be at least 2-dimensional, "   \
+                "But received Input x's dimensional: %s.\n" %  \
+                len(input_shape)
+
+        axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
+        axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
+
+        assert axis1_ < len(input_shape),     \
+            "The argument axis1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
+            % (-(len(input_shape)), len(input_shape) - 1, axis1)
+
+        assert axis2_ < len(input_shape),   \
+            "The argument axis2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
+            % (-(len(input_shape)), len(input_shape) - 1, axis2)
+
+        assert  axis1_ != axis2_,   \
+               "axis1 and axis2 cannot be the same axis." \
+                "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
+
+    __check_input(input, offset, axis1, axis2)
+    helper = LayerHelper('diagonal', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='diagonal',
+        inputs={'Input': [x]},
+        attrs={'offset': offset,
+               'axis1': axis1,
+               'axis2': axis2},
+               outputs={'Out': [out]})
+    return out
+
 
 @templatedoc(op_type="kron")
 def kron(x, y, name=None):
@@ -2139,18 +2253,17 @@ def all(x, axis=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
+    if in_dygraph_mode():
+        axis = axis if axis != None and axis != [] else [0]
+        return core.ops.reduce_all(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag)
+
     attrs = {
         'dim': axis if axis != None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag
     }
-    dtype_flag = False
 
-
-    if in_dygraph_mode():
-        axis = axis if axis != None and axis != [] else [0]
-        return core.ops.reduce_all(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag)
     check_variable_and_dtype(x, 'x', ['bool'], 'all')
 
 
@@ -2233,18 +2346,17 @@ def any(x, axis=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
+    if in_dygraph_mode():
+        axis = axis if axis != None and axis != [] else [0]
+        return core.ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag)
+
     attrs = {
         'dim': axis if axis != None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag
     }
-    dtype_flag = False
 
-
-    if in_dygraph_mode():
-        axis = axis if axis != None and axis != [] else [0]
-        return core.ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag)
     check_variable_and_dtype(x, 'x', ['bool'], 'any')
 
 

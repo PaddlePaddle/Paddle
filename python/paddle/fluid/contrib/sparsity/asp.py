@@ -64,11 +64,14 @@ def decorate(optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             from paddle.fluid.contrib import sparsity
 
             main_program = fluid.Program()
             startup_program = fluid.Program()
+
+            paddle.enable_static()
 
             with fluid.program_guard(main_program, startup_program):
                 input_data = fluid.layers.data(name='data', shape=[None, 128])
@@ -78,17 +81,13 @@ def decorate(optimizer):
                 loss = fluid.layers.mean(fluid.layers.square_error_cost(prob, label))
 
                 optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-
                 optimizer = sparsity.decorate(optimizer)
+                # if do sparse training with Fleet, please replace above decorate with:
+                # strategy = paddle.distributed.fleet.DistributedStrategy()
+                # strategy.asp = True
+                # optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
                 optimizer.minimize(loss, startup_program)
-
-            # When apply distributed training with Fleet
-            import paddle.distributed.fleet as fleet
-
-            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-            optimizer = sparsity.decorate(optimizer) # Need to be called before `fleet.distributed_optimizer`
-            optimizer = fleet.distributed_optimizer(optimizer)
-            optimizer.minimize(loss, startup_program)
     """
     return ASPHelper.decorate(optimizer)
 
@@ -126,23 +125,38 @@ def prune_model(place,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            import paddle.fluid.core as core
             from paddle.fluid.contrib import sparsity
+
+            paddle.enable_static()
 
             main_program = fluid.Program()
             startup_program = fluid.Program()
 
-            place = fluid.CUDAPlace(0)
+            place = paddle.CPUPlace()
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
 
             with fluid.program_guard(main_program, startup_program):
                 input_data = fluid.layers.data(name='data', shape=[None, 128])
                 label = fluid.layers.data(name='label', shape=[None, 10])
-                hidden = fluid.layers.fc(input=input_data, num_flatten_dims=-1, size=32, act=None)
+                hidden = fluid.layers.fc(input=input_data, num_flatten_dims=-1, size=32, act=None, name="need_sparse")
+                hidden = fluid.layers.fc(input=hidden, num_flatten_dims=-1, size=32, act=None, name="need_dense")
                 prob = fluid.layers.fc(input=hidden, num_flatten_dims=-1, size=10, act=None)
                 loss = fluid.layers.mean(fluid.layers.square_error_cost(prob, label))
 
-                optimizer = decorate(fluid.optimizer.SGD(learning_rate=0.1))
-                optimizer.minimize(optimizer, loss, main_program, startup_program)
+                # Setup exluded layers out from ASP workflow.
+                # Please note, excluded_layers must be set before calling `optimizer.minimize()`.
+                sparsity.set_excluded_layers(main_program, ["need_dense"])
+
+                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                optimizer = fluid.contrib.mixed_precision.decorator.decorate(optimizer )
+                # Calling sparsity.decorate() to wrap minimize() in optimizer, which 
+                # will insert necessary masking operations for ASP workflow.
+                optimizer = sparsity.decorate(optimizer)
+                optimizer.minimize(loss, startup_program)
 
             exe = fluid.Executor(place)
             exe.run(startup_program)

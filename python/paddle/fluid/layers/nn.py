@@ -1023,18 +1023,6 @@ def dropout(x,
     if dropout_prob == 0:
         return x
 
-    def get_attrs(prog, dropout_prob, is_test, seed):
-        if (seed is None or seed == 0) and prog.random_seed != 0:
-            seed = prog.random_seed
-        attrs = {
-            'dropout_prob': dropout_prob,
-            'is_test': is_test,
-            'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0,
-            'dropout_implementation': dropout_implementation,
-        }
-        return attrs
-
     if in_dygraph_mode():
         if (seed is None or
                 seed == 0) and default_main_program().random_seed != 0:
@@ -1046,6 +1034,18 @@ def dropout(x,
             seed is not None, 'seed', seed if seed is not None else 0,
             'dropout_implementation', dropout_implementation)
         return out
+
+    def get_attrs(prog, dropout_prob, is_test, seed):
+        if (seed is None or seed == 0) and prog.random_seed != 0:
+            seed = prog.random_seed
+        attrs = {
+            'dropout_prob': dropout_prob,
+            'is_test': is_test,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0,
+            'dropout_implementation': dropout_implementation,
+        }
+        return attrs
 
     helper = LayerHelper('dropout', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -5131,12 +5131,6 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
-    attrs = {
-        'transpose_X': transpose_x,
-        'transpose_Y': transpose_y,
-        'alpha': float(alpha),
-    }
-
     if in_dygraph_mode():
         out = _varbase_creator(dtype=x.dtype)
         core.ops.matmul(x, y, out, 'transpose_X', transpose_x, 'transpose_Y',
@@ -5178,6 +5172,12 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
                         "dimensional values of the two matrices need to be equal. "
                         "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
                         "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
+
+    attrs = {
+        'transpose_X': transpose_x,
+        'transpose_Y': transpose_y,
+        'alpha': float(alpha),
+    }
 
     __check_input(x, y)
 
@@ -9387,15 +9387,15 @@ def pad2d(input,
             #    [5. 4. 5. 6. 5.]
             #    [2. 1. 2. 3. 2.]]]]
     """
-    check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        "pad2d")
-
     if in_dygraph_mode():
         _paddings = paddings.numpy().tolist() if isinstance(
             paddings, Variable) else paddings
         return core.ops.pad2d(input, 'mode', mode, 'pad_value', pad_value,
                               'data_format', data_format, 'paddings', _paddings)
+
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        "pad2d")
 
     attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
     inputs = {'X': [input]}
@@ -14106,10 +14106,10 @@ def where(condition):
              out = layers.where(condition) # [[]]
 
     """
-    helper = LayerHelper("where_index", **locals())
-
     if in_dygraph_mode():
         return core.ops.where_index(condition)
+
+    helper = LayerHelper("where_index", **locals())
 
     out = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.INT64)

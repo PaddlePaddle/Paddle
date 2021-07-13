@@ -19,17 +19,11 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-SlicePlugin *CreateSlicePluginDeserialize(const void *buffer, size_t length) {
-  return new SlicePlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("slice_plugin", CreateSlicePluginDeserialize);
 
 template <typename T>
 __global__ void SliceKernel(int num, int dims, const T *input,
@@ -90,10 +84,10 @@ bool SlicePlugin::supportsFormat(nvinfer1::DataType type,
   if (with_fp16_) {
     return ((type == nvinfer1::DataType::kFLOAT ||
              type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   } else {
     return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   }
 }
 
@@ -111,7 +105,12 @@ nvinfer1::Dims SlicePlugin::getOutputDimensions(int index,
 }
 
 int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
+#if IS_TRT_VERSION_LT(8000)
                          void **outputs, void *workspace, cudaStream_t stream) {
+#else
+                         void *const *outputs, void *workspace,
+                         cudaStream_t stream) {
+#endif
   auto input_dims = getInputDims(0);
 
   // notice input dims is [C, H, W], add input batch dim here
@@ -188,13 +187,13 @@ int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
   return cudaGetLastError() != cudaSuccess;
 }
 
-size_t SlicePlugin::getSerializationSize() {
+size_t SlicePlugin::getSerializationSize() const {
   return getBaseSerializationSize() + SerializedSize(getPluginType()) +
          SerializedSize(starts_) + SerializedSize(ends_) +
          SerializedSize(axes_);
 }
 
-void SlicePlugin::serialize(void *buffer) {
+void SlicePlugin::serialize(void *buffer) const {
   SerializeValue(&buffer, getPluginType());
   serializeBase(buffer);
   SerializeValue(&buffer, starts_);
