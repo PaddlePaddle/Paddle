@@ -317,7 +317,7 @@ def parse_args():
         '--method',
         dest='method',
         type=str,
-        default='from_modulelist',
+        default='get_all_api',
         help="using get_all_api or from_modulelist")
     parser.add_argument(
         'module', type=str, help='module', default='paddle')  # not used
