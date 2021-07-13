@@ -760,7 +760,7 @@ def save(layer, path, input_spec=None, **configs):
 
                 if static_function._class_instance is None:
                     warnings.warn(
-                        'Only when {} does not contain parameters, `jit.save` can succeed. If it contains parameters, please confirm that it is a member function of `paddle.nn.Layer` and these parameters are in `state_dict`, otherwise it cannot be saved with `jit.save`'.
+                        '`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'.
                         format(layer))
 
         dygraph_state_dict = None

@@ -1312,10 +1312,8 @@ class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
         inps = paddle.rand([3, 5])
         origin = layer.anothor_forward(inps)
 
-        func = paddle.jit.to_static(
-            layer.anothor_forward, [paddle.static.InputSpec(shape=[-1, 5])])
         path = 'test_jit_save_load_function_with_params_case3/func'
-        paddle.jit.save(func, path)
+        paddle.jit.save(layer.anothor_forward, path)
         load_func = paddle.jit.load(path)
 
         load_result = load_func(inps)
