@@ -89,6 +89,12 @@ class Test_check_compatible_str(unittest.TestCase):
         argspec_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type', 'argadded'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR, argadded), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
         self.assertTrue(check_compatible_str(argspec_o, argspec_n))
 
+        argspec_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type', 'argadded'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR, argadded, 1), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        self.assertFalse(check_compatible_str(argspec_o, argspec_n))
+
+        argspec_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type', 'argadded'], varargs=None, varkw=None, defaults=(1, None, False, None, False, VarType.LOD_TENSOR, argadded), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
+        self.assertTrue(check_compatible_str(argspec_o, argspec_n))
+
     def test_args_places_exchanged(self):
         argspec_n = self.fullargspec_prefix + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'type', 'stop_gradient'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""
         argspec_o = self.argspec_str_o
