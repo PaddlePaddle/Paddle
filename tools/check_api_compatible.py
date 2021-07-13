@@ -67,8 +67,10 @@ def check_compatible(old_api_spec, new_api_spec):
             "new_api_spec or old_api_spec is not instance of inspect.FullArgSpec"
         )
         return False
-    return _check_compatible(old_api_spec.args, new_api_spec.args,
-                             old_api_spec.defaults, new_api_spec.defaults)
+    return _check_compatible(
+        old_api_spec.args, new_api_spec.args, []
+        if old_api_spec.defaults is None else old_api_spec.defaults, []
+        if new_api_spec.defaults is None else new_api_spec.defaults)
 
 
 def check_compatible_str(old_api_spec_str, new_api_spec_str):
@@ -103,7 +105,7 @@ def read_argspec_from_file(specfile):
             logger.debug("%s argspec: %s", mo.group(1), mo.group(2))
             try:
                 res_dict[mo.group(1)] = eval(fullargspec_prefix + mo.group(2))
-            except NameError:
+            except:  # SyntaxError, NameError:
                 res_dict[mo.group(1)] = fullargspec_prefix + mo.group(2)
     return res_dict
 
