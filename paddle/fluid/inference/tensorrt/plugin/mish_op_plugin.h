@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,14 +30,14 @@ class MishPlugin : public PluginTensorRT {
   float threshold_;
 
  protected:
-  size_t getSerializationSize() override {
+  size_t getSerializationSize() const override {
     return SerializedSize(getPluginType()) + getBaseSerializationSize() +
            SerializedSize(threshold_);
   }
 
   // TRT will call this func  to serialize the configuration of TRT
   // It should not be called by users.
-  void serialize(void* buffer) override {
+  void serialize(void* buffer) const override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, threshold_);
@@ -66,9 +66,28 @@ class MishPlugin : public PluginTensorRT {
   int initialize() override;
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
                                      int nbInputDims) override;
+#if IS_TRT_VERSION_LT(8000)
   int enqueue(int batchSize, const void* const* inputs, void** outputs,
+#else
+  int enqueue(int batchSize, const void* const* inputs, void* const* outputs,
+#endif
               void* workspace, cudaStream_t stream) override;
 };
+
+class MishPluginCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const override { return "mish_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    return new MishPlugin(serial_data, serial_length);
+  }
+};
+
+REGISTER_TRT_PLUGIN_V2(MishPluginCreator);
 
 #if IS_TRT_VERSION_GE(6000)
 class MishPluginDynamic : public DynamicPluginTensorRT {
@@ -126,21 +145,11 @@ class MishPluginDynamic : public DynamicPluginTensorRT {
   float threshold_;
 };
 
-class MishPluginV2Creator : public nvinfer1::IPluginCreator {
+class MishPluginDynamicCreator : public TensorRTPluginCreator {
  public:
-  MishPluginV2Creator() {}
   const char* getPluginName() const override { return "mish_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
-
-  const nvinfer1::PluginFieldCollection* getFieldNames() override {
-    return &field_collection_;
-  }
-
-  nvinfer1::IPluginV2* createPlugin(
-      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    return nullptr;
-  }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serial_data,
@@ -148,23 +157,9 @@ class MishPluginV2Creator : public nvinfer1::IPluginCreator {
     auto plugin = new MishPluginDynamic(serial_data, serial_length);
     return plugin;
   }
-
-  void setPluginNamespace(const char* lib_namespace) override {
-    plugin_namespace_ = lib_namespace;
-  }
-
-  const char* getPluginNamespace() const override {
-    return plugin_namespace_.c_str();
-  }
-
- private:
-  std::string plugin_namespace_;
-  std::string plugin_name_;
-  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
-  std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
-REGISTER_TRT_PLUGIN_V2(MishPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(MishPluginDynamicCreator);
 #endif
 
 }  // namespace plugin
