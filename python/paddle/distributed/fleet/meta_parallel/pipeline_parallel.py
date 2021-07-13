@@ -441,7 +441,7 @@ class PipelineParallel(MetaParallelBase):
             if self.is_pipe_partitioned:
                 p2p.recv_partial(self.recv_cache, self.prev_stage_id,
                                  self.mp_degree, self.mp_rank)
-                p2p.partial_allgather(
+                p2p.partial_allgather_operator(
                     self.recv_cache,
                     mp_ranks=self.mp_degree,
                     mp_rank_id=self.mp_rank,
@@ -458,9 +458,10 @@ class PipelineParallel(MetaParallelBase):
             inputs = [None] * len(self.recv_cache)
             for idx, d in enumerate(self.recv_cache):
                 if self.is_pipe_partitioned:
+                    assert isinstance(d, paddle.Tensor)
                     p2p.recv_partial(d, self.prev_stage_id, self.mp_degree,
                                      self.mp_rank)
-                    p2p.partial_allgather(
+                    p2p.partial_allgather_operator(
                         d,
                         mp_ranks=self.mp_degree,
                         mp_rank_id=self.mp_rank,
@@ -499,7 +500,7 @@ class PipelineParallel(MetaParallelBase):
             if self.is_pipe_partitioned:
                 p2p.recv_partial(self.grad_tensors, self.next_stage_id,
                                  self.mp_degree, self.mp_rank)
-                p2p.partial_allgather(
+                p2p.partial_allgather_operator(
                     self.grad_tensors,
                     mp_ranks=self.mp_degree,
                     mp_rank_id=self.mp_rank,
@@ -514,7 +515,7 @@ class PipelineParallel(MetaParallelBase):
                 if self.is_pipe_partitioned:
                     p2p.recv_partial(d, self.next_stage_id, self.mp_degree,
                                      self.mp_rank)
-                    p2p.partial_allgather(
+                    p2p.partial_allgather_operator(
                         d,
                         mp_ranks=self.mp_degree,
                         mp_rank_id=self.mp_rank,

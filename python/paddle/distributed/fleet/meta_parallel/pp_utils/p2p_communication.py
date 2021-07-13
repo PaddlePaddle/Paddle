@@ -35,12 +35,12 @@ def _is_valid_communciate(src_stage, dest_stage):
         (src_stage == last_stage and dest_stage == first_stage)
 
 
-def partial_send(tensor,
-                 dst=0,
-                 mp_ranks=1,
-                 mp_rank_id=0,
-                 group=None,
-                 use_calc_stream=True):
+def partial_send_operator(tensor,
+                          dst=0,
+                          mp_ranks=1,
+                          mp_rank_id=0,
+                          group=None,
+                          use_calc_stream=True):
 
     if group is not None and not group.is_member():
         return
@@ -50,12 +50,12 @@ def partial_send(tensor,
         dst, 'num', mp_ranks, 'id', mp_rank_id)
 
 
-def partial_recv(tensor,
-                 src=0,
-                 mp_ranks=1,
-                 mp_rank_id=0,
-                 group=None,
-                 use_calc_stream=True):
+def partial_recv_operator(tensor,
+                          src=0,
+                          mp_ranks=1,
+                          mp_rank_id=0,
+                          group=None,
+                          use_calc_stream=True):
 
     if group is not None and not group.is_member():
         return
@@ -67,11 +67,11 @@ def partial_recv(tensor,
         'out_shape', tensor.shape)
 
 
-def partial_allgather(tensor,
-                      mp_ranks=1,
-                      mp_rank_id=0,
-                      group=None,
-                      use_calc_stream=True):
+def partial_allgather_operator(tensor,
+                               mp_ranks=1,
+                               mp_rank_id=0,
+                               group=None,
+                               use_calc_stream=True):
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
@@ -105,7 +105,7 @@ def send_partial(tensor, dest_stage, mp_degree, mp_rank):
     src_stage = _hcg.get_stage_id()
     _is_valid_communciate(src_stage, dest_stage)
     group = _get_send_recv_group(src_stage, dest_stage)
-    return partial_send(
+    return partial_send_operator(
         tensor,
         dst=1 if dest_stage > src_stage else 0,
         mp_ranks=mp_degree,
@@ -119,20 +119,12 @@ def recv_partial(tensor, src_stage, mp_degree, mp_rank):
 
     _is_valid_communciate(src_stage, dest_stage)
     group = _get_send_recv_group(src_stage, dest_stage)
-    return partial_recv(
+    return partial_recv_operator(
         tensor,
         src=0 if dest_stage > src_stage else 1,
         mp_ranks=mp_degree,
         mp_rank_id=mp_rank,
         group=group)
-
-
-def _is_valid_communciate(src_stage, dest_stage):
-    first_stage = 0
-    last_stage = _hcg.get_pipe_parallel_world_size() - 1
-    assert abs(src_stage-dest_stage) == 1 or \
-        (src_stage == first_stage and dest_stage == last_stage) or \
-        (src_stage == last_stage and dest_stage == first_stage)
 
 
 def _get_send_recv_group(src_stage, dest_stage):
