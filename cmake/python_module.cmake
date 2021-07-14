@@ -13,7 +13,7 @@ function(find_python_module module)
         # it's a .so file.
         message(*********)
         message("${CMAKE_HOST_SYSTEM_PROCESSOR}")
-        execute_process(COMMAND "uname -m")
+        execute_process(COMMAND "uname" "-m")
         message(*********)
         execute_process(COMMAND "${PYTHON_EXECUTABLE}" "-c"
             "import re, ${module}; print(re.compile('/__init__.py.*').sub('',${module}.__file__))"
