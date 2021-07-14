@@ -715,8 +715,6 @@ class TestSetValueValueShape5(TestSetValueApi):
         self.shape = [3, 4]
 
     def _call_setitem(self, x):
-        print(x)
-        print(self.value.shape)
         x[:, 0] = paddle.assign(self.value)  # x is Paddle.Tensor
 
     def _get_answer(self):
