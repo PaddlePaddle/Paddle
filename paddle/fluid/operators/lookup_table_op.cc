@@ -118,6 +118,11 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                          ") for entry attribute.")
         .SetDefault("none");
 
+    AddAttr<std::string>("table_class",
+                         "(std::string, default "
+                         ") for table_class.")
+        .SetDefault("none");
+
     AddAttr<std::vector<std::string>>(
         "table_names",
         "(string vector, the split table names that will be fetched from "

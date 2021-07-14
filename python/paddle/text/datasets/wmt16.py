@@ -27,7 +27,7 @@ from paddle.io import Dataset
 import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ['WMT16']
+__all__ = []
 
 DATA_URL = ("http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz")
 DATA_MD5 = "0c38be43600334966403524a40dcd81e"

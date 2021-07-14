@@ -19,7 +19,7 @@ from paddle.fluid.framework import _dygraph_tracer
 import numpy as np
 from contextlib import contextmanager
 
-__all__ = ['set_default_dtype', 'get_default_dtype']
+__all__ = []
 
 
 def set_default_dtype(d):
@@ -87,8 +87,6 @@ def get_default_dtype():
 @contextmanager
 def set_grad_enabled(mode):
     """
-    :api_attr: imperative
-
     Create a context which enables or disables dygraph gradient calculation.
 
     Args:
@@ -96,11 +94,13 @@ def set_grad_enabled(mode):
 
     Examples:
         .. code-block:: python
+            
+            import paddle
             x = paddle.ones([3, 2])
             x.stop_gradient = False
-            with torch.set_grad_enabled(False):
+            with paddle.set_grad_enabled(False):
                 y = x * 2
-                with torch.set_grad_enabled(True):
+                with paddle.set_grad_enabled(True):
                     z = x * 2
             print(y.stop_gradient)   # True
             print(z.stop_gradient)   # False

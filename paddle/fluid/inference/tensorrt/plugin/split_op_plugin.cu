@@ -15,7 +15,6 @@
 #include <cuda_fp16.h>
 #include <algorithm>
 #include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
@@ -126,7 +125,12 @@ __global__ void split_kernel(int nsegment,
 }
 
 int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
+#if IS_TRT_VERSION_LT(8000)
                          void** outputs, void* workspace, cudaStream_t stream) {
+#else
+                         void* const* outputs, void* workspace,
+                         cudaStream_t stream) {
+#endif
   const int* d_segment_offsets_ptr =
       thrust::raw_pointer_cast(&d_segment_offsets_[0]);
   float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);

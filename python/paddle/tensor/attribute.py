@@ -19,10 +19,10 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype
 
 # TODO: define functions to get tensor attributes  
-from ..fluid.layers import rank  #DEFINE_ALIAS
-from ..fluid.layers import shape  #DEFINE_ALIAS
+from ..fluid.layers import rank  # noqa: F401
+from ..fluid.layers import shape  # noqa: F401
 
-__all__ = ['rank', 'shape', 'real', 'imag']
+__all__ = []
 
 
 def _complex_to_real_dtype(dtype):

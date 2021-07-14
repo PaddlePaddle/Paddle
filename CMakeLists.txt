@@ -12,13 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-cmake_minimum_required(VERSION 3.10)
-cmake_policy(VERSION 3.10)
+if(APPLE AND WITH_ARM)
+    # cmake 3.19.2 version starts to support M1
+    cmake_minimum_required(VERSION 3.19.2)
+    cmake_policy(VERSION 3.19.2)
+else(APPLE AND WITH_ARM)
+    cmake_minimum_required(VERSION 3.10)
+    cmake_policy(VERSION 3.10)
+endif(APPLE AND WITH_ARM)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
+
+# Note(zhouwei): Ninja Generator will set CMAKE_BUILD_TYPE to Debug
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
+      FORCE)
+endif()
 
 project(paddle CXX C)
 
@@ -66,6 +79,11 @@ if(WITH_MUSL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy")
 endif()
 
+if(APPLE AND WITH_ARM)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
+    set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
+endif()
+
 if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
@@ -90,10 +108,6 @@ if(WIN32)
 
     if (MSVC_STATIC_CRT)
         message(STATUS "Use static C runtime time, refer to https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=vs-2019")
-        set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /MTd")
-        set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /MT")
-        set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
-        set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /MT")
         foreach(flag_var
             CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
             CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
@@ -105,9 +119,7 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
-    # NOTE(zhouwei25): temporarily change MP to 1 for reducing CPU & memory utilization
-    set(PROCESS_MAX 1)
-    #math(EXPR PROCESS_MAX "${CPU_CORES} * 1 / 2")
+    math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
 
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
@@ -116,7 +128,10 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
+        # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling
+        if(NOT WITH_GPU)
+            set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
+        endif()
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
@@ -208,16 +223,10 @@ option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 2.7)
+  set(PY_VERSION 3.6)
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
-# CMAKE_BUILD_TYPE
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-      FORCE)
-endif()
 
 # the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined. Default: OFF
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
@@ -282,6 +291,27 @@ if(WITH_GPU)
     endif()
 endif()
 
+if(WITH_ROCM)
+    include(hip)
+    include(miopen) # set miopen libraries, must before configure
+endif(WITH_ROCM)
+
+if (NOT WITH_ROCM AND WITH_RCCL)
+    MESSAGE(WARNING
+        "Disable RCCL when compiling without ROCM. Force WITH_RCCL=OFF.")
+    set(WITH_RCCL OFF CACHE STRING
+        "Disable RCCL when compiling without ROCM" FORCE)
+endif()
+
+if(WITH_RCCL)
+     add_definitions("-DPADDLE_WITH_RCCL")
+     include(rccl)
+else()
+     if(WITH_ROCM)
+         MESSAGE(WARNING "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used.")
+     endif()
+endif()
+
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 include(flags)              # set paddle compile flags
@@ -306,26 +336,6 @@ include(configure)          # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
 
-if(WITH_ROCM)
-    include(hip)
-endif(WITH_ROCM)
-
-if (NOT WITH_ROCM AND WITH_RCCL)
-    MESSAGE(WARNING
-        "Disable RCCL when compiling without ROCM. Force WITH_RCCL=OFF.")
-    set(WITH_RCCL OFF CACHE STRING
-        "Disable RCCL when compiling without ROCM" FORCE)
-endif()
-
-if(WITH_RCCL)
-     add_definitions("-DPADDLE_WITH_RCCL")
-     include(rccl)
-else()
-     if(WITH_ROCM)
-         MESSAGE(WARNING "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used.")
-     endif()
-endif()
-
 if(WITH_NV_JETSON)
     set(WITH_ARM ON CACHE STRING "Set WITH_ARM=ON when compiling WITH_NV_JETSON=ON." FORCE)
 endif()
@@ -333,8 +343,9 @@ endif()
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_ARM=ON" FORCE)
+    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_ARM=ON." FORCE)
     set(WITH_MKL OFF CACHE STRING "Disable MKL when compiling WITH_ARM=ON." FORCE)
+    set(WITH_AVX OFF CACHE STRING "Disable AVX when compiling WITH_AVX=OFF." FORCE)
     add_definitions(-DPADDLE_WITH_ARM)
 endif()
 
@@ -352,6 +363,11 @@ if (WITH_MIPS)
     add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if (WITH_HETERPS)
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
+    endif()
+endif()
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")

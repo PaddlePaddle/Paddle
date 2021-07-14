@@ -301,6 +301,41 @@ class UniformTest9(UniformTest):
                 name='values', shape=[dims], dtype='float32')
 
 
+class UniformTest10(UniformTest):
+    def init_numpy_data(self, batch_size, dims):
+        # low and high are list.
+        self.low_np = np.random.randn(batch_size,
+                                      dims).astype('float32').tolist()
+        self.high_np = np.random.uniform(
+            5.0, 15.0, (batch_size, dims)).astype('float32').tolist()
+        self.values_np = np.random.randn(batch_size, dims).astype('float32')
+
+    def init_static_data(self, batch_size, dims):
+        self.static_low = self.low_np
+        self.static_high = self.high_np
+        with fluid.program_guard(self.test_program):
+            self.static_values = layers.data(
+                name='values', shape=[dims], dtype='float32')
+
+
+class UniformTest11(UniformTest):
+    def init_numpy_data(self, batch_size, dims):
+        # low and high are tuple.
+        self.low_np = tuple(
+            np.random.randn(batch_size, dims).astype('float32').tolist())
+        self.high_np = tuple(
+            np.random.uniform(5.0, 15.0, (batch_size, dims)).astype('float32')
+            .tolist())
+        self.values_np = np.random.randn(batch_size, dims).astype('float32')
+
+    def init_static_data(self, batch_size, dims):
+        self.static_low = self.low_np
+        self.static_high = self.high_np
+        with fluid.program_guard(self.test_program):
+            self.static_values = layers.data(
+                name='values', shape=[dims], dtype='float32')
+
+
 class NormalNumpy(DistributionNumpy):
     def __init__(self, loc, scale):
         self.loc = np.array(loc)
@@ -673,6 +708,66 @@ class NormalTest8(NormalTest):
                 name='other_scale', shape=[dims], dtype='float64')
 
 
+class NormalTest9(NormalTest):
+    def init_numpy_data(self, batch_size, dims):
+        # loc and scale are list.
+        self.loc_np = np.random.randn(batch_size,
+                                      dims).astype('float32').tolist()
+        self.scale_np = np.random.randn(batch_size, dims).astype('float32')
+        while not np.all(self.scale_np > 0):
+            self.scale_np = np.random.randn(batch_size, dims).astype('float32')
+        self.scale_np = self.scale_np.tolist()
+        self.values_np = np.random.randn(batch_size, dims).astype('float32')
+        # used to construct another Normal object to calculate kl_divergence
+        self.other_loc_np = np.random.randn(batch_size,
+                                            dims).astype('float32').tolist()
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float32')
+        while not np.all(self.other_scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float32')
+        self.other_scale_np = self.other_scale_np.tolist()
+
+    def init_static_data(self, batch_size, dims):
+        self.static_loc = self.loc_np
+        self.static_scale = self.scale_np
+        self.static_other_loc = self.other_loc_np
+        self.static_other_scale = self.other_scale_np
+        with fluid.program_guard(self.test_program):
+            self.static_values = layers.data(
+                name='values', shape=[dims], dtype='float32')
+
+
+class NormalTest10(NormalTest):
+    def init_numpy_data(self, batch_size, dims):
+        # loc and scale are tuple.
+        self.loc_np = tuple(
+            np.random.randn(batch_size, dims).astype('float32').tolist())
+        self.scale_np = np.random.randn(batch_size, dims).astype('float32')
+        while not np.all(self.scale_np > 0):
+            self.scale_np = np.random.randn(batch_size, dims).astype('float32')
+        self.scale_np = tuple(self.scale_np.tolist())
+        self.values_np = np.random.randn(batch_size, dims).astype('float32')
+        # used to construct another Normal object to calculate kl_divergence
+        self.other_loc_np = tuple(
+            np.random.randn(batch_size, dims).astype('float32').tolist())
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float32')
+        while not np.all(self.other_scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float32')
+        self.other_scale_np = tuple(self.other_scale_np.tolist())
+
+    def init_static_data(self, batch_size, dims):
+        self.static_loc = self.loc_np
+        self.static_scale = self.scale_np
+        self.static_other_loc = self.other_loc_np
+        self.static_other_scale = self.other_scale_np
+        with fluid.program_guard(self.test_program):
+            self.static_values = layers.data(
+                name='values', shape=[dims], dtype='float32')
+
+
 class CategoricalNumpy(DistributionNumpy):
     def __init__(self, logits):
         self.logits = np.array(logits).astype('float32')
@@ -959,6 +1054,38 @@ class CategoricalTest7(CategoricalTest):
                 for k in range(3):
                     np_probs[i][j][k] = probability[i][j][self.value_np[k]]
         return np_probs
+
+
+class CategoricalTest8(CategoricalTest):
+    def init_dynamic_data(self, batch_size, dims):
+        # input logtis is 2-D list
+        # value used in probs and log_prob method is 1-D Tensor
+        self.logits = self.logits_np.tolist()
+        self.other_logits = self.other_logits_np.tolist()
+        self.value = paddle.to_tensor(self.value_np)
+
+    def init_static_data(self, batch_size, dims):
+        with fluid.program_guard(self.test_program):
+            self.logits_static = self.logits_np.tolist()
+            self.other_logits_static = self.other_logits_np.tolist()
+            self.value_static = fluid.data(
+                name='value', shape=self.value_shape, dtype='int64')
+
+
+class CategoricalTest9(CategoricalTest):
+    def init_dynamic_data(self, batch_size, dims):
+        # input logtis is 2-D tuple
+        # value used in probs and log_prob method is 1-D Tensor
+        self.logits = tuple(self.logits_np.tolist())
+        self.other_logits = tuple(self.other_logits_np.tolist())
+        self.value = paddle.to_tensor(self.value_np)
+
+    def init_static_data(self, batch_size, dims):
+        with fluid.program_guard(self.test_program):
+            self.logits_static = tuple(self.logits_np.tolist())
+            self.other_logits_static = tuple(self.other_logits_np.tolist())
+            self.value_static = fluid.data(
+                name='value', shape=self.value_shape, dtype='int64')
 
 
 class DistributionTestError(unittest.TestCase):

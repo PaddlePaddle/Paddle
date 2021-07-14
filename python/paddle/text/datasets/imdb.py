@@ -24,7 +24,7 @@ import collections
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ['Imdb']
+__all__ = []
 
 URL = 'https://dataset.bj.bcebos.com/imdb%2FaclImdb_v1.tar.gz'
 MD5 = '7c2ac02c03563afcf9b574c7e56c153a'

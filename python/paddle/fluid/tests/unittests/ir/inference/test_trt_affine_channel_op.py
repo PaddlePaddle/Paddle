@@ -70,7 +70,7 @@ class TRTAffineChannelTest(InferencePassTest):
             use_gpu = True
             atol = 1e-5
             if self.trt_parameters.precision == AnalysisConfig.Precision.Half:
-                atol = 1e-3
+                atol = 2e-2
             self.check_output_with_option(use_gpu, atol, flatten=True)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))

@@ -225,11 +225,17 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 #elif CUDNN_VERSION_MIN(7, 0, 1)
     if (FLAGS_cudnn_batchnorm_spatial_persistent) {
       mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+    } else if (H == 1 && W == 1) {
+      mode_ = CUDNN_BATCHNORM_PER_ACTIVATION;
     } else {
       mode_ = CUDNN_BATCHNORM_SPATIAL;
     }
 #else
-    mode_ = CUDNN_BATCHNORM_SPATIAL;
+    if (H == 1 && W == 1) {
+      mode_ = CUDNN_BATCHNORM_PER_ACTIVATION;
+    } else {
+      mode_ = CUDNN_BATCHNORM_SPATIAL;
+    }
 #endif  // CUDNN_VERSION_MIN(7, 0, 1)
 
     VLOG(3) << "Setting descriptors.";
@@ -382,8 +388,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       }
 
       // Run training mode.
-      // obtain running mean and running inv var, and see if we need to
-      // initialize them.
+      // obtain running mean and running inv var, and there is no need
+      // to initialize them.
 
       auto *mean_out = ctx.Output<Tensor>("MeanOut");
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
@@ -394,10 +400,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
       saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
       saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-          functor;
-      functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
-      functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
       if ((N * H * W * D) == 1) {
         // Only 1 element in normalization dimension,
@@ -817,7 +819,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         platform::errors::InvalidArgument("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    bool use_global_stats = ctx.Attr<bool>("use_global_stats");
 
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
@@ -850,12 +852,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     }
 
     const bool is_test = ctx.Attr<bool>("is_test");
-    PADDLE_ENFORCE_EQ(
-        is_test, false,
-        platform::errors::InvalidArgument(
-            "`is_test = True` CANNOT be used in train program. If "
-            "you want to use global status in pre_train model, "
-            "please set `use_global_stats = True`"));
+    use_global_stats = is_test || use_global_stats;
 
     const auto &x_dims = x->dims();
 
@@ -998,11 +995,17 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 #elif CUDNN_VERSION_MIN(7, 0, 1)
       if (FLAGS_cudnn_batchnorm_spatial_persistent) {
         mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+      } else if (H == 1 && W == 1) {
+        mode_ = CUDNN_BATCHNORM_PER_ACTIVATION;
       } else {
         mode_ = CUDNN_BATCHNORM_SPATIAL;
       }
 #else
-      mode_ = CUDNN_BATCHNORM_SPATIAL;
+      if (H == 1 && W == 1) {
+        mode_ = CUDNN_BATCHNORM_PER_ACTIVATION;
+      } else {
+        mode_ = CUDNN_BATCHNORM_SPATIAL;
+      }
 #endif  // CUDNN_VERSION_MIN(7, 0, 1)
 
 #ifdef PADDLE_WITH_HIP

@@ -37,7 +37,10 @@ if os.path.exists(current_path + os.sep + 'core_noavx.' + core_suffix):
 try:
     if os.name == 'nt':
         third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
-        os.environ['path'] = third_lib_path + ';' + os.environ['path']
+        # Will load shared library from 'path' on windows
+        os.environ[
+            'path'] = current_path + ';' + third_lib_path + ';' + os.environ[
+                'path']
         sys.path.insert(0, third_lib_path)
         # Note: from python3.8, PATH will not take effect
         # https://github.com/python/cpython/pull/12302
@@ -260,22 +263,16 @@ if avx_supported():
         from .core_avx import _get_all_register_op_kernels
         from .core_avx import _is_program_version_supported
         from .core_avx import _set_eager_deletion_mode
+        from .core_avx import _get_eager_deletion_vars
         from .core_avx import _set_fuse_parameter_group_size
         from .core_avx import _set_fuse_parameter_memory_size
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
         from .core_avx import _switch_tracer
         from .core_avx import _set_paddle_lib_path
-        from .core_avx import _save_static_dict
-        from .core_avx import _load_static_dict
-        from .core_avx import _save_dygraph_dict
-        from .core_avx import _load_dygraph_dict
-        from .core_avx import _save_lod_tensor
-        from .core_avx import _load_lod_tensor
-        from .core_avx import _save_selected_rows
-        from .core_avx import _load_selected_rows
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
+        from .core_avx import _is_compiled_with_heterps
         from .core_avx import _promote_types_if_complex_exists
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
@@ -295,17 +292,13 @@ if avx_supported():
         else:
             from .. import compat as cpt
             sys.stderr.write(
-                "WARNING: AVX is supported on local machine, but you have installed "
-                "paddlepaddle without avx core. Hence, no_avx core which has worse "
-                "preformance will be imported.\nYou could reinstall paddlepaddle by "
-                "'python -m pip install -U paddlepaddle-gpu[==version]' or rebuild "
-                "paddlepaddle WITH_AVX=ON to get better performance.\n"
-                "The original error is: %s\n" % cpt.get_exception_message(e))
+                "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
+                "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
+                "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
+                "to get better performance.\nThe original error is: %s\n" %
+                cpt.get_exception_message(e))
             load_noavx = True
 else:
-    sys.stderr.write(
-        "WARNING: AVX is not support on your machine. Hence, no_avx core will be imported, "
-        "It has much worse preformance than avx core.\n")
     load_noavx = True
 
 if load_noavx:
@@ -319,22 +312,16 @@ if load_noavx:
         from .core_noavx import _get_all_register_op_kernels
         from .core_noavx import _is_program_version_supported
         from .core_noavx import _set_eager_deletion_mode
+        from .core_noavx import _get_eager_deletion_vars
         from .core_noavx import _set_fuse_parameter_group_size
         from .core_noavx import _set_fuse_parameter_memory_size
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
         from .core_noavx import _switch_tracer
         from .core_noavx import _set_paddle_lib_path
-        from .core_noavx import _save_static_dict
-        from .core_noavx import _load_static_dict
-        from .core_noavx import _save_dygraph_dict
-        from .core_noavx import _load_dygraph_dict
-        from .core_noavx import _save_lod_tensor
-        from .core_noavx import _load_lod_tensor
-        from .core_noavx import _save_selected_rows
-        from .core_noavx import _load_selected_rows
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
+        from .core_noavx import _is_compiled_with_heterps
         from .core_noavx import _promote_types_if_complex_exists
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
@@ -350,12 +337,16 @@ if load_noavx:
             sys.stderr.write(
                 'Error: Can not import noavx core while this file exists: ' +
                 current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
+        elif avx_supported():
+            sys.stderr.write(
+                "Error: The installed PaddlePaddle is incorrect. You should reinstall it by "
+                "'python -m pip install --force-reinstall paddlepaddle-gpu[==version]'\n"
+            )
         else:
             sys.stderr.write(
-                "Error: AVX is not support on your machine, but you have installed "
-                "paddlepaddle with avx core, you should reinstall paddlepaddle by "
-                "'python -m pip install -U paddlepaddle-gpu[==version] -f "
-                "https://paddlepaddle.org.cn/whl/stable_noavx.html'\n")
+                "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "
+                "you should reinstall paddlepaddle with no-avx core.\n")
+
         raise e
 
 

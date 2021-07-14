@@ -21,19 +21,7 @@ import paddle
 from .. import functional as F
 from paddle.fluid.framework import core, in_dygraph_mode, _varbase_creator
 
-__all__ = [
-    'BCEWithLogitsLoss',
-    'CrossEntropyLoss',
-    'HSigmoidLoss',
-    'MSELoss',
-    'L1Loss',
-    'NLLLoss',
-    'BCELoss',
-    'KLDivLoss',
-    'MarginRankingLoss',
-    'CTCLoss',
-    'SmoothL1Loss',
-]
+__all__ = []
 
 
 class BCEWithLogitsLoss(fluid.dygraph.Layer):
@@ -295,7 +283,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             Indicate whether compute softmax before cross_entropy.
             Default is ``True``.
 
-        - **name** (str，optional)
+        - **name** (str, optional)
 
             The name of the operator. Default is ``None`` .
             For more information, please refer to :ref:`api_guide_Name` .
@@ -318,7 +306,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
         - **label** (Tensor)
 
-            1. If soft_label=False，the shape is 
+            1. If soft_label=False, the shape is 
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 

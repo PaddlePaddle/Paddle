@@ -154,6 +154,16 @@ DeviceContextPool::DeviceContextPool(
           "NPUPlace is not supported. Please "
           "re-compile with WITH_ASCEND_CL option."));
 #endif
+    } else if (platform::is_npu_pinned_place(p)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      EmplaceDeviceContext<NPUPinnedDeviceContext, NPUPinnedPlace>(
+          &device_contexts_, p);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "NPUPinnedPlace is not supported. Please re-compile with "
+          "WITH_ASCEND_CL "
+          "option."));
+#endif
     }
   }
 }
@@ -264,6 +274,22 @@ aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
 Place NPUDeviceContext::GetPlace() const { return place_; }
 
 aclrtContext NPUDeviceContext::context() const { return context_; }
+
+NPUPinnedDeviceContext::NPUPinnedDeviceContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+NPUPinnedDeviceContext::NPUPinnedDeviceContext(NPUPinnedPlace place)
+    : place_(place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* NPUPinnedDeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+Place NPUPinnedDeviceContext::GetPlace() const { return place_; }
+
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -537,6 +563,7 @@ Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
     : CPUDeviceContext(place), p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
+  p_exec_items_.reset(new ExecShape());
   p_mutex_.reset(new std::mutex());
 }
 
@@ -560,7 +587,7 @@ MKLDNNDeviceContextThreadLocals::Body::~Body() {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::MKLDNNDeviceContext* dev_ctx =
       (platform::MKLDNNDeviceContext*)pool.Get(cpu_place);
-  dev_ctx->ResetBlobMap();
+  dev_ctx->ResetBlobMap(exec_ptr_);
 }
 
 void MKLDNNDeviceContextThreadLocals::Body::set_cur_mkldnn_session_id(
@@ -607,15 +634,50 @@ mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
   return cur_stream;
 }
 
-void MKLDNNDeviceContext::ResetBlobMap() {
+void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
   if (!block_next_cache_clearing_) {
     VLOG(3) << "Clearing DNNL cache.";
-    p_blobmap_->clear();
+    // If no specific executor pointer then clear
+    // everything. For executor pointer then clear only
+    // objects allocated when using given executor
+    if (ptr == nullptr) {
+      p_blobmap_->clear();
+    } else {
+      // Iterate through all shapes and release
+      // for each shape and active executor all entries
+      // of this executor
+      for (auto& s : *p_exec_items_) {
+        for (auto& v : (*s.second)[ptr]) {
+          (v.first)->erase(v.second);
+        }
+        s.second->erase(ptr);
+      }
+    }
   } else {
     VLOG(3) << "Prevented Clearing DNNL cache.";
     block_next_cache_clearing_ = false;
   }
+}
+
+void MKLDNNDeviceContext::RemoveShapeEntriesWithExecutor(void) const {
+  p_exec_items_->erase(p_exec_items_->begin());
+}
+
+void MKLDNNDeviceContext::LinkEntryWithExecutor(BlobPtr_t<KeyBlob> pblob,
+                                                KeyBlob::iterator it) const {
+  // Take current input shape from TLS
+  // Take current executor addess from TLS
+  // and for this executor's items add the one defined with arguments
+  auto key_it = p_exec_items_
+                    ->insert(std::make_pair(tls().cur_input_shape_str,
+                                            std::make_shared<ExecMap>()))
+                    .first;
+  (*key_it->second)[tls().get_curr_exec()].push_back(std::make_pair(pblob, it));
+
+  VLOG(3) << "LinkEntryWithExecutor, shapes: " << p_exec_items_->size()
+          << " curr exec size: "
+          << (*key_it->second)[tls().get_curr_exec()].size() << "\n";
 }
 
 void MKLDNNDeviceContext::BlockNextCacheClearing() {
@@ -672,6 +734,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
       VLOG(2) << "sid=" << sid
               << ", remove all blobs of shape: " << sBlob->begin()->first;
       sBlob->erase(sBlob->begin()->first);
+      RemoveShapeEntriesWithExecutor();
     }
     pBlob = std::make_shared<KeyBlob>();
     (*sBlob)[tls().cur_input_shape_str] = pBlob;
@@ -682,7 +745,11 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   // Find Blob via name
   auto blob_it = pBlob->find(name);
   if (blob_it == pBlob->end()) {
-    (*pBlob)[name] = data;
+    auto el =
+        pBlob->insert(std::make_pair(name, data));  //  (*pBlob)[name] = data;
+    // Register new element in per executor map
+    // to have easily erased when executor terminated
+    LinkEntryWithExecutor(pBlob, el.first);
   } else {
     blob_it->second = data;  // set data to existing blob
   }
@@ -691,7 +758,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   return;
 }
 
-unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) {
+unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   unsigned int num_entries = 0;
   for (auto const& l3 : *p_blobmap_) {
     for (auto const& l2 : *(l3.second)) {

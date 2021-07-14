@@ -151,6 +151,11 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
              "as beta2, this has a higher priority than attr(beta2), the "
              "shape of this tensor MUST BE [1].")
         .AsDispensable();
+    AddInput("EpsilonTensor",
+             "(Tensor<float32>, optional) If provided, Adam will use this "
+             "as epsilon, this has a higher priority than attr(epsilon), the "
+             "shape of this tensor MUST BE [1].")
+        .AsDispensable();
     AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
@@ -193,6 +198,13 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "Whether to use multi-precision during weight updating.")
         .SetDefault(false);
+    // TODO(zhiqiu): We could set Beta1PowOut and Beta2PowOut
+    // as dispensable since they are not used when use_global_beta_pow is true.
+    AddAttr<bool>("use_global_beta_pow",
+                  "(bool, default false) "
+                  "Whether to use global beta_pow for whole model instead of "
+                  "creating beta_pow for each parameter.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Adam Optimizer.
@@ -232,4 +244,25 @@ REGISTER_OP_VERSION(adam)
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "multi_precision",
             "(bool) Whether to use multi-precision during weight updating.",
+            false))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade adam, add 1 dispensable input [EpsilonTensor].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "EpsilonTensor",
+            "If provided, Adam will use this as epsilon, "
+            "this has a higher priority than attr(epsilon). "
+            "For better performance in npu kernel. "))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade adam, add 1 attribute [use_global_beta_pow].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_global_beta_pow",
+            "If true, Adam will use global beta_pow for whole model "
+            "instead of creating beta_pow for each parameter."
+            "In that case, the outputs(Beta1PowOut, Beta2PowOut) will not be "
+            "used in adam op, "
+            "and beta_pow will be updated after all adam op in the model.",
             false));

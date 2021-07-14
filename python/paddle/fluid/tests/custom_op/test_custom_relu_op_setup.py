@@ -34,7 +34,10 @@ def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
 
     out.backward()
 
-    return out.numpy(), t.grad
+    if t.grad is None:
+        return out.numpy(), t.grad
+    else:
+        return out.numpy(), t.grad.numpy()
 
 
 def custom_relu_static(func,

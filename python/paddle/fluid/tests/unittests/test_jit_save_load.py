@@ -158,6 +158,22 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
         return x_out, y_out, loss
 
 
+class LinearNetMultiInput1(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetMultiInput1, self).__init__()
+        self._linear1 = Linear(in_size, out_size)
+        self._linear2 = Linear(in_size, out_size)
+
+    @declarative(input_spec=(InputSpec(
+        [None, 8], dtype='float32'), InputSpec(
+            [None, 8], dtype='float32')))
+    def forward(self, x, y):
+        x_out = self._linear1(x)
+        y_out = self._linear2(y)
+        loss = fluid.layers.mean(x_out + y_out)
+        return x_out, y_out, loss
+
+
 class MultiLoadingLinearNet(fluid.dygraph.Layer):
     def __init__(self, size, model_path):
         super(MultiLoadingLinearNet, self).__init__()
@@ -383,15 +399,6 @@ class TestJitSaveLoad(unittest.TestCase):
         with self.assertRaises(ValueError):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
 
-    def test_jit_load_model_incomplete(self):
-        model_path = "test_jit_save_load.remove_variables/model"
-        self.train_and_save_model(model_path)
-        # remove `.pdiparams`	
-        var_path = model_path + INFER_PARAMS_SUFFIX
-        os.remove(var_path)
-        with self.assertRaises(ValueError):
-            paddle.jit.load(model_path)
-
     def test_jit_load_no_path(self):
         path = "test_jit_save_load.no_path/model_path"
         with self.assertRaises(ValueError):
@@ -534,6 +541,42 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         model_path = "multi_inout.output_spec2/model"
         output_spec = net.forward.outputs[:1]
         paddle.jit.save(net, model_path, [input_x], output_spec=output_spec)
+        # 2. load again
+        infer_layer2 = paddle.jit.load(model_path)
+        # 3. predict
+        pred_xx = infer_layer2(x)
+
+        # 4. assert pred_x == pred_xx
+        self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
+
+    def test_multi_in_out1(self):
+        net = LinearNetMultiInput1(8, 8)
+
+        model_path = "multi_inout1.output_spec1/model"
+        # 1. check inputs and outputs
+        self.assertTrue(len(net.forward.inputs) == 2)
+        input_x = net.forward.inputs[0]
+        input_y = net.forward.inputs[1]
+        self.assertTrue(input_x.shape == (-1, 8))
+        self.assertTrue(input_y.shape == (-1, 8))
+
+        # 2. prune loss
+        output_spec = net.forward.outputs[:2]
+        paddle.jit.save(net, model_path, output_spec=output_spec)
+
+        # 3. load to infer
+        infer_layer = paddle.jit.load(model_path)
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        y = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        # 4. predict
+        pred_x, pred_y = infer_layer(x, y)
+
+        # 1. prune y and loss
+        model_path = "multi_inout1.output_spec2/model"
+        output_spec = net.forward.outputs[:1]
+        paddle.jit.save(net, model_path, (input_x, ), output_spec=output_spec)
         # 2. load again
         infer_layer2 = paddle.jit.load(model_path)
         # 3. predict
@@ -1110,6 +1153,171 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
 
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
         self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
+
+
+# NOTE(weixin): When there are multiple test functions in an 
+# `unittest.TestCase`, functions will affect each other, 
+# and there is a risk of random failure. 
+# So divided into three TestCase: TestJitSaveLoadFunctionCase1, 
+# TestJitSaveLoadFunctionCase2, TestJitSaveLoadFunctionCase3.
+class TestJitSaveLoadFunctionCase1(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_static_function(self):
+        @paddle.jit.to_static
+        def fun(inputs):
+            return paddle.tanh(inputs)
+
+        path = 'test_jit_save_load_function_1/func'
+        inps = paddle.rand([3, 6])
+        origin = fun(inps)
+
+        paddle.jit.save(fun, path)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+
+class TestJitSaveLoadFunctionCase2(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function_input_spec(self):
+        @paddle.jit.to_static(input_spec=[
+            InputSpec(
+                shape=[None, 6], dtype='float32', name='x'),
+        ])
+        def fun(inputs):
+            return paddle.nn.functional.relu(inputs)
+
+        path = 'test_jit_save_load_function_2/func'
+        inps = paddle.rand([3, 6])
+        origin = fun(inps)
+
+        paddle.jit.save(fun, path)
+        load_func = paddle.jit.load(path)
+        load_result = load_func(inps)
+        self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+
+class TestJitSaveLoadFunctionCase3(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function_function(self):
+        def fun(inputs):
+            return paddle.tanh(inputs)
+
+        path = 'test_jit_save_load_function_3/func'
+        inps = paddle.rand([3, 6])
+        origin = fun(inps)
+
+        paddle.jit.save(
+            fun,
+            path,
+            input_spec=[
+                InputSpec(
+                    shape=[None, 6], dtype='float32', name='x'),
+            ])
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+
+class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function(self):
+        class LinearNet(paddle.nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = paddle.nn.Linear(5, 6)
+
+            def forward(self, x):
+                return paddle.tanh(x)
+
+            def anothor_forward(self, x):
+                return self._linear(x)
+
+        layer = LinearNet()
+
+        inps = paddle.rand([3, 5])
+        origin = layer.anothor_forward(inps)
+
+        func = paddle.jit.to_static(
+            layer.anothor_forward, [paddle.static.InputSpec(shape=[-1, 5])])
+        path = 'test_jit_save_load_function_with_params_case1/func'
+        paddle.jit.save(func, path)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue(np.array_equal(load_result.numpy(), origin.numpy()))
+
+
+class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function(self):
+        class LinearNet(paddle.nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = paddle.nn.Linear(5, 6)
+
+            def forward(self, x):
+                return paddle.tanh(x)
+
+            @paddle.jit.to_static(input_spec=[InputSpec(shape=[-1, 5])])
+            def anothor_forward(self, x):
+                return self._linear(x)
+
+        layer = LinearNet()
+
+        inps = paddle.rand([3, 5])
+
+        path = 'test_jit_save_load_function_with_params_case2/func'
+        paddle.jit.save(layer.anothor_forward, path)
+        origin_result = layer.anothor_forward(inps)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+
+        self.assertTrue(
+            np.array_equal(origin_result.numpy(), load_result.numpy()))
+
+
+class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function(self):
+        class LinearNet(paddle.nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = paddle.nn.Linear(5, 6)
+
+            def forward(self, x):
+                return paddle.tanh(x)
+
+            @paddle.jit.to_static
+            def anothor_forward(self, x):
+                return self._linear(x)
+
+        layer = LinearNet()
+
+        inps = paddle.rand([3, 5])
+        origin = layer.anothor_forward(inps)
+
+        path = 'test_jit_save_load_function_with_params_case3/func'
+        paddle.jit.save(layer.anothor_forward, path)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue(np.array_equal(load_result.numpy(), origin.numpy()))
 
 
 class TestJitSaveLoadDataParallel(unittest.TestCase):

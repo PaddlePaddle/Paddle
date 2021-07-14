@@ -27,10 +27,7 @@ from collections import namedtuple
 from paddle.fluid.framework import _set_expected_place, _current_expected_place
 
 # NOTE: queue has a different name in python2 and python3
-if six.PY2:
-    import Queue as queue
-else:
-    import queue
+import queue
 
 import paddle
 from .. import core, layers
@@ -349,7 +346,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._indices_queues[worker_id].put(None)
             self._worker_status[worker_id] = False
 
-    def _try_shutdown_all(self):
+    def _try_shutdown_all(self, timeout=None):
         if not self._shutdown:
             try:
                 self._exit_thread_expectedly()
@@ -362,11 +359,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 for i in range(self._num_workers):
                     self._shutdown_worker(i)
 
-                for w in self._workers:
-                    w.join()
-                for q in self._indices_queues:
-                    q.cancel_join_thread()
-                    q.close()
+                if not self._shutdown:
+                    for w in self._workers:
+                        w.join(timeout)
+                    for q in self._indices_queues:
+                        q.cancel_join_thread()
+                        q.close()
             finally:
                 core._erase_process_pids(id(self))
                 self._shutdown = True
@@ -545,6 +543,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
     def __del__(self):
         self._try_shutdown_all()
+
+    def _shutdown_on_exit(self):
+        self._try_shutdown_all(1)
 
     def __next__(self):
         try:

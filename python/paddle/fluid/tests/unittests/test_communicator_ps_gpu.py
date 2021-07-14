@@ -73,7 +73,8 @@ class TestCommunicator(unittest.TestCase):
         dataset.init(
             batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars)
         dataset.set_filelist(["test_communicator_ps_gpu.txt"])
-        dataset.load_into_memory()
+        dataset._set_use_ps_gpu(1)
+        dataset.load_into_memory(is_shuffle=True)
 
         os.environ["TEST_MODE"] = "1"
         exe = fluid.Executor(fluid.CPUPlace())

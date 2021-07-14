@@ -25,12 +25,31 @@ from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 def conv_indent(indent):
     return "".join([" "] * indent)
 
 
-PSERVER_SAVE_SUFFIX = "_txt"
+PSERVER_SAVE_SUFFIX = ".shard"
+
+
+def parse_table_class(varname, o_main_program):
+    from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distributed_sparse_op
+    from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_sparse_op
+
+    for op in o_main_program.global_block().ops:
+        if not is_distributed_sparse_op(op) and not is_sparse_op(op):
+            continue
+
+        param_name = op.input("W")[0]
+
+        if param_name == varname and op.type == "lookup_table" or op.type == "lookup_table_v2":
+            if op.has_attr('table_class') and op.attr("table_class") != "none":
+                return op.attr('table_class')
+            else:
+                return "CommonSparseTable"
 
 
 class Accessor:
@@ -77,10 +96,13 @@ class CommonAccessor:
                                  ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
         opt_input_map["sum"] = [("Param", None)]
+        opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1),
+                                          ("LearningRate", 1)]
 
         opt_attr_map = {}
         opt_attr_map["sgd"] = []
         opt_attr_map["sum"] = []
+        opt_attr_map["naive_adagrad"] = []
         opt_attr_map["adam"] = [("beta1", "f"), ("beta2", "f"),
                                 ("epsilon", "f")]
 
@@ -169,6 +191,10 @@ class CommonAccessor:
             param_varnames = self.opt_input_map["sum"]
             attr_varnames = self.opt_attr_map["sum"]
             self.accessor_class = "sum"
+        elif compiled_strategy.use_ps_gpu and is_sparse:
+            param_varnames = self.opt_input_map["naive_adagrad"]
+            attr_varnames = self.opt_attr_map["naive_adagrad"]
+            self.accessor_class = "sgd"
         else:
             param_varnames = self.opt_input_map[oop.type]
             attr_varnames = self.opt_attr_map[oop.type]
@@ -176,20 +202,28 @@ class CommonAccessor:
 
         for (formal_name, shape) in param_varnames:
             params.append(formal_name)
-            param = main_program.global_block().vars[oop.input(formal_name)[0]]
-            if formal_name == "LearningRate" and param.name != "learning_rate_0":
-                warnings.warn("will support decay soon")
-                param = main_program.global_block().vars["learning_rate_0"]
+            if formal_name == "G2Sum":
+                dims.append(1)
+                initializer = "fill_constant&0"
+                initializers.append(initializer)
+            else:
+                param = main_program.global_block().vars[oop.input(formal_name)[
+                    0]]
+                if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                    warnings.warn("will support decay soon")
+                    param = main_program.global_block().vars["learning_rate_0"]
 
-            if shape is None:
-                if is_sparse:
-                    shape = total_dims
-                else:
-                    shape = self.get_shard(total_dims, pserver_num, pserver_id)
-            dims.append(shape)
+                if shape is None:
+                    if is_sparse:
+                        shape = total_dims
+                    else:
+                        shape = self.get_shard(total_dims, pserver_num,
+                                               pserver_id)
+                dims.append(shape)
 
-            initializer = self.get_initializer_attr(param.name, startup_program)
-            initializers.append(initializer)
+                initializer = self.get_initializer_attr(param.name,
+                                                        startup_program)
+                initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
             value = oop.attr(attr_varname)
@@ -435,6 +469,8 @@ class TheOnePSRuntime(RuntimeBase):
         if not strategy:
             raise ValueError("k_steps must be invalid value, please check")
 
+        if dist_strategy.a_sync_configs["use_ps_gpu"]:
+            strategy.use_ps_gpu = True
         return strategy
 
     def build_compiled_startegy(self):
@@ -443,6 +479,8 @@ class TheOnePSRuntime(RuntimeBase):
         compiled_config = CompileTimeStrategy(
             self.origin_main_program, self.origin_main_program,
             self.async_strategy, self.role_maker)
+        if self.async_strategy.use_ps_gpu:
+            compiled_config.use_ps_gpu = True
         return compiled_config
 
     def _init_worker(self):
@@ -702,13 +740,15 @@ class TheOnePSRuntime(RuntimeBase):
                     table.type = "PS_SPARSE_TABLE"
                     table.shard_num = 256
 
+                    common.table_name = self.compiled_strategy.grad_name_to_param_name[
+                        ctx.origin_varnames()[0]]
+
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
-                        table.table_class = "CommonSparseTable"
+                        table.table_class = parse_table_class(
+                            common.table_name, self.origin_main_program)
 
-                    common.table_name = self.compiled_strategy.grad_name_to_param_name[
-                        ctx.origin_varnames()[0]]
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
@@ -826,8 +866,6 @@ class TheOnePSRuntime(RuntimeBase):
         dirname = os.path.normpath(dirname)
         pserver_id = self.role_maker._role_id()
 
-        import time
-        begin = time.time()
         for var_name in load_varnames:
             table_id = sparse_table_maps[var_name]
             path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
@@ -835,9 +873,6 @@ class TheOnePSRuntime(RuntimeBase):
             meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
                                 "{}.block{}.meta".format(var_name, pserver_id))
             self._server.load_sparse(path, meta, table_id)
-        end = time.time()
-        print("init sparse variables: {} cost time: {}".format(load_varnames,
-                                                               end - begin))
 
     def _run_server(self):
         if self.role_maker._is_heter_worker():
@@ -895,7 +930,7 @@ class TheOnePSRuntime(RuntimeBase):
             self.compiled_strategy.origin_main_program, True)
         values = []
         for id, names in context.items():
-            if names not in distributed_varnames:
+            if names[0] not in distributed_varnames:
                 # only save sparse param to local
                 self._worker.recv_and_save_model(id, dirname)
             # save sparse & distributed param on server
@@ -932,11 +967,11 @@ class TheOnePSRuntime(RuntimeBase):
                 TheOnePSRuntime.__exclude_vars(saved_varnames),
                 main_program.list_vars()))
 
-        fluid.io.save_vars(
-            executor,
-            main_program=main_program,
-            dirname=dirname,
-            vars=remaining_vars)
+        import paddle
+        for var in remaining_vars:
+            tensor = var.get_value()
+            paddle.save(
+                tensor, os.path.join(dirname, var.name), use_binary_format=True)
 
     def _ps_inference_save_persistables(self,
                                         executor,
@@ -957,20 +992,19 @@ class TheOnePSRuntime(RuntimeBase):
 
         if isinstance(executor, ParallelExecutor):
             raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type, ParallelExecutor is not allowed"
+                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
             )
 
         if not isinstance(executor, Executor):
             raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type"
-            )
+                "in fleet.save() function, executor must be as Executor type")
 
         if main_program is None:
             main_program = self.compiled_strategy.get_origin_ps_main_program()
 
         if isinstance(main_program, CompiledProgram):
             raise TypeError(
-                "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
+                "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
         # Todo(MrChengmo): Save optimizer status
@@ -992,43 +1026,45 @@ class TheOnePSRuntime(RuntimeBase):
 
         if isinstance(executor, ParallelExecutor):
             raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type, ParallelExecutor is not allowed"
+                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
             )
 
         if not isinstance(executor, Executor):
             raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type"
+                "in fleet.save() function, executor must be as Executor type")
+
+        import paddle
+        program = self.origin_main_program if main_program is None else main_program
+
+        if isinstance(program, CompiledProgram):
+            raise TypeError(
+                "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        if main_program is not None:
-            if isinstance(main_program, CompiledProgram):
-                raise TypeError(
-                    "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
-                )
-            fluid.io.save_inference_model(dirname, feeded_var_names,
-                                          target_vars, executor, main_program,
-                                          None, None, export_for_deployment)
-        else:
-            fluid.io.save_inference_model(dirname, feeded_var_names,
-                                          target_vars, executor,
-                                          self.origin_main_program, None, None,
-                                          export_for_deployment, True)
-            model_basename = "__model__"
-            model_filename = os.path.join(dirname, model_basename)
+        feed_vars = [
+            program.global_block().var(name) for name in feeded_var_names
+        ]
 
-            with open(model_filename, "rb") as f:
-                program_desc_str = f.read()
+        infer_program = paddle.static.normalize_program(program, feed_vars,
+                                                        target_vars)
 
-            program = Program.parse_from_string(program_desc_str)
-            program._copy_dist_param_info_from(fluid.default_main_program())
-            self._ps_inference_save_persistables(executor, dirname, program,
-                                                 mode)
+        infer_program._copy_dist_param_info_from(program)
+
+        model_basename = "__model__"
+        model_basename = os.path.join(dirname, model_basename)
+        paddle.save(infer_program, model_basename)
+
+        self._ps_inference_save_persistables(executor, dirname, infer_program,
+                                             mode)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
 
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
+
+    def load_model(self, path, mode):
+        self._worker.load_model(path, mode)
 
     def _shrink(self, threshold):
         import paddle.distributed.fleet as fleet

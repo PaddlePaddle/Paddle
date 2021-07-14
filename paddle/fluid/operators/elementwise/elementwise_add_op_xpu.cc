@@ -122,44 +122,65 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
             axis));
     std::vector<int> x_dims_vec(max_dim, 1);
     std::vector<int> y_dims_vec(max_dim, 1);
+    int x_len = 1;
+    int y_len = 1;
     if (x_dims.size() == max_dim) {
       for (int i = 0; i < max_dim; i++) {
         x_dims_vec[i] = x_dims[i];
+        x_len *= x_dims_vec[i];
       }
     } else {
       for (int i = 0; i < x_dims.size(); i++) {
         x_dims_vec[i + axis] = x_dims[i];
+        x_len *= x_dims_vec[i];
       }
     }
     if (y_dims.size() == max_dim) {
       for (int i = 0; i < max_dim; i++) {
         y_dims_vec[i] = y_dims[i];
+        y_len *= y_dims_vec[i];
       }
     } else {
       for (int i = 0; i < y_dims.size(); i++) {
         y_dims_vec[i + axis] = y_dims[i];
+        y_len *= y_dims_vec[i];
       }
     }
 
+    const T* dz_data = dz->data<T>();
+    framework::Tensor dx_local_tensor;
+    framework::Tensor dy_local_tensor;
+    bool need_wait = false;
     T* dx_data = nullptr;
     T* dy_data = nullptr;
     if (dx) {
       dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    } else {
+      dx_data =
+          dx_local_tensor.mutable_data<T>(ctx.GetPlace(), x_len * sizeof(T));
+      need_wait = true;
     }
     if (dy) {
       dy_data = dy->mutable_data<T>(ctx.GetPlace());
+    } else {
+      dy_data =
+          dy_local_tensor.mutable_data<T>(ctx.GetPlace(), y_len * sizeof(T));
+      need_wait = true;
     }
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
-    int ret = xpu::broadcast_add_grad<T>(dev_ctx.x_context(), dx_data, dx_data,
-                                         dx_data, dz->data<T>(), dy_data,
-                                         dx_data, x_dims_vec, y_dims_vec);
+    int ret = xpu::broadcast_add_grad<T>(dev_ctx.x_context(), dz_data, dz_data,
+                                         dz_data, dz_data, dy_data, dx_data,
+                                         x_dims_vec, y_dims_vec);
     PADDLE_ENFORCE_EQ(
         ret, xpu::SUCCESS,
         platform::errors::External(
             "XPU kernel Elementwise occur error in XPUElementwise error code ",
             ret, XPUAPIErrorMsg[ret]));
+    if (need_wait && dev_ctx.x_context()->xpu_stream) {
+      dev_ctx.Wait();
+    }
   }
 };
 

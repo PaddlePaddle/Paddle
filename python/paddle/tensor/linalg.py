@@ -13,28 +13,15 @@
 # limitations under the License.
 
 import numpy as np
-from paddle.common_ops_import import *
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
 from ..fluid.framework import in_dygraph_mode, _varbase_creator
 
-from ..fluid.layers import transpose  #DEFINE_ALIAS
+from ..fluid.layers import transpose  # noqa: F401
+from paddle.common_ops_import import core
+from paddle.common_ops_import import VarDesc
 
-__all__ = [
-    'matmul',
-    'dot',
-    #       'einsum',
-    'norm',
-    'transpose',
-    'dist',
-    't',
-    'cross',
-    'cholesky',
-    #       'tensordot',
-    'bmm',
-    'histogram',
-    'mv'
-]
+__all__ = []
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
@@ -845,9 +832,11 @@ def bmm(x, y, name=None):
         raise ValueError(
             "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".
             format(x_shape, y_shape))
-    helper = LayerHelper('bmm', **locals())
+
     if in_dygraph_mode():
         return core.ops.bmm(x, y)
+
+    helper = LayerHelper('bmm', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
     return out

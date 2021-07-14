@@ -21,17 +21,7 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.layers import utils
 import paddle
 
-__all__ = [
-    'bernoulli',
-    'multinomial',
-    'standard_normal',
-    'normal',
-    'uniform',
-    'randn',
-    'rand',
-    'randint',
-    'randperm',
-]
+__all__ = []
 
 
 def bernoulli(x, name=None):
@@ -84,6 +74,7 @@ def bernoulli(x, name=None):
         dtype=x.dtype)  # maybe set out to int32 ? 
     helper.append_op(
         type='bernoulli', inputs={"X": x}, outputs={'Out': out}, attrs={})
+    out.stop_gradient = True
     return out
 
 
@@ -153,6 +144,7 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
         outputs={'Out': out},
         attrs={'num_samples': num_samples,
                'replacement': replacement})
+    out.stop_gradient = True
     return out
 
 
@@ -524,6 +516,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
         outputs={"Out": out})
+    out.stop_gradient = True
     return out
 
 
@@ -625,6 +618,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='randint', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    out.stop_gradient = True
     return out
 
 

@@ -63,7 +63,10 @@ def conj_dynamic(func, dtype, np_input):
         sum_out.real().backward()
     else:
         sum_out.backward()
-    return out.numpy(), x.grad
+    if x.grad is None:
+        return out.numpy(), x.grad
+    else:
+        return out.numpy(), x.grad.numpy()
 
 
 def conj_static(func, shape, dtype, np_input):

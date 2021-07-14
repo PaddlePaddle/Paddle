@@ -17,7 +17,10 @@ import six
 import numpy as np
 import warnings
 from collections import OrderedDict
+import itertools
+import warnings
 
+import paddle
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
@@ -26,9 +29,7 @@ from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
-import warnings
-import paddle
-import itertools
+from paddle.fluid.framework import ParamBase
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -353,8 +354,9 @@ def sync_params_buffers(model,
             raise TypeError("The data type of '%s' must be Varbase" %
                             param.name)
         # is_distributed param not need to sync when in mp mode
-        if is_model_parallel and param.is_distributed:
-            continue
+        if is_model_parallel and isinstance(param, ParamBase):
+            if param.is_distributed:
+                continue
 
         model_vars.append(param.detach())
     if len(model_vars) == 0:
@@ -417,14 +419,15 @@ class DataParallel(layers.Layer):
                                                 Note that setting the find_unused_parameters to True 
                                                 will affect computing performance. Therefore, if all parameters
                                                 are sure to participate in the loss calculation and the 
-                                                autograd graph construction, please set it False. Default: True.
+                                                autograd graph construction, please set it False. Default: False.
             
     Returns:
         Layer: The data paralleled module.
 
     Examples:
         .. code-block:: python
-
+        
+            # required: distributed
             import paddle
             import paddle.nn as nn
             import paddle.optimizer as opt
@@ -474,7 +477,7 @@ class DataParallel(layers.Layer):
                  strategy=None,
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
-                 find_unused_parameters=True):
+                 find_unused_parameters=False):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -576,12 +579,8 @@ class DataParallel(layers.Layer):
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
         if self._strategy.nranks > 1 and framework._dygraph_tracer()._has_grad:
-            if self.find_unused_parameters:
-                self._reducer.prepare_for_backward(
-                    list(self._find_varbase(outputs)))
-            else:
-                self._reducer.prepare_for_backward(list(self._find_varbase([])))
-
+            self._reducer.prepare_for_backward(
+                list(self._find_varbase(outputs)))
         return outputs
 
     @deprecated(

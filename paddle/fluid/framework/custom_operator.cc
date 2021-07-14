@@ -246,7 +246,7 @@ class CustomOperator : public OperatorWithKernel {
    * it can only be determined at runtime.
    */
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(proto::VarType::RAW, ctx.GetPlace());
   }
 
@@ -257,7 +257,7 @@ class CustomOperator : public OperatorWithKernel {
    */
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
-      const OpKernelType& expected_kernel_type) {
+      const OpKernelType& expected_kernel_type) const override {
     return OpKernelType(expected_kernel_type.data_type_,
                         expected_kernel_type.place_, tensor.layout());
   }
@@ -781,10 +781,12 @@ void RegisterOperatorWithMetaInfo(
         const imperative::NameVarBaseMap& var_base_map_in,
         const imperative::NameVarBaseMap& var_base_map_out,
         const framework::AttributeMap& attrs,
+        const framework::AttributeMap& default_attrs,
         const std::map<std::string, std::string>& inplace_map) {
       CustomGradOpMaker<paddle::imperative::OpBase> maker(
           type, var_base_map_in, var_base_map_out, attrs, inplace_map,
           grad_op_name, grad_op_inputs, grad_op_outputs);
+      maker.SetDygraphDefaultAttrsMap(default_attrs);
       return maker();
     };
 

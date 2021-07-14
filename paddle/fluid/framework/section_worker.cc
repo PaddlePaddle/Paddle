@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(WITH_ASCEND_CL)
+    defined(PADDLE_WITH_ASCEND_CL)
 #include <float.h>
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -96,12 +96,16 @@ void SectionWorker::RunUpdate(
   }
 }
 
+void SectionWorker::PrepareUnusedVar() {
+  VLOG(5) << "begin prepare the unsed vars";
+  unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
+}
+
 void SectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
-  auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
   if (max_memory_size >= 0) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(place_)) {
@@ -110,8 +114,22 @@ void SectionWorker::TrainFiles() {
             BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
       }
     }
+#elif defined(PADDLE_WITH_ASCEND_CL)
+    if (IsFastEagerDeletionModeEnabled()) {
+      VLOG(4) << "Use unsafe fast gc for NPU.";
+      gc.reset(new NPUUnsafeFastGarbageCollector(
+          BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Please set FLAGS_fast_eager_deletion_mode=true to use "
+          "GarbageCollector on NPU."));
+      // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
+      VLOG(4) << "Use default stream gc for NPU.";
+      gc.reset(new NPUDefaultStreamGarbageCollector(
+          BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+    }
 #endif
-  }
+  }  // max_memory_size >= 0
 
   if (schedule_mode_ == 0) {
     // F-then-B scheduler which runs Forward phase for all microbatches,

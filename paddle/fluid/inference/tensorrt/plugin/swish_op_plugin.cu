@@ -17,17 +17,11 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/swish_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-SwishPlugin *CreateSwishPluginDeserialize(const void *buffer, size_t length) {
-  return new SwishPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("swish_plugin", CreateSwishPluginDeserialize);
 
 int SwishPlugin::initialize() { return 0; }
 
@@ -85,7 +79,12 @@ __global__ void swish_kernel<half>(int num, const half *input, half *output,
 }
 
 int SwishPlugin::enqueue(int batch_size, const void *const *inputs,
+#if IS_TRT_VERSION_LT(8000)
                          void **outputs, void *workspace, cudaStream_t stream) {
+#else
+                         void *const *outputs, void *workspace,
+                         cudaStream_t stream) {
+#endif
   // input dims is CHW.
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);

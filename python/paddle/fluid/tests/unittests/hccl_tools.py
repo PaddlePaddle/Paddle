@@ -58,7 +58,7 @@ def parse_args():
         default="[0,8)",
         help="The number of the Ascend accelerators used. please note that the Ascend accelerators"
         "used must be continuous, such [0,4) means to use four chips "
-        "0，1，2，3; [0,1) means to use chip 0; The first four chips are"
+        "0,1,2,3; [0,1) means to use chip 0; The first four chips are"
         "a group, and the last four chips are a group. In addition to"
         "the [0,8) chips are allowed, other cross-group such as [3,6)"
         "are prohibited.")

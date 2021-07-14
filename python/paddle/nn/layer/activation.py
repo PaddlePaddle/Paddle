@@ -14,33 +14,6 @@
 
 # TODO: define activation functions of neural network
 
-__all__ = [
-    'ELU',
-    'GELU',
-    'Hardshrink',
-    'Hardswish',
-    'Tanh',
-    'Hardtanh',
-    'PReLU',
-    'ReLU',
-    'ReLU6',
-    'SELU',
-    'LeakyReLU',
-    'Sigmoid',
-    'Silu',
-    'Hardsigmoid',
-    'Softmax',
-    'Softplus',
-    'Softshrink',
-    'Softsign',
-    'Swish',
-    'Tanhshrink',
-    'ThresholdedReLU',
-    'LogSigmoid',
-    'LogSoftmax',
-    'Maxout',
-]
-
 from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
@@ -48,6 +21,8 @@ from ...fluid.param_attr import ParamAttr
 from ...fluid.initializer import Constant
 from paddle.framework import get_default_dtype
 from .. import functional as F
+
+__all__ = []
 
 
 class ELU(layers.Layer):

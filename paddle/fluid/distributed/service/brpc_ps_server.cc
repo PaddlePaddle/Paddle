@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 #include <thread>  // NOLINT
+#include "butil/object_pool.h"
 #include "paddle/fluid/distributed/table/depends/sparse_utils.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
@@ -196,12 +197,13 @@ int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
     return 0;
   }
 
-  std::vector<float> res_data;
-  res_data.resize(num * table->value_accesor()->select_size() / sizeof(float));
-  table->pull_dense(res_data.data(), num);
+  auto res_data = butil::get_object<std::vector<float>>();
+  res_data->resize(num * table->value_accesor()->select_size() / sizeof(float));
+  table->pull_dense(res_data->data(), num);
 
-  cntl->response_attachment().append((char *)res_data.data(),
-                                     res_data.size() * sizeof(float));
+  cntl->response_attachment().append((char *)(res_data->data()),
+                                     res_data->size() * sizeof(float));
+  butil::return_object(res_data);
 
   return 0;
 }
@@ -367,12 +369,13 @@ int32_t BrpcPsService::pull_sparse(Table *table,
 
   value.DeserializeFromBytes(const_cast<void *>(data));
 
-  std::vector<float> res_data;
-  res_data.resize(num * dim);
-  table->pull_sparse(res_data.data(), value);
+  auto res_data = butil::get_object<std::vector<float>>();
+  res_data->resize(num * dim);
+  table->pull_sparse(res_data->data(), value);
 
-  cntl->response_attachment().append((char *)res_data.data(),
-                                     res_data.size() * sizeof(float));
+  cntl->response_attachment().append((char *)(res_data->data()),
+                                     res_data->size() * sizeof(float));
+  butil::return_object(res_data);
   return 0;
 }
 

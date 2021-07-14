@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import sys
+import distro
 import platform
 import subprocess
 
@@ -47,8 +48,8 @@ def get_os_info():
         plat = "macOs"
         ver = platform.mac_ver()[0]
     elif platform.system() == "Linux":
-        plat = platform.linux_distribution()[0]
-        ver = platform.linux_distribution()[1]
+        plat = distro.linux_distribution()[0]
+        ver = distro.linux_distribution()[1]
     elif platform.system() == "Windows":
         plat = "Windows"
         ver = platform.win32_ver()[0]
