@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/uniform_random_op.h"
 #include <string>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/uniform_random_op.h"
 
 namespace paddle {
 namespace operators {
@@ -56,10 +57,13 @@ class NPUUniformRandomKernel : public framework::OpKernel<T> {
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
     }
-    T *data = tensor->mutable_data<T>(ctx.GetPlace());
-
+    tensor->mutable_data<T>(ctx.GetPlace());
     int64_t size = tensor->numel();
-    std::unique_ptr<T[]> data_cpu(new T[size]);
+
+    Tensor cpu_tensor(tensor->type());
+    cpu_tensor.Resize(tensor->dims());
+    T *data_cpu = cpu_tensor.mutable_data<T>(platform::CPUPlace());
+
     std::uniform_real_distribution<T> dist(
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
@@ -90,12 +94,10 @@ class NPUUniformRandomKernel : public framework::OpKernel<T> {
     }
 
     // copy to NPU
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, ctx.GetPlace()), data,
-                 platform::CPUPlace(), reinterpret_cast<void *>(data_cpu.get()),
-                 size * sizeof(T), stream);
+    framework::TensorCopy(
+        cpu_tensor, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), tensor);
+    ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
   }
 };
 

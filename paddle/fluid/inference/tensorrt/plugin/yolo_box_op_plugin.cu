@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <cassert>
 
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/inference/tensorrt/plugin/yolo_box_op_plugin.h"
 #include "paddle/fluid/operators/detection/yolo_box_op.h"
 
@@ -299,7 +298,7 @@ const char* YoloBoxPlugin::getPluginNamespace() const {
 
 nvinfer1::DataType YoloBoxPlugin::getOutputDataType(
     int index, const nvinfer1::DataType* input_type, int nb_inputs) const {
-  return data_type_;
+  return input_type[0];
 }
 
 bool YoloBoxPlugin::isOutputBroadcastAcrossBatch(int output_index,

@@ -67,6 +67,7 @@ if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
 if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
 if not defined WITH_CLCACHE set WITH_CLCACHE=OFF
 if not defined WITH_CACHE set WITH_CACHE=OFF
+if not defined WITH_SCCACHE set WITH_SCCACHE=OFF
 if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 if not defined LOG_LEVEL set LOG_LEVEL=normal
@@ -75,7 +76,21 @@ if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
 if not defined retry_times set retry_times=3
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
-rem -------set cache build directory-----------
+rem ------initialize the python environment------
+set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
+set PATH=%PYTHON_ROOT%\Scripts;%PYTHON_ROOT%;%PATH%
+if "%WITH_PYTHON%" == "ON" (
+    where python
+    where pip
+    pip install wheel --user
+    pip install -r %work_dir%\python\requirements.txt --user
+    if !ERRORLEVEL! NEQ 0 (
+        echo pip install requirements.txt failed!
+        exit /b 7
+    )
+)
+
+rem -------Caching strategy 1: keep build directory for incremental compilation-----------
 rmdir build\python /s/q
 rmdir build\paddle\third_party\externalError /s/q
 rem rmdir build\paddle\fluid\pybind /s/q
@@ -123,12 +138,6 @@ if %day_now% NEQ %day_before% (
     goto :mkbuild
 )
 
-:: git diff HEAD origin/develop --stat --name-only
-:: git diff HEAD origin/develop --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
-:: if %ERRORLEVEL% EQU 0 (
-::     rmdir build /s/q
-:: )
-
 :mkbuild
 if not exist build (
     echo Windows build cache FALSE
@@ -143,8 +152,32 @@ cd /d build
 dir .
 dir %cache_dir%
 dir paddle\fluid\pybind\Release
+rem -------Caching strategy 1: End --------------------------------
 
-goto :CASE_%1
+rem -------Caching strategy 2: sccache decorate compiler-----------
+if "%WITH_SCCACHE%"=="ON" (
+    cmd /C sccache -V || call :install_sccache
+    sccache --stop-server 2> NUL
+    if not exist D:\sccache mkdir D:\sccache
+    set SCCACHE_DIR=D:\sccache\.cache
+    set SCCACHE_CACHE_SIZE=30G
+    set SCCACHE_ERROR_LOG=D:\sccache\sccache_log.txt
+    set SCCACHE_LOG=quiet
+    sccache --start-server
+    sccache -z
+    goto :CASE_%1
+) else (
+    del %PYTHON_ROOT%\sccache.exe 2> NUL
+    goto :CASE_%1
+)
+
+:install_sccache
+echo There is not sccache in this PC, will install sccache.
+echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
+%PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
+xcopy sccache.exe %PYTHON_ROOT%\Scripts\ /Y
+goto:eof
+rem -------Caching strategy 2: End --------------------------------
 
 echo "Usage: paddle_build.bat [OPTION]"
 echo "OPTION:"
@@ -266,22 +299,7 @@ rem ------show summary of current GPU environment----------
 cmake --version
 if "%WITH_GPU%"=="ON" (
     nvcc --version
-    nvidia-smi
-)
-
-rem ------initialize the python environment------
-@ECHO OFF
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
-if "%WITH_PYTHON%" == "ON" (
-    where python
-    where pip
-    pip install wheel --user
-    pip install -r %work_dir%\python\requirements.txt --user
-    if !ERRORLEVEL! NEQ 0 (
-        echo pip install requirements.txt failed!
-        exit /b 7
-    )
+    nvidia-smi 2>NUL
 )
 
 rem ------pre install clcache and init config----------
@@ -333,10 +351,11 @@ echo echo ${md5_content}^>md5.txt >> cache.sh
 
 set /p md5=< md5.txt
 if "%WITH_GPU%"=="ON" (
-    set THIRD_PARTY_PATH=%cache_dir:\=/%/third_party_GPU/%md5%
+    set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party_GPU
 ) else (
-    set THIRD_PARTY_PATH=%cache_dir:\=/%/third_party/%md5%
+    set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party
 )
+set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 
 :cmake_impl
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
@@ -344,14 +363,14 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME%
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub
 
 cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME%
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub
 goto:eof
 
 :cmake_error
@@ -453,8 +472,10 @@ echo Build Paddle successfully!
 echo 0 > %cache_dir%\error_code.txt
 type %cache_dir%\error_code.txt
 
-:: ci will collect clcache hit rate
-rem goto :collect_clcache_hits
+:: ci will collect sccache hit rate
+if "%WITH_SCCACHE%"=="ON" (
+    call :collect_sccache_hits
+)
 
 goto:eof
 
@@ -666,7 +687,7 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% >>  check_change_of_unittest.sh
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME%  >>  check_change_of_unittest.sh
 echo cat ^<^<EOF>>  check_change_of_unittest.sh
 echo     ============================================       >>  check_change_of_unittest.sh
 echo     Generate unit tests.spec of develop.               >>  check_change_of_unittest.sh
@@ -705,6 +726,7 @@ exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :zip_cc_file
+cd /d %work_dir%\build
 tree /F %cd%\paddle_inference_install_dir\paddle
 if exist paddle_inference.zip del paddle_inference.zip
 python -c "import shutil;shutil.make_archive('paddle_inference', 'zip', root_dir='paddle_inference_install_dir')"
@@ -722,6 +744,7 @@ exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :zip_c_file
+cd /d %work_dir%\build
 tree /F %cd%\paddle_inference_c_install_dir\paddle
 if exist paddle_inference_c.zip del paddle_inference_c.zip
 python -c "import shutil;shutil.make_archive('paddle_inference_c', 'zip', root_dir='paddle_inference_c_install_dir')"
@@ -776,16 +799,22 @@ echo ipipe_log_param_Windows_%tempTaskName: =_%_Time: %cost_secs%s
 goto:eof
 
 
-:collect_clcache_hits
-for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
-if %hits% EQU 0 (
-    echo "clcache hit rate: 0%%"
-    echo ipipe_log_param_Clcache_Hit_Rate: 0%%
+:collect_sccache_hits
+sccache -s > sccache_summary.txt
+echo    ========================================
+echo    sccache statistical summary ...
+echo    ========================================
+type sccache_summary.txt
+for /f "tokens=2,3" %%i in ('type sccache_summary.txt ^| findstr "requests hits" ^| findstr /V "executed C/C++ CUDA"') do set %%i=%%j
+if %requests% EQU 0 (
+    echo "sccache hit rate: 0%"
+    echo ipipe_log_param_sccache_Hit_Hate: 0%
 ) else (
-    set /a rate=%hits%*10000/%entries%
-    echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
-    echo ipipe_log_param_Clcache_Hit_Hate: %rate:~0,-2%.%rate:~-2%%%
+    set /a rate=!hits!*10000/!requests!
+    echo "sccache hit rate: !rate:~0,-2!.!rate:~-2!%%"
+    echo ipipe_log_param_sccache_Hit_Hate: !rate:~0,-2!.!rate:~-2!%%
 )
+
 goto:eof
 
 
