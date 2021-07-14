@@ -130,7 +130,6 @@ class IndexSelectKernel : public framework::OpKernel<T> {
   }
 };
 
-#if ((!defined __NVCC__) && (!defined __HIPCC__))
 template <typename DeviceContext, typename T, class Enable = void>
 struct IndexSelectAdd {
   void operator()(const framework::ExecutionContext& ctx, int slice_size,
@@ -150,17 +149,16 @@ struct IndexSelectAdd<
     blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
   }
 };
-#endif
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
-                          const LoDTensor& out_grad, const LoDTensor& index,
+                          const LoDTensor* out_grad, const LoDTensor* index,
                           LoDTensor* x_grad, int dim) {
-  const T* input_data = out_grad.data<T>();
-  const IndexT* index_data = index.data<IndexT>();
+  const T* input_data = out_grad->data<T>();
+  const IndexT* index_data = index->data<IndexT>();
   const T* p_output = x_grad->mutable_data<T>(context.GetPlace());
   T* out_data = x_grad->mutable_data<T>(context.GetPlace());
-  auto input_dim = out_grad.dims();
+  auto input_dim = out_grad->dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
 
@@ -181,7 +179,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
     outer_nums *= input_dim[i];
   }
 
-  auto index_size = index.dims()[0];
+  auto index_size = index->dims()[0];
   VLOG(3) << "Index_Select_Grad_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
           << "; output_width: " << output_width
@@ -196,10 +194,8 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
       auto src = input_data + input_start_offset + j * slice_size;
       auto p_out = p_output + output_start_offset + index_value * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
-#if ((!defined __NVCC__) && (!defined __HIPCC__))
       IndexSelectAdd<DeviceContext, T> index_select_add;
       index_select_add(context, slice_size, src, p_out, dst);
-#endif
     }
   }
   x_grad->Resize(output_dim);
@@ -209,18 +205,17 @@ template <typename DeviceContext, typename T>
 class IndexSelectGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* index_var = context.InputVar("Index");
-    auto* x_grad_var = context.OutputVar(framework::GradVarName("X"));
-    auto* out_grad_var = context.InputVar(framework::GradVarName("Out"));
+    auto* x_grad =
+        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* index = context.Input<framework::LoDTensor>("Index");
+    auto* out_grad =
+        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
 
-    auto& index = index_var->Get<LoDTensor>();
-    auto& out_grad = out_grad_var->Get<LoDTensor>();
-    auto* x_grad = x_grad_var->GetMutable<framework::LoDTensor>();
     int dim = context.Attr<int>("dim");
     if (dim < 0) {
-      dim += out_grad.dims().size();
+      dim += out_grad->dims().size();
     }
-    const auto& index_type = index.type();
+    const auto& index_type = index->type();
 
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
