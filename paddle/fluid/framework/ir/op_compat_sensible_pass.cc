@@ -179,6 +179,12 @@ bool OpCompat::Judge(const OpDesc& op_desc) {
   }
 
   for (auto& attr_map : op_desc.GetAttrMap()) {
+    const std::string& name = attr_map.first;
+    if (name.size() >= 10u &&
+        0 == name.compare(name.size() - 10u, 10u, "_threshold")) {
+      continue;  // skip the attribute ends with "_threshold", it used for
+                 // quantization.
+    }
     if (attr_compats_.find(attr_map.first) == attr_compats_.end()) {
       if (global_extra_attrs.find(attr_map.first) != global_extra_attrs.end() ||
           extra_attrs_.find(attr_map.first) != extra_attrs_.end()) {

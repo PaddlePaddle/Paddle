@@ -35,14 +35,14 @@ class TestLookupTableV2(OpTest):
         self.place = paddle.NPUPlace(0)
 
         self.init_dtype()
+        self.init_dim()
         np.random.seed(SEED)
         bsz = 6
         seqlen = 8
         vocab = 10
-        dim = 20
-        w = np.ones([vocab, dim]).astype(self.dtype)
+        w = np.ones([vocab, self.dim]).astype(self.dtype)
         x = np.random.randint(0, vocab, size=(bsz, seqlen)).astype(np.int32)
-        out = np.ones([bsz, seqlen, dim]).astype(self.dtype)
+        out = np.ones([bsz, seqlen, self.dim]).astype(self.dtype)
 
         self.inputs = {
             'W': OpTest.np_dtype_to_fluid_dtype(w),
@@ -62,6 +62,10 @@ class TestLookupTableV2(OpTest):
     def init_dtype(self):
         self.dtype = np.float32
 
+    def init_dim(self):
+        # embedding_dim is not multiple of 32
+        self.dim = 20
+
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
@@ -79,6 +83,30 @@ class TestLookupTableV2FP16(TestLookupTableV2):
 
     def init_dtype(self):
         self.dtype = np.float16
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestLookupTableV2Dim32(TestLookupTableV2):
+    def init_dim(self):
+        # embedding_dim is multiple of 32
+        self.dim = 64
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestLookupTableV2Dim32FP16(TestLookupTableV2):
+    no_need_check_grad = True
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def init_dim(self):
+        self.dim = 64
 
     def set_npu(self):
         self.__class__.use_npu = True

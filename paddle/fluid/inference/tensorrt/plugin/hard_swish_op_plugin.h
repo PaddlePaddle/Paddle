@@ -56,27 +56,39 @@ class HardSwishPlugin : public PluginTensorRT {
 #endif
               void* workspace, cudaStream_t stream) override;
 
- protected:
-  float threshold_;
-  float scale_;
-  float offset_;
-
-  size_t getSerializationSize() override {
+  size_t getSerializationSize() const override {
     return getBaseSerializationSize() + SerializedSize(threshold_) +
-           SerializedSize(scale_) + SerializedSize(offset_) +
-           SerializedSize(getPluginType());
+           SerializedSize(scale_) + SerializedSize(offset_);
   }
 
   // TRT will call this func  to serialize the configuration of TRT
   // It should not be called by users.
-  void serialize(void* buffer) override {
-    SerializeValue(&buffer, getPluginType());
+  void serialize(void* buffer) const override {
     serializeBase(buffer);
     SerializeValue(&buffer, threshold_);
     SerializeValue(&buffer, scale_);
     SerializeValue(&buffer, offset_);
   }
+
+ protected:
+  float threshold_;
+  float scale_;
+  float offset_;
 };
+
+class HardSwishPluginCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const override { return "hard_swish_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    return new HardSwishPlugin(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(HardSwishPluginCreator);
 
 }  // namespace plugin
 }  // namespace tensorrt
