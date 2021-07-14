@@ -379,12 +379,12 @@ class ImperativeQuantizeOutputs(object):
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
-    def save_quantized_model(self, layer, path, input_spec=None, **config):
+    def save_quantized_model(self, model, path, input_spec=None, **config):
         """
         Save the quantized model for the inference.
 
         Args:
-            layer (Layer): The Layer to be saved.
+            model (Layer): The model to be saved.
             path (str): The path prefix to save model. The format is 
                 ``dirname/file_prefix`` or ``file_prefix``.
             input_spec (list[InputSpec|Tensor], optional): Describes the input
@@ -407,10 +407,10 @@ class ImperativeQuantizeOutputs(object):
         Returns:
             None
         """
-        assert isinstance(layer, dygraph.Layer), \
+        assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
 
-        paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
+        paddle.jit.save(layer=model, path=path, input_spec=input_spec, **config)
 
         is_dynamic_mode = False
         if paddle.in_dynamic_mode():

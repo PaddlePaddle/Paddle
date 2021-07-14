@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/garbage_collector.h"
@@ -179,6 +180,14 @@ bool IsCompiledWithNPU() {
 
 bool IsCompiledWithMKLDNN() {
 #ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithHETERPS() {
+#ifndef PADDLE_WITH_HETERPS
   return false;
 #else
   return true;
@@ -1841,6 +1850,8 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("finalize", &TrainerBase::Finalize);
 
+  m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
+
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
@@ -1910,6 +1921,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("op_supported_infos", OpSupportedInfos);

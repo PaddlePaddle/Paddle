@@ -47,9 +47,31 @@ function make_cuda102cudnn8() {
   sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
 }
 
+function make_cuda102cudnn81gcc54 {
+  sed 's/<baseimg>/10.2-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRun yum remove -y libcudnn8-devel.x86_64 libcudnn8.x86_64 \nRun bash build_scripts/install_cudnn.sh cudnn811 \nENV CUDNN_VERSION=8.1.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+}
+
+function make_cuda102cudnn81gcc82 {
+  sed 's/<baseimg>/10.2-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRun yum remove -y libcudnn8-devel.x86_64 libcudnn8.x86_64 \nRun bash build_scripts/install_cudnn.sh cudnn811 \nENV CUDNN_VERSION=8.1.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+}
+
 function make_cuda11cudnn8() {
   sed 's/<baseimg>/11.0-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
   sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+}
+
+function make_cuda111cudnn81gcc54() {
+  sed 's/<baseimg>/11.1-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/install_nccl2.sh#\n#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRun yum remove -y libcudnn8-devel.x86_64 libcudnn8.x86_64 \nRun bash build_scripts/install_cudnn.sh cudnn811 \nENV CUDNN_VERSION=8.1.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+}
+
+function make_cuda111cudnn81gcc82() {
+  sed 's/<baseimg>/11.1-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/install_nccl2.sh#\n#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRun yum remove -y libcudnn8-devel.x86_64 libcudnn8.x86_64 \nRun bash build_scripts/install_cudnn.sh cudnn811 \nENV CUDNN_VERSION=8.1.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
 }
 
 function make_cuda112cudnn8() {
@@ -75,9 +97,21 @@ function main() {
     cuda102cudnn8)
       make_cuda102cudnn8
       ;;
+    cuda102cudnn811gcc54)
+      make_cuda102cudnn81gcc54
+      ;;
+    cuda102cudnn811gcc82)
+      make_cuda102cudnn81gcc82
+      ;;
     cuda11cudnn8)
       make_cuda11cudnn8
      ;;
+    cuda111cudnn81gcc54)
+      make_cuda111cudnn81gcc54
+      ;;
+    cuda111cudnn81gcc82)
+      make_cuda111cudnn81gcc82
+      ;;
     cuda112cudnn8)
       make_cuda112cudnn8
      ;;

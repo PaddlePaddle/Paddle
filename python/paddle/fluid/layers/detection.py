@@ -3945,8 +3945,6 @@ def collect_fpn_proposals(multi_rois,
                 max_level=5, 
                 post_nms_top_n=2000)
     """
-    check_type(multi_rois, 'multi_rois', list, 'collect_fpn_proposals')
-    check_type(multi_scores, 'multi_scores', list, 'collect_fpn_proposals')
     num_lvl = max_level - min_level + 1
     input_rois = multi_rois[:num_lvl]
     input_scores = multi_scores[:num_lvl]
@@ -3957,6 +3955,8 @@ def collect_fpn_proposals(multi_rois,
         output_rois, rois_num = core.ops.collect_fpn_proposals(
             input_rois, input_scores, rois_num_per_level, *attrs)
 
+    check_type(multi_rois, 'multi_rois', list, 'collect_fpn_proposals')
+    check_type(multi_scores, 'multi_scores', list, 'collect_fpn_proposals')
     helper = LayerHelper('collect_fpn_proposals', **locals())
     dtype = helper.input_dtype('multi_rois')
     check_dtype(dtype, 'multi_rois', ['float32', 'float64'],

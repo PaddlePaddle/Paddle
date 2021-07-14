@@ -453,13 +453,13 @@ def interpolate(x,
 
         if resample_type == "linear":
             out = core.ops.linear_interp_v2(x, *dy_attr)
-        if resample_type == "bilinear":
+        elif resample_type == "bilinear":
             out = core.ops.bilinear_interp_v2(x, *dy_attr)
-        if resample_type == "trilinear":
+        elif resample_type == "trilinear":
             out = core.ops.trilinear_interp_v2(x, *dy_attr)
-        if resample_type == "nearest":
+        elif resample_type == "nearest":
             out = core.ops.nearest_interp_v2(x, *dy_attr)
-        if resample_type == "bicubic":
+        elif resample_type == "bicubic":
             out = core.ops.bicubic_interp_v2(x, *dy_attr)
         return out
     out = helper.create_variable_for_type_inference(dtype)
@@ -881,18 +881,6 @@ def dropout(x,
         seed = None
         mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-        def get_attrs(prog, dropout_prob, is_test, seed):
-            if (seed is None or seed == 0) and prog.random_seed != 0:
-                seed = prog.random_seed
-            attrs = {
-                'dropout_prob': dropout_prob,
-                'is_test': is_test,
-                'fix_seed': seed is not None,
-                'seed': seed if seed is not None else 0,
-                'dropout_implementation': mode,
-            }
-            return attrs
-
         if in_dygraph_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
@@ -909,6 +897,18 @@ def dropout(x,
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         mask = helper.create_variable_for_type_inference(
             dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+
+        def get_attrs(prog, dropout_prob, is_test, seed):
+            if (seed is None or seed == 0) and prog.random_seed != 0:
+                seed = prog.random_seed
+            attrs = {
+                'dropout_prob': dropout_prob,
+                'is_test': is_test,
+                'fix_seed': seed is not None,
+                'seed': seed if seed is not None else 0,
+                'dropout_implementation': mode,
+            }
+            return attrs
 
         attrs = get_attrs(helper.main_program, p, not training, seed)
 
