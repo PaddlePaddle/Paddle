@@ -52,6 +52,12 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     logical_not,
-    ops::LogicalNotNPUKernel<paddle::platform::NPUDeviceContext, bool>);
+    ops::LogicalNotNPUKernel<paddle::platform::NPUDeviceContext, bool>,
+    ops::LogicalNotNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
+    ops::LogicalNotNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
+    ops::LogicalNotNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::LogicalNotNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+    ops::LogicalNotNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::LogicalNotNPUKernel<paddle::platform::NPUDeviceContext, double>);
 
 #endif
