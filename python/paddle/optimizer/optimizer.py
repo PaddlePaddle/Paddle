@@ -286,6 +286,11 @@ class Optimizer(object):
         if isinstance(self._learning_rate, LRScheduler):
             self._learning_rate.set_state_dict(state_dict["LR_Scheduler"])
 
+        # NOTE: exclude learning rate scheduler's state from 
+        # _accumulators_holder.
+        state_dict = state_dict.copy()
+        if "LR_Scheduler" in state_dict:
+            state_dict.pop("LR_Scheduler")
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
