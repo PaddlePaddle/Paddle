@@ -319,7 +319,7 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
     memory::Copy(
         dst_place, dst_ptr, BOOST_GET_CONST(platform::XPUPlace, src.place()),
         src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+        reinterpret_cast<const platform::XPUDeviceContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -362,7 +362,7 @@ inline void TensorToVector(const Tensor& src,
     memory::Copy(
         dst_place, dst_ptr, BOOST_GET_CONST(platform::XPUPlace, src.place()),
         src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+        reinterpret_cast<const platform::XPUDeviceContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
