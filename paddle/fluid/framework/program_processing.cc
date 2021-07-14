@@ -76,7 +76,8 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
   for (OpDesc *op : block.AllOps()) {
     if (op->HasAttr("sub_block")) {
       auto op_type = op->Type();
-      BlockDesc *sub_block = boost::get<BlockDesc *>(op->GetAttr("sub_block"));
+      BlockDesc *sub_block =
+          BOOST_GET_MUTABLE(BlockDesc *, op->GetAttr("sub_block"));
 
       // recursively processing
       AddDepToBlockOp(*sub_block);
