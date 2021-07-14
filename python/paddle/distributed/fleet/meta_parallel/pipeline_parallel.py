@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from types import MethodType
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
@@ -374,6 +374,11 @@ class PipelineParallel(MetaParallelBase):
             caches = tuple(caches)
             return caches
 
+    def _is_valid_send_recv(self, tensor):
+        tensor_numel = np.prod(tensor.shape)
+        assert tensor_numel != 0, "can't send/recv zero element"
+        return tensor_numel % self.mp_degree == 0
+
     def _send_activations(self, cache_id):
         outputs = self.caches['outputs'][cache_id]
 
@@ -382,20 +387,21 @@ class PipelineParallel(MetaParallelBase):
             self._send_meta(outputs, self.next_stage_id)
 
         if isinstance(outputs, paddle.Tensor):
-            if self.is_pipe_partitioned:
+            if self.is_pipe_partitioned and self._is_valid_send_recv(outputs):
                 p2p.send_partial(
-                    outputs,
+                    outputs.detach(),
                     self.next_stage_id,
                     mp_degree=self.mp_degree,
                     mp_rank=self.mp_rank)
             else:
-                p2p.send(outputs, self.next_stage_id)
+                p2p.send(outputs.detach(), self.next_stage_id)
 
         elif isinstance(outputs, tuple):
             for output in outputs:
-                if self.is_pipe_partitioned:
+                if self.is_pipe_partitioned and self._is_valid_send_recv(
+                        output):
                     p2p.send_partial(
-                        output,
+                        output.detach(),
                         self.next_stage_id,
                         mp_degree=self.mp_degree,
                         mp_rank=self.mp_rank)
@@ -406,7 +412,8 @@ class PipelineParallel(MetaParallelBase):
         inputs = self.caches['inputs'][cache_id]
         if isinstance(inputs, paddle.Tensor):
             assert inputs.grad is not None
-            if self.is_pipe_partitioned:
+            if self.is_pipe_partitioned and self._is_valid_send_recv(
+                    inputs.grad):
                 grad = p2p.send_partial(
                     inputs.grad,
                     self.prev_stage_id,
@@ -421,7 +428,8 @@ class PipelineParallel(MetaParallelBase):
                     assert d.grad is None
                     continue
 
-                if self.is_pipe_partitioned:
+                if self.is_pipe_partitioned and self._is_valid_send_recv(
+                        d.grad):
                     grad = p2p.send_partial(
                         d.grad,
                         self.prev_stage_id,
@@ -438,7 +446,8 @@ class PipelineParallel(MetaParallelBase):
             self.recv_cache = self._recv_meta(self.prev_stage_id)
 
         if isinstance(self.recv_cache, paddle.Tensor):
-            if self.is_pipe_partitioned:
+            if self.is_pipe_partitioned and self._is_valid_send_recv(
+                    self.recv_cache):
                 p2p.recv_partial(self.recv_cache, self.prev_stage_id,
                                  self.mp_degree, self.mp_rank)
                 p2p.partial_allgather_operator(
@@ -457,7 +466,7 @@ class PipelineParallel(MetaParallelBase):
             assert isinstance(self.recv_cache, tuple)
             inputs = [None] * len(self.recv_cache)
             for idx, d in enumerate(self.recv_cache):
-                if self.is_pipe_partitioned:
+                if self.is_pipe_partitioned and self._is_valid_send_recv(d):
                     assert isinstance(d, paddle.Tensor)
                     p2p.recv_partial(d, self.prev_stage_id, self.mp_degree,
                                      self.mp_rank)
@@ -497,7 +506,8 @@ class PipelineParallel(MetaParallelBase):
                     sizes, dtypes, num_caches=1)[0]
 
         if isinstance(self.grad_tensors, paddle.Tensor):
-            if self.is_pipe_partitioned:
+            if self.is_pipe_partitioned and self._is_valid_send_recv(
+                    self.grad_tensors):
                 p2p.recv_partial(self.grad_tensors, self.next_stage_id,
                                  self.mp_degree, self.mp_rank)
                 p2p.partial_allgather_operator(
@@ -512,7 +522,7 @@ class PipelineParallel(MetaParallelBase):
         else:
             assert isinstance(outputs, tuple)
             for d in self.grad_tensors:
-                if self.is_pipe_partitioned:
+                if self.is_pipe_partitioned and self._is_valid_send_recv(d):
                     p2p.recv_partial(d, self.next_stage_id, self.mp_degree,
                                      self.mp_rank)
                     p2p.partial_allgather_operator(
