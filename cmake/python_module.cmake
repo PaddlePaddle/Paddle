@@ -15,7 +15,6 @@ function(find_python_module module)
             "import re, ${module}; print(re.compile('/__init__.py.*').sub('',${module}.__file__))"
             RESULT_VARIABLE _${module}_status
             OUTPUT_VARIABLE _${module}_location
-            ERROR_QUIET
             OUTPUT_STRIP_TRAILING_WHITESPACE)
         if(NOT _${module}_status)
             set(PY_${module_upper} ${_${module}_location} CACHE STRING
