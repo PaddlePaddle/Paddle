@@ -68,18 +68,22 @@ template <typename DeviceContext, typename T>
 class IndexSelectKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* inputs_var = context.InputVar("X");
-    auto* index_var = context.InputVar("Index");
-    auto* output_var = context.OutputVar("Out");
+    // auto* inputs_var = context.InputVar("X");
+    // auto* index_var = context.InputVar("Index");
+    // auto* output_var = context.OutputVar("Out");
 
-    auto& inputs = inputs_var->Get<LoDTensor>();
-    auto& index = index_var->Get<LoDTensor>();
-    auto* output = output_var->GetMutable<framework::LoDTensor>();
+    // auto& inputs = inputs_var->Get<LoDTensor>();
+    // auto& index = index_var->Get<LoDTensor>();
+    // auto* output = output_var->GetMutable<framework::LoDTensor>();
+
+    auto* inputs = ctx.Input<framework::LoDTensor>("X");
+    auto* index = ctx.Input<framework::LoDTensor>("Index");
+    auto* output = ctx.Output<framework::LoDTensor>("Out");
 
     int dim = context.Attr<int>("dim");
-    int rank = inputs.dims().size();
+    int dimension = inputs.dims().size();
     if (dim < 0) {
-      dim += rank;
+      dim += dimension;
     }
 
     const auto& index_type = index.type();
@@ -95,7 +99,7 @@ class IndexSelectKernel : public framework::OpKernel<T> {
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
 
-    switch (rank) {
+    switch (dimension) {
       case 1:
         if (index_type == framework::proto::VarType::INT32) {
           IndexSelectInner<DeviceContext, T, int, 1>(context, inputs, index,
@@ -152,7 +156,8 @@ class IndexSelectKernel : public framework::OpKernel<T> {
         break;
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "index_select operator doesn't supports tensors whose ranks are "
+            "index_select operator doesn't supports tensors whose dimension "
+            "are "
             "greater "
             "than 6."));
     }
