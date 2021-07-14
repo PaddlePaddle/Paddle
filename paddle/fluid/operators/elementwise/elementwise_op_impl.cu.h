@@ -53,8 +53,8 @@ inline int GetThreadsConfig(const platform::CUDADeviceContext &ctx,
 }
 
 template <typename InT, typename OutT>
-int GetVectorizedSizeImpl(const std::vector<const framework::Tensor *> &ins,
-                          const std::vector<framework::Tensor *> &outs) {
+int GetVectorizedSizeForIO(const std::vector<const framework::Tensor *> &ins,
+                           const std::vector<framework::Tensor *> &outs) {
   int vec_size = 4;
   for (auto iter = ins.begin(); iter != ins.end(); ++iter) {
     vec_size = std::min<int>(vec_size,
@@ -113,10 +113,10 @@ struct ElementwiseDataWrapper {
   }
 };
 
-template <ElementwiseType ET, int VecSize, typename DataWarpper, typename InT,
-          typename OutT, typename Functor>
-__device__ inline void VectorizedKernelImpl(DataWarpper data, Functor func,
-                                            int tid) {
+template <ElementwiseType ET, int VecSize, typename ElementwiseWarpper,
+          typename InT, typename OutT, typename Functor>
+__device__ inline void VectorizedKernelImpl(ElementwiseWarpper data,
+                                            Functor func, int tid) {
   using InVecType = platform::CudaAlignedVector<InT, VecSize>;
   using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
   InVecType ins_vec[ET];
@@ -143,9 +143,9 @@ __device__ inline void VectorizedKernelImpl(DataWarpper data, Functor func,
   data.StoreVectorizedData(out_vec, tid);
 }
 
-template <ElementwiseType ET, typename DataWarpper, typename InT, typename OutT,
-          typename Functor>
-__device__ inline void ScalarKernelImpl(DataWarpper data, Functor func,
+template <ElementwiseType ET, typename ElementwiseWarpper, typename InT,
+          typename OutT, typename Functor>
+__device__ inline void ScalarKernelImpl(ElementwiseWarpper data, Functor func,
                                         int tid) {
   InT ins[ET];
   OutT out;
@@ -158,27 +158,29 @@ __device__ inline void ScalarKernelImpl(DataWarpper data, Functor func,
   data.StoreScalarizedData(out, tid);
 }
 
-template <ElementwiseType ET, typename DataWarpper, typename InT, typename OutT,
-          int VecSize, typename Functor>
-__global__ void VectorizedKernel(DataWarpper data, int main_tid, int tail_tid,
-                                 Functor func) {
+template <ElementwiseType ET, typename ElementwiseWarpper, typename InT,
+          typename OutT, int VecSize, typename Functor>
+__global__ void VectorizedKernel(ElementwiseWarpper data, int main_tid,
+                                 int tail_tid, Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (tid < main_tid) {
-    VectorizedKernelImpl<ET, VecSize, DataWarpper, InT, OutT, Functor>(
+    VectorizedKernelImpl<ET, VecSize, ElementwiseWarpper, InT, OutT, Functor>(
         data, func, tid);
   }
   if (tid < tail_tid) {
-    ScalarKernelImpl<ET, DataWarpper, InT, OutT, Functor>(data, func, tid);
+    ScalarKernelImpl<ET, ElementwiseWarpper, InT, OutT, Functor>(data, func,
+                                                                 tid);
   }
 }
 
-template <ElementwiseType ET, typename DataWarpper, typename InT, typename OutT,
-          typename Functor>
-__global__ void ScalarKernel(DataWarpper data, int numel, Functor func) {
+template <ElementwiseType ET, typename ElementwiseWarpper, typename InT,
+          typename OutT, typename Functor>
+__global__ void ScalarKernel(ElementwiseWarpper data, int numel, Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < numel) {
-    ScalarKernelImpl<ET, DataWarpper, InT, OutT, Functor>(data, func, tid);
+    ScalarKernelImpl<ET, ElementwiseWarpper, InT, OutT, Functor>(data, func,
+                                                                 tid);
   }
 }
 
@@ -189,7 +191,7 @@ void LaunchSameDimsElementwiseCudaKernel(
     std::vector<framework::Tensor *> *outs, Functor func) {
   // calculate the max vec_size for all ins and outs
   auto numel = ins[0]->numel();
-  int vec_size = GetVectorizedSizeImpl<InT, OutT>(ins, *outs);
+  int vec_size = GetVectorizedSizeForIO<InT, OutT>(ins, *outs);
   int block_size = GetThreadsConfig(ctx, numel, vec_size);
   int grid_size =
       ((numel + vec_size - 1) / vec_size + block_size - 1) / block_size;
