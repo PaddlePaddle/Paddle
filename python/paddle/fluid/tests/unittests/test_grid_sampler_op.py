@@ -197,7 +197,7 @@ class Case1(TestGridSamplerOp):
         self.mode = "bilinear"
 
 
-class Case1_(TestGridSamplerOp):
+class Case1(TestGridSamplerOp):
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)
