@@ -136,8 +136,40 @@ class Node {
     var_desc_->SetName(new_name);
   }
 
+  int DescOrder() const { return desc_order_; }
+
+  const std::string ToString() const {
+    if (IsOp()) {
+      const auto& op = Op();
+      std::string op_str(op->Type());
+
+      for (const auto& input : op->InputNames()) {
+        op_str.append(input);
+        for (const auto& arg : op->Input(input)) {
+          op_str.append(arg);
+        }
+      }
+
+      for (const auto& output : op->OutputNames()) {
+        op_str.append(output);
+        for (const auto& arg : op->Output(output)) {
+          op_str.append(arg);
+        }
+      }
+
+      return op_str;
+    }
+    return Name();
+  }
+
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
+
+  // Because NO_DESC_ORDER is a constexpr number,
+  // no one can change it, meanwhile, we need
+  // check whether the DescOrder invalid sometime,
+  // so expose it is a good idea
+  static constexpr int NO_DESC_ORDER = INT_MAX;
 
  protected:
   std::string name_;
@@ -146,9 +178,15 @@ class Node {
   Type type_;
   int id_;
 
+  int desc_order_;
+
  private:
   // ID can only set by a Graph.
   void SetId(int id) { id_ = id; }
+
+  // desc_order can only set by a Graph when constructing a Graph from a
+  // BlockDesc.
+  void SetDescOrder(int desc_order) { desc_order_ = desc_order; }
 
   friend class Graph;
   friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
@@ -157,19 +195,25 @@ class Node {
   friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 
   explicit Node(const std::string& name, Type type)
-      : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
+      : name_(name),
+        var_desc_(nullptr),
+        op_desc_(nullptr),
+        type_(type),
+        desc_order_(NO_DESC_ORDER) {}
 
   explicit Node(VarDesc* var_desc)
       : name_(var_desc->Name()),
         var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
-        type_(Type::kVariable) {}
+        type_(Type::kVariable),
+        desc_order_(NO_DESC_ORDER) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
-        type_(Type::kOperation) {}
+        type_(Type::kOperation),
+        desc_order_(NO_DESC_ORDER) {}
 
   Node() = delete;
 

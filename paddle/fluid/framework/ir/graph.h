@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <gflags/gflags.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -24,6 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
+
+DECLARE_bool(convert_all_blocks);
 
 namespace paddle {
 namespace framework {
@@ -79,6 +82,7 @@ namespace ir {
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
+  Graph(const BlockDesc &block, const Graph *main_graph);
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
@@ -89,11 +93,21 @@ class Graph {
   }
 
   bool Has(const std::string &attr_name) const {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->Has(attr_name);
+      }
+    }
     return attrs_.count(attr_name) > 0;
   }
 
   template <typename AttrType>
   AttrType &GetOrInit(const std::string &attr_name) {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->GetOrInit<AttrType>(attr_name);
+      }
+    }
     if (!Has(attr_name)) {
       Set(attr_name, new AttrType);
     }
@@ -102,6 +116,11 @@ class Graph {
 
   template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->Get<AttrType>(attr_name);
+      }
+    }
     PADDLE_ENFORCE_EQ(
         Has(attr_name), true,
         platform::errors::PreconditionNotMet(
@@ -118,6 +137,11 @@ class Graph {
 
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->Set<AttrType>(attr_name, attr);
+      }
+    }
     PADDLE_ENFORCE_EQ(
         attrs_.count(attr_name), 0,
         platform::errors::AlreadyExists(
@@ -132,6 +156,11 @@ class Graph {
 
   template <typename AttrType>
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->SetNotOwned<AttrType>(attr_name, attr);
+      }
+    }
     PADDLE_ENFORCE_EQ(
         attrs_.count(attr_name), 0,
         platform::errors::AlreadyExists("The attribute %s to be set(not owned) "
@@ -142,6 +171,11 @@ class Graph {
   }
 
   void Erase(const std::string &attr_name) {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->Erase(attr_name);
+      }
+    }
     PADDLE_ENFORCE_NE(
         attrs_.count(attr_name), 0,
         platform::errors::NotFound(
@@ -152,10 +186,22 @@ class Graph {
     attr_dels_.erase(attr_name);
   }
 
-  const std::unordered_set<ir::Node *> &Nodes() const { return node_set_; }
+  const std::unordered_set<ir::Node *> &Nodes() const {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->Nodes();
+      }
+    }
+    return node_set_;
+  }
 
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->CreateVarNode(var_desc);
+      }
+    }
     PADDLE_ENFORCE_NOT_NULL(
         var_desc, platform::errors::InvalidArgument(
                       "The VarDesc used to create variable node is null."));
@@ -166,6 +212,11 @@ class Graph {
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->CreateOpNode(op_desc);
+      }
+    }
     PADDLE_ENFORCE_NOT_NULL(
         op_desc, platform::errors::InvalidArgument(
                      "The OpDesc used to create operator node is null."));
@@ -178,6 +229,11 @@ class Graph {
   // var doesn't hold any data. Other than that, it's no different from
   // other var, considering dependency analysis.
   ir::Node *CreateControlDepVar() {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->CreateControlDepVar();
+      }
+    }
     // TODO(panyx0718): control var name should be really unique.
     const std::string name = string::Sprintf(
         "%s@%llu", static_cast<const char *>(ir::Node::kControlDepVarName),
@@ -190,6 +246,11 @@ class Graph {
   // A more free style way of creating a graph node. Mostly use for test
   // or "copy" from another node. Avoid using it if possible.
   ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->CreateEmptyNode(name, type);
+      }
+    }
     auto *x = AddNode(new ir::Node(name, type));
     x->SetId(num_node_created_++);
     return x;
@@ -198,6 +259,11 @@ class Graph {
   // Clear all node information of the graph and return the ownership of the
   // nodes.
   std::vector<std::unique_ptr<ir::Node>> ReleaseNodes() {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->ReleaseNodes();
+      }
+    }
     std::vector<std::unique_ptr<ir::Node>> ret;
     for (auto &n : nodes_) {
       ret.emplace_back(n.second.release());
@@ -208,6 +274,11 @@ class Graph {
   }
 
   std::unique_ptr<ir::Node> RemoveNode(ir::Node *node) {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->RemoveNode(node);
+      }
+    }
     PADDLE_ENFORCE_EQ(node_set_.find(node) != node_set_.end(), true,
                       platform::errors::PreconditionNotMet(
                           "The node to be removed does not exist."));
@@ -220,6 +291,11 @@ class Graph {
 
   // NOTE low performance, but simple and secure.
   Node *RetrieveNode(int id) {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->RetrieveNode(id);
+      }
+    }
     for (auto &node : nodes_) {
       if (node.second->id() == id) {
         return node.second.get();
@@ -232,10 +308,22 @@ class Graph {
   // WARN: After a series of passes, the current graph can be quite
   // different from OriginProgram. Caller shouldn't assume much from
   // the returned OriginProgram.
-  const ProgramDesc &OriginProgram() const { return program_; }
+  const ProgramDesc &OriginProgram() const {
+    if (FLAGS_convert_all_blocks) {
+      if (!IsMainGraph()) {
+        return main_graph_->OriginProgram();
+      }
+    }
+    return program_;
+  }
 
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->AddNode(node);
+      }
+    }
     PADDLE_ENFORCE_EQ(node_set_.find(node) == node_set_.end(), true,
                       platform::errors::PreconditionNotMet(
                           "The node to be added already exists."));
@@ -251,12 +339,57 @@ class Graph {
   // WARN: The method only clones the graph structure, not its attributes.
   std::shared_ptr<Graph> Clone();
 
+  bool IsMainGraph() const { return main_graph_ == nullptr; }
+
+  Graph *GetSubGraph(const size_t idx) const {
+    PADDLE_ENFORCE_EQ(
+        this->IsMainGraph(), true,
+        platform::errors::InvalidArgument("This graph is not main_graph"));
+    PADDLE_ENFORCE_LT(
+        idx, sub_graphs_.size(),
+        platform::errors::InvalidArgument("Invalid sub_graph index"));
+    return sub_graphs_.at(idx).get();
+  }
+
+  size_t SubGraphsSize() const {
+    PADDLE_ENFORCE_EQ(
+        this->IsMainGraph(), true,
+        platform::errors::InvalidArgument("This graph is not main_graph"));
+    return sub_graphs_.size();
+  }
+
  private:
+  std::map<std::string, std::vector<ir::Node *>> InitFromBlock(
+      const BlockDesc &block);
+
+  void ReleaseSubGraphs() {
+    PADDLE_ENFORCE_EQ(
+        this->IsMainGraph(), true,
+        platform::errors::InvalidArgument("This graph is not main_graph"));
+    sub_graphs_.clear();
+  }
+
+  void AddSubGraph(std::unique_ptr<Graph> sub_graph) {
+    PADDLE_ENFORCE_EQ(
+        this->IsMainGraph(), true,
+        platform::errors::InvalidArgument("This graph is not main_graph"));
+    sub_graphs_.push_back(std::move(sub_graph));
+  }
+
+  std::unique_ptr<Graph> CloneSubGraph(const size_t idx);
+
+  // TODO(levi): delete this interface after when we can convert all
+  // blocks into sub_graphs.
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
       const ProgramDesc &program);
 
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;
+  // NOTE: main_graph_ doesn't hold any node. It's used as a container of
+  // sub_graphs, and the sub_graph holds the nodes.
+  const Graph *main_graph_;  // not owned.
+  std::vector<std::unique_ptr<Graph>> sub_graphs_;
+
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;

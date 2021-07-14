@@ -17,29 +17,52 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/operator.h"
 
+DEFINE_bool(convert_all_blocks, true,
+            "Convert all blocks in program into SSAgraphs");
+
 namespace paddle {
 namespace framework {
 namespace ir {
 
-Graph::Graph(const ProgramDesc &program) : program_(program) {
-  auto var_nodes = InitFromProgram(program_);
+Graph::Graph(const ProgramDesc &program)
+    : program_(program), main_graph_(nullptr) {
+  if (FLAGS_convert_all_blocks) {
+    PADDLE_ENFORCE_GE(
+        program_.Size(), 1,
+        platform::errors::InvalidArgument("Can't construct a graph from this "
+                                          "program, it doesn't have a block"));
+    for (size_t idx = 0; idx < program_.Size(); ++idx) {
+      std::unique_ptr<Graph> sub_graph =
+          std::make_unique<Graph>(program_.Block(idx), this);
+      sub_graphs_.push_back(std::move(sub_graph));
+    }
+  } else {
+    auto var_nodes = InitFromProgram(program_);
+    ResolveHazard(var_nodes);
+  }
+}
+
+Graph::Graph(const BlockDesc &block, const Graph *main_graph)
+    : main_graph_(main_graph) {
+  auto var_nodes = InitFromBlock(block);
   ResolveHazard(var_nodes);
 }
 
-std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
-    const ProgramDesc &program) {
-  VLOG(3) << "block in program:" << program_.Size();
+std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
+    const BlockDesc &block) {
   std::unordered_map<std::string, VarDesc *> all_vars;
   // var nodes for each var name, will have multiple versions in SSA
   std::map<std::string, std::vector<ir::Node *>> var_nodes;
-  for (auto *var : program.Block(0).AllVars()) {
+  for (auto *var : block.AllVars()) {
     all_vars.emplace(var->Name(), var);
   }
 
   auto not_visited_vars = all_vars;
-
-  for (auto *op : program.Block(0).AllOps()) {
+  int desc_order = 0;
+  for (auto *op : block.AllOps()) {
     ir::Node *node = CreateOpNode(op);
+    node->SetDescOrder(desc_order);
+    ++desc_order;
     // For input args, reuse the same var name if it was created before.
     // Otherwise, create a new one.
     for (auto &each_var_name : op->InputArgumentNames()) {
@@ -97,10 +120,17 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
     }
   }
 
-  Set<const std::vector<OpDesc *>>(
-      details::kStaleProgramOpDescs,
-      new std::vector<OpDesc *>(program.Block(0).AllOps()));
+  Set<const std::vector<OpDesc *>>(details::kStaleProgramOpDescs,
+                                   new std::vector<OpDesc *>(block.AllOps()));
   return var_nodes;
+}
+
+// TODO(levi): delete this interface after when we can convert all
+// blocks into sub_graphs.
+std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
+    const ProgramDesc &program) {
+  VLOG(3) << "block in program:" << program_.Size();
+  return InitFromBlock(program.Block(0));
 }
 
 void Graph::ResolveHazard(
@@ -176,22 +206,77 @@ void Graph::ResolveHazard(
 }
 
 std::shared_ptr<Graph> Graph::Clone() {
-  auto cloned_graph = std::make_shared<Graph>(this->program_);
-  cloned_graph->ReleaseNodes();
-  cloned_graph->num_node_created_ = 0;
+  PADDLE_ENFORCE_EQ(
+      this->IsMainGraph(), true,
+      platform::errors::InvalidArgument(
+          "This graph is a sub_graph, and can't be cloned individually"));
+  if (FLAGS_convert_all_blocks) {
+    auto cloned_graph = std::make_shared<Graph>(this->program_);
+    cloned_graph->ReleaseSubGraphs();
+    for (size_t idx = 0; idx < this->program_.Size(); ++idx) {
+      cloned_graph->AddSubGraph(this->CloneSubGraph(idx));
+    }
+    return cloned_graph;
+  } else {
+    auto cloned_graph = std::make_shared<Graph>(this->program_);
+    cloned_graph->ReleaseNodes();
+    cloned_graph->num_node_created_ = 0;
+    std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
+    for (auto *n : this->node_set_) {
+      PADDLE_ENFORCE_NOT_NULL(n, platform::errors::InvalidArgument(
+                                     "The node to be cloned is nullptr."));
+      ir::Node *cloned_node = nullptr;
+      if (n->IsCtrlVar()) {
+        cloned_node = cloned_graph->CreateControlDepVar();
+      } else if (!n->var_desc_ && !n->op_desc_) {  // empty node
+        cloned_node = cloned_graph->CreateEmptyNode(n->Name(), n->NodeType());
+      } else if (n->IsVar()) {
+        cloned_node = cloned_graph->CreateVarNode(n->Var());
+      } else if (n->IsOp()) {
+        cloned_node = cloned_graph->CreateOpNode(n->Op());
+      }
+      PADDLE_ENFORCE_NOT_NULL(
+          cloned_node,
+          platform::errors::InvalidArgument(
+              "Failed to clone new node from original node in graph."));
+      origin_to_cloned[n] = cloned_node;
+    }
+    for (auto *n : this->node_set_) {
+      for (auto it = n->inputs.begin(); it != n->inputs.end(); it++) {
+        origin_to_cloned[n]->inputs.push_back(origin_to_cloned[*it]);
+      }
+      for (auto it = n->outputs.begin(); it != n->outputs.end(); it++) {
+        origin_to_cloned[n]->outputs.push_back(origin_to_cloned[*it]);
+      }
+    }
+    return cloned_graph;
+  }
+}
+
+std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
+  PADDLE_ENFORCE_EQ(
+      this->IsMainGraph(), true,
+      platform::errors::InvalidArgument("This graph is not main_graph"));
+  PADDLE_ENFORCE_LT(
+      idx, this->sub_graphs_.size(),
+      platform::errors::InvalidArgument("Invalid sub_graph index"));
+  std::unique_ptr<Graph> cloned_sub_graph =
+      std::make_unique<Graph>(this->program_.Block(idx), this);
+  cloned_sub_graph->ReleaseNodes();
+  cloned_sub_graph->num_node_created_ = 0;
   std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
-  for (auto *n : this->node_set_) {
+  for (auto *n : this->sub_graphs_.at(idx)->Nodes()) {
     PADDLE_ENFORCE_NOT_NULL(n, platform::errors::InvalidArgument(
                                    "The node to be cloned is nullptr."));
     ir::Node *cloned_node = nullptr;
     if (n->IsCtrlVar()) {
-      cloned_node = cloned_graph->CreateControlDepVar();
+      cloned_node = cloned_sub_graph->CreateControlDepVar();
     } else if (!n->var_desc_ && !n->op_desc_) {  // empty node
-      cloned_node = cloned_graph->CreateEmptyNode(n->Name(), n->NodeType());
+      cloned_node = cloned_sub_graph->CreateEmptyNode(n->Name(), n->NodeType());
     } else if (n->IsVar()) {
-      cloned_node = cloned_graph->CreateVarNode(n->Var());
+      cloned_node = cloned_sub_graph->CreateVarNode(n->Var());
     } else if (n->IsOp()) {
-      cloned_node = cloned_graph->CreateOpNode(n->Op());
+      cloned_node = cloned_sub_graph->CreateOpNode(n->Op());
     }
     PADDLE_ENFORCE_NOT_NULL(
         cloned_node,
@@ -199,7 +284,7 @@ std::shared_ptr<Graph> Graph::Clone() {
             "Failed to clone new node from original node in graph."));
     origin_to_cloned[n] = cloned_node;
   }
-  for (auto *n : this->node_set_) {
+  for (auto *n : this->sub_graphs_.at(idx)->Nodes()) {
     for (auto it = n->inputs.begin(); it != n->inputs.end(); it++) {
       origin_to_cloned[n]->inputs.push_back(origin_to_cloned[*it]);
     }
@@ -207,7 +292,7 @@ std::shared_ptr<Graph> Graph::Clone() {
       origin_to_cloned[n]->outputs.push_back(origin_to_cloned[*it]);
     }
   }
-  return cloned_graph;
+  return cloned_sub_graph;
 }
 
 bool IsControlDepVar(const ir::Node &var) {

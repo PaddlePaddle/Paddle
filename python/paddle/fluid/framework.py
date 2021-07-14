@@ -945,7 +945,7 @@ class Variable(object):
 
         self.block.vars[name] = self
         self.op = None
-        self._stop_gradient = stop_gradient
+        self.stop_gradient = stop_gradient
         self.is_data = is_data
 
     def detach(self):
@@ -1182,7 +1182,7 @@ class Variable(object):
             var_str = "{name} : {type})".\
                 format(name=self.name, type=type_str)
 
-        if type(self) == Parameter:
+        if self.is_parameter:
             if self.trainable:
                 var_str = "trainable param " + var_str
             else:
@@ -1230,7 +1230,7 @@ class Variable(object):
         proto = framework_pb2.VarDesc.FromString(six.binary_type(protostr))
         res_str = _debug_string_(proto, throw_on_error)
         if with_details:
-            additional_attr = ("error_clip", "stop_gradient")
+            additional_attr = ("error_clip", )
             for attr_name in additional_attr:
                 res_str += "%s: %s\n" % (attr_name,
                                          cpt.to_text(getattr(self, attr_name)))
@@ -1270,11 +1270,11 @@ class Variable(object):
                 assert linear.weight.gradient() is None
                 assert (out1.gradient() == 0).all()
         """
-        return self._stop_gradient
+        return self.desc.stop_gradient()
 
     @stop_gradient.setter
     def stop_gradient(self, s):
-        self._stop_gradient = s
+        self.desc.set_stop_gradient(s)
 
     @property
     def persistable(self):
@@ -1304,6 +1304,31 @@ class Variable(object):
     @persistable.setter
     def persistable(self, p):
         self.desc.set_persistable(p)
+
+    @property
+    def is_parameter(self):
+        """
+        Indicating if current Variable is a Parameter
+
+        Examples:
+          .. code-block:: python
+
+            import paddle
+            new_parameter = paddle.static.create_parameter(name="X",
+                                                shape=[10, 23, 48],
+                                                dtype='float32')
+            if new_parameter.is_parameter:
+                print("Current var is a Parameter")
+            else:
+                print("Current var is not a Parameter")
+
+            # Current var is a Parameter
+        """
+        return self.desc.is_parameter()
+
+    @is_parameter.setter
+    def is_parameter(self, p):
+        self.desc.set_is_parameter(p)
 
     @property
     def name(self):
@@ -2863,12 +2888,7 @@ class Block(object):
             param = ParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
-            # NOTE: Why only set stop_gradient=False in static mode
-            # Because in dygraph mode, the `stop_gradient` and `trainable`
-            # are related, and `trainable` default vallue is `True` or
-            # it is specified by users, there is no need to set
-            # `stop_gradient` for ParamBase here.
-            param.stop_gradient = False
+
         if 'initializer' in kwargs:
 
             def _is_inited_by(block, var):
@@ -3041,7 +3061,20 @@ class Block(object):
         # sync variables from cpp
         for var in self.desc.all_vars():
             if not self.has_var(var.name()):
-                self.create_var(name=var.name(), desc=var, type=var.type())
+                if var.is_parameter():
+                    self.create_parameter(
+                        name=var.name(),
+                        desc=var,
+                        type=var.type(),
+                        shape=var.shape(),
+                        dtype=var.dtype(),
+                        stop_gradient=var.stop_gradient())
+                else:
+                    self.create_var(
+                        name=var.name(),
+                        desc=var,
+                        type=var.type(),
+                        stop_gradient=var.stop_gradient())
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
@@ -5398,6 +5431,8 @@ class Parameter(Variable):
         self.need_clip = kwargs.get('need_clip', True)
 
         self.is_distributed = False
+
+        self.is_parameter = True
 
     def __str__(self):
         return self._to_readable_code()
