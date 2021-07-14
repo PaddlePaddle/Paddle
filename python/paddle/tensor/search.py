@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import print_function
 import numpy as np
+import paddle
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import core, layers
@@ -530,11 +531,11 @@ def where(condition, x, y, name=None):
                 outputs={'Out': [out]})
             return out
     else:
-        cond_int = layers.cast(condition, x.dtype)
-        cond_not_int = layers.cast(layers.logical_not(condition), x.dtype)
-        out1 = layers.elementwise_mul(x, cond_int)
-        out2 = layers.elementwise_mul(y, cond_not_int)
-        out = layers.elementwise_add(out1, out2)
+        cond_int = paddle.cast(condition, x.dtype)
+        cond_not_int = paddle.cast(layers.logical_not(condition), x.dtype)
+        out1 = paddle.multiply(x, cond_int)
+        out2 = paddle.multiply(y, cond_not_int)
+        out = paddle.add(out1, out2)
         return out
 
 

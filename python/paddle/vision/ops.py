@@ -557,7 +557,7 @@ def deform_conv2d(x,
             pre_bias = getattr(core.ops, op_type)(x, offset, mask, weight,
                                                   *attrs)
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=1)
+            out = layers.elementwise_add(pre_bias, bias, axis=1)
         else:
             out = pre_bias
     else:

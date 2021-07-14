@@ -13,7 +13,7 @@
 # limitations under the License.
 from six.moves import reduce
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.param_attr import ParamAttr
+from paddle.framework import ParamAttr
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
 from paddle.fluid.framework import device_guard, default_main_program, dygraph_only, _dygraph_tracer
 from paddle.fluid.framework import OpProtoHolder, Variable

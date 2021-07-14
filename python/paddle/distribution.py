@@ -18,14 +18,15 @@
 #            'Normal',
 #            'sampling_id',
 #            'Uniform']
-
 from __future__ import print_function
 
+import paddle
 from .fluid.layers import control_flow
 from .fluid.layers import tensor
 from .fluid.layers import ops
 from .fluid.layers import nn
-from .fluid.layers import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
+from .tensor.math import multiply, divide, add, subtract
+
 from .fluid import core
 from .fluid.framework import in_dygraph_mode
 from .tensor import arange, gather_nd, concat, multinomial
@@ -34,6 +35,7 @@ import numpy as np
 import warnings
 
 from .fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from .tensor.manipulation import squeeze, unsqueeze
 
 __all__ = ['Distribution', 'Uniform', 'Normal', 'Categorical']
 
@@ -294,21 +296,21 @@ class Uniform(Distribution):
                 min=0.,
                 max=1.,
                 seed=seed)
-            zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
-            uniform_random_tmp_reshape = nn.reshape(uniform_random_tmp,
-                                                    output_shape)
+            zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
+            uniform_random_tmp_reshape = paddle.reshape(uniform_random_tmp,
+                                                        output_shape)
             output = uniform_random_tmp_reshape * (
                 zero_tmp_reshape + self.high - self.low)
-            output = elementwise_add(output, self.low, name=name)
+            output = add(output, self.low, name=name)
             return output
         else:
             output_shape = shape + batch_shape
             output = nn.uniform_random(
                 output_shape, seed=seed, dtype=self.dtype) * (tensor.zeros(
                     output_shape, dtype=self.dtype) + (self.high - self.low))
-            output = elementwise_add(output, self.low, name=name)
+            output = add(output, self.low, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape, name=name)
+                return paddle.reshape(output, shape, name=name)
             else:
                 return output
 
@@ -339,7 +341,7 @@ class Uniform(Distribution):
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_sub(
+        return subtract(
             nn.log(lb * ub), nn.log(self.high - self.low), name=name)
 
     def probs(self, value):
@@ -368,7 +370,7 @@ class Uniform(Distribution):
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_div((lb * ub), (self.high - self.low), name=name)
+        return divide((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):
         r"""Shannon entropy in nats.
@@ -510,20 +512,20 @@ class Normal(Distribution):
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.loc + self.scale, batch_shape + shape, self.dtype, 0.)
-            zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
+            zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
             zero_tmp_shape = nn.shape(zero_tmp_reshape)
             normal_random_tmp = nn.gaussian_random(
                 zero_tmp_shape, mean=0., std=1., seed=seed, dtype=self.dtype)
             output = normal_random_tmp * (zero_tmp_reshape + self.scale)
-            output = elementwise_add(output, self.loc, name=name)
+            output = add(output, self.loc, name=name)
             return output
         else:
             output_shape = shape + batch_shape
             output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed, dtype=self.dtype) * \
                      (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
-            output = elementwise_add(output, self.loc, name=name)
+            output = add(output, self.loc, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape, name=name)
+                return paddle.reshape(output, shape, name=name)
             else:
                 return output
 
@@ -548,10 +550,10 @@ class Normal(Distribution):
         batch_shape = list((self.loc + self.scale).shape)
         zero_tmp = tensor.fill_constant_batch_size_like(
             self.loc + self.scale, batch_shape, self.dtype, 0.)
-        return elementwise_add(
-            0.5 + zero_tmp,
-            0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp)),
-            name=name)
+        return add(0.5 + zero_tmp,
+                   0.5 * math.log(2 * math.pi) + nn.log(
+                       (self.scale + zero_tmp)),
+                   name=name)
 
     def log_prob(self, value):
         """Log probability density/mass function.
@@ -568,7 +570,7 @@ class Normal(Distribution):
 
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
-        return elementwise_sub(
+        return subtract(
             -1. * ((value - self.loc) * (value - self.loc)) / (2. * var),
             log_scale + math.log(math.sqrt(2. * math.pi)),
             name=name)
@@ -587,7 +589,7 @@ class Normal(Distribution):
         value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
-        return elementwise_div(
+        return divide(
             ops.exp(-1. * ((value - self.loc) * (value - self.loc)) /
                     (2. * var)), (math.sqrt(2 * math.pi) * self.scale),
             name=name)
@@ -633,8 +635,9 @@ class Normal(Distribution):
         var_ratio = (var_ratio * var_ratio)
         t1 = (self.loc - other.loc) / other.scale
         t1 = (t1 * t1)
-        return elementwise_add(
-            0.5 * var_ratio, 0.5 * (t1 - 1. - nn.log(var_ratio)), name=name)
+        return add(0.5 * var_ratio,
+                   0.5 * (t1 - 1. - nn.log(var_ratio)),
+                   name=name)
 
 
 class Categorical(Distribution):
@@ -762,14 +765,14 @@ class Categorical(Distribution):
         logits_shape = list(self.logits.shape)
         if len(logits_shape) > 1:
             sample_shape = shape + logits_shape[:-1]
-            logits = nn.reshape(self.logits,
-                                [np.prod(logits_shape[:-1]), logits_shape[-1]])
+            logits = paddle.reshape(
+                self.logits, [np.prod(logits_shape[:-1]), logits_shape[-1]])
         else:
             sample_shape = shape
             logits = self.logits
 
         sample_index = multinomial(logits, num_samples, True)
-        return nn.reshape(sample_index, sample_shape, name=name)
+        return paddle.reshape(sample_index, sample_shape, name=name)
 
     def kl_divergence(self, other):
         """The KL-divergence between two Categorical distributions.
@@ -904,26 +907,26 @@ class Categorical(Distribution):
         value_shape = list(value.shape)
         if len(shape) == 1:
             num_value_in_one_dist = np.prod(value_shape)
-            index_value = nn.reshape(value, [num_value_in_one_dist, 1])
+            index_value = paddle.reshape(value, [num_value_in_one_dist, 1])
             index = index_value
         else:
             num_dist = np.prod(shape[:-1])
             num_value_in_one_dist = value_shape[-1]
-            prob = nn.reshape(prob, [num_dist, shape[-1]])
+            prob = paddle.reshape(prob, [num_dist, shape[-1]])
             if len(value_shape) == 1:
                 value = nn.expand(value, [num_dist])
                 value_shape = shape[:-1] + value_shape
-            index_value = nn.reshape(value, [num_dist, -1, 1])
+            index_value = paddle.reshape(value, [num_dist, -1, 1])
             if shape[:-1] != value_shape[:-1]:
                 raise ValueError(
                     "shape of value {} must match shape of logits {}".format(
                         str(value_shape[:-1]), str(shape[:-1])))
 
-            index_prefix = nn.unsqueeze(
+            index_prefix = unsqueeze(
                 arange(
-                    num_dist, dtype=index_value.dtype), axes=-1)
+                    num_dist, dtype=index_value.dtype), axis=-1)
             index_prefix = nn.expand(index_prefix, [1, num_value_in_one_dist])
-            index_prefix = nn.unsqueeze(index_prefix, axes=-1)
+            index_prefix = unsqueeze(index_prefix, axis=-1)
 
             if index_value.dtype != index_prefix.dtype:
                 tensor.cast(index_prefix, dtype=index_value.dtype)
@@ -931,7 +934,7 @@ class Categorical(Distribution):
 
         # value is the category index to search for the corresponding probability.
         select_prob = gather_nd(prob, index)
-        return nn.reshape(select_prob, value_shape, name=name)
+        return paddle.reshape(select_prob, value_shape, name=name)
 
     def log_prob(self, value):
         """Log probabilities of the given category. Refer to ``probs`` method.
