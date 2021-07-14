@@ -77,20 +77,20 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
     if (skip_update) {
       VLOG(4) << "Adam skip update";
       framework::TensorCopy(
-          *param, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), param_out);
+          param, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), &param_out);
       framework::TensorCopy(
-          *mom1, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), mom1_out);
+          mom1, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), &mom1_out);
       framework::TensorCopy(
-          *mom2, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), mom2_out);
+          mom2, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), &mom2_out);
       framework::TensorCopy(
-          *beta1_pow, ctx.GetPlace(),
+          beta1_pow, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(),
           beta1_pow_out);
       framework::TensorCopy(
-          *beta2_pow, ctx.GetPlace(),
+          beta2_pow, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(),
           beta2_pow_out);
       return;
