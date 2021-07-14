@@ -25,7 +25,7 @@ from collections import OrderedDict
 __all__ = []
 
 
-def summary(net, input_size, dtypes=None):
+def summary(net, input_size, input=None, dtypes=None):
     """Prints a string summary of the network.
 
     Args:
@@ -35,6 +35,7 @@ def summary(net, input_size, dtypes=None):
                     have multiple input, input_size must be a list which contain 
                     every input's shape. Note that input_size only dim of
                     batch_size can be None or -1.
+        input (dict|list|): the input tensor. 
         dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
 
     Returns:
@@ -77,7 +78,8 @@ def summary(net, input_size, dtypes=None):
 
             lenet = LeNet()
 
-            params_info = paddle.summary(lenet, (1, 1, 28, 28))
+            input_data = [paddle.ones([1, 1, 28, 28])]
+            params_info = paddle.summary(lenet, (1, 1, 28, 28), input_data)
             print(params_info)
 
             # multi input demo
@@ -94,7 +96,7 @@ def summary(net, input_size, dtypes=None):
             lenet_multi_input = LeNetMultiInput()
 
             params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)], 
-                                        ['float32', 'float32'])
+                                        dtypes=['float32', 'float32'])
             print(params_info)
 
     """
@@ -163,7 +165,20 @@ def summary(net, input_size, dtypes=None):
             return [_check_input(i) for i in input_size]
 
     _input_size = _check_input(_input_size)
-    result, params_info = summary_string(net, _input_size, dtypes)
+
+    if input is None:
+        _input = input
+    else:
+        if isinstance(input, dict):
+            _input = []
+            for item in input.keys():
+                _input.append(input[item])
+        elif isinstance(input, list):
+            _input = input
+        else:
+            raise Exception('Input must be list or dict.')
+
+    result, params_info = summary_string(net, _input_size, _input, dtypes)
     print(result)
 
     if in_train_mode:
@@ -173,7 +188,7 @@ def summary(net, input_size, dtypes=None):
 
 
 @paddle.no_grad()
-def summary_string(model, input_size, dtypes=None):
+def summary_string(model, input_size, input, dtypes=None):
     def _all_is_numper(items):
         for item in items:
             if not isinstance(item, numbers.Number):
@@ -280,7 +295,10 @@ def summary_string(model, input_size, dtypes=None):
                 build_input(i, dtype) for i, dtype in zip(input_size, dtypes)
             ]
 
-    x = build_input(input_size, dtypes)
+    if input is not None:
+        x = input
+    else:
+        x = build_input(input_size, dtypes)
 
     # create properties
     summary = OrderedDict()

@@ -615,6 +615,13 @@ class TestModelFunction(unittest.TestCase):
         gt_params = _get_param_from_state_dict(rnn.state_dict())
         np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
 
+    def test_summary_input(self):
+        rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
+        input_data = [paddle.rand([4, 23, 16])]
+        paddle.summary(rnn, (4, 23, 16), input_data)
+        input_data = {'x': paddle.rand([4, 23, 16])}
+        paddle.summary(rnn, (4, 23, 16), input_data)
+
     def test_summary_dtype(self):
         input_shape = (3, 1)
         net = paddle.nn.Embedding(10, 3, sparse=True)
