@@ -634,7 +634,9 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const int sample_size = x->numel() / N / C;
 
     // init output
-    d_x->mutable_data<T>(ctx.GetPlace());
+    if (d_x) {
+      d_x->mutable_data<T>(ctx.GetPlace());
+    }
 
     const T *mean_data = saved_mean->data<T>();
     const T *inv_var_data = saved_inv_variance->data<T>();
