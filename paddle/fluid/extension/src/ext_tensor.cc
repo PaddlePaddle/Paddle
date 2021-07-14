@@ -69,9 +69,9 @@ struct CastDataType {
 };
 
 template <typename T>
-void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
-             int64_t ele_size) {
-#ifdef PADDLE_WITH_CUDA
+void DeviceCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
+                int64_t ele_size) {
+#if defined(PADDLE_WITH_CUDA)
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   int device_num = paddle::platform::GetCurrentDeviceId();
   platform::CUDAPlace gpu_place(device_num);
@@ -111,6 +111,10 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
         "Only GPU related Copy can reach this func."));
   }
   hipStreamSynchronize(dev_ctx->stream());
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "This function can only be used if compiled with"
+      "either -DWITH_ROCM=ON or -DWITH_GPU=ON"));
 #endif
 }
 
@@ -158,7 +162,7 @@ T *Tensor::mutable_data() {
     case static_cast<int>(PlaceType::kCPU): {
       return tensor->mutable_data<T>(platform::CPUPlace());
     }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
     case static_cast<int>(PlaceType::kGPU): {
       int device_num = platform::GetCurrentDeviceId();
       return tensor->mutable_data<T>(platform::CUDAPlace(device_num));
@@ -244,7 +248,7 @@ Tensor Tensor::copy_to(const PlaceType &target_place) const {
   if ((src_place == PlaceType::kCPU) && (target_place == PlaceType::kCPU)) {
     std::memcpy(static_cast<void *>(p_target_data), p_src_data, ele_size);
   } else if (supported_gpu_transform) {
-    GpuCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
+    DeviceCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Not supported place transform of place: %d to place: %d",
@@ -440,7 +444,7 @@ bool Tensor::is_initialized() const {
     }                                                           \
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
 DEFINE_STREAM(cudaStream_t)
 #elif defined(PADDLE_WITH_HIP)
 DEFINE_STREAM(hipStream_t)
