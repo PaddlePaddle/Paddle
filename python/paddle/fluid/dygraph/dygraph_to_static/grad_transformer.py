@@ -83,5 +83,10 @@ def is_grad_api_node(node):
     assert isinstance(node, gast.Call)
     api_name = utils.ast_to_source_code(node.func).strip()
     if utils.is_paddle_api(node):
+        if 'no_grad' in api_name:
+            warnings.warn(
+                "paddle.no_grad is only supported for inference model, and not supported for training under @to_static."
+            )
+            return False
         return api_name.endswith("grad")
     return False
