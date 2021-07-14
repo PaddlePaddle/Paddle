@@ -12,8 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-cmake_minimum_required(VERSION 3.10)
-cmake_policy(VERSION 3.10)
+if(APPLE AND WITH_ARM)
+    # cmake 3.19.2 version starts to support M1
+    cmake_minimum_required(VERSION 3.19.2)
+    cmake_policy(VERSION 3.19.2)
+else(APPLE AND WITH_ARM)
+    cmake_minimum_required(VERSION 3.10)
+    cmake_policy(VERSION 3.10)
+endif(APPLE AND WITH_ARM)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -71,6 +77,11 @@ message(STATUS "AR tools: ${CMAKE_AR}")
 # MUSL build turn off warnings
 if(WITH_MUSL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy")
+endif()
+
+if(APPLE AND WITH_ARM)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
+    set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
 endif()
 
 if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
@@ -332,8 +343,9 @@ endif()
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_ARM=ON" FORCE)
+    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_ARM=ON." FORCE)
     set(WITH_MKL OFF CACHE STRING "Disable MKL when compiling WITH_ARM=ON." FORCE)
+    set(WITH_AVX OFF CACHE STRING "Disable AVX when compiling WITH_AVX=OFF." FORCE)
     add_definitions(-DPADDLE_WITH_ARM)
 endif()
 
