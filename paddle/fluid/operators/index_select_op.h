@@ -24,12 +24,12 @@ using DDim = framework::DDim;
 
 template <typename DeviceContext, typename T, typename IndexT = int, size_t D>
 void IndexSelectInner(const framework::ExecutionContext& context,
-                      const LoDTensor& input, const LoDTensor& index,
+                      const LoDTensor* input, const LoDTensor* index,
                       LoDTensor* output, int dim) {
-  auto input_dim = input.dims();
+  auto input_dim = input->dims();
   auto output_dim = output->dims();
-  auto index_size = index.dims()[0];
-  const IndexT* index_data = index.data<IndexT>();
+  auto index_size = index->dims()[0];
+  const IndexT* index_data = index->data<IndexT>();
   output->mutable_data<T>(context.GetPlace());
 
   for (int i = 0; i < index_size; i++) {
@@ -49,7 +49,7 @@ void IndexSelectInner(const framework::ExecutionContext& context,
             input_dim[dim], index_data[i]));
   }
 
-  auto input_tensor = framework::EigenTensor<T, D>::From(input);
+  auto input_tensor = framework::EigenTensor<T, D>::From(*input);
   auto output_tensor = framework::EigenTensor<T, D>::From(*output, output_dim);
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
@@ -68,25 +68,17 @@ template <typename DeviceContext, typename T>
 class IndexSelectKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    // auto* inputs_var = context.InputVar("X");
-    // auto* index_var = context.InputVar("Index");
-    // auto* output_var = context.OutputVar("Out");
-
-    // auto& inputs = inputs_var->Get<LoDTensor>();
-    // auto& index = index_var->Get<LoDTensor>();
-    // auto* output = output_var->GetMutable<framework::LoDTensor>();
-
-    auto* inputs = ctx.Input<framework::LoDTensor>("X");
-    auto* index = ctx.Input<framework::LoDTensor>("Index");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
+    auto* inputs = context.Input<framework::LoDTensor>("X");
+    auto* index = context.Input<framework::LoDTensor>("Index");
+    auto* output = context.Output<framework::LoDTensor>("Out");
 
     int dim = context.Attr<int>("dim");
-    int dimension = inputs.dims().size();
+    int dimension = inputs->dims().size();
     if (dim < 0) {
       dim += dimension;
     }
 
-    const auto& index_type = index.type();
+    const auto& index_type = index->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
