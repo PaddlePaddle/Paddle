@@ -85,7 +85,7 @@ void PluginTensorRTV2Ext::deserializeBase(void const*& serial_data,
           &with_fp16_);
 }
 
-size_t PluginTensorRTV2Ext::getBaseSerializationSize() const TRT_NOEXCEPT {
+size_t PluginTensorRTV2Ext::getBaseSerializationSize() const {
   return SeriaSize(input_dims_, data_type_, data_format_, with_fp16_);
 }
 
