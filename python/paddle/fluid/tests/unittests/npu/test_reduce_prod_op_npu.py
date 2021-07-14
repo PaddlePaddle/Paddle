@@ -40,15 +40,8 @@ class TestNPUReduceProd(OpTest):
             'Out': self.inputs['X'].prod(axis=tuple(self.attrs['dim']))
         }
 
-        # print('type(X)', type(self.inputs['X']))
-        print('X.shape: ', self.inputs['X'].shape)
-        print('Out.shape: ', self.outputs['Out'].shape)
-
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
-
-    # def test_check_grad(self):
-    #     self.check_grad_with_place(self.place, ['X'], 'Out')
+        self.check_output_with_place(self.place)
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -74,10 +67,6 @@ class TestNPUReduceProd6D(TestNPUReduceProd):
             'Out': self.inputs['X'].prod(axis=tuple(self.attrs['dim']))
         }
 
-        # print('type(X)', type(self.inputs['X']))
-        print('X.shape: ', self.inputs['X'].shape)
-        print('Out.shape: ', self.outputs['Out'].shape)
-
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
@@ -94,31 +83,6 @@ class TestNPUReduceProd8D(TestNPUReduceProd):
         self.outputs = {
             'Out': self.inputs['X'].prod(axis=tuple(self.attrs['dim']))
         }
-
-        # print('type(X)', type(self.inputs['X']))
-        print('X.shape: ', self.inputs['X'].shape)
-        print('Out.shape: ', self.outputs['Out'].shape)
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestNPUReduceProd2(TestNPUReduceProd):
-    def setUp(self):
-        self.op_type = "reduce_prod"
-        self.set_npu()
-        self.init_dtype()
-
-        self.inputs = {'X': np.random.random((3, 5)).astype(self.dtype)}
-        self.attrs = {'dim': [-1]}
-        self.outputs = {
-            'Out': self.inputs['X'].prod(axis=tuple(self.attrs['dim']))
-        }
-
-        # print('type(X)', type(self.inputs['X']))
-        print('X.shape: ', self.inputs['X'].shape)
-        print('Out.shape: ', self.outputs['Out'].shape)
-        print('X: ', self.inputs['X'])
-        print('Out: ', self.outputs['Out'])
 
 
 if __name__ == '__main__':
