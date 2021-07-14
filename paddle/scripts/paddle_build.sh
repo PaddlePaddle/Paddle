@@ -226,16 +226,12 @@ function cmake_base() {
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
+        -DWITH_ARM=${WITH_ARM:-ON}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
-    echo **************************
-    echo $PATH
-    which cmake
-    cmake --version
-    echo **************************
     set +e
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
@@ -268,6 +264,7 @@ EOF
         -DWITH_LITE=${WITH_LITE:-OFF} \
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
+        -DWITH_ARM=${WITH_ARM:-ON} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
