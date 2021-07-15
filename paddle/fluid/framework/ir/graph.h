@@ -79,6 +79,9 @@ namespace ir {
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
+  // Construct a Graph with ops[start_op_index, end_op_index)
+  explicit Graph(const ProgramDesc &program, int64_t start_op_index,
+                 int64_t end_op_index);
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
@@ -87,6 +90,8 @@ class Graph {
     attrs_.clear();
     attr_dels_.clear();
   }
+
+  bool IsConstructedByPartialProgram() const { return is_partial_; }
 
   bool Has(const std::string &attr_name) const {
     return attrs_.count(attr_name) > 0;
@@ -253,7 +258,7 @@ class Graph {
 
  private:
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
-      const ProgramDesc &program);
+      const ProgramDesc &program, int64_t start_op_index, int64_t end_op_index);
 
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;
@@ -262,6 +267,11 @@ class Graph {
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
   size_t num_node_created_{0};  // help to generate a unique node id.
+  // NOTE(Aurelius84): Whether is constructed with partial ProgramDesc.
+  // In case of @to_static, whole trainning program is splited into two
+  // parts: forward graph and backward graph, which can be executed
+  // independently.
+  bool is_partial_{false};
 };
 
 bool IsControlDepVar(const ir::Node &var);
