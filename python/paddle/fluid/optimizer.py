@@ -4840,6 +4840,39 @@ class PipelineOptimizer(object):
                             })
                         extra_index_info['index'] += 1
                     elif self.schedule_mode == '1F1B':  # 1F1B
+                        var_shape = list(var.shape)
+                        var_shape[0] = self.micro_batch_size if var_shape[
+                            0] < 0 else var_shape[0]
+
+                        numel = np.prod(var.shape)
+                        assert numel % self.mp_degree == 0, \
+                            "The numel={} must be divisible by mp_degree={}".format(numel, self.mp_degree)
+
+                        if 'subprog' in var.name:
+                            # For recompute, if the checkpoints var is layer_norm_6.tmp_2
+                            # this var will be sent twice, layer_norm_6.tmp_2 for forward pass,
+                            # layer_norm_6.tmp_2.subprog_* for recompute pass.
+                            # We can store the first sent var and copy the value to the
+                            # second one to reduce one send/recv op.
+                            # The origin_ckpt_name is layer_norm_6.tmp_2, which will be used
+                            # to find the stored var for the forward pass.
+                            origin_name = var.name.split('subprog')[0][0:-1]
+                            associate_var = block.var(origin_name)
+                            block._insert_op_without_sync(
+                                index=index + extra_index_info['index'],
+                                type='assign',
+                                inputs={'X': [associate_var]},
+                                outputs={'Out': [var]},
+                                attrs={
+                                    'out_shape': var_shape,
+                                    'dtype': var.dtype,
+                                    self._op_device_key: cur_dev,
+                                    self._op_role_key: op_role,
+                                    'use_calc_stream': True,
+                                })
+                            extra_index_info['index'] += 1
+                            return
+
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='c_sync_calc_stream',
@@ -4850,6 +4883,7 @@ class PipelineOptimizer(object):
                                 self._op_role_key: op_role,
                             })
                         extra_index_info['index'] += 1
+
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='send_v2'
@@ -4891,13 +4925,6 @@ class PipelineOptimizer(object):
                             sync_comm_op._set_attr('pipeline_flag', '')
                             extra_index_info['index'] += 1
 
-                        var_shape = list(var.shape)
-                        var_shape[0] = self.micro_batch_size if var_shape[
-                            0] < 0 else var_shape[0]
-
-                        numel = np.prod(var.shape)
-                        assert numel % self.mp_degree == 0, \
-                            "The numel={} must be divisible by mp_degree={}".format(numel, self.mp_degree)
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='recv_v2'
@@ -4916,6 +4943,7 @@ class PipelineOptimizer(object):
                                 'id': self.mp_rank,
                             })
                         extra_index_info['index'] += 1
+
                         if self.mp_degree > 1:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
