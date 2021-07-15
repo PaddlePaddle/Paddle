@@ -39,6 +39,7 @@ def current_stream(device=None):
     Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
 
             s1 = paddle.device.cuda.current_stream()
@@ -73,6 +74,7 @@ def synchronize(device=None):
     Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
 
             paddle.device.cuda.synchronize()

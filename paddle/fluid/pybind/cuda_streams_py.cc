@@ -73,6 +73,7 @@ void BindCudaStream(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
             s1 = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
             s2 = paddle.device.cuda.Stream(0, 1)
@@ -94,6 +95,7 @@ void BindCudaStream(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
+          # required: gpu
           import paddle
           s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
           event = paddle.device.cuda.Event()
@@ -117,6 +119,7 @@ void BindCudaStream(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
             s1 = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
             s2 = paddle.device.cuda.Stream(0, 1)
@@ -135,6 +138,7 @@ void BindCudaStream(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
             s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
             is_done = s.query()
@@ -150,6 +154,7 @@ void BindCudaStream(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
             s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
             s.synchronize()
@@ -178,6 +183,7 @@ void BindCudaStream(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
             s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
             event = s.record_event()
@@ -262,6 +268,7 @@ void BindCudaStream(py::module *m_ptr) {
       Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
             event = paddle.device.cuda.Event()
 
@@ -284,6 +291,7 @@ void BindCudaStream(py::module *m_ptr) {
           Examples:
             .. code-block:: python
 
+              # required: gpu
               import paddle
               event = paddle.device.cuda.Event()
               event.record()
@@ -300,6 +308,7 @@ void BindCudaStream(py::module *m_ptr) {
           Examples:
             .. code-block:: python
 
+                # required: gpu
                 import paddle
                 event = paddle.device.cuda.Event()
                 is_done = event.query()
@@ -312,6 +321,7 @@ void BindCudaStream(py::module *m_ptr) {
             Examples:
               .. code-block:: python
 
+                # required: gpu
                 import paddle
                 event = paddle.device.cuda.Event()
                 event.synchronize()
