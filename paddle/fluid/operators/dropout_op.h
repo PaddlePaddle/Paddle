@@ -17,12 +17,13 @@ limitations under the License. */
 #include <random>
 #include <string>
 
+// #include <mkl.h>
+// #include <time.h>
 #include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
-
 namespace paddle {
 namespace operators {
 
@@ -90,7 +91,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     auto* seed =
         context.HasInput("Seed") ? context.Input<Tensor>("Seed") : nullptr;
     auto* y = context.Output<Tensor>("Out");
-    const auto* x_data = x->data<T>();
+    // const auto* x_data = x->data<T>();
     auto* y_data = y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
@@ -118,23 +119,68 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         seed_data =
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
-      auto engine = framework::GetCPURandomEngine(seed_data);
 
+      auto engine = framework::GetCPURandomEngine(seed_data);
       std::uniform_real_distribution<float> dist(0, 1);
 
-      for (size_t i = 0; i < size; ++i) {
-        if (dist(*engine) < dropout_prob) {
-          mask_data[i] = 0;
-          y_data[i] = 0;
-        } else {
-          mask_data[i] = 1;
-          if (upscale_in_train) {
-            y_data[i] = x_data[i] / static_cast<T>(1.0f - dropout_prob);
-          } else {
-            y_data[i] = x_data[i];
-          }
-        }
+#ifdef PADDLE_WITH_MKLML
+      clock_t t1 = clock();
+      int* retValue = new int[size];
+      VSLStreamStatePtr stream;
+      vslNewStream(&stream, VSL_BRNG_MT19937, seed_data);
+      // vsRngUniform(VSL_RNG_METHOD_UNIFORM_STD, stream, size, retValue, 0, 1);
+      viRngBernoulli(VSL_RNG_METHOD_BERNOULLI_ICDF, stream, size, retValue,
+                     dropout_prob);
+      vslDeleteStream(&stream);
+      std::cout << "generator: " << (clock() - t1) * 1.0 / CLOCKS_PER_SEC * 1000
+                << std::endl;
+
+      clock_t t2 = clock();
+      auto X = EigenMatrix<T>::Reshape(*x, 1);
+      auto Y = EigenMatrix<T>::Reshape(*y, 1);
+      auto MASK = EigenMatrix<int>::Reshape(retValue, 1);
+      auto& place =
+          *context.template device_context<DeviceContext>().eigen_device();
+      if (upscale_in_train) {
+        Y.device(place) = X * MASK * static_cast<T>(1.0f - dropout_prob);
+      } else {
+        Y.device(place) = X * MASK;
       }
+
+      // #pragma omp parallel for
+      //       for (size_t i = 0; i < size; ++i) {
+      //         if (retValue[i] < dropout_prob) {
+      //           mask_data[i] = 0;
+      //           y_data[i] = 0;
+      //         } else {
+      //           mask_data[i] = 1;
+      //           if (upscale_in_train) {
+      //             y_data[i] = x_data[i] / static_cast<T>(1.0f -
+      //             dropout_prob);
+      //           } else {
+      //             y_data[i] = x_data[i];
+      //           }
+      //         }
+      //       }
+      std::cout << "compare: " << (clock() - t2) * 1.0 / CLOCKS_PER_SEC * 1000
+                << std::endl;
+
+// #else
+//       for (size_t i = 0; i < size; ++i) {
+//         if (dist(*engine) < dropout_prob) {
+//           mask_data[i] = 0;
+//           y_data[i] = 0;
+//         } else {
+//           mask_data[i] = 1;
+//           if (upscale_in_train) {
+//             y_data[i] = x_data[i] / static_cast<T>(1.0f - dropout_prob);
+//           } else {
+//             y_data[i] = x_data[i];
+//           }
+//         }
+//       }
+#endif
+
     } else {
       if (upscale_in_train) {
         const auto* X_data = x->data<T>();
