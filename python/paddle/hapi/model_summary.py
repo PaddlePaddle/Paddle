@@ -35,7 +35,7 @@ def summary(net, input_size, input=None, dtypes=None):
                     have multiple input, input_size must be a list which contain 
                     every input's shape. Note that input_size only dim of
                     batch_size can be None or -1.
-        input (dict|list|): the input tensor. 
+        input: the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
         dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
 
     Returns:
@@ -78,8 +78,7 @@ def summary(net, input_size, input=None, dtypes=None):
 
             lenet = LeNet()
 
-            input_data = [paddle.ones([1, 1, 28, 28])]
-            params_info = paddle.summary(lenet, (1, 1, 28, 28), input_data)
+            params_info = paddle.summary(lenet, (1, 1, 28, 28))
             print(params_info)
 
             # multi input demo
@@ -97,6 +96,17 @@ def summary(net, input_size, input=None, dtypes=None):
 
             params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)], 
                                         dtypes=['float32', 'float32'])
+            print(params_info)
+
+            # input data demo
+            rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
+
+            input_data = [paddle.rand([4, 23, 16])]
+            params_info = paddle.summary(rnn, (4, 23, 16), input_data)
+            print(params_info)
+
+            input_data = {'x': paddle.rand([4, 23, 16])}
+            params_info = paddle.summary(rnn, (4, 23, 16), input_data)
             print(params_info)
 
     """
@@ -166,17 +176,14 @@ def summary(net, input_size, input=None, dtypes=None):
 
     _input_size = _check_input(_input_size)
 
-    if input is None:
-        _input = input
+    if isinstance(input, dict):
+        _input = []
+        for item in input.keys():
+            _input.append(input[item])
+    elif paddle.is_tensor(input):
+        _input = [input]
     else:
-        if isinstance(input, dict):
-            _input = []
-            for item in input.keys():
-                _input.append(input[item])
-        elif isinstance(input, list):
-            _input = input
-        else:
-            raise Exception('Input must be list or dict.')
+        _input = input
 
     result, params_info = summary_string(net, _input_size, _input, dtypes)
     print(result)
