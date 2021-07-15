@@ -44,11 +44,13 @@ Graph::Graph(const ProgramDesc &program, const int64_t start_op_index,
       program_.Size(), 1,
       platform::errors::InvalidArgument("Can't construct a graph from this "
                                         "program, it doesn't have a block"));
-  PADDLE_ENFORCE_GE(end_op_index, program_.Block(0).AllOps().size(),
+
+  const int64_t block_op_size = program_.Block(0).AllOps().size();
+  PADDLE_ENFORCE_GE(end_op_index, block_op_size,
                     platform::errors::InvalidArgument(
                         "Required end_op_index <= block_op_size, but received "
                         "end_op_index: %d > block_op_size: %d",
-                        end_op_index, program_.Block(0).AllOps().size()));
+                        end_op_index, block_op_size));
   if (FLAGS_convert_all_blocks) {
     // NOTE(levi): start_op_index and end_op_index only work on the first
     // sub_graph.
@@ -67,10 +69,7 @@ Graph::Graph(const ProgramDesc &program, const int64_t start_op_index,
 }
 
 Graph::Graph(const BlockDesc &block, const Graph *main_graph)
-    : main_graph_(main_graph) {
-  auto var_nodes = InitFromBlock(block, 0, block.AllOps().size());
-  ResolveHazard(var_nodes);
-}
+    : Graph(block, main_graph, 0, block.AllOps().size()) {}
 
 Graph::Graph(const BlockDesc &block, const Graph *main_graph,
              const int64_t start_op_index, const int64_t end_op_index)
