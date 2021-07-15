@@ -19,6 +19,7 @@ import unittest
 import sys
 sys.path.append("..")
 from op_test import OpTest
+from test_activation_op import ref_leaky_relu
 import paddle
 import paddle.fluid as fluid
 
@@ -40,17 +41,9 @@ class TestLeadyRelu(OpTest):
         self.set_inputs()
         self.set_attrs()
         self.set_outputs()
-        #out = self.calc_leaky_relu(self.x, alpha)
-
-    def calc_leaky_relu(self, x, alpha):
-        if (alpha < 1):
-            y_ref = np.maximum(x, alpha * x)
-        else:
-            y_ref = np.minimum(x, alpha * x)
-        return y_ref.astype(x.dtype)
 
     def set_inputs(self):
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
 
     def set_attrs(self):
@@ -58,7 +51,7 @@ class TestLeadyRelu(OpTest):
 
     def set_outputs(self):
         alpha = 0.02 if 'alpha' not in self.attrs else self.attrs['alpha']
-        out = self.calc_leaky_relu(self.inputs['X'], alpha)
+        out = ref_leaky_relu(self.inputs['X'], alpha)
         self.outputs = {'Out': out}
 
     def set_npu(self):
@@ -68,11 +61,12 @@ class TestLeadyRelu(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_dygraph=False)
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -81,8 +75,19 @@ class TestLeadyReluFP16(TestLeadyRelu):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def test_check_grad(self):
-        return
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestLeadyRelu2(TestLeadyRelu):
+    def set_attrs(self):
+        self.attrs = {'alpha': 0.5}
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestLeadyRelu3(TestLeadyRelu):
+    def set_attrs(self):
+        self.attrs = {'alpha': -0.5}
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),

@@ -336,13 +336,14 @@ class LeakyReluGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    Tensor out(x->type());
-    out.mutable_data<T>(x->dims(), ctx.GetPlace());
-    const auto& runner_0 =
-        NpuOpRunner("LeakyRelu", {*x}, {out}, {{"negative_slope", alpha}});
-    runner_0.Run(stream);
+    // Tensor out(x->type());
+    // out.mutable_data<T>(x->dims(), ctx.GetPlace());
+    // const auto& runner_0 =
+    //    NpuOpRunner("LeakyRelu", {*x}, {out}, {{"negative_slope", alpha}});
+    // runner_0.Run(stream);
     dx->mutable_data<T>(ctx.GetPlace());
-    const auto& runner = NpuOpRunner("LeakyReluGrad", {*dout, out}, {*dx},
+    // const auto& runner = NpuOpRunner("LeakyReluGrad", {*dout, out}, {*dx},
+    const auto& runner = NpuOpRunner("LeakyReluGrad", {*dout, *x}, {*dx},
                                      {{"negative_slope", alpha}});
     runner.Run(stream);
   }
