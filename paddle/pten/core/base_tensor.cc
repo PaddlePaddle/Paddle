@@ -23,7 +23,6 @@ limitations under the License. */
 
 namespace pt {
 
-// TODO(chenweihang): design abstract interface of each place?
 using CPUPlace = paddle::platform::CPUPlace;
 using CUDAPlace = paddle::platform::CUDAPlace;
 using CUDAPinnedPlace = paddle::platform::CUDAPinnedPlace;

@@ -17,14 +17,17 @@ limitations under the License. */
 namespace pt {
 
 /**
+ * [ Why need new data type? ]
+ *
+ * The Var data type design in framework.proto is confusing, maybe we need
+ * polish the VarType in framework.proto.
+ *
  * We need to ensure that the operator library is relatively independent
  * and does not depend on the framework. Therefore, before calling the kernel
  * in the Tensor operation library inside the framework, the internal
  * data type needs to be converted to the data type in the Tensor operation
  * library.
  *
- * The data type design in proto is confusing, maybe we need polish the
- * VarType in framework.proto.
  */
 enum class DataType {
   kUndef = 0,

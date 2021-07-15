@@ -23,16 +23,12 @@ limitations under the License. */
 
 namespace pt {
 
-/*
-class InplaceVersion {
- public:
- private:
-};
-*/
-
 /**
- * The Meta data member of TensorImpl.
- * It holds Tensor description information and status information.
+ * The Meta data member of BaseTensor.
+ *
+ * Here the `meta` represents information describing the basic features and
+ * data features of Tensor, and does not include the status information of
+ * Tensor
  *
  * Note: TensorMeta is a struct, the members are named like
  * ordinary nonmember variables, such as `type` instead of `type_`.
@@ -53,7 +49,7 @@ struct TensorMeta {
         layout(meta.layout),
         offset(meta.offset) {}
 
-  // May introduce bug
+  // Bad constructor, may introduce bug
   explicit TensorMeta(DDim dims) : dims(dims) {}
 
   // Compatible Contructor

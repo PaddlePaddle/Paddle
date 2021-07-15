@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/pten/core/tensor_impl_if.h"
 #include "paddle/pten/core/tensor_meta.h"
+#include "paddle/pten/core/tensor_status.h"
 
 namespace paddle {
 namespace memory {
@@ -115,6 +116,8 @@ class BaseTensor : public TensorImplInterface {
   std::shared_ptr<Allocation> memory_;
   // The Tensor meta data
   TensorMeta meta_;
+  // The Tensor status data
+  // TensorStatus status_;
 };
 
 }  // namespace pt

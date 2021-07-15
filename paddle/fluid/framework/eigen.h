@@ -159,6 +159,15 @@ struct EigenScalar {
   static ConstType From(const Tensor& tensor) {
     return ConstType(tensor.data<T>());
   }
+
+  // for pt::BaseTensor
+  static Type From(pt::BaseTensor& tensor) {  // NOLINT
+    return Type(const_cast<T*>(tensor.data<T>()));
+  }
+
+  static ConstType From(const pt::BaseTensor& tensor) {
+    return ConstType(tensor.data<T>());
+  }
 };
 
 // Define Tensor with 32-bit index.

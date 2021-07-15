@@ -14,24 +14,4 @@ limitations under the License. */
 
 #pragma once
 
-namespace pt {
-
-/**
- * We need to ensure that the operator library is relatively independent
- * and does not depend on the framework. Therefore, before calling the kernel
- * in the Tensor operation library inside the framework, the internal
- * layout needs to be converted to the data type in the Tensor operation
- * library.
- *
- * Here we also can use the DataLayout in framework, they are all enum classes.
- */
-enum class Layout {
-  kUndef = 0,
-  kAny,
-  kNHWC,
-  kNCHW,
-  kMKLDNN,
-  kNumLayouts,
-};
-
-}  // namespace pt
+#include "paddle/pten/core/base_tensor.h"

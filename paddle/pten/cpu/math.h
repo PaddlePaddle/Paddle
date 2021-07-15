@@ -18,9 +18,19 @@ limitations under the License. */
 #include "paddle/pten/module/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace pt {
+
+template <typename T,
+          int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenScalar = paddle::framework::EigenScalar<T, MajorType, IndexType>;
+template <typename T,
+          int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = paddle::framework::EigenVector<T, MajorType, IndexType>;
 
 using CPUDeviceContext = paddle::platform::CPUDeviceContext;
 
@@ -29,6 +39,17 @@ void Sign(const CPUDeviceContext& dev_ctx,
           const BaseTensor& x,
           BaseTensor* out) {
   module::Sign<CPUDeviceContext, T>(dev_ctx, x, out);
+}
+
+template <typename T>
+void Mean(const CPUDeviceContext& dev_ctx,
+          const BaseTensor& x,
+          BaseTensor* out) {
+  out->mutable_data<T>();
+  auto x_data = EigenVector<T>::Flatten(x);
+  auto y_data = EigenScalar<T>::From(*out);
+  auto& place = *dev_ctx.eigen_device();
+  y_data.device(place) = x_data.mean();
 }
 
 }  // namespace pt

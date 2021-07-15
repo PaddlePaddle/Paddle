@@ -47,7 +47,7 @@ using LoD = std::vector<Vector<size_t>>;
  * Note: LoDTensor (Level of details Tensor)
  * see https://en.wikipedia.org/wiki/Level_of_details for reference.
  */
-class LoDTensor : public BaseTensor {
+class LoDTensor final : public BaseTensor {
  public:
   LoDTensor() = delete;
 

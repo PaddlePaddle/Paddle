@@ -33,6 +33,23 @@ void Sign(const CUDADeviceContext& dev_ctx,
   module::Sign<CUDADeviceContext, T>(dev_ctx, x, out);
 }
 
+// TODO(chenweihang): Perhaps the Kernel call should not be implemented by
+// calling functions, but by finding the Kernel call method from the global
+// KernelMap. For a kernel like cuda, if you have to call functions through
+// include header files, there will be many more function declarations and
+// redundant function call
+template <typename T>
+void MeanCUDA(const CUDADeviceContext& dev_ctx,
+              const BaseTensor& x,
+              BaseTensor* out);
+
+template <typename T>
+void Mean(const CUDADeviceContext& dev_ctx,
+          const BaseTensor& x,
+          BaseTensor* out) {
+  MeanCUDA<T>(dev_ctx, x, out);
+}
+
 }  // namespace pt
 
 #endif
