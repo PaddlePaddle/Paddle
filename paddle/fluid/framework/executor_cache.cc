@@ -109,12 +109,11 @@ void ParseSafeEagerDeletionSkipVars(
                 << " , skip it.";
       }
     }
-    
+
     for (const std::string &out_arg_name : op->OutputArgumentNames()) {
       op_outputs.emplace(out_arg_name);
     }
   }
-
   // For the grad op input variables, if it is not output of grad_op, it may
   // be output of forward op and we should set the variables as skip_var to
   // prevent it being deleted when grad op is called multiple times.
