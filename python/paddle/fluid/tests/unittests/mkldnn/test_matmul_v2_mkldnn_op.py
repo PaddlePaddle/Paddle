@@ -24,6 +24,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 
+
 def reference_matmul(X, Y, trans_x=False, trans_y=False):
     """Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
@@ -51,8 +52,8 @@ def reference_matmul(X, Y, trans_x=False, trans_y=False):
 
 class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
     def config(self):
-        self.x_shape = (2, 3, 10, 5)
-        self.y_shape = (1, 3, 5, 10)
+        self.x_shape = (100, )
+        self.y_shape = (100, )
         self.trans_x = False
         self.trans_y = False
 

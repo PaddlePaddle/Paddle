@@ -204,8 +204,8 @@ class MatMulV2MKLDNNKernel : public MatMulGradMKLDNNKernel<T> {
     std::vector<int64_t> x_bd_dims(ndims, 1);
     std::vector<int64_t> y_bd_dims(ndims, 1);
 
-    this->CalculateMatrixDims(ctx, x_dims, y_dims, x_bd_dims, y_bd_dims,
-                              out_dims, out);
+    CalculateMatrixDims(ctx, x_dims, y_dims, x_bd_dims, y_bd_dims, out_dims,
+                        out);
 
     ExecuteMatMul(ctx, dev_ctx, onednn_engine, ctx.GetPlace(), x, x_bd_dims,
                   trans_x, y, y_bd_dims, trans_y, out, out_dims);
