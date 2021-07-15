@@ -78,6 +78,10 @@ def summary(net, input_size, input=None, dtypes=None):
 
             lenet = LeNet()
 
+<<<<<<< HEAD
+=======
+            input_data = [paddle.ones([1, 1, 28, 28])]
+>>>>>>> cb08172975c74eb3b1675be0fa8d52c8c6859869
             params_info = paddle.summary(lenet, (1, 1, 28, 28))
             print(params_info)
 
