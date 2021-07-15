@@ -68,7 +68,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       new_dims.assign(dims_y.begin(), dims_y.end() - 2);
     } else {
       new_dims.reserve(ndims_x);
-      for (int i = 0; i < ndims_x - 2; ++i) {
+      for (size_t i = 0; i < ndims_x - 2; ++i) {
         new_dims.push_back(std::max(dims_x[i], dims_y[i]));
       }
     }
