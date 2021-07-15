@@ -253,7 +253,7 @@ def create_bf16_test_class(parent):
         def test_check_output(self):
             self.check_output_with_place(core.CPUPlace())
 
-        def matmul_grad(self, x, transpose_x, y, transpose_y):
+        def matmul_bwd(self, x, transpose_x, y, transpose_y):
             x = np.transpose(
                 x, self.shape_transpose_axes[x.ndim]) if transpose_x else x
             y = np.transpose(
@@ -296,19 +296,19 @@ def create_bf16_test_class(parent):
                 is_broadcast = x.shape[0:-2] != y.shape[0:-2]
 
             if self.attrs['trans_x'] is True and self.attrs['trans_y'] is True:
-                self.dx = self.matmul_grad(self.y_fp32, True, dout, True)
-                self.dy = self.matmul_grad(dout, True, self.x_fp32, True)
+                self.dx = self.matmul_bwd(self.y_fp32, True, dout, True)
+                self.dy = self.matmul_bwd(dout, True, self.x_fp32, True)
             elif self.attrs['trans_x'] is True and self.attrs[
                     'trans_y'] is False:
-                self.dx = self.matmul_grad(self.y_fp32, False, dout, True)
-                self.dy = self.matmul_grad(self.x_fp32, False, dout, False)
+                self.dx = self.matmul_bwd(self.y_fp32, False, dout, True)
+                self.dy = self.matmul_bwd(self.x_fp32, False, dout, False)
             elif self.attrs['trans_x'] is False and self.attrs[
                     'trans_y'] is True:
-                self.dx = self.matmul_grad(dout, False, self.y_fp32, False)
-                self.dy = self.matmul_grad(dout, True, self.x_fp32, False)
+                self.dx = self.matmul_bwd(dout, False, self.y_fp32, False)
+                self.dy = self.matmul_bwd(dout, True, self.x_fp32, False)
             else:
-                self.dx = self.matmul_grad(dout, False, self.y_fp32, True)
-                self.dy = self.matmul_grad(self.x_fp32, True, dout, False)
+                self.dx = self.matmul_bwd(dout, False, self.y_fp32, True)
+                self.dy = self.matmul_bwd(self.x_fp32, True, dout, False)
 
             if is_broadcast:
                 x_reduce_axis = []
