@@ -2185,7 +2185,7 @@ function main() {
         #test_fluid_lib_train
         #go inference test
         test_go_inference_api
-	parallel_test
+	parallel_test_base_gpu
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
