@@ -4681,8 +4681,7 @@ class PipelineOptimizer(object):
                     valid_op_role_value)
             if int(op_role) == int(self._op_role.Optimize):
                 in_optimize = True
-            # loss_grad op
-            if int(op_role) | int(self._op_role.Backward):
+            if int(op_role) == int(self._op_role.Backward):
                 in_forward = False
 
             assert op.has_attr(self._op_device_key), (
@@ -4713,14 +4712,14 @@ class PipelineOptimizer(object):
                     # if stage is unordered, such as Forward(0 1 2 3 4 3 4), will report error
                     if in_forward:
                         assert interval >= 0, \
-                            "Pipeline stage must be sequential increment in Forward, " \
-                            "please check the stage of op={}".format(op)
+                            "Pipeline stage must be sequential increment in Forward, prev_stage={}, " \
+                            "please check the stage of op={}".format(pre_stage_id, op)
                     else:
-                        # FIXME(wangxi): recompute failed
+                        # FIXME(wangxi): recompute check failed
                         pass
                         #assert interval <=0, \
-                        #    "Pipeline stage must be sequential decrement in Backward, " \
-                        #    "please check the stage of op={}".format(op)
+                        #    "Pipeline stage must be sequential decrement in Backward, prev_stage={}, " \
+                        #    "please check the stage of op={}".format(pre_stage_id, op)
                 pre_stage_id = stage_id
 
         return device_list
