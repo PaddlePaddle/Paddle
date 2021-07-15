@@ -14840,7 +14840,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     return out
 
 
-def class_center_sample(label, num_classes, num_sample, group=None):
+def class_center_sample(label, num_classes, num_sample, group=None, seed=None):
     """
     Class center sample method is proposed from the paper PartialFC that only sample a subset of the class centers.
     The process of sampling subset class centers is straightforward: 1) First select the positive class centers;
@@ -14947,11 +14947,14 @@ def class_center_sample(label, num_classes, num_sample, group=None):
             'Expected num_sample less equal than {}, got num_sample {}'.format(
                 num_classes, num_sample))
 
-    seed = default_main_program().random_seed
+    if (seed is None or seed == 0) and default_main_program().random_seed != 0:
+        seed = default_main_program().random_seed
+
     if in_dygraph_mode():
         remapped_label, sampled_class_center = core.ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_sample', num_sample,
-            'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'seed', seed)
+            'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed',
+            seed is not None, 'seed', seed if seed is not None else 0)
         return remapped_label, sampled_class_center
 
     check_variable_and_dtype(label, 'label', ['int64', 'int'],
@@ -14975,7 +14978,8 @@ def class_center_sample(label, num_classes, num_sample, group=None):
             'ring_id': ring_id,
             'nranks': nranks,
             'rank': rank,
-            'seed': seed
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0
         })
     return remapped_label, sampled_class_center
 

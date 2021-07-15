@@ -56,7 +56,6 @@ def class_center_sample_numpy(label, classes_list, num_sample):
     return np.array(remapped_label), np.array(pos_class_center_per_device)
 
 
-@unittest.skipIf(core.is_compiled_with_rocm(), "core is compiled with ROCM")
 class TestClassCenterSampleOp(OpTest):
     def initParams(self):
         self.op_type = "class_center_sample"

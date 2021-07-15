@@ -35,6 +35,7 @@ class ClassCenterSampleCPUKernel : public framework::OpKernel<T> {
     int num_sample = ctx.Attr<int>("num_sample");
 
     int seed = ctx.Attr<int>("seed");
+    bool fix_seed = ctx.Attr<bool>("fix_seed");
     PADDLE_ENFORCE_GT(num_classes, 0,
                       platform::errors::InvalidArgument(
                           "The value 'num_classes' for Op(class_center_sample) "
@@ -78,6 +79,10 @@ class ClassCenterSampleCPUKernel : public framework::OpKernel<T> {
       idx++;
     }
 
+    if (!fix_seed) {
+      std::random_device rnd;
+      seed = rnd();
+    }
     std::uniform_int_distribution<T> dist(0, num_classes - 1);
     auto engine = framework::GetCPURandomEngine(seed);
     // sample negative class center randomly
