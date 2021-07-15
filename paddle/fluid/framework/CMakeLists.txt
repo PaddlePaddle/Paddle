@@ -203,6 +203,10 @@ cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator 
 
 cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
 cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
+
+cc_library(program_processing SRCS program_processing.cc DEPS framework_proto)
+cc_test(program_processing_test SRCS program_processing_test.cc DEPS proto_desc program_processing)
+
 if(WITH_GPU)
   nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 elseif(WITH_ROCM)
