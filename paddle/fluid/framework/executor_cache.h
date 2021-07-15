@@ -16,38 +16,78 @@
 
 #include <functional>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
+namespace ir {
+class Graph;
+}
 
-class ExecutionContext;
-class Executor;
-class ProgramDesc;
-struct ExecutorPrepareContext;
+namespace details {
+void AppendSkipDeletionVars(const std::vector<std::string>& append_vars,
+                            std::vector<std::string>* all_vars);
 
+void ParseSafeEagerDeletionSkipVars(
+    const ProgramDesc& program, int64_t forward_op_nums,
+    const std::vector<std::string>& output_var_names,
+    std::vector<std::string>* skip_eager_delete_vars);
+
+}  // namespace details
 class ExecutorInfoCache {
  public:
-  /*
-   * The ExecutorPrepareContext is different while running forward program and
-   * backward program. We add bool value into cached key to distinguish this.
-   */
-  using KeyInfo = std::pair<const framework::ProgramDesc*, /*is_grad*/ bool>;
-  using KeyType = size_t;
+  struct CacheKey {
+    CacheKey(const ProgramDesc* program_desc, const platform::Place& place,
+             int64_t start_op_index, int64_t end_op_index, bool is_grad)
+        : program_desc_(program_desc),
+          place_(place),
+          start_op_index_(start_op_index),
+          end_op_index_(end_op_index),
+          is_grad_(is_grad) {
+      device_type_ = platform::Place2DeviceType(place);
+      PADDLE_ENFORCE_NOT_NULL(program_desc_,
+                              "program_desc should not be null.");
+    }
 
-  struct HashPair {
-    size_t operator()(const KeyInfo& key) const noexcept {
+    std::string DebugString() const {
+      std::stringstream ss;
+
+      ss << "\n CacheKey(program_desc: " << program_desc_;
+      ss << ", start_op_index: " << start_op_index_;
+      ss << ", end_op_index: " << end_op_index_;
+      ss << ", is_grad: " << is_grad_;
+      ss << ", device_type: " << device_type_ << ")";
+
+      return ss.str();
+    }
+
+    const ProgramDesc* program_desc_;
+    platform::Place place_;
+    int64_t start_op_index_;
+    int64_t end_op_index_;
+    bool is_grad_;
+    platform::DeviceType device_type_;
+  };
+
+  using KeyType = size_t;
+  using ValueType =
+      std::pair<std::shared_ptr<ParallelExecutor>, std::shared_ptr<ir::Graph>>;
+
+  struct KeyHasher {
+    size_t operator()(const CacheKey& key) const noexcept {
       size_t seed = 10;
-      auto* prog_desc = key.first;
+      auto* prog_desc = key.program_desc_;
       /*
        * Note(Aurelius84): DO NOT use only ProgramDesc* to calculate hash value
        * because a new program will hold same pointer address after an older
@@ -59,8 +99,12 @@ class ExecutorInfoCache {
         hash_combine(&seed, &prog_desc->Block(i));
         hash_combine(&seed, prog_desc->Block(i).OpSize());
       }
-      hash_combine(&seed, key.second);
-      VLOG(1) << "hash value is : " << seed << " of pointer " << prog_desc;
+      hash_combine(&seed, static_cast<int>(key.device_type_));
+      hash_combine(&seed, key.start_op_index_);
+      hash_combine(&seed, key.end_op_index_);
+      hash_combine(&seed, key.is_grad_);
+      VLOG(3) << "hash value is : " << seed
+              << " of key:  " << key.DebugString();
       return seed;
     }
 
@@ -73,54 +117,50 @@ class ExecutorInfoCache {
 
   static ExecutorInfoCache& Instance();
 
-  std::shared_ptr<framework::ExecutorPrepareContext> Get(
-      const KeyInfo& key) const {
-    KeyType key_value = key_hash_func_(key);
+  ValueType GetMutable(const CacheKey& key) {
+    auto key_val = key_hash_func_(key);
     PADDLE_ENFORCE_EQ(
-        Has(key_value), true,
-        platform::errors::NotFound(
-            "(programDesc: %s, is_grad: %s) doesn't exist in ExecutorInfoCache",
-            key.first, key.second));
-    return info_map_.at(key_value);
+        Has(key_val), true,
+        platform::errors::NotFound("%s doesn't exist in ExecutorInfoCache",
+                                   key.DebugString()));
+    return info_map_[key_val];
   }
 
-  bool Has(const KeyInfo& key) const {
-    KeyType key_value = key_hash_func_(key);
-    return Has(key_value);
+  bool Has(const CacheKey& key) const {
+    auto key_val = key_hash_func_(key);
+    return Has(key_val);
   }
 
   bool Has(const KeyType& key) const {
     return info_map_.find(key) != info_map_.end();
   }
 
-  void Insert(const KeyInfo& key,
-              std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx) {
-    KeyType key_value = key_hash_func_(key);
-    PADDLE_ENFORCE_NE(
-        Has(key_value), true,
-        platform::errors::NotFound(
-            "(programDesc: %s, is_grad: %s) has existed in ExecutorInfoCache",
-            key.first, key.second));
-    info_map_.insert({key_value, exe_ctx});
+  void Insert(const CacheKey& key, ValueType value) {
+    auto key_val = key_hash_func_(key);
+    PADDLE_ENFORCE_EQ(
+        Has(key_val), false,
+        platform::errors::NotFound("%s has existed in ExecutorInfoCache",
+                                   key.DebugString()));
+    info_map_.insert({key_val, value});
   }
+
+  size_t Size() const { return info_map_.size(); }
+
+  void Finalize();
 
  private:
   ExecutorInfoCache() = default;
-
-  HashPair key_hash_func_;
-
-  // Note: we shall avoid using raw pointer as key but use hash code,
-  // beacause pointer doesn't hold resource indeed.
-  std::unordered_map<KeyType,
-                     std::shared_ptr<framework::ExecutorPrepareContext>>
-      info_map_;
   DISABLE_COPY_AND_ASSIGN(ExecutorInfoCache);
+
+  KeyHasher key_hash_func_;
+  std::unordered_map<KeyType, ValueType> info_map_;
 };
 
-std::shared_ptr<framework::ExecutorPrepareContext> GetExecutorInfoFromCache(
-    const framework::Executor& exe, const framework::ExecutionContext& ctx,
-    const std::vector<std::vector<std::string>>& ctx_output_names,
-    bool is_grad);
+using CacheInfo =
+    std::pair<std::shared_ptr<ParallelExecutor>, bool /*is_new_created*/>;
+
+CacheInfo GetExecutorInfoFromCache(const ExecutorInfoCache::CacheKey& cache_key,
+                                   framework::Scope* scope);
 
 }  // namespace framework
 }  // namespace paddle
