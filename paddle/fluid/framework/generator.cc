@@ -60,18 +60,12 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
       std::make_shared<Generator>(GetRandomSeed());
   VLOG(4) << "initial seed: " << default_cpu_generator->GetCurrentSeed()
           << ", cpu engine: " << default_cpu_generator->GetCPUEngine().get()
-          << ", cpu engine 32: "
-          << default_cpu_generator->GetCPUEngine_32().get();
+          << ", cpu engine 32: " << default_cpu_generator->GetCPUEngine_32().get();
   return default_cpu_generator;
 }
 
 std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine() {
   static auto op_default_cpu_engine = std::make_shared<std::mt19937_64>();
-  return op_default_cpu_engine;
-}
-
-std::shared_ptr<std::mt19937> OpDefaultCPUEngine_32() {
-  static auto op_default_cpu_engine = std::make_shared<std::mt19937>();
   return op_default_cpu_engine;
 }
 
@@ -160,7 +154,7 @@ uint64_t Generator::Seed() {
   this->state_.current_seed = seed;
   std::seed_seq seq({seed});
   this->engine_->seed(seq);
-  this->engine_32->seed(seq);
+  this->engine_32->seed(seed);
   return this->state_.current_seed;
 }
 
