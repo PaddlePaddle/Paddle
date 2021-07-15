@@ -1840,7 +1840,7 @@ EOF
     fi
     startTime_s=`date +%s`
     set +e
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON};build_error=$?
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
