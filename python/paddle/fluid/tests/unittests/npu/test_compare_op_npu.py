@@ -96,14 +96,21 @@ class TestGreaterthan(OpTest):
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = x > y
+        x, y = self.get_input()
+        out = self.get_output(x, y)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
             'Y': OpTest.np_dtype_to_fluid_dtype(y)
         }
         self.outputs = {'Out': out}
+
+    def get_input(self):
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        return x, y
+
+    def get_output(self, x, y):
+        return x > y
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -125,14 +132,21 @@ class TestNotequal(OpTest):
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = x != y
+        x, y = self.get_input()
+        out = self.get_output(x, y)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
             'Y': OpTest.np_dtype_to_fluid_dtype(y)
         }
         self.outputs = {'Out': out}
+
+    def get_input(self):
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        return x, y
+
+    def get_output(self, x, y):
+        return x != y
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -154,14 +168,21 @@ class TestLessequal(OpTest):
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = x <= y
+        x, y = self.get_input()
+        out = self.get_output(x, y)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
             'Y': OpTest.np_dtype_to_fluid_dtype(y)
         }
         self.outputs = {'Out': out}
+
+    def get_input(self):
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        return x, y
+
+    def get_output(self, x, y):
+        return x <= y
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -214,63 +235,111 @@ class TestLessthan2(TestLessthan):
 
 
 class TestGreaterthan2(TestGreaterthan):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "greater_than"
-        self.place = paddle.NPUPlace(0)
-
-        self.init_dtype()
-        np.random.seed(SEED)
+    def get_input(self):
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
         y = x.copy()
         y[0][1] = 1
-        out = x > y  # all elements are equal, except position [0][1]
+        return x, y
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
-        self.outputs = {'Out': out}
+
+class TestGreaterthanBroadcast0(TestGreaterthan):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.array([1.5]).astype(self.dtype)
+        return x, y
+
+
+class TestGreaterthanBroadcast1(TestGreaterthan):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [1, 17]).astype(self.dtype)
+        y = x.T
+        return x, y
+
+
+class TestGreaterthanBroadcast2(TestGreaterthan):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [2, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
+        return x, y
+
+
+class TestGreaterthanBroadcast3(TestGreaterthan):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [1, 2, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
+        return x, y
 
 
 class TestNotequal2(TestNotequal):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "not_equal"
-        self.place = paddle.NPUPlace(0)
-
-        self.init_dtype()
-        np.random.seed(SEED)
+    def get_input(self):
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
         y = x.copy()
         y[0][1] = 1
-        out = x != y  # all elements are equal, except position [0][1]
+        return x, y
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
-        self.outputs = {'Out': out}
+
+class TestNotequalBroadcast0(TestNotequal):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.array([1.5]).astype(self.dtype)
+        return x, y
+
+
+class TestNotequalBroadcast1(TestNotequal):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [1, 17]).astype(self.dtype)
+        y = x.T
+        return x, y
+
+
+class TestNotequalBroadcast2(TestNotequal):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [2, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
+        return x, y
+
+
+class TestNotequalBroadcast3(TestNotequal):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [1, 2, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
+        return x, y
 
 
 class TestLessequal2(TestLessequal):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "less_equal"
-        self.place = paddle.NPUPlace(0)
-
-        self.init_dtype()
-        np.random.seed(SEED)
+    def get_input(self):
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
         y = x.copy()
         y[0][1] = 1
-        out = x <= y  # all elements are equal, except position [0][1]
+        return x, y
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
-        self.outputs = {'Out': out}
+
+class TestLessequalBroadcast0(TestLessequal):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.array([1.5]).astype(self.dtype)
+        return x, y
+
+
+class TestLessequalBroadcast1(TestLessequal):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [1, 17]).astype(self.dtype)
+        y = x.T
+        return x, y
+
+
+class TestLessequalBroadcast2(TestLessequal):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [2, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
+        return x, y
+
+
+class TestLessequalBroadcast3(TestLessequal):
+    def get_input(self):
+        x = np.random.uniform(1, 2, [1, 2, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
+        return x, y
 
 
 class TestEqual2FP16(TestEqual2):
