@@ -49,6 +49,7 @@ import numbers
 import warnings
 from ...fluid.dygraph.base import no_grad
 from .. import functional as F
+from paddle import _C_ops
 
 __all__ = []
 
@@ -1083,7 +1084,7 @@ class SyncBatchNorm(_BatchNormBase):
                      self._data_format, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", False, 'trainable_statistics',
                      False)
-            sync_batch_norm_out, _, _, _, _, _ = core.ops.sync_batch_norm(
+            sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm(
                 x, self.weight, self.bias, self._mean, self._variance, mean_out,
                 variance_out, *attrs)
 

@@ -41,6 +41,7 @@ from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 from .lr import LRScheduler
 import copy
+from paddle import _C_ops
 
 __all__ = []
 
@@ -916,7 +917,7 @@ class Optimizer(object):
         assert regularization_term is not None
 
         if framework.in_dygraph_mode():
-            return core.ops.sum([grad, regularization_term])
+            return _C_ops.sum([grad, regularization_term])
 
         new_grad = grad
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
