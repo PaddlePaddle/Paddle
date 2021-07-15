@@ -160,7 +160,7 @@ uint64_t Generator::Seed() {
   this->state_.current_seed = seed;
   std::seed_seq seq({seed});
   this->engine_->seed(seq);
-  this->engine_32->seed(seq);
+  this->engine_32->seed(seed);
   return this->state_.current_seed;
 }
 

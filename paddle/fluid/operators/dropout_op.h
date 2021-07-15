@@ -110,6 +110,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         std::memset(mask_data, 0, size * sizeof(*mask_data));  // NOLINT
         return;
       }
+
       // std::minstd_rand engine;
       // NOTE: fixed seed should only be used in unittest or for debug.
       // Guarantee to use random seed in training.

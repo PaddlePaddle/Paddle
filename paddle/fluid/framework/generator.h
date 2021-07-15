@@ -152,6 +152,5 @@ std::shared_ptr<std::mt19937> GetCPURandomEngine_32(uint64_t);
 
 const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(
     int64_t device_id = -1);
-
 }  // namespace framework
 }  // namespace paddle
