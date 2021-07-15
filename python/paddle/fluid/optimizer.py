@@ -5279,33 +5279,45 @@ class PipelineOptimizer(object):
         block = program.global_block()
         num_ops = len(program.global_block().ops)
         for i in range(num_ops):
+            insert_index = None
             op = program.global_block().ops[i]
-            op_role = op.attr(self._op_role_key)
-            if op_role == self._op_role.Backward and backward_insert_index is None:
+            op_role = int(op.attr(self._op_role_key))
+            if op_role == int(
+                    self._op_role.Backward) and backward_insert_index is None:
                 backward_insert_index = i
-            if op.type != "recv_v2": continue
-            if op_role == self._op_role.Forward:
-                if i == forward_insert_index: continue
+            if op.type != "partial_recv" and op.type != "partial_allgather" and op.type != "nop":
+                continue
+            if op_role == int(self._op_role.Forward):
+                if i == forward_insert_index:
+                    forward_insert_index += 1
+                    continue
                 insert_index = forward_insert_index
-            elif op_role == self._op_role.Backward:
-                if i == backward_insert_index: continue
+            elif op_role == int(self._op_role.Backward):
+                print(op.type, i, backward_insert_index)
+                if i == backward_insert_index:
+                    backward_insert_index += 1
+                    continue
                 insert_index = backward_insert_index
-            elif op_role == self._op_role.Optimize:
-                break
             else:
-                raise ValueError("Unknown op_role: %s".format(op_rle))
-            block.remove_op(i)
-            block._insert_op_without_sync(
-                index=insert_indx,
+                raise ValueError("Unknown op_role: {}".format(op_role))
+            op_inputs = dict()
+            for name in op.input_names:
+                op_inputs[name] = op.input(name)
+            op_outputs = dict()
+            for name in op.output_names:
+                op_outputs[name] = op.output(name)
+            block._insert_op(
+                index=insert_index,
                 type=op.type,
-                inputs=op.inputs,
-                outputs=op.outputs,
-                attrs=op.attrs)
-            if op_role == self._op_role.Forward:
+                inputs=op_inputs,
+                outputs=op_outputs,
+                attrs=op.all_attrs())
+            block._remove_op(i + 1)
+            if op_role == int(self._op_role.Forward):
                 forward_insert_index += 1
-            else:
+            elif op_role == int(self._op_role.Backward):
                 backward_insert_index += 1
-        block._sync_with_cpp()
+            block._sync_with_cpp()
 
     def minimize(self,
                  loss,
