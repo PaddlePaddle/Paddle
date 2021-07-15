@@ -185,7 +185,7 @@ def test(unit_test, use_npu=False, test_error=False):
 def test_type_error(unit_test, use_npu, type_str_map):
     def check_type(op_str, x, y, binary_op):
         op = getattr(paddle, op_str)
-        error_type = TypeError
+        error_type = ValueError
         if isinstance(x, np.ndarray):
             x = paddle.to_tensor(x)
             y = paddle.to_tensor(y)
@@ -198,6 +198,7 @@ def test_type_error(unit_test, use_npu, type_str_map):
                 unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
         else:
             if not fluid.in_dygraph_mode():
+                error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, out=1)
 
     place = paddle.CPUPlace()

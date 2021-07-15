@@ -180,7 +180,7 @@ def test_xpu(unit_test, test_error=False):
 def test_type_error(unit_test, type_str_map):
     def check_type(op_str, x, y, binary_op):
         op = getattr(paddle, op_str)
-        error_type = TypeError
+        error_type = ValueError
         if isinstance(x, np.ndarray):
             x = paddle.to_tensor(x)
             y = paddle.to_tensor(y)
