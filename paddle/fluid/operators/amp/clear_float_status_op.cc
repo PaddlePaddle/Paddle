@@ -26,9 +26,9 @@ class ClearFloatStatusOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("FloatStatus"), "Output", "FloatStatus",
+    OP_INOUT_CHECK(ctx->HasOutput("FloatStatusOut"), "Output", "FloatStatusOut",
                    "clear_float_status");
-    ctx->SetOutputDim("FloatStatus", {8});
+    ctx->SetOutputDim("FloatStatusOut", ctx->GetInputDim("FloatStatus"));
   }
 
  protected:
