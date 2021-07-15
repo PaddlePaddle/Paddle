@@ -232,7 +232,9 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
-    head_number = context.Attr<int>("head_number");
+    if (context.HasAttr("head_number")) {
+      head_number = context.Attr<int>("head_number");
+    }
 #endif
 
     if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
