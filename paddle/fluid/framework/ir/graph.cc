@@ -46,7 +46,7 @@ Graph::Graph(const ProgramDesc &program, const int64_t start_op_index,
                                         "program, it doesn't have a block"));
 
   const int64_t block_op_size = program_.Block(0).AllOps().size();
-  PADDLE_ENFORCE_GE(end_op_index, block_op_size,
+  PADDLE_ENFORCE_LE(end_op_index, block_op_size,
                     platform::errors::InvalidArgument(
                         "Required end_op_index <= block_op_size, but received "
                         "end_op_index: %d > block_op_size: %d",
