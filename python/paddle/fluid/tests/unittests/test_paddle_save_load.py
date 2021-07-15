@@ -928,14 +928,8 @@ class TestSaveLoadLayer(unittest.TestCase):
         origin_layer = (layer1, layer2)
         origin = (layer1(inps), layer2(inps))
         path = "test_save_load_layer_/layer.pdmodel"
-        paddle.save(origin_layer, path)
-
-        loaded_layer = paddle.load(path)
-        loaded_result = [l(inps) for l in loaded_layer]
-        for i in range(len(origin)):
-            self.assertTrue((origin[i] - loaded_result[i]).abs().max() < 1e-10)
-            for k, v in origin_layer[i]._linear.weight.__dict__.items():
-                self.assertTrue(v == loaded_layer[i]._linear.weight.__dict__[k])
+        with self.assertRaises(ValueError):
+            paddle.save(origin_layer, path)
 
 
 if __name__ == '__main__':

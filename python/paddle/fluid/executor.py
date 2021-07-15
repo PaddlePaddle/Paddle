@@ -1638,8 +1638,12 @@ class Executor(object):
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_desc = trainer._desc()  # slow, cache
-        ctx = [trainer_desc, dataset, scope, real_fetch_list]
+        trainer_instance = self._default_executor.init_for_dataset(
+            program.desc, trainer_desc, scope, dataset.dataset)
+
+        ctx = [scope, real_fetch_list, trainer_instance]
         if use_program_cache: self._add_ctx_cache(cache_key, ctx)
+
         return ctx
 
     def _run_pipeline(self,
@@ -1654,20 +1658,17 @@ class Executor(object):
                       print_period=100,
                       fetch_handler=None,
                       use_program_cache=False):
-        trainer_desc, dataset, scope, real_fetch_list = \
+        scope, real_fetch_list, trainer_instance = \
             self._prepare_pipeline_ctx(program, dataset, scope, thread,
                                        is_infer, debug, fetch_list, fetch_info,
                                        print_period, fetch_handler,
                                        use_program_cache)
 
-        trainer_instance = self._default_executor.init_for_dataset(
-            program.desc, trainer_desc, scope, dataset.dataset)
-
         self._default_executor.run_from_dataset(trainer_instance)
-        self._default_executor.release_trainer(trainer_instance)
 
-        dataset._dynamic_adjust_after_train()
-        dataset._finish_to_run()
+        if not use_program_cache:
+            self._default_executor.release_trainer(trainer_instance)
+
         if real_fetch_list:
             arr = scope.find_var('fetch').get_fetch_list()
             tensors = arr._move_to_list()

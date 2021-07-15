@@ -18,8 +18,6 @@
 #include <cassert>
 
 #include "paddle/fluid/inference/tensorrt/plugin/anchor_generator_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
-
 #include "paddle/fluid/operators/detection/anchor_generator_op.h"
 
 namespace paddle {
@@ -219,7 +217,7 @@ const char* AnchorGeneratorPlugin::getPluginNamespace() const {
 
 nvinfer1::DataType AnchorGeneratorPlugin::getOutputDataType(
     int index, const nvinfer1::DataType* input_type, int nb_inputs) const {
-  return data_type_;
+  return input_type[0];
 }
 
 bool AnchorGeneratorPlugin::isOutputBroadcastAcrossBatch(
@@ -460,7 +458,7 @@ int AnchorGeneratorPluginDynamic::enqueue(
 
 nvinfer1::DataType AnchorGeneratorPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType* inputTypes, int nbInputs) const {
-  return data_type_;
+  return inputTypes[0];
 }
 
 const char* AnchorGeneratorPluginDynamic::getPluginType() const {

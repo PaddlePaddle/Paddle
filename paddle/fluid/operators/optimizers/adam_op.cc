@@ -157,6 +157,8 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
              "shape of this tensor MUST BE [1].")
         .AsDispensable();
     AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
+    AddInput("SkipUpdate", "(Tensor<bool>, optional), Skip the update or not.")
+        .AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("Moment1Out", "(Tensor) Output first moment");
@@ -265,4 +267,10 @@ REGISTER_OP_VERSION(adam)
             "In that case, the outputs(Beta1PowOut, Beta2PowOut) will not be "
             "used in adam op, "
             "and beta_pow will be updated after all adam op in the model.",
-            false));
+            false))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade adam, add 1 dispensable input [SkipUpdate].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "SkipUpdate", "If the value is true, Adam will skip the update."));

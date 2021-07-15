@@ -26,7 +26,8 @@
 ::     4. Visual Studio 2017 Community
 ::     5. CUDA 11.2
 ::     6. java jre
-::     7. xly agent
+::     7. sccache
+::     8. xly agent
 
 :: Echo command is not required.
 @echo off
@@ -34,7 +35,7 @@ cd /d %~dp0%
 
 :: ===== start step 0: wget tool =====
 :: Download wget for windows when there is not wget tool.
-echo ">>>>>>>> step [0/7]: wget tool"
+echo ">>>>>>>> step [0/8]: wget tool"
 wget --help > nul 2> nul || call:install_wget
 goto cmake
 
@@ -55,7 +56,7 @@ goto :eof
 :: Download CMake-3.17.0 and add in PATH when it not installed.
 :: TODO: limit version >= 3.17.0
 :cmake
-echo ">>>>>>>> step [1/7]: CMake 3.17.0"
+echo ">>>>>>>> step [1/8]: CMake 3.17.0"
 cmake --help > nul 2> nul || call :install_cmake
 goto git
 
@@ -105,7 +106,7 @@ goto :eof
 :: Download Python-3.8.3 and add in PATH when it not installed.
 :: TODO: limit version >= 3.8.3
 :python
-echo ">>>>>>>> step [3/7]: Python 3.8.3"
+echo ">>>>>>>> step [3/8]: Python 3.8.3"
 python -V 2>&1 | findstr /C:"Python 3.8.3" > nul 2> nul || call :install_python
 goto vs
 
@@ -130,7 +131,7 @@ goto :eof
 :: ===== start step 4: Visual Studio 2017 Community =====
 :: Download Visual Studio 2017 when it not installed.
 :vs
-echo ">>>>>>>> step [4/7]: Visual Studio 2017 "
+echo ">>>>>>>> step [4/8]: Visual Studio 2017 "
 cmd /C "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"  > nul 2> nul || call :install_visual_studio
 goto :cuda
 
@@ -154,7 +155,7 @@ goto :eof
 
 :: ===== start step 5: CUDA 11 =====
 :cuda
-echo ">>>>>>>> step [5/7]: CUDA 11.2"
+echo ">>>>>>>> step [5/8]: CUDA 11.2"
 cmd /C nvcc --version 2> nul | findstr /C:"11.2" > nul 2> nul || call :install_cuda
 goto java-jre
 
@@ -172,6 +173,7 @@ if %errorlevel% == 0 (
   goto :eof
 )
 del cuda_installer.exe
+
 echo Download cudnn from "https://paddle-ci.gz.bcebos.com/window_requirement/cudnn-11.2-windows-x64-v8.1.0.77.zip"
 wget -O cudnn-11.2-windows-x64-v8.1.0.77.zip "https://paddle-ci.gz.bcebos.com/window_requirement/cudnn-11.2-windows-x64-v8.1.0.77.zip"
 tar xf cudnn-11.2-windows-x64-v8.1.0.77.zip
@@ -184,9 +186,9 @@ goto :eof
 
 :: ===== start step 6: java jre =====
 :java-jre
-echo ">>>>>>>> step [6/7]: java jre"
+echo ">>>>>>>> step [6/8]: java jre"
 cmd /C java -version > nul 2> nul || call :install_java
-goto xly-agent
+goto sccache
 
 :install_java
 echo There is not java-jre in this PC, will install java-jre.
@@ -204,9 +206,22 @@ del jre-8u261-windows-x64.exe
 goto :eof
 :: ===== end step 6: java jre =====
 
-:: ===== start step 7: xly agent =====
+:: ===== start step 7: sccache on windowss =====
+:sccache
+echo ">>>>>>>> step [7/8]: sccache"
+cmd /C sccache -V > nul 2> nul || call :download_sccache
+goto xly-agent
+
+:download_sccache
+echo There is not sccache in this PC, will install sccache.
+echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
+wget -O sccache.exe "https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe"
+copy sccache.exe C:\Python38 /Y 
+:: ===== end step 7: sccache on windows =====
+
+:: ===== start step 8: xly agent =====
 :xly-agent
-echo ">>>>>>>> step [7/7]: xly agent"
+echo ">>>>>>>> step [8/8]: xly agent"
 wget -O agent.jar "https://xly.bce.baidu.com/sa_server/agent/v1/download?version=1.2.8"
 :: ===== end step 8: xly agent =====
 

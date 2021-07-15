@@ -581,6 +581,7 @@ class SectionWorker : public DeviceWorker {
   void RunUpdate(
       std::unique_ptr<GarbageCollector>&,
       std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
+  void PrepareUnusedVar();
 
  protected:
   int section_id_;
@@ -595,6 +596,8 @@ class SectionWorker : public DeviceWorker {
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   std::shared_ptr<framework::ProgramDesc> program_;
+  std::unordered_map<const OperatorBase*, std::vector<std::string>>
+      unused_vars_;
   static uint64_t batch_id_;
 
   platform::DeviceContext* dev_ctx_ = nullptr;
