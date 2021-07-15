@@ -917,10 +917,10 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       try {
         slot = boost::lexical_cast<int>(sparse_key_names[i]);
       } catch (boost::bad_lexical_cast const& e) {
-        PADDLE_THROW(
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
             "sparse var's name: %s, doesn't support non-integer type name when "
             "dump_slot=True",
-            sparse_key_names[i]);
+            sparse_key_names[i]));
       }
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
