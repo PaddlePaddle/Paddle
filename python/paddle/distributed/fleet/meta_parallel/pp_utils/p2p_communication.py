@@ -27,15 +27,67 @@ def initialize_p2p_groups(hcg):
     _hcg = hcg
 
 
+def _is_valid_communciate(src_stage, dest_stage):
+    first_stage = 0
+    last_stage = _hcg.get_pipe_parallel_world_size() - 1
+    assert abs(src_stage-dest_stage) == 1 or \
+        (src_stage == first_stage and dest_stage == last_stage) or \
+        (src_stage == last_stage and dest_stage == first_stage)
+
+
+def partial_send_operator(tensor,
+                          dst=0,
+                          mp_ranks=1,
+                          mp_rank_id=0,
+                          group=None,
+                          use_calc_stream=True):
+
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+    return paddle.fluid.core.ops.partial_send(
+        tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id, 'peer',
+        dst, 'num', mp_ranks, 'id', mp_rank_id)
+
+
+def partial_recv_operator(tensor,
+                          src=0,
+                          mp_ranks=1,
+                          mp_rank_id=0,
+                          group=None,
+                          use_calc_stream=True):
+
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    return paddle.fluid.core.ops.partial_recv(
+        tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id, 'peer',
+        src, 'num', mp_ranks, 'id', mp_rank_id, 'dtype', tensor.dtype,
+        'out_shape', tensor.shape)
+
+
+def partial_allgather_operator(tensor,
+                               mp_ranks=1,
+                               mp_rank_id=0,
+                               group=None,
+                               use_calc_stream=True):
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    return paddle.fluid.core.ops.partial_allgather_(
+        tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
+        'nranks', mp_ranks, 'rank', mp_rank_id)
+
+
 def send(tensor, dest_stage):
     global _groups, _hcg
     src_stage = _hcg.get_stage_id()
-    src_rank = _hcg.get_rank_from_stage(stage_id=src_stage)
-
     _is_valid_communciate(src_stage, dest_stage)
     group = _get_send_recv_group(src_stage, dest_stage)
-    dst_rank = _hcg.get_rank_from_stage(stage_id=dest_stage)
-    return paddle.distributed.broadcast(tensor, src_rank, group=group)
+    return paddle.distributed.send(
+        tensor, dst=1 if dest_stage > src_stage else 0, group=group)
 
 
 def recv(tensor, src_stage):
@@ -44,16 +96,35 @@ def recv(tensor, src_stage):
 
     _is_valid_communciate(src_stage, dest_stage)
     group = _get_send_recv_group(src_stage, dest_stage)
-    src_rank = _hcg.get_rank_from_stage(stage_id=src_stage)
-    return paddle.distributed.broadcast(tensor, src_rank, group=group)
+    return paddle.distributed.recv(
+        tensor, src=0 if dest_stage > src_stage else 1, group=group)
 
 
-def _is_valid_communciate(src_stage, dest_stage):
-    first_stage = 0
-    last_stage = _hcg.get_pipe_parallel_world_size() - 1
-    assert abs(src_stage-dest_stage) == 1 or \
-        (src_stage == first_stage and dest_stage == last_stage) or \
-        (src_stage == last_stage and dest_stage == first_stage)
+def send_partial(tensor, dest_stage, mp_degree, mp_rank):
+    global _groups, _hcg
+    src_stage = _hcg.get_stage_id()
+    _is_valid_communciate(src_stage, dest_stage)
+    group = _get_send_recv_group(src_stage, dest_stage)
+    return partial_send_operator(
+        tensor,
+        dst=1 if dest_stage > src_stage else 0,
+        mp_ranks=mp_degree,
+        mp_rank_id=mp_rank,
+        group=group)
+
+
+def recv_partial(tensor, src_stage, mp_degree, mp_rank):
+    global _groups, _hcg
+    dest_stage = _hcg.get_stage_id()
+
+    _is_valid_communciate(src_stage, dest_stage)
+    group = _get_send_recv_group(src_stage, dest_stage)
+    return partial_recv_operator(
+        tensor,
+        src=0 if dest_stage > src_stage else 1,
+        mp_ranks=mp_degree,
+        mp_rank_id=mp_rank,
+        group=group)
 
 
 def _get_send_recv_group(src_stage, dest_stage):

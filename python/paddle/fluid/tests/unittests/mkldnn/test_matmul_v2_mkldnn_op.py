@@ -18,11 +18,13 @@ import unittest
 from functools import reduce
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
+
+paddle.enable_static()
 
 
 def reference_matmul(X, Y, trans_x=False, trans_y=False):
@@ -237,6 +239,7 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
+    @OpTestTool.skip_if_not_cpu_bf16()
     class TestMatMulV2Bf16OneDNNOp(parent):
         def set_inputs(self, x, y):
             self.inputs = {
