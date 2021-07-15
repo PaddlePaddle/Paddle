@@ -394,7 +394,9 @@ class OptimizerWithMixedPrecision(object):
                         self._incr_ratio,
                         self._decr_ratio,
                         name="update_loss_scaling")
-
+        # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
+        if isinstance(self._optimizer, paddle.fluid.optimizer.Adam):
+            self._optimizer._set_auxiliary_var('found_inf', found_inf)
         optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
 
