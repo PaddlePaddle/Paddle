@@ -578,7 +578,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       try {
         slot = boost::lexical_cast<int>(sparse_key_names[i]);
       } catch (boost::bad_lexical_cast const& e) {
-        std::cout << "Error: " << e.what() << std::endl;
         PADDLE_THROW(
             "sparse var's name: %s, doesn't support non-integer type name when "
             "dump_slot=True",
