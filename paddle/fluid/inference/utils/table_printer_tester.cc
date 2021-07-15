@@ -70,5 +70,12 @@ TEST(table_printer, output) {
   table.InsertRow({"enable_mkldnn", "false"});
   table.InsertRow({"mkldnn_cache_capacity", "10"});
 
+  // a long string
+  table.InsertRow(
+      {"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ a long string "
+       "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+       "------------------------------------------ a long value "
+       "-----------------------------------------------------"});
+
   LOG(INFO) << table.PrintTable();
 }
