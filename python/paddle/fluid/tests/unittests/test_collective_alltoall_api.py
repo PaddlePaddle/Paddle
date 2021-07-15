@@ -29,7 +29,7 @@ class TestCollectiveAllToAllAPI(TestDistBase):
     def test_alltoall_nccl(self):
         self.check_with_place("collective_alltoall_api.py", "alltoall", "nccl")
 
-    def tset_alltoall_nccl_dygraph(self):
+    def test_alltoall_nccl_dygraph(self):
         self.check_with_place(
             "collective_alltoall_api_dygraph.py",
             "alltoall",
