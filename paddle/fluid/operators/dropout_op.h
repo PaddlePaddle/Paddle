@@ -23,7 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
+
 namespace paddle {
 namespace operators {
 
@@ -91,7 +93,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     auto* seed =
         context.HasInput("Seed") ? context.Input<Tensor>("Seed") : nullptr;
     auto* y = context.Output<Tensor>("Out");
-    // const auto* x_data = x->data<T>();
+    const auto* x_data = x->data<T>();
     auto* y_data = y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
@@ -134,17 +136,29 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       vslDeleteStream(&stream);
       std::cout << "generator: " << (clock() - t1) * 1.0 / CLOCKS_PER_SEC * 1000
                 << std::endl;
-
+      float factor = 1.0f / static_cast<T>(1.0f - dropout_prob);
       clock_t t2 = clock();
-      auto X = EigenMatrix<T>::Reshape(*x, 1);
-      auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      auto MASK = EigenMatrix<int>::Reshape(retValue, 1);
-      auto& place =
-          *context.template device_context<DeviceContext>().eigen_device();
+
+      // auto X = EigenMatrix<T>::Reshape(*x, 1);
+      // auto Y = EigenMatrix<T>::Reshape(*y, 1);
+      // auto MASK = EigenMatrix<int>::Reshape(*retValue, 1);
+      // auto& place =
+      //     *context.template device_context<DeviceContext>().eigen_device();
+      auto& dev_ctx =
+          context.template device_context<platform::CPUDeviceContext>();
+      auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+
       if (upscale_in_train) {
-        Y.device(place) = X * MASK * static_cast<T>(1.0f - dropout_prob);
+        if (std::is_same<T, float>::value) {
+          y_data = blas.DOT(x_data, retValue);
+        }
+        // blas.MatMul(*y_data, false, *y, false, dx);
+        // Y.device(place) = X * MASK * ;
       } else {
-        Y.device(place) = X * MASK;
+        if (std::is_same<T, float>::value) {
+          y_data = blas.DOT(x_data, retValue);
+        }
+        // Y.device(place) = X * MASK;
       }
 
       // #pragma omp parallel for
