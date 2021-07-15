@@ -14,6 +14,8 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 #include <queue>
+#include <thrust/execution_policy.h>
+#include <thrust/reduce.h>
 
 namespace paddle {
 namespace framework {
@@ -399,7 +401,11 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(int gpu_num,
 
   auto d_num_runs_out_mem = memory::AllocShared(place, sizeof(int));
   int* d_num_runs_out = reinterpret_cast<int*>(d_num_runs_out_mem->ptr());
-
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+  
+  auto res_pair = thrust::reduce_by_key(thrust::device, d_merge_keys_ptr, d_merge_keys_ptr + len, d_merge_grads_ptr, d_keys, d_grads);
+  uniq_len = res_pair.first - d_keys;
+  /*
   PADDLE_ENFORCE_CUDA_SUCCESS(cub::DeviceReduce::ReduceByKey(
       NULL, temp_storage_bytes, d_merge_keys_ptr, d_keys, d_merge_grads_ptr,
       d_grads, d_num_runs_out, merger_, len, stream, false));
@@ -416,6 +422,7 @@ void HeterComm<KeyType, ValType, GradType>::merge_grad(int gpu_num,
   cudaMemcpyAsync(&uniq_len, d_num_runs_out, sizeof(int),
                   cudaMemcpyDeviceToHost, stream);
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+  */
 }
 
 template <typename KeyType, typename ValType, typename GradType>
