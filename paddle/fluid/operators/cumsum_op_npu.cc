@@ -20,25 +20,13 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-void CheckAttrs(const framework::ExecutionContext& ctx) {
-  // Add this check is is due to Ascend CumsumD does't supoort
-  // attr flatten
-  bool flatten = ctx.Attr<bool>("flatten");
-  PADDLE_ENFORCE_EQ(flatten, false,
-                    platform::errors::InvalidArgument(
-                        "attr flatten must be false, but got true"));
-}
-
 template <typename DeviceContext, typename T>
 class CumSumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(WARNING) << "CumSumNPUKernel";
-
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
     int axis = ctx.Attr<int>("axis");
-    // bool flatten = ctx.Attr<bool>("flatten");
     bool exclusive = ctx.Attr<bool>("exclusive");
     bool reverse = ctx.Attr<bool>("reverse");
 
