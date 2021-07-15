@@ -62,10 +62,15 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     }
 
     std::vector<int64_t> new_dims;
-    if (ndims_x >= ndims_y) {
+    if (ndims_x > ndims_y) {
       new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-    } else {
+    } else if (ndims_x < ndims_y) {
       new_dims.assign(dims_y.begin(), dims_y.end() - 2);
+    } else {
+      new_dims.reserve(ndims_x);
+      for (int i = 0; i < ndims_x - 2; ++i) {
+        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+      }
     }
     if (!x_broadcasted) {
       new_dims.push_back(M);
@@ -168,9 +173,9 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::OperatorWithKernel::IndicateVarDataType(ctx, framework::GradVarName("Out"));
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
