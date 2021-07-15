@@ -28,7 +28,7 @@ class ClearFloatStatusKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
     auto* float_status_out = ctx.Output<framework::Tensor>("FloatStatusOut");
-    float_status->mutable_data<T>(ctx.GetPlace());
+    // NOTE(zhiqiu): NPUClearFloatStatus modifies the input.
     PADDLE_ENFORCE_EQ(float_status_out, float_status,
                       platform::errors::PreconditionNotMet(
                           "The input(FloatStatus) and Output(FloatStatusOut) "
