@@ -14,34 +14,29 @@ limitations under the License. */
 
 syntax = "proto2";
 
+import "framework.proto";
 package paddle.framework.proto;
 
 // Describes one subsitute subgraph.
 message PassDesc {
-  message Attr {
-    required string name = 1;
-    optional string from_op_type = 2;
-    optional string from_op_attr = 3;
+  message VarMap {
+    required string pattern_var = 1;
+    required string replace_var = 2;
   }
-  message Var {
-    required string name = 1;
-    optional string from_op_type = 2;
-    optional string from_op_var = 3;
-    optional bool persistable = 4 [ default = false ];
+  message AttrMap {
+    required string pattern_op = 1;
+    required string replace_op = 2;
+    required string pattern_attr = 3;
+    required string replace_attr = 4;
   }
-  message Op {
-    required string type = 1;
-    repeated Var input = 2;
-    repeated Var output = 3;
-    repeated Attr attr = 4;
-  }
-  // attr
-  repeated Op pattern_op = 2;
-  repeated Op algebra_op = 3;
+  required ProgramDesc pattern = 1;
+  required ProgramDesc replace = 2;
+  repeated VarMap var_maps = 3;
+  repeated AttrMap attr_maps = 4;
 }
 
 // A series of PassDesc.
 message MultiPassDesc {
   required string name = 1;
-  repeated PassDesc pass_desc = 2;
+  repeated PassDesc pass_descs = 2;
 }
