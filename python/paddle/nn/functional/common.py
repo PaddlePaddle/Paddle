@@ -33,6 +33,7 @@ from ...fluid.framework import in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
 from ...fluid.data_feeder import check_variable_and_dtype
+from paddle import _C_ops
 
 __all__ = []
 
@@ -452,15 +453,15 @@ def interpolate(x,
         dy_attr = tuple(attr_list)
 
         if resample_type == "linear":
-            out = core.ops.linear_interp_v2(x, *dy_attr)
-        if resample_type == "bilinear":
-            out = core.ops.bilinear_interp_v2(x, *dy_attr)
-        if resample_type == "trilinear":
-            out = core.ops.trilinear_interp_v2(x, *dy_attr)
-        if resample_type == "nearest":
-            out = core.ops.nearest_interp_v2(x, *dy_attr)
-        if resample_type == "bicubic":
-            out = core.ops.bicubic_interp_v2(x, *dy_attr)
+            out = _C_ops.linear_interp_v2(x, *dy_attr)
+        elif resample_type == "bilinear":
+            out = _C_ops.bilinear_interp_v2(x, *dy_attr)
+        elif resample_type == "trilinear":
+            out = _C_ops.trilinear_interp_v2(x, *dy_attr)
+        elif resample_type == "nearest":
+            out = _C_ops.nearest_interp_v2(x, *dy_attr)
+        elif resample_type == "bicubic":
+            out = _C_ops.bicubic_interp_v2(x, *dy_attr)
         return out
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
@@ -710,7 +711,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.bilinear_tensor_product(x1, x2, weight, bias)
+        return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
 
     check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
     check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
@@ -881,22 +882,10 @@ def dropout(x,
         seed = None
         mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-        def get_attrs(prog, dropout_prob, is_test, seed):
-            if (seed is None or seed == 0) and prog.random_seed != 0:
-                seed = prog.random_seed
-            attrs = {
-                'dropout_prob': dropout_prob,
-                'is_test': is_test,
-                'fix_seed': seed is not None,
-                'seed': seed if seed is not None else 0,
-                'dropout_implementation': mode,
-            }
-            return attrs
-
         if in_dygraph_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
-            out, mask = core.ops.dropout(
+            out, mask = _C_ops.dropout(
                 x, 'dropout_prob', p, 'is_test', not training, 'fix_seed',
                 seed is not None, 'seed', seed
                 if seed is not None else 0, 'dropout_implementation', mode)
@@ -909,6 +898,18 @@ def dropout(x,
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         mask = helper.create_variable_for_type_inference(
             dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+
+        def get_attrs(prog, dropout_prob, is_test, seed):
+            if (seed is None or seed == 0) and prog.random_seed != 0:
+                seed = prog.random_seed
+            attrs = {
+                'dropout_prob': dropout_prob,
+                'is_test': is_test,
+                'fix_seed': seed is not None,
+                'seed': seed if seed is not None else 0,
+                'dropout_implementation': mode,
+            }
+            return attrs
 
         attrs = get_attrs(helper.main_program, p, not training, seed)
 
@@ -1316,8 +1317,8 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     if in_dygraph_mode():
         if isinstance(pad, Variable):
             pad = pad.numpy()
-        out = core.ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
-                             "data_format", data_format, "name", name)
+        out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
+                           "data_format", data_format, "name", name)
     else:
         attrs = {'mode': mode, 'value': value, 'data_format': data_format}
         inputs = {'X': [x]}
@@ -1447,13 +1448,13 @@ def linear(x, weight, bias=None, name=None):
     """
     if in_dygraph_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
-        core.ops.matmul(x, weight, pre_bias, 'transpose_X', False,
-                        'transpose_Y', False, "alpha", 1)
+        _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
+                      False, "alpha", 1)
 
         if bias is None:
             return pre_bias
 
-        return core.ops.elementwise_add(pre_bias, bias)
+        return _C_ops.elementwise_add(pre_bias, bias)
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype
@@ -1546,8 +1547,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
     if in_dygraph_mode():
-        return core.ops.label_smooth(label, prior_dist, 'epsilon',
-                                     float(epsilon))
+        return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                              'label_smooth')

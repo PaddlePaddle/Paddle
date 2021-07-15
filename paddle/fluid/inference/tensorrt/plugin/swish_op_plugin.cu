@@ -17,17 +17,11 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/swish_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-SwishPlugin *CreateSwishPluginDeserialize(const void *buffer, size_t length) {
-  return new SwishPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("swish_plugin", CreateSwishPluginDeserialize);
 
 int SwishPlugin::initialize() { return 0; }
 

@@ -184,6 +184,12 @@ class TestModel(unittest.TestCase):
     def test_fit_static_with_rank(self):
         self.fit(False, 2, 0)
 
+    def test_fit_dynamic_with_num_iters(self):
+        self.fit(True, num_iters=1)
+
+    def test_fit_static_with_num_iters(self):
+        self.fit(False, num_iters=1)
+
     def test_evaluate_dygraph(self):
         self.evaluate(True)
 
@@ -199,7 +205,7 @@ class TestModel(unittest.TestCase):
     def test_prepare_context(self):
         prepare_distributed_context()
 
-    def fit(self, dynamic, num_replicas=None, rank=None):
+    def fit(self, dynamic, num_replicas=None, rank=None, num_iters=None):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
         paddle.seed(seed)
@@ -217,6 +223,14 @@ class TestModel(unittest.TestCase):
 
         result = model.evaluate(self.val_dataset, batch_size=64)
         np.testing.assert_allclose(result['acc'], self.acc1)
+
+        model.fit(self.train_dataset,
+                  batch_size=64,
+                  shuffle=False,
+                  num_iters=num_iters)
+
+        result = model.evaluate(
+            self.val_dataset, batch_size=64, num_iters=num_iters)
 
         train_sampler = DistributedBatchSampler(
             self.train_dataset,

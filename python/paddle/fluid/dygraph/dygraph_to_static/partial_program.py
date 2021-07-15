@@ -27,6 +27,7 @@ from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.layers.utils import _hash32_id
 from paddle.fluid.compiler import BuildStrategy
 import paddle.compat as cpt
+from paddle import _C_ops
 
 
 class NestSequence(object):

@@ -349,8 +349,3 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     global_inner_scope->DeleteScope(&scope);
     VLOG(2) << "The number of sub scopes after backward: "
             << global_inner_scope->kids().size();
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle

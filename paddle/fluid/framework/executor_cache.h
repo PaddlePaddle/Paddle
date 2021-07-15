@@ -70,6 +70,12 @@ class ExecutorInfo {
   CacheValue backward_info_;
 };
 
+void ParseSafeEagerDeletionSkipVars(
+    const ProgramDesc& program, int64_t forward_op_nums,
+    const std::vector<std::string>& output_var_names,
+    std::vector<std::string>* skip_eager_delete_vars);
+
+}  // namespace details
 class ExecutorInfoCache {
  public:
   static ExecutorInfoCache& Instance();
@@ -175,9 +181,7 @@ class ExecutorInfoCache {
     size_t operator()(const CacheKey& key) const noexcept {
       size_t seed = 10;
       auto* prog_desc = key.program_desc_;
-      hash_combine(&seed, prog_desc);
-      for (size_t i = 0; i < prog_desc->Size(); ++i) {
-        hash_combine(&seed, &prog_desc->Block(i));
+      /*
         hash_combine(&seed, prog_desc->Block(i).OpSize());
       }
       hash_combine(&seed, static_cast<int>(key.device_type_));
@@ -248,4 +252,3 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc* program_desc,
                                    framework::Scope* scope);
 
 }  // namespace framework
-}  // namespace paddle
