@@ -22,15 +22,10 @@ template <typename DeviceContext, typename T>
 class TrilTriuNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(WARNING) << "TrilTriuNPUKernel";
-
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
     int diagonal = ctx.Attr<int>("diagonal");
     bool lower = ctx.Attr<bool>("lower");
-
-    LOG(WARNING) << "diagonal: " << diagonal;
-    LOG(WARNING) << "lower: " << lower;
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -58,7 +53,3 @@ namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
     tril_triu, ops::TrilTriuNPUKernel<plat::NPUDeviceContext, float>,
     ops::TrilTriuNPUKernel<plat::NPUDeviceContext, plat::float16>);
-// REGISTER_OP_NPU_KERNEL(
-//     tril_triu_grad,
-//     ops::TrilTriuGradNPUKernel<plat::NPUDeviceContext, float>,
-//     ops::TrilTriuGradNPUKernel<plat::NPUDeviceContext, plat::float16>);

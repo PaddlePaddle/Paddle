@@ -49,10 +49,7 @@ class TestNPUTrilTriu(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
-
-    # def test_check_grad_normal(self):
-    #     self.check_grad_with_place(self.place, ['X'], 'Out', check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -62,12 +59,9 @@ class TestNPUTrilTriu(OpTest):
         self.dtype = np.float32
 
     def initTestCase(self):
-        self.real_op_type = np.random.choice(['tril', 'tril', 'triu', 'tril'])
+        self.real_op_type = np.random.choice(['triu', 'tril'])
         self.diagonal = None
         self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
-
-        print('real_op_type: ', self.real_op_type)
-        print('X.shape: ', self.X.shape)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -81,9 +75,6 @@ class TestNPUTrilTriu_Tril1(TestNPUTrilTriu):
         self.diagonal = None
         self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
 
-        print('real_op_type: ', self.real_op_type)
-        print('X.shape: ', self.X.shape)
-
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
@@ -95,9 +86,6 @@ class TestNPUTrilTriu_Tril2(TestNPUTrilTriu):
         self.real_op_type = 'tril'
         self.diagonal = 3
         self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
-
-        print('real_op_type: ', self.real_op_type)
-        print('X.shape: ', self.X.shape)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -111,9 +99,6 @@ class TestNPUTrilTriu_Triu1(TestNPUTrilTriu):
         self.diagonal = None
         self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
 
-        print('real_op_type: ', self.real_op_type)
-        print('X.shape: ', self.X.shape)
-
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
@@ -125,9 +110,6 @@ class TestNPUTrilTriu_Triu2(TestNPUTrilTriu):
         self.real_op_type = 'triu'
         self.diagonal = 3
         self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
-
-        print('real_op_type: ', self.real_op_type)
-        print('X.shape: ', self.X.shape)
 
 
 if __name__ == '__main__':
