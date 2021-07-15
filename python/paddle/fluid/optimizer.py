@@ -43,6 +43,7 @@ from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 import warnings
+from paddle import _C_ops
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -915,7 +916,7 @@ class Optimizer(object):
         assert regularization_term is not None
 
         if framework.in_dygraph_mode():
-            return core.ops.sum([grad, regularization_term])
+            return _C_ops.sum([grad, regularization_term])
 
         new_grad = grad
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
@@ -1295,8 +1296,8 @@ class SGDOptimizer(Optimizer):
     def _append_optimize_op(self, block, param_and_grad):
         lr = self._create_param_lr(param_and_grad)
         if framework.in_dygraph_mode():
-            core.ops.sgd(param_and_grad[0], lr, param_and_grad[1],
-                         param_and_grad[0])
+            _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1],
+                       param_and_grad[0])
             return None
 
         assert isinstance(block, framework.Block)
@@ -1420,10 +1421,10 @@ class MomentumOptimizer(Optimizer):
         lr = self._create_param_lr(param_and_grad)
 
         if framework.in_dygraph_mode():
-            _, _ = core.ops.momentum(param_and_grad[0], param_and_grad[1],
-                                     velocity_acc, lr, param_and_grad[0],
-                                     velocity_acc, 'mu', self._momentum,
-                                     'use_nesterov', self._use_nesterov)
+            _, _ = _C_ops.momentum(param_and_grad[0], param_and_grad[1],
+                                   velocity_acc, lr, param_and_grad[0],
+                                   velocity_acc, 'mu', self._momentum,
+                                   'use_nesterov', self._use_nesterov)
             return None
 
         attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
@@ -2447,7 +2448,7 @@ class AdamOptimizer(Optimizer):
                 self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
-            _, _, _, _, _ = core.ops.adam(
+            _, _, _, _, _ = _C_ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
                 moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
@@ -3510,7 +3511,7 @@ class LambOptimizer(AdamOptimizer):
         lr = self._create_param_lr(param_and_grad)
 
         if framework.in_dygraph_mode():
-            _, _, _, _, _ = core.ops.lamb(
+            _, _, _, _, _ = _C_ops.lamb(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
                 moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', self._beta1,
