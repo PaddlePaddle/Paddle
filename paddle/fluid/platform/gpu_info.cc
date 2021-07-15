@@ -459,6 +459,14 @@ static void RaiseNonOutOfMemoryError(gpuError_t *status) {
   PADDLE_ENFORCE_CUDA_SUCCESS(*status);
 }
 
+uint64_t g_memuse = 0;
+class AAA {
+ public:
+  AAA() {}
+  ~AAA() { std::cout << "Mem use : " << g_memuse << std::endl; }
+};
+AAA a;
+
 class RecordedCudaMallocHelper {
  private:
   explicit RecordedCudaMallocHelper(int dev_id, uint64_t limit_size = 0)
@@ -516,6 +524,7 @@ class RecordedCudaMallocHelper {
     if (result == gpuSuccess) {
       if (NeedRecord()) {
         cur_size_ += size;
+        g_memuse += size;
       }
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       return gpuSuccess;
@@ -554,6 +563,7 @@ class RecordedCudaMallocHelper {
       if (NeedRecord()) {
         std::lock_guard<std::mutex> guard(*mtx_);
         cur_size_ -= size;
+        g_memuse -= size;
       }
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
