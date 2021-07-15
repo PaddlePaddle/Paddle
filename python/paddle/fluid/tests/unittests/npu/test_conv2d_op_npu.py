@@ -70,6 +70,18 @@ def create_test_padding_VALID_class(parent):
     globals()[cls_name] = TestPaddingVALIDCase
 
 
+def create_test_fp16_class(parent):
+    @unittest.skipIf(not paddle.is_compiled_with_npu(),
+                     "core is not compiled with NPU")
+    class TestFp16Case(parent):
+        def init_dtype(self):
+            self.dtype = np.float16
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    TestFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestFp16Case
+
+
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestConv2DOp(OpTest):
@@ -554,6 +566,12 @@ create_test_channel_last_class(TestWithPad_AsyPadding)
 create_test_channel_last_class(TestWithGroup_AsyPadding)
 create_test_channel_last_class(TestWith1x1_AsyPadding)
 create_test_channel_last_class(TestWithInput1x1Filter1x1_AsyPadding)
+
+create_test_fp16_class(TestConv2DOp_AsyPadding)
+create_test_fp16_class(TestWithPad_AsyPadding)
+create_test_fp16_class(TestWithStride_AsyPadding)
+create_test_fp16_class(TestWithGroup_AsyPadding)
+create_test_fp16_class(TestWithInput1x1Filter1x1_AsyPadding)
 
 if __name__ == "__main__":
     unittest.main()
