@@ -35,7 +35,7 @@ def summary(net, input_size, input=None, dtypes=None):
                     have multiple input, input_size must be a list which contain 
                     every input's shape. Note that input_size only dim of
                     batch_size can be None or -1.
-        input : the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
+        input: the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
         dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
 
     Returns:
@@ -78,7 +78,6 @@ def summary(net, input_size, input=None, dtypes=None):
 
             lenet = LeNet()
 
-            input_data = [paddle.ones([1, 1, 28, 28])]
             params_info = paddle.summary(lenet, (1, 1, 28, 28))
             print(params_info)
 
