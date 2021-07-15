@@ -460,10 +460,11 @@ static void RaiseNonOutOfMemoryError(gpuError_t *status) {
 }
 
 uint64_t g_memuse = 0;
+uint64_t g_memuse_max = 0;
 class AAA {
  public:
   AAA() {}
-  ~AAA() { std::cout << "Mem use : " << g_memuse << std::endl; }
+  ~AAA() { std::cout << "Mem use : " << g_memuse_max << std::endl; }
 };
 AAA a;
 
@@ -524,7 +525,10 @@ class RecordedCudaMallocHelper {
     if (result == gpuSuccess) {
       if (NeedRecord()) {
         cur_size_ += size;
-        g_memuse += size;
+      }
+      g_memuse += size;
+      if (g_memuse > g_memuse_max) {
+        g_memuse_max = g_memuse;
       }
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       return gpuSuccess;
@@ -563,8 +567,8 @@ class RecordedCudaMallocHelper {
       if (NeedRecord()) {
         std::lock_guard<std::mutex> guard(*mtx_);
         cur_size_ -= size;
-        g_memuse -= size;
       }
+      g_memuse -= size;
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
 #ifdef PADDLE_WITH_HIP
