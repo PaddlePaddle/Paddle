@@ -17,29 +17,6 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class MeanNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
-
-    std::vector<int> axes;
-
-    framework::NPUAttributeMap attr_input = {{"keep_dims", false},
-                                             {"axes", axes}};
-
-    out->mutable_data<T>(ctx.GetPlace());
-
-    const auto& runner = NpuOpRunner("ReduceMeanD", {*x}, {*out}, attr_input);
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
-  }
-};
-
-template <typename DeviceContext, typename T>
 class MeanGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -90,11 +67,6 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_NPU_KERNEL(
-    mean, ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
 
 REGISTER_OP_NPU_KERNEL(
     mean_grad, ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, int>,

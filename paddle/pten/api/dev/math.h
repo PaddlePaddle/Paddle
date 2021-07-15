@@ -16,4 +16,5 @@ limitations under the License. */
 
 #include "paddle/pten/cpu/math.h"
 #include "paddle/pten/cuda/math.h"
+#include "paddle/pten/npu/math.h"
 #include "paddle/pten/xpu/math.h"

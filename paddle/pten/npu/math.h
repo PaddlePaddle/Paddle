@@ -17,11 +17,30 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND_CL
 
 #include "paddle/pten/core/base_tensor.h"
-#include "paddle/pten/module/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace pt {}  // namespace pt
+namespace pt {
+
+using NPUDeviceContext = paddle::platfrom::NPUDeviceContext;
+
+template <typename T>
+void Mean(const NPUDeviceContext& dev_ctx,
+          const BaseTensor& x,
+          BaseTensor* out) {
+  std::vector<int> axes;
+  framework::NPUAttributeMap attr_input = {{"keep_dims", false},
+                                           {"axes", axes}};
+  out->mutable_data<T>();
+  const auto& runner = NpuOpRunner("ReduceMeanD", {x}, {*out}, attr_input);
+  auto stream =
+      ctx.template device_context<paddle::platform::NPUDeviceContext>()
+          .stream();
+  runner.Run(stream);
+}
+
+}  // namespace pt
 
 #endif
