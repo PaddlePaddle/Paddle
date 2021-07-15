@@ -32,7 +32,7 @@ class ClearFloatStatusKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(float_status_out, float_status,
                       platform::errors::PreconditionNotMet(
                           "The input(FloatStatus) and Output(FloatStatusOut) "
-                          "should be the same."))
+                          "should be the same."));
     Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
     const auto& runner =
