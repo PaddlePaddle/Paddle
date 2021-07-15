@@ -84,6 +84,14 @@ class TestNPUHardSigmoid2(TestNPUHardSigmoid):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
+class TestNPUHardSigmoid3(TestNPUHardSigmoid):
+    def set_attrs(self):
+        self.slope = 0.2
+        self.offset = 0.4
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestNPUHardSigmoidFp16(TestNPUHardSigmoid):
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
