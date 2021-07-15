@@ -41,11 +41,11 @@ def current_stream(device=None):
 
             import paddle
 
-            s1 = paddle.devices.cuda.current_stream()
+            s1 = paddle.device.cuda.current_stream()
 
-            s2 = paddle.devices.cuda.current_stream(0)
+            s2 = paddle.device.cuda.current_stream(0)
 
-            s3 = paddle.devices.cuda.current_stream(paddle.CUDAPlace(0))
+            s3 = paddle.device.cuda.current_stream(paddle.CUDAPlace(0))
 
     '''
 
@@ -75,9 +75,9 @@ def synchronize(device=None):
 
             import paddle
 
-            paddle.devices.cuda.synchronize()
-            paddle.devices.cuda.synchronize(0)
-            paddle.devices.cuda.synchronize(paddle.CUDAPlace(0))
+            paddle.device.cuda.synchronize()
+            paddle.device.cuda.synchronize(0)
+            paddle.device.cuda.synchronize(paddle.CUDAPlace(0))
 
     '''
 

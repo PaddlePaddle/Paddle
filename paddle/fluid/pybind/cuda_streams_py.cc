@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pybind/cuda_streams_py.h"
-#include "paddle/fluid/platform/event.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
-
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 
 namespace py = pybind11;
 
@@ -74,9 +74,9 @@ void BindCudaStream(py::module *m_ptr) {
         .. code-block:: python
 
             import paddle
-            s1 = paddle.devices.cuda.Stream(paddle.CUDAPlace(0), 1)
-            s2 = paddle.devices.cuda.Stream(0, 1)
-            s3 = paddle.devices.cuda.Stream()
+            s1 = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+            s2 = paddle.device.cuda.Stream(0, 1)
+            s3 = paddle.device.cuda.Stream()
 
   )DOC")
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -95,8 +95,8 @@ void BindCudaStream(py::module *m_ptr) {
         .. code-block:: python
 
           import paddle
-          s = paddle.devices.cuda.Stream(paddle.CUDAPlace(0), 1)
-          event = paddle.devices.cuda.Event()
+          s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+          event = paddle.device.cuda.Event()
           s.wait_event(event)
 
            )DOC")
@@ -118,8 +118,8 @@ void BindCudaStream(py::module *m_ptr) {
         .. code-block:: python
 
             import paddle
-            s1 = paddle.devices.cuda.Stream(paddle.CUDAPlace(0), 1)
-            s2 = paddle.devices.cuda.Stream(0, 1)
+            s1 = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+            s2 = paddle.device.cuda.Stream(0, 1)
             s1.wait_stream(s2)
 
            )DOC")
@@ -136,7 +136,7 @@ void BindCudaStream(py::module *m_ptr) {
         .. code-block:: python
 
             import paddle
-            s = paddle.devices.cuda.Stream(paddle.CUDAPlace(0), 1)
+            s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
             is_done = s.query()
 
            )DOC")
@@ -151,7 +151,7 @@ void BindCudaStream(py::module *m_ptr) {
         .. code-block:: python
 
             import paddle
-            s = paddle.devices.cuda.Stream(paddle.CUDAPlace(0), 1)
+            s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
             s.synchronize()
 
            )DOC")
@@ -179,7 +179,7 @@ void BindCudaStream(py::module *m_ptr) {
         .. code-block:: python
 
             import paddle
-            s = paddle.devices.cuda.Stream(paddle.CUDAPlace(0), 1)
+            s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
             event = s.record_event()
 
            )DOC",
@@ -263,7 +263,7 @@ void BindCudaStream(py::module *m_ptr) {
         .. code-block:: python
 
             import paddle
-            event = paddle.devices.cuda.Event()
+            event = paddle.device.cuda.Event()
 
   )DOC")
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -285,7 +285,7 @@ void BindCudaStream(py::module *m_ptr) {
             .. code-block:: python
 
               import paddle
-              event = paddle.devices.cuda.Event()
+              event = paddle.device.cuda.Event()
               event.record()
     
         )DOC",
@@ -301,7 +301,7 @@ void BindCudaStream(py::module *m_ptr) {
             .. code-block:: python
 
                 import paddle
-                event = paddle.devices.cuda.Event()
+                event = paddle.device.cuda.Event()
                 is_done = event.query()
 
            )DOC")
@@ -313,7 +313,7 @@ void BindCudaStream(py::module *m_ptr) {
               .. code-block:: python
 
                 import paddle
-                event = paddle.devices.cuda.Event()
+                event = paddle.device.cuda.Event()
                 event.synchronize()
 
            )DOC")

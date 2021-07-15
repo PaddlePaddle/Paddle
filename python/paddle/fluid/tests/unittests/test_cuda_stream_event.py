@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.devices import cuda
+from paddle.device import cuda
 import paddle
 
 import unittest
@@ -48,14 +48,14 @@ class TestSynchronize(unittest.TestCase):
 class TestCUDAStream(unittest.TestCase):
     def test_cuda_stream(self):
         if paddle.is_compiled_with_cuda():
-            s = paddle.devices.cuda.Stream()
+            s = paddle.device.cuda.Stream()
             self.assertIsNotNone(s)
 
     def test_cuda_stream_synchronize(self):
         if paddle.is_compiled_with_cuda():
-            s = paddle.devices.cuda.Stream()
-            e1 = paddle.devices.cuda.Event(True, False, False)
-            e2 = paddle.devices.cuda.Event(True, False, False)
+            s = paddle.device.cuda.Stream()
+            e1 = paddle.device.cuda.Event(True, False, False)
+            e2 = paddle.device.cuda.Event(True, False, False)
 
             e1.record(s)
             e1.query()
@@ -85,14 +85,14 @@ class TestCUDAStream(unittest.TestCase):
 class TestCUDAEvent(unittest.TestCase):
     def test_cuda_event(self):
         if paddle.is_compiled_with_cuda():
-            e = paddle.devices.cuda.Event(True, False, False)
+            e = paddle.device.cuda.Event(True, False, False)
             self.assertIsNotNone(e)
-            s = paddle.devices.cuda.current_stream()
+            s = paddle.device.cuda.current_stream()
 
     def test_cuda_event_methods(self):
         if paddle.is_compiled_with_cuda():
-            e = paddle.devices.cuda.Event(True, False, False)
-            s = paddle.devices.cuda.current_stream()
+            e = paddle.device.cuda.Event(True, False, False)
+            s = paddle.device.cuda.current_stream()
             event_query_1 = e.query()
             tensor1 = paddle.to_tensor(paddle.rand([1000, 1000]))
             tensor2 = paddle.matmul(tensor1, tensor1)
