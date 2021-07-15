@@ -21,6 +21,7 @@ from paddle.fluid import unique_name
 from paddle.fluid import layers
 from paddle.fluid.layer_helper import LayerHelper
 import warnings
+from paddle import _C_ops
 
 __all__ = ['Momentum']
 
@@ -203,7 +204,7 @@ class Momentum(Optimizer):
         lr = self._create_param_lr(param_and_grad)
 
         if framework.in_dygraph_mode():
-            _, _ = core.ops.momentum(
+            _, _ = _C_ops.momentum(
                 param_and_grad[0], param_and_grad[1], velocity_acc, lr,
                 param_and_grad[0], velocity_acc, 'mu', self._momentum,
                 'use_nesterov', self._use_nesterov, 'regularization_method',
