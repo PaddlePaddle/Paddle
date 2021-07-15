@@ -23,10 +23,6 @@ def {
 }
 extra {
   attrs {
-    name: "use_mkldnn"
-    type: BOOLEAN
-  }
-  attrs {
     name: "padding_weights"
     type: BOOLEAN
   }
@@ -35,63 +31,19 @@ extra {
     type: BOOLEAN
   }
   attrs {
-    name: "use_quantizer"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "mkldnn_data_type"
-    type: STRING
-  }
-  attrs {
-    name: "weight_scale"
-    type: FLOATS
-  }
-  attrs {
-    name: "Input_scale"
+    name: "Scale_in"
     type: FLOAT
   }
   attrs {
-    name: "out_scale"
+    name: "Scale_weights"
     type: FLOAT
   }
   attrs {
-    name: "out_threshold"
+    name: "Scale_out"
     type: FLOAT
   }
   attrs {
     name: "force_fp32_output"
     type: BOOLEAN
-  }
-  attrs {
-    name: "enable_int8"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "use_fc_padding"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "use_gpu"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "op_role"
-    type: INT
-  }
-  attrs {
-    name: "op_role_var"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_namescope"
-    type: STRING
-  }
-  attrs {
-    name: "op_callstack"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_device"
-    type: STRING
   }
 }
