@@ -532,9 +532,9 @@ class TestElementwiseAddOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # the input of elementwise_add must be Variable.
             x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0))
             y1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0))
             self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
 
             # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
@@ -571,14 +571,14 @@ class TestAddApi(unittest.TestCase):
             y = fluid.data(name="y", shape=[3], dtype='float32')
             z = self._executed_api(x, y)
 
-            place = fluid.CPUPlace()
+            place = fluid.NPUPlace(0)
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
             z_expected = np.array([3., 8., 6.])
             self.assertEqual((z_value == z_expected).all(), True)
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(paddle.NPUPlace(0)):
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
             x = fluid.dygraph.to_variable(np_x)
@@ -604,7 +604,7 @@ class TestAddInplaceBroadcastSuccess(unittest.TestCase):
         self.y_numpy = np.random.rand(3, 4).astype('float')
 
     def test_broadcast_success(self):
-        paddle.disable_static()
+        paddle.disable_static(place=paddle.NPUPlace(0))
         self.init_data()
         x = paddle.to_tensor(self.x_numpy)
         y = paddle.to_tensor(self.y_numpy)
@@ -638,7 +638,7 @@ class TestAddInplaceBroadcastError(unittest.TestCase):
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
     def test_broadcast_errors(self):
-        paddle.disable_static()
+        paddle.disable_static(place=paddle.NPUPlace(0))
         self.init_data()
         x = paddle.to_tensor(self.x_numpy)
         y = paddle.to_tensor(self.y_numpy)
@@ -664,101 +664,6 @@ class TestAddInplaceBroadcastError3(TestAddInplaceBroadcastError):
     def init_data(self):
         self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestComplexElementwiseAddOp(OpTest):
-    def setUp(self):
-        self.op_type = "elementwise_add"
-        self.dtype = np.float64
-        self.shape = (2, 3, 4, 5)
-        self.init_input_output()
-        self.init_grad_input_output()
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
-        }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
-        self.outputs = {'Out': self.out}
-
-    def init_base_dtype(self):
-        self.dtype = np.float64
-
-    def init_input_output(self):
-        self.x = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
-        self.y = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
-        self.out = self.x + self.y
-
-    def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
-            self.shape, self.dtype)
-        self.grad_x = self.grad_out
-        self.grad_y = self.grad_out
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
-    def init_input_output(self):
-        self.x = np.random.random(self.shape).astype(self.dtype)
-        self.y = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
-        self.out = self.x + self.y
-
-    def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
-            self.shape, self.dtype)
-        self.grad_x = np.real(self.grad_out)
-        self.grad_y = self.grad_out
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
-    def test_static_add(self):
-        paddle.enable_static()
-        a = 1.5
-        b = paddle.full([4, 5, 6], True, dtype='bool')
-        c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
-        paddle.enable_static()
-
-    def test_dygraph_add(self):
-        paddle.disable_static()
-        a = 1.5
-        b = paddle.full([4, 5, 6], True, dtype='bool')
-        c = a + b
-        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
 
 
 if __name__ == '__main__':
