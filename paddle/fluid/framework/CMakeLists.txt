@@ -340,7 +340,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy bind_threaded_ssa_graph_executor collective_helper
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(executor_cache SRCS executor_cache.cc DEPS executor)
+cc_library(executor_cache SRCS executor_cache.cc DEPS parallel_executor)
 if(WITH_PSCORE)
     get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
