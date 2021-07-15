@@ -361,8 +361,24 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     return;
   } else if (platform::is_npu_place(tensor->place())) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    if (tensor->type() != proto::VarType::FP32) {
+    if (tensor->type() != proto::VarType::FP32 &&
+        tensor->type() != proto::VarType::FP16) {
       return;
+    }
+    framework::Tensor cast_fp32_tensor;
+    if (tensor->type() == proto::VarType::FP16) {
+      cast_fp32_tensor.Resize(tensor->dims());
+      cast_fp32_tensor.mutable_data<float>(tensor->place());
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      auto dev_ctx = pool.Get(tensor->place());
+      auto stream =
+          reinterpret_cast<const platform::NPUDeviceContext&>(*dev_ctx)
+              .stream();
+      const auto& runner = operators::NpuOpRunner(
+          "Cast", {*tensor}, {cast_fp32_tensor},
+          {{"dst_type", static_cast<int32_t>(ACL_FLOAT32)}});
+      runner.Run(stream);
     }
 
     framework::LoDTensor cpu_tensor;
@@ -370,7 +386,12 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     float* cpu_data = static_cast<float*>(
         cpu_tensor.mutable_data(platform::CPUPlace(), tensor->type()));
 
-    framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    if (tensor->type() == proto::VarType::FP16) {
+      framework::TensorCopySync(cast_fp32_tensor, platform::CPUPlace(),
+                                &cpu_tensor);
+    } else {
+      framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    }
     bool flag = false;
     for (int i = 0; i < cpu_tensor.numel(); i++) {
       if (isnan(cpu_data[i]) || isinf(cpu_data[i])) {
@@ -410,7 +431,7 @@ bool IsSkipOp(const framework::OperatorBase& op) {
   if (op_role == static_cast<int>(framework::OpRole::kForward)) {
     op_role = FORWARD;
   }
-  if (op_role_nan_inf_white_list & op_role) return true;
+  // if (op_role_nan_inf_white_list & op_role) return true;
 
   return false;
 }
