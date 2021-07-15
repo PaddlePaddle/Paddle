@@ -69,9 +69,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    bce_loss, ops::BCELossNPUKernel<plat::CUDADeviceContext, float>,
-    ops::BCELossNPUKernel<plat::CUDADeviceContext, plat::float16>);
+    bce_loss, ops::BCELossNPUKernel<plat::NPUDeviceContext, float>,
+    ops::BCELossNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    bce_loss_grad, ops::BCELossGradNPUKernel<plat::CUDADeviceContext, float>,
-    ops::BCELossGradNPUKernel<plat::CUDADeviceContext, plat::float16>);
+    bce_loss_grad, ops::BCELossGradNPUKernel<plat::NPUDeviceContext, float>,
+    ops::BCELossGradNPUKernel<plat::NPUDeviceContext, plat::float16>);
