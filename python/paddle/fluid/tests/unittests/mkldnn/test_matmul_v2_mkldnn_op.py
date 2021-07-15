@@ -24,9 +24,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 
-paddle.enable_static()
-
-
 def reference_matmul(X, Y, trans_x=False, trans_y=False):
     """Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
@@ -336,10 +333,8 @@ def create_bf16_test_class(parent):
 
             # after multiplying with vector one dimension is deleted from tensor
             if len(x_shape) == 2 and x_shape[0] == 1:
-                print("here")
                 dout = dout.sum(axis=-2)
             if len(y_shape) == 2 and y_shape[1] == 1:
-                print("here")
                 dout = dout.sum(axis=-1)
 
             self.dout = dout
