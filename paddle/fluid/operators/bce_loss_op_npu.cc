@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/controlflow/logical_op.h"
+#include "paddle/fluid/operators/bce_loss_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
@@ -21,10 +21,11 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-class LogicalNotNPUKernel : public framework::OpKernel<T> {
+class BCELossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
+    auto* labels = ctx.Input<Tensor>("Label");
     auto* out = ctx.Output<Tensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
@@ -33,45 +34,30 @@ class LogicalNotNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    const auto& runner = NpuOpRunner("LogicalNot", {*x}, {*out}, {});
+    const auto& runner = NpuOpRunner("BinaryCrossEntropy", {*x, *labels},
+                                     {*out}, {{"reduction", "none"}});
     runner.Run(stream);
   }
 };
 
 template <typename DeviceContext, typename T>
-class LogicalOrNPUKernel : public framework::OpKernel<T> {
+class BCELossGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* labels = ctx.Input<Tensor>("Label");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    out->mutable_data<T>(ctx.GetPlace());
+    dx->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    const auto& runner = NpuOpRunner("LogicalOr", {*x, *y}, {*out}, {});
-    runner.Run(stream);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class LogicalAndPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-
-    out->mutable_data<T>(ctx.GetPlace());
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-
-    const auto& runner = NpuOpRunner("LogicalAnd", {*x, *y}, {*out}, {});
+    const auto& runner =
+        NpuOpRunner("BinaryCrossEntropyGrad", {*x, *labels, *dout}, {*dx},
+                    {{"reduction", "none"}});
     runner.Run(stream);
   }
 };
@@ -82,11 +68,10 @@ class LogicalAndPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(logical_not,
-                       ops::LogicalNotNPUKernel<plat::NPUDeviceContext, bool>);
+REGISTER_OP_NPU_KERNEL(
+    bce_loss, ops::BCELossNPUKernel<plat::CUDADeviceContext, float>,
+    ops::BCELossNPUKernel<plat::CUDADeviceContext, plat::float16>);
 
-REGISTER_OP_NPU_KERNEL(logical_or,
-                       ops::LogicalOrNPUKernel<plat::NPUDeviceContext, bool>);
-
-REGISTER_OP_NPU_KERNEL(logical_and,
-                       ops::LogicalAndPUKernel<plat::NPUDeviceContext, bool>);
+REGISTER_OP_NPU_KERNEL(
+    bce_loss_grad, ops::BCELossGradNPUKernel<plat::CUDADeviceContext, float>,
+    ops::BCELossGradNPUKernel<plat::CUDADeviceContext, plat::float16>);
