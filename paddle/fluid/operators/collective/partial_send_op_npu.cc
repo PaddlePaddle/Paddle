@@ -32,6 +32,7 @@ class PartialSendOpASCENDKernel : public framework::OpKernel<T> {
     int id = ctx.Attr<int>("id");
     int send_numel = x->numel() / num;
     int offset = send_numel * id;
+
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()) + offset);
     int numel = send_numel;
     HcclDataType dtype = platform::ToHCCLDataType(x->type());

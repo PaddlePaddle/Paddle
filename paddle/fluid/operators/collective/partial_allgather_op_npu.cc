@@ -55,6 +55,7 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
 
     int64_t send_numel = numel / nranks;
     int offset = send_numel * rank;
+
     void *send_buff =
         reinterpret_cast<void *>(const_cast<T *>(in->data<T>()) + offset);
     void *recv_buff = reinterpret_cast<void *>(out->data<T>());
@@ -69,7 +70,7 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
 
     VLOG(3) << "begin hccl allgather, parameter is: "
             << ", group is " << group << ", ring_id is " << ring_id
-            << ", nranks is " << nranks ", rankid is " << rank;
+            << ", nranks is " << nranks << ", rankid is " << rank;
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllGather(
         send_buff, recv_buff, send_numel, dtype, comm->comm(),

@@ -31,11 +31,12 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(out->dims(), ctx.GetPlace());
     int num = ctx.Attr<int>("num");
     int id = ctx.Attr<int>("id");
-    int recv_numel = numel / num;
+    int recv_numel = out->numel() / num;
     int offset = recv_numel * id;
+
     void* ptr =
         reinterpret_cast<void*>(const_cast<T*>(out->data<T>()) + offset);
-    int numel recv_numel;
+    int numel = recv_numel;
     HcclDataType dtype = platform::ToHCCLDataType(out->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
