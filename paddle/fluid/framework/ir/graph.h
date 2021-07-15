@@ -85,8 +85,7 @@ class Graph {
   explicit Graph(const ProgramDesc &program);
 
   // Construct a main_graph with some sub_graphs, and the 1st sub_graph is
-  // constructed
-  // with ops[start_op_index, end_op_index)
+  // constructed with ops[start_op_index, end_op_index)
   Graph(const ProgramDesc &program, const int64_t start_op_index,
         const int64_t end_op_index);
 
