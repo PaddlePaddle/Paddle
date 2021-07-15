@@ -144,7 +144,7 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator_32();
 // If op seed is set or global is not set, the OpDefaultCPUEngine is used.
 std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine();
 
-std::shared_ptr<std::mt19937> OpDefaultCPUEngine_32();
+// std::shared_ptr<std::mt19937> OpDefaultCPUEngine_32();
 
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
 

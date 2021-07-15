@@ -70,10 +70,10 @@ std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine() {
   return op_default_cpu_engine;
 }
 
-std::shared_ptr<std::mt19937> OpDefaultCPUEngine_32() {
-  static auto op_default_cpu_engine = std::make_shared<std::mt19937>();
-  return op_default_cpu_engine;
-}
+// std::shared_ptr<std::mt19937> OpDefaultCPUEngine_32() {
+//   static auto op_default_cpu_engine = std::make_shared<std::mt19937>();
+//   return op_default_cpu_engine;
+// }
 
 std::shared_ptr<std::mt19937> GetCPURandomEngine_32(uint64_t seed) {
   if (DefaultCPUGenerator()->GetIsInitPy() && seed == 0) {
