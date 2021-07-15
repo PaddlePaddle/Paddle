@@ -377,7 +377,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
               .stream();
       const auto& runner = operators::NpuOpRunner(
           "Cast", {*tensor}, {cast_fp32_tensor},
-          {{"dst_type", static_cast<int32_t>(ACL_FLOAT32)}});
+          {{"dst_type", static_cast<int32_t>(ACL_FLOAT)}});
       runner.Run(stream);
     }
 
