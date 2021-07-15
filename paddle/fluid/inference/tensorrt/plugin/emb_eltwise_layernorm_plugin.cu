@@ -20,7 +20,6 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/plugin/emb_eltwise_layernorm_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 
 namespace paddle {
@@ -134,7 +133,7 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::enqueue(
   int batch = id_dims.d[0];
   int seq_len = id_dims.d[1];
   int input_num = embs_.size();
-
+  cudaGetDevice(&device_id_);
   auto in_ptr_gpu_d =
       in_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id_));
   auto emb_ptr_gpu_d =

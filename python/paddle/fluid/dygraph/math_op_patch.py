@@ -20,8 +20,8 @@ from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 
 import numpy as np
-import six
 import warnings
+from paddle import _C_ops
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -68,8 +68,8 @@ def monkey_patch_math_varbase():
     @no_grad
     def create_tensor(value, dtype, shape):
         out = _varbase_creator(dtype=dtype)
-        out = core.ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
-                                     'value', value, 'force_cpu', False)
+        out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape, 'value',
+                                   value, 'force_cpu', False)
         out.stop_gradient = True
         return out
 
@@ -101,10 +101,10 @@ def monkey_patch_math_varbase():
         """
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        return core.ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+        return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
-        return core.ops.scale(var, 'scale', scale, 'bias', bias)
+        return _C_ops.scale(var, 'scale', scale, 'bias', bias)
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
@@ -121,10 +121,7 @@ def monkey_patch_math_varbase():
         assert numel == 1, "only one element variable can be converted to long."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        if six.PY2:
-            return long(var.numpy().flatten()[0])
-        else:
-            return int(var.numpy().flatten()[0])
+        return int(var.numpy().flatten()[0])
 
     def _int_(var):
         numel = np.prod(var.shape)
@@ -141,10 +138,7 @@ def monkey_patch_math_varbase():
         assert numel == 1, "only one element variable can be converted to python index."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        if six.PY2:
-            return long(var.numpy().flatten()[0])
-        else:
-            return int(var.numpy().flatten()[0])
+        return int(var.numpy().flatten()[0])
 
     @property
     def _ndim_(var):
@@ -209,12 +203,17 @@ def monkey_patch_math_varbase():
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
             if not isinstance(other_var, core.VarBase):
-                if reverse:
-                    other_var = create_tensor(
-                        other_var, dtype=lhs_dtype, shape=self.shape)
+                if isinstance(other_var, complex):
+                    import paddle
+                    other_var = paddle.to_tensor(other_var, dtype='complex64')
                 else:
-                    # add fill_op 
-                    other_var = create_scalar(value=other_var, dtype=lhs_dtype)
+                    if reverse:
+                        other_var = create_tensor(
+                            other_var, dtype=lhs_dtype, shape=self.shape)
+                    else:
+                        # add fill_op
+                        other_var = create_scalar(
+                            value=other_var, dtype=lhs_dtype)
 
             # 3. promote types or unify right var type to left var
             rhs_dtype = other_var.dtype
@@ -244,7 +243,7 @@ def monkey_patch_math_varbase():
 
             # 4. calculation
             axis = -1
-            math_op = getattr(core.ops, op_type)
+            math_op = getattr(_C_ops, op_type)
             return math_op(self, other_var, 'axis', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
@@ -319,10 +318,13 @@ def monkey_patch_math_varbase():
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor
-        tensor_methods = paddle.tensor.tensor_method_func
-        for method_name in tensor_methods:
+        for method_name in paddle.tensor.tensor_method_func:
             if hasattr(core.VarBase, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(core.VarBase, method_name, method_impl)
+
+        for magic_method, origin_method in paddle.tensor.magic_method_func:
+            impl = getattr(paddle.tensor, origin_method, None)
+            if impl: setattr(core.VarBase, magic_method, impl)
 
     _already_patch_varbase = True

@@ -135,30 +135,44 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::XPUPlace>();
   } else if (py::isinstance<platform::CUDAPinnedPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
+  } else if (py::isinstance<platform::NPUPlace>(place_obj)) {
+    return place_obj.cast<platform::NPUPlace>();
   } else if (py::isinstance<platform::Place>(place_obj)) {
     return place_obj.cast<platform::Place>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace"));
   }
 }
 
-static void InitTensorForVarBase(imperative::VarBase *self,
-                                 const py::array &array,
-                                 const platform::Place place,
-                                 bool persistable = false,
-                                 bool zero_copy = false, std::string name = "",
-                                 int stop_gradient = -1) {
-  if (name == "") {
-    name =
-        imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor");
-  }
-  VLOG(5) << "Init Tensor as: / name: " << name
-          << " / persistable: " << persistable << " / zero_copy: " << zero_copy
+// only initialize varbase, but not its tensor.
+static void InitVarBaseOnly(imperative::VarBase *self, const std::string &name,
+                            bool persistable = false, int stop_gradient = -1) {
+  auto name_ = name == ""
+                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                         "generated_tensor")
+                   : name;
+
+  VLOG(5) << "Init Tensor as: / name: " << name_
+          << " / persistable: " << persistable
           << " / stop_gradient: " << stop_gradient;
-  new (self) imperative::VarBase(name);
+  new (self) imperative::VarBase(name_);
+  if (stop_gradient != -1) {
+    self->SetOverridedStopGradient(stop_gradient);
+  }
+  self->SetPersistable(persistable);
+  self->SetType(framework::proto::VarType::LOD_TENSOR);
+}
+
+// initialize varbase and its tensor.
+static void InitVarBaseAndTensor(
+    imperative::VarBase *self, const py::array &array,
+    const platform::Place &place, const std::string &name,
+    bool persistable = false, bool zero_copy = false, int stop_gradient = -1) {
+  InitVarBaseOnly(self, name, persistable, stop_gradient);
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  VLOG(4) << "zero_copy: " << zero_copy;
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(
         tensor, array, BOOST_GET_CONST(platform::CPUPlace, place), zero_copy);
@@ -172,30 +186,23 @@ static void InitTensorForVarBase(imperative::VarBase *self,
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(
         tensor, array, BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
         zero_copy);
+  } else if (platform::is_npu_place(place)) {
+    SetTensorFromPyArray<platform::NPUPlace>(
+        tensor, array, BOOST_GET_CONST(platform::NPUPlace, place), zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place should be one of CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place should be one of "
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace"));
   }
-  if (stop_gradient != -1) {
-    self->SetOverridedStopGradient(stop_gradient);
-  }
-  self->SetPersistable(persistable);
-  self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor->type());
 }
 
 static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
                                            const py::kwargs &kwargs) {
   VLOG(4) << "Init VarBase from kwargs: ";
-  PADDLE_ENFORCE_EQ(
-      kwargs.contains("value"), true,
-      platform::errors::NotFound(
-          "The kwargs used to create Varbase misses argument: value"));
   auto persistable = kwargs.contains("persistable")
                          ? kwargs["persistable"].cast<bool>()
                          : false;
-  auto array = kwargs.contains("value") ? kwargs["value"].cast<py::array>()
-                                        : py::array();
   auto zero_copy =
       kwargs.contains("zero_copy") ? kwargs["zero_copy"].cast<bool>() : false;
   auto name = kwargs.contains("name") ? kwargs["name"].cast<std::string>() : "";
@@ -203,10 +210,18 @@ static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
                            ? kwargs["stop_gradient"].cast<int>()
                            : -1;
   auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
-  auto place = kwargs.contains("place") ? PyObjectToPlace(kwargs["place"])
-                                        : default_place;
-  InitTensorForVarBase(self, array, place, persistable, zero_copy, name,
-                       stop_gradient);
+
+  if (kwargs.contains("value")) {
+    auto array = kwargs["value"].cast<py::array>();
+    // place is only used when array is given, otherwise, it is meaningless and
+    // ignored
+    auto place = kwargs.contains("place") ? PyObjectToPlace(kwargs["place"])
+                                          : default_place;
+    InitVarBaseAndTensor(self, array, place, name, persistable, zero_copy,
+                         stop_gradient);
+  } else {
+    InitVarBaseOnly(self, name, persistable, stop_gradient);
+  }
 }
 
 template <typename P>
@@ -241,11 +256,11 @@ static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
                                                const py::array &array) {
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
   VLOG(4) << "Init VarBase from numpy at " << place;
-  InitTensorForVarBase(self, array, place);
+  InitVarBaseAndTensor(self, array, place, "");
 }
 
 static void InitVarBaseFromTensorWithArgDefault(
-    imperative::VarBase *self, const framework::LoDTensor &tensor) {
+    imperative::VarBase *self, const framework::Tensor &tensor) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
   new (self) imperative::VarBase(
@@ -715,6 +730,10 @@ void BindImperative(py::module *m_ptr) {
            py::arg("zero_copy") = false, py::arg("name") = "",
            py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CUDAPinnedPlace>,
+           py::arg("value"), py::arg("place"), py::arg("persistable") = false,
+           py::arg("zero_copy") = false, py::arg("name") = "",
+           py::arg("stop_gradient") = -1)
+      .def("__init__", &InitVarBaseFromNumpyWithArg<platform::NPUPlace>,
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "",
            py::arg("stop_gradient") = -1)
@@ -1454,6 +1473,16 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::copy)
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::NPUPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
+           py::return_value_policy::copy)
+      .def("_copy_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
               const platform::Place &place, bool blocking) {
              auto new_var = self->NewVarBase(place, blocking);
              if (!blocking) {
@@ -1578,6 +1607,11 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
+            } else if (py::isinstance<platform::NPUPlace>(obj)) {
+              auto p = obj.cast<platform::NPUPlace *>();
+              self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else if (py::isinstance<platform::Place>(obj)) {
               auto p = obj.cast<platform::Place *>();
               self.SetExpectedPlace(*p);
@@ -1586,7 +1620,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, "
+                  "CPUPlace, NPUPlace"
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
@@ -1638,6 +1672,19 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs, const platform::CUDAPlace &place,
+              bool trace_backward) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+                            std::move(attrs), place, trace_backward);
+             }
+           })
+      .def("trace",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::NPUPlace &place,
               bool trace_backward) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
              auto outs_map = ConvertToNameVarBaseMap(outs);
@@ -1704,6 +1751,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
+  m.def("varbase_copy", &VarBaseCopy<platform::NPUPlace>);
 
   m.def(
       "dygraph_partial_grad",
@@ -1801,6 +1849,12 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("pylayer_apply",
         [](const platform::CUDAPinnedPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::NPUPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
           return imperative::PyLayerApply(place, cls, args, kwargs);
         });

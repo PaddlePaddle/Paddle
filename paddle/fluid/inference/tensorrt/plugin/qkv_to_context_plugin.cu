@@ -20,7 +20,6 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/operators/math/blas.h"
@@ -299,7 +298,7 @@ int QkvToContextPluginDynamic::enqueue(
         platform::DeviceContextPool::Instance().Get(
             platform::CUDAPlace(device_id)));
 
-    int n_q = seq_len * head_number_ * head_size_;
+    int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
     int blocks = (n_q + threads - 1) / threads;
 

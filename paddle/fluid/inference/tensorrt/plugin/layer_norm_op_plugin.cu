@@ -17,19 +17,12 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/layer_norm_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/operators/layer_norm_op.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-LayerNormPlugin *CreateLayerNormPluginDeserialize(const void *buffer,
-                                                  size_t length) {
-  return new LayerNormPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("layer_norm_plugin", CreateLayerNormPluginDeserialize);
 
 int LayerNormPlugin::initialize() { return 0; }
 
@@ -43,7 +36,11 @@ nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
 }
 
 int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
+#if IS_TRT_VERSION_LT(8000)
                              void **outputs, void *workspace,
+#else
+                             void *const *outputs, void *workspace,
+#endif
                              cudaStream_t stream) {
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);

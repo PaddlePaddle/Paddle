@@ -126,6 +126,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"accuracy", {"Correct", "Total"}},
     {"fill_constant", {"Out"}},
     {"recv_v2", {"Out"}},
+    {"partial_recv", {"Out"}},
     {"matmul", {"Out"}},
     {"c_broadcast", {"Out"}},
     {"c_sync_calc_stream", {"Out"}},
@@ -268,7 +269,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     imperative::GetCurrentTracer()->TraceOp("%s", ins, outs, attrs, {%s});
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
-    return %s;
+    %s
   }
   catch(...) {
     if (tstate) {
@@ -488,13 +489,13 @@ std::string GenerateOpFunctionsBody(
         viwe_input_name, viwe_output_name);
   }
   if (outs_num == 0) {
-    return_str = "Py_None";
+    return_str = "Py_INCREF(Py_None);\n    return Py_None;";
   } else if (outs_num == 1) {
-    return_str = "MakeReturnPyObject(" + return_str + ")";
+    return_str = "return MakeReturnPyObject(" + return_str + ");";
   } else {
-    return_str = "MakeReturnPyObject(" +
+    return_str = "return MakeReturnPyObject(" +
                  paddle::string::Sprintf(RETURN_TUPLE_TEMPLATE, return_str) +
-                 ")";
+                 ");";
   }
   std::string function_args = "";
   if (input_args == "") {

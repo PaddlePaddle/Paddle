@@ -108,12 +108,17 @@ from .tensor.logic import logical_and  # noqa: F401
 from .tensor.logic import logical_not  # noqa: F401
 from .tensor.logic import logical_or  # noqa: F401
 from .tensor.logic import logical_xor  # noqa: F401
+from .tensor.logic import bitwise_and  # noqa: F401
+from .tensor.logic import bitwise_not  # noqa: F401
+from .tensor.logic import bitwise_or  # noqa: F401
+from .tensor.logic import bitwise_xor  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
 from .tensor.logic import is_tensor  # noqa: F401
 from .tensor.manipulation import cast  # noqa: F401
 from .tensor.manipulation import concat  # noqa: F401
+from .tensor.manipulation import broadcast_tensors  # noqa: F401
 from .tensor.manipulation import expand  # noqa: F401
 from .tensor.manipulation import broadcast_to  # noqa: F401
 from .tensor.manipulation import expand_as  # noqa: F401
@@ -148,6 +153,7 @@ from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
 from .tensor.math import atan  # noqa: F401
+from .tensor.math import atan2  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
@@ -198,6 +204,7 @@ from .tensor.math import erf  # noqa: F401
 from .tensor.math import addmm  # noqa: F401
 from .tensor.math import clip  # noqa: F401
 from .tensor.math import trace  # noqa: F401
+from .tensor.math import diagonal  # noqa: F401
 from .tensor.math import kron  # noqa: F401
 from .tensor.math import isfinite  # noqa: F401
 from .tensor.math import isinf  # noqa: F401
@@ -205,6 +212,7 @@ from .tensor.math import isnan  # noqa: F401
 from .tensor.math import prod  # noqa: F401
 from .tensor.math import broadcast_shape  # noqa: F401
 from .tensor.math import conj  # noqa: F401
+from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
@@ -275,6 +283,7 @@ from . import callbacks  # noqa: F401
 from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
 from . import hub  # noqa: F401
+from . import linalg  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -370,6 +379,10 @@ __all__ = [  # noqa
            'max',
            'norm',
            'logical_or',
+           'bitwise_and',
+           'bitwise_or',
+           'bitwise_xor',
+           'bitwise_not',
            'mm',
            'flip',
            'histogram',
@@ -425,6 +438,7 @@ __all__ = [  # noqa
            'divide',
            'ceil',
            'atan',
+           'atan2',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -490,6 +504,9 @@ __all__ = [  # noqa
            'log10',
            'concat',
            'check_shape',
+           'trunc',
            'digamma',
-           'standard_normal'
+           'standard_normal',
+           'diagonal',
+           'broadcast_tensors',
 ]

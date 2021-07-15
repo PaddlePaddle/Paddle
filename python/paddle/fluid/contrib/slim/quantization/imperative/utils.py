@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid import dygraph
+import math
 import numpy as np
-from . import quant_nn
+
+import paddle
+import paddle.nn.quant.quant_layers as quant_layers
+
+from ..quantization_pass import _get_op_input_var_names
+from ..quantization_pass import _get_op_output_var_names
+from ..quantization_pass import _get_output_name_index
+from ..quantization_pass import _get_input_name_index
 
 layer_name_map = {
     'Conv2D': paddle.nn.Conv2D,
@@ -52,13 +58,18 @@ fake_quant_output_layers = [
 ]
 
 fake_quant_leaf_layers = [
-    quant_nn.FakeQuantAbsMax,
-    quant_nn.FakeQuantChannelWiseAbsMax,
-    quant_nn.FakeQuantMovingAverageAbsMax,
-    quant_nn.MovingAverageAbsMaxScale,
+    quant_layers.FakeQuantAbsMax,
+    quant_layers.FakeQuantChannelWiseAbsMax,
+    quant_layers.FakeQuantMovingAverageAbsMax,
+    quant_layers.MovingAverageAbsMaxScale,
 ]
 
-fake_quant_wrap_layers = [quant_nn.QuantizedConv2D, quant_nn.QuantizedLinear]
+fake_quant_wrap_layers = [
+    quant_layers.QuantizedConv2D, quant_layers.QuantizedLinear
+]
+
+# The weight format of these layers is Cin * Cout * H * W 
+spec_channel_axis_layers = [paddle.nn.Conv2DTranspose, paddle.nn.Linear]
 
 weight_op_types = [
     "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose",
@@ -89,6 +100,7 @@ def find_previous_op(block, var_name):
     for op in block.ops:
         if var_name in op.output_arg_names:
             return op
+    return None
 
 
 def find_next_ops(block, var_name):
@@ -109,7 +121,7 @@ def find_parent_layer_and_sub_name(model, name):
     For example, if name is 'block_1/convbn_1/conv_1', the parent layer is
     'block_1/convbn_1' and the sub_name is `conv_1`.
     """
-    assert isinstance(model, dygraph.Layer), \
+    assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
     assert len(name) > 0, "The input (name) should not be empty."
 
@@ -127,9 +139,30 @@ def find_parent_layer_and_sub_name(model, name):
     return parent_layer, sub_name
 
 
+def program_all_ops(program):
+    """
+    Return all ops for the input program.
+    """
+    all_ops = []
+    for block in program.blocks:
+        for op in block.ops:
+            all_ops.append(op)
+    return all_ops
+
+
 def is_leaf_layer(layer):
     """
     Whether the layer is leaf layer.
     """
-    return isinstance(layer, dygraph.Layer) \
+    return isinstance(layer, paddle.nn.Layer) \
         and len(layer.sublayers()) == 0
+
+
+def fp_numpy_to_naive(x_np):
+    """
+    Convert numpy to float or list.
+    """
+    if x_np.size == 1:
+        return float(x_np)
+    else:
+        return x_np.tolist()

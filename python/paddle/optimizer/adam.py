@@ -24,6 +24,7 @@ from ..fluid.dygraph import base as imperative_base
 from collections import defaultdict
 
 import paddle
+from paddle import _C_ops
 
 __all__ = []
 
@@ -316,7 +317,7 @@ class Adam(Optimizer):
                 self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
-            _, _, _, _, _ = core.ops.adam(
+            _, _, _, _, _ = _C_ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
                 moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
