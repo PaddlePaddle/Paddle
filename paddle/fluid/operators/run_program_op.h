@@ -219,8 +219,11 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       auto cache_info = framework::GetExecutorInfoFromCache(
           program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad=*/false, program_id, &scope);
-      auto cache_info = framework::GetExecutorInfoFromCache(cache_key, &scope);
       auto &parallel_executor = cache_info.first;
+      // all out_vars are skip_eager_var
+      auto &skip_eager_delete_vars =
+          framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
+              program_id, false);
       if (cache_info.second /*is_new_created*/) {
         parallel_executor->SkipMemoryReuse(/*scope_idx=*/0, input_var_names);
         skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),

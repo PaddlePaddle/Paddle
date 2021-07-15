@@ -149,6 +149,14 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc *program_desc,
     auto &cached_value = cached_exe_info.Get(program_id, is_grad);
 
     auto &parallel_executor = cached_value.executor_;
+    // update op_handle scope_map in pe->executor_->Graph
+    std::unordered_map<Scope *, Scope *> scope_map = {
+        {parallel_executor->GetLocalScopes().front(), scope}};
+    parallel_executor->ResetOpHandleScopeMapOfGraphs(scope_map);
+    // need to recreate tmp variables in new scope
+    parallel_executor->PrepareVariables(scope);
+
+    return std::make_pair(parallel_executor, /*is_new_created=*/false);
   }
 }
 
