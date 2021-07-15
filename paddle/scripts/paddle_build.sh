@@ -1088,7 +1088,7 @@ function card_test() {
 }
 
 function parallel_test_base_gpu() {
-    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    #if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
     Running unit tests in parallel way ...
