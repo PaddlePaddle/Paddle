@@ -39,8 +39,14 @@ class ReduceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(4) << "convert a paddle reduce_sum op to tensorrt reduce layer";
+    VLOG(4) << "convert a paddle " << op_type << " op to tensorrt reduce layer";
     framework::OpDesc op_desc(op, nullptr);
+    nvinfer1::ReduceOperation reduce_type;
+    if (op_type == "reduce_sum") {
+      reduce_type = nvinfer1::ReduceOperation::kSUM;
+    } else if (op_type == "reduce_mean") {
+      reduce_type = nvinfer1::ReduceOperation::kAVG;
+    }
 
     auto* x = engine_->GetITensor(op_desc.Input("X").front());
     nvinfer1::Dims input_shape = x->getDimensions();
@@ -76,21 +82,21 @@ class ReduceOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "reduce_sum", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, op_type, {output_name}, test_mode);
   }
 
  protected:
-  nvinfer1::ReduceOperation reduce_type;
+  std::string op_type;
 };
 
 class ReduceSumOpConverter : public ReduceOpConverter {
  public:
-  ReduceSumOpConverter() { reduce_type = nvinfer1::ReduceOperation::kSUM; }
+  ReduceSumOpConverter() { op_type = "reduce_sum"; }
 };
 
 class ReduceMeanOpConverter : public ReduceOpConverter {
  public:
-  ReduceMeanOpConverter() { reduce_type = nvinfer1::ReduceOperation::kAVG; }
+  ReduceMeanOpConverter() { op_type = "reduce_mean"; }
 };
 
 }  // namespace tensorrt
