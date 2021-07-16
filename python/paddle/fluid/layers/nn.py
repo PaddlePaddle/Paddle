@@ -14933,17 +14933,16 @@ def class_center_sample(label, num_classes, num_sample, group=None, seed=None):
         return
 
     ring_id = 0 if group is None else group.id
+    rank = 0
+    nranks = 1
     if core.is_compiled_with_dist():
         parallel_env = paddle.distributed.ParallelEnv()
         global_rank = parallel_env.rank
         rank = global_rank if group is None else group.get_group_rank(
             global_rank)
         nranks = parallel_env.world_size if group is None else group.nranks
-    else:
-        rank = 0
-        nranks = 1
 
-    if num_sample >= num_classes:
+    if num_sample > num_classes:
         raise ValueError(
             'Expected num_sample less equal than {}, got num_sample {}'.format(
                 num_classes, num_sample))

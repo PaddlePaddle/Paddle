@@ -107,5 +107,111 @@ class TestClassCenterSampleOpFixSeed(TestClassCenterSampleOp):
         self.fix_seed = True
 
 
+class TestClassCenterSampleV2(unittest.TestCase):
+    def setUp(self):
+        self.initParams()
+        np.random.seed(self.seed)
+        paddle.framework.random._manual_program_seed(2021)
+        self.places = [paddle.fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.fluid.CUDAPlace(0))
+
+    def initParams(self):
+        self.batch_size = 20
+        self.num_sample = 6
+        self.num_classes = 10
+        self.seed = 0
+        self.init_dtype()
+
+    def init_dtype(self):
+        self.dtype = np.int64
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def check_static_result(self, place):
+        with program_guard(Program(), Program()):
+            label_np = np.random.randint(
+                0, self.num_classes, (self.batch_size, ), dtype=self.dtype)
+
+            label = paddle.static.data(
+                name='label', shape=[self.batch_size], dtype=self.dtype)
+            remapped_label, sampled_class_index = paddle.class_center_sample(
+                label, self.num_classes, self.num_sample, seed=self.seed)
+
+            remapped_label_np, sampled_class_center_np = class_center_sample_numpy(
+                label_np, [self.num_classes], self.num_sample)
+            exe = paddle.fluid.Executor(place)
+            [remapped_label_res, sampled_class_index_res] = exe.run(
+                paddle.fluid.default_main_program(),
+                feed={'label': label_np},
+                fetch_list=[remapped_label, sampled_class_index])
+            np.testing.assert_allclose(remapped_label_res, remapped_label_np)
+            np.testing.assert_allclose(
+                sampled_class_index_res[:len(sampled_class_center_np[0])],
+                sampled_class_center_np[0])
+
+    def test_dynamic(self):
+        for place in self.places:
+            self.check_dynamic_result(place=place)
+
+    def check_dynamic_result(self, place):
+        with paddle.fluid.dygraph.guard(place):
+            label_np = np.random.randint(
+                0, self.num_classes, (self.batch_size, ), dtype=self.dtype)
+            label = paddle.to_tensor(label_np, dtype=self.dtype)
+
+            remapped_label, sampled_class_index = paddle.class_center_sample(
+                label, self.num_classes, self.num_sample, seed=self.seed)
+
+            remapped_label_np, sampled_class_center_np = class_center_sample_numpy(
+                label_np, [self.num_classes], self.num_sample)
+
+            remapped_label_res = remapped_label.numpy()
+            sampled_class_index_res = sampled_class_index.numpy()
+            np.testing.assert_allclose(remapped_label_res, remapped_label_np)
+            np.testing.assert_allclose(
+                sampled_class_index_res[:len(sampled_class_center_np[0])],
+                sampled_class_center_np[0])
+
+
+class TestClassCenterSampleAPIError(unittest.TestCase):
+    def setUp(self):
+        self.initParams()
+        np.random.seed(self.seed)
+        self.places = [paddle.fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.fluid.CUDAPlace(0))
+
+    def initParams(self):
+        self.batch_size = 20
+        self.num_sample = 15
+        self.num_classes = 10
+        self.seed = 2021
+        self.init_dtype()
+
+    def init_dtype(self):
+        self.dtype = np.int64
+
+    def test_dynamic_errors(self):
+        def test_num_sample():
+            for place in self.places:
+                with paddle.fluid.dygraph.guard(place):
+                    label_np = np.random.randint(
+                        0,
+                        self.num_classes, (self.batch_size, ),
+                        dtype=self.dtype)
+                    label = paddle.to_tensor(label_np)
+
+                    remapped_label, sampled_class_index = paddle.class_center_sample(
+                        label,
+                        self.num_classes,
+                        self.num_sample,
+                        seed=self.seed)
+
+        self.assertRaises(ValueError, test_num_sample)
+
+
 if __name__ == '__main__':
     unittest.main()
