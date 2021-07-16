@@ -65,7 +65,14 @@ endif()
 if(WITH_ASCEND_CL)
   set(ASCEND_CL_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64)
 
-  set(ascend_hccl_lib ${ASCEND_CL_DIR}/libhccl.so)
+  if(WITH_HCCL)
+    set(ascend_ccl_lib ${ASCEND_CL_DIR}/libhccl.so)
+  endif()
+
+  if(WITH_ECCL)
+    set(ascend_ccl_lib ${ASCEND_CL_DIR}/libeccl.so)
+  endif()
+
   set(ascendcl_lib ${ASCEND_CL_DIR}/libascendcl.so)
   set(acl_op_compiler_lib ${ASCEND_CL_DIR}/libacl_op_compiler.so)
   set(FWKACLLIB_INC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/include)
@@ -79,11 +86,10 @@ if(WITH_ASCEND_CL)
   ADD_LIBRARY(ascendcl SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET ascendcl PROPERTY IMPORTED_LOCATION ${ascendcl_lib})
 
-  ADD_LIBRARY(ascend_hccl SHARED IMPORTED GLOBAL)
-  SET_PROPERTY(TARGET ascend_hccl PROPERTY IMPORTED_LOCATION ${ascend_hccl_lib})
+  ADD_LIBRARY(ascend_ccl SHARED IMPORTED GLOBAL)
+  SET_PROPERTY(TARGET ascend_ccl PROPERTY IMPORTED_LOCATION ${ascend_ccl_lib})
 
   ADD_LIBRARY(acl_op_compiler SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET acl_op_compiler PROPERTY IMPORTED_LOCATION ${acl_op_compiler_lib})
-  add_custom_target(extern_ascend_cl DEPENDS ascendcl acl_op_compiler)
-
+  add_custom_target(extern_ascend_cl DEPENDS ascendcl ascend_ccl acl_op_compiler)
 endif()

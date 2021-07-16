@@ -42,7 +42,7 @@ class CAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the allgather result");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_ECCL)
     AddAttr<std::string>("tag", "(string default tag) tag for all gather.")
         .SetDefault("tag");
 #endif

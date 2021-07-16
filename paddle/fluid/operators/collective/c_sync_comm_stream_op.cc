@@ -19,9 +19,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_ECCL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/eccl_helper.h"
 #endif
 
 namespace paddle {
@@ -73,13 +78,21 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
 #endif
 
-#elif defined(PADDLE_WITH_ASCEND_CL)
+#elif defined(PADDLE_WITH_HCCL)
     PADDLE_ENFORCE_EQ(is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on npu place only for now."));
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
         platform::HCCLCommContext::Instance().Get(ring_id, place)->stream();
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+#elif defined(PADDLE_WITH_ECCL)
+    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on npu place only for now."));
+    int ring_id = ctx.Attr<int>("ring_id");
+    auto stream =
+        platform::ECCLCommContext::Instance().Get(ring_id, place)->stream();
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
 
 #else

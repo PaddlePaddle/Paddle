@@ -42,7 +42,7 @@ class CBroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<int>("root", "(int default 0) root id for broadcasting.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_ECCL)
     AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
         .SetDefault("tag");
 #endif

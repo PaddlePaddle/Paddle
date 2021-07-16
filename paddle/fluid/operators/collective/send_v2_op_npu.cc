@@ -13,10 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/send_v2_op.h"
-
-#if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
+
+#if defined(PADDLE_WITH_HCCL)
 #include "paddle/fluid/platform/hccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_ECCL)
+#include "paddle/fluid/platform/eccl_helper.h"
 #endif
 
 namespace paddle {
@@ -30,12 +34,22 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
-    HcclDataType dtype = platform::ToHCCLDataType(x->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
+
+#if defined(PADDLE_WITH_HCCL)
+    auto dtype = platform::ToHCCLDataType(x->type());
     auto comm =
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+#elif defined(PADDLE_WITH_ECCL)
+    auto dtype = platform::ToECCLDataType(x->type());
+    auto comm =
+        paddle::platform::ECCLCommContext::Instance().Get(ring_id, place);
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with eccl or hccl."));
+#endif
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -53,12 +67,20 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
 
     int root = rank;
 
-    VLOG(3) << "begin hccl send, parameter is: "
+    VLOG(3) << "begin ascend send, parameter is: "
             << "root " << root << ", comm: " << comm->comm()
             << ", stream: " << stream;
 
+#if defined(PADDLE_WITH_HCCL)
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
+#elif defined(PADDLE_WITH_ECCL)
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::h_eccl_broadcast(
+        ptr, ptr, numel, dtype, root, comm->comm().c_str(), stream));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with eccl or hccl."));
+#endif
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

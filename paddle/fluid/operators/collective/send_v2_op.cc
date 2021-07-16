@@ -50,7 +50,7 @@ class SendOpV2Maker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for receiver.").SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_ECCL)
     AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
         .SetDefault("tag");
     AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")

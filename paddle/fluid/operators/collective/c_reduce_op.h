@@ -24,8 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_HCCL) || \
+    defined(PADDLE_WITH_ECCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -42,8 +43,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL)
 #include "paddle/fluid/platform/hccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_ECCL)
+#include "paddle/fluid/platform/eccl_helper.h"
 #endif
 
 namespace paddle {
@@ -131,7 +136,6 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     auto place = ctx.GetPlace();
-    HcclDataType dtype = platform::ToHCCLDataType(in->type());
     int64_t numel = in->numel();
 
     void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
@@ -141,8 +145,19 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
     int root_id = ctx.Attr<int>("root_id");
     std::string group =
         std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
+
+#if defined(PADDLE_WITH_HCCL)
+    auto dtype = platform::ToHCCLDataType(in->type());
     auto comm =
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+#elif defined(PADDLE_WITH_ECCL)
+    auto dtype = platform::ToECCLDataType(in->type());
+    auto comm =
+        paddle::platform::ECCLCommContext::Instance().Get(ring_id, place);
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with eccl or hccl."));
+#endif
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -154,37 +169,73 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
 
     int rank_id = comm->rank();
 
-    HcclReduceOp hccl_red_type = HCCL_REDUCE_SUM;
+#if defined(PADDLE_WITH_HCCL)
+    HcclReduceOp paddle_red_type = HCCL_REDUCE_SUM;
     switch (red_type) {
       case kRedSum:
-        hccl_red_type = HCCL_REDUCE_SUM;
+        paddle_red_type = HCCL_REDUCE_SUM;
         break;
 
       case kRedMax:
-        hccl_red_type = HCCL_REDUCE_MAX;
+        paddle_red_type = HCCL_REDUCE_MAX;
         break;
 
       case kRedMin:
-        hccl_red_type = HCCL_REDUCE_MIN;
+        paddle_red_type = HCCL_REDUCE_MIN;
         break;
 
       case kRedProd:
-        hccl_red_type = HCCL_REDUCE_PROD;
+        paddle_red_type = HCCL_REDUCE_PROD;
         break;
 
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", red_type));
+            "Invalid reduce type: %d", paddle_red_type));
     }
+#elif defined(PADDLE_WITH_ECCL)
+    EcclReductionOp paddle_red_type = SUM;
+    switch (red_type) {
+      case kRedSum:
+        paddle_red_type = SUM;
+        break;
 
-    VLOG(3) << "begin hccl reduce, parameter is: "
+      case kRedMax:
+        paddle_red_type = MAX;
+        break;
+
+      case kRedMin:
+        paddle_red_type = MIN;
+        break;
+
+      case kRedProd:
+        paddle_red_type = PROD;
+        break;
+
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid reduce type: %d", paddle_red_type));
+    }
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet
+        "PaddlePaddle collective should compile with eccl or hccl."));
+#endif
+
+    VLOG(3) << "begin ascend reduce, parameter is: "
             << "input num: " << numel << "root_id: " << root_id
-            << "dtype: " << dtype << "hccl_red_type: " << hccl_red_type
+            << "dtype: " << dtype << "red_type: " << paddle_red_type
             << ", group is: " << group;
 
+#if defined(PADDLE_WITH_HCCL)
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
+        sendbuff, recvbuff, numel, dtype, paddle_red_type, comm->comm(),
         reinterpret_cast<void*>(stream)));
+#elif defined(PADDLE_WITH_ECCL)
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::h_eccl_all_reduce(
+        sendbuff, recvbuff, numel, dtype, paddle_red_type, comm->comm().c_str(),
+        reinterpret_cast<void*>(stream)));
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with eccl or hccl."));
+#endif
 
     if (rank_id != root_id) {
       auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
@@ -334,7 +385,7 @@ class CReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the reduced result.");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_ECCL)
     AddAttr<std::string>("tag", "(string default tag) tag for reduce.")
         .SetDefault("tag");
 #endif

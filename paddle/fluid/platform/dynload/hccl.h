@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#ifdef PADDLE_WITH_ASCEND_CL
+#ifdef PADDLE_WITH_HCCL
 
 #include <hccl/hccl.h>
 #include <hccl/hccl_types.h>

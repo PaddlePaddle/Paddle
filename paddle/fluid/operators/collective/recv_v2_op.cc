@@ -70,7 +70,7 @@ class RecvOpV2Maker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);
     AddAttr<int>("dtype", "(int default 5('float32')) data type of tensor.")
         .SetDefault(5);
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_ECCL)
     AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
         .SetDefault("tag");
     AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")

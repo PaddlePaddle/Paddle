@@ -77,6 +77,11 @@ struct GpuDevice;
 #include "paddle/fluid/platform/npu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_ECCL
+#include <eccl/eccl.h>
+#include <eccl/eccl_types.h>
+#endif
+
 namespace paddle {
 namespace platform {
 
@@ -201,12 +206,20 @@ class NPUDeviceContext : public DeviceContext {
 
   void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL)
   /*! \brief  Return hccl communicators. */
   HcclComm hccl_comm() const { return hccl_comm_; }
 
   /*! \brief  Set hccl communicators. */
   void set_hccl_comm(HcclComm comm) { hccl_comm_ = comm; }
+#endif
+
+#if defined(PADDLE_WITH_ECCL)
+  /*! \brief  Return hccl communicators. */
+  PaddleEcclCommGroupIdType eccl_comm() const { return eccl_comm_; }
+
+  /*! \brief  Set hccl communicators. */
+  void set_eccl_comm(PaddleEcclCommGroupIdType comm) { eccl_comm_ = comm; }
 #endif
 
   // template <typename Callback>
@@ -220,9 +233,13 @@ class NPUDeviceContext : public DeviceContext {
   NPUPlace place_;
   aclrtContext context_;
 
-#ifdef PADDLE_WITH_ASCEND_CL
+#ifdef PADDLE_WITH_HCCL
   // HCCLContext_t hccl_context_;
   HcclComm hccl_comm_{nullptr};
+#endif
+
+#ifdef PADDLE_WITH_ECCL
+  PaddleEcclCommGroupIdType eccl_comm_;
 #endif
 
   // Need to be the same with other DeviceContext,

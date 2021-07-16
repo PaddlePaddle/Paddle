@@ -22,6 +22,7 @@
 #include "boost/variant.hpp"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/dynload/eccl.h"
 #include "paddle/fluid/platform/dynload/hccl.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -127,7 +128,7 @@ class NCCLCommContext {
 };
 #endif
 
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL)
 // In order to apply hierarchical communication with HCCL, we need
 // a communication ring contains HCCL communicators associated to a global
 // HCCLUniqueId. E.g. for a hierarchical case,
@@ -231,6 +232,94 @@ class HCCLCommContext {
   void ReleaseHCCLComms();
 
   DISABLE_COPY_AND_ASSIGN(HCCLCommContext);
+};
+#endif
+
+#if defined(PADDLE_WITH_ECCL)
+class NPUDeviceContext;
+
+#define ENV_RANK_TABLE_FILE "RANK_TABLE_FILE"
+#define ENV_RANK_ID "PADDLE_TRAINER_ID"
+
+class ECCLComm {
+ public:
+  virtual int ring_id() const = 0;
+  virtual int nranks() const = 0;
+  virtual int rank() const = 0;
+  virtual int device_id() const = 0;
+  virtual PaddleEcclCommGroupIdType comm() const = 0;
+  virtual aclrtStream stream() const = 0;
+  virtual NPUDeviceContext* dev_context() const = 0;
+  virtual ~ECCLComm() = default;
+};
+
+// A singleton ECCL communicator context reserves communication ring ids
+class ECCLCommContext {
+ public:
+  static ECCLCommContext& Instance() {
+    static ECCLCommContext comm_ctx;
+    return comm_ctx;
+  }
+
+  ECCLComm* CreateECCLComm(PaddleEcclCommGroupIdType eccl_id, int nranks,
+                           int rank, int dev_id, int ring_id);
+  // a latter comm with the same dev_id and the same ring_id
+  // will override the former
+  ECCLComm* AssignECCLComm(PaddleEcclCommGroupIdType comm, int nranks, int rank,
+                           int dev_id, int ring_id);
+
+  // retrieve a communicator by the ring id in multiprocessing mode
+  ECCLComm* Get(int ring_id) const {
+    PADDLE_ENFORCE_GT(
+        comm_map_.count(ring_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator in ring id %d has not been initialized.", ring_id));
+    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
+                      platform::errors::InvalidArgument(
+                          "One device id should be specified to retrieve from "
+                          "multiple communicators."));
+    return comm_map_.at(ring_id).begin()->second.get();
+  }
+
+  // retrieve a communicator by the ring id and the device id
+  ECCLComm* Get(int ring_id, int dev_id) const {
+    PADDLE_ENFORCE_GT(
+        comm_map_.count(ring_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator of ring id %d has not been initialized.", ring_id));
+    PADDLE_ENFORCE_GT(
+        comm_map_.at(ring_id).count(dev_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator at device id %d has not been initialized in ring %d.",
+            dev_id, ring_id));
+    return comm_map_.at(ring_id).at(dev_id).get();
+  }
+
+  // retrieve a communicator by the ring id and place
+  ECCLComm* Get(int ring_id, Place place) const {
+    return Get(ring_id, BOOST_GET_CONST(NPUPlace, place).device);
+  }
+
+ private:
+  // Init global hcom
+  ECCLCommContext() {}
+  // we may use group feature in the feature
+  // ECCLCommContext() { InitHcomWorldGroup(); }
+
+  PaddleEcclCommGroupIdType comm_;
+
+ public:
+  ~ECCLCommContext() {}
+
+  std::once_flag once_flag_;
+  std::mutex comm_map_mutex_;
+  // ring id to dev-ECCLComm
+  std::map<int, std::map<int, std::unique_ptr<ECCLComm>>> comm_map_;
+
+  // void InitHcomWorldGroup();
+  void ReleaseECCLComms();
+
+  DISABLE_COPY_AND_ASSIGN(ECCLCommContext);
 };
 #endif
 

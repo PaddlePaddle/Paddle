@@ -47,8 +47,15 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "acl/acl.h"
-#include "hccl/hccl_types.h"
 #endif  // PADDLE_WITH_ASCEND_CL
+
+#ifdef PADDLE_WITH_HCCL
+#include "hccl/hccl_types.h"
+#endif  // PADDLE_WITH_HCCL
+
+#ifdef PADDLE_WITH_ECCL
+#include <eccl/eccl_types.h>
+#endif  // PADDLE_WITH_ECCL
 
 #include <fstream>
 #include <iomanip>
@@ -1172,8 +1179,21 @@ struct NPUStatusType {};
   }
 
 DEFINE_NPU_STATUS_TYPE(aclError, ACL_ERROR_NONE);
+#ifdef PADDLE_WITH_HCCL
 DEFINE_NPU_STATUS_TYPE(HcclResult, HCCL_SUCCESS);
+#endif  // PADDLE_WITH_HCCL
+#ifdef PADDLE_WITH_ECCL
+DEFINE_NPU_STATUS_TYPE(EcclResult, SUCCESS);
+#endif  // PADDLE_WITH_ECCL
 }  // namespace details
+
+#ifdef PADDLE_WITH_ECCL
+inline std::string build_npu_error_msg(EcclResult stat) {
+  std::ostringstream sout;
+  sout << " ECCL error, the error code is : " << stat << ". ";
+  return sout.str();
+}
+#endif  // PADDLE_WITH_ECCL
 
 inline std::string build_npu_error_msg(aclError stat) {
   std::ostringstream sout;
@@ -1181,11 +1201,13 @@ inline std::string build_npu_error_msg(aclError stat) {
   return sout.str();
 }
 
+#ifdef PADDLE_WITH_HCCL
 inline std::string build_npu_error_msg(HcclResult stat) {
   std::ostringstream sout;
   sout << " HCCL error, the error code is : " << stat << ". ";
   return sout.str();
 }
+#endif  // PADDLE_WITH_HCCL
 
 #define PADDLE_ENFORCE_NPU_SUCCESS(COND)                       \
   do {                                                         \
@@ -1200,6 +1222,7 @@ inline std::string build_npu_error_msg(HcclResult stat) {
       __THROW_ERROR_INTERNAL__(__summary__);                   \
     }                                                          \
   } while (0)
+
 #endif  // PADDLE_WITH_ASCEND_CL
 
 }  // namespace platform

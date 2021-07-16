@@ -15,7 +15,7 @@
 #pragma once
 
 #if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_HCCL)
 
 #include <stdio.h>
 #include <memory>
@@ -25,7 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
-#ifdef PADDLE_WITH_ASCEND_CL
+#ifdef PADDLE_WITH_HCCL
 #include "paddle/fluid/platform/dynload/hccl.h"
 #endif
 

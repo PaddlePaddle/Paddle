@@ -16,9 +16,14 @@ limitations under the License. */
 
 #include <memory>
 
-#if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
+
+#if defined(PADDLE_WITH_HCCL)
 #include "paddle/fluid/platform/hccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_ECCL)
+#include "paddle/fluid/platform/eccl_helper.h"
 #endif
 
 namespace paddle {
@@ -31,13 +36,24 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
-    HcclDataType dtype = platform::ToHCCLDataType(in->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
     std::string group =
         std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     auto place = ctx.GetPlace();
-    auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
+
+#if defined(PADDLE_WITH_HCCL)
+    auto dtype = platform::ToHCCLDataType(in->type());
+    auto comm =
+        paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+#elif defined(PADDLE_WITH_ECCL)
+    auto dtype = platform::ToECCLDataType(in->type());
+    auto comm =
+        paddle::platform::ECCLCommContext::Instance().Get(ring_id, place);
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with eccl or hccl."));
+#endif
     int nranks = comm->nranks();
 
     framework::DDim out_dims = in->dims();
@@ -56,13 +72,22 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    VLOG(3) << "begin hccl allgather, parameter is: "
+    VLOG(3) << "begin ascend allgather, parameter is: "
             << ", group is " << group << ", ring_id is " << ring_id
             << ", nranks is " << nranks;
 
+#if defined(PADDLE_WITH_HCCL)
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllGather(
         send_buff, recv_buff, send_numel, dtype, comm->comm(),
         reinterpret_cast<void *>(stream)));
+#elif defined(PADDLE_WITH_ECCL)
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::h_eccl_all_gather(
+        send_buff, recv_buff, send_numel, dtype, comm->comm().c_str(),
+        reinterpret_cast<void *>(stream)));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet
+        "PaddlePaddle collective should compile with eccl or hccl."));
+#endif
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
