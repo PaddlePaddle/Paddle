@@ -194,8 +194,8 @@ def init_parallel_env():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place))
 
-    other_endpoints = strategy.trainer_endpoints[:].remove(
-        strategy.current_endpoint)
+    other_endpoints = strategy.trainer_endpoints[:]
+    other_endpoints.remove(strategy.current_endpoint)
     if strategy.local_rank == 0:
         wait_server_ready(other_endpoints)
 
