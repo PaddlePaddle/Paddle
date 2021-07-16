@@ -141,12 +141,21 @@ _channelwise_quant_axis1_ops = ['conv2d_transpose', 'mul']
 
 
 def _get_op_input_var_names(op):
-    """ """
+    """
+    Get the input var names of the op.
+    Args:
+        op(IrNode, Operator): the input op.
+    Returns:
+        input_var_names or None.
+    """
     assert isinstance(op, (IrNode, Operator)), \
         "The input op should be IrNode or Operator."
     var_names = []
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return []
+
     name_list = _op_real_in_out_name[op_name][0]
     for name in name_list:
         var_name = op.input(name)
@@ -163,6 +172,9 @@ def _get_input_name_index(op, input_var_name):
         "The input op should be IrNode or Operator."
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return None
+
     res = None
     for argname in _op_real_in_out_name[op_name][0]:
         var_names = op.input(argname)
@@ -179,6 +191,9 @@ def _get_op_output_var_names(op):
     var_names = []
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return []
+
     name_list = _op_real_in_out_name[op_name][1]
     for name in name_list:
         var_name = op.output(name)
@@ -195,6 +210,9 @@ def _get_output_name_index(op, output_var_name):
         "The input op should be IrNode or Operator."
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return None
+
     name_list = _op_real_in_out_name[op_name][1]
     res = None
     for name in name_list:

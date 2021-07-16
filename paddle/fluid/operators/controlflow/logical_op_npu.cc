@@ -12,10 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include <memory>
-#include <string>
-
 #include "paddle/fluid/operators/controlflow/logical_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
@@ -29,12 +25,9 @@ class LogicalNotNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
-
     auto* out = ctx.Output<Tensor>("Out");
 
-    auto place = ctx.GetPlace();
-
-    out->mutable_data<T>(place);
+    out->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -45,13 +38,55 @@ class LogicalNotNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class LogicalOrNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+
+    out->mutable_data<T>(ctx.GetPlace());
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner = NpuOpRunner("LogicalOr", {*x, *y}, {*out}, {});
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class LogicalAndPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+
+    out->mutable_data<T>(ctx.GetPlace());
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner = NpuOpRunner("LogicalAnd", {*x, *y}, {*out}, {});
+    runner.Run(stream);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(
-    logical_not,
-    ops::LogicalNotNPUKernel<paddle::platform::NPUDeviceContext, bool>);
+REGISTER_OP_NPU_KERNEL(logical_not,
+                       ops::LogicalNotNPUKernel<plat::NPUDeviceContext, bool>);
 
-#endif
+REGISTER_OP_NPU_KERNEL(logical_or,
+                       ops::LogicalOrNPUKernel<plat::NPUDeviceContext, bool>);
+
+REGISTER_OP_NPU_KERNEL(logical_and,
+                       ops::LogicalAndPUKernel<plat::NPUDeviceContext, bool>);

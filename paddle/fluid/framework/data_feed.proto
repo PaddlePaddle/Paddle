@@ -33,4 +33,5 @@ message DataFeedDesc {
   optional string rank_offset = 6;
   optional int32 pv_batch_size = 7 [ default = 32 ];
   optional int32 input_type = 8 [ default = 0 ];
+  optional string so_parser_name = 9;
 }

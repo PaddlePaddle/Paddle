@@ -47,6 +47,8 @@ BLACK_LIST = {
     'sigmoid_cross_entropy_with_logits',
     'cross_entropy',
     'cross_entropy2',
+    # default fp32 can avoid return inf when the sum value large than 65504
+    'reduce_sum',
 }
 
 AMP_RELATED_FLAGS = [
