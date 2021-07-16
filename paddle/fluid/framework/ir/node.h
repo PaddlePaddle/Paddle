@@ -140,20 +140,44 @@ class Node {
 
   const std::string ToString() const {
     if (IsOp()) {
+      std::string op_str(Name());
+
       const auto& op = Op();
-      std::string op_str(op->Type());
+      if (op == nullptr) {
+        // Node is an Op but hasn't OpDesc (often create by CreateEmptyNode),
+        // like ScaleLossGradOp, it's type is OpHandle, which created by Pass
+        // and then inserted into graph.
+        // For OpHandle, we have to use Node's input and output for sorting.
+        std::vector<Node*> sorted_inputs(inputs);
+        std::vector<Node*> sorted_outputs(outputs);
 
-      for (const auto& input : op->InputNames()) {
-        op_str.append(input);
-        for (const auto& arg : op->Input(input)) {
-          op_str.append(arg);
+        auto comparator = [](Node* a, Node* b) {
+          return a->Name() > b->Name();
+        };
+        std::stable_sort(sorted_inputs.begin(), sorted_inputs.end(),
+                         comparator);
+        std::stable_sort(sorted_outputs.begin(), sorted_outputs.end(),
+                         comparator);
+        for (const auto& input : sorted_inputs) {
+          op_str.append(input->Name());
         }
-      }
+        for (const auto& output : sorted_outputs) {
+          op_str.append(output->Name());
+        }
+      } else {
+        // A normal Op, has OpDesc, create from ProgramDesc
+        for (const auto& input : op->InputNames()) {
+          op_str.append(input);
+          for (const auto& arg : op->Input(input)) {
+            op_str.append(arg);
+          }
+        }
 
-      for (const auto& output : op->OutputNames()) {
-        op_str.append(output);
-        for (const auto& arg : op->Output(output)) {
-          op_str.append(arg);
+        for (const auto& output : op->OutputNames()) {
+          op_str.append(output);
+          for (const auto& arg : op->Output(output)) {
+            op_str.append(arg);
+          }
         }
       }
 
