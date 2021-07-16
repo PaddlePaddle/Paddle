@@ -151,6 +151,12 @@ class OpDesc {
 
   const BlockDesc *Block() const { return this->block_; }
 
+  int32_t GetDistributedAttrUid() const { return distributed_attr_uid_; }
+
+  void SetDistributedAttrUid(int32_t distributed_attr_uid) {
+    distributed_attr_uid_ = distributed_attr_uid;
+  }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
@@ -170,6 +176,7 @@ class OpDesc {
   VariableNameMap outputs_;
   AttributeMap attrs_;
 
+  int32_t distributed_attr_uid_{-1};
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.
   bool need_update_{false};

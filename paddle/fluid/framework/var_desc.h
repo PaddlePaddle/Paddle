@@ -118,6 +118,12 @@ class VarDesc {
     desc_.set_need_check_feed(need_check_feed);
   }
 
+  int32_t GetDistributedAttrUid() const { return distributed_attr_uid_; }
+
+  void SetDistributedAttrUid(int32_t distributed_attr_uid) {
+    distributed_attr_uid_ = distributed_attr_uid;
+  }
+
   bool HasDistributedAttr(const std::string &name) const {
     return distributed_attrs_.find(name) != distributed_attrs_.end();
   }
@@ -146,6 +152,7 @@ class VarDesc {
 
   proto::VarDesc desc_;
   AttributeMap distributed_attrs_;
+  int32_t distributed_attr_uid_{-1};
   bool need_update_{false};
 };
 

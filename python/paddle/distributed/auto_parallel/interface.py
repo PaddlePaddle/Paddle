@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .attribute import TensorDistributedAttribute
+from .attribute import OperatorDistributedAttribute
+from .attribute import get_tensor_distributed_attribute
+from .attribute import set_tensor_distributed_attribute
+from .attribute import get_op_distributed_attribute
+from .attribute import set_op_distributed_attribute
+
 
 def validate_check():
     pass
@@ -28,9 +35,12 @@ def shard_tensor(tensor, mesh, dims_mapping):
         The tensor itself.
     """
     validate_check()
-    tensor.desc._set_distributed_attr('mesh_topology', mesh.get_mesh())
-    tensor.desc._set_distributed_attr('mesh_group', mesh.get_process_group())
-    tensor.desc._set_distributed_attr('dims_mapping', dims_mapping)
+    tensor_dist_attr = get_tensor_distributed_attribute(tensor.desc)
+    if tensor_dist_attr is None:
+        tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
+        set_tensor_distributed_attribute(tensor.desc, tensor_dist_attr)
+    tensor_dist_attr.set_proc_mesh(mesh)
+    tensor_dist_attr.set_dims_mapping(dims_mapping)
     return tensor
 
 
@@ -44,41 +54,45 @@ def set_shard_mask(tensor, mask):
         The tensor itself.
     """
     validate_check()
-    tensor.desc._set_distributed_attr('mask_shape', mask.shape)
-    tensor.desc._set_distributed_attr('mask_value', mask.tolist())
+    tensor_dist_attr = get_tensor_distributed_attribute(tensor)
+    if tensor_dist_attr is None:
+        tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
+        set_tensor_distributed_attribute(tensor.desc, tensor_dist_attr)
+    tensor_dist_attr.set_shard_mask(mask)
     return tensor
 
 
-def shard_op(op_name, mesh, input_dims_mapping, output_dims_mapping):
+def shard_op(op_name, mesh, input_dims_mappings, output_dims_mappings):
     """
     Add distributed attributes for ops.
     Inputs:
         op_name (string): the name of the  op to process
         mesh (ProcessMesh): an instance of ProcessMesh
-        input_dims_mapping (dict): a mapping from input name to the input's dims_mapping
-        output_dims_mapping(dict): a mapping from output name to the output's dims_mapping
+        inputs_dims_mappings (dict): a mapping from input name to the input's dims_mapping
+        outputs_dims_mappings(dict): a mapping from output name to the output's dims_mapping
     Returns:
         Output variables of the op named op_name(tuple).
     """
     validate_check()
-    # op_mapping[op_name](parameter list from input_dims_mapping)
-    op.desc._set_distributed_attr('mesh_topology', mesh.get_mesh())
-    op.desc._set_distributed_attr('mesh_group', mesh.get_process_group())
-    op.desc._set_distributed_attr('input_dims_mapping', input_dims_mapping)
-    op.desc._set_distributed_attr('output_dims_mapping', output_dims_mapping)
-    # input_dims_mapping = {index: {'name': in_name, 'dims_mapping': dims_mapping}}
+    pass
 
 
-def set_offload_device(tensor, dst_device):
+def set_offload_device(tensor, offload_device):
     """
     Set the device that the tensor on.
     Inputs:
         op (tensor): tensor to process, it's an instance of Variable (framework.py)
-        dst_device: the device that the tensor on, e.g., 'gpu', 'cpu'.
+        offload_device: the device that the tensor on, e.g., 'gpu', 'cpu'.
     Returns:
         None.
     """
-    tensor.desc._set_distributed_attr('offload_device', dst_device)
+    validate_check()
+    tensor_dist_attr = get_tensor_distributed_attribute(tensor)
+    if tensor_dist_attr is None:
+        tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
+        set_tensor_distributed_attribute(tensor.desc, tensor_dist_attr)
+    tensor_dist_attr.set_offload_device(offload_device)
+    return tensor
 
 
 def set_pipeline_stage(stage):

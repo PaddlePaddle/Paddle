@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -10,12 +10,6 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.
+# limitations under the License
 
-DISTRIBUTED_ACC_NUM = -1
-
-
-def generate_distributed_attr_uid():
-    global DISTRIBUTED_ACC_NUM
-    DISTRIBUTED_ACC_NUM = DISTRIBUTED_ACC_NUM + 1
-    return DISTRIBUTED_ACC_NUM
+from .common import find_best_compatible_distributed_operator_impl

@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
-
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 namespace paddle {
@@ -177,6 +176,8 @@ void BindVarDsec(pybind11::module *m) {
       .def("set_persistable", &pd::VarDesc::SetPersistable)
       .def("need_check_feed", &pd::VarDesc::NeedCheckFeed)
       .def("set_need_check_feed", &pd::VarDesc::SetNeedCheckFeed)
+      .def("get_distributed_attr_uid", &pd::VarDesc::GetDistributedAttrUid)
+      .def("set_distributed_attr_uid", &pd::VarDesc::SetDistributedAttrUid)
       .def("has_distributed_attr", &pd::VarDesc::HasDistributedAttr)
       .def("_set_distributed_attr", &pd::VarDesc::SetDistributedAttr)
       .def("remove_distributed_attr", &pd::VarDesc::RemoveDistributedAttr)
@@ -257,6 +258,8 @@ void BindOpDesc(pybind11::module *m) {
       .def("attr", &pd::OpDesc::GetAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
       .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
+      .def("get_distributed_attr_uid", &pd::OpDesc::GetDistributedAttrUid)
+      .def("set_distributed_attr_uid", &pd::OpDesc::SetDistributedAttrUid)
       .def("set_serialized_attr",
            [](pd::OpDesc &self, const std::string &name,
               const pybind11::bytes &seriralized) {
