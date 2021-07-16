@@ -15,10 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/partial_allgather_op.h"
 #include <memory>
 
-#if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
