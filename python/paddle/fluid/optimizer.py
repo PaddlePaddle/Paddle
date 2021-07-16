@@ -4190,10 +4190,10 @@ class PipelineOptimizer(object):
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         self._device = 'cpu'
-        if core.is_compiled_with_cuda():
-            self._device = "gpu"
-        elif core.is_compiled_with_npu():
+        if core.is_compiled_with_npu():
             self._device = "npu"
+        elif core.is_compiled_with_cuda():
+            self._device = "gpu"
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
         if not isinstance(optimizer, Optimizer) and not isinstance(
