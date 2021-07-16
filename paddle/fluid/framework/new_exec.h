@@ -86,9 +86,9 @@ class ExecutionContextV2 : public ExecutionContext {
 
   std::vector<std::string> InNameList() const {
     std::vector<std::string> vec_temp;
-    vec_temp.reserve(ctx_.output_name_map.size());
+    vec_temp.reserve(ctx_.input_name_map.size());
 
-    for (auto& input : ctx_.output_name_map) {
+    for (auto& input : ctx_.input_name_map) {
       vec_temp.push_back(input.first);
     }
 
