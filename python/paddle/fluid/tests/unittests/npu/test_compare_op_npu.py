@@ -34,7 +34,6 @@ callback_dict = {
     'not_equal': lambda _a, _b: _a != _b
 }
 
-
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestEqual(OpTest):
@@ -150,10 +149,9 @@ class TestLessthan2FP16(TestLessthan2):
         self.dtype = np.float16
 
 
-def create_compare_npu_paddleclass(op_type, dtype, inputs, callback, id_class):
-    if not paddle.is_compiled_with_npu():
-        return
-
+def create_compare_npu_paddleclass(op_type, dtype, inputs, callback, postfix):
+    @unittest.skipIf(not paddle.is_compiled_with_npu(),
+                     "core is not compiled with NPU")
     class PaddleCls(OpTest):
         def setUp(self):
             self.__class__.use_npu = True
@@ -168,39 +166,65 @@ def create_compare_npu_paddleclass(op_type, dtype, inputs, callback, id_class):
                 'Y': OpTest.np_dtype_to_fluid_dtype(y)
             }
 
-            out = callback(self.inputs['X'], self.inputs['Y'])
+            out=callback(self.inputs['X'], self.inputs['Y'])
             self.outputs = {'Out': out}
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
-    cls_name = 'TestCase_%s_%s_%d' % (op_type, dtype, id_class)
+        def test_dynamic_api(self):
+            if self.dtype == 'float16':
+                return
+            paddle.disable_static()
+            x = paddle.to_tensor(self.inputs['X'])
+            y = paddle.to_tensor(self.inputs['Y'])
+            op = eval("paddle.%s" % (self.op_type))
+            out = op(x, y)
+            self.assertEqual((out.numpy() == self.outputs['Out']).all(), True)
+            paddle.enable_static()
+
+        def test_static_api(self):
+            if self.dtype == 'float16':
+                return
+            paddle.enable_static()
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                x = fluid.data(name='x', shape=self.inputs['X'].shape, dtype=self.dtype)
+                y = fluid.data(name='y', shape=self.inputs['Y'].shape, dtype=self.dtype)
+                op = eval('paddle.%s' % (self.op_type))
+                out = op(x, y)
+                exe = fluid.Executor(self.place)
+                res, = exe.run(feed={'x': self.inputs['X'],
+                                     'y': self.inputs['Y']},
+                               fetch_list=[out])
+            self.assertEqual((res == self.outputs['Out']).all(), True)
+
+    cls_name = 'TestCase_%s_%s' % (op_type, dtype)
+    if postfix is not None:
+        cls_name = cls_name + '_' + postfix
     PaddleCls.__name__ = cls_name
     globals()[cls_name] = PaddleCls
 
-
 def create_compare_npu_case(op_type):
     def gen_inputs(shape_x, shape_y, l=0, h=5):
-        return {
-            'X': np.random.uniform(l, h, shape_x),
-            'Y': np.random.uniform(l, h, shape_y)
-        }
+        return {'X': np.random.uniform(l, h, shape_x), 'Y': np.random.uniform(l, h, shape_y)}
 
     inputs_lis = []
     # 1 Add same shape inputs
-    inputs_lis.append(gen_inputs([11, 17], [11, 17]))
+    inputs_lis.append(gen_inputs([11,17],[11,17]))
     # 2-5 Add different shape for broadcast cases
     inputs_lis.append(gen_inputs([1, 2, 1, 3], [1, 2, 3]))
     inputs_lis.append(gen_inputs([1, 2, 3], [1, 2, 1, 3]))
     inputs_lis.append(gen_inputs([5], [3, 1]))
     inputs_lis.append(gen_inputs([3, 1], [1]))
+    postfix_lis = [None, 'broadcast1', 'broadcast2', 'broadcast3', 'broadcast4']
 
     dtype_list = ['float32', 'float16', 'int32']
     callback = callback_dict[op_type]
-    for i, inputs in enumerate(inputs_lis):
+    for i in range(len(inputs_lis)):
         for dtype in dtype_list:
-            create_compare_npu_paddleclass(op_type, dtype, inputs, callback, i)
-
+            inputs = inputs_lis[i]
+            postfix = postfix_lis[i]
+            create_compare_npu_paddleclass(op_type, dtype, inputs, callback, postfix)
 
 create_compare_npu_case('greater_than')
 create_compare_npu_case('not_equal')
@@ -208,3 +232,4 @@ create_compare_npu_case('less_equal')
 
 if __name__ == '__main__':
     unittest.main()
+
