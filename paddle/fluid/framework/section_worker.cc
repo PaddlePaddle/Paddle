@@ -193,7 +193,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
     // delete backward send var at step=(bw_step - 2)
     if (gc && !is_first_stage && bw_step >= 2) {
       DeleteUnusedTensors(*microbatch_scopes_[bw_step - 2], backward_send_vars_,
-                          gc);
+                          gc.get());
     }
 
     RunBackward(bw_step, gc, unused_vars_);
@@ -202,7 +202,8 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
     if (gc && !is_last_stage) {
       // 0, 1, 2
       for (int i = reserve_fw_send_step; i < fw_step; ++i) {
-        DeleteUnusedTensors(*microbatch_scopes_[i], forward_send_vars_, gc);
+        DeleteUnusedTensors(*microbatch_scopes_[i], forward_send_vars_,
+                            gc.get());
       }
       // because assert(startup_steps < num_microbatches_), so will always
       // run 1F1B, reserve_fw_send_step will be update
@@ -222,7 +223,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
     // NOTE(wangxi): will only execute once
     // delete forward send var at step=(num_microbatches_ - 1)
     if (reserve_fw_send_step < num_microbatches_ && !is_last_stage) {
-      DeleteUnusedTensors(*microbatch_scopes_[i], forward_send_vars_, gc);
+      DeleteUnusedTensors(*microbatch_scopes_[i], forward_send_vars_, gc.get());
       ++reserve_fw_send_step;
     }
   }
@@ -233,7 +234,8 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
     // NOTE(wangxi): program must add sync backward send comm at update
     // delete backward send var
     for (int i = reserve_bw_send_step; i < num_microbatches_; ++i) {
-      DeleteUnusedTensors(*microbatch_scopes_[i], backward_send_vars_, gc);
+      DeleteUnusedTensors(*microbatch_scopes_[i], backward_send_vars_,
+                          gc.get());
     }
   }
 }
