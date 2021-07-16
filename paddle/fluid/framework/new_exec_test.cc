@@ -68,7 +68,6 @@ int main() {
     }
     paddle::framework::exec_op_func_list(vec_main_func_list, op_main_list,
                                          global_scope, place);
-    33
   }
   // ProfilerStop();
   auto end = std::chrono::steady_clock::now();
