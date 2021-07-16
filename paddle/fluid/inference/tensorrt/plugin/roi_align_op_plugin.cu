@@ -17,7 +17,6 @@
 #include <algorithm>
 
 #include "paddle/fluid/inference/tensorrt/plugin/roi_align_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {

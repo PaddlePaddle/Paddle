@@ -109,7 +109,8 @@ void EagerDeletionOpHandle::CallOnce() {
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
-  if (vars_.size() != var_infos_.size()) {
+  if (vars_.size() != var_infos_.size() || is_variant_scope_) {
+    vars_.clear();
     CallOnce();
   }
 
@@ -119,6 +120,7 @@ void EagerDeletionOpHandle::RunImpl() {
     auto *var_info = var_infos_[i];
     if (var_info->IsSkippedAllMemoryOptimization() ||
         !var_info->DecreaseRefCnt()) {
+      VLOG(4) << "skip memory optimization with var: " << var_info->Name();
       continue;
     }
 

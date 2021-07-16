@@ -19,18 +19,12 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/prelu_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/operators/math/prelu.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-PReluPlugin *CreatePreluPluginDeserialize(const void *buffer, size_t length) {
-  return new PReluPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("prelu_plugin", CreatePreluPluginDeserialize);
 
 int PReluPlugin::initialize() {
   cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());
@@ -104,9 +98,23 @@ int PReluPluginDynamic::initialize() {
              cudaMemcpyHostToDevice);
   return 0;
 }
-size_t PReluPluginDynamic::getSerializationSize() const { return 0; }
 
-void PReluPluginDynamic::serialize(void *buffer) const {}
+PReluPluginDynamic::PReluPluginDynamic(void const *serialData,
+                                       size_t serialLength) {
+  DeserializeValue(&serialData, &serialLength, &weight_);
+  const char *prelu_mode;
+  DeserializeValue(&serialData, &serialLength, &prelu_mode);
+  mode_ = std::string(prelu_mode);
+}
+
+size_t PReluPluginDynamic::getSerializationSize() const {
+  return SerializedSize(mode_.c_str()) + SerializedSize(weight_);
+}
+
+void PReluPluginDynamic::serialize(void *buffer) const {
+  SerializeValue(&buffer, weight_);
+  SerializeValue(&buffer, mode_.c_str());
+}
 
 nvinfer1::DimsExprs PReluPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,

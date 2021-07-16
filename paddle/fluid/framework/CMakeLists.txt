@@ -28,7 +28,7 @@ add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
-proto_library(op_def_proto SRCS op_def.proto)
+proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto boost)
 
 FILE(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
@@ -203,6 +203,10 @@ cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator 
 
 cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
 cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
+
+cc_library(program_processing SRCS program_processing.cc DEPS framework_proto)
+cc_test(program_processing_test SRCS program_processing_test.cc DEPS proto_desc program_processing)
+
 if(WITH_GPU)
   nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 elseif(WITH_ROCM)
@@ -254,7 +258,7 @@ cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
 cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry denormal device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
 
-cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
+cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector op_registry while_op_helper recurrent_op_helper conditional_block_op_helper)
 if(WITH_DISTRIBUTE)
   if(WITH_PSLIB)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
@@ -340,7 +344,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy bind_threaded_ssa_graph_executor collective_helper
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(executor_cache SRCS executor_cache.cc DEPS executor)
+cc_library(executor_cache SRCS executor_cache.cc DEPS parallel_executor)
 if(WITH_PSCORE)
     get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
@@ -403,10 +407,20 @@ configure_file(commit.h.in commit.h)
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
 
-cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+if(WITH_ROCM)
+  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+else()
+  cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+endif()
+
 cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_tensor)
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
-cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+
+if(WITH_ROCM)
+  hip_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+else()
+  cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+endif()
 
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
