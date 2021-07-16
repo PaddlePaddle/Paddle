@@ -31,7 +31,7 @@ class ClassCenterSampleOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("Label");
     PADDLE_ENFORCE_EQ(x_dims.size(), 1,
                       platform::errors::InvalidArgument(
-                          "Rank of Input(X) should be equal to 1, "
+                          "Rank of Input(Label) should be equal to 1, "
                           "but the value given is %d.",
                           x_dims.size()));
 
