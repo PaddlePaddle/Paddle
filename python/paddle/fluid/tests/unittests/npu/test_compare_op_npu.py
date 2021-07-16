@@ -25,6 +25,15 @@ import paddle.fluid as fluid
 paddle.enable_static()
 SEED = 2021
 
+callback_dict = {
+    'less_than': lambda _a, _b: _a < _b,
+    'less_equal': lambda _a, _b: _a <= _b,
+    'greater_than': lambda _a, _b: _a > _b,
+    'greater_equal': lambda _a, _b: _a >= _b,
+    'equal': lambda _a, _b: _a == _b,
+    'not_equal': lambda _a, _b: _a != _b
+}
+
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
@@ -86,114 +95,6 @@ class TestLessthan(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestGreaterthan(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "greater_than"
-        self.place = paddle.NPUPlace(0)
-
-        self.init_dtype()
-        np.random.seed(SEED)
-        x, y = self.get_input()
-        out = self.get_output(x, y)
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
-        self.outputs = {'Out': out}
-
-    def get_input(self):
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        return x, y
-
-    def get_output(self, x, y):
-        return x > y
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestNotequal(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "not_equal"
-        self.place = paddle.NPUPlace(0)
-
-        self.init_dtype()
-        np.random.seed(SEED)
-        x, y = self.get_input()
-        out = self.get_output(x, y)
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
-        self.outputs = {'Out': out}
-
-    def get_input(self):
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        return x, y
-
-    def get_output(self, x, y):
-        return x != y
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestLessequal(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "less_equal"
-        self.place = paddle.NPUPlace(0)
-
-        self.init_dtype()
-        np.random.seed(SEED)
-        x, y = self.get_input()
-        out = self.get_output(x, y)
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
-        self.outputs = {'Out': out}
-
-    def get_input(self):
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        return x, y
-
-    def get_output(self, x, y):
-        return x <= y
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
-
-
 class TestEqual2(TestEqual):
     def setUp(self):
         self.set_npu()
@@ -234,114 +135,6 @@ class TestLessthan2(TestLessthan):
         self.outputs = {'Out': out}
 
 
-class TestGreaterthan2(TestGreaterthan):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = x.copy()
-        y[0][1] = 1
-        return x, y
-
-
-class TestGreaterthanBroadcast0(TestGreaterthan):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.array([1.5]).astype(self.dtype)
-        return x, y
-
-
-class TestGreaterthanBroadcast1(TestGreaterthan):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [1, 17]).astype(self.dtype)
-        y = x.T
-        return x, y
-
-
-class TestGreaterthanBroadcast2(TestGreaterthan):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [2, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
-        return x, y
-
-
-class TestGreaterthanBroadcast3(TestGreaterthan):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [1, 2, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
-        return x, y
-
-
-class TestNotequal2(TestNotequal):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = x.copy()
-        y[0][1] = 1
-        return x, y
-
-
-class TestNotequalBroadcast0(TestNotequal):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.array([1.5]).astype(self.dtype)
-        return x, y
-
-
-class TestNotequalBroadcast1(TestNotequal):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [1, 17]).astype(self.dtype)
-        y = x.T
-        return x, y
-
-
-class TestNotequalBroadcast2(TestNotequal):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [2, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
-        return x, y
-
-
-class TestNotequalBroadcast3(TestNotequal):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [1, 2, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
-        return x, y
-
-
-class TestLessequal2(TestLessequal):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = x.copy()
-        y[0][1] = 1
-        return x, y
-
-
-class TestLessequalBroadcast0(TestLessequal):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.array([1.5]).astype(self.dtype)
-        return x, y
-
-
-class TestLessequalBroadcast1(TestLessequal):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [1, 17]).astype(self.dtype)
-        y = x.T
-        return x, y
-
-
-class TestLessequalBroadcast2(TestLessequal):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [2, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
-        return x, y
-
-
-class TestLessequalBroadcast3(TestLessequal):
-    def get_input(self):
-        x = np.random.uniform(1, 2, [1, 2, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [2, 1, 17]).astype(self.dtype)
-        return x, y
-
-
 class TestEqual2FP16(TestEqual2):
     def init_dtype(self):
         self.dtype = np.float16
@@ -357,35 +150,61 @@ class TestLessthan2FP16(TestLessthan2):
         self.dtype = np.float16
 
 
-class TestGreaterthan2FP16(TestGreaterthan2):
-    def init_dtype(self):
-        self.dtype = np.float16
+def create_compare_npu_paddleclass(op_type, dtype, inputs, callback, id_class):
+    if not paddle.is_compiled_with_npu():
+        return
+
+    class PaddleCls(OpTest):
+        def setUp(self):
+            self.__class__.use_npu = True
+            self.op_type = op_type
+            self.dtype = dtype
+            self.place = paddle.NPUPlace(0)
+            np.random.seed(SEED)
+            x = inputs['X'].astype(dtype)
+            y = inputs['Y'].astype(dtype)
+            self.inputs = {
+                'X': OpTest.np_dtype_to_fluid_dtype(x),
+                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+            }
+
+            out = callback(self.inputs['X'], self.inputs['Y'])
+            self.outputs = {'Out': out}
+
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+
+    cls_name = 'TestCase_%s_%s_%d' % (op_type, dtype, id_class)
+    PaddleCls.__name__ = cls_name
+    globals()[cls_name] = PaddleCls
 
 
-class TestGreaterthan2Int(TestGreaterthan2):
-    def init_dtype(self):
-        self.dtype = np.int32
+def create_compare_npu_case(op_type):
+    def gen_inputs(shape_x, shape_y, l=0, h=5):
+        return {
+            'X': np.random.uniform(l, h, shape_x),
+            'Y': np.random.uniform(l, h, shape_y)
+        }
+
+    inputs_lis = []
+    # 1 Add same shape inputs
+    inputs_lis.append(gen_inputs([11, 17], [11, 17]))
+    # 2-5 Add different shape for broadcast cases
+    inputs_lis.append(gen_inputs([1, 2, 1, 3], [1, 2, 3]))
+    inputs_lis.append(gen_inputs([1, 2, 3], [1, 2, 1, 3]))
+    inputs_lis.append(gen_inputs([5], [3, 1]))
+    inputs_lis.append(gen_inputs([3, 1], [1]))
+
+    dtype_list = ['float32', 'float16', 'int32']
+    callback = callback_dict[op_type]
+    for i, inputs in enumerate(inputs_lis):
+        for dtype in dtype_list:
+            create_compare_npu_paddleclass(op_type, dtype, inputs, callback, i)
 
 
-class TestNotequal2FP16(TestNotequal2):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-class TestNotequal2Int(TestNotequal2):
-    def init_dtype(self):
-        self.dtype = np.int32
-
-
-class TestLessequal2FP16(TestLessequal2):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-class TestLessequal2Int(TestLessequal2):
-    def init_dtype(self):
-        self.dtype = np.int32
-
+create_compare_npu_case('greater_than')
+create_compare_npu_case('not_equal')
+create_compare_npu_case('less_equal')
 
 if __name__ == '__main__':
     unittest.main()
