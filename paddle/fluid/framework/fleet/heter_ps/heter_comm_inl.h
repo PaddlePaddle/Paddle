@@ -14,8 +14,6 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 #include <queue>
-#include <thrust/execution_policy.h>
-#include <thrust/reduce.h>
 
 namespace paddle {
 namespace framework {
