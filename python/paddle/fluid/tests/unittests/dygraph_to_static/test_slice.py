@@ -187,6 +187,7 @@ class TestPaddleStridedSlice(unittest.TestCase):
         stride1 = -2
         sl = paddle.strided_slice(
             pt, axes=[0, ], starts=[s1, ], ends=[e1, ], strides=[stride1, ])
+
         self.assertTrue(array[s1:e1:stride1], sl)
 
         array = np.arange(6 * 6).reshape((6, 6))
@@ -197,7 +198,9 @@ class TestPaddleStridedSlice(unittest.TestCase):
         sl = paddle.strided_slice(
             pt, axes=[0, 1], starts=s2, ends=e2, strides=stride2)
 
-        array[s2[0]:e2[0]:stride2[0], s2[1]:e2[1]:stride2[1]]
+        self.assertTrue(
+            np.array_equal(sl.numpy(), array[s2[0]:e2[0]:stride2[0], s2[1]:e2[
+                1]:stride2[1]]))
 
 
 if __name__ == '__main__':
