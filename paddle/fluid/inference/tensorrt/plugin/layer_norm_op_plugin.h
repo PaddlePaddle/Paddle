@@ -39,19 +39,18 @@ class LayerNormPlugin : public PluginTensorRT {
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
 
- protected:
-  size_t getSerializationSize() override {
+ public:
+  size_t getSerializationSize() const override {
     return getBaseSerializationSize() + SerializedSize(bias_) +
            SerializedSize(scale_) + SerializedSize(begin_norm_axis_) +
            SerializedSize(eps_) + SerializedSize(mean_shape_) +
-           SerializedSize(variance_shape_) + SerializedSize(getPluginType());
+           SerializedSize(variance_shape_);
   }
 
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
-  void serialize(void* buffer) override {
-    SerializeValue(&buffer, getPluginType());
+  void serialize(void* buffer) const override {
     serializeBase(buffer);
     SerializeValue(&buffer, bias_);
     SerializeValue(&buffer, scale_);
@@ -61,7 +60,6 @@ class LayerNormPlugin : public PluginTensorRT {
     SerializeValue(&buffer, variance_shape_);
   }
 
- public:
   LayerNormPlugin(const float* bias, const int bias_num, const float* scale,
                   const int scale_num, int begin_norm_axis, float eps,
                   std::vector<int64_t> mean_shape,
@@ -96,7 +94,7 @@ class LayerNormPlugin : public PluginTensorRT {
                                mean_shape_, variance_shape_);
   }
 
-  const char* getPluginType() const override { return "layer_norm_plugin"; }
+  const char* getPluginType() const override { return "layernorm_plugin"; }
   int getNbOutputs() const override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
                                      int nbInputDims) override;
@@ -107,6 +105,20 @@ class LayerNormPlugin : public PluginTensorRT {
 #endif
               void* workspace, cudaStream_t stream) override;
 };
+
+class LayerNormPluginCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const override { return "layernorm_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    return new LayerNormPlugin(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(LayerNormPluginCreator);
 
 class LayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
@@ -139,7 +151,9 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
                                       mean_shape_, variance_shape_);
   }
 
-  const char* getPluginType() const override { return "layernorm_plugin"; }
+  const char* getPluginType() const override {
+    return "layernorm_plugin_dynamic";
+  }
   int getNbOutputs() const override { return 1; }
   int initialize() override { return 0; }
 
@@ -201,42 +215,19 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
   std::vector<int64_t> variance_shape_;
 };
 
-class LayerNormPluginDynamicCreator : public nvinfer1::IPluginCreator {
+class LayerNormPluginDynamicCreator : public TensorRTPluginCreator {
  public:
-  LayerNormPluginDynamicCreator() {}
-  const char* getPluginName() const override { return "layernorm_plugin"; }
+  const char* getPluginName() const override {
+    return "layernorm_plugin_dynamic";
+  }
 
   const char* getPluginVersion() const override { return "1"; }
-
-  const nvinfer1::PluginFieldCollection* getFieldNames() override {
-    return &field_collection_;
-  }
-
-  nvinfer1::IPluginV2* createPlugin(
-      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    return nullptr;
-  }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serial_data,
                                          size_t serial_length) override {
-    auto plugin = new LayerNormPluginDynamic(serial_data, serial_length);
-    return plugin;
+    return new LayerNormPluginDynamic(serial_data, serial_length);
   }
-
-  void setPluginNamespace(const char* lib_namespace) override {
-    plugin_namespace_ = lib_namespace;
-  }
-
-  const char* getPluginNamespace() const override {
-    return plugin_namespace_.c_str();
-  }
-
- private:
-  std::string plugin_namespace_;
-  std::string plugin_name_;
-  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
-  std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
 REGISTER_TRT_PLUGIN_V2(LayerNormPluginDynamicCreator);

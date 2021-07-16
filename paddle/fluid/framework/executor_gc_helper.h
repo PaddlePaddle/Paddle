@@ -43,5 +43,11 @@ void DeleteUnusedTensors(
         &delete_vars_map,
     GarbageCollector *gc);
 
+// Get the clean vars of GC after each op runs. This function is used for
+// analysis statically.
+// result is in the format: result[block_idx][op_idx][delete_var_idx]
+std::vector<std::vector<std::vector<std::string>>> GetEagerDeletionCleanVars(
+    const ProgramDesc &program, const std::vector<std::string> &skip_vars = {});
+
 }  // namespace framework
 }  // namespace paddle

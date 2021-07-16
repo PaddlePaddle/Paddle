@@ -30,22 +30,16 @@ class SwishPlugin : public PluginTensorRT {
  private:
   float beta_;
 
- protected:
-  size_t getSerializationSize() override {
-    return SerializedSize(getPluginType()) + getBaseSerializationSize() +
-           SerializedSize(beta_);
+ public:
+  size_t getSerializationSize() const override {
+    return getBaseSerializationSize() + SerializedSize(beta_);
   }
 
-  // TRT will call this func when we need to serialize the configuration of
-  // tensorrt.
-  // It should not be called by users.
-  void serialize(void* buffer) override {
-    SerializeValue(&buffer, getPluginType());
+  void serialize(void* buffer) const override {
     serializeBase(buffer);
     SerializeValue(&buffer, beta_);
   }
 
- public:
   explicit SwishPlugin(const float beta, const bool with_fp16) : beta_(beta) {
     with_fp16_ = with_fp16;
   }
@@ -56,7 +50,9 @@ class SwishPlugin : public PluginTensorRT {
     deserializeBase(serialData, serialLength);
     DeserializeValue(&serialData, &serialLength, &beta_);
   }
+
   ~SwishPlugin() {}
+
   int initialize() override;
 
   SwishPlugin* clone() const override {
@@ -75,6 +71,20 @@ class SwishPlugin : public PluginTensorRT {
               void* workspace, cudaStream_t stream) override;
 };
 
+class SwishPluginCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const override { return "swish_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    return new SwishPlugin(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(SwishPluginCreator);
+
 #if IS_TRT_VERSION_GE(6000)
 class SwishPluginDynamic : public DynamicPluginTensorRT {
  public:
@@ -90,7 +100,7 @@ class SwishPluginDynamic : public DynamicPluginTensorRT {
     return new SwishPluginDynamic(beta_, with_fp16_);
   }
 
-  const char* getPluginType() const override { return "swish_plugin"; }
+  const char* getPluginType() const override { return "swish_plugin_dynamic"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
 
@@ -131,44 +141,18 @@ class SwishPluginDynamic : public DynamicPluginTensorRT {
   float beta_;
 };
 
-class SwishPluginDynamicCreator : public nvinfer1::IPluginCreator {
+class SwishPluginDynamicCreator : public TensorRTPluginCreator {
  public:
-  SwishPluginDynamicCreator() {}
-  const char* getPluginName() const override { return "swish_plugin"; }
+  const char* getPluginName() const override { return "swish_plugin_dynamic"; }
 
   const char* getPluginVersion() const override { return "1"; }
-
-  const nvinfer1::PluginFieldCollection* getFieldNames() override {
-    return &field_collection_;
-  }
-
-  nvinfer1::IPluginV2* createPlugin(
-      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    return nullptr;
-  }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serial_data,
                                          size_t serial_length) override {
-    auto plugin = new SwishPluginDynamic(serial_data, serial_length);
-    return plugin;
+    return new SwishPluginDynamic(serial_data, serial_length);
   }
-
-  void setPluginNamespace(const char* lib_namespace) override {
-    plugin_namespace_ = lib_namespace;
-  }
-
-  const char* getPluginNamespace() const override {
-    return plugin_namespace_.c_str();
-  }
-
- private:
-  std::string plugin_namespace_;
-  std::string plugin_name_;
-  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
-  std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
-
 REGISTER_TRT_PLUGIN_V2(SwishPluginDynamicCreator);
 #endif
 

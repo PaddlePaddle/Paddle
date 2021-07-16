@@ -18,8 +18,6 @@
 #include <cassert>
 
 #include "paddle/fluid/inference/tensorrt/plugin/anchor_generator_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
-
 #include "paddle/fluid/operators/detection/anchor_generator_op.h"
 
 namespace paddle {
