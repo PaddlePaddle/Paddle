@@ -30,7 +30,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
@@ -276,19 +275,8 @@ class TensorRTEngine {
       }
     }
 
-    if (with_dynamic_shape_) {
-      infer_engine_.reset(runtime->deserializeCudaEngine(
-          engine_serialized_data.c_str(), engine_serialized_data.size()));
-    } else {
-#if IS_TRT_VERSION_LT(8000)
-      infer_engine_.reset(runtime->deserializeCudaEngine(
-          engine_serialized_data.c_str(), engine_serialized_data.size(),
-          &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
-#else
-      infer_engine_.reset(runtime->deserializeCudaEngine(
-          engine_serialized_data.c_str(), engine_serialized_data.size()));
-#endif
-    }
+    infer_engine_.reset(runtime->deserializeCudaEngine(
+        engine_serialized_data.c_str(), engine_serialized_data.size()));
 
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
@@ -311,8 +299,8 @@ class TensorRTEngine {
 
   int GetDeviceId() { return device_id_; }
 
-  nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
-                                    int num_inputs, plugin::PluginTensorRT*);
+  nvinfer1::IPluginV2Layer* AddPlugin(nvinfer1::ITensor* const* inputs,
+                                      int num_inputs, plugin::PluginTensorRT*);
 
   nvinfer1::IPluginV2Layer* AddPluginV2Ext(nvinfer1::ITensor* const* inputs,
                                            int num_inputs,

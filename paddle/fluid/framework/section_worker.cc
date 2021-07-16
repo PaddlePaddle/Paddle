@@ -96,12 +96,16 @@ void SectionWorker::RunUpdate(
   }
 }
 
+void SectionWorker::PrepareUnusedVar() {
+  VLOG(5) << "begin prepare the unsed vars";
+  unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
+}
+
 void SectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
-  auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
   if (max_memory_size >= 0) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(place_)) {
