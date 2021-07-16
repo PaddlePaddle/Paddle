@@ -14859,6 +14859,7 @@ def class_center_sample(label, num_classes, num_sample, group=None, seed=None):
                      Note that num_classes of each GPU can be different.
     	num_sample: A positive integer to specify the number of class center to sample
         group: nccl communication group
+        seed: random seed
 
     Return:
     	remapped_label: remapped label using sampled class center
@@ -14882,51 +14883,51 @@ def class_center_sample(label, num_classes, num_sample, group=None, seed=None):
       print(remapped_label)
       print(sampled_class_index)
       # the output is
-      Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
-             [11, 5 , 1 , 3 , 12, 2 , 15, 19, 18, 19])
-      Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
-             [4, 3, 0, 2, 5, 1, 6, 8, 7, 8])
-      Tensor(shape=[9], dtype=int64, place=CPUPlace, stop_gradient=True,
-             [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
+      #Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
+      #       [11, 5 , 1 , 3 , 12, 2 , 15, 19, 18, 19])
+      #Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
+      #       [4, 3, 0, 2, 5, 1, 6, 8, 7, 8])
+      #Tensor(shape=[9], dtype=int64, place=CPUPlace, stop_gradient=True,
+      #       [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
 
       # for multi GPU, test_class_center_sample.py
-      import paddle
-      import paddle.distributed as dist
-      import numpy as np
-      strategy = dist.fleet.DistributedStrategy()
-      dist.fleet.init(is_collective=True, strategy=strategy)
-      batch_size = 10
-      num_sample = 6
-      rank_id = dist.get_rank()
-      # num_classes of each GPU can be different, e.g num_classes_list = [10, 8]
-      num_classes_list = [10, 10]
-      num_classes = np.sum(num_classes_list)
-      np_label = np.random.randint(0, num_classes, (batch_size,), dtype=np.int64)
-      label = paddle.to_tensor(np_label, dtype="int64")
-      label_list = []
-      dist.all_gather(label_list, label)
-      label = paddle.concat(label_list, axis=0)
-      print(label)
-      remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes_list[rank_id], num_sample)
-      print(remapped_label)
-      print(sampled_class_index)
+      #import paddle
+      #import paddle.distributed as dist
+      #import numpy as np
+      #strategy = dist.fleet.DistributedStrategy()
+      #dist.fleet.init(is_collective=True, strategy=strategy)
+      #batch_size = 10
+      #num_sample = 6
+      #rank_id = dist.get_rank()
+      ## num_classes of each GPU can be different, e.g num_classes_list = [10, 8]
+      #num_classes_list = [10, 10]
+      #num_classes = np.sum(num_classes_list)
+      #np_label = np.random.randint(0, num_classes, (batch_size,), dtype=np.int64)
+      #label = paddle.to_tensor(np_label, dtype="int64")
+      #label_list = []
+      #dist.all_gather(label_list, label)
+      #label = paddle.concat(label_list, axis=0)
+      #print(label)
+      #remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes_list[rank_id], num_sample)
+      #print(remapped_label)
+      #print(sampled_class_index)
 
-      python -m paddle.distributed.launch --gpus=0,1 test_class_center_sample.py
+      #python -m paddle.distributed.launch --gpus=0,1 test_class_center_sample.py
       # rank 0 output:
-      Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-             [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
-      Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-             [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
-      Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-             [0, 2, 4, 8, 9, 3])
+      #Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+      #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
+      #Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+      #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
+      #Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+      #       [0, 2, 4, 8, 9, 3])
       
       # rank 1 output:
-      Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
-             [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
-      Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
-             [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
-      Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
-             [0, 1, 2, 3, 5, 7, 8])
+      #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+      #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
+      #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+      #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
+      #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+      #       [0, 1, 2, 3, 5, 7, 8])
     """
     if group is not None and not group.is_member():
         return
