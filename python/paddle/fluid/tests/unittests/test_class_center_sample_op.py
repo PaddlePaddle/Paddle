@@ -67,9 +67,13 @@ class TestClassCenterSampleOp(OpTest):
     def init_dtype(self):
         self.dtype = np.int64
 
+    def init_fix_seed(self):
+        self.fix_seed = False
+
     def setUp(self):
         self.initParams()
         self.init_dtype()
+        self.init_fix_seed()
         label = np.random.randint(
             0, self.num_classes, (self.batch_size, ), dtype=self.dtype)
 
@@ -86,6 +90,7 @@ class TestClassCenterSampleOp(OpTest):
             'num_classes': self.num_classes,
             'num_sample': self.num_sample,
             'seed': self.seed,
+            'fix_seed': self.fix_seed,
         }
 
     def test_check_output(self):
@@ -95,6 +100,11 @@ class TestClassCenterSampleOp(OpTest):
 class TestClassCenterSampleOpINT32(TestClassCenterSampleOp):
     def init_dtype(self):
         self.dtype = np.int32
+
+
+class TestClassCenterSampleOpFixSeed(TestClassCenterSampleOp):
+    def init_fix_seed(self):
+        self.fix_seed = True
 
 
 if __name__ == '__main__':
