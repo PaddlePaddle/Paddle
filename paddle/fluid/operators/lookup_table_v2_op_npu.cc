@@ -40,6 +40,9 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("npu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
+    std::vector<int> ids;
+    TensorToVector(*ids_t, ctx.device_context(), &ids);
+
     NpuOpRunner runner;
     runner.SetType("GatherV2")
         .AddInput(*table_t)
