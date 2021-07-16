@@ -95,7 +95,11 @@ void GraphToProgramPass::GraphToBlock(const Graph* graph,
     nodes = TopologyVarientSort(
         *graph, static_cast<framework::ir::SortKind>(sort_kind));
   } else {
-    nodes = TopologySortGraphByDescOrder(*graph);
+    if (FLAGS_convert_all_blocks) {
+      nodes = TopologySortGraphByDescOrder(*graph);
+    } else {
+      nodes = TopologySortOperations(*graph);
+    }
   }
 
   for (ir::Node* n : nodes) {
