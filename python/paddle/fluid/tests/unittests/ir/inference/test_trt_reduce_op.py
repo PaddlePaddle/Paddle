@@ -78,5 +78,60 @@ class TRTReduceSumAllTest(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
+class TRTReduceMeanTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 3, 10, 768], dtype="float32")
+            reduce_mean = fluid.layers.reduce_mean(
+                data, dim=[2, -1], keep_dim=True)
+            out = fluid.layers.batch_norm(reduce_mean, is_test=True)
+
+        self.feeds = {
+            "data": np.random.random([3, 3, 10, 768]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TRTReduceSumTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+        self.dynamic_shape_params = TRTReduceSumTest.DynamicShapeParam({
+            'data': [1, 3, 8, 8]
+        }, {'data': [3, 3, 10, 768]}, {'data': [3, 3, 10, 768]}, False)
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu, flatten=True)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TRTReduceMeanAllTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 3, 10, 768], dtype="float32")
+            reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
+            out = fluid.layers.batch_norm(reduce_mean, is_test=True)
+
+        self.feeds = {
+            "data": np.random.random([3, 3, 10, 768]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TRTReduceSumAllTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+        self.dynamic_shape_params = TRTReduceSumAllTest.DynamicShapeParam({
+            'data': [1, 3, 8, 8]
+        }, {'data': [3, 3, 10, 768]}, {'data': [3, 3, 10, 768]}, False)
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu, flatten=True)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
 if __name__ == "__main__":
     unittest.main()
