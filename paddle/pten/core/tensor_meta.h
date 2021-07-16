@@ -50,7 +50,7 @@ struct TensorMeta {
         offset(meta.offset) {}
 
   // Bad constructor, may introduce bug
-  explicit TensorMeta(DDim dims) : dims(dims) {}
+  // explicit TensorMeta(DDim dims) : dims(dims) {}
 
   // Compatible Contructor
   TensorMeta(const DDim& dims,

@@ -18,7 +18,6 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace pt {
 
@@ -56,7 +55,8 @@ class LoDTensor final : public BaseTensor {
   LoDTensor(LoDTensor&&) = delete;
   LoDTensor& operator=(LoDTensor&&) = delete;
 
-  explicit LoDTensor(TensorMeta meta, const LoD& lod) : lod_(lod) {}
+  explicit LoDTensor(const LoD& lod, TensorMeta&& meta)
+      : lod_(lod), BaseTensor(meta) {}
 
   void set_lod(const LoD& lod) { lod_ = lod; }
 
