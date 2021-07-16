@@ -914,7 +914,14 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
-      slot = boost::lexical_cast<int>(sparse_key_names[i]);
+      try {
+        slot = boost::lexical_cast<int>(sparse_key_names[i]);
+      } catch (boost::bad_lexical_cast const& e) {
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "sparse var's name: %s, doesn't support non-integer type name when "
+            "dump_slot=True",
+            sparse_key_names[i]));
+      }
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     if (g_var == nullptr) {
