@@ -732,85 +732,164 @@ def einsum(equation, *operands):
     r"""
     einsum(equation, *operands)
 
-    This function performs the Einstein summation on input operands.
+    Introduction
+    ::::::::::::
 
-    Einsum provides a unified interface to a variety of operations including element-wise
-    multiplication, vector-vector multiplication, vector multiplication, 
-    matrix multiplication, batch matrix multiplication, transpose, reduce_sum, trace, 
-    diagonal, etc. 
+    Einsum offers a tensor operation API that follows the Einstein summation convention
+    or Einstain notation. It takes as input one or multiple tensors and produces as
+    output one tensor.
 
-    Args:
+    Einsum is able to perform a variety of tensor operations. Following lists a few:
+
+        - for single operand
+            - trace
+            - diagonal
+            - transpose
+            - sum
+        - for double operands
+            - dot
+            - outer
+            - broadcasting and elementwise multiply
+            - matrix multiply
+            - batched matrix multiply
+        - for many operads
+            - broadcasting multiply
+            - chained matrix multiply
+    
+    **The summation notation**
+
+        - The tensor dimensions are labeled using uncased English letters. E.g., `ijk`
+        relates to a three dimensional tensor whose dimensions are labeled i, j, and k.
+        - The equation is `,` separated into terms, each being a distinct input's
+        dimension label string.
+        - Ellipsis `...` enables broadcasting by automatically converting the unlabeled
+        dimensions into broadcasting dimensions. 
+        - Singular labels are called free labels, duplicate are dummy labels. Dummy labeled
+        dimensions will be reduced and removed in the output.
+        - Output labels can be explicitly specified on the right hand side of `->` or omitted.
+        In the latter case, the output labels will be inferred from the input labels.
+            - Inference of output labels
+                - Broadcasting label `...`, if present, is put on the leftmost position.
+                - Free labels are reordered alphabetically and put after `...`.
+            - On explicit output labels
+                - If broadcasting is enabled, then `...` must be present.
+                - The output labels can be an empty, an indication to output as a scalar
+                the sum over the original output.
+                - Non-input labels are invalid.
+                - Duplicate labels are invalid.
+                - For any dummmy label which is present for the output, it's promoted to
+                a free label.
+                - For any free label which is not present for the output, it's lowered to
+                a dummy label.
+        - Examples
+            - '...ij, ...jk'，where i and k are free labels, j is dummy. The output label
+            string is '...ik'
+            - 'ij -> i', where i is a free label and j is a dummy label. 
+            - '...ij, ...jk -> ...ijk'，where i, j and k are all free labels.
+            - '...ij, ...jk -> ij', an invalid equation since `...` is not present for
+            the output.
+
+    **The summation rule**
+
+    The summation procedure can be outlined as follows, although the actual steps taken
+    may vary significantly due to implementation specific optimization.
+
+        - Step 1: preparation for broadcasting, that is, transposing and unsqueezing
+        the input operands to have each resulting dimension identically labeled across
+        all the input operands.
+        - Step 2: broadcasting multiply all the resulting operands from step 1.
+        - Step 3: reducing dummy labeled dimensions.
+        - Step 4: transposing the result tensor to match the output labels.
+
+    **On trace and diagonal**
+
+    The trace and diagonal are planned yet unimplemented features. 
+
+    Parameters
+    ::::::::::
+
         equation (`str`):
-            The equation uses uncased letters to indicate dimensions. These letters are called 
-            dimension labels. The dimension labels are comma separated into groups the number of which
-            equals the number of the input operands. The equation uses `->` to indicate 
-            explicitly the output dimensions which otherwise would be collapsed as the result of summation.
-            In case the explicit output is not given, Einsum will deduce the output dimensions automatically.
-            Dimensions with the same label should be broadcastable. The equation uses ellipsis ('...') to 
-            specify broadcast dimensions.
-        operands (`Tensor`):
-            The operands to compute the Einstein sum of. The number of operands should be the same as the
-            the operands described in input equation.
+            The summation terms using the Einstein summation notation.
+        operands (`list of Tensor`):
+            The input tensors over which to compute the Einstein summation. The number of
+            operands should equal the number of input terms in the equation.
     
-    Returns:
-        `Tensor`: The result of Einstein sum product.
+    Returns
+    :::::::
+
+        `Tensor`: the output tensor.
     
-    Example:
+    Code examples
+    :::::::::::::
+
     .. code-block::
         import paddle
-        import numpy as np
-        np.random.seed(102)
-        x = paddle.to_tensor(np.random.rand(4))
-        y = paddle.to_tensor(np.random.rand(5))
+        paddle.seed(102)
+        x = paddle.rand([4])
+        y = paddle.rand([5])
+
         # sum
         print(paddle.einsum('i->', x))
-        # Tensor(shape=[], dtype=float64, place=CUDAPlace(0), stop_gradient=True, 2.30369050)
+        lace(0), stop_gradient=True,
+        #   1.95791852)
+
         # dot
         print(paddle.einsum('i,i->', x, x))
-        # Tensor(shape=[], dtype=float64, place=CUDAPlace(0), stop_gradient=True, 1.43773247)
+        Place(0), stop_gradient=True,
+        #   [1.45936954])
+
         # outer
-        print(paddle.einsum("i,j->ij", x, y)),
-        # Tensor(shape=[4, 5], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-        #         [[0.34590188, 0.48353496, 0.09996135, 0.18656330, 0.21392910],
-        #         [0.39122025, 0.54688535, 0.11305780, 0.21100591, 0.24195704],
-        #         [0.17320613, 0.24212422, 0.05005442, 0.09341929, 0.10712238],
-        #         [0.42290818, 0.59118179, 0.12221522, 0.22809690, 0.26155500]])
-        A = paddle.to_tensor(np.random.rand(2, 3, 2))
-        B = paddle.to_tensor(np.random.rand(2, 2, 3))
+        print(paddle.einsum("i,j->ij", x, y))
+        UDAPlace(0), stop_gradient=True,
+        0187187, 0.00192194],
+        4970956, 0.56441545],
+        7592498, 0.28330654],
+        7099484, 0.79162055]])
+
+        A = paddle.rand([2, 3, 2])
+        B = paddle.rand([2, 2, 3])
+
         # transpose
         print(paddle.einsum('ijk->kji', A))
-        #  Tensor(shape=[2, 3, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-        #        [[[0.49174730, 0.33344683],
-        #          [0.89440989, 0.26162022],
-        #          [0.36116209, 0.12241719]],
-        #         [[0.49019824, 0.51895050],
-        #          [0.18241053, 0.13092809],
-        #          [0.81059146, 0.55165734]]])
+        ce=CUDAPlace(0), stop_gradient=True,
+        #   [[[0.95649719, 0.49684682],
+        #     [0.80071914, 0.46258664],
+        #     [0.49814570, 0.33383518]],
+        #
+        #    [[0.07637714, 0.29374704],
+        #     [0.51470858, 0.51907635],
+        #     [0.99066722, 0.55802226]]])
+
         # batch matrix multiplication
         print(paddle.einsum('ijk, ikl->ijl', A,B))
-        # Tensor(shape=[2, 3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-        #     [[[0.13654339, 0.39331432, 0.65059661],
-        #      [0.07171420, 0.57518653, 0.77629221],
-        #      [0.21250688, 0.37793541, 0.73643411]],
-        #     [[0.56925339, 0.65859030, 0.57509818],
-        #      [0.30368265, 0.25778348, 0.21630400],
-        #      [0.39587265, 0.58031243, 0.51824755]]])
+        e=CUDAPlace(0), stop_gradient=True,
+        #   [[[0.32172769, 0.50617385, 0.41394392],
+        #     [0.51736701, 0.49921003, 0.38730967],
+        #     [0.69078457, 0.42282537, 0.30161136]],
+        #
+        #    [[0.32043904, 0.18164253, 0.27810261],
+        #     [0.50226176, 0.24512935, 0.39881429],
+        #     [0.51476848, 0.23367381, 0.39229113]]])
+
         # Ellipsis transpose
         print(paddle.einsum('...jk->...kj', A))
-        # Tensor(shape=[2, 2, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-        #     [[[0.49174730, 0.89440989, 0.36116209],
-        #         [0.49019824, 0.18241053, 0.81059146]],
-        #         [[0.33344683, 0.26162022, 0.12241719],
-        #         [0.51895050, 0.13092809, 0.55165734]]])
+        e=CUDAPlace(0), stop_gradient=True,
+        #   [[[0.95649719, 0.80071914, 0.49814570],
+        #     [0.07637714, 0.51470858, 0.99066722]],
+        #
+        #    [[0.49684682, 0.46258664, 0.33383518],
+        #     [0.29374704, 0.51907635, 0.55802226]]])
+
         # Ellipsis batch matrix multiplication
-        print(paddle.einsum('...jk, ...kl->...jl', A,B))
-        # Tensor(shape=[2, 3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
-        # [[[0.13654339, 0.39331432, 0.65059661],
-        #     [0.07171420, 0.57518653, 0.77629221],
-        #     [0.21250688, 0.37793541, 0.73643411]],
-        #     [[0.56925339, 0.65859030, 0.57509818],
-        #     [0.30368265, 0.25778348, 0.21630400],
-        #     [0.39587265, 0.58031243, 0.51824755]]])
+        B))
+        e=CUDAPlace(0), stop_gradient=True,
+        #   [[[0.32172769, 0.50617385, 0.41394392],
+        #     [0.51736701, 0.49921003, 0.38730967],
+        #     [0.69078457, 0.42282537, 0.30161136]],
+        #
+        #    [[0.32043904, 0.18164253, 0.27810261],
+        #     [0.50226176, 0.24512935, 0.39881429],
+        #     [0.51476848, 0.23367381, 0.39229113]]])
     """
 
     nop = len(operands)
