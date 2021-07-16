@@ -87,6 +87,7 @@ class ReduceSumOpConverter : public ReduceOpConverter {
  public:
   ReduceSumOpConverter() { reduce_type = nvinfer1::ReduceOperation::kSUM; }
 };
+
 class ReduceMeanOpConverter : public ReduceOpConverter {
  public:
   ReduceMeanOpConverter() { reduce_type = nvinfer1::ReduceOperation::kAVG; }
