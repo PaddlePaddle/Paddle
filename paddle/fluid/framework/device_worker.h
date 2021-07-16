@@ -595,7 +595,7 @@ class SectionWorker : public DeviceWorker {
   std::vector<Scope*> microbatch_scopes_;
   const Scope* minibatch_scope_;
 
-  // skip, forward&backward send vars only used in 1F1B
+  // skip&forward&backward vars are only used in 1F1B
   std::vector<std::string> skip_vars_;
   std::vector<std::string> forward_send_vars_;
   std::vector<std::string> backward_send_vars_;

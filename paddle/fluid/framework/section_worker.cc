@@ -200,7 +200,6 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
 
     // delete forward send var at step<=(fw_step - 1)
     if (gc && !is_last_stage) {
-      // 0, 1, 2
       for (int i = reserve_fw_send_step; i < fw_step; ++i) {
         DeleteUnusedTensors(*microbatch_scopes_[i], forward_send_vars_,
                             gc.get());
@@ -223,7 +222,8 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
     // NOTE(wangxi): will only execute once
     // delete forward send var at step=(num_microbatches_ - 1)
     if (reserve_fw_send_step < num_microbatches_ && !is_last_stage) {
-      DeleteUnusedTensors(*microbatch_scopes_[i], forward_send_vars_, gc.get());
+      DeleteUnusedTensors(*microbatch_scopes_[reserve_fw_send_step],
+                          forward_send_vars_, gc.get());
       ++reserve_fw_send_step;
     }
   }
