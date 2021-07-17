@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
-                               const framework::DDim &in_dims, bool is_runtime);
+                               const framework::DDim& in_dims, bool is_runtime);
 
 using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
@@ -40,22 +40,21 @@ class SqueezeMKLDNNKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
 
-    auto &axes = ctx.Attr<std::vector<int>>("axes");
+    auto& axes = ctx.Attr<std::vector<int>>("axes");
     auto x_dims = x->dims();
     auto x_vec_dims = framework::vectorize(x_dims);
     auto out_dims = GetOutputShape(axes, x_dims, true);
-    
-    mkldnn::memory::data_type x_type =
-          framework::ToMKLDNNDataType(x->type());
-    std::string key = platform::CreateKey(
-          dev_ctx, x_vec_dims, x->format(), x->format(), x_type);
+
+    mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
+    std::string key = platform::CreateKey(dev_ctx, x_vec_dims, x->format(),
+                                          x->format(), x_type);
     platform::ReorderMKLDNNHandler reorder_handler(
-          x_vec_dims, x->type(), x_type, dev_ctx, onednn_engine, key);
+        x_vec_dims, x->type(), x_type, dev_ctx, onednn_engine, key);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-          x->format(), platform::to_void_cast(x->data<T>()));
-    auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-          out, x->format(), ctx.GetPlace());
+        x->format(), platform::to_void_cast(x->data<T>()));
+    auto reorder_dst_memory_p =
+        reorder_handler.AcquireDstMemory(out, x->format(), ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                     reorder_dst_memory_p);
 
@@ -69,7 +68,7 @@ class SqueezeMKLDNNKernel : public framework::OpKernel<T> {
     out->set_format(getPlainFormatTag(out));
   }
 
-protected:
+ protected:
   mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
     auto tensor_dims_size = tensor->dims().size();
     PADDLE_ENFORCE_EQ(
@@ -106,31 +105,31 @@ class SqueezeGradMKLDNNKernel : public SqueezeMKLDNNKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto *dout = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto *dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    
+    auto* dout = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+
     dx->set_format(this->getPlainFormatTag(dx));
 
     framework::DDim x_dims;
-    if (ctx.Type() == "squeeze_grad"){
+    if (ctx.Type() == "squeeze_grad") {
       x_dims = ctx.Input<LoDTensor>("X")->dims();
-    }else {
+    } else {
       auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
       x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     }
     auto x_vec_dims = framework::vectorize(x_dims);
 
     mkldnn::memory::data_type dout_type =
-          framework::ToMKLDNNDataType(dout->type());
-    std::string key = platform::CreateKey(
-          dev_ctx, x_vec_dims, dout->format(), dout->format(), dout_type);
+        framework::ToMKLDNNDataType(dout->type());
+    std::string key = platform::CreateKey(dev_ctx, x_vec_dims, dout->format(),
+                                          dout->format(), dout_type);
     platform::ReorderMKLDNNHandler reorder_handler(
-          x_vec_dims, dout->type(), dout_type, dev_ctx, onednn_engine, key);
+        x_vec_dims, dout->type(), dout_type, dev_ctx, onednn_engine, key);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-          dx->format(), platform::to_void_cast(dout->data<T>()));
-    auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-          dx, dx->format(), ctx.GetPlace());
+        dx->format(), platform::to_void_cast(dout->data<T>()));
+    auto reorder_dst_memory_p =
+        reorder_handler.AcquireDstMemory(dx, dx->format(), ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                     reorder_dst_memory_p);
 

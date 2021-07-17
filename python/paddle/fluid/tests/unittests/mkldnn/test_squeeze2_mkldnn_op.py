@@ -31,19 +31,16 @@ class TestSqueeze2OneDNNOp(OpTest):
         self.new_shape = (3, 40)
 
     def set_inputs(self):
-        self.inputs = {
-            "X": self.x
-        }
+        self.inputs = {"X": self.x}
 
     def init_attrs(self):
-        self.attrs = {"axes": self.axes,
-                      'use_mkldnn': True}
+        self.attrs = {"axes": self.axes, 'use_mkldnn': True}
 
     def set_outputs(self):
         self.outputs = {
             "Out": self.x.reshape(self.new_shape),
             "XShape": np.random.random(self.ori_shape).astype("float32")
-        }        
+        }
 
     def setUp(self):
         self.set_op_type()
@@ -59,14 +56,13 @@ class TestSqueeze2OneDNNOp(OpTest):
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
 
+
 class TestSqueezeOneDNNOp(TestSqueeze2OneDNNOp):
     def set_op_type(self):
         self.op_type = "squeeze"
 
     def set_outputs(self):
-        self.outputs = {
-            "Out": self.x.reshape(self.new_shape)
-        }
+        self.outputs = {"Out": self.x.reshape(self.new_shape)}
 
     def test_check_output(self):
         self.check_output()
@@ -77,6 +73,7 @@ class TestSqueeze2OneDNNOp1(TestSqueeze2OneDNNOp):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = (0, -2)
         self.new_shape = (20, 5)
+
 
 class TestSqueezeOneDNNOp1(TestSqueezeOneDNNOp):
     def init_test_case(self):
@@ -112,21 +109,21 @@ class TestSqueezeOneDNNOp3(TestSqueezeOneDNNOp):
         self.axes = (1, -1)
         self.new_shape = (25, 1, 4)
 
+
 #   BF16 TESTS
 def create_squeeze_bf16_test_classes(parent):
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestSqueeze2BF16OneDNNOp(parent):
         def set_inputs(self):
-            self.inputs = {
-                "X":  convert_float_to_uint16(self.x)
-            }
-        
+            self.inputs = {"X": convert_float_to_uint16(self.x)}
+
         def calculate_grads(self):
             self.dout = self.outputs['Out']
             self.dx = np.reshape(self.dout, self.ori_shape)
 
         def test_check_output(self):
-            self.check_output_with_place(core.CPUPlace(), no_check_set=['XShape'])
+            self.check_output_with_place(
+                core.CPUPlace(), no_check_set=['XShape'])
 
         def test_check_grad(self):
             self.calculate_grads()
@@ -134,9 +131,8 @@ def create_squeeze_bf16_test_classes(parent):
                 core.CPUPlace(), ["X"],
                 "Out",
                 user_defined_grads=[self.dx],
-                user_defined_grad_outputs=[
-                    self.dout
-                ])
+                user_defined_grad_outputs=[self.dout])
+
     cls_name = "{0}_{1}".format(parent.__name__, "Squeeze2_BF16")
     TestSqueeze2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestSqueeze2BF16OneDNNOp
@@ -146,17 +142,15 @@ def create_squeeze_bf16_test_classes(parent):
             self.op_type = "squeeze"
 
         def set_outputs(self):
-            self.outputs = {
-                "Out": self.x.reshape(self.new_shape)
-            }
+            self.outputs = {"Out": self.x.reshape(self.new_shape)}
 
         def test_check_output(self):
             self.check_output_with_place(core.CPUPlace())
 
-
     cls_name = "{0}_{1}".format(parent.__name__, "Squeeze_BF16")
     TestSqueezeBF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestSqueezeBF16OneDNNOp
+
 
 create_squeeze_bf16_test_classes(TestSqueeze2OneDNNOp)
 create_squeeze_bf16_test_classes(TestSqueeze2OneDNNOp1)
