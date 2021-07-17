@@ -54,7 +54,7 @@ class TestSqueeze2OneDNNOp(OpTest):
         self.check_output_with_place(core.CPUPlace(), no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
 
 
 class TestSqueezeOneDNNOp(TestSqueeze2OneDNNOp):
