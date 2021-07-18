@@ -45,43 +45,55 @@ typedef std::function<PluginTensorRT*(const void*, size_t)>
 typedef std::function<PluginTensorRT*(void)> PluginConstructFunc;
 
 // Deprecated. Do not inherit this class, please refer to PluginTensorRTV2Ext
-class PluginTensorRT : public nvinfer1::IPluginExt {
+class PluginTensorRT : public nvinfer1::IPluginV2 {
  public:
   PluginTensorRT() : with_fp16_(false) {}
+
   // It was used for TensorRT deserialization.
   // It should not be called by users.
   PluginTensorRT(const void* serialized_data, size_t length) {}
+
   virtual ~PluginTensorRT() {}
 
   nvinfer1::Dims const& getInputDims(int index) const {
     return input_dims_.at(index);
   }
-  size_t getMaxBatchSize() const { return max_batch_size_; }
+
   nvinfer1::DataType getDataType() const { return data_type_; }
+
   nvinfer1::PluginFormat getDataFormat() const { return data_format_; }
-  virtual const char* getPluginVersion() const { return "1"; }
 
-  void AddInput(nvinfer1::ITensor* input) { inputs_.push_back(input); }
-  std::vector<nvinfer1::ITensor*>& GetInputs() { return inputs_; }
-
-  virtual nvinfer1::IPluginExt* clone() const = 0;
+  // IPluginV2
   virtual const char* getPluginType() const = 0;
 
-  // Following functions are inherit from nvinfer1::IPluginExt
-  // Get the number of outputs from the layer
+  virtual const char* getPluginVersion() const { return "1"; }
+
   int getNbOutputs() const { return 1; }
-  // Get the dimension of an output tensor
+
   virtual nvinfer1::Dims getOutputDimensions(int index,
                                              const nvinfer1::Dims* input_dims,
                                              int num_inputs) = 0;
+
+  // Check format support. The default is FLOAT32 and kLINEAR.
+  bool supportsFormat(nvinfer1::DataType type,
+                      nvinfer1::PluginFormat format) const override;
+
+  // Configure the layer
+  void configureWithFormat(const nvinfer1::Dims* input_dims, int num_inputs,
+                           const nvinfer1::Dims* output_dims, int num_outputs,
+                           nvinfer1::DataType type,
+                           nvinfer1::PluginFormat format,
+                           int max_batch_size) override;
+
+  // Initialize the layer for execution.
+  int initialize() override { return 0; }
+
+  // Shutdown the layer. This is called when the engine is destroyed
+  void terminate() override {}
+
   // Find the workspace size required by the layer
   size_t getWorkspaceSize(int) const override { return 0; }
 
-  // Initialize the layer for execution.
-  // This is called when the engine is created.
-  int initialize() override { return 0; }
-  // Shutdown the layer. This is called when the engine is destroyed
-  void terminate() override {}
 // Execute the layer
 #if IS_TRT_VERSION_LT(8000)
   virtual int enqueue(int batch_size, const void* const* inputs, void** outputs,
@@ -92,37 +104,39 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
                       void* workspace, cudaStream_t stream) = 0;
 
   // Find the size of the serialization buffer required
-  virtual size_t getSerializationSize() = 0;
+  virtual size_t getSerializationSize() const = 0;
+
   // Serialize the layer config to buffer.
   // TensorRT will call this func to serialize the configuration of TensorRT
   // engine. It should not be called by users.
-  virtual void serialize(void* buffer) = 0;
+  virtual void serialize(void* buffer) const = 0;
 
-  // Check format support. The default is FLOAT32 and NCHW.
-  bool supportsFormat(nvinfer1::DataType type,
-                      nvinfer1::PluginFormat format) const override;
-  // Configure the layer
-  void configureWithFormat(const nvinfer1::Dims* input_dims, int num_inputs,
-                           const nvinfer1::Dims* output_dims, int num_outputs,
-                           nvinfer1::DataType type,
-                           nvinfer1::PluginFormat format,
-                           int max_batch_size) override;
+  void destroy() override { delete this; }
+
+  virtual nvinfer1::IPluginV2* clone() const = 0;
+
+  void setPluginNamespace(const char* plugin_namespace) override {
+    namespace_ = plugin_namespace;
+  }
+
+  const char* getPluginNamespace() const override { return namespace_.c_str(); }
 
  protected:
   // Deserialize input_dims, max_batch_size, data_type, data_format
   void deserializeBase(void const*& serial_data,  // NOLINT
                        size_t& serial_length);    // NOLINT
-  size_t getBaseSerializationSize();
+  size_t getBaseSerializationSize() const;
   // Serialize input_dims, max_batch_size, data_type, data_format
-  void serializeBase(void*& buffer);  // NOLINT
+  void serializeBase(void*& buffer) const;  // NOLINT
 
   std::vector<nvinfer1::Dims> input_dims_;
-  size_t max_batch_size_;
   nvinfer1::DataType data_type_;
   nvinfer1::PluginFormat data_format_;
 
-  std::vector<nvinfer1::ITensor*> inputs_;
   bool with_fp16_;
+
+ private:
+  std::string namespace_;
 };
 
 // TensorRT introduced IPluginV2Ext after 5.1, Paddle no longer supports
@@ -135,7 +149,6 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   nvinfer1::Dims const& getInputDims(int index) const {
     return input_dims_.at(index);
   }
-  size_t getMaxBatchSize() const { return max_batch_size_; }
   nvinfer1::DataType getDataType() const { return data_type_; }
   nvinfer1::PluginFormat getDataFormat() const { return data_format_; }
 
@@ -228,10 +241,8 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
 
  protected:
   std::vector<nvinfer1::Dims> input_dims_;
-  size_t max_batch_size_;
   nvinfer1::DataType data_type_;
   nvinfer1::PluginFormat data_format_;
-  std::vector<nvinfer1::ITensor*> inputs_;
   bool with_fp16_;
 
  private:
@@ -304,6 +315,34 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
   std::string plugin_base_;
 };
 #endif
+
+class TensorRTPluginCreator : public nvinfer1::IPluginCreator {
+ public:
+  TensorRTPluginCreator() = default;
+
+  virtual const char* getPluginName() const = 0;
+
+  virtual const char* getPluginVersion() const = 0;
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override;
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override;
+
+  virtual nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                                 const void* serial_data,
+                                                 size_t serial_length) = 0;
+
+  void setPluginNamespace(const char* lib_namespace) override;
+
+  const char* getPluginNamespace() const override;
+
+ private:
+  std::string plugin_namespace_;
+  std::string plugin_name_;
+  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
+  std::vector<nvinfer1::PluginField> plugin_attributes_;
+};
 
 template <typename T>
 class TrtPluginRegistrarV2 {

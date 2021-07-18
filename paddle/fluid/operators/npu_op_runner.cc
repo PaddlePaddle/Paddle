@@ -32,6 +32,7 @@ namespace operators {
 static std::map<framework::proto::VarType::Type, aclDataType>
     DTYPE_2_ACL_DTYPE = {
         {framework::proto::VarType::BOOL, ACL_BOOL},
+        {framework::proto::VarType::UINT8, ACL_UINT8},
         {framework::proto::VarType::INT16, ACL_INT16},
         {framework::proto::VarType::INT32, ACL_INT32},
         {framework::proto::VarType::INT64, ACL_INT64},
@@ -325,17 +326,24 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
   auto dtype = ConvertToNpuDtype(tensor.type());
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
+  int size = dims.size();
+  // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
+  // OP must be a scalar with shape[0]. At present, the shape
+  // of the `prob` Tensor of this OP is forced to be set to 0
+  // in `npu_op_runner.cc`, which needs to be optimized later.
+  if (op_type_ == "DropOutGenMask" && size == 1 && *(dims.data()) == 1) {
+    size = 0;
+  }
 
   VLOG(4) << "NPU dtype:" << dtype << " "
           << "rank:" << dims.size() << " dims:" << tensor.dims()
           << " format:" << format;
 
-  auto *desc = aclCreateTensorDesc(dtype, dims.size(), dims.data(), format);
+  auto *desc = aclCreateTensorDesc(dtype, size, dims.data(), format);
   PADDLE_ENFORCE_NOT_NULL(
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
   PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, format));
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      aclSetTensorStorageShape(desc, dims.size(), dims.data()));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageShape(desc, size, dims.data()));
   if (mem_type == ACL_MEMTYPE_HOST) {
     PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorPlaceMent(desc, mem_type));
   }

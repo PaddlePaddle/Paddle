@@ -40,6 +40,10 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("npu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
+    // add copy ids to ensure ids_t is prepared.
+    std::vector<int> ids;
+    TensorToVector(*ids_t, ctx.device_context(), &ids);
+
     NpuOpRunner runner;
     runner.SetType("GatherV2")
         .AddInput(*table_t)
@@ -65,17 +69,31 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    const auto &runner_zeros =
-        NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
-    runner_zeros.Run(stream);
+    int embedding_dim = table_grad_t->dims()[1];
 
-    // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
-    // can be different tensor, but in cann 20.2+, it does inplace operation.
-    // Thus, the first input and output should be same tensor.
-    const auto &runner_scatter =
-        NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
-                    {*table_grad_t}, {{"use_locking", true}});
-    runner_scatter.Run(stream);
+    if (embedding_dim % 32 == 0) {
+      // NOTE(pangyoki): The embedding_dim of Tensor used in
+      // EmbeddingDenseGrad must be an integer multiple of 32.
+      int num_weights = table_grad_t->dims()[0];
+      const auto &runner =
+          NpuOpRunner("EmbeddingDenseGrad", {*output_grad_t, *ids_t},
+                      {*table_grad_t}, {{"num_weights", num_weights},
+                                        {"padding_idx", -1},
+                                        {"scale_grad_by_freq", false}});
+      runner.Run(stream);
+    } else {
+      const auto &runner_zeros =
+          NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
+      runner_zeros.Run(stream);
+
+      // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
+      // can be different tensor, but in cann 20.2+, it does inplace operation.
+      // Thus, the first input and output should be same tensor.
+      const auto &runner_scatter =
+          NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
+                      {*table_grad_t}, {{"use_locking", true}});
+      runner_scatter.Run(stream);
+    }
   }
 };
 }  // namespace operators
