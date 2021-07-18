@@ -95,6 +95,11 @@ void tensor_check(const std::string& op_type, const std::string& var_name,
                   const framework::Tensor& tensor,
                   const platform::Place& place);
 
+template <typename DeviceContext>
+void npu_tensor_check(const std::string& op_type, const std::string& var_name,
+                      const framework::Tensor& tensor,
+                      const platform::Place& place);
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

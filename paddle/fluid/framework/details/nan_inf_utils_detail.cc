@@ -319,6 +319,15 @@ void NPUTensorCheckerVisitor<platform::NPUDeviceContext>::apply(
               var_name_);
 }
 
+template <>
+void npu_tensor_check<platform::NPUDeviceContext>(
+    const std::string& op_type, const std::string& var_name,
+    const framework::Tensor& tensor, const platform::Place& place) {
+  NPUTensorCheckerVisitor<platform::NPUDeviceContext> vistor(op_type, var_name,
+                                                             tensor, place);
+  VisitDataType(tensor.type(), vistor);
+}
+
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const std::string& var_name,
                          const framework::Variable* var,
@@ -384,7 +393,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     return;
   } else if (platform::is_npu_place(tensor->place())) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    tensor_check<platform::NPUDeviceContext>(op_type, var_name, *tensor, place);
+    npu_tensor_check<platform::NPUDeviceContext>(op_type, var_name, *tensor,
+                                                 place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Tensor[%s] use npu place. PaddlePaddle must compile with NPU.",
