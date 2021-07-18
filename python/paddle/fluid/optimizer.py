@@ -5290,7 +5290,7 @@ class PipelineOptimizer(object):
             if op_role == int(
                     self._op_role.Backward) and backward_insert_index is None:
                 backward_insert_index = i
-            if op.type != "partial_recv" and op.type != "partial_allgather" and op.type != "nop":
+            if op.type != "partial_recv" and op.type != "partial_allgather" and op.type != "nop" and op.type != "recv_v2":
                 continue
             if op_role == int(self._op_role.Forward):
                 if i == forward_insert_index:
@@ -5298,7 +5298,6 @@ class PipelineOptimizer(object):
                     continue
                 insert_index = forward_insert_index
             elif op_role == int(self._op_role.Backward):
-                print(op.type, i, backward_insert_index)
                 if i == backward_insert_index:
                     backward_insert_index += 1
                     continue
@@ -5311,7 +5310,7 @@ class PipelineOptimizer(object):
             op_outputs = dict()
             for name in op.output_names:
                 op_outputs[name] = op.output(name)
-            block._insert_op(
+            block._insert_op_without_sync(
                 index=insert_index,
                 type=op.type,
                 inputs=op_inputs,
@@ -5322,7 +5321,7 @@ class PipelineOptimizer(object):
                 forward_insert_index += 1
             elif op_role == int(self._op_role.Backward):
                 backward_insert_index += 1
-            block._sync_with_cpp()
+        block._sync_with_cpp()
 
     def minimize(self,
                  loss,
