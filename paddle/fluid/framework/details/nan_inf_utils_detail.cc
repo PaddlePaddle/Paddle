@@ -150,7 +150,7 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
   // PADDLE_THROW(platform::errors::PreconditionNotMet(
   //     "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
   //     op_type));
-  VLOG(0) << "There are `nan` or `inf` in tensor (" << var_name
+  VLOG(0) << "yoki: There are `nan` or `inf` in tensor (" << var_name
           << ") of operator (" << op_type << ").";
 }
 
@@ -315,17 +315,8 @@ void NPUTensorCheckerVisitor<platform::NPUDeviceContext>::apply(
   framework::TensorCopySync(tensor_, platform::CPUPlace(), &cpu_tensor);
 
   int print_num = 3;
-  CheckNanInf(cpu_tensor.data<T>(), cpu_tensor.numel(), print_num, op_type,
-              var_name);
-}
-
-template <>
-void npu_tensor_check<platform::NPUDeviceContext>(
-    const std::string& op_type, const std::string& var_name,
-    const framework::Tensor& tensor, const platform::Place& place) {
-  NPUTensorCheckerVisitor<platform::NPUDeviceContext> vistor(op_type, var_name,
-                                                             tensor, place);
-  VisitDataType(tensor.type(), vistor);
+  CheckNanInf(cpu_tensor.data<T>(), cpu_tensor.numel(), print_num, op_type_,
+              var_name_);
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,
@@ -393,8 +384,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     return;
   } else if (platform::is_npu_place(tensor->place())) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    npu_tensor_check<platform::NPUDeviceContext>(op_type, var_name, *tensor,
-                                                 place);
+    tensor_check<platform::NPUDeviceContext>(op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Tensor[%s] use npu place. PaddlePaddle must compile with NPU.",
