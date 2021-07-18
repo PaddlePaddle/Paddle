@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import ShardTag, OperatorDistributedSignature, DistributedOperator, DistributedOperatorImpl
-from .common import register_distributed_operator, register_distributed_operator_impl
+from .common import ShardTag
+from .common import DistributedOperator
+from .common import DistributedOperatorImpl
+from .common import OperatorDistributedSignature
+from .common import register_distributed_operator
+from .common import register_distributed_operator_impl
 
 
 class DistributedMatmul(DistributedOperator):
     def __init__(self, name):
         super(DistributedMatmul, self).__init__()
-        self.name = name
+        self._name = name
 
 
 register_distributed_operator("matmul", DistributedMatmul("matmul"))
@@ -29,31 +33,31 @@ register_distributed_operator("matmul", DistributedMatmul("matmul"))
 class DistributedMatmulImpl0(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulImpl0, self).__init__()
-        self.name = name
-        self.dist_signature = OperatorDistributedSignature()
+        self._name = name
+        self._dist_signature = OperatorDistributedSignature()
 
         # Declare valid proc_mesh_ndim
-        self.dist_signature.add_valid_proc_mesh_ndim(1)
-        self.dist_signature.add_valid_proc_mesh_ndim(2)
+        self._dist_signature.add_valid_proc_mesh_ndim(1)
+        self._dist_signature.add_valid_proc_mesh_ndim(2)
 
         # Declare valid shard strategy for dims of inputs and outputs
-        self.dist_signature.set_valid_input_dim_shard(
+        self._dist_signature.set_valid_input_dim_shard(
             name='X', dim=-1, tag=ShardTag.Replicate)
 
-        self.dist_signature.set_valid_input_dim_shard(
+        self._dist_signature.set_valid_input_dim_shard(
             name='Y', dim=0, tag=ShardTag.Replicate)
-        self.dist_signature.set_valid_input_dim_shard(
+        self._dist_signature.set_valid_input_dim_shard(
             name='Y', dim=1, tag=ShardTag.Split)
 
-        self.dist_signature.set_valid_output_dim_shard(
+        self._dist_signature.set_valid_output_dim_shard(
             name='Out', dim=-1, tag=ShardTag.Split)
 
         # Declare dims of inputs and outputs using same the shard strategy
-        self.dist_signature.add_valid_inputs_same_shard_dims(
+        self._dist_signature.add_valid_inputs_same_shard_dims(
             [('input', 'X', 1), ('input', 'Y', 0)])
-        self.dist_signature.add_valid_inputs_outputs_same_shard_dims(
+        self._dist_signature.add_valid_inputs_outputs_same_shard_dims(
             [('input', 'X', 0), ('output', 'Out', 0)])
-        self.dist_signature.add_valid_inputs_outputs_same_shard_dims(
+        self._dist_signature.add_valid_inputs_outputs_same_shard_dims(
             [('input', 'Y', 1), ('output', 'Out', -1)])
 
 
@@ -61,31 +65,31 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 class DistributedMatmulImpl1(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulImpl1, self).__init__()
-        self.name = name
-        self.dist_signature = OperatorDistributedSignature()
+        self._name = name
+        self._dist_signature = OperatorDistributedSignature()
 
         # Declare valid proc_mesh_ndim
-        self.dist_signature.add_valid_proc_mesh_ndim(1)
-        self.dist_signature.add_valid_proc_mesh_ndim(2)
+        self._dist_signature.add_valid_proc_mesh_ndim(1)
+        self._dist_signature.add_valid_proc_mesh_ndim(2)
 
         # Declare valid shard strategy for dims of inputs and outputs
-        self.dist_signature.set_valid_input_dim_shard(
+        self._dist_signature.set_valid_input_dim_shard(
             name='X', dim=-1, tag=ShardTag.Split)
 
-        self.dist_signature.set_valid_input_dim_shard(
+        self._dist_signature.set_valid_input_dim_shard(
             name='Y', dim=0, tag=ShardTag.Split)
-        self.dist_signature.set_valid_input_dim_shard(
+        self._dist_signature.set_valid_input_dim_shard(
             name='Y', dim=1, tag=ShardTag.Replicate)
 
-        self.dist_signature.set_valid_output_dim_shard(
+        self._dist_signature.set_valid_output_dim_shard(
             name='Out', dim=-1, tag=ShardTag.Replicate)
 
         # Declare dims of inputs and outputs using same the shard strategy
-        self.dist_signature.add_valid_inputs_same_shard_dims(
+        self._dist_signature.add_valid_inputs_same_shard_dims(
             [('input', 'X', 1), ('input', 'Y', 0)])
-        self.dist_signature.add_valid_inputs_outputs_same_shard_dims(
+        self._dist_signature.add_valid_inputs_outputs_same_shard_dims(
             [('input', 'X', 0), ('output', 'Out', 0)])
-        self.dist_signature.add_valid_inputs_outputs_same_shard_dims(
+        self._dist_signature.add_valid_inputs_outputs_same_shard_dims(
             [('input', 'Y', 1), ('output', 'Out', -1)])
 
 

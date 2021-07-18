@@ -352,6 +352,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
+  distributed_attr_uid_ = op_desc.distributed_attr_uid_;
   need_update_ = true;
 }
 

@@ -40,6 +40,8 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
+from .distributed_attribute import get_tensor_distributed_attr_program
+from .distributed_attribute import get_op_distributed_attr_program
 
 __all__ = [
     'Program',
@@ -1195,7 +1197,8 @@ class Variable(object):
 
         var_dist_attr = get_tensor_distributed_attr_program(self.desc)
         if var_dist_attr is not None:
-            var_str += ", {name} = {value}".format("dist_attr", var_dist_attr)
+            var_str += ", {name} = {value}".format(
+                name="dist_attr", value=var_dist_attr)
 
         return var_str
 
@@ -2244,7 +2247,8 @@ class Operator(object):
 
         op_dist_attr = get_op_distributed_attr_program(self.desc)
         if op_dist_attr is not None:
-            attrs_str += ", {name} = {value}".format("dist_attr", op_dist_attr)
+            attrs_str += ", {name} = {value}".format(
+                name="dist_attr", value=op_dist_attr)
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\

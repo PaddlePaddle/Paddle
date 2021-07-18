@@ -17,6 +17,6 @@ from .interface import shard_op  # noqa: F401
 from .interface import set_shard_mask  # noqa: F401
 from .interface import set_offload_device  # noqa: F401
 from .interface import set_pipeline_stage  # noqa: F401
-from .utils import ProcessMesh  # noqa: F401
 
-__all__ = []
+from .mesh import ProcessMesh  # noqa: F401
+from .completion import complete_annotation  # noqa: F401

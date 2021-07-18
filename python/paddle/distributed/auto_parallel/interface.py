@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .attribute import TensorDistributedAttribute
-from .attribute import OperatorDistributedAttribute
-from .attribute import get_tensor_distributed_attribute
-from .attribute import set_tensor_distributed_attribute
-from .attribute import get_op_distributed_attribute
-from .attribute import set_op_distributed_attribute
+from paddle.fluid.distributed_attribute import TensorDistributedAttribute
+from paddle.fluid.distributed_attribute import OperatorDistributedAttribute
+from paddle.fluid.distributed_attribute import get_tensor_distributed_attr_program
+from paddle.fluid.distributed_attribute import set_tensor_distributed_attr_program
+from paddle.fluid.distributed_attribute import get_op_distributed_attr_program
+from paddle.fluid.distributed_attribute import set_op_distributed_attr_program
 
 
 def validate_check():
@@ -35,12 +35,12 @@ def shard_tensor(tensor, mesh, dims_mapping):
         The tensor itself.
     """
     validate_check()
-    tensor_dist_attr = get_tensor_distributed_attribute(tensor.desc)
+    tensor_dist_attr = get_tensor_distributed_attr_program(tensor.desc)
     if tensor_dist_attr is None:
         tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
-        set_tensor_distributed_attribute(tensor.desc, tensor_dist_attr)
-    tensor_dist_attr.set_proc_mesh(mesh)
-    tensor_dist_attr.set_dims_mapping(dims_mapping)
+        set_tensor_distributed_attr_program(tensor.desc, tensor_dist_attr)
+    tensor_dist_attr.set_process_mesh(mesh, is_annotated=True)
+    tensor_dist_attr.set_dims_mapping(dims_mapping, is_annotated=True)
     return tensor
 
 
@@ -54,22 +54,22 @@ def set_shard_mask(tensor, mask):
         The tensor itself.
     """
     validate_check()
-    tensor_dist_attr = get_tensor_distributed_attribute(tensor)
+    tensor_dist_attr = get_tensor_distributed_attr_program(tensor.desc)
     if tensor_dist_attr is None:
         tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
-        set_tensor_distributed_attribute(tensor.desc, tensor_dist_attr)
-    tensor_dist_attr.set_shard_mask(mask)
+        set_tensor_distributed_attr_program(tensor.desc, tensor_dist_attr)
+    tensor_dist_attr.set_shard_mask(mask, is_annotated=True)
     return tensor
 
 
-def shard_op(op_name, mesh, input_dims_mappings, output_dims_mappings):
+def shard_op(op_name, mesh, inputs_dims_mapping, outputs_dims_mapping):
     """
     Add distributed attributes for ops.
     Inputs:
         op_name (string): the name of the  op to process
         mesh (ProcessMesh): an instance of ProcessMesh
-        inputs_dims_mappings (dict): a mapping from input name to the input's dims_mapping
-        outputs_dims_mappings(dict): a mapping from output name to the output's dims_mapping
+        inputs_dims_mapping (dict): a mapping from input name to the input's dims_mapping
+        outputs_dims_mapping(dict): a mapping from output name to the output's dims_mapping
     Returns:
         Output variables of the op named op_name(tuple).
     """
@@ -87,11 +87,11 @@ def set_offload_device(tensor, offload_device):
         None.
     """
     validate_check()
-    tensor_dist_attr = get_tensor_distributed_attribute(tensor)
+    tensor_dist_attr = get_tensor_distributed_attr_program(tensor.desc)
     if tensor_dist_attr is None:
         tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
-        set_tensor_distributed_attribute(tensor.desc, tensor_dist_attr)
-    tensor_dist_attr.set_offload_device(offload_device)
+        set_tensor_distributed_attr_program(tensor.desc, tensor_dist_attr)
+    tensor_dist_attr.set_offload_device(offload_device, is_annotated=True)
     return tensor
 
 
