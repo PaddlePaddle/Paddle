@@ -53,13 +53,12 @@ class TestDropoutOp(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
             return
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestDropoutOpInput1d(TestDropoutOp):
@@ -87,7 +86,7 @@ class TestDropoutOpInput1d(TestDropoutOp):
         self.op_type = "dropout"
         self.set_npu()
         self.init_dtype()
-        self.inputs = {'X': np.random.random((2000, )).astype(self.dtype)}
+        self.inputs = {'X': np.random.random((2000)).astype(self.dtype)}
         self.attrs = {
             'dropout_prob': 0.0,
             'fix_seed': True,
@@ -162,7 +161,7 @@ class TestDropoutOpInference(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")

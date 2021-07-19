@@ -62,7 +62,7 @@ class TestElementwiseSubOp(OpTest):
         self.axis = 0
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     # TODO(ascendrc): For grad tests, OpTest raises FatalError:Segmentation fault
     #  when call op.run, which may be caused by system environment exception
@@ -72,7 +72,7 @@ class TestElementwiseSubOp(OpTest):
     #         self.place, ['X', 'Y'],
     #         'Out',
     #         max_relative_error=0.006,
-    #         check_dygraph=False)
+    #         )
     #
     # def test_check_grad_ingore_x(self):
     #     self.check_grad_with_place(
@@ -80,14 +80,14 @@ class TestElementwiseSubOp(OpTest):
     #         'Out',
     #         no_grad_set=set("X"),
     #         max_relative_error=0.006,
-    #         check_dygraph=False)
+    #         )
     #
     # def test_check_grad_ingore_y(self):
     #     self.check_grad_with_place(
     #         self.place, ['X'],
     #         'Out',
     #         no_grad_set=set("Y"),
-    #         max_relative_error=0.006,check_dygraph=False)
+    #         max_relative_error=0.006,)
 
 
 class TestSubtractAPI(unittest.TestCase):

@@ -51,14 +51,14 @@ class TestGatherOp(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['X'],
+            self.place,
+            ['X'],
             'Out',
-            max_relative_error=0.006,
-            check_dygraph=False)
+            max_relative_error=0.006, )
 
     def config(self):
         """

@@ -32,7 +32,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     # transpose X and Y appropriately.
     if transpose_X:
         if X.ndim == 1:
-            X = X.reshape((X.size, ))
+            X = X.reshape((X.size))
         elif X.ndim == 2:
             X = X.T
         else:
@@ -41,7 +41,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
         if Y.ndim == 1:
-            Y = Y.reshape((Y.size, ))
+            Y = Y.reshape((Y.size))
         else:
             dim = [i for i in range(len(Y.shape))]
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
@@ -51,7 +51,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     if not Out.shape:
         # We do not support 0-dimensional Tensors (scalars). So where
         # np.matmul outputs a scalar, we must convert to a Tensor of
-        # shape (1, ) instead.
+        # shape (1) instead.
         # Everywhere else, we are compatible with np.matmul.
         Out = np.array([Out], dtype="float64")
     return Out
@@ -93,7 +93,7 @@ class TestMatMul(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
     # TODO(ascendrc): Add grad test

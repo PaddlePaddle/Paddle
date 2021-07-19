@@ -54,7 +54,7 @@ class TestConcat(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def init_test_data(self):
         self.x0 = np.random.random((1, 4, 50)).astype(self.dtype)
@@ -63,12 +63,9 @@ class TestConcat(OpTest):
         self.axis = 0
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['x0', 'x2'], 'Out', check_dygraph=False)
-        self.check_grad_with_place(
-            self.place, ['x1'], 'Out', check_dygraph=False)
-        self.check_grad_with_place(
-            self.place, ['x2'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['x0', 'x2'], 'Out')
+        self.check_grad_with_place(self.place, ['x1'], 'Out')
+        self.check_grad_with_place(self.place, ['x2'], 'Out')
 
 
 class TestConcatFP16(OpTest):
@@ -100,7 +97,7 @@ class TestConcatFP16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def init_test_data(self):
         self.x0 = np.random.random((1, 4, 50)).astype(self.dtype)

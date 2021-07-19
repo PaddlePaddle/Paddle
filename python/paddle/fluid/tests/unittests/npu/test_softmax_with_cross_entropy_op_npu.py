@@ -84,7 +84,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             self.attrs['axis'] = self.axis
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -93,7 +93,6 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.check_grad_with_place(
             self.place, ['Logits'],
             'Loss',
-            check_dygraph=False,
             numeric_grad_delta=0.001,
             max_relative_error=0.5)
 

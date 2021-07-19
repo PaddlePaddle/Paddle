@@ -73,7 +73,7 @@ class TestAdam(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
 class TestAdamWithEpsilonTensor(OpTest):
@@ -127,7 +127,7 @@ class TestAdamWithEpsilonTensor(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
 class TestAdamOpWithSkipUpdate(OpTest):
@@ -179,7 +179,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
 class TestAdamOpWithGlobalBetaPow(OpTest):
@@ -236,7 +236,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
 class TestNet(unittest.TestCase):

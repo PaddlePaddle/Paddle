@@ -54,14 +54,11 @@ class TestGelu(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+        self.check_output_with_place(self.place, atol=1e-3)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['X'],
-            'Out',
-            check_dygraph=False,
-            max_relative_error=0.007)
+            self.place, ['X'], 'Out', max_relative_error=0.007)
 
 
 class TestGeluFp16(OpTest):
@@ -87,7 +84,7 @@ class TestGeluFp16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+        self.check_output_with_place(self.place, atol=1e-3)
 
 
 class TestGeluNet(unittest.TestCase):

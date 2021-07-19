@@ -58,13 +58,12 @@ class TestSliceOp(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
             return
-        self.check_grad_with_place(
-            self.place, ['Input'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 
 class TestSliceOp2(TestSliceOp):

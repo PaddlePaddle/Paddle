@@ -52,7 +52,7 @@ class TestIncrement(OpTest):
         self.dtype = np.int64
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
 class TestIncrementFP16(OpTest):
@@ -78,7 +78,7 @@ class TestIncrementFP16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
 class TestIncrementInplace(unittest.TestCase):

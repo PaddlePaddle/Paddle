@@ -64,10 +64,10 @@ class TestReduceSum(OpTest):
 
     def initTestCase(self):
         self.shape = (5, 6)
-        self.axis = (0, )
+        self.axis = (0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     # TODO(ascendrc): Add grad test
     # def test_check_grad(self):

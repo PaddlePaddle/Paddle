@@ -80,8 +80,7 @@ class TestAllocContinuousSpace(OpTest):
         self.check_output_with_place(
             place=paddle.NPUPlace(0),
             no_check_set=["FusedOutput"],
-            atol=1e-5,
-            check_dygraph=False)
+            atol=1e-5, )
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
@@ -98,8 +97,7 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
         self.check_output_with_place(
             place=paddle.NPUPlace(0),
             no_check_set=["FusedOutput"],
-            atol=1e-5,
-            check_dygraph=False)
+            atol=1e-5, )
 
 
 if __name__ == '__main__':

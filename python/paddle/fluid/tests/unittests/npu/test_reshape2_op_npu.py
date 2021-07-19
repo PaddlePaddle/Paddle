@@ -49,12 +49,10 @@ class TestReshape2(OpTest):
         self.infered_shape = (20, 10)
 
     def test_check_output(self):
-        self.check_output_with_place(
-            self.place, check_dygraph=False, no_check_set=['XShape'])
+        self.check_output_with_place(self.place, no_check_set=['XShape'])
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestReshape2_case2(TestReshape2):
