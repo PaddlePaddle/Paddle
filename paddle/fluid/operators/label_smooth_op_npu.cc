@@ -23,33 +23,33 @@ using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 void Muls(const platform::Place& place, const aclrtStream& stream,
-          const Tensor& in, float val, Tensor* out) {
-  out->mutable_data<T>(place);
-  const auto& runner = NpuOpRunner("Muls", {in}, {*out}, {{"value", val}});
+          const Tensor* in, float val, Tensor* out) {
+  out->mutable_data<T>(in->dims(), place);
+  const auto& runner = NpuOpRunner("Muls", {*in}, {*out}, {{"value", val}});
   runner.Run(stream);
 }
 
 template <typename T>
 void Adds(const platform::Place& place, const aclrtStream& stream,
-          const Tensor& in, float val, Tensor* out) {
-  out->mutable_data<T>(place);
-  const auto& runner = NpuOpRunner("Adds", {in}, {*out}, {{"value", val}});
+          const Tensor* in, float val, Tensor* out) {
+  out->mutable_data<T>(in->dims(), place);
+  const auto& runner = NpuOpRunner("Adds", {*in}, {*out}, {{"value", val}});
   runner.Run(stream);
 }
 
 template <typename T>
 void AddBroadCast(const platform::Place& place, const aclrtStream& stream,
-                  const Tensor& in1, const Tensor& in2, Tensor* out) {
+                  const Tensor* in1, const Tensor* in2, Tensor* out) {
   out->mutable_data<T>(place);
-  const auto& runner = NpuOpRunner("AddV2", {in1, in2}, {*out}, {});
+  const auto& runner = NpuOpRunner("AddV2", {*in1, *in2}, {*out}, {});
   runner.Run(stream);
 }
 
 template <typename T>
 void Flatten(const platform::Place& place, const aclrtStream& stream,
-             const Tensor& in, Tensor* out) {
-  out->mutable_data<T>(place);
-  const auto& runner = NpuOpRunner("Flatten", {in}, {*out}, {});
+             const Tensor* in, Tensor* out) {
+  out->mutable_data<T>({in->numel()}, place);
+  const auto& runner = NpuOpRunner("Flatten", {*in}, {*out}, {});
   runner.Run(stream);
 }
 
@@ -64,7 +64,6 @@ class LabelSmoothNPUKernel : public framework::OpKernel<T> {
 
     auto label_dim = in_t->dims()[in_t->dims().size() - 1];
     auto place = ctx.GetPlace();
-    // out_t->mutable_data<T>(place);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -74,37 +73,12 @@ class LabelSmoothNPUKernel : public framework::OpKernel<T> {
       Tensor tmp;
       Tensor dist;
       Tensor tmp2;
-      /*
-      tmp.mutable_data<T>(place);
-      const auto& runner_muls = NpuOpRunner("Muls", {*in_t}, {tmp}, {{"value",
-      (1-epsilon)}});
-      runner_muls.Run(stream);
-      dist.mutable_data<T>(place);
-      const auto& runner_flat = NpuOpRunner("Flatten", {*dist_t}, {dist}, {});
-      runner_flat.Run(stream);
-      tmp2.mutable_data<T>(place);
-      const auto& runner_muls2 = NpuOpRunner("Muls", {dist}, {tmp2}, {{"value",
-      (1-epsilon)}});
-      runner_muls2.Run(stream);
-      const auto& runner_addv2 = NpuOpRunner("AddV2", {tmp, tmp2}, {*out_t},
-      {});
-      runner_addv2.Run(stream);
-      */
       Muls<T>(place, stream, in_t, (1 - epsilon), &tmp);
       Flatten<T>(place, stream, dist_t, &dist);
       Muls<T>(place, stream, &dist, epsilon, &tmp2);
       AddBroadCast<T>(place, stream, &tmp, &tmp2, out_t);
     } else {
       Tensor tmp;
-      /*
-      tmp.mutable_data<T>(place);
-      const auto& runner_muls = NpuOpRunner("Muls", {*in_t}, {tmp}, {{"value",
-      (1-epsilon)}});
-      runner_muls.Run(stream);
-      const auto& runner_adds = NpuOpRunner("Adds", {tmp}, {*out_t}, {{"value",
-      epsilon/label_dim}});
-      runner_adds.Run(stream);
-      */
       Muls<T>(place, stream, in_t, (1 - epsilon), &tmp);
       Adds<T>(place, stream, &tmp, (epsilon / label_dim), out_t);
     }
@@ -120,17 +94,11 @@ class LabelSmoothGradNPUKernel : public framework::OpKernel<T> {
     auto epsilon = ctx.Attr<float>("epsilon");
 
     auto place = ctx.GetPlace();
-    // out_t->mutable_data<T>(place);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    // Tensor d_out;
-    // Tensor d_in;
-    // Flatten<T>(place, stream, *d_out_t, d_out);
-    // Flatten<T>(place, stream, *d_in_t, d_in);
-    LOG(INFO) << "break 0....";
     Muls<T>(place, stream, d_out_t, 1 - epsilon, d_in_t);
   }
 };

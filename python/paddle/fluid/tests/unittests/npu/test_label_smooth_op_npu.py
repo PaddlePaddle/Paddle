@@ -28,7 +28,7 @@ SEED = 2021
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestLabelSmooth(OpTest):
+class TestLabelSmoothOp(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "label_smooth"
@@ -41,9 +41,13 @@ class TestLabelSmooth(OpTest):
         self.set_attrs()
         self.set_outputs()
 
-    def calc_out(self, label, epsilon):
+    def calc_out(self, label, epsilon, dist=None):
         label_dim = label.shape[-1]
-        y = (1 - epsilon) * label + epsilon / label_dim
+        y = (1 - epsilon) * label
+        if dist is not None:
+            y += epsilon * dist
+        else:
+            y += epsilon / label_dim
         return y.astype(self.dtype)
 
     def set_inputs(self):
@@ -52,15 +56,14 @@ class TestLabelSmooth(OpTest):
         nonzero_index = np.random.randint(label_dim, size=(batch_size))
         x[np.arange(batch_size), nonzero_index] = 1
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        #print ( self.inputs['X'].dtype )
 
     def set_attrs(self):
         epsilon = 0.1
         self.attrs = {"epsilon": epsilon}
 
     def set_outputs(self):
-        out = self.calc_out(self.inputs['X'], self.attrs['epsilon'])
-        #print ( out.dtype )
+        dist = None if 'PriorDist' not in self.inputs else self.inputs['PriorDist']
+        out = self.calc_out(self.inputs['X'], self.attrs['epsilon'], dist)
 
         self.outputs = {'Out': out}
 
@@ -74,7 +77,49 @@ class TestLabelSmooth(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad_with_place(self.place, ['X'], 'Out')
+
+
+class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
+    def set_inputs(self):
+        super(TestLabelSmoothOpWithPriorDist, self).set_inputs()
+        label_dim = self.inputs['X'].shape[-1]
+        dist = np.random.random((1, label_dim)).astype(self.dtype)
+        self.inputs['PriorDist'] = dist
+
+
+class TestLabelSmoothOp3D(TestLabelSmoothOp):
+    def set_inputs(self):
+        super(TestLabelSmoothOp3D, self).set_inputs()
+        self.inputs['X'].reshape([2,-1,self.inputs['X'].shape[-1]])
+
+
+class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
+    def set_inputs(self):
+        super(TestLabelSmoothOpWithPriorDist3D, self).set_inputs()
+        self.inputs['X'].reshape([2,-1,self.inputs['X'].shape[-1]])
+
+
+class TestLabelSmoothOpFP16(TestLabelSmoothOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestLabelSmoothOpWithPriorDistFP16(TestLabelSmoothOpWithPriorDist):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestLabelSmoothOp3DFP16(TestLabelSmoothOp3D):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestLabelSmoothOpWithPriorDist3DFP16(TestLabelSmoothOpWithPriorDist3D):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 if __name__ == '__main__':
