@@ -26,8 +26,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSqrt(OpTest):
     def setUp(self):
         self.set_npu()
@@ -60,8 +58,6 @@ class TestSqrt(OpTest):
     #
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSqrtFp16(OpTest):
     def setUp(self):
         self.set_npu()
@@ -88,8 +84,6 @@ class TestSqrtFp16(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSqrtNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

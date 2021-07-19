@@ -28,8 +28,6 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAny8DOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -49,8 +47,6 @@ class TestAny8DOp(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAnyOpWithDim(OpTest):
     def setUp(self):
         self.set_npu()
@@ -67,8 +63,6 @@ class TestAnyOpWithDim(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAny8DOpWithDim(OpTest):
     def setUp(self):
         self.set_npu()
@@ -88,8 +82,6 @@ class TestAny8DOpWithDim(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAnyOpWithKeepDim(OpTest):
     def setUp(self):
         self.set_npu()

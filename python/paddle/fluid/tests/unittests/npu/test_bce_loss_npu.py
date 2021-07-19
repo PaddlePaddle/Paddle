@@ -147,8 +147,6 @@ def calc_bceloss(input_np, label_np, reduction='mean', weight_np=None):
     return expected
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestBCELoss(unittest.TestCase):
     def test_BCELoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float32)
@@ -220,8 +218,6 @@ def bce_loss(input, label):
     return -1 * (label * np.log(input) + (1. - label) * np.log(1. - input))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestBceLossOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -248,15 +244,11 @@ class TestBceLossOp(OpTest):
         self.shape = [10, 10]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestBceLossOpCase1(OpTest):
     def init_test_cast(self):
         self.shape = [2, 3, 4, 5]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestBceLossOpCase2(OpTest):
     def init_test_cast(self):
         self.shape = [2, 3, 20]

@@ -26,8 +26,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestLookupTableV2(OpTest):
     def setUp(self):
         self.set_npu()
@@ -76,8 +74,6 @@ class TestLookupTableV2(OpTest):
             self.place, ['W'], 'Out', check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestLookupTableV2FP16(TestLookupTableV2):
     no_need_check_grad = True
 
@@ -89,16 +85,12 @@ class TestLookupTableV2FP16(TestLookupTableV2):
         self.__class__.no_need_check_grad = True
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestLookupTableV2Dim32(TestLookupTableV2):
     def init_dim(self):
         # embedding_dim is multiple of 32
         self.dim = 64
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestLookupTableV2Dim32FP16(TestLookupTableV2):
     no_need_check_grad = True
 

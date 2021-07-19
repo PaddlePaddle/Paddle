@@ -28,8 +28,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSoftmaxWithCrossEntropyOp(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
@@ -100,8 +98,6 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             max_relative_error=0.5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestPowNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

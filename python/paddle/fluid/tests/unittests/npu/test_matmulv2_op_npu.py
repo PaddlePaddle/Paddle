@@ -26,8 +26,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     """Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
@@ -137,8 +135,6 @@ class TestMatMul4(TestMatMul):
         self.trans_y = False
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMatMulNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -207,8 +203,8 @@ class TestMatMulNet(unittest.TestCase):
 
 
 # The precision is aligned in NPU and GPU separately, which is only used for the usage method.
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+
+
 class TestMatMulNet3_2(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

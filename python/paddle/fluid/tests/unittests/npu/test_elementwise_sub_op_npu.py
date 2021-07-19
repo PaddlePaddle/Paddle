@@ -27,8 +27,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseSubOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -92,8 +90,6 @@ class TestElementwiseSubOp(OpTest):
     #         max_relative_error=0.006,check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSubtractAPI(unittest.TestCase):
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -138,8 +134,6 @@ class TestSubtractAPI(unittest.TestCase):
                 msg="z_value = {}, but expected {}".format(z_value, z_expected))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSubtractError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -158,8 +152,6 @@ class TestSubtractError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.subtract, x2, y2)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSubtractNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

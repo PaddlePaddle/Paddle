@@ -170,8 +170,6 @@ class TestMul3FP16(TestMul3):
         pass
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMulNet(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32
@@ -243,8 +241,6 @@ class TestMulNet(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMulNet3_2(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32
@@ -317,8 +313,6 @@ class TestMulNet3_2(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-5))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMulNet3_2_xc2(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32

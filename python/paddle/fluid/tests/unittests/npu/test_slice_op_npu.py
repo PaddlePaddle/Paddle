@@ -27,8 +27,6 @@ SEED = 2021
 EPOCH = 100
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -79,8 +77,6 @@ class TestSliceOp2(TestSliceOp):
         self.out = self.input[:, 0:1, :]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceOpFp16(TestSliceOp):
     def init_dtype(self):
         self.dtype = np.float16
@@ -147,8 +143,6 @@ class TestSliceOpTensor2(TestSliceOpTensor):
         self.out = self.input[:, 0:1, :]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceOpFp16Tensor(TestSliceOpTensor):
     def init_dtype(self):
         self.dtype = np.float16
@@ -237,8 +231,6 @@ class TestSliceOpTensorList2(TestSliceOpTensorList):
         self.out = self.input[:, 0:1, :]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceOpFp16TensorList(TestSliceOpTensorList):
     def init_dtype(self):
         self.dtype = np.float16
@@ -249,8 +241,6 @@ class TestSliceOpFp16TensorList(TestSliceOpTensorList):
         self.place = paddle.NPUPlace(0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

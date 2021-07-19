@@ -34,8 +34,6 @@ def gather_numpy(x, index, axis):
     return gather
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestGatherOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -72,8 +70,6 @@ class TestGatherOp(OpTest):
         self.index_type = "int32"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase1(TestGatherOp):
     def config(self):
         """
@@ -85,8 +81,6 @@ class TestCase1(TestGatherOp):
         self.index_type = "int32"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class API_TestGather(unittest.TestCase):
     def test_out1(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -120,8 +114,6 @@ class API_TestGather(unittest.TestCase):
         self.assertTrue(np.allclose(result, expected_output))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestGatherGrad(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

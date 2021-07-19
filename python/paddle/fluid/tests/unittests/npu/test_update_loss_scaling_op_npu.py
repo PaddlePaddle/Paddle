@@ -25,8 +25,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestUpdateLossScalingOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -103,8 +101,6 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestUpdateLossScalingLayer(unittest.TestCase):
     def loss_scaling_check(self, use_npu=True, scope=fluid.Scope()):
         a = fluid.data(name="a", shape=[1024, 1024], dtype='float32')

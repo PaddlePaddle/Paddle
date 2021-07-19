@@ -32,8 +32,6 @@ def np_gelu(x):
     return y
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestGelu(OpTest):
     def setUp(self):
         self.set_npu()
@@ -66,8 +64,6 @@ class TestGelu(OpTest):
             max_relative_error=0.007)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestGeluFp16(OpTest):
     def setUp(self):
         self.set_npu()
@@ -94,8 +90,6 @@ class TestGeluFp16(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestGeluNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

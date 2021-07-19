@@ -24,8 +24,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseFloorDiv(OpTest):
     def setUp(self):
         self.op_type = "elementwise_floordiv"
@@ -56,8 +54,6 @@ class TestElementwiseFloorDiv(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseFloorDiv2(TestElementwiseFloorDiv):
     def init_dtype(self):
         self.dtype = "int32"

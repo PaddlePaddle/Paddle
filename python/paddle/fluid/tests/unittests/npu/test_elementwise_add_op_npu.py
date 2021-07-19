@@ -25,8 +25,6 @@ import paddle.fluid as fluid
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseAddOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -88,8 +86,6 @@ class TestElementwiseAddOp(OpTest):
             check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAddAPI(unittest.TestCase):
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -134,8 +130,6 @@ class TestAddAPI(unittest.TestCase):
                 msg="z_value = {}, but expected {}".format(z_value, z_expected))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAddError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):

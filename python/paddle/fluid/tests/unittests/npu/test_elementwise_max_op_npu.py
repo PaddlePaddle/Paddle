@@ -26,8 +26,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseMax(OpTest):
     def setUp(self):
         self.set_npu()
@@ -64,8 +62,6 @@ class TestElementwiseMax(OpTest):
     #
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseMaxFp16(OpTest):
     def setUp(self):
         self.set_npu()
@@ -96,8 +92,6 @@ class TestElementwiseMaxFp16(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseMaxNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

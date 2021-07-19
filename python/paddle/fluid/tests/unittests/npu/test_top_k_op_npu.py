@@ -27,8 +27,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestTopk(OpTest):
     def setUp(self):
         self.set_npu()
@@ -59,8 +57,6 @@ class TestTopk(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestTopkV2(OpTest):
     def setUp(self):
         self.set_npu()

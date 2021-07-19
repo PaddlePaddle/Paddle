@@ -27,8 +27,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMean(OpTest):
     def setUp(self):
         self.set_npu()
@@ -57,8 +55,6 @@ class TestMean(OpTest):
             self.place, ['X'], 'Out', check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMeanFP16(OpTest):
     def setUp(self):
         self.set_npu()

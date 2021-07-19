@@ -28,8 +28,6 @@ SEED = 2021
 alignment = 512
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAllocContinuousSpace(OpTest):
     def setUp(self):
         self.__class__.use_npu = True
@@ -86,8 +84,6 @@ class TestAllocContinuousSpace(OpTest):
             check_dygraph=False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
     def init_attr(self):
         return {

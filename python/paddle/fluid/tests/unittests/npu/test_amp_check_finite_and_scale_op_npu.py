@@ -25,8 +25,6 @@ from paddle.fluid.contrib.mixed_precision.amp_nn import check_finite_and_unscale
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCheckFiniteAndUnscale(unittest.TestCase):
     def get_prog(self):
         paddle.enable_static()
@@ -95,8 +93,6 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
         self.assertFalse(found_inf[0])
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
     def get_prog(self):
         paddle.enable_static()
