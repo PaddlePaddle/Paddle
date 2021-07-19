@@ -374,8 +374,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                   'w') as f:
             f.writelines(str(main_block.program))
 
-        if core.is_compiled_with_cuda():
-            self._wait()
+        # GPU and NPU need to wait server ready
+        self._wait()
         return optimize_ops, params_grads
 
     def _init_comm(self):

@@ -12,5 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .softmax_mask_fuse_upper_triangle import softmax_mask_fuse_upper_triangle  # noqa: F401
-from .softmax_mask_fuse import softmax_mask_fuse  # noqa: F401
+from __future__ import print_function
+
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid import core
+
+
+def softmax_mask_fuse(x, mask, name=None):
+    if in_dygraph_mode():
+        out = core.ops.fused_softmax_mask(x, mask)
+        return out
+    helper = LayerHelper('fused_softmax_mask', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='fused_softmax_mask',
+        inputs={'X': [x],
+                'Mask': [mask]},
+        outputs={'Out': [out]})
+    return out
