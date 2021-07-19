@@ -192,6 +192,10 @@ void NPUMemcpySync(void *dst, const void *src, size_t count,
   dst_max_count = dst_max_count ? dst_max_count : count;
   VLOG(4) << dst << " " << dst_max_count << " " << src << " " << count << " "
           << kind;
+  if (dst == nullptr && dst_max_count == 0) {
+    VLOG(4) << "Dot not call aclrtMemcpy for zero_size_allocation on NPU";
+    return;
+  }
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpy(dst, dst_max_count, src, count, kind));
 }
 

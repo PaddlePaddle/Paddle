@@ -809,6 +809,31 @@ function check_approvals_of_unittest() {
                 exit 6
             fi
         fi
+    elif [ $check_times == 3 ]; then
+        rm -f fluidInference_so_size
+        curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
+        oriBuildSize=`cat fluidInference_so_size`
+        curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
+        apt-get install -y bc
+        diffSize=$(printf "%.2f" `echo "$curBuildSize - $oriBuildSize" | bc`)
+        cat <<EOF
+        ========================================
+        Original libpaddle_inference.so Size is ${oriBuildSize}M.
+        Current libpaddle_inference.so Size is ${curBuildSize}M.
+        Diff size of libpaddle_inference.so is ${diffSize}M.
+        ========================================
+EOF
+        if [ `echo "5 < $diffSize"|bc` -eq 1 ] ; then
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 328693`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "=========================================================================================="
+                echo -e "Diff size is no less than 5 M. Then you must have one RD (Shixiaowei02 (Recommend) or Superjomn) approval for this PR\n"
+                echo "=========================================================================================="
+                exit 6
+            fi
+        fi
     fi
     set -x
 }
@@ -2185,6 +2210,7 @@ function main() {
         #test_fluid_lib_train
         #go inference test
         test_go_inference_api
+        check_approvals_of_unittest 3 
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
