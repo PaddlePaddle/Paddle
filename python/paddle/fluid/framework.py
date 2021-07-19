@@ -3060,20 +3060,23 @@ class Block(object):
         # sync variables from cpp
         for var in self.desc.all_vars():
             if not self.has_var(var.name()):
-                if var.is_parameter():
+                is_stop_gradient = False
+                if var.has_stop_gradient():
+                    is_stop_gradient = var.stop_gradient()
+                if var.has_is_parameter() and var.is_parameter():
                     self.create_parameter(
                         name=var.name(),
                         desc=var,
                         type=var.type(),
                         shape=var.shape(),
                         dtype=var.dtype(),
-                        stop_gradient=var.stop_gradient())
+                        stop_gradient=is_stop_gradient)
                 else:
                     self.create_var(
                         name=var.name(),
                         desc=var,
                         type=var.type(),
-                        stop_gradient=var.stop_gradient())
+                        stop_gradient=is_stop_gradient)
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
@@ -4782,6 +4785,33 @@ class Program(object):
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
         res._sync_with_cpp()
+        return res
+
+    def _remove_training_info(self):
+        """
+        This method will create a new program and do following adjustments on it:
+        1. Remove all variable's `is_parameter` attribute if exist.
+
+        2. Remove all variable's `stop_gradient` attribute if exist.
+
+        Notes: This API is a very low level API.
+
+        Returns:
+            Program: The new program.
+        """
+        res = Program()
+        res.desc = core.ProgramDesc(self.desc)
+
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
+        res._sync_with_cpp()
+
+        for i in six.moves.range(res.desc.num_blocks()):
+            block = res.desc.block(i)
+            for var in block.all_vars():
+                var.clear_is_parameter()
+                var.clear_stop_gradient()
         return res
 
     @staticmethod

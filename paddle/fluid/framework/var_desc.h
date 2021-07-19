@@ -117,11 +117,19 @@ class VarDesc {
     desc_.set_is_parameter(is_parameter);
   }
 
+  void ClearIsParameter() { desc_.clear_is_parameter(); }
+
+  bool HasIsParameter() const { return desc_.has_is_parameter(); }
+
   bool StopGradient() const { return desc_.stop_gradient(); }
 
   void SetStopGradient(bool stop_gradient) {
     desc_.set_stop_gradient(stop_gradient);
   }
+
+  void ClearStopGradient() { desc_.clear_stop_gradient(); }
+
+  bool HasStopGradient() const { return desc_.has_stop_gradient(); }
 
   bool NeedCheckFeed() const { return desc_.need_check_feed(); }
 
