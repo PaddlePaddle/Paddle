@@ -131,6 +131,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         }
       }
       float factor = 1.0f / static_cast<T>(1.0f - dropout_prob);
+
 #pragma omp parallel for
       for (int i = 0; i < size; i++) {
         mask_data[i] = static_cast<uint8_t>(retValue[i]);
