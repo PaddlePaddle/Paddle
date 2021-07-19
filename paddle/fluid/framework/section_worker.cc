@@ -52,20 +52,13 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
                                    var_name, op_type));
 
     int op_role = op->Attr<int>("op_role");
-    int FORWARD = static_cast<int>(OpRole::kForward);
     int BACKWARD = static_cast<int>(OpRole::kBackward);
-    PADDLE_ENFORCE_EQ(
-        op_role == FORWARD || op_role == BACKWARD, true,
-        platform::errors::PreconditionNotMet(
-            "%s op's op_role must be forward or backward", op_type));
+    PADDLE_ENFORCE_EQ(op_role == BACKWARD, true,
+                      platform::errors::PreconditionNotMet(
+                          "%s op's op_role must be backward", op_type));
 
-    bool is_last_stage = (pipeline_stage_ == num_pipeline_stages_ - 1);
     bool is_first_stage = (pipeline_stage_ == 0);
-    if (op_role == FORWARD && !is_last_stage) {
-      // The last pipeline stage does not need to send forward var
-      forward_send_vars_.push_back(var_name);
-      skip_vars_.push_back(var_name);
-    } else if (op_role == BACKWARD && !is_first_stage) {
+    if (!is_first_stage) {
       // The first pipeline stage does not need to send backward var
       backward_send_vars_.push_back(var_name);
       skip_vars_.push_back(var_name);
@@ -176,10 +169,8 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
   int fw_step = 0;
   int bw_step = 0;
 
-  bool is_last_stage = (pipeline_stage_ == num_pipeline_stages_ - 1);
   bool is_first_stage = (pipeline_stage_ == 0);
 
-  int reserve_fw_send_step = 0;
   // startup phase
   while (fw_step < startup_steps) {
     RunForward(fw_step, gc, unused_vars_);
@@ -198,17 +189,6 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
 
     RunBackward(bw_step, gc, unused_vars_);
 
-    // delete forward send var at step<=(fw_step - 1)
-    if (gc && !is_last_stage) {
-      for (int i = reserve_fw_send_step; i < fw_step; ++i) {
-        DeleteUnusedTensors(*microbatch_scopes_[i], forward_send_vars_,
-                            gc.get());
-      }
-      // because assert(startup_steps < num_microbatches_), so will always
-      // run 1F1B, reserve_fw_send_step will be update
-      reserve_fw_send_step = fw_step;
-    }
-
     fw_step += 1;
     bw_step += 1;
   }
@@ -218,14 +198,6 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
   while (bw_step < num_microbatches_) {
     RunBackward(bw_step, gc, unused_vars_);
     bw_step += 1;
-
-    // NOTE(wangxi): will only execute once
-    // delete forward send var at step=(num_microbatches_ - 1)
-    if (reserve_fw_send_step < num_microbatches_ && !is_last_stage) {
-      DeleteUnusedTensors(*microbatch_scopes_[reserve_fw_send_step],
-                          forward_send_vars_, gc.get());
-      ++reserve_fw_send_step;
-    }
   }
 
   RunUpdate(gc, unused_vars_);

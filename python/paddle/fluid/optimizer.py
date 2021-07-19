@@ -4892,25 +4892,32 @@ class PipelineOptimizer(object):
                                 'num': self.mp_degree,
                                 'id': self.mp_rank,
                             })
-                        send_op._set_attr('pipeline_send_var', var.name)
                         extra_index_info['index'] += 1
                         insert_index = None
 
                         if int(op_role) == int(self._op_role.Backward):
+                            send_op._set_attr('pipeline_send_var', var.name)
                             insert_index = extra_index_info[
                                 'first_optimize_index']
                             new_op_role = self._op_role.Optimize
+                        else:
+                            insert_index = index
+                            new_op_role = self._op_role.Backward
 
-                            sync_comm_op = block._insert_op_without_sync(
-                                index=insert_index + extra_index_info['index'],
-                                type='c_sync_comm_stream',
-                                inputs={'X': [var]},
-                                outputs={'Out': [var]},
-                                attrs={
-                                    self._op_device_key: prev_dev,
-                                    self._op_role_key: new_op_role,
-                                    'ring_id': ring_id,
-                                })
+                        sync_comm_op = block._insert_op_without_sync(
+                            index=insert_index + extra_index_info['index'],
+                            type='c_sync_comm_stream',
+                            inputs={'X': [var]},
+                            outputs={'Out': [var]},
+                            attrs={
+                                self._op_device_key: prev_dev,
+                                self._op_role_key: new_op_role,
+                                'ring_id': ring_id,
+                            })
+
+                        if int(op_role) == int(self._op_role.Forward):
+                            sync_comm_op._set_attr('pipeline_flag', '')
+                            extra_index_info['index'] += 1
 
                         var_shape = list(var.shape)
                         var_shape[0] = self.micro_batch_size if var_shape[
@@ -5271,6 +5278,7 @@ class PipelineOptimizer(object):
                 backward_recv_index = index
                 break
 
+        # last pipeline stage
         if backward_recv_index is None: return
 
         offset = 0
