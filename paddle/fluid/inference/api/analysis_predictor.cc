@@ -1241,6 +1241,7 @@ USE_TRT_CONVERTER(nearest_interp);
 USE_TRT_CONVERTER(reshape);
 USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(gather_nd);
+USE_TRT_CONVERTER(reduce_mean);
 #endif
 
 namespace paddle_infer {
