@@ -303,7 +303,7 @@ class Optimizer(object):
         self._auxiliary_vars[key] = val
 
     def _get_auxiliary_var(self, key):
-        if key in _auxiliary_vars:
+        if key in self._auxiliary_vars:
             return self._auxiliary_vars[key]
         else:
             return None
