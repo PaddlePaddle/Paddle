@@ -17,6 +17,7 @@ import re
 from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
 from functools import partial
+from paddle.distributed.fleet.utils.recompute import recompute, check_recompute_necessary
 
 __all__ = []
 
@@ -128,7 +129,8 @@ class PipelineLayer(Layer):
                  num_stages=None,
                  topology=None,
                  loss_fn=None,
-                 seg_method="uniform"):
+                 seg_method="uniform",
+                 checkpoint_interval=0):
         super(PipelineLayer, self).__init__()
         if num_stages is None and topology is None:
             raise ValueError("should provide num_stages or topology")
@@ -141,6 +143,7 @@ class PipelineLayer(Layer):
         self.layers = layers
         self._loss_fn = loss_fn
         self._topo = topology
+        self._checkpoint_interval = checkpoint_interval
         world_size = dist.get_world_size()
         self.global_rank = dist.get_rank()
 
@@ -235,6 +238,7 @@ class PipelineLayer(Layer):
                     group=comm['group'])
 
     def allreduce_shared_weight_gradients(self):
+        return
         for key, comm in self.shared_comm.items():
             param = getattr(self.shared_layers[key], comm['weight_attr'])
             # need use trace_op to allreduce weight
@@ -307,6 +311,37 @@ class PipelineLayer(Layer):
                 self.run_function.append(layer)
 
     def forward(self, input):
-        for layer in self.run_function:
-            input = layer(input)
+        def exec_range_func(start, end):
+            def exec_func(inputs):
+                for idx, layer in enumerate(self.run_function[start:end]):
+                    inputs = layer(inputs)
+                return inputs
+
+            return exec_func
+
+        if self._checkpoint_interval == 0:
+            func = exec_range_func(0, len(self.run_function))
+            input = func(input)
+        else:
+            num_layers = len(self.run_function)
+            for start_idx in range(0, num_layers, self._checkpoint_interval):
+                end_idx = min(start_idx + self._checkpoint_interval, num_layers)
+                funcs = self.run_function[start_idx:end_idx]
+                if not isinstance(input, tuple):
+                    input = (input, )
+
+                if self._is_recompute(funcs, input):
+                    input = recompute(
+                        exec_range_func(start_idx, end_idx), *input)
+                else:
+                    input = exec_range_func(start_idx, end_idx)(input)
+
         return input
+
+    def _is_recompute(self, funcs, inputs):
+        if not any(input_.stop_gradient == False for input_ in inputs
+                   if isinstance(input_, paddle.Tensor)):
+            return False
+
+        params = [f.parameters() for f in funcs if isinstance(f, Layer)]
+        return any(len(list(p)) > 0 for p in params)
