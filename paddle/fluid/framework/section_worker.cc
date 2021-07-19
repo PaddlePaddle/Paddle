@@ -34,35 +34,26 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
   // if not 1F1B scheduler
   if (schedule_mode_ != 1) return;
 
+  bool is_first_stage = (pipeline_stage_ == 0);
+  int BACKWARD = static_cast<int>(OpRole::kBackward);
   for (auto &op : ops_) {
-    if (!op->HasAttr("pipeline_send_var")) continue;
-
-    auto op_type = op->Type();
-    PADDLE_ENFORCE_EQ(op_type == "send_v2" || op_type == "partial_send", true,
-                      platform::errors::PreconditionNotMet(
-                          "The op which have `pipeline_send_var` must be "
-                          "send_v2 or partial_send op, but this op is %s",
-                          op_type));
-
-    auto var_name = op->Attr<std::string>("pipeline_send_var");
-    auto send_input_vars = op->InputVars();
-    PADDLE_ENFORCE_EQ(
-        var_name, send_input_vars[0],
-        platform::errors::NotFound("pipeline_send_var %s is not found in op %s",
-                                   var_name, op_type));
-
     int op_role = op->Attr<int>("op_role");
-    int BACKWARD = static_cast<int>(OpRole::kBackward);
-    PADDLE_ENFORCE_EQ(op_role == BACKWARD, true,
-                      platform::errors::PreconditionNotMet(
-                          "%s op's op_role must be backward", op_type));
+    auto op_type = op->Type();
 
-    bool is_first_stage = (pipeline_stage_ == 0);
-    if (!is_first_stage) {
-      // The first pipeline stage does not need to send backward var
-      backward_send_vars_.push_back(var_name);
-      skip_vars_.push_back(var_name);
-    }
+    // pipeline backward send op
+    if (op_role != BACKWARD) continue;
+    if (op_type != "send_v2" && op_type != "partial_send") continue;
+
+    auto var_name = op->InputVars()[0];
+    VLOG(3) << "Pipeline backward send var " << var_name;
+    PADDLE_ENFORCE_NE(is_first_stage, true,
+                      platform::errors::PreconditionNotMet(
+                          "The first pipeline stage must do not have a "
+                          "backward send var, please check var %s",
+                          var_name));
+
+    backward_send_vars_.push_back(var_name);
+    skip_vars_.push_back(var_name);
   }
 }
 
@@ -169,8 +160,6 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
   int fw_step = 0;
   int bw_step = 0;
 
-  bool is_first_stage = (pipeline_stage_ == 0);
-
   // startup phase
   while (fw_step < startup_steps) {
     RunForward(fw_step, gc, unused_vars_);
@@ -182,7 +171,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
     RunForward(fw_step, gc, unused_vars_);
 
     // delete backward send var at step=(bw_step - 2)
-    if (gc && !is_first_stage && bw_step >= 2) {
+    if (gc && bw_step >= 2) {
       DeleteUnusedTensors(*microbatch_scopes_[bw_step - 2], backward_send_vars_,
                           gc.get());
     }
@@ -202,7 +191,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
 
   RunUpdate(gc, unused_vars_);
 
-  if (gc && !is_first_stage) {
+  if (gc) {
     // NOTE(wangxi): program must add sync backward send comm at update
     // delete backward send var
     for (int i = reserve_bw_send_step; i < num_microbatches_; ++i) {

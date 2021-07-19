@@ -4877,7 +4877,7 @@ class PipelineOptimizer(object):
                                 self._op_role_key: op_role,
                             })
                         extra_index_info['index'] += 1
-                        send_op = block._insert_op_without_sync(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='send_v2'
                             if self.mp_degree == 1 else 'partial_send',
@@ -4896,7 +4896,6 @@ class PipelineOptimizer(object):
                         insert_index = None
 
                         if int(op_role) == int(self._op_role.Backward):
-                            send_op._set_attr('pipeline_send_var', var.name)
                             insert_index = extra_index_info[
                                 'first_optimize_index']
                             new_op_role = self._op_role.Optimize
