@@ -138,7 +138,7 @@ class InferencePassTest(unittest.TestCase):
             config.enable_mkldnn()
             if self.enable_mkldnn_bfloat16:
                 config.enable_mkldnn_bfloat16()
-
+        print('config summary:', config.summary())
         return config
 
     def check_output(self, atol=1e-5):
