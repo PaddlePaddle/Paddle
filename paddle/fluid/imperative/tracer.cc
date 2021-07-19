@@ -120,6 +120,17 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
       gc.reset(new framework::CPUGarbageCollector(
           BOOST_GET_CONST(platform::CPUPlace, place), 0));
       VLOG(10) << "Created GarbageCollector at " << place;
+    } else if (platform::is_npu_place(place)) {
+#if defined(PADDLE_WITH_ASCEND_CL)
+      // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
+      gc.reset(new framework::NPUUnsafeFastGarbageCollector(
+          BOOST_GET_CONST(platform::NPUPlace, place), 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use NPU device since it's not compiled with NPU,"
+          "Please recompile or reinstall Paddle with NPU support."));
+#endif
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "Unsupported place for garbage collection"));
@@ -183,6 +194,14 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
+#endif
+    } else if (platform::is_npu_place(place)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      platform::SetNPUDeviceId(
+          BOOST_GET_CONST(platform::NPUPlace, place).device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with NPU if use NPUPlace."));
 #endif
     }
 

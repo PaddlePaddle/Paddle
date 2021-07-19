@@ -17,7 +17,7 @@ import collections
 import copy
 import six
 import numpy as np
-from ..framework import Variable, in_dygraph_mode
+from ..framework import Block, Variable, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
 from sys import version_info
@@ -429,3 +429,31 @@ def try_get_constant_shape_from_tensor(shape_tensor):
             return None
 
         return None
+
+
+def get_inputs_outputs_in_block(block):
+    """
+    Returns the inputs and outputs variable used in this block but not
+    created in this block.
+    """
+    assert isinstance(
+        block,
+        Block), "input non-Block argument for get_inputs_outputs_in_block."
+    assert block.parent_idx != -1, "input block should be a sub-block, not main block."
+
+    # Find input/output var names of all ops in block
+    inner_inputs = set()
+    inner_outputs = set()
+    for op in block.ops:
+        for iname in op.input_names:
+            for in_var_name in op.input(iname):
+                if not block.has_var(in_var_name):
+                    # variable not created in this block
+                    inner_inputs.add(in_var_name)
+        for oname in op.output_names:
+            for out_var_name in op.output(oname):
+                if not block.has_var(out_var_name):
+                    # variable not created in this block
+                    inner_outputs.add(out_var_name)
+
+    return inner_inputs, inner_outputs

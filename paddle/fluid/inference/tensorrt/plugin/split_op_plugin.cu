@@ -15,7 +15,6 @@
 #include <cuda_fp16.h>
 #include <algorithm>
 #include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {

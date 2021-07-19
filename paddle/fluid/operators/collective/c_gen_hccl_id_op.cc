@@ -23,14 +23,34 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
-#endif
+#include "paddle/fluid/platform/dynload/hccl.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
 namespace operators {
 
 #ifdef PADDLE_WITH_ASCEND_CL
+
+static void GenHCCLID(std::vector<HcclRootInfo>* hccl_ids) {
+  for (size_t i = 0; i < hccl_ids->size(); ++i) {
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclGetRootInfo(&(*hccl_ids)[i]));
+  }
+}
+
+static void CopyHCCLIDToVar(const std::vector<HcclRootInfo>& hccl_ids,
+                            std::function<std::string(size_t)> func,
+                            const framework::Scope& scope) {
+  for (size_t i = 0; i < hccl_ids.size(); ++i) {
+    std::string var_name = func(i);
+    auto var = scope.FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("Variable with name %s is not found",
+                                        var_name.c_str()));
+    auto hccl_id = var->GetMutable<HcclRootInfo>();
+    memcpy(hccl_id, &hccl_ids[i], sizeof(HcclRootInfo));
+  }
+}
 
 class CGenHCCLIdOp : public framework::OperatorBase {
  public:
@@ -49,14 +69,22 @@ class CGenHCCLIdOp : public framework::OperatorBase {
       return Output("Out");
     };
 
+    std::string endpoint = Attr<std::string>("endpoint");
+    int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
+
+    std::vector<HcclRootInfo> hccl_ids;
+    hccl_ids.resize(1);
+
     if (rank == 0) {
+      GenHCCLID(&hccl_ids);
       std::vector<std::string> endpoint_list =
           Attr<std::vector<std::string>>("other_endpoints");
-      SendBroadCastHCCLID(endpoint_list, 1, func, local_scope);
+      platform::SendBroadCastCommID(endpoint_list, &hccl_ids);
     } else {
-      std::string endpoint = Attr<std::string>("endpoint");
-      RecvBroadCastHCCLID(endpoint, 1, func, local_scope);
+      platform::RecvBroadCastCommID(server_fd, endpoint, &hccl_ids);
     }
+
+    CopyHCCLIDToVar(hccl_ids, func, scope);
     scope.DeleteScope(&local_scope);
   }
 };

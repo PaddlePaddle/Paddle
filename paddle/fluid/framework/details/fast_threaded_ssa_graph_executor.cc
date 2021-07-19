@@ -76,7 +76,6 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   std::vector<OpHandleBase *> fetch_ops;
   std::vector<OpHandleBase *> ready_fetch_ops;
   exception_.Clear();
-
   InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
                  &fetch_ops, &ready_fetch_ops, return_merged);
   event.reset(nullptr);
@@ -95,6 +94,8 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     traced_ops_.clear();
     remaining_ = 0;
     auto complete_q = std::make_shared<BlockingQueue<size_t>>();
+    VLOG(3) << "number of bootstrap_ops_: " << bootstrap_ops_.size();
+    VLOG(3) << "number of ready_fetch_ops: " << ready_fetch_ops.size();
     for (auto op : bootstrap_ops_) {
       RunOpAsync(op_deps.get(), op, complete_q);
     }
@@ -247,11 +248,10 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           RunOpAsync(op_deps, post_op, complete_q);
         }
       }
-
+      VLOG(3) << "start to run op: " << op_to_run->Name();
       if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
       }
-
       auto &outputs = op_to_run->Outputs();
       op_to_run = nullptr;
       for (auto &output : outputs) {

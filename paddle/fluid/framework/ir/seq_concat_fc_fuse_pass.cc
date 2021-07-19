@@ -174,6 +174,91 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
   return fc_out;
 }
 
+SeqConcatFcFusePass::SeqConcatFcFusePass() {
+  AddOpCompat(OpCompat("sequence_expand"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("ref_level")
+      .IsNumEQ(0)
+      .End();
+
+  AddOpCompat(OpCompat("concat"))
+      .AddInput("X")  // Input("X"): vector<tensors>
+      .End()
+      .AddInput("AxisTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("tanh"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("sigmoid"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+
 void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("seq_concat_fc_fuse", graph);
   GraphPatternDetector detector;
@@ -193,6 +278,10 @@ void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
 
   detector(graph, [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* graph) {
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "seq_concat_fc_fuse_pass in op compat failed.";
+      return;
+    }
     VLOG(4) << "get one concat pattern";
     // fc
     GET_NODE(fc_w, detector.pattern());

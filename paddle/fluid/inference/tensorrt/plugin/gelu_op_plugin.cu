@@ -16,7 +16,6 @@
 #include <cstring>
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/gelu_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -31,21 +30,15 @@ static const float kAT = 0.5;
 static const float kBT = 0.7978845608028654;    // sqrt(2.0/M_PI)
 static const float kCT = 0.035677408136300125;  // 0.044715 * sqrt(2.0/M_PI)
 
-GeluPlugin* CreateGeluPluginDeserialize(const void* buffer, size_t length) {
-  return new GeluPlugin(buffer, length);
-}
-
-REGISTER_TRT_PLUGIN("gelu_plugin", CreateGeluPluginDeserialize);
-
 bool GeluPlugin::supportsFormat(nvinfer1::DataType type,
                                 nvinfer1::PluginFormat format) const {
   if (with_fp16_) {
     return ((type == nvinfer1::DataType::kFLOAT ||
              type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   } else {
     return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   }
 }
 

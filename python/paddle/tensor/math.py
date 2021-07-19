@@ -67,6 +67,7 @@ from ..fluid.layers import lgamma    # noqa: F401
 
 from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
+from paddle import _C_ops
 
 __all__ = []
 
@@ -91,7 +92,7 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     Please refer to :ref:`api_tensor_scale`.
     """
     _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-    return core.ops.scale_(x, 'scale',
+    return _C_ops.scale_(x, 'scale',
                             float(_scale), 'bias',
                             float(bias), 'bias_after_scale', bias_after_scale)
 
@@ -144,7 +145,7 @@ def pow(x, y, name=None):
     # in dynamic graph mode
     if in_dygraph_mode():
         if isinstance(y, (int, float)):
-            return core.ops.pow(x, 'factor', y)
+            return _C_ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
             return _elementwise_op_in_dygraph(
                 x, y, axis=-1, act=None, op_name='elementwise_pow')
@@ -177,7 +178,7 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    op = getattr(core.ops, op_name)
+    op = getattr(_C_ops, op_name)
     out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
@@ -236,7 +237,7 @@ def add(x, y, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.elementwise_add(x, y)
+        return _C_ops.elementwise_add(x, y)
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
@@ -715,12 +716,30 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
+    dtype_flag = False
+    if dtype is not None:
+        if dtype in ['float64', 'int64']:
+            if (convert_dtype(x.dtype) == "float32" and dtype == "float64") or \
+               (convert_dtype(x.dtype) == "int32" and dtype == "int64"):
+                dtype_flag = True
+
+    if in_dygraph_mode():
+        axis = axis if axis != None and axis != [] else [0]
+        if dtype_flag:
+            return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag, 'in_dtype',
+                                       x.dtype, 'out_dtype',
+                                       convert_np_dtype_to_dtype_(dtype))
+        else:
+            return _C_ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag)
+
     attrs = {
         'dim': axis if axis != None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag
     }
-    dtype_flag = False
+
     if dtype is not None:
         if dtype in ['float64', 'int64']:
             if (convert_dtype(x.dtype) == "float32" and dtype == "float64") or \
@@ -729,18 +748,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                     'in_dtype': x.dtype,
                     'out_dtype': convert_np_dtype_to_dtype_(dtype)
                 })
-                dtype_flag = True
 
-    if in_dygraph_mode():
-        axis = axis if axis != None and axis != [] else [0]
-        if dtype_flag:
-            return core.ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag, 'in_dtype',
-                                       x.dtype, 'out_dtype',
-                                       convert_np_dtype_to_dtype_(dtype))
-        else:
-            return core.ops.reduce_sum(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag)
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sum')
 
@@ -832,7 +840,7 @@ def add_n(inputs, name=None):
     if in_dygraph_mode():
         if isinstance(inputs, Variable):
             inputs = [inputs]
-        return core.ops.sum(inputs, 'use_mkldnn', False)
+        return _C_ops.sum(inputs, 'use_mkldnn', False)
 
     helper = LayerHelper('add_n', **locals())
     check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
@@ -886,7 +894,7 @@ def trunc(input, name=None):
             #         [0., 0.]]))
     '''
     if in_dygraph_mode():
-        return core.ops.trunc(input)
+        return _C_ops.trunc(input)
     else:
         inputs = {"X": input}
         attrs = {}
@@ -941,7 +949,7 @@ def mm(input, mat2, name=None):
     """
     if in_dygraph_mode():
         out = _varbase_creator(dtype=input.dtype)
-        core.ops.matmul(input, mat2, out)
+        _C_ops.matmul(input, mat2, out)
         return out
 
     def __check_input(x, y):
@@ -1047,7 +1055,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
 
     if in_dygraph_mode():
-        out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
+        out = _C_ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
         return out
 
     inputs = {'Input': input, "X": x, "Y": y}
@@ -1114,7 +1122,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         axis = [0]
 
     if in_dygraph_mode():
-        return core.ops.logsumexp(x, 'axis', axis, 'keepdim', keepdim, 'reduce_all', reduce_all)
+        return _C_ops.logsumexp(x, 'axis', axis, 'keepdim', keepdim, 'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x',
                              ['float32', 'float64'],
@@ -1158,7 +1166,7 @@ def inverse(x, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.inverse(x)
+        return _C_ops.inverse(x)
 
     def _check_input(x):
         check_variable_and_dtype(x, 'x',
@@ -1249,7 +1257,7 @@ def max(x, axis=None, keepdim=False, name=None):
     reduce_all = True if axis == None or axis == [] else False
     axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():
-        return core.ops.reduce_max(x, 'dim', axis, 'keep_dim', keepdim,
+        return _C_ops.reduce_max(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
 
     helper = LayerHelper('max', **locals())
@@ -1338,7 +1346,7 @@ def min(x, axis=None, keepdim=False, name=None):
     reduce_all = True if axis == None or axis == [] else False
     axis = axis if axis != None and axis != [] else [0]
     if in_dygraph_mode():
-        return core.ops.reduce_min(x, 'dim', axis, 'keep_dim', keepdim,
+        return _C_ops.reduce_min(x, 'dim', axis, 'keep_dim', keepdim,
                                    'reduce_all', reduce_all)
 
     helper = LayerHelper('min', **locals())
@@ -1384,7 +1392,7 @@ def log1p(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.log1p(x)
+        return _C_ops.log1p(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
     inputs = {'X': [x]}
@@ -1433,7 +1441,7 @@ def log2(x, name=None):
             print(res) # [1.0]
     """
     if in_dygraph_mode():
-        return core.ops.log2(x)
+        return _C_ops.log2(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log2")
     inputs = {'X': [x]}
@@ -1483,7 +1491,7 @@ def log10(x, name=None):
             print(res) # [1.0]
     """
     if in_dygraph_mode():
-        return core.ops.log10(x)
+        return _C_ops.log10(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log10")
     inputs = {'X': [x]}
@@ -1550,7 +1558,7 @@ def clip(x, min=None, max=None, name=None):
             max = max.numpy().item(0)
         min = min_ if min is None else min
         max = max_ if max is None else max
-        return core.ops.clip(x, "min", min, "max", max)
+        return _C_ops.clip(x, "min", min, "max", max)
 
     if min is not None:
         check_type(min, 'min', (float, int, Variable), 'clip')
@@ -1603,7 +1611,7 @@ def clip_(x, min=None, max=None, name=None):
         max = max.numpy().item(0)
     min = fmin if min is None else min
     max = fmax if max is None else max
-    return core.ops.clip_(x, "min", min, "max", max)
+    return _C_ops.clip_(x, "min", min, "max", max)
 
 
 
@@ -1648,6 +1656,9 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
     """
+    if in_dygraph_mode():
+        return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
+
     inputs = {'Input': [x]}
     attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
 
@@ -1678,11 +1689,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                "axis1 and axis2 cannot be the same axis." \
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
-    if in_dygraph_mode():
-        return core.ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
-
-    if not in_dygraph_mode():
-        __check_input(input, offset, axis1, axis2)
+    __check_input(input, offset, axis1, axis2)
     helper = LayerHelper('trace', **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1761,6 +1768,9 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             #        [0.17020577, 0.27325270]])
             
     """
+    if in_dygraph_mode():
+        return _C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
+
     def __check_input(input, offset, dim1, dim2):
         check_dtype(x.dtype, 'Input',
                     ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
@@ -1786,9 +1796,6 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         assert  axis1_ != axis2_,   \
                "axis1 and axis2 cannot be the same axis." \
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
-
-    if in_dygraph_mode():
-        return core.ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
     __check_input(input, offset, axis1, axis2)
     helper = LayerHelper('diagonal', **locals())
@@ -1839,7 +1846,7 @@ ${comment}
             #         [21, 24, 27, 28, 32, 36]])
     """
     if in_dygraph_mode():
-        return core.ops.kron(x, y)
+        return _C_ops.kron(x, y)
 
     helper = LayerHelper('kron', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
@@ -1900,9 +1907,9 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
     if in_dygraph_mode():
         if axis is None:
-            return core.ops.cumsum(x, 'flatten', flatten)
+            return _C_ops.cumsum(x, 'flatten', flatten)
         else:
-            return core.ops.cumsum(x, 'axis', axis, 'flatten', flatten)
+            return _C_ops.cumsum(x, 'axis', axis, 'flatten', flatten)
 
     check_type(x, 'x', (Variable), 'cumsum')
     locals_var = locals().copy()
@@ -1935,7 +1942,7 @@ def isfinite(x, name=None):
             print(out)  # [False  True  True False  True False False]
     """
     if in_dygraph_mode():
-        return core.ops.isfinite_v2(x)
+        return _C_ops.isfinite_v2(x)
     helper = LayerHelper("isfinite_v2", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isfinite')
     out = helper.create_variable_for_type_inference('bool')
@@ -1963,7 +1970,7 @@ def isinf(x, name=None):
             print(out)  # [ True False False  True False False False]
     """
     if in_dygraph_mode():
-        return core.ops.isinf_v2(x)
+        return _C_ops.isinf_v2(x)
     helper = LayerHelper("isinf_v2", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isinf')
     out = helper.create_variable_for_type_inference(dtype='bool')
@@ -1991,7 +1998,7 @@ def isnan(x, name=None):
             print(out)  # [False False False False False  True  True]
     """
     if in_dygraph_mode():
-        return core.ops.isnan_v2(x)
+        return _C_ops.isnan_v2(x)
     helper = LayerHelper("isnan_v2", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isnan')
     out = helper.create_variable_for_type_inference(dtype='bool')
@@ -2088,7 +2095,7 @@ def sign(x, name=None):
           print(out)  # [1.0, 0.0, -1.0, 1.0]
     """
     if in_dygraph_mode():
-        return core.ops.sign(x)
+        return _C_ops.sign(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'sign')
     helper = LayerHelper("sign", **locals())
@@ -2125,7 +2132,7 @@ def tanh(x, name=None):
             # [-0.37994896 -0.19737532  0.09966799  0.29131261]
     """
     if in_dygraph_mode():
-        return core.ops.tanh(x)
+        return _C_ops.tanh(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'tanh')
     check_type(x, 'x', (Variable), 'tanh')
@@ -2140,7 +2147,7 @@ def tanh_(x, name=None):
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_tanh`.
     """
-    return core.ops.tanh_(x)
+    return _C_ops.tanh_(x)
 
 
 def increment(x, value=1.0, name=None):
@@ -2167,7 +2174,7 @@ def increment(x, value=1.0, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.increment(x, 'step', value)
+        return _C_ops.increment(x, 'step', value)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'increment')
@@ -2247,18 +2254,16 @@ def all(x, axis=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
+    if in_dygraph_mode():
+        axis = axis if axis != None and axis != [] else [0]
+        return _C_ops.reduce_all(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag)
+
     attrs = {
         'dim': axis if axis != None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag
     }
-    dtype_flag = False
-
-
-    if in_dygraph_mode():
-        axis = axis if axis != None and axis != [] else [0]
-        return core.ops.reduce_all(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag)
     check_variable_and_dtype(x, 'x', ['bool'], 'all')
 
 
@@ -2341,18 +2346,17 @@ def any(x, axis=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
+    if in_dygraph_mode():
+        axis = axis if axis != None and axis != [] else [0]
+        return _C_ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag)
+
     attrs = {
         'dim': axis if axis != None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag
     }
-    dtype_flag = False
 
-
-    if in_dygraph_mode():
-        axis = axis if axis != None and axis != [] else [0]
-        return core.ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
-                                       'reduce_all', reduce_all_flag)
     check_variable_and_dtype(x, 'x', ['bool'], 'any')
 
 
@@ -2424,7 +2428,7 @@ def conj(x, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.conj(x)
+        return _C_ops.conj(x)
 
     check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'conj')
 
@@ -2463,7 +2467,7 @@ def digamma(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.digamma(x)
+        return _C_ops.digamma(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
     helper = LayerHelper('digamma', **locals())
@@ -2539,7 +2543,7 @@ def atan2(y, x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.atan2(y, x)
+        return _C_ops.atan2(y, x)
     else:
         check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
         check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
