@@ -228,6 +228,48 @@ Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
       framework::vectorize<int64_t>(tensor->dims());
   shape_vec[0] = end_idx - begin_idx;
   Tensor target = Tensor(place_, shape_vec);
+  auto dtype = tensor->type();
+  switch (dtype) {
+    case framework::proto::VarType::FP32:
+      target.mutable_data<float>();
+      break;
+    case framework::proto::VarType::FP64:
+      target.mutable_data<double>();
+      break;
+    case framework::proto::VarType::INT64:
+      target.mutable_data<int64_t>();
+      break;
+    case framework::proto::VarType::INT32:
+      target.mutable_data<int32_t>();
+      break;
+    case framework::proto::VarType::INT16:
+      target.mutable_data<int16_t>();
+      break;
+    case framework::proto::VarType::INT8:
+      target.mutable_data<int8_t>();
+      break;
+    case framework::proto::VarType::UINT8:
+      target.mutable_data<uint8_t>();
+      break;
+    case framework::proto::VarType::BOOL:
+      target.mutable_data<bool>();
+      break;
+    case framework::proto::VarType::COMPLEX64:
+      target.mutable_data<complex64>();
+      break;
+    case framework::proto::VarType::COMPLEX128:
+      target.mutable_data<complex128>();
+      break;
+    case framework::proto::VarType::FP16:
+      target.mutable_data<float16>();
+      break;
+    // TODO(JiabinYang) support more data types if needed.
+    default:
+      PADDLE_THROW(platform::errors::Unavailable(
+        "Not supported VarType(%s) for slicing.",
+        ToString(framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype))));
+      break;
+  }
   auto *target_tensor =
       static_cast<framework::LoDTensor *>(target.tensor_.get());
   target_tensor->ShareDataWith(intermediate);

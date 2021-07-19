@@ -89,6 +89,18 @@ void TestAPISlice() {
   CHECK(t2.slice(0, 5).shape() == tensor_shape_origin);
   CHECK(t2.slice(0, 3).shape() == tensor_shape_sub1);
   CHECK(t2.slice(4, 5).shape() == tensor_shape_sub2);
+
+  // Test writing function for sliced tensor
+  auto t = InitCPUTensorForTest<float>();
+  auto t_sliced = t.slice(0, 1);
+  auto* t_sliced_data_ptr = t_sliced.mutable_data<float>();
+  for (int64_t i = 0; i < t_sliced.size(); i++) {
+    t_sliced_data_ptr[i] += float(5);
+  }
+  auto* t_data_ptr = t.mutable_data<float>();
+  for (int64_t i = 0; i < t_sliced.size(); i++) {
+    CHECK_EQ(t_data_ptr[i], float(10));
+  }
 }
 
 template <typename T>
