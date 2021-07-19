@@ -18,6 +18,7 @@ from ...fluid.framework import Variable, in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.layers import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle import _C_ops
 
 __all__ = []
 
@@ -86,8 +87,8 @@ def one_hot(x, num_classes, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.one_hot_v2(x, 'depth', num_classes,
-                                   'allow_out_of_range', False)
+        return _C_ops.one_hot_v2(x, 'depth', num_classes, 'allow_out_of_range',
+                                 False)
     else:
         check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'one_hot_v2')
         helper = LayerHelper("one_hot_v2", **locals())
@@ -195,7 +196,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             weight.shape[0], weight.shape[0]))
 
     if in_dygraph_mode():
-        return core.ops.lookup_table_v2(
+        return _C_ops.lookup_table_v2(
             weight, x, 'is_sparse', sparse, 'is_distributed', False,
             'remote_prefetch', False, 'padding_idx', padding_idx)
     else:

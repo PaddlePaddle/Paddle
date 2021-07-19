@@ -150,6 +150,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "tools/checkout_pr_approval.py" ];then
           echo_line="test_checkout_pr_approval.py will be executed for changed checkout_pr_approval.py.\n"
           run_tools_test test_checkout_pr_approval.py
+      elif [ "${API_FILE}" == "tools/checkout_api_compatible.py" ];then
+          echo_line="test_checkout_api_compatible.py will be executed for changed checkout_api_compatible.py.\n"
+          run_tools_test test_checkout_api_compatible.py
       elif [ "${API_FILE}" == "python/paddle/distributed/fleet/__init__.py" ]; then
 	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
 	      check_approval 1 35824027 38231817
@@ -197,7 +200,8 @@ if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 47554610
 fi
 
-HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
+NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
+HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder or luotao1) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
     check_approval 1 22165420 6836917 46661762 26922892

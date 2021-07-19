@@ -27,6 +27,7 @@ from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer, Constant
 from .. import core
 import warnings
+from paddle import _C_ops
 
 __all__ = [
     'center_loss',
@@ -261,8 +262,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
         return cross_entropy2(input, label, ignore_index)
 
     if in_dygraph_mode():
-        return core.ops.cross_entropy(input, label, "soft_label", soft_label,
-                                      "ignore_index", ignore_index)
+        return _C_ops.cross_entropy(input, label, "soft_label", soft_label,
+                                    "ignore_index", ignore_index)
 
     inputs = {'X': [input], 'Label': [label]}
     attrs = {"soft_label": soft_label, "ignore_index": ignore_index}
@@ -278,8 +279,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
 def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
     if in_dygraph_mode():
-        loss, _, _ = core.ops.cross_entropy2(input, label, 'ignore_index',
-                                             ignore_index)
+        loss, _, _ = _C_ops.cross_entropy2(input, label, 'ignore_index',
+                                           ignore_index)
         return loss
 
     inputs = {'X': [input], 'Label': [label]}
@@ -335,8 +336,8 @@ def square_error_cost(input, label):
 
     """
     if in_dygraph_mode():
-        minus_out = core.ops.elementwise_sub(input, label)
-        square_out = core.ops.square(minus_out)
+        minus_out = _C_ops.elementwise_sub(input, label)
+        square_out = _C_ops.square(minus_out)
         return square_out
 
     check_variable_and_dtype(input, "input", ['float32', 'float64'],
@@ -600,7 +601,7 @@ def warpctc(input,
             raise ValueError(
                 "input_length and label_length must not be None in dygraph mode!"
             )
-        grad, loss_out = core.ops.warpctc(
+        grad, loss_out = _C_ops.warpctc(
             input,
             label,
             input_length,
@@ -1260,12 +1261,12 @@ def softmax_with_cross_entropy(logits,
     """
     if in_dygraph_mode():
         if core.is_compiled_with_npu():
-            softmax, backprop, loss = core.ops.softmax_with_cross_entropy(
+            softmax, backprop, loss = _C_ops.softmax_with_cross_entropy(
                 logits, label, 'soft_label', soft_label, 'ignore_index',
                 ignore_index, 'numeric_stable_mode', numeric_stable_mode,
                 'axis', axis)
         else:
-            softmax, loss = core.ops.softmax_with_cross_entropy(
+            softmax, loss = _C_ops.softmax_with_cross_entropy(
                 logits, label, 'soft_label', soft_label, 'ignore_index',
                 ignore_index, 'numeric_stable_mode', numeric_stable_mode,
                 'axis', axis)

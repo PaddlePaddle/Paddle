@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/softmax_mask_fuse_upper_triangle_op.h"
+#include "paddle/fluid/operators/fused_softmax_mask_upper_triangle_op.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -534,12 +534,12 @@ class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    softmax_mask_fuse_upper_triangle,
+    fused_softmax_mask_upper_triangle,
     ops::SoftmaxMaskFuseUpperTriangleKernel<plat::CUDADeviceContext,
                                             plat::float16>,
     ops::SoftmaxMaskFuseUpperTriangleKernel<plat::CUDADeviceContext, float>);
 REGISTER_OP_CUDA_KERNEL(
-    softmax_mask_fuse_upper_triangle_grad,
+    fused_softmax_mask_upper_triangle_grad,
     ops::SoftmaxMaskFuseUpperTriangleGradKernel<plat::CUDADeviceContext,
                                                 plat::float16>,
     ops::SoftmaxMaskFuseUpperTriangleGradKernel<plat::CUDADeviceContext,

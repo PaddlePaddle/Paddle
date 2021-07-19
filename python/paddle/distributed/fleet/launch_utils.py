@@ -525,9 +525,14 @@ def start_local_trainers(cluster,
                 f.write("PADDLE_TRAINER_ENDPOINTS: \n")
                 f.write("\n".join(cluster.trainers_endpoints()))
             fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
-            proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
+            proc = subprocess.Popen(
+                cmd,
+                env=current_env,
+                stdout=fn,
+                stderr=fn,
+                preexec_fn=os.setsid)
         else:
-            proc = subprocess.Popen(cmd, env=current_env)
+            proc = subprocess.Popen(cmd, env=current_env, preexec_fn=os.setsid)
 
         tp = TrainerProc()
         tp.proc = proc

@@ -173,6 +173,10 @@ class OptimizerWithMixedPrecision(object):
             self._train_program.global_block().append_op(
                 type="alloc_float_status",
                 outputs={"FloatStatus": float_status}, )
+            self._train_program.global_block().append_op(
+                type="clear_float_status",
+                inputs={"FloatStatus": float_status},
+                outputs={"FloatStatusOut": float_status}, )
             self._float_status = float_status
         else:
             self._float_status = None
