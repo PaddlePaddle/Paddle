@@ -138,6 +138,7 @@ message VarType {
     TUPLE = 18;
 
     STRINGS = 25;
+    MAP = 26;
   }
 
   required Type type = 1;
