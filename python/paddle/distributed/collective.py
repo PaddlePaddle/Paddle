@@ -1481,7 +1481,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
                 np_data2 = np.array([[19, 20, 21], [22, 23, 24]])
             data1 = paddle.to_tensor(np_data1)
             data2 = paddle.to_tensor(np_data2)
-            paddle.distributed.all_to_all([data1, data2], out_tensor_list)
+            paddle.distributed.alltoall([data1, data2], out_tensor_list)
             # out for rank 0: [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]
             # out for rank 1: [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]]
     """
@@ -1490,15 +1490,15 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
 
     ring_id = 0 if group is None else group.id
     temp = paddle.concat(in_tensor_list, axis=0)
+    nranks = len(in_tensor_list)
     if in_dygraph_mode():
-        _C_ops.alltoall_(temp, 'use_calc_stream', use_calc_stream, 'ring_id',
-                         ring_id)
+        out = _C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
+                              'ring_id', ring_id)
     else:
         op_type = 'alltoall'
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(
             dtype=in_tensor_list[0].dtype)
-        nranks = len(in_tensor_list)
 
         if not isinstance(in_tensor_list, list):
             raise ValueError("The type of 'in_tensor_list' for all_to_all "

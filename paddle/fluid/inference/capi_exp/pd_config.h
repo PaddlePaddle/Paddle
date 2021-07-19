@@ -636,6 +636,14 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigAppendPass(
 ///
 PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayCstr* PD_ConfigAllPasses(
     __pd_keep PD_Config* pd_config);
+///
+/// \brief Get information of config.
+/// Attention, Please release the string manually.
+///
+/// \return Return config info.
+///
+PADDLE_CAPI_EXPORT extern const char* PD_ConfigSummary(
+    __pd_keep PD_Config* pd_config);
 
 #ifdef __cplusplus
 }  // extern "C"

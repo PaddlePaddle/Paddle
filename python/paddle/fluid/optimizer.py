@@ -4190,6 +4190,11 @@ class PipelineOptimizer(object):
     """
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
+        self._device = 'cpu'
+        if core.is_compiled_with_npu():
+            self._device = "npu"
+        elif core.is_compiled_with_cuda():
+            self._device = "gpu"
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
         if not isinstance(optimizer, Optimizer) and not isinstance(
@@ -4387,7 +4392,7 @@ class PipelineOptimizer(object):
         for op in block.ops:
             device = op.attr(self._op_device_key)
             # Copy ops whose op_device set to "gpu:all" to all sections.
-            if device == "gpu:all":
+            if device == f"{self._device}:all":
                 for device in devices:
                     program = device_program_map[device]
                     op_desc = op.desc
@@ -4539,7 +4544,7 @@ class PipelineOptimizer(object):
         if op.attr(self._op_role_key) == lrsched_role:
             # For LRSched ops, we should put them on all sub-programs to
             # make sure each sub-program update the lr correctly
-            op._set_attr(self._op_device_key, "gpu:all")
+            op._set_attr(self._op_device_key, f"{self._device}:all")
         # bugfix in hybrid parallelism
         elif op.type == "sum" and self._is_backward_op(op):
             # For sum ops that compute the sum of @RENAMED@ vars
@@ -4606,10 +4611,10 @@ class PipelineOptimizer(object):
                     op.type == 'fill_constant' or
                     op.type == 'elementwise_max' or
                     op.type == 'elementwise_div'):
-                device = "gpu:all"
+                device = f"{self._device}:all"
             op._set_attr(self._op_device_key, device)
         elif op.type == "alloc_float_status":
-            op._set_attr(self._op_device_key, "gpu:all")
+            op._set_attr(self._op_device_key, f"{self._device}:all")
         else:
             other_known_ops = [
                 'update_loss_scaling',
@@ -4623,7 +4628,7 @@ class PipelineOptimizer(object):
                 "op_device set, they must be one of {}, but it " \
                 "is {}".format(other_known_ops, op.type)
             assert self._is_optimize_op(op)
-            op._set_attr(self._op_device_key, "gpu:all")
+            op._set_attr(self._op_device_key, f"{self._device}:all")
 
     def _add_op_device_attr(self, block):
         """
@@ -4638,7 +4643,7 @@ class PipelineOptimizer(object):
                 # We use "gpu:all" to represent the op should be put on all
                 # sub-programs, such as lr-related ops. Note that: "gpu:all"
                 # is only used by pipeline as an indicator.
-                op._set_attr(self._op_device_key, "gpu:all")
+                op._set_attr(self._op_device_key, f"{self._device}:all")
                 continue
             # op_device attribute has been set
             if self._get_op_device_attr(op): continue
@@ -4663,6 +4668,7 @@ class PipelineOptimizer(object):
         pre_stage_id = None
         decrease_flag = False
         in_optimize = False
+        in_forward = True
         for op in block.ops:
             if not op._has_kernel(op.type):
                 assert op.type == "conditional_block" and (
@@ -4680,6 +4686,8 @@ class PipelineOptimizer(object):
                     valid_op_role_value)
             if int(op_role) == int(self._op_role.Optimize):
                 in_optimize = True
+            if int(op_role) == int(self._op_role.Backward):
+                in_forward = False
 
             assert op.has_attr(self._op_device_key), (
                 "op ({}) has no {} attribute.".format(op.type,
@@ -4688,7 +4696,7 @@ class PipelineOptimizer(object):
             device = op.attr(self._op_device_key)
             assert device, ("op_device attribute for op "
                             "{} has not been set.".format(op.type))
-            if device == "gpu:all" or device == "npu:all": continue
+            if device == f"{self._device}:all": continue
 
             dev_type = device.split(':')[0]
             stage_id = int(device.split(':')[1])
@@ -4707,14 +4715,16 @@ class PipelineOptimizer(object):
                         "but the interval of op={} and prev op is {}".format(op, interval)
                     # stage must be in order, such as Forward(0 1 2 3 4), Backward(4 3 2 1 0)
                     # if stage is unordered, such as Forward(0 1 2 3 4 3 4), will report error
-                    if interval == -1:
-                        decrease_flag = True
-                    if interval == 1:
-                        # FIXME(wangxi): recompute failed
+                    if in_forward:
+                        assert interval >= 0, \
+                            "Pipeline stage must be sequential increment in Forward, prev_stage={}, " \
+                            "please check the stage of op={}".format(pre_stage_id, op)
+                    else:
+                        # FIXME(wangxi): recompute check failed
                         pass
-                        #assert decrease_flag is False, \
-                        #    "Pipeline stage must be in order, " \
-                        #    "please check the stage of op={}".format(op)
+                        #assert interval <=0, \
+                        #    "Pipeline stage must be sequential decrement in Backward, prev_stage={}, " \
+                        #    "please check the stage of op={}".format(pre_stage_id, op)
                 pre_stage_id = stage_id
 
         return device_list
@@ -4740,7 +4750,7 @@ class PipelineOptimizer(object):
 
         for index, op in enumerate(list(block.ops)):
             cur_device = op.attr(self._op_device_key)
-            if cur_device == "gpu:all": continue
+            if cur_device == f"{self._device}:all": continue
             for var_name in op.input_arg_names:
                 var = block.var(var_name)
                 # skip data var
@@ -4758,7 +4768,8 @@ class PipelineOptimizer(object):
                     prev_device = prev_op.attr(self._op_device_key) \
                         if prev_op else None
 
-                if prev_device is None or prev_device == "gpu:all": continue
+                if prev_device is None or prev_device == f"{self._device}:all":
+                    continue
 
                 if prev_device == cur_device: continue
 
