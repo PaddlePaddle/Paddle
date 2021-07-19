@@ -234,15 +234,8 @@ class DropoutGradKernel : public framework::OpKernel<T> {
               grad_x->data<T>());
 #endif
         } else {
-          auto* x = grad_x->data<T>();
-          auto* y = grad_y->data<T>();
-          float factor = 1.0f / static_cast<T>(1.0f - dropout_prob);
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-          for (auto i = 0; i < size; i++) {
-            x[i] = y[i] * factor;
-          }
+          dX.device(place) =
+              dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
         }
       }
     } else {
