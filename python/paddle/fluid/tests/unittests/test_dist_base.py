@@ -62,7 +62,8 @@ class TestDistRunnerBase(object):
                   batch_size=DEFAULT_BATCH_SIZE,
                   lr=0.1,
                   single_device=False,
-                  use_dgc=False):
+                  use_dgc=False,
+                  dist_strategy=None):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 

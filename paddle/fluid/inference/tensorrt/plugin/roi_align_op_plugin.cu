@@ -17,7 +17,6 @@
 #include <algorithm>
 
 #include "paddle/fluid/inference/tensorrt/plugin/roi_align_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
@@ -304,7 +303,7 @@ int RoiAlignPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
 
 nvinfer1::DataType RoiAlignPluginDynamic::getOutputDataType(
     int index, const nvinfer1::DataType* inputTypes, int nbInputs) const {
-  return data_type_;
+  return inputTypes[0];
 }
 
 const char* RoiAlignPluginDynamic::getPluginType() const {

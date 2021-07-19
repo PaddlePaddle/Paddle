@@ -31,7 +31,7 @@ from paddle.fluid.dygraph.container import Sequential
 from paddle.nn import Linear, Conv2D, Softmax
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.contrib.slim.quantization.imperative.quant_nn import QuantizedConv2D
+from paddle.nn.quant.quant_layers import QuantizedConv2D
 
 from imperative_test_utils import fix_model_dict, ImperativeLenet
 

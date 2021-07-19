@@ -25,6 +25,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.layers.nn import topk
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode
 import paddle
+from paddle import _C_ops
 
 __all__ = []
 
@@ -798,8 +799,8 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             total = _varbase_creator(dtype="int32")
 
         topk_out, topk_indices = topk(input, k=k)
-        _acc, _, _ = core.ops.accuracy(topk_out, topk_indices, label, correct,
-                                       total)
+        _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label, correct,
+                                     total)
         return _acc
 
     helper = LayerHelper("accuracy", **locals())

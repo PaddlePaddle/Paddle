@@ -32,6 +32,7 @@ import paddle
 from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle import _C_ops
 import paddle.fluid.dygraph_utils as dygraph_utils
 
 __all__ = []
@@ -189,10 +190,12 @@ def barrier(group=None):
 
     ring_id = 0 if group is None else group.id
 
-    op_type = 'barrier'
     temp = fill_constant([1], dtype="int32", value="1")
     if in_dygraph_mode():
-        return core.ops.barrier(temp, temp, 'ring_id', ring_id)
+        return _C_ops.barrier(temp, temp, 'ring_id', ring_id)
+
+    op_type = 'barrier'
+
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'group' for barrier must be int.")
     helper = LayerHelper(op_type, **locals())
@@ -316,7 +319,7 @@ def wait(tensor, group=None, use_calc_stream=True):
 def _sync_calc_stream(tensor):
 
     if in_dygraph_mode():
-        return core.ops.c_sync_calc_stream(tensor, tensor)
+        return _C_ops.c_sync_calc_stream(tensor, tensor)
 
     op_type = 'c_sync_calc_stream'
 
@@ -330,8 +333,7 @@ def _sync_calc_stream(tensor):
 def _sync_comm_stream(tensor, ring_id=0):
 
     if in_dygraph_mode():
-        return core.ops.c_sync_comm_stream([tensor], [tensor], 'ring_id',
-                                           ring_id)
+        return _C_ops.c_sync_comm_stream([tensor], [tensor], 'ring_id', ring_id)
 
     op_type = 'c_sync_comm_stream'
 
@@ -389,9 +391,9 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     assert gsrc >= 0, ("src rank out of group, need global rank")
 
     if in_dygraph_mode():
-        return core.ops.c_broadcast(tensor, tensor, 'root', gsrc,
-                                    'use_calc_stream', use_calc_stream,
-                                    'ring_id', ring_id)
+        return _C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
+                                  'use_calc_stream', use_calc_stream, 'ring_id',
+                                  ring_id)
 
     op_type = 'c_broadcast'
     check_variable_and_dtype(
@@ -451,17 +453,17 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
         if op == ReduceOp.SUM:
-            return core.ops.c_allreduce_sum_(
-                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
+            return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
+                                           use_calc_stream, 'ring_id', ring_id)
         elif op == ReduceOp.MAX:
-            return core.ops.c_allreduce_max_(
-                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
+            return _C_ops.c_allreduce_max_(tensor, 'use_calc_stream',
+                                           use_calc_stream, 'ring_id', ring_id)
         elif op == ReduceOp.MIN:
-            return core.ops.c_allreduce_min_(
-                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
+            return _C_ops.c_allreduce_min_(tensor, 'use_calc_stream',
+                                           use_calc_stream, 'ring_id', ring_id)
         elif op == ReduceOp.PROD:
-            return core.ops.c_allreduce_prod_(
-                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
+            return _C_ops.c_allreduce_prod_(tensor, 'use_calc_stream',
+                                            use_calc_stream, 'ring_id', ring_id)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
@@ -537,21 +539,21 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
     if in_dygraph_mode():
         if op == ReduceOp.SUM:
-            return core.ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
-                                         use_calc_stream, 'ring_id', ring_id,
-                                         'root_id', gdst)
+            return _C_ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
+                                       use_calc_stream, 'ring_id', ring_id,
+                                       'root_id', gdst)
         elif op == ReduceOp.MAX:
-            return core.ops.c_reduce_max(tensor, tensor, 'use_calc_stream',
-                                         use_calc_stream, 'ring_id', ring_id,
-                                         'root_id', gdst)
+            return _C_ops.c_reduce_max(tensor, tensor, 'use_calc_stream',
+                                       use_calc_stream, 'ring_id', ring_id,
+                                       'root_id', gdst)
         elif op == ReduceOp.MIN:
-            return core.ops.c_reduce_min(tensor, tensor, 'use_calc_stream',
-                                         use_calc_stream, 'ring_id', ring_id,
-                                         'root_id', gdst)
+            return _C_ops.c_reduce_min(tensor, tensor, 'use_calc_stream',
+                                       use_calc_stream, 'ring_id', ring_id,
+                                       'root_id', gdst)
         elif op == ReduceOp.PROD:
-            return core.ops.c_reduce_prod(tensor, tensor, 'use_calc_stream',
-                                          use_calc_stream, 'ring_id', ring_id,
-                                          'root_id', gdst)
+            return _C_ops.c_reduce_prod(tensor, tensor, 'use_calc_stream',
+                                        use_calc_stream, 'ring_id', ring_id,
+                                        'root_id', gdst)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
@@ -635,8 +637,8 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
 
     if in_dygraph_mode():
-        core.ops.c_allgather(tensor, out, 'use_calc_stream', use_calc_stream,
-                             'ring_id', ring_id, 'nranks', nranks)
+        _C_ops.c_allgather(tensor, out, 'use_calc_stream', use_calc_stream,
+                           'ring_id', ring_id, 'nranks', nranks)
     else:
         if not isinstance(tensor_list, list):
             raise ValueError("The type of 'tensor_list' for all_gather "
@@ -717,17 +719,16 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     rank = _get_global_group().rank if group is None else group.rank
     nranks = _get_global_group().nranks if group is None else group.nranks
 
-    op_type = 'c_scatter'
-
     if rank != gsrc:
         tensor_list = []
         for _ in range(nranks):
             tensor_list.append(tensor)
     temp = paddle.concat(tensor_list, axis=0)
     if in_dygraph_mode():
-        return core.ops.c_scatter(temp, tensor, 'use_calc_stream',
-                                  use_calc_stream, 'ring_id', ring_id, 'nranks',
-                                  nranks, 'root', gsrc)
+        return _C_ops.c_scatter(temp, tensor, 'use_calc_stream',
+                                use_calc_stream, 'ring_id', ring_id, 'nranks',
+                                nranks, 'root', gsrc)
+    op_type = 'c_scatter'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'scatter')
@@ -761,8 +762,8 @@ def _c_identity(tensor, group=None):
     ring_id = 0 if group is None else group.id
 
     if in_dygraph_mode():
-        return core.ops.c_identity(tensor, 'use_calc_stream', True, 'ring_id',
-                                   ring_id, 'use_model_parallel', True)
+        return _C_ops.c_identity(tensor, 'use_calc_stream', True, 'ring_id',
+                                 ring_id, 'use_model_parallel', True)
     op_type = 'c_identity'
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
@@ -804,9 +805,9 @@ def _c_concat(tensor, group=None):
     nranks = _get_global_env().world_size if group is None else group.nranks
 
     if in_dygraph_mode():
-        return core.ops.c_concat(tensor, 'ring_id', ring_id, 'use_calc_stream',
-                                 True, 'rank', rank, 'nranks', nranks,
-                                 'use_model_parallel', True)
+        return _C_ops.c_concat(tensor, 'ring_id', ring_id, 'use_calc_stream',
+                               True, 'rank', rank, 'nranks', nranks,
+                               'use_model_parallel', True)
 
     op_type = 'c_concat'
     helper = LayerHelper(op_type, **locals())
@@ -852,9 +853,9 @@ def _c_split(tensor, group=None):
     nranks = _get_global_env().world_size if group is None else group.nranks
 
     if in_dygraph_mode():
-        return core.ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
-                                ring_id, 'rank', rank, 'nranks', nranks,
-                                'use_model_parallel', True)
+        return _C_ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
+                              ring_id, 'rank', rank, 'nranks', nranks,
+                              'use_model_parallel', True)
 
     op_type = 'c_split'
     helper = LayerHelper(op_type, **locals())
@@ -891,7 +892,7 @@ def _mp_allreduce(tensor,
 
     if in_dygraph_mode():
         if op == ReduceOp.SUM:
-            return core.ops.c_allreduce_sum_(
+            return _C_ops.c_allreduce_sum_(
                 tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
                 "use_model_parallel", use_model_parallel)
         else:
@@ -932,7 +933,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
         Tensor.
     """
     if in_dygraph_mode():
-        return core.ops.c_embedding(table, index, "start_index", start_index)
+        return _C_ops.c_embedding(table, index, "start_index", start_index)
 
     op_type = 'c_embedding'
     helper = LayerHelper(op_type, **locals())
@@ -1007,7 +1008,7 @@ def _c_softmax_with_cross_entropy(logits,
         label = paddle.unsqueeze(label, axis=-1)
 
     if in_dygraph_mode():
-        softmax, loss = core.ops.c_softmax_with_cross_entropy(
+        softmax, loss = _C_ops.c_softmax_with_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks)
         if not return_softmax:
             return loss
@@ -1042,8 +1043,8 @@ def _linear(x, weight, bias=None, name=None):
     """
     if in_dygraph_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
-        core.ops.matmul(x, weight, pre_bias, 'transpose_X', False,
-                        'transpose_Y', False, "alpha", 1)
+        _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
+                      False, "alpha", 1)
         return dygraph_utils._append_bias_in_dygraph(
             pre_bias, bias, axis=len(x.shape) - 1)
     else:
@@ -1480,7 +1481,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
                 np_data2 = np.array([[19, 20, 21], [22, 23, 24]])
             data1 = paddle.to_tensor(np_data1)
             data2 = paddle.to_tensor(np_data2)
-            paddle.distributed.all_to_all([data1, data2], out_tensor_list)
+            paddle.distributed.alltoall([data1, data2], out_tensor_list)
             # out for rank 0: [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]
             # out for rank 1: [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]]
     """
@@ -1488,16 +1489,17 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         return
 
     ring_id = 0 if group is None else group.id
-    op_type = 'alltoall'
     temp = paddle.concat(in_tensor_list, axis=0)
-    helper = LayerHelper(op_type, **locals())
     nranks = len(in_tensor_list)
-    out = helper.create_variable_for_type_inference(
-        dtype=in_tensor_list[0].dtype)
     if in_dygraph_mode():
-        core.ops.alltoall_(temp, 'use_calc_stream', use_calc_stream, 'ring_id',
-                           ring_id)
+        out = _C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
+                              'ring_id', ring_id)
     else:
+        op_type = 'alltoall'
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=in_tensor_list[0].dtype)
+
         if not isinstance(in_tensor_list, list):
             raise ValueError("The type of 'in_tensor_list' for all_to_all "
                              "should be list.")
@@ -1554,10 +1556,10 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         return
     ring_id = 0 if group is None else group.id
 
-    op_type = 'send_v2'
     if in_dygraph_mode():
-        return core.ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
-                                'ring_id', ring_id, 'peer', dst)
+        return _C_ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
+                              'ring_id', ring_id, 'peer', dst)
+    op_type = 'send_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'send')
@@ -1604,11 +1606,11 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         return
     ring_id = 0 if group is None else group.id
 
-    op_type = 'recv_v2'
     if in_dygraph_mode():
-        return core.ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
-                                'ring_id', ring_id, 'peer', src, 'dtype',
-                                tensor.dtype, 'out_shape', tensor.shape)
+        return _C_ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
+                              'ring_id', ring_id, 'peer', src, 'dtype',
+                              tensor.dtype, 'out_shape', tensor.shape)
+    op_type = 'recv_v2'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'recv')

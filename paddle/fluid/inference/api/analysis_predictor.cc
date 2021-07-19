@@ -264,6 +264,14 @@ bool AnalysisPredictor::CreateExecutor() {
           "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
     }
+  } else if (config_.use_npu()) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    place_ = paddle::platform::NPUPlace(config_.npu_device_id());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use NPU forward propagation, but Paddle was not compiled "
+        "with WITH_ASCEND_CL."));
+#endif
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -847,6 +855,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
+  } else if (platform::is_npu_place(place_)) {
+    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+    res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -879,6 +890,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
+  } else if (platform::is_npu_place(place_)) {
+    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+    res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
