@@ -77,6 +77,7 @@ class TensorDistributedAttribute:
         self._shard_mask = None
         self._offload_device = None
         self._is_annotated = {}
+        self._is_parameter = False 
 
     def get_desc(self):
         return self._desc
@@ -112,6 +113,12 @@ class TensorDistributedAttribute:
     def is_annotated(self, dist_attr_name):
         return self._is_annotated.get(dist_attr_name, False)
 
+    def mark_as_parameter(self):
+        self._is_parameter = True
+    
+    def is_parameter(self):
+        return self._is_parameter
+
     def __str__(self):
         str = "{{name: {}, distributed_attr_uid: {}".format(
             self._desc.name(), self._desc.get_distributed_attr_uid())
@@ -121,6 +128,8 @@ class TensorDistributedAttribute:
             annotated_str = "non-annotated"
         str += ", process_mesh ({}): {}".format(annotated_str,
                                                 self._process_mesh)
+
+        str += ", is_parameter: {}".format(self._is_parameter)
 
         if self.is_annotated("dims_mapping"):
             annotated_str = "annotated"
@@ -167,6 +176,7 @@ class OperatorDistributedAttribute:
         self._is_annotated_inputs_dims_mapping = {}
         self._is_annotated_outputs_dims_mapping = {}
         self._impl_idx = None
+        self._parameters = {}
 
     def get_desc(self):
         return self._desc
@@ -233,6 +243,12 @@ class OperatorDistributedAttribute:
     def is_annotated_output_dims_mapping(self, name):
         return self._is_annotated_outputs_dims_mapping.get(name, False)
 
+    def mark_as_parameter(self, arg_name):
+        self._parameters[arg_name] = True
+    
+    def is_parameter(self, arg_name):
+        return self._parameters.get(arg_name, False)
+
     def __str__(self):
         str = "{{type: {}, distributed_attr_uid: {}".format(
             self._desc.type(), self._desc.get_distributed_attr_uid())
@@ -250,8 +266,12 @@ class OperatorDistributedAttribute:
                 annotated_str = "annotated"
             else:
                 annotated_str = "non-annotated"
-            str += ", {}'s dims_mapping (input, {}): {}".format(
-                arg_name, annotated_str, dims_mapping)
+            if self.is_parameter(arg_name):
+                is_parameter_str = "parameter"
+            else:
+                is_parameter_str = "non-parameter"
+            str += ", {}'s dims_mapping (input, {}, {}): {}".format(
+                arg_name, annotated_str, is_parameter_str, dims_mapping)
 
         for arg_name in self._desc.output_arg_names():
             dims_mapping = self.get_output_dims_mapping(arg_name)
@@ -259,8 +279,12 @@ class OperatorDistributedAttribute:
                 annotated_str = "annotated"
             else:
                 annotated_str = "non-annotated"
-            str += ", {}'s dims_mapping (output, {}): {}".format(
-                arg_name, annotated_str, dims_mapping)
+            if self.is_parameter(arg_name):
+                is_parameter_str = "parameter"
+            else:
+                is_parameter_str = "non-parameter"
+            str += ", {}'s dims_mapping (output, {}, {}): {}".format(
+                arg_name, annotated_str, is_parameter_str, dims_mapping)
 
         str += ", dist_impl idx: {} }}".format(self._impl_idx)
 
