@@ -200,12 +200,8 @@ if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 47554610
 fi
 
-HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
-#NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py" | grep -v "approvals.sh" || true`
-echo "111111"
-git diff -U0 upstream/$BRANCH
-echo "222222"
-git diff --name-only upstream/$BRANCH
+NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
+HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder or luotao1) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
     check_approval 1 22165420 6836917 46661762 26922892
