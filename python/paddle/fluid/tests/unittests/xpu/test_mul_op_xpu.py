@@ -81,7 +81,7 @@ class TestXPUMulOp1(XPUOpTest):
     def test_check_grad_ingore_x(self):
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(
-            place, ['Y'], 'Out', max_relative_error=1.1, no_grad_set=set("X"))
+            place, ['Y'], 'Out', max_relative_error=0.1, no_grad_set=set("X"))
 
     def test_check_grad_ignore_y(self):
         place = paddle.XPUPlace(0)
