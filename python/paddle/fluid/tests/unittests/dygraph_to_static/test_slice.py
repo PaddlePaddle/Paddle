@@ -180,7 +180,7 @@ class TestSetValueWithLayerAndSave(unittest.TestCase):
 class TestSliceSupplementCase(unittest.TestCase):
     def test_static_slice_step(self):
         paddle.enable_static()
-        array = np.arange(4**3).reshape((4, 4, 4))
+        array = np.arange(4**3).reshape((4, 4, 4)).astype('int64')
 
         x = paddle.static.data(name='x', shape=[4, 4, 4], dtype='int64')
         z1 = x[::2]
@@ -199,7 +199,7 @@ class TestSliceSupplementCase(unittest.TestCase):
     def test_static_slice_step_dygraph2static(self):
         paddle.disable_static()
 
-        array = np.arange(4**2 * 5).reshape((5, 4, 4))
+        array = np.arange(4**2 * 5).reshape((5, 4, 4)).astype('int64')
         inps = paddle.to_tensor(array)
 
         def func(inps):
