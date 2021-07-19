@@ -62,9 +62,9 @@ class TestLabelSmoothOp(OpTest):
         self.attrs = {"epsilon": epsilon}
 
     def set_outputs(self):
-        dist = None if 'PriorDist' not in self.inputs else self.inputs['PriorDist']
+        dist = None if 'PriorDist' not in self.inputs else self.inputs[
+            'PriorDist']
         out = self.calc_out(self.inputs['X'], self.attrs['epsilon'], dist)
-
         self.outputs = {'Out': out}
 
     def set_npu(self):
@@ -93,13 +93,13 @@ class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
 class TestLabelSmoothOp3D(TestLabelSmoothOp):
     def set_inputs(self):
         super(TestLabelSmoothOp3D, self).set_inputs()
-        self.inputs['X'].reshape([2,-1,self.inputs['X'].shape[-1]])
+        self.inputs['X'].reshape([2, -1, self.inputs['X'].shape[-1]])
 
 
 class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
     def set_inputs(self):
         super(TestLabelSmoothOpWithPriorDist3D, self).set_inputs()
-        self.inputs['X'].reshape([2,-1,self.inputs['X'].shape[-1]])
+        self.inputs['X'].reshape([2, -1, self.inputs['X'].shape[-1]])
 
 
 class TestLabelSmoothOpFP16(TestLabelSmoothOp):
