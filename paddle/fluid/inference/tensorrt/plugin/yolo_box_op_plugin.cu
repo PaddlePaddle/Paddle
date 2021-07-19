@@ -295,7 +295,7 @@ const char* YoloBoxPlugin::getPluginNamespace() const {
 
 nvinfer1::DataType YoloBoxPlugin::getOutputDataType(
     int index, const nvinfer1::DataType* input_type, int nb_inputs) const {
-  return data_type_;
+  return input_type[0];
 }
 
 bool YoloBoxPlugin::isOutputBroadcastAcrossBatch(int output_index,
