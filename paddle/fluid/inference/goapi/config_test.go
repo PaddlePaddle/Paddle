@@ -85,6 +85,8 @@ func TestNewConfig(t *testing.T) {
 
 	config.DeletePass("test_pass")
 	t.Logf("After DeletePass, AllPasses:%+v", config.AllPasses())
+
+	t.Log(config.Summary())
 }
 
 func TestLite(t *testing.T) {
