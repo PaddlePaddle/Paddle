@@ -27,6 +27,81 @@ paddle.enable_static()
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
+class TestCumsumOp(unittest.TestCase):
+    def run_cases(self):
+        data_np = np.arange(12).reshape(3, 4)
+        data = paddle.to_tensor(data_np)
+
+        y = paddle.cumsum(data)
+        z = np.cumsum(data_np)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
+        y = paddle.cumsum(data, axis=0)
+        z = np.cumsum(data_np, axis=0)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
+        y = paddle.cumsum(data, axis=-1)
+        z = np.cumsum(data_np, axis=-1)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
+        y = paddle.cumsum(data, dtype='float32')
+        self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
+
+        y = paddle.cumsum(data, dtype=np.int32)
+        self.assertTrue(y.dtype == core.VarDesc.VarType.INT32)
+
+        y = paddle.cumsum(data, axis=-2)
+        z = np.cumsum(data_np, axis=-2)
+        self.assertTrue(np.array_equal(z, y.numpy()))
+
+    def run_static(self, use_npu=False):
+        with fluid.program_guard(fluid.Program()):
+            data_np = np.random.random((100, 100)).astype(np.float32)
+            x = paddle.static.data('X', [100, 100])
+            y = paddle.cumsum(x)
+            y2 = paddle.cumsum(x, axis=0)
+            y3 = paddle.cumsum(x, axis=-1)
+            y4 = paddle.cumsum(x, dtype='float32')
+            y5 = paddle.cumsum(x, dtype=np.int32)
+            y6 = paddle.cumsum(x, axis=-2)
+
+            place = fluid.NPUPlace(0) if use_npu else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            out = exe.run(feed={'X': data_np},
+                          fetch_list=[
+                              y.name, y2.name, y3.name, y4.name, y5.name,
+                              y6.name
+                          ])
+
+            z = np.cumsum(data_np)
+            self.assertTrue(np.allclose(z, out[0]))
+            z = np.cumsum(data_np, axis=0)
+            self.assertTrue(np.allclose(z, out[1]))
+            z = np.cumsum(data_np, axis=-1)
+            self.assertTrue(np.allclose(z, out[2]))
+            self.assertTrue(out[3].dtype == np.float32)
+            self.assertTrue(out[4].dtype == np.int32)
+            z = np.cumsum(data_np, axis=-2)
+            self.assertTrue(np.allclose(z, out[5]))
+
+    def test_npu(self):
+        # Now, npu tests need setting paddle.enable_static()
+        # paddle.disable_static(paddle.fluid.NPUPlace(0))
+        # self.run_cases()
+        # paddle.enable_static()
+
+        self.run_static(use_npu=True)
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = paddle.static.data('x', [3, 4])
+            y = paddle.cumsum(x, name='out')
+            self.assertTrue('out' in y.name)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestNPUCumSumOp1(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
@@ -185,6 +260,24 @@ class TestNPUCumSumReverseExclusive(TestNPUCumSumOp1):
                         (4, 5, 1), dtype=self.dtype)),
                 axis=2)
         }
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestNPUCumSumWithFlatten1(TestNPUCumSumOp1):
+    def init_testcase(self):
+        self.attrs = {'flatten': True}
+        self.inputs = {'X': np.random.random((5, 6)).astype(self.dtype)}
+        self.outputs = {'Out': self.inputs['X'].cumsum()}
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestNPUCumSumWithFlatten2(TestNPUCumSumOp1):
+    def init_testcase(self):
+        self.attrs = {'flatten': True}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
+        self.outputs = {'Out': self.inputs['X'].cumsum()}
 
 
 if __name__ == '__main__':

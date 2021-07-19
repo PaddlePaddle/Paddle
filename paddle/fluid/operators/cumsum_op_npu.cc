@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/cum_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
@@ -39,8 +40,19 @@ class CumSumNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    const auto& runner = NpuOpRunner("CumsumD", {*x}, {*out}, attr_input);
-    runner.Run(stream);
+    bool flatten = ctx.Attr<bool>("flatten");
+    if (flatten) {
+      Tensor new_x(x->type());
+      new_x.ShareDataWith(*x);
+
+      new_x.Resize(framework::make_ddim({x->numel()}));
+
+      const auto& runner = NpuOpRunner("CumsumD", {new_x}, {*out}, attr_input);
+      runner.Run(stream);
+    } else {
+      const auto& runner = NpuOpRunner("CumsumD", {*x}, {*out}, attr_input);
+      runner.Run(stream);
+    }
   }
 };
 
@@ -50,5 +62,6 @@ class CumSumNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    cumsum, ops::CumSumNPUKernel<plat::NPUDeviceContext, float>,
+    cumsum, ops::CumSumNPUKernel<plat::NPUDeviceContext, int>,
+    ops::CumSumNPUKernel<plat::NPUDeviceContext, float>,
     ops::CumSumNPUKernel<plat::NPUDeviceContext, plat::float16>);
