@@ -197,14 +197,14 @@ cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version boost)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 
 cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
 cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
 
-cc_library(program_processing SRCS program_processing.cc DEPS framework_proto)
+cc_library(program_processing SRCS program_processing.cc DEPS framework_proto boost)
 cc_test(program_processing_test SRCS program_processing_test.cc DEPS proto_desc program_processing)
 
 if(WITH_GPU)
