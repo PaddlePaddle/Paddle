@@ -34,6 +34,7 @@ callback_dict = {
     'not_equal': lambda _a, _b: _a != _b
 }
 
+
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestEqual(OpTest):
@@ -149,87 +150,132 @@ class TestLessthan2FP16(TestLessthan2):
         self.dtype = np.float16
 
 
-def create_compare_npu_paddleclass(op_type, dtype, inputs, callback, postfix):
-    @unittest.skipIf(not paddle.is_compiled_with_npu(),
-                     "core is not compiled with NPU")
-    class PaddleCls(OpTest):
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+def create_paddle_op_case(op_type, dtype):
+    callback = callback_dict[op_type]
+
+    class PaddleClsOp(OpTest):
         def setUp(self):
             self.__class__.use_npu = True
             self.op_type = op_type
-            self.dtype = dtype
             self.place = paddle.NPUPlace(0)
+            self.dtype = dtype
             np.random.seed(SEED)
-            x = inputs['X'].astype(dtype)
-            y = inputs['Y'].astype(dtype)
+            self.get_inputs([11, 17], [11, 17])
+            self.get_outputs()
             self.inputs = {
-                'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+                'X': OpTest.np_dtype_to_fluid_dtype(self.input_x),
+                'Y': OpTest.np_dtype_to_fluid_dtype(self.input_y),
             }
+            self.outputs = {'Out': self.real_result}
 
-            out=callback(self.inputs['X'], self.inputs['Y'])
-            self.outputs = {'Out': out}
+        def get_inputs(self, shape_x, shape_y):
+            self.input_x = np.random.uniform(0, 5, shape_x).astype(self.dtype)
+            self.input_y = np.random.uniform(0, 5, shape_y).astype(self.dtype)
+
+        def get_outputs(self):
+            self.real_result = callback(self.input_x, self.input_y)
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
-        def test_dynamic_api(self):
-            if self.dtype == 'float16':
-                return
-            paddle.disable_static()
-            x = paddle.to_tensor(self.inputs['X'])
-            y = paddle.to_tensor(self.inputs['Y'])
-            op = eval("paddle.%s" % (self.op_type))
-            out = op(x, y)
-            self.assertEqual((out.numpy() == self.outputs['Out']).all(), True)
-            paddle.enable_static()
+    cls_op_name = 'TestCaseOp_%s_%s' % (op_type, dtype)
+    PaddleClsOp.__name__ = cls_op_name
+    globals()[cls_op_name] = PaddleClsOp
 
-        def test_static_api(self):
-            if self.dtype == 'float16':
-                return
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+def create_paddle_api_case(op_type, dtype):
+    callback = callback_dict[op_type]
+
+    class PaddleClsAPI(unittest.TestCase):
+        def setUp(self):
+            self.__class__.use_npu = True
+            self.op_type = op_type
+            self.place = paddle.NPUPlace(0)
+            self.dtype = dtype
+            np.random.seed(SEED)
+
+        def get_inputs(self, shape_x, shape_y):
+            self.input_x = np.random.uniform(0, 5, shape_x).astype(self.dtype)
+            self.input_y = np.random.uniform(0, 5, shape_y).astype(self.dtype)
+
+        def get_outputs(self):
+            self.real_result = callback(self.input_x, self.input_y)
+
+        def _test_static(self, shape_x, shape_y):
             paddle.enable_static()
+            self.get_inputs(shape_x, shape_y)
+            self.get_outputs()
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                x = fluid.data(name='x', shape=self.inputs['X'].shape, dtype=self.dtype)
-                y = fluid.data(name='y', shape=self.inputs['Y'].shape, dtype=self.dtype)
+                x = fluid.data(name='x', shape=shape_x, dtype=self.dtype)
+                y = fluid.data(name='y', shape=shape_y, dtype=self.dtype)
                 op = eval('paddle.%s' % (self.op_type))
                 out = op(x, y)
                 exe = fluid.Executor(self.place)
-                res, = exe.run(feed={'x': self.inputs['X'],
-                                     'y': self.inputs['Y']},
+                res, = exe.run(feed={'x': self.input_x,
+                                     'y': self.input_y},
                                fetch_list=[out])
-            self.assertEqual((res == self.outputs['Out']).all(), True)
+            self.assertEqual((res == self.real_result).all(), True)
 
-    cls_name = 'TestCase_%s_%s' % (op_type, dtype)
-    if postfix is not None:
-        cls_name = cls_name + '_' + postfix
-    PaddleCls.__name__ = cls_name
-    globals()[cls_name] = PaddleCls
+        def _test_dynamic(self, shape_x, shape_y):
+            paddle.disable_static()
+            self.get_inputs(shape_x, shape_y)
+            self.get_outputs()
+            x = paddle.to_tensor(self.input_x)
+            y = paddle.to_tensor(self.input_y)
+            op = eval("paddle.%s" % (self.op_type))
+            out = op(x, y)
+            self.assertEqual((out.numpy() == self.real_result).all(), True)
+            paddle.enable_static()
 
-def create_compare_npu_case(op_type):
-    def gen_inputs(shape_x, shape_y, l=0, h=5):
-        return {'X': np.random.uniform(l, h, shape_x), 'Y': np.random.uniform(l, h, shape_y)}
+        def test_api(self):
+            self._test_static([4], [4])
 
-    inputs_lis = []
-    # 1 Add same shape inputs
-    inputs_lis.append(gen_inputs([11,17],[11,17]))
-    # 2-5 Add different shape for broadcast cases
-    inputs_lis.append(gen_inputs([1, 2, 1, 3], [1, 2, 3]))
-    inputs_lis.append(gen_inputs([1, 2, 3], [1, 2, 1, 3]))
-    inputs_lis.append(gen_inputs([5], [3, 1]))
-    inputs_lis.append(gen_inputs([3, 1], [1]))
-    postfix_lis = [None, 'broadcast1', 'broadcast2', 'broadcast3', 'broadcast4']
+        def test_dynamic_api(self):
+            self._test_dynamic([4], [4])
 
-    dtype_list = ['float32', 'float16', 'int32']
-    callback = callback_dict[op_type]
-    for i in range(len(inputs_lis)):
-        for dtype in dtype_list:
-            inputs = inputs_lis[i]
-            postfix = postfix_lis[i]
-            create_compare_npu_paddleclass(op_type, dtype, inputs, callback, postfix)
+        def test_broadcast_api_1(self):
+            self._test_static([1, 2, 1, 3], [1, 2, 3])
 
-create_compare_npu_case('greater_than')
-create_compare_npu_case('not_equal')
-create_compare_npu_case('less_equal')
+        def test_broadcast_api_2(self):
+            self._test_static([1, 2, 3], [1, 2, 1, 3])
+
+        def test_broadcast_api_3(self):
+            self._test_static([5], [3, 1])
+
+        def test_attr_name(self):
+            paddle.enable_static()
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                x = fluid.layers.data(name='x', shape=[4], dtype=self.dtype)
+                y = fluid.layers.data(name='y', shape=[4], dtype=self.dtype)
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x=x, y=y, name="name_%s" % (self.op_type))
+            self.assertEqual("name_%s" % (self.op_type) in out.name, True)
+
+    cls_api_name = 'TestCaseAPI_%s_%s' % (op_type, dtype)
+    PaddleClsAPI.__name__ = cls_api_name
+    globals()[cls_api_name] = PaddleClsAPI
+
+
+create_paddle_op_case('greater_than', 'float32')
+create_paddle_op_case('greater_than', 'float16')
+create_paddle_op_case('greater_than', 'int32')
+create_paddle_op_case('not_equal', 'float32')
+create_paddle_op_case('not_equal', 'float16')
+create_paddle_op_case('not_equal', 'int32')
+create_paddle_op_case('less_equal', 'float32')
+create_paddle_op_case('less_equal', 'float16')
+create_paddle_op_case('less_equal', 'int32')
+
+create_paddle_api_case('greater_than', 'float32')
+create_paddle_api_case('greater_than', 'int32')
+create_paddle_api_case('not_equal', 'float32')
+create_paddle_api_case('not_equal', 'int32')
+create_paddle_api_case('less_equal', 'float32')
+create_paddle_api_case('less_equal', 'int32')
 
 if __name__ == '__main__':
     unittest.main()
-
