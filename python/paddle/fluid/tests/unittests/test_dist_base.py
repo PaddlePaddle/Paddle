@@ -144,6 +144,7 @@ class TestDistRunnerBase(object):
             loss = loss[0] if loss else None
             out_losses.append(loss)
             print_to_err(type(self).__name__, "run step %d finished" % i)
+        data_loader.reset()
         print_to_err(type(self).__name__, "trainer run finished")
 
         sys.stdout.buffer.write(pickle.dumps(out_losses))
