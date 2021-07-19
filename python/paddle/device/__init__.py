@@ -30,8 +30,7 @@ __all__ = [  # noqa
     'is_compiled_with_xpu',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
-    'is_compiled_with_npu',
-    'cuda'
+    'is_compiled_with_npu'
 ]
 
 _cudnn_version = None
