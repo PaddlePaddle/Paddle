@@ -108,7 +108,7 @@ class TestSequential(unittest.TestCase):
 class TestNestSequential(TestSequential):
     def _init_config(self):
         self.net = NestSequentialNet()
-        self.model_path = './nest_sequential_net'
+        self.model_path = './nested_sequential_net'
 
 
 if __name__ == '__main__':
