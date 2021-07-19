@@ -118,6 +118,8 @@ struct Generator {
 // The DefaultCPUGenerator is used in manual_seed()
 const std::shared_ptr<Generator>& DefaultCPUGenerator();
 
+uint64_t GetSeed();
+
 // If op seed is set or global is not set, the OpDefaultCPUEngine is used.
 std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine();
 
@@ -125,8 +127,6 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
 
 const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(
     int64_t device_id = -1);
-
-const int GetSeed();
 
 }  // namespace framework
 }  // namespace paddle

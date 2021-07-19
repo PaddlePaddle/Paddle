@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
-
 namespace paddle {
 namespace operators {
 
@@ -128,6 +127,10 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
           vslDeleteStream(&stream);
         }
       }
+      // for(int i=0; i< size; i++){
+      //    std::cout << retValue[i] << "\t";
+      // }
+      // std::cout << "\n";
       float factor = 1.0f / static_cast<T>(1.0f - dropout_prob);
 #pragma omp parallel for
       for (int i = 0; i < size; i++) {
@@ -231,19 +234,15 @@ class DropoutGradKernel : public framework::OpKernel<T> {
               grad_x->data<T>());
 #endif
         } else {
-          //  auto* x = grad_x->data<T>();
-          //  auto* y = grad_y->data<T>();
-          // auto* y = grad_y->mutable_data<T>(context.GetPlace());
-          // auto* x = grad_x->mutable_data<T>(context.GetPlace());
-          // float factor = 1.0f / static_cast<T>(1.0f - dropout_prob);
-          // #ifdef PADDLE_WITH_MKLML
-          // #pragma omp parallel for
-          // #endif
-          //           for(auto i = 0; i < size; i++){
-          //               x[i] = y[i] * factor;
-          //           }
-          dX.device(place) =
-              dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
+          auto* x = grad_x->data<T>();
+          auto* y = grad_y->data<T>();
+          float factor = 1.0f / static_cast<T>(1.0f - dropout_prob);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+          for (auto i = 0; i < size; i++) {
+            x[i] = y[i] * factor;
+          }
         }
       }
     } else {
