@@ -221,6 +221,19 @@ Tensor Tensor::copy_to(const PlaceType &target_place) const {
   return target;
 }
 
+Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
+  GET_CASTED_TENSOR
+  framework::Tensor intermediate = tensor->Slice(begin_idx, end_idx);
+  std::vector<int64_t> shape_vec =
+      framework::vectorize<int64_t>(tensor->dims());
+  shape_vec[0] = end_idx - begin_idx;
+  Tensor target = Tensor(place_, shape_vec);
+  auto *target_tensor =
+      static_cast<framework::LoDTensor *>(target.tensor_.get());
+  target_tensor->ShareDataWith(intermediate);
+  return target;
+}
+
 template PD_DLL_DECL Tensor
 Tensor::copy_to<float>(const PlaceType &target_place) const;
 template PD_DLL_DECL Tensor

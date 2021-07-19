@@ -75,6 +75,22 @@ void TestAPISizeAndShape() {
   CHECK(t1.shape() == tensor_shape);
 }
 
+void TestAPISlice() {
+  std::vector<int64_t> tensor_shape_origin = {5, 5};
+  std::vector<int64_t> tensor_shape_sub1 = {3, 5};
+  std::vector<int64_t> tensor_shape_sub2 = {1, 5};
+#ifdef PADDLE_WITH_CUDA
+  auto t1 = paddle::Tensor(paddle::PlaceType::kGPU);
+  CHECK(t1.slice(0, 5).shape() == tensor_shape_origin);
+  CHECK(t1.slice(0, 3).shape() == tensor_shape_sub1);
+  CHECK(t1.slice(4, 5).shape() == tensor_shape_sub2);
+#endif
+  auto t2 = paddle::Tensor(paddle::PlaceType::kCPU);
+  CHECK(t2.slice(0, 5).shape() == tensor_shape_origin);
+  CHECK(t2.slice(0, 3).shape() == tensor_shape_sub1);
+  CHECK(t2.slice(4, 5).shape() == tensor_shape_sub2);
+}
+
 template <typename T>
 paddle::DataType TestDtype() {
   std::vector<int64_t> tensor_shape = {5, 5};
@@ -244,6 +260,8 @@ TEST(CustomTensor, copyTest) {
   TestAPISizeAndShape();
   VLOG(2) << "TestPlace";
   TestAPIPlace();
+  VLOG(2) << "TestSlice";
+  TestAPISlice();
   VLOG(2) << "TestCast";
   GroupTestCast();
   VLOG(2) << "TestDtypeConvert";
