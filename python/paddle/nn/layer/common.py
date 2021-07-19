@@ -1434,8 +1434,7 @@ class Unfold(layers.Layer):
             strides=self.strides, 
             paddings=self.paddings, 
             dilations=self.dilations, 
-            name=self.name
-        )
+            name=self.name)
     
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
