@@ -99,20 +99,20 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
   }                                                     \
   auto *tensor = static_cast<framework::LoDTensor *>(tensor_.get());
 
-#define GET_INNER_PLACE                                 \
-  platform::Place place;                                \
-  switch (place_) {                                     \
-    case PlaceType::kCPU:                               \
-      place = platform::CPUPlace();                     \
-      break;                                            \
-    case PlaceType::kGPU:                               \
-      place = platform::CUDAPlace();                    \
-      break;                                            \
-    default:                                            \
-      PADDLE_THROW(platform::errors::Unavailable(       \
-          "Custom operator unsupported place id(%d)",   \
-          static_cast<int>(place_)));                   \
-  }                                                     \
+#define GET_INNER_PLACE                               \
+  platform::Place place;                              \
+  switch (place_) {                                   \
+    case PlaceType::kCPU:                             \
+      place = platform::CPUPlace();                   \
+      break;                                          \
+    case PlaceType::kGPU:                             \
+      place = platform::CUDAPlace();                  \
+      break;                                          \
+    default:                                          \
+      PADDLE_THROW(platform::errors::Unavailable(     \
+          "Custom operator unsupported place id(%d)", \
+          static_cast<int>(place_)));                 \
+  }                                                   \
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
   GET_CASTED_TENSOR
@@ -285,7 +285,8 @@ Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
     default:
       PADDLE_THROW(platform::errors::Unavailable(
           "Not supported VarType(%s) for slicing.",
-          ToString(framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype))));
+          ToString(framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+              dtype))));
       break;
   }
   target_tensor->ShareDataWith(intermediate);
