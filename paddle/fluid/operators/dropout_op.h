@@ -23,6 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
+#ifdef PADDLE_WITH_MKLML
+#include <omp.h>
+#endif
 namespace paddle {
 namespace operators {
 
@@ -127,10 +130,6 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
           vslDeleteStream(&stream);
         }
       }
-      // for(int i=0; i< size; i++){
-      //    std::cout << retValue[i] << "\t";
-      // }
-      // std::cout << "\n";
       float factor = 1.0f / static_cast<T>(1.0f - dropout_prob);
 #pragma omp parallel for
       for (int i = 0; i < size; i++) {
