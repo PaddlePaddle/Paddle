@@ -92,8 +92,9 @@ class PD_DLL_DECL Tensor {
   Tensor copy_to(const PlaceType& place) const;
 
   /// \brief Return a sub-tensor of the given tensor.
-  /// It's usually used to extract a read-only sub-tensor for
-  /// further operations.
+  /// It is usually used to extract a sub-tensor (which supports 
+  /// modifying the data of the original tensor) to perform further 
+  /// operations.
   /// \param begin_idx The index of the start row (inclusive) to slice.
   ///                  The index number begins from 0.
   /// \param end_idx  The index of the end row (exclusive) to slice.

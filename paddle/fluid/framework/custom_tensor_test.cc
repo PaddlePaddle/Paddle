@@ -80,12 +80,14 @@ void TestAPISlice() {
   std::vector<int64_t> tensor_shape_sub1 = {3, 5};
   std::vector<int64_t> tensor_shape_sub2 = {1, 5};
 #ifdef PADDLE_WITH_CUDA
-  auto t1 = paddle::Tensor(paddle::PlaceType::kGPU);
+  auto t1 = paddle::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin);
+  t1.mutable_data<float>();
   CHECK(t1.slice(0, 5).shape() == tensor_shape_origin);
   CHECK(t1.slice(0, 3).shape() == tensor_shape_sub1);
   CHECK(t1.slice(4, 5).shape() == tensor_shape_sub2);
 #endif
-  auto t2 = paddle::Tensor(paddle::PlaceType::kCPU);
+  auto t2 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape_origin);
+  t2.mutable_data<float>();
   CHECK(t2.slice(0, 5).shape() == tensor_shape_origin);
   CHECK(t2.slice(0, 3).shape() == tensor_shape_sub1);
   CHECK(t2.slice(4, 5).shape() == tensor_shape_sub2);
