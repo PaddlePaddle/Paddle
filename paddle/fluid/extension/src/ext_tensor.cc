@@ -284,8 +284,8 @@ Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
     // TODO(JiabinYang) support more data types if needed.
     default:
       PADDLE_THROW(platform::errors::Unavailable(
-        "Not supported VarType(%s) for slicing.",
-        ToString(framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype))));
+          "Not supported VarType(%s) for slicing.",
+          ToString(framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype))));
       break;
   }
   target_tensor->ShareDataWith(intermediate);
