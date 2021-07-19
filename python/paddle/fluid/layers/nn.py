@@ -14840,30 +14840,30 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     return out
 
 
-def class_center_sample(label, num_classes, num_sample, group=None, seed=None):
+def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     """
     Class center sample method is proposed from the paper PartialFC that only sample a subset of the class centers.
     The process of sampling subset class centers is straightforward: 1) First select the positive class centers;
     2) Randomly sample negative class centers. Specifically, given a label tensor, shape [batch_size], select all
     the positive class centers and randomly sample negative class centers, then remap the input label tensor using
-    the sampled class centers. Note that if the number of the positive class centers greater than the input 
-    num_sample, it keep all the positive class centers and the shape of sampled_class_center will be 
+    the sampled class centers. Note that if the number of the positive class centers is greater than the input 
+    num_samples, it keeps all the positive class centers and the shape of sampled_class_center will be 
     [num_positive_class_centers]. The API supports CPU, single GPU and multi GPU.
 
     For more information, Partial FC: Training 10 Million Identities on a Single Machine
     arxiv: https://arxiv.org/abs/2010.05222
 
     Args:
-    	label: label list, each label in [0, num_classes)
-    	num_classes: A positive integer to specify the number of classes at local rank.
+    	label (list): each label in [0, num_classes)
+    	num_classes (int): A positive integer to specify the number of classes at local rank.
                      Note that num_classes of each GPU can be different.
-    	num_sample: A positive integer to specify the number of class center to sample
-        group: nccl communication group
-        seed: random seed
+    	num_samples (int): A positive integer to specify the number of class center to sample
+        group (Group): The abstract representation of group, see paddle.distributed.collective.Group
+        seed (int): random seed
 
     Return:
-    	remapped_label: remapped label using sampled class center
-    	sampled_class_center: sampled class center from [0, num_classes)
+    	remapped_label (list): remapped label using sampled class center
+    	sampled_class_center (list): sampled class center from [0, num_classes)
 
     Examples:
     .. code-block:: python
@@ -14875,11 +14875,11 @@ def class_center_sample(label, num_classes, num_sample, group=None, seed=None):
       import numpy as np
       num_classes = 20
       batch_size = 10
-      num_sample = 6
+      num_samples = 6
       np_label = np.random.randint(0, num_classes, (batch_size,), dtype=np.int64)
       label = paddle.to_tensor(np_label, dtype="int64")
       print(label)
-      remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes, num_sample)
+      remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes, num_samples)
       print(remapped_label)
       print(sampled_class_index)
       # the output is
@@ -14897,7 +14897,7 @@ def class_center_sample(label, num_classes, num_sample, group=None, seed=None):
       #strategy = dist.fleet.DistributedStrategy()
       #dist.fleet.init(is_collective=True, strategy=strategy)
       #batch_size = 10
-      #num_sample = 6
+      #num_samples = 6
       #rank_id = dist.get_rank()
       ## num_classes of each GPU can be different, e.g num_classes_list = [10, 8]
       #num_classes_list = [10, 10]
@@ -14908,7 +14908,7 @@ def class_center_sample(label, num_classes, num_sample, group=None, seed=None):
       #dist.all_gather(label_list, label)
       #label = paddle.concat(label_list, axis=0)
       #print(label)
-      #remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes_list[rank_id], num_sample)
+      #remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes_list[rank_id], num_samples)
       #print(remapped_label)
       #print(sampled_class_index)
 
@@ -14942,17 +14942,17 @@ def class_center_sample(label, num_classes, num_sample, group=None, seed=None):
             global_rank)
         nranks = parallel_env.world_size if group is None else group.nranks
 
-    if num_sample > num_classes:
+    if num_samples > num_classes:
         raise ValueError(
-            'Expected num_sample less equal than {}, got num_sample {}'.format(
-                num_classes, num_sample))
+            'Expected num_samples less than or equal to {}, got num_samples {}'.
+            format(num_classes, num_samples))
 
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
     if in_dygraph_mode():
         remapped_label, sampled_class_center = core.ops.class_center_sample(
-            label, 'num_classes', num_classes, 'num_sample', num_sample,
+            label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed',
             seed is not None, 'seed', seed if seed is not None else 0)
         return remapped_label, sampled_class_center
@@ -14974,7 +14974,7 @@ def class_center_sample(label, num_classes, num_sample, group=None, seed=None):
         },
         attrs={
             'num_classes': num_classes,
-            'num_sample': num_sample,
+            'num_samples': num_samples,
             'ring_id': ring_id,
             'nranks': nranks,
             'rank': rank,

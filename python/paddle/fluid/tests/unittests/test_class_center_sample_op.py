@@ -24,7 +24,7 @@ from op_test import OpTest
 from paddle.fluid import Program, program_guard
 
 
-def class_center_sample_numpy(label, classes_list, num_sample):
+def class_center_sample_numpy(label, classes_list, num_samples):
     unique_label = np.unique(label)
     nranks = len(classes_list)
     class_interval = np.cumsum(np.insert(classes_list, 0, 0))
@@ -38,10 +38,10 @@ def class_center_sample_numpy(label, classes_list, num_sample):
             i])
         unique_label_per_device.append(unique_label[index])
 
-    num_sample_per_device = []
+    num_samples_per_device = []
     for pos_class_center in pos_class_center_per_device:
-        num_sample_per_device.append(max(len(pos_class_center), num_sample))
-    sampled_class_interval = np.cumsum(np.insert(num_sample_per_device, 0, 0))
+        num_samples_per_device.append(max(len(pos_class_center), num_samples))
+    sampled_class_interval = np.cumsum(np.insert(num_samples_per_device, 0, 0))
 
     remapped_dict = {}
     for i in range(nranks):
@@ -60,7 +60,7 @@ class TestClassCenterSampleOp(OpTest):
     def initParams(self):
         self.op_type = "class_center_sample"
         self.batch_size = 20
-        self.num_sample = 6
+        self.num_samples = 6
         self.num_classes = 10
         self.seed = 2021
 
@@ -78,7 +78,7 @@ class TestClassCenterSampleOp(OpTest):
             0, self.num_classes, (self.batch_size, ), dtype=self.dtype)
 
         remapped_label, sampled_class_center = class_center_sample_numpy(
-            label, [self.num_classes], self.num_sample)
+            label, [self.num_classes], self.num_samples)
 
         self.inputs = {'Label': label}
         self.outputs = {
@@ -88,7 +88,7 @@ class TestClassCenterSampleOp(OpTest):
 
         self.attrs = {
             'num_classes': self.num_classes,
-            'num_sample': self.num_sample,
+            'num_samples': self.num_samples,
             'seed': self.seed,
             'fix_seed': self.fix_seed,
         }
@@ -118,7 +118,7 @@ class TestClassCenterSampleV2(unittest.TestCase):
 
     def initParams(self):
         self.batch_size = 20
-        self.num_sample = 6
+        self.num_samples = 6
         self.num_classes = 10
         self.seed = 0
         self.init_dtype()
@@ -138,10 +138,10 @@ class TestClassCenterSampleV2(unittest.TestCase):
             label = paddle.static.data(
                 name='label', shape=[self.batch_size], dtype=self.dtype)
             remapped_label, sampled_class_index = paddle.class_center_sample(
-                label, self.num_classes, self.num_sample, seed=self.seed)
+                label, self.num_classes, self.num_samples, seed=self.seed)
 
             remapped_label_np, sampled_class_center_np = class_center_sample_numpy(
-                label_np, [self.num_classes], self.num_sample)
+                label_np, [self.num_classes], self.num_samples)
             exe = paddle.fluid.Executor(place)
             [remapped_label_res, sampled_class_index_res] = exe.run(
                 paddle.fluid.default_main_program(),
@@ -163,10 +163,10 @@ class TestClassCenterSampleV2(unittest.TestCase):
             label = paddle.to_tensor(label_np, dtype=self.dtype)
 
             remapped_label, sampled_class_index = paddle.class_center_sample(
-                label, self.num_classes, self.num_sample, seed=self.seed)
+                label, self.num_classes, self.num_samples, seed=self.seed)
 
             remapped_label_np, sampled_class_center_np = class_center_sample_numpy(
-                label_np, [self.num_classes], self.num_sample)
+                label_np, [self.num_classes], self.num_samples)
 
             remapped_label_res = remapped_label.numpy()
             sampled_class_index_res = sampled_class_index.numpy()
@@ -186,7 +186,7 @@ class TestClassCenterSampleAPIError(unittest.TestCase):
 
     def initParams(self):
         self.batch_size = 20
-        self.num_sample = 15
+        self.num_samples = 15
         self.num_classes = 10
         self.seed = 2021
         self.init_dtype()
@@ -195,7 +195,7 @@ class TestClassCenterSampleAPIError(unittest.TestCase):
         self.dtype = np.int64
 
     def test_dynamic_errors(self):
-        def test_num_sample():
+        def test_num_samples():
             for place in self.places:
                 with paddle.fluid.dygraph.guard(place):
                     label_np = np.random.randint(
@@ -207,10 +207,10 @@ class TestClassCenterSampleAPIError(unittest.TestCase):
                     remapped_label, sampled_class_index = paddle.class_center_sample(
                         label,
                         self.num_classes,
-                        self.num_sample,
+                        self.num_samples,
                         seed=self.seed)
 
-        self.assertRaises(ValueError, test_num_sample)
+        self.assertRaises(ValueError, test_num_samples)
 
 
 if __name__ == '__main__':

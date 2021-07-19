@@ -90,16 +90,16 @@ template <typename T>
 __device__ void FindIntervalIndex(const T* class_interval_ptr,
                                   const int64_t nranks, const int value,
                                   int64_t* find_index) {
-  int64_t sta = 0;
+  int64_t start = 0;
   int64_t end = nranks;
-  int64_t mid = ((end - sta) >> 2) + sta + 1;
-  while (sta < end) {
+  int64_t mid = ((end - start) >> 2) + start + 1;
+  while (start < end) {
     if (class_interval_ptr[mid] == value) break;
     if (class_interval_ptr[mid] > value)
       end = mid - 1;
     else
-      sta = mid;
-    mid = ((end - sta) >> 2) + sta + 1;
+      start = mid;
+    mid = ((end - start) >> 2) + start + 1;
   }
   *find_index = min(mid, end);
 }
@@ -218,10 +218,10 @@ template <typename T>
 struct ActualNumSampledFunctor {
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
-    return max(num_sample, (b - a));
+    return max(num_samples, (b - a));
   }
-  T num_sample;
-  explicit ActualNumSampledFunctor(const T num) : num_sample(num) {}
+  T num_samples;
+  explicit ActualNumSampledFunctor(const T num) : num_samples(num) {}
 };
 
 template <typename T>
@@ -278,7 +278,7 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
     auto* sampled_local_class_center =
         ctx.Output<Tensor>("SampledLocalClassCenter");
     int num_classes = ctx.Attr<int>("num_classes");
-    int num_sample = ctx.Attr<int>("num_sample");
+    int num_samples = ctx.Attr<int>("num_samples");
 
     int rid = ctx.Attr<int>("ring_id");
     int nranks = ctx.Attr<int>("nranks");
@@ -293,24 +293,32 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
                           "but the value given is %d.",
                           num_classes));
 
-    PADDLE_ENFORCE_GT(num_sample, 0,
+    PADDLE_ENFORCE_GT(num_samples, 0,
                       platform::errors::InvalidArgument(
-                          "The value 'num_sample' for Op(class_center_sample) "
+                          "The value 'num_samples' for Op(class_center_sample) "
                           "must be greater than 0, "
                           "but the value given is %d.",
-                          num_sample));
+                          num_samples));
 
-    PADDLE_ENFORCE_LE(num_sample, num_classes,
+    PADDLE_ENFORCE_LE(num_samples, num_classes,
                       platform::errors::InvalidArgument(
-                          "The value 'num_sample' for Op(class_center_sample) "
-                          "must be less than %d, "
+                          "The value 'num_samples' for Op(class_center_sample) "
+                          "must be less than or equal to %d, "
                           "but the value given is %d.",
-                          num_classes, num_sample));
+                          num_classes, num_samples));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
     int batch_size = label->numel();
+    // Algorithm:
+    // We first randomly generate a value in [0, num_classes) on each position
+    // in a array(shape[num_classes]). Then, we mark the element as negative
+    // value in the array according input label. Now, we can sort the array
+    // by ascending to ensure that the positive class center always in the
+    // front of the sorted array. So, we can get the sampled class center
+    // index by sorted keys. Finally, we can get the rempped label by remap
+    // the input label according sampled class center.
 
     // step 1: Calculate num classes per device using nccl all reduce
     std::vector<T> shard_dim_vec(nranks + 1, 0);
@@ -352,7 +360,7 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
         batch_size, ctx.cuda_device_context().stream());
 
     size_t cub_scan_temp_store_size = 0;
-    ActualNumSampledFunctor<T> actual_num_sampled_op_temp(num_sample);
+    ActualNumSampledFunctor<T> actual_num_sampled_op_temp(num_samples);
     cub::DeviceScan::InclusiveScan(
         nullptr, cub_scan_temp_store_size, num_classes_per_device_ptr,
         num_classes_per_device_ptr, actual_num_sampled_op_temp, nranks + 1,
@@ -363,7 +371,7 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
                  cub_sum_temp_store_size);
     int num_temp_ele = cub_temp_storage_bytes / sizeof(T) + 1;
 
-    // step 3: Alloc buffer memory
+    // step 3: Alloc buffer memory so that we can reuse allocated memory
     MemoryBuffer<T> memory_buffer =
         MemoryBuffer<T>(num_buffer_ele, num_temp_ele, nranks, num_classes,
                         ctx.GetPlace(), ctx.cuda_device_context().stream());
@@ -441,9 +449,9 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
         cub_sort_values_ptr, bound_index_ptr, bound_value_ptr);
 
     // step 11: Calculate actual number of sampled class per device.
-    // Since maybe num_positive_class_center > num_sample,
+    // Since maybe num_positive_class_center > num_samples,
     // we need to ensure all positive class center per device are sampled.
-    ActualNumSampledFunctor<T> actual_num_sampled_op(num_sample);
+    ActualNumSampledFunctor<T> actual_num_sampled_op(num_samples);
     ret = cub::DeviceScan::InclusiveScan(
         cub_temp_storage_ptr, cub_temp_storage_bytes, bound_value_ptr,
         num_classes_per_device_ptr, actual_num_sampled_op, nranks + 1,
@@ -467,13 +475,13 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
     // step 14: Get sampled class center for output
     framework::TensorCopySync(num_classes_per_device, platform::CPUPlace(),
                               &num_classes_per_device);
-    T actual_num_sample = num_classes_per_device.data<T>()[rank + 1];
+    T actual_num_samples = num_classes_per_device.data<T>()[rank + 1];
     T* sampled_local_class_center_ptr =
-        sampled_local_class_center->mutable_data<T>({actual_num_sample},
+        sampled_local_class_center->mutable_data<T>({actual_num_samples},
                                                     ctx.GetPlace());
     GetSampledClassCenter<T><<<NumBlocks(batch_size), kNumCUDAThreads, 0,
                                ctx.cuda_device_context().stream()>>>(
-        actual_num_sample, cub_sort_values_out_ptr,
+        actual_num_samples, cub_sort_values_out_ptr,
         sampled_local_class_center_ptr);
   }
 };

@@ -34,7 +34,7 @@ def set_random_seed(seed):
     fleet.meta_parallel.model_parallel_random_seed(seed)
 
 
-def class_center_sample_numpy(label, classes_list, num_sample):
+def class_center_sample_numpy(label, classes_list, num_samples):
     unique_label = np.unique(label)
     nranks = len(classes_list)
     class_interval = np.cumsum(np.insert(classes_list, 0, 0))
@@ -48,10 +48,10 @@ def class_center_sample_numpy(label, classes_list, num_sample):
             i])
         unique_label_per_device.append(unique_label[index])
 
-    num_sample_per_device = []
+    num_samples_per_device = []
     for pos_class_center in pos_class_center_per_device:
-        num_sample_per_device.append(max(len(pos_class_center), num_sample))
-    sampled_class_interval = np.cumsum(np.insert(num_sample_per_device, 0, 0))
+        num_samples_per_device.append(max(len(pos_class_center), num_samples))
+    sampled_class_interval = np.cumsum(np.insert(num_samples_per_device, 0, 0))
 
     remapped_dict = {}
     for i in range(nranks):
@@ -69,12 +69,6 @@ def class_center_sample_numpy(label, classes_list, num_sample):
 class TestParallelClassCenterSampleOp(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
-        self.model_parallel_size = 2
-        strategy.hybrid_configs = {
-            "dp_degree": 1,
-            "mp_degree": self.model_parallel_size,
-            "pp_degree": 1
-        }
         fleet.init(is_collective=True, strategy=strategy)
 
     def test_class_center_sample(self):
@@ -89,7 +83,7 @@ class TestParallelClassCenterSampleOp(unittest.TestCase):
         np.random.seed(seed)
 
         batch_size = 20
-        num_sample = 6
+        num_samples = 6
 
         for dtype in ('int32', 'int64'):
             for _ in range(5):
@@ -100,9 +94,9 @@ class TestParallelClassCenterSampleOp(unittest.TestCase):
                     0, num_class, (batch_size, ), dtype=dtype)
                 label = paddle.to_tensor(np_label, dtype=dtype)
                 np_remapped_label, np_sampled_class_center_per_device = class_center_sample_numpy(
-                    np_label, classes_list, num_sample)
+                    np_label, classes_list, num_samples)
                 remapped_label, sampled_class_index = paddle.class_center_sample(
-                    label, classes_list[rank_id], num_sample)
+                    label, classes_list[rank_id], num_samples)
                 np.testing.assert_allclose(remapped_label.numpy(),
                                            np_remapped_label)
                 np_sampled_class_index = np_sampled_class_center_per_device[

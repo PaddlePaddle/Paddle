@@ -32,7 +32,7 @@ class ClassCenterSampleCPUKernel : public framework::OpKernel<T> {
     auto* sampled_local_class_center =
         ctx.Output<Tensor>("SampledLocalClassCenter");
     int num_classes = ctx.Attr<int>("num_classes");
-    int num_sample = ctx.Attr<int>("num_sample");
+    int num_samples = ctx.Attr<int>("num_samples");
 
     int seed = ctx.Attr<int>("seed");
     bool fix_seed = ctx.Attr<bool>("fix_seed");
@@ -43,19 +43,19 @@ class ClassCenterSampleCPUKernel : public framework::OpKernel<T> {
                           "but the value given is %d.",
                           num_classes));
 
-    PADDLE_ENFORCE_GT(num_sample, 0,
+    PADDLE_ENFORCE_GT(num_samples, 0,
                       platform::errors::InvalidArgument(
-                          "The value 'num_sample' for Op(class_center_sample) "
+                          "The value 'num_samples' for Op(class_center_sample) "
                           "must be greater than 0, "
                           "but the value given is %d.",
-                          num_sample));
+                          num_samples));
 
-    PADDLE_ENFORCE_LE(num_sample, num_classes,
+    PADDLE_ENFORCE_LE(num_samples, num_classes,
                       platform::errors::InvalidArgument(
-                          "The value 'num_sample' for Op(class_center_sample) "
-                          "must be less than %d, "
+                          "The value 'num_samples' for Op(class_center_sample) "
+                          "must be less than or equal to %d, "
                           "but the value given is %d.",
-                          num_classes, num_sample));
+                          num_classes, num_samples));
 
     int64_t numel = label->numel();
     auto* label_ptr = label->data<T>();
@@ -67,9 +67,9 @@ class ClassCenterSampleCPUKernel : public framework::OpKernel<T> {
     }
 
     // constrcut a lookup table and get sampled_local_class_center
-    int actual_num_sample = unique_label.size();
+    int actual_num_samples = unique_label.size();
     T* sampled_local_class_center_ptr =
-        sampled_local_class_center->mutable_data<T>({actual_num_sample},
+        sampled_local_class_center->mutable_data<T>({actual_num_samples},
                                                     ctx.GetPlace());
     std::map<T, T> new_class_dict;
     T idx = 0;
@@ -86,7 +86,7 @@ class ClassCenterSampleCPUKernel : public framework::OpKernel<T> {
     std::uniform_int_distribution<T> dist(0, num_classes - 1);
     auto engine = framework::GetCPURandomEngine(seed);
     // sample negative class center randomly
-    while (unique_label.size() < static_cast<size_t>(num_sample)) {
+    while (unique_label.size() < static_cast<size_t>(num_samples)) {
       unique_label.insert(dist(*engine));
     }
 

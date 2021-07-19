@@ -36,9 +36,9 @@ class ClassCenterSampleOp : public framework::OperatorWithKernel {
                           x_dims.size()));
 
     ctx->SetOutputDim("RemappedLabel", x_dims);
-    auto num_sample = ctx->Attrs().Get<int>("num_sample");
+    auto num_samples = ctx->Attrs().Get<int>("num_samples");
     ctx->SetOutputDim("SampledLocalClassCenter",
-                      framework::make_ddim({num_sample}));
+                      framework::make_ddim({num_samples}));
   }
 
  protected:
@@ -68,7 +68,7 @@ class ClassCenterSampleOpMaker : public framework::OpProtoAndCheckerMaker {
         "A positive integer to specify the number of classes at local rank. "
         "Note that num_classes of each GPU can be different.");
     AddAttr<int>(
-        "num_sample",
+        "num_samples",
         "A positive integer to specify the number of class center to sample.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
@@ -91,8 +91,8 @@ class ClassCenterSampleOpMaker : public framework::OpProtoAndCheckerMaker {
     The process of sampling subset class centers is straightforward: 1) First select the positive class centers;
     2) Randomly sample negative class centers. Specifically, given a Label tensor, shape [batch_size], select all
     the positive class centers and randomly sample negative class centers, then remap the input label tensor using
-    the sampled class centers. Note that if the number of the positive class centers greater than the input 
-    num_sample, it keep all the positive class centers and the shape of SampledLocalClassCenter will be 
+    the sampled class centers. Note that if the number of the positive class centers is greater than the input 
+    num_samples, it keeps all the positive class centers and the shape of SampledLocalClassCenter will be 
     [num_positive_class_centers]. The op supports CPU, single GPU and multi GPU.
 
     For more information, Partial FC: Training 10 Million Identities on a Single Machine
@@ -103,7 +103,7 @@ class ClassCenterSampleOpMaker : public framework::OpProtoAndCheckerMaker {
       Given:
         Label: [11, 5 , 1 , 3 , 12, 2 , 15, 19, 18, 19]
         num_classes = 20
-        num_sample = 6
+        num_samples = 6
       Then:
         RemappedLabel: [4, 3, 0, 2, 5, 1, 6, 8, 7, 8]
         SampledLocalClassCenter: [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19]
@@ -113,14 +113,14 @@ class ClassCenterSampleOpMaker : public framework::OpProtoAndCheckerMaker {
         rank0:
             Label: [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ]
             num_classes = 10
-            num_sample = 6
+            num_samples = 6
             ring_id = 0
             nranks = 2
             rank = 0
         rank1:
             Label: [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ]
             num_classes = 10
-            num_sample = 6
+            num_samples = 6
             ring_id = 0
             nranks = 2
             rank = 1
