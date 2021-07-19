@@ -112,7 +112,7 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
       PADDLE_THROW(platform::errors::Unavailable(     \
           "Custom operator unsupported place id(%d)", \
           static_cast<int>(place_)));                 \
-  }                                                   \
+  }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
   GET_CASTED_TENSOR
