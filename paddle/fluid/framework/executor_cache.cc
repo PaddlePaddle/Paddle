@@ -146,7 +146,7 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc *program_desc,
   } else {
     VLOG(1) << "get exe_info from cache by: " << program_id
             << " is_grad: " << is_grad;
-    auto &cached_value = cached_exe_info.Get(program_id, is_grad);
+    auto &cached_value = cached_exe_info.GetMutable(program_id, is_grad);
 
     auto &parallel_executor = cached_value.executor_;
     // update op_handle scope_map in pe->executor_->Graph

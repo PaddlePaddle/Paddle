@@ -24,7 +24,7 @@ from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
-from paddle.fluid.layers.utils import _hash32_id
+from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.compiler import BuildStrategy
 import paddle.compat as cpt
 from paddle import _C_ops
@@ -166,11 +166,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_program_id(self):
-        return _hash32_id(self._infer_program, self)
+        return _hash_with_id(self._infer_program, self)
 
     @LazyInitialized
     def _train_program_id(self):
-        return _hash32_id(self._train_program, self)
+        return _hash_with_id(self._train_program, self)
 
     def _verify_program(self, main_program):
         """

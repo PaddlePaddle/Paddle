@@ -49,19 +49,19 @@ void ParseSafeEagerDeletionSkipVars(
 class ExecutorInfo {
  public:
   struct CacheValue {
-    std::shared_ptr<ParallelExecutor> executor_{NULL};
-    std::shared_ptr<ir::Graph> graph_{NULL};
+    std::shared_ptr<ParallelExecutor> executor_{nullptr};
+    std::shared_ptr<ir::Graph> graph_{nullptr};
 
     std::vector<std::string> skip_eager_delete_vars_;
   };
 
   bool IsAvailable(bool is_grad) {
-    auto& executor =
+    const auto& executor =
         is_grad ? backward_info_.executor_ : forward_info_.executor_;
     return executor != nullptr;
   }
 
-  CacheValue& Get(bool is_grad) {
+  CacheValue& GetMutable(bool is_grad) {
     return is_grad ? backward_info_ : forward_info_;
   }
 
@@ -93,17 +93,8 @@ class ExecutorInfoCache {
            info_map_[program_id].IsAvailable(is_grad);
   }
 
-  ExecutorInfo::CacheValue& Get(int64_t program_id, bool is_grad) {
-    PADDLE_ENFORCE_EQ(
-        Has(program_id, is_grad), true,
-        platform::errors::PreconditionNotMet(
-            "program_id: %s, is_grad: %s doesn't exist in ExecutorInfoCache",
-            program_id, is_grad));
-    return info_map_[program_id].Get(is_grad);
-  }
-
   ExecutorInfo::CacheValue& GetMutable(int64_t program_id, bool is_grad) {
-    return info_map_[program_id].Get(is_grad);
+    return info_map_[program_id].GetMutable(is_grad);
   }
 
   void UpdateSkipEagerDeleteVars(int64_t program_id, bool is_grad,
@@ -114,7 +105,7 @@ class ExecutorInfoCache {
 
   std::vector<std::string>& SkipEagerDeleteVars(int64_t program_id,
                                                 bool is_grad) {
-    auto& cached_value = Get(program_id, is_grad);
+    auto& cached_value = GetMutable(program_id, is_grad);
     return cached_value.skip_eager_delete_vars_;
   }
 
