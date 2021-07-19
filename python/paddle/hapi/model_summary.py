@@ -98,15 +98,37 @@ def summary(net, input_size, input=None, dtypes=None):
                                         dtypes=['float32', 'float32'])
             print(params_info)
 
-            # input data demo
-            rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
+            # list input demo
+            class LeNetListInput(LeNet):
 
-            input_data = [paddle.rand([4, 23, 16])]
-            params_info = paddle.summary(rnn, (4, 23, 16), input_data)
+                def forward(self, inputs):
+                    x = self.features(inputs[0])
+
+                    if self.num_classes > 0:
+                        x = paddle.flatten(x, 1)
+                        x = self.fc(x + inputs[1])
+                    return x
+            
+            lenet_list_input = LeNetListInput()
+            input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
+            params_info = paddle.summary(lenet_list_input, [(1, 1, 28, 28), (1, 400)], input_data)
             print(params_info)
 
-            input_data = {'x': paddle.rand([4, 23, 16])}
-            params_info = paddle.summary(rnn, (4, 23, 16), input_data)
+            # dict input demo
+            class LeNetDictInput(LeNet):
+
+                def forward(self, inputs):
+                    x = self.features(inputs['x1'])
+
+                    if self.num_classes > 0:
+                        x = paddle.flatten(x, 1)
+                        x = self.fc(x + inputs['x2'])
+                    return x
+
+            lenet_dict_input = LeNetDictInput()
+            input_data = {'x1': paddle.rand([1, 1, 28, 28]),
+                          'x2': paddle.rand([1, 400])}
+            params_info = paddle.summary(lenet_dict_input, [(1, 1, 28, 28), (1, 400)], input_data)
             print(params_info)
 
     """
@@ -176,16 +198,7 @@ def summary(net, input_size, input=None, dtypes=None):
 
     _input_size = _check_input(_input_size)
 
-    if isinstance(input, dict):
-        _input = []
-        for item in input.keys():
-            _input.append(input[item])
-    elif paddle.is_tensor(input):
-        _input = [input]
-    else:
-        _input = input
-
-    result, params_info = summary_string(net, _input_size, _input, dtypes)
+    result, params_info = summary_string(net, _input_size, input, dtypes)
     print(result)
 
     if in_train_mode:
@@ -302,24 +315,24 @@ def summary_string(model, input_size, input, dtypes=None):
                 build_input(i, dtype) for i, dtype in zip(input_size, dtypes)
             ]
 
-    if input is not None:
-        x = input
-    else:
-        x = build_input(input_size, dtypes)
-
     # create properties
     summary = OrderedDict()
     hooks = []
-
-    # register hook
-    model.apply(register_hook)
-
-    # make a forward pass
-    model(*x)
-
-    # remove these hooks
-    for h in hooks:
-        h.remove()
+    if input is not None:
+        x = input
+        model(x)
+    else:
+        x = build_input(input_size, dtypes)
+        
+        # register hook
+        model.apply(register_hook)
+        
+        # make a forward pass
+        model(*x)
+        
+        # remove these hooks
+        for h in hooks:
+            h.remove()
 
     def _get_str_length(summary):
         head_length = {
