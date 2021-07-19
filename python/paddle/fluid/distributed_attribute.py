@@ -77,7 +77,7 @@ class TensorDistributedAttribute:
         self._shard_mask = None
         self._offload_device = None
         self._is_annotated = {}
-        self._is_parameter = False 
+        self._is_parameter = False
 
     def get_desc(self):
         return self._desc
@@ -115,7 +115,7 @@ class TensorDistributedAttribute:
 
     def mark_as_parameter(self):
         self._is_parameter = True
-    
+
     def is_parameter(self):
         return self._is_parameter
 
@@ -245,7 +245,7 @@ class OperatorDistributedAttribute:
 
     def mark_as_parameter(self, arg_name):
         self._parameters[arg_name] = True
-    
+
     def is_parameter(self, arg_name):
         return self._parameters.get(arg_name, False)
 

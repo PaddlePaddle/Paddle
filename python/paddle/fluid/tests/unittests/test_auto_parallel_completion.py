@@ -33,7 +33,7 @@ def build_partial_annotated_mlp_dp(batch_size, hidden_size, proc_mesh):
     with static.program_guard(prog), utils.unique_name.guard():
         input = static.data(
             name="input", shape=[batch_size, hidden_size], dtype='float32')
-        auto.shard_tensor(input, proc_mesh, dims_mapping=[0, -1])
+        # auto.shard_tensor(input, proc_mesh, dims_mapping=[0, -1])
 
         weight1 = static.create_parameter(
             shape=[hidden_size, 4 * hidden_size],
@@ -42,7 +42,7 @@ def build_partial_annotated_mlp_dp(batch_size, hidden_size, proc_mesh):
         bias1 = static.create_parameter(
             shape=[4 * hidden_size], dtype='float32', is_bias=True)
         out1 = F.linear(input, weight1, bias=bias1)
-        # auto.shard_tensor(out1, proc_mesh, dims_mapping=[0, -1])
+        auto.shard_tensor(out1, proc_mesh, dims_mapping=[0, -1])
 
         weight2 = static.create_parameter(
             shape=[4 * hidden_size, hidden_size],
@@ -55,46 +55,46 @@ def build_partial_annotated_mlp_dp(batch_size, hidden_size, proc_mesh):
     return prog
 
 
-def build_complete_annotated_mlp_dp(batch_size, hidden_size, proc_mesh):
-    prog = static.Program()
-    assert proc_mesh.ndim == 1, "The number dimension of process mesh must to be 1"
-    with static.program_guard(prog), utils.unique_name.guard():
-        input = static.data(
-            name="input", shape=[batch_size, hidden_size], dtype='float32')
-        # shard_tensor(input, proc_mesh, dims_mapping=[0, -1])
-
-        weight1 = static.create_parameter(
-            shape=[hidden_size, 4 * hidden_size],
-            dtype='float32',
-            is_bias=False)
-        bias1 = static.create_parameter(
-            shape=[4 * hidden_size], dtype='float32', is_bias=True)
-        # shard_tensor(weight1, proc_mesh, dims_mapping=[-1, -1])
-        # shard_tensor(bias1, proc_mesh, dims_mapping=[-1])
-        # shard_linear = shard_op(F.linear,  proc_mesh, {0: [0, -1], 1: [-1, -1], 2: [-1]}, {0: [0]})
-        out1 = shard_linear(x=input, weight=weight1, bias=bias1)
-
-        # gelu = shard_op(F.gelu, proc_mesh, {0: [0, -1]}, {0: [0, -1]})
-        intermediate = F.gelu(out1)
-        # shard_tensor(intermediate, proc_mesh, dims_mapping=[0, -1])
-
-        weight2 = static.create_parameter(
-            shape=[4 * hidden_size, hidden_size],
-            dtype='float32',
-            is_bias=False)
-        bias2 = static.create_parameter(
-            shape=[hidden_size], dtype='float32', is_bias=True)
-        # shard_tensor(weight2, proc_mesh, dims_mapping=[0, -1])
-        # shard_tensor(bias2, proc_mesh, dims_mapping=[-1])
-        # linear = shard_op(F.linear, proc_mesh, {0: [0, -1], 1: [-1, 1], 2: [-1]}, {0: [0, -1]})
-        out3 = F.linear(intermediate, weight2, bias=bias2)
-        # shard_tensor(out3, proc_mesh, dims_mapping=[0, -1])
-
-    return prog
+# def build_complete_annotated_mlp_dp(batch_size, hidden_size, proc_mesh):
+#     prog = static.Program()
+#     assert proc_mesh.ndim == 1, "The number dimension of process mesh must to be 1"
+#     with static.program_guard(prog), utils.unique_name.guard():
+#         input = static.data(
+#             name="input", shape=[batch_size, hidden_size], dtype='float32')
+#         # shard_tensor(input, proc_mesh, dims_mapping=[0, -1])
+# 
+#         weight1 = static.create_parameter(
+#             shape=[hidden_size, 4 * hidden_size],
+#             dtype='float32',
+#             is_bias=False)
+#         bias1 = static.create_parameter(
+#             shape=[4 * hidden_size], dtype='float32', is_bias=True)
+#         # shard_tensor(weight1, proc_mesh, dims_mapping=[-1, -1])
+#         # shard_tensor(bias1, proc_mesh, dims_mapping=[-1])
+#         # shard_linear = shard_op(F.linear,  proc_mesh, {0: [0, -1], 1: [-1, -1], 2: [-1]}, {0: [0]})
+#         out1 = shard_linear(x=input, weight=weight1, bias=bias1)
+# 
+#         # gelu = shard_op(F.gelu, proc_mesh, {0: [0, -1]}, {0: [0, -1]})
+#         intermediate = F.gelu(out1)
+#         # shard_tensor(intermediate, proc_mesh, dims_mapping=[0, -1])
+# 
+#         weight2 = static.create_parameter(
+#             shape=[4 * hidden_size, hidden_size],
+#             dtype='float32',
+#             is_bias=False)
+#         bias2 = static.create_parameter(
+#             shape=[hidden_size], dtype='float32', is_bias=True)
+#         # shard_tensor(weight2, proc_mesh, dims_mapping=[0, -1])
+#         # shard_tensor(bias2, proc_mesh, dims_mapping=[-1])
+#         # linear = shard_op(F.linear, proc_mesh, {0: [0, -1], 1: [-1, 1], 2: [-1]}, {0: [0, -1]})
+#         out3 = F.linear(intermediate, weight2, bias=bias2)
+#         # shard_tensor(out3, proc_mesh, dims_mapping=[0, -1])
+# 
+#     return prog
 
 
 def build_partial_annotated_mlp_mp(batch_size, hidden_size, proc_mesh):
-    assert proc_mesh.ndim == 1, "The number dimension of process mesh must to be 1"
+    assert proc_mesh.get_ndim() == 1, "The number dimension of process mesh must to be 1"
     prog = static.Program()
     with static.program_guard(prog), utils.unique_name.guard():
         input = static.data(
@@ -106,7 +106,7 @@ def build_partial_annotated_mlp_mp(batch_size, hidden_size, proc_mesh):
             is_bias=False)
         bias1 = static.create_parameter(
             shape=[4 * hidden_size], dtype='float32', is_bias=True)
-        # shard_tensor(weight1, proc_mesh, dims_mapping=[-1, 0])
+        auto.shard_tensor(weight1, proc_mesh, dims_mapping=[-1, 0])
         out1 = F.linear(input, weight1, bias=bias1)
 
         weight2 = static.create_parameter(
@@ -115,60 +115,60 @@ def build_partial_annotated_mlp_mp(batch_size, hidden_size, proc_mesh):
             is_bias=False)
         bias2 = static.create_parameter(
             shape=[hidden_size], dtype='float32', is_bias=True)
-        # shard_tensor(weight2, proc_mesh, dims_mapping=[0, -1])
+        auto.shard_tensor(weight2, proc_mesh, dims_mapping=[0, -1])
         out2 = F.linear(F.gelu(out1), weight2, bias=bias2)
     return prog
 
 
-def build_complete_annotated_mlp_mp(batch_size, hidden_size, proc_mesh):
-    assert proc_mesh.ndim == 1, "The number dimension of process mesh must to be 1"
-    prog = static.Program()
-    with static.program_guard(prog), utils.unique_name.guard():
-        input = static.data(
-            name="input", shape=[1, hidden_size], dtype='float32')
-        # shard_tensor(input, proc_mesh, dims_mapping=[-1, -1])
-
-        weight1 = static.create_parameter(
-            shape=[hidden_size, 4 * hidden_size],
-            dtype='float32',
-            is_bias=False)
-        bias1 = static.create_parameter(
-            shape=[4 * hidden_size], dtype='float32', is_bias=True)
-        # shard_tensor(weight1, proc_mesh, dims_mapping=[-1, 0])
-        # shard_tensor(bias1, proc_mesh, dims_mapping=[-1, 0])
-        # linear = shard_op(F.linear, proc_mesh, {0: [-1, -1], 1: [-1, 0], 2: [0]}, {0: [-1, 0]})
-        # out1 = linear(x=input, weight=weight1, bias=bias1)
-        # out1 = shard_op(F.linear(input, weight1, bias=bias1), 
-        #                 proc_mesh, {0: [-1, -1], 1: [-1, 0], 2: [0]}, {0: [-1, 0]})
-
-        out1 = F.linear(x=input, weight=weight1, bias=bias1)
-
-        # gelu = shard_op(F.gelu, proc_mesh, {0: [-1, 0]}, {0: [-1, 0]})
-        intermediate = F.gelu(out1)
-        # shard_tensor(intermediate, proc_mesh, dims_mapping=[-1, 0])
-
-        weight2 = static.create_parameter(
-            shape=[4 * hidden_size, hidden_size],
-            dtype='float32',
-            is_bias=False)
-        bias2 = static.create_parameter(
-            shape=[hidden_size], dtype='float32', is_bias=True)
-        # shard_tensor(weight2, proc_mesh, dims_mapping=[0, -1])
-        # shard_tensor(bias2, proc_mesh, dims_mapping=[-1])
-        # linear = shard_op(F.linear, proc_mesh, {0: [0, -1], 1: [-1, 0], 2: [-1]}, {0: [-1, -1]})
-        out3 = F.linear(intermediate, weight2, bias=bias2)
-        # shard_tensor(out3, proc_mesh, dims_mapping=[-1, -1])
-
-    return prog
+# def build_complete_annotated_mlp_mp(batch_size, hidden_size, proc_mesh):
+#     assert proc_mesh.ndim == 1, "The number dimension of process mesh must to be 1"
+#     prog = static.Program()
+#     with static.program_guard(prog), utils.unique_name.guard():
+#         input = static.data(
+#             name="input", shape=[1, hidden_size], dtype='float32')
+#         # shard_tensor(input, proc_mesh, dims_mapping=[-1, -1])
+# 
+#         weight1 = static.create_parameter(
+#             shape=[hidden_size, 4 * hidden_size],
+#             dtype='float32',
+#             is_bias=False)
+#         bias1 = static.create_parameter(
+#             shape=[4 * hidden_size], dtype='float32', is_bias=True)
+#         # shard_tensor(weight1, proc_mesh, dims_mapping=[-1, 0])
+#         # shard_tensor(bias1, proc_mesh, dims_mapping=[-1, 0])
+#         # linear = shard_op(F.linear, proc_mesh, {0: [-1, -1], 1: [-1, 0], 2: [0]}, {0: [-1, 0]})
+#         # out1 = linear(x=input, weight=weight1, bias=bias1)
+#         # out1 = shard_op(F.linear(input, weight1, bias=bias1), 
+#         #                 proc_mesh, {0: [-1, -1], 1: [-1, 0], 2: [0]}, {0: [-1, 0]})
+# 
+#         out1 = F.linear(x=input, weight=weight1, bias=bias1)
+# 
+#         # gelu = shard_op(F.gelu, proc_mesh, {0: [-1, 0]}, {0: [-1, 0]})
+#         intermediate = F.gelu(out1)
+#         # shard_tensor(intermediate, proc_mesh, dims_mapping=[-1, 0])
+# 
+#         weight2 = static.create_parameter(
+#             shape=[4 * hidden_size, hidden_size],
+#             dtype='float32',
+#             is_bias=False)
+#         bias2 = static.create_parameter(
+#             shape=[hidden_size], dtype='float32', is_bias=True)
+#         # shard_tensor(weight2, proc_mesh, dims_mapping=[0, -1])
+#         # shard_tensor(bias2, proc_mesh, dims_mapping=[-1])
+#         # linear = shard_op(F.linear, proc_mesh, {0: [0, -1], 1: [-1, 0], 2: [-1]}, {0: [-1, -1]})
+#         out3 = F.linear(intermediate, weight2, bias=bias2)
+#         # shard_tensor(out3, proc_mesh, dims_mapping=[-1, -1])
+# 
+#     return prog
 
 
 def build_partial_annotated_mlp_dp_mp(batch_size, hidden_size, proc_mesh):
-    assert proc_mesh.ndim == 2, "The number dimension of process mesh must to be 2"
+    assert proc_mesh.get_ndim() == 2, "The number dimension of process mesh must to be 2"
     prog = static.Program()
     with static.program_guard(prog), utils.unique_name.guard():
         input = static.data(
             name="input", shape=[batch_size, hidden_size], dtype='float32')
-        # shard_tensor(input, proc_mesh, dims_mapping=[0, -1])
+        auto.shard_tensor(input, proc_mesh, dims_mapping=[0, -1])
 
         weight1 = static.create_parameter(
             shape=[hidden_size, 4 * hidden_size],
@@ -176,7 +176,8 @@ def build_partial_annotated_mlp_dp_mp(batch_size, hidden_size, proc_mesh):
             is_bias=False)
         bias1 = static.create_parameter(
             shape=[4 * hidden_size], dtype='float32', is_bias=True)
-        # shard_tensor(weight1, proc_mesh, dims_mapping=[-1, 1])
+        auto.shard_tensor(weight1, proc_mesh, dims_mapping=[-1, 1])
+
         out1 = F.linear(input, weight1, bias=bias1)
 
         weight2 = static.create_parameter(
@@ -185,49 +186,50 @@ def build_partial_annotated_mlp_dp_mp(batch_size, hidden_size, proc_mesh):
             is_bias=False)
         bias2 = static.create_parameter(
             shape=[hidden_size], dtype='float32', is_bias=True)
-        # shard_tensor(weight2, proc_mesh, dims_mapping=[1, -1])
+        auto.shard_tensor(weight2, proc_mesh, dims_mapping=[1, -1])
+
         out2 = F.linear(F.gelu(out1), weight2, bias=bias2)
     return prog
 
 
-def build_complete_annotated_mlp_dp_mp(batch_size, hidden_size, proc_mesh):
-    assert proc_mesh.ndim == 1, "The number dimension of process mesh must to be 1"
-    prog = static.Program()
-    with static.program_guard(prog), utils.unique_name.guard():
-        input = static.data(
-            name="input", shape=[1, hidden_size], dtype='float32')
-        # shard_tensor(input, proc_mesh, dims_mapping=[0, -1])
+# def build_complete_annotated_mlp_dp_mp(batch_size, hidden_size, proc_mesh):
+#     assert proc_mesh.ndim == 1, "The number dimension of process mesh must to be 1"
+#     prog = static.Program()
+#     with static.program_guard(prog), utils.unique_name.guard():
+#         input = static.data(
+#             name="input", shape=[1, hidden_size], dtype='float32')
+#         # shard_tensor(input, proc_mesh, dims_mapping=[0, -1])
 
-        weight1 = static.create_parameter(
-            shape=[hidden_size, 4 * hidden_size],
-            dtype='float32',
-            is_bias=False)
-        bias1 = static.create_parameter(
-            shape=[4 * hidden_size], dtype='float32', is_bias=True)
-        # shard_tensor(weight1, proc_mesh, dims_mapping=[-1, 1])
-        # shard_tensor(bias1, proc_mesh, dims_mapping=[1])
-        # out1 = shard_op(F.linear(input, weight1, bias=bias1), 
-        #                 proc_mesh, {0: [0, -1], 1: [-1, 1], 2: [1]}, {0: [0, 1]})
+#         weight1 = static.create_parameter(
+#             shape=[hidden_size, 4 * hidden_size],
+#             dtype='float32',
+#             is_bias=False)
+#         bias1 = static.create_parameter(
+#             shape=[4 * hidden_size], dtype='float32', is_bias=True)
+#         # shard_tensor(weight1, proc_mesh, dims_mapping=[-1, 1])
+#         # shard_tensor(bias1, proc_mesh, dims_mapping=[1])
+#         # out1 = shard_op(F.linear(input, weight1, bias=bias1), 
+#         #                 proc_mesh, {0: [0, -1], 1: [-1, 1], 2: [1]}, {0: [0, 1]})
 
-        out1 = F.linear(x=input, weight=weight1, bias=bias1)
+#         out1 = F.linear(x=input, weight=weight1, bias=bias1)
 
-        # gelu = shard_op(F.gelu, proc_mesh, {0: [0, 1]}, {0: [0, 1]})
-        intermediate = F.gelu(out1)
-        # shard_tensor(intermediate, proc_mesh, dims_mapping=[0, 1])
+#         # gelu = shard_op(F.gelu, proc_mesh, {0: [0, 1]}, {0: [0, 1]})
+#         intermediate = F.gelu(out1)
+#         # shard_tensor(intermediate, proc_mesh, dims_mapping=[0, 1])
 
-        weight2 = static.create_parameter(
-            shape=[4 * hidden_size, hidden_size],
-            dtype='float32',
-            is_bias=False)
-        bias2 = static.create_parameter(
-            shape=[hidden_size], dtype='float32', is_bias=True)
-        # shard_tensor(weight2, proc_mesh, dims_mapping=[1, -1])
-        # shard_tensor(bias2, proc_mesh, dims_mapping=[-1])
-        # linear = shard_op(F.linear, proc_mesh, {0: [0, 1], 1: [1, -1], 2: [-1]}, {0: [0, -1]})
-        out3 = F.linear(intermediate, weight2, bias=bias2)
-        # shard_tensor(out3, proc_mesh, dims_mapping=[0, -1])
+#         weight2 = static.create_parameter(
+#             shape=[4 * hidden_size, hidden_size],
+#             dtype='float32',
+#             is_bias=False)
+#         bias2 = static.create_parameter(
+#             shape=[hidden_size], dtype='float32', is_bias=True)
+#         # shard_tensor(weight2, proc_mesh, dims_mapping=[1, -1])
+#         # shard_tensor(bias2, proc_mesh, dims_mapping=[-1])
+#         # linear = shard_op(F.linear, proc_mesh, {0: [0, 1], 1: [1, -1], 2: [-1]}, {0: [0, -1]})
+#         out3 = F.linear(intermediate, weight2, bias=bias2)
+#         # shard_tensor(out3, proc_mesh, dims_mapping=[0, -1])
 
-    return prog
+#     return prog
 
 
 def compare_program(src_prog, dst_prog):
@@ -289,40 +291,37 @@ def compare_program(src_prog, dst_prog):
 
 
 class TestAutoCompletion(unittest.TestCase):
-    def test_auto_completion_mlp_dp(self):
-        process_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
-        batch_size = 4
-        hidden_size = 1024
-        prog1 = build_partial_annotated_mlp_dp(batch_size, hidden_size,
-                                               process_mesh)
-        print(prog1)
-        complete_prog1 = auto.complete_annotation(prog1)
-        print(complete_prog1)
-        # prog1 = build_partial_annotated_mlp_program(input, 1024, proc_mesh) 
-        # prog2 = build_complete_annotated_mlp_dp(batch_size, hidden_size, process_mesh) 
-        # print(prog2.to_string(True, False))
-        # print(prog2._to_readable_code())
-        # result = compare_program(prog1, prog2)
-        # self.assertTrue(result, "Two programs are not same.")
+    # def test_auto_completion_mlp_dp(self):
+    #     process_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
+    #     batch_size = 4
+    #     hidden_size = 1024
+    #     prog = build_partial_annotated_mlp_dp(batch_size, hidden_size,
+    #                                            process_mesh)
+    #     # print(prog)
+    #     complete_prog = auto.complete_annotation(prog)
+    #     # print(complete_prog)
 
 
-"""     def test_auto_completion_mlp_mp(self):
-        process_mesh = None 
-        batch_size = 4 
-        hidden_size = 1024
-        prog1 = build_partial_annotated_mlp_mp(batch_size, hidden_size, process_mesh) 
-        prog2 = build_complete_annotated_mlp_mp(batch_size, hidden_size, process_mesh) 
-        result = compare_program(prog1, prog2)
-        self.assertTrue(result, "Two programs are not same.")
+    # def test_auto_completion_mlp_mp(self):
+    #     process_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
+    #     batch_size = 4
+    #     hidden_size = 1024
+    #     prog = build_partial_annotated_mlp_mp(batch_size, hidden_size,
+    #                                            process_mesh)
+    #     print(prog)
+    #     complete_prog = auto.complete_annotation(prog)
+    #     print(complete_prog)
 
     def test_auto_completion_mlp_dp_mp(self):
-        process_mesh = None 
-        batch_size = 4 
+        process_mesh = auto.ProcessMesh(shape=[2, 4], process_group=[0, 1, 2, 3, 4, 5, 6, 7])
+        batch_size = 4
         hidden_size = 1024
-        prog1 = build_partial_annotated_mlp_dp_mp(batch_size, hidden_size, process_mesh) 
-        prog2 = build_complete_annotated_mlp_dp_mp(batch_size, hidden_size, process_mesh) 
-        result = compare_program(prog1, prog2)
-        self.assertTrue(result, "Two programs are not same.") """
+        prog = build_partial_annotated_mlp_dp_mp(batch_size, hidden_size,
+                                               process_mesh)
+        print(prog)
+        complete_prog = auto.complete_annotation(prog)
+        print(complete_prog)
+
 
 if __name__ == "__main__":
     unittest.main()

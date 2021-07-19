@@ -25,15 +25,14 @@ from paddle.fluid.distributed_attribute import set_op_distributed_attr_program
 from paddle.fluid.distributed_attribute import generate_tensor_distributed_attr_uid
 from paddle.fluid.distributed_attribute import generate_op_distributed_attr_uid
 
-from .distributed_operators import find_best_compatible_distributed_operator_impl
-from .utils import is_parameter
+from .distributed_operators import find_best_compatible_distributed_operator_impl 
 
-ELEMENT_WISE_OP_LIST = ["gelu"]
+ELEMENT_WISE_OP_LIST = ["elementwise_add", "gelu"]
 TENSOR_DISTRIBUTED_ATTR_MAP_FOR_GRAPH = {}
 OP_DISTRIBUTED_ATTR_MAP_FOR_GRAPH = {}
 
 
-def is_element_wise_op(op_type):
+def is_elementwise_op(op_type):
     if op_type in ELEMENT_WISE_OP_LIST:
         return True
     else:
@@ -95,7 +94,8 @@ def update_tensor_node_process_mesh(tensor_node, fwd=True):
                 op_dist_attr = get_op_distributed_attr_graph(pred_op_node)
                 op_process_mesh = op_dist_attr.get_process_mesh()
                 inputs_process_meshes.append(op_process_mesh)
-        compatible_process_mesh = compute_compatible_process_mesh(inputs_process_meshes)
+        compatible_process_mesh = compute_compatible_process_mesh(
+            inputs_process_meshes)
         if compatible_process_mesh is not None and tensor_process_mesh is None:
             tensor_dist_attr.set_process_mesh(compatible_process_mesh)
             changed = True
@@ -124,7 +124,8 @@ def update_op_node_process_mesh(op_node, fwd=True):
         inputs_process_meshes = []
         for tensor_node in op_node.inputs:
             if tensor_node.var() is not None:
-                tensor_dist_attr = get_tensor_distributed_attr_graph(tensor_node)
+                tensor_dist_attr = get_tensor_distributed_attr_graph(
+                    tensor_node)
                 tensor_process_mesh = tensor_dist_attr.get_process_mesh()
                 inputs_process_meshes.append(tensor_process_mesh)
         compatible_process_mesh = compute_compatible_process_mesh(
@@ -136,10 +137,12 @@ def update_op_node_process_mesh(op_node, fwd=True):
         outputs_process_meshes = []
         for tensor_node in op_node.outputs:
             if tensor_node.var() is not None:
-                tensor_dist_attr = get_tensor_distributed_attr_graph(tensor_node)
+                tensor_dist_attr = get_tensor_distributed_attr_graph(
+                    tensor_node)
                 tensor_process_mesh = tensor_dist_attr.get_process_mesh()
                 outputs_process_meshes.append(tensor_process_mesh)
-        compatible_process_mesh = compute_compatible_process_mesh(outputs_process_meshes)
+        compatible_process_mesh = compute_compatible_process_mesh(
+            outputs_process_meshes)
         if compatible_process_mesh is not None and op_process_mesh is None:
             op_dist_attr.set_process_mesh(compatible_process_mesh)
             changed = True
@@ -188,7 +191,6 @@ def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
     batch_dim_mappings = []
     for arg_name in op_desc.input_arg_names():
         if op_dist_attr.is_parameter(arg_name):
-            print("input parameter", arg_name)
             continue
         dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
         for idx, mapping in enumerate(dims_mapping[1:]):
@@ -199,7 +201,6 @@ def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
             op_dist_attr.get_input_dim_mapping(arg_name, 0))
     for arg_name in op_desc.output_arg_names():
         if op_dist_attr.is_parameter(arg_name):
-            print("output parameter", arg_name)
             continue
         dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
         for idx, mapping in enumerate(dims_mapping[1:]):
@@ -227,39 +228,61 @@ def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
     return changed
 
 
-def update_op_dims_mapping_by_element_wise_dist_impl(op_dist_attr):
-    """Element-wise operator can be sharded in any way."""
+def update_op_dims_mapping_by_elementwise_dist_impl(op_dist_attr):
+    """Element-wise operator can be sharded in any way (and take care of broadcasting)."""
     changed = False
     op_desc = op_dist_attr.get_desc()
 
     input_arg_names = op_desc.input_arg_names()
-    assert len(input_arg_names) == 1, "Element-wise op only has one input."
+    input_dims_mapping_dict = {}
+    input_dims_mapping_lens = {} 
+    max_dims_mapping_len = -1
+    for arg_name in input_arg_names:
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if max_dims_mapping_len < len(dims_mapping):
+            max_dims_mapping_len = len(dims_mapping)
+        input_dims_mapping_dict[arg_name] = dims_mapping
+        input_dims_mapping_lens[arg_name] = len(dims_mapping)
+
+    dims_mapping_list = []
+    for arg_name in input_arg_names:
+        if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
+            new_dims_mapping = [-1 for _ in range(max_dims_mapping_len)]
+            for i in range(input_dims_mapping_lens[arg_name]):
+                new_idx = (max_dims_mapping_len - input_dims_mapping_lens[arg_name]) + i
+                new_dims_mapping[new_idx] = input_dims_mapping_dict[arg_name][i] 
+            dims_mapping_list.append(new_dims_mapping)
+        else:
+            dims_mapping_list.append(input_dims_mapping_dict[arg_name])
     output_arg_names = op_desc.output_arg_names()
-    assert len(output_arg_names) == 1, "Element-wise op only has one output."
+    for arg_name in output_arg_names:
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        assert len(dims_mapping) == max_dims_mapping_len
+        dims_mapping_list.append(dims_mapping)
+    
+    compatible_dims_mapping = compute_compatible_dims_mapping(dims_mapping_list)
+    assert compatible_dims_mapping is not None, "There is no compatible dim mapping."
 
-    input_dims_mapping = op_dist_attr.get_input_dims_mapping(input_arg_names[0])
-    output_dims_mapping = op_dist_attr.get_output_dims_mapping(output_arg_names[
-        0])
-    assert len(input_dims_mapping) == len(output_dims_mapping), \
-        "The input and output of element-wise op must has the same shape."
+    for arg_name in input_arg_names:
+        if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
+            new_dims_mapping = [-1 for _ in range(input_dims_mapping_lens[arg_name])]
+            for i in range(input_dims_mapping_lens[arg_name]):
+                new_idx = (max_dims_mapping_len - input_dims_mapping_lens[arg_name]) + i
+                new_dims_mapping[i] = compatible_dims_mapping[new_idx] 
+            if new_dims_mapping != input_dims_mapping_dict[arg_name]:
+                op_dist_attr.set_input_dims_mapping(arg_name, new_dims_mapping)
+                changed = True
+        else:
+            if compatible_dims_mapping != input_dims_mapping_dict[arg_name]:
+                op_dist_attr.set_input_dims_mapping(arg_name, compatible_dims_mapping)
+                changed = True
 
-    for idx in range(len(input_dims_mapping)):
-        dim_mappings = [
-            op_dist_attr.get_input_dim_mapping(input_arg_names[0], idx),
-            op_dist_attr.get_output_dim_mapping(output_arg_names[0], idx)
-        ]
-        compatible_dim_mapping = compute_compatible_dim_mapping(dim_mappings)
-        assert compatible_dim_mapping is not None, "There is no compatible dim mapping."
-        if compatible_dim_mapping != op_dist_attr.get_input_dim_mapping(
-                input_arg_names[0], idx):
-            op_dist_attr.set_input_dim_mapping(input_arg_names[0], idx,
-                                               compatible_dim_mapping)
+    for arg_name in output_arg_names:
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        if compatible_dims_mapping != dims_mapping:
+            op_dist_attr.set_output_dims_mapping(arg_name, compatible_dims_mapping)
             changed = True
-        if compatible_dim_mapping != op_dist_attr.get_output_dim_mapping(
-                input_arg_names[0], idx):
-            op_dist_attr.set_output_dim_mapping(output_arg_names[0], idx,
-                                                compatible_dim_mapping)
-            changed = True
+
     return changed
 
 
@@ -316,10 +339,12 @@ def update_tensor_node_dims_mapping(tensor_node, fwd=True):
         for pred_op_node in tensor_node.inputs:
             if pred_op_node.op() is not None:
                 op_dist_attr = get_op_distributed_attr_graph(pred_op_node)
-                op_dims_mapping = op_dist_attr.get_output_dims_mapping(tensor_desc.name())
+                op_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                    tensor_desc.name())
                 dims_mapping_list.append(op_dims_mapping)
         dims_mapping_list.append(tensor_dims_mapping)
-        compatible_dims_mapping = compute_compatible_dims_mapping(dims_mapping_list)
+        compatible_dims_mapping = compute_compatible_dims_mapping(
+            dims_mapping_list)
         if (compatible_dims_mapping is not None) and \
             (compatible_dims_mapping != tensor_dims_mapping):
             tensor_dist_attr.set_dims_mapping(compatible_dims_mapping)
@@ -329,10 +354,12 @@ def update_tensor_node_dims_mapping(tensor_node, fwd=True):
         for succ_op_node in tensor_node.outputs:
             if succ_op_node.op() is not None:
                 op_dist_attr = get_op_distributed_attr_graph(succ_op_node)
-                op_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_desc.name())
+                op_dims_mapping = op_dist_attr.get_input_dims_mapping(
+                    tensor_desc.name())
                 dims_mapping_list.append(op_dims_mapping)
         dims_mapping_list.append(tensor_dims_mapping)
-        compatible_dims_mapping = compute_compatible_dims_mapping(dims_mapping_list)
+        compatible_dims_mapping = compute_compatible_dims_mapping(
+            dims_mapping_list)
         if (compatible_dims_mapping is not None) and \
             (compatible_dims_mapping != tensor_dims_mapping):
             tensor_dist_attr.set_dims_mapping(compatible_dims_mapping)
@@ -350,9 +377,13 @@ def update_op_node_dims_mapping(op_node, fwd=True):
         for tensor_node in op_node.inputs:
             if tensor_node.var() is not None:
                 tensor_desc = tensor_node.var()
-                tensor_dist_attr = get_tensor_distributed_attr_graph(tensor_node)
+                if op_dist_attr.is_annotated_input_dims_mapping(tensor_desc.name()):
+                    continue
+                tensor_dist_attr = get_tensor_distributed_attr_graph(
+                    tensor_node)
                 tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
-                op_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_desc.name())
+                op_dims_mapping = op_dist_attr.get_input_dims_mapping(
+                    tensor_desc.name())
                 compatible_dims_mapping = compute_compatible_dims_mapping(
                     [op_dims_mapping, tensor_dims_mapping])
                 if (compatible_dims_mapping is not None) and \
@@ -364,17 +395,20 @@ def update_op_node_dims_mapping(op_node, fwd=True):
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), op_dist_attr, fwd=True)
         if op_dist_impl is not None:
-            dim_changed = update_op_dims_mapping_by_dist_impl(op_dist_attr, op_dist_impl)
+            dim_changed = update_op_dims_mapping_by_dist_impl(op_dist_attr,
+                                                              op_dist_impl)
             if dim_changed:
                 changed = True
             op_dist_attr.set_impl_idx(op_dist_impl_idx)
-        elif is_element_wise_op(op_desc.type):
-            dim_changed = update_op_dims_mapping_by_element_wise_dist_impl(op_dist_attr)
+        elif is_elementwise_op(op_desc.type()):
+            dim_changed = update_op_dims_mapping_by_elementwise_dist_impl(
+                op_dist_attr)
             if dim_changed:
                 changed = True
             op_dist_attr.set_impl_idx(-1)
         else:
-            dim_changed = update_op_dims_mapping_by_default_dist_impl(op_dist_attr)
+            dim_changed = update_op_dims_mapping_by_default_dist_impl(
+                op_dist_attr)
             if dim_changed:
                 changed = True
             op_dist_attr.set_impl_idx(-2)
@@ -382,9 +416,13 @@ def update_op_node_dims_mapping(op_node, fwd=True):
         for tensor_node in op_node.outputs:
             if tensor_node.var() is not None:
                 tensor_desc = tensor_node.var()
-                tensor_dist_attr = get_tensor_distributed_attr_graph(tensor_node)
+                if op_dist_attr.is_annotated_output_dims_mapping(tensor_desc.name()):
+                    continue
+                tensor_dist_attr = get_tensor_distributed_attr_graph(
+                    tensor_node)
                 tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
-                op_dims_mapping = op_dist_attr.get_output_dims_mapping(tensor_desc.name())
+                op_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                    tensor_desc.name())
                 compatible_dims_mapping = compute_compatible_dims_mapping(
                     [op_dims_mapping, tensor_dims_mapping])
                 if (compatible_dims_mapping is not None) and \
@@ -396,17 +434,20 @@ def update_op_node_dims_mapping(op_node, fwd=True):
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), op_dist_attr, fwd=False)
         if op_dist_impl is not None:
-            dim_changed = update_op_dims_mapping_by_dist_impl(op_dist_attr, op_dist_impl)
+            dim_changed = update_op_dims_mapping_by_dist_impl(op_dist_attr,
+                                                              op_dist_impl)
             if dim_changed:
                 changed = True
             op_dist_attr.set_impl_idx(op_dist_impl_idx)
-        elif is_element_wise_op(op_desc.type):
-            dim_changed = update_op_dims_mapping_by_element_wise_dist_impl(op_dist_attr)
+        elif is_elementwise_op(op_desc.type()):
+            dim_changed = update_op_dims_mapping_by_elementwise_dist_impl(
+                op_dist_attr)
             if dim_changed:
                 changed = True
             op_dist_attr.set_impl_idx(-1)
         else:
-            dim_changed = update_op_dims_mapping_by_default_dist_impl(op_dist_attr)
+            dim_changed = update_op_dims_mapping_by_default_dist_impl(
+                op_dist_attr)
             if dim_changed:
                 changed = True
             op_dist_attr.set_impl_idx(-2)
@@ -425,7 +466,9 @@ def initialize_distributed_attr_for_program(program):
                 set_tensor_distributed_attr_program(tensor.desc,
                                                     tensor_dist_attr)
             if tensor_dist_attr.get_dims_mapping() is None:
-                tensor_dims_mapping = [-1 for _ in range(len(tensor.desc.shape()))]
+                tensor_dims_mapping = [
+                    -1 for _ in range(len(tensor.desc.shape()))
+                ]
                 tensor_dist_attr.set_dims_mapping(tensor_dims_mapping)
             if isinstance(tensor, framework.Parameter):
                 tensor_dist_attr.mark_as_parameter()
@@ -440,15 +483,21 @@ def initialize_distributed_attr_for_program(program):
                 # There may be a better way to find the tensor by name
                 tensor = op.block._var_recursive(tensor_name)
                 if op_dist_attr.get_input_dims_mapping(tensor_name) is None:
-                    tensor_dims_mapping = [-1 for _ in range(len(tensor.desc.shape()))]
-                    op_dist_attr.set_input_dims_mapping(tensor_name, tensor_dims_mapping)
+                    tensor_dims_mapping = [
+                        -1 for _ in range(len(tensor.desc.shape()))
+                    ]
+                    op_dist_attr.set_input_dims_mapping(tensor_name,
+                                                        tensor_dims_mapping)
                 if isinstance(tensor, framework.Parameter):
                     op_dist_attr.mark_as_parameter(tensor_name)
             for tensor_name in op.output_arg_names:
                 tensor = op.block._var_recursive(tensor_name)
                 if op_dist_attr.get_output_dims_mapping(tensor_name) is None:
-                    tensor_dims_mapping = [-1 for _ in range(len(tensor.desc.shape()))]
-                    op_dist_attr.set_output_dims_mapping(tensor_name, tensor_dims_mapping)
+                    tensor_dims_mapping = [
+                        -1 for _ in range(len(tensor.desc.shape()))
+                    ]
+                    op_dist_attr.set_output_dims_mapping(tensor_name,
+                                                         tensor_dims_mapping)
                 if isinstance(tensor, framework.Parameter):
                     op_dist_attr.mark_as_parameter(tensor_name)
 
@@ -569,6 +618,7 @@ def complete_annotation(program):
             reach_fix_point = False
         else:
             reach_fix_point = True
+        # reach_fix_point = True
 
     # Copy the corresponding distributed attribute from graph to program
     copy_distribute_attr_from_graph_to_program(graph, program)

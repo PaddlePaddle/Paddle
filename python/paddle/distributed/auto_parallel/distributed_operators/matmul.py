@@ -54,7 +54,9 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 
         # Declare dims of inputs and outputs using same the shard strategy
         self._dist_signature.add_valid_inputs_same_shard_dims(
-            [('input', 'X', 1), ('input', 'Y', 0)])
+            [('input', 'X', -1), ('input', 'Y', 0)])
+        self._dist_signature.add_valid_inputs_outputs_same_shard_dims(
+            [('input', 'X', -2), ('output', 'Out', -2)])
         self._dist_signature.add_valid_inputs_outputs_same_shard_dims(
             [('input', 'X', 0), ('output', 'Out', 0)])
         self._dist_signature.add_valid_inputs_outputs_same_shard_dims(
@@ -86,9 +88,11 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
 
         # Declare dims of inputs and outputs using same the shard strategy
         self._dist_signature.add_valid_inputs_same_shard_dims(
-            [('input', 'X', 1), ('input', 'Y', 0)])
+            [('input', 'X', -1), ('input', 'Y', 0)])
         self._dist_signature.add_valid_inputs_outputs_same_shard_dims(
             [('input', 'X', 0), ('output', 'Out', 0)])
+        self._dist_signature.add_valid_inputs_outputs_same_shard_dims(
+            [('input', 'X', -2), ('output', 'Out', -2)])
         self._dist_signature.add_valid_inputs_outputs_same_shard_dims(
             [('input', 'Y', 1), ('output', 'Out', -1)])
 

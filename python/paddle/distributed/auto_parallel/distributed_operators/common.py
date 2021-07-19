@@ -80,7 +80,7 @@ class OperatorDistributedSignature:
         if proc_mesh_ndim not in self._declared_proc_mesh_ndim_set:
             return False
         # Check each input_dims_mapping
-        op_desc = op_dist_attr.get_op_desc()
+        op_desc = op_dist_attr.get_desc()
         for param_name in self._declared_inputs_dims_mapping.keys():
             # Each Argument must conform to its corresponding parameter
             for arg_name in op_desc.input(param_name):
@@ -115,7 +115,7 @@ class OperatorDistributedSignature:
                 assert in_or_out == "input"
                 assert length == len(op_desc.input(param_name))
                 for idx, arg_name in enumerate(op_desc.input(param_name)):
-                    dim_mapping = op_dist_attr.get_input_dims_mapping(arg_name,
+                    dim_mapping = op_dist_attr.get_input_dim_mapping(arg_name,
                                                                       dim)
                     if dim_mapping != saved_dim_mappings[idx]:
                         return False
@@ -128,7 +128,7 @@ class OperatorDistributedSignature:
         if proc_mesh_ndim not in self._declared_proc_mesh_ndim_set:
             return False
         # Check each output_dims_mapping
-        op_desc = op_dist_attr.get_op_desc()
+        op_desc = op_dist_attr.get_desc()
         for param_name in self._declared_outputs_dims_mapping.keys():
             # Each Argument must conform to its corresponding parameter
             for arg_name in op_desc.output(param_name):
@@ -147,7 +147,6 @@ class OperatorDistributedSignature:
                     if (self._declared_outputs_dims_mapping[param_name][dim] ==
                             ShardTag.Split and output_dims_mapping[dim] == -1):
                         return False
-        # TODO: args's length may not same
         # Check output_dims_mapping between outputs 
         for same_shard_dims in self._declared_outputs_same_shard_dims_list:
             # Save dim_mappings from first param_name 
@@ -163,7 +162,7 @@ class OperatorDistributedSignature:
                 assert in_or_out == "output"
                 assert length == len(op_desc.output(param_name))
                 for idx, arg_name in enumerate(op_desc.output(param_name)):
-                    dim_mapping = op_dist_attr.get_output_dims_mapping(arg_name,
+                    dim_mapping = op_dist_attr.get_output_dim_mapping(arg_name,
                                                                        dim)
                     if dim_mapping != saved_dim_mappings[idx]:
                         return False
@@ -176,7 +175,7 @@ class OperatorDistributedSignature:
         if proc_mesh_ndim not in self._declared_proc_mesh_ndim_set:
             return False
         # Check output_dims_mapping between outputs
-        op_desc = op_dist_attr.get_op_desc()
+        op_desc = op_dist_attr.get_desc()
         for same_shard_dims in self._declared_inputs_outputs_same_shard_dims_list:
             # Save dim_mappings from first param_name 
             in_or_out, param_name, dim = same_shard_dims[0]
@@ -228,7 +227,7 @@ class DistributedOperator:
 
 class DistributedOperatorImpl:
     def __init__(self):
-        self._dist_singnature = None
+        self._dist_signature = None
         self._name = None
 
     def forward(self, serial_op):
@@ -238,7 +237,10 @@ class DistributedOperatorImpl:
         pass
 
     def get_distributed_signature(self):
-        return self._dist_singnature
+        return self._dist_signature
+    
+    def get_name(self):
+        return self._name
 
 
 def register_distributed_operator(name, dist_op):
@@ -273,11 +275,11 @@ def find_best_compatible_distributed_operator_impl(name, op_dist_attr,
     impls = dist_op.get_impls()
     if fwd:
         for idx, impl in enumerate(impls):
-            if impl.is_input_compatible(op_dist_attr):
+            if impl.get_distributed_signature().is_input_compatible(op_dist_attr):
                 compatible_impls.append((impl, idx))
     else:
         for idx, impl in enumerate(impls):
-            if impl.is_output_compatible(op_dist_attr):
+            if impl.get_distributed_signature().is_output_compatible(op_dist_attr):
                 compatible_impls.append((impl, idx))
 
     if compatible_impls:

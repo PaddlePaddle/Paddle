@@ -26,6 +26,8 @@ class ProcessMesh:
             dp_degree=pp_degree=mp_degree=2
             shape = ProcessMesh([dp_degree, pp_degree, mp_degree])
         """
+        assert shape is not None
+        assert process_group is not None
         process_num = np.prod(shape)
         assert len(process_group) == process_num, \
             "ProcessMesh must have same processes as the process group argument. "
