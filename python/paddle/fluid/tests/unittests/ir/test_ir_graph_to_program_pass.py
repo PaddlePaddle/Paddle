@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ import unittest
 import six
 import paddle
 from paddle import fluid
+from paddle import static
 
 paddle.enable_static()
 
@@ -81,12 +82,12 @@ class SingleGraphToProgramPass(GraphToProgramPassTest):
 
     @staticmethod
     def build_program():
-        program = fluid.default_main_program()
-        with fluid.program_guard(program):
-            data = fluid.data(name='x', shape=[None, 13], dtype='float32')
-            hidden = fluid.layers.fc(input=data, size=10)
-            loss = fluid.layers.mean(hidden)
-            fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+        program = static.Program()
+        with static.program_guard(program):
+            data = static.data(name='x', shape=[None, 13], dtype='float32')
+            hidden = static.nn.fc(input=data, size=10)
+            loss = paddle.mean(hidden)
+            paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
         return program
 
     def test_check_parameter(self):
@@ -145,19 +146,19 @@ class MultiBlockGraphToProgramPass(GraphToProgramPassTest):
 
     @staticmethod
     def multiblock_model():
-        data = fluid.data(name='t', shape=[None, 10], dtype='float32')
-        a = fluid.layers.data(
+        data = static.data(name='t', shape=[None, 10], dtype='float32')
+        a = static.data(
             name='a', shape=[10, 1], dtype='int64', append_batch_size=False)
-        b = fluid.layers.data(
+        b = static.data(
             name='b', shape=[10, 1], dtype='int64', append_batch_size=False)
 
-        cond = fluid.layers.greater_than(a, b)
+        cond = paddle.greater_than(a, b)
         ie = fluid.layers.IfElse(cond)
         with ie.true_block():
-            hidden = fluid.layers.relu(data)
+            hidden = paddle.nn.functional.relu(data)
             ie.output(hidden)
         with ie.false_block():
-            hidden = fluid.layers.softmax(data)
+            hidden = paddle.nn.functional.softmax(data)
             ie.output(hidden)
 
         hidden = ie()
@@ -165,11 +166,11 @@ class MultiBlockGraphToProgramPass(GraphToProgramPassTest):
 
     @staticmethod
     def build_program():
-        program = fluid.default_main_program()
-        with fluid.program_guard(program):
+        program = static.Program()
+        with static.program_guard(program):
             hidden = MultiBlockGraphToProgramPass.multiblock_model()
-            loss = fluid.layers.mean(hidden)
-            fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+            loss = paddle.mean(hidden)
+            paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
         return program
 
     def check_ops_equal(self, o_block, c_block):
