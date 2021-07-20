@@ -9067,7 +9067,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
             be changed each iteration.
         offsets (list|tuple|Variable, optional): Specifies the cropping
             offsets at each dimension. Its data type is int32. If a list/tuple, it's length
-            must be the same as the dimension size of `x`. If a Variable, it should be a 1-D
+            must be the same as the dimension size of `x`. If a Tensor, it should be a 1-D
             Tensor. When it is a list, each element can be an integer or a Tensor of shape: [1].
             If Variable contained, it is suitable for the case that the offsets may be changed
             each iteration. Default: None, the offsets are 0 at each dimension.
@@ -9077,51 +9077,33 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     Returns:
         Tensor: The cropped Tensor has same data type with `x`.
 
-    Raises:
-        TypeError: If the data type of `x` is not in: float32, float64, int32, int64.
-        TypeError: If `shape` is not a list, tuple or Tensor.
-        TypeError: If the data type of `shape` is not int32.
-        TypeError: If `offsets` is not None and not a list, tuple or Tensor.
-        TypeError: If the data type of `offsets` is not int32.
-        ValueError: If the element in `offsets` is less than zero.
-
     Examples:
 
         .. code-block:: python
           :name: code-example1
 
             import paddle
-            import numpy as np
-            np_data_x = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype('int32')
-            x = paddle.to_tensor(np_data_x)
+            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
             # x.shape = [3, 3]
             # x = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
             # shape can be a 1-D Tensor or list or tuple.
-            np_data_shape = np.array([2, 2]).astype('int32')
-            shape_tensor = paddle.to_tensor(np_data_shape)
-            # shape_list = [2, 2]
-            # shape_tuple = (2, 2)
-            out = paddle.crop(x, shape_tensor)
-            # out = paddle.crop(x, shape_list)
-            # out = paddle.crop(x, shape_tuple)
-            np_out = out.numpy()
-            print('out = ', np_out)
+            shape = paddle.to_tensor([2, 2], dtype='int32')
+            # shape = [2, 2]
+            # shape = (2, 2)
+            out = paddle.crop(x, shape)
             # out.shape = [2, 2]
             # out = [[1,2], [4,5]]
 
             # offsets can be a 1-D Tensor or list or tuple.
-            np_data_offsets = np.array([0, 1]).astype('int32')
-            offsets_tensor = paddle.to_tensor(np_data_offsets)
-            # offsets_list = [1, 1]
-            # offsets_tuple = (0, 1)
-            out = paddle.crop(x, shape_tensor, offsets_tensor)
-            # out = paddle.crop(x, shape_tensor, offsets_list)
-            # out = paddle.crop(x, shape_tensor, offsets_tuple)
-            np_out = out.numpy()
-            print('out = ', np_out)
+            offsets = paddle.to_tensor([0, 1], dtype='int32')
+            # offsets = [1, 0]
+            # offsets = (1, 1)
+            out = paddle.crop(x, shape, offsets)
             # out.shape = [2, 2]
+            # if offsets = [0, 0], out = [[1,2], [4,5]]
             # if offsets = [0, 1], out = [[2,3], [5,6]]
+            # if offsets = [1, 0], out = [[4,5], [7,8]]
             # if offsets = [1, 1], out = [[5,6], [8,9]]
 
     """
