@@ -50,6 +50,7 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
 };
 
 template struct DequantizeFunctor<platform::CPUDeviceContext, int8_t>;
+template struct DequantizeFunctor<platform::CPUDeviceContext, int16_t>;
 
 class DequantizeMaxAbsOp : public framework::OperatorWithKernel {
  public:
@@ -79,7 +80,7 @@ class DequantizeMaxAbsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(int8 Tensor) The input with int8 type is the "
+             "(Int Tensor) The input with int8/16 type is the "
              "low precision tensor.");
     AddInput("Scale", "(float) The scale in quantization stage.");
     AddOutput("Out",
@@ -108,4 +109,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(dequantize_abs_max,
-                       ops::DequantizeMaxAbsKernel<CPU, int8_t>);
+                       ops::DequantizeMaxAbsKernel<CPU, int8_t>,
+                       ops::DequantizeMaxAbsKernel<CPU, int16_t>);
