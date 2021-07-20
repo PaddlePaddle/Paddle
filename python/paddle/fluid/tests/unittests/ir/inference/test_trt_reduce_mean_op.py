@@ -66,9 +66,10 @@ class TRTReduceMeanAllNoBatchTest(InferencePassTest):
         self.trt_parameters = TRTReduceMeanAllNoBatchTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
-        self.dynamic_shape_params = TRTReduceMeanTest.DynamicShapeParam({
-            'data': [1, 3, 64, 64]
-        }, {'data': [3, 3, 224, 224]}, {'data': [3, 3, 224, 224]}, False)
+        self.dynamic_shape_params = TRTReduceMeanAllNoBatchTest.DynamicShapeParam(
+            {
+                'data': [1, 3, 64, 64]
+            }, {'data': [3, 3, 224, 224]}, {'data': [3, 3, 224, 224]}, False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
