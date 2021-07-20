@@ -22,7 +22,6 @@ namespace cub = hipcub;
 #include <vector>
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/margin_softmax_with_cross_entropy_op.h"
-#include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/string/string_helper.h"
