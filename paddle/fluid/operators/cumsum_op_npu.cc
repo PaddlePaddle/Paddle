@@ -42,6 +42,12 @@ class CumSumNPUKernel : public framework::OpKernel<T> {
 
     bool flatten = ctx.Attr<bool>("flatten");
     if (flatten) {
+      PADDLE_ENFORCE_EQ(
+          axis, -1,
+          platform::errors::InvalidArgument(
+              "when flatten is true, attr axis must be default %d, but got %d",
+              -1, axis));
+
       Tensor new_x(x->type());
       new_x.ShareDataWith(*x);
 
