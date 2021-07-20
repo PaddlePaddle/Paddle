@@ -517,6 +517,7 @@ def start_local_trainers(cluster,
                 "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log, and detail running logs maybe found in {}/workerlog.0".
                 format(log_dir, log_dir))
         fn = None
+        pre_fn = None if os.name == 'nt' else os.setsid
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))
             if os.path.exists("%s/endpoints.log" % log_dir):
@@ -526,13 +527,9 @@ def start_local_trainers(cluster,
                 f.write("\n".join(cluster.trainers_endpoints()))
             fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
             proc = subprocess.Popen(
-                cmd,
-                env=current_env,
-                stdout=fn,
-                stderr=fn,
-                preexec_fn=os.setsid)
+                cmd, env=current_env, stdout=fn, stderr=fn, preexec_fn=pre_fn)
         else:
-            proc = subprocess.Popen(cmd, env=current_env, preexec_fn=os.setsid)
+            proc = subprocess.Popen(cmd, env=current_env, preexec_fn=pre_fn)
 
         tp = TrainerProc()
         tp.proc = proc
