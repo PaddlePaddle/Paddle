@@ -718,6 +718,16 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "reduce_all)";
         return false;
       }
+
+      // The batch size dimension cannot be reduced if it's not dynamic shape.
+      if (!with_dynamic_shape) {
+        if (desc.HasAttr("reduce_all")) return false;
+        std::vector<int32_t> dim =
+            BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
+        for (auto x : dim) {
+          if (!x) return false;
+        }
+      }
     }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
