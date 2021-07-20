@@ -382,9 +382,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         while self._resume_worker_cnt > 0:
             time.sleep(0.5)
 
-        # 2. Resume blocking_queue, clear blocking_queue caches
-        # reset blocking_queue to clear cache
-        # self._blocking_queue.reset()
+        # 2. clear blocking_queue caches
+        # in order not to restart the thread, we just clear
+        # the blocking_queue cachees instead of recreating one
         while self._blocking_queue.size() >= len(self._places):
             if in_dygraph_mode():
                 self._reader.read_next_var_list()
@@ -394,9 +394,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 data = self._reader.read_next()
 
         # 3. reset all states
-        # data get from _data_queue will be reordered by _rcvd_idx
-        # for data order keeping, data index not equal _rcvd_idx 
-        # will be cached in _task_infos
         self._send_idx = 0
         self._rcvd_idx = 0
         self._batches_outstanding = 0
