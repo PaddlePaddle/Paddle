@@ -3924,6 +3924,10 @@ def conv2d_transpose(input,
           print(conv2d_transpose.shape) # [-1, 2, 34, 34]
     """
     assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
+    if len(input.shape) != 4:
+        raise ValueError("Input size should be 4, "
+                         "but received {}".format(len(input.shape)))
+
     if data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Attr(data_format) of Op(fluid.layers.conv2d_transpose) got wrong value: received "
@@ -4015,7 +4019,14 @@ def conv2d_transpose(input,
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
     else:
         raise ValueError("output_size should be int, list[int] or tuple[int]")
-    groups = 1 if groups is None else groups
+
+    if groups is None:
+        groups = 1
+    elif groups <= 0:
+        raise ValueError("the groups of input must be greater than 0, "
+                         "but received the groups of input is {}".format(
+                             groups))
+
     filter_shape = [input_channel, num_filters // groups] + filter_size
 
     img_filter = helper.create_parameter(
