@@ -282,6 +282,7 @@ def _get_valid_program(main_program=None):
     return main_program
 
 
+@deprecated(since="2.1.0", update_to="paddle.save", level=1)
 @dygraph_not_support
 def save_vars(executor,
               dirname,
@@ -1836,6 +1837,7 @@ def _legacy_save(param_dict, model_path, protocol=2):
             pickle.dump(param_dict, f, protocol=protocol)
 
 
+@deprecated(since="2.1.0", update_to="paddle.save", level=1)
 @static_only
 def save(program, model_path, protocol=4, **configs):
     """
@@ -1944,6 +1946,7 @@ def _pickle_loads_mac(path, f):
     return load_result
 
 
+@deprecated(since="2.1.0", update_to="paddle.load", level=1)
 @static_only
 def load(program, model_path, executor=None, var_list=None):
     """
