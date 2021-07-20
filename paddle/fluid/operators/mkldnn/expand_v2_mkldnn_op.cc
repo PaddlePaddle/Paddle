@@ -102,11 +102,8 @@ class ExpandGradMKLDNNKernel : public framework::OpKernel<T> {
     if (dx_vec_dims.size() != dout_vec_dims.size()) {
       dx_vec_dims.insert(dx_vec_dims.begin(),
                          dout_vec_dims.size() - dx_vec_dims.size(), 1);
-      // dx_format_tag = GetExtendedFormatTag(x_vec_dims, out_vec_dims.size(),
-      // dx_format_tag);
     }
 
-    // out->set_format(x_format_tag);
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (dout_vec_dims == dx_vec_dims) {
       mkldnn::memory::data_type dout_type =
