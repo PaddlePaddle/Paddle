@@ -87,9 +87,6 @@ class TestCumsumOp(unittest.TestCase):
 
     def test_npu(self):
         # Now, npu tests need setting paddle.enable_static()
-        # paddle.disable_static(paddle.fluid.NPUPlace(0))
-        # self.run_cases()
-        # paddle.enable_static()
 
         self.run_static(use_npu=True)
 
