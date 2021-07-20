@@ -9039,10 +9039,10 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
                               [6, 7, 8]]]
 
     Parameters:
-        x (Variable): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
-        shape (list|tuple|Variable): The output shape is specified
+        x (Tensor): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
+        shape (list|tuple|Tensor): The output shape is specified
             by `shape`. Its data type is int32. If a list/tuple, it's length must be
-            the same as the dimension size of `x`. If a Variable, it should be a 1-D Tensor.
+            the same as the dimension size of `x`. If a Tensor, it should be a 1-D Tensor.
             When it is a list, each element can be an integer or a Tensor of shape: [1].
             If Variable contained, it is suitable for the case that the shape may
             be changed each iteration.
@@ -9056,51 +9056,54 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
             this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: The cropped Tensor has same data type with `x`.
+        Tensor: The cropped Tensor has same data type with `x`.
 
     Raises:
         TypeError: If the data type of `x` is not in: float32, float64, int32, int64.
-        TypeError: If `shape` is not a list, tuple or Variable.
+        TypeError: If `shape` is not a list, tuple or Tensor.
         TypeError: If the data type of `shape` is not int32.
-        TypeError: If `offsets` is not None and not a list, tuple or Variable.
+        TypeError: If `offsets` is not None and not a list, tuple or Tensor.
         TypeError: If the data type of `offsets` is not int32.
         ValueError: If the element in `offsets` is less than zero.
 
     Examples:
 
         .. code-block:: python
+          :name: code-example1
 
-            import paddle.fluid as fluid
-            import paddle.fluid as fluid
             import paddle
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[None, 3, 5], dtype="float32")
-            # x.shape = [-1, 3, 5], where -1 indicates batch size, and it will get the exact value in runtime.
+            import numpy as np
+            np_data_x = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype('int32')
+            x = paddle.to_tensor(np_data_x)
+            # x.shape = [3, 3]
+            # x = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
-            # shape is a 1-D Tensor
-            crop_shape = fluid.data(name="crop_shape", shape=[3], dtype="int32")
-            crop0 = fluid.layers.crop_tensor(x, shape=crop_shape)
-            # crop0.shape = [-1, -1, -1], it means crop0.shape[0] = x.shape[0] in runtime.
+            # shape can be a 1-D Tensor or list or tuple.
+            np_data_shape = np.array([2, 2]).astype('int32')
+            shape_tensor = paddle.to_tensor(np_data_shape)
+            # shape_list = [2, 2]
+            # shape_tuple = (2, 2)
+            out = paddle.crop(x, shape_tensor)
+            # out = paddle.crop(x, shape_list)
+            # out = paddle.crop(x, shape_tuple)
+            np_out = out.numpy()
+            print('out = ', np_out)
+            # out.shape = [2, 2]
+            # out = [[1,2], [4,5]]
 
-            # or shape is a list in which each element is a constant
-            crop1 = fluid.layers.crop_tensor(x, shape=[-1, -1, 3], offsets=[0, 1, 0])
-            # crop1.shape = [-1, 2, 3]
-
-            # or shape is a list in which each element is a constant or Variable
-            y = fluid.data(name="y", shape=[3, 8, 8], dtype="float32")
-            dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
-            crop2 = fluid.layers.crop_tensor(y, shape=[3, dim1, 4])
-            # crop2.shape = [3, -1, 4]
-
-            # offsets is a 1-D Tensor
-            crop_offsets = fluid.data(name="crop_offsets", shape=[3], dtype="int32")
-            crop3 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=crop_offsets)
-            # crop3.shape = [-1, 2, 3]
-
-            # offsets is a list in which each element is a constant or Variable
-            offsets_var =  fluid.data(name="dim1", shape=[1], dtype="int32")
-            crop4 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=[0, 1, offsets_var])
-            # crop4.shape = [-1, 2, 3]
+            # offsets can be a 1-D Tensor or list or tuple.
+            np_data_offsets = np.array([0, 1]).astype('int32')
+            offsets_tensor = paddle.to_tensor(np_data_offsets)
+            # offsets_list = [1, 1]
+            # offsets_tuple = (0, 1)
+            out = paddle.crop(x, shape_tensor, offsets_tensor)
+            # out = paddle.crop(x, shape_tensor, offsets_list)
+            # out = paddle.crop(x, shape_tensor, offsets_tuple)
+            np_out = out.numpy()
+            print('out = ', np_out)
+            # out.shape = [2, 2]
+            # if offsets = [0, 1], out = [[2,3], [5,6]]
+            # if offsets = [1, 1], out = [[5,6], [8,9]]
 
     """
     helper = LayerHelper('crop_tensor', **locals())
