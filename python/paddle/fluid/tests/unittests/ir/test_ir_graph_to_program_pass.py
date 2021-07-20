@@ -85,7 +85,7 @@ class SingleGraphToProgramPass(GraphToProgramPassTest):
         program = static.Program()
         with static.program_guard(program):
             data = static.data(name='x', shape=[None, 13], dtype='float32')
-            hidden = static.nn.fc(input=data, size=10)
+            hidden = static.nn.fc(data, size=10)
             loss = paddle.mean(hidden)
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
         return program
@@ -147,10 +147,8 @@ class MultiBlockGraphToProgramPass(GraphToProgramPassTest):
     @staticmethod
     def multiblock_model():
         data = static.data(name='t', shape=[None, 10], dtype='float32')
-        a = static.data(
-            name='a', shape=[10, 1], dtype='int64', append_batch_size=False)
-        b = static.data(
-            name='b', shape=[10, 1], dtype='int64', append_batch_size=False)
+        a = static.data(name='a', shape=[10, 1], dtype='int64')
+        b = static.data(name='b', shape=[10, 1], dtype='int64')
 
         cond = paddle.greater_than(a, b)
         ie = fluid.layers.IfElse(cond)
