@@ -16,6 +16,7 @@ from __future__ import print_function
 from .proto import framework_pb2
 
 from paddle.fluid import framework as framework
+from paddle.fluid import program_guard
 from . import core
 import collections
 import copy
@@ -29,6 +30,7 @@ from .data_feeder import check_type
 __all__ = [
     'append_backward',
     'gradients',
+    'gradients_with_optimizer',
 ]
 
 _logger = log_helper.get_logger(
@@ -2015,3 +2017,43 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)
+
+
+@framework.static_only
+def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
+    """
+    :api_attr: Static Graph
+
+    Backpropagate the gradients of the program with the given optimizer.
+
+    Args:
+        program (Program): The input program.
+        optimizer(Optimizer): The given optimizer.
+
+    Return:
+
+    Examples:
+        .. code-block:: python
+    """
+    check_type(program, 'program', paddle.fluid.Program,
+               'paddle.static.gradients_with_optimizer')
+    check_type(optimizer, 'optimizer', paddle.fluid.optimizer,
+               'paddle.static.gradients_with_optimizer')
+
+    if inputs is None or outputs is None:
+        in_set = set()
+        out_set = set()
+        for block in program.blocks:
+            for op in block.ops:
+                in_set.update(op.input_arg_names)
+                out_set.update(op.output_arg_names)
+        if inputs is None:
+            inputs = list(in_set.difference(out_set))
+        if outputs is None:
+            outputs = list(out_set.difference(in_set))
+    grads = gradients(outputs, inputs)
+
+    with program_guard(program, None):
+        optimize_ops = optimizer.apply_gradients(grads)
+
+    return optimize_ops, grads
