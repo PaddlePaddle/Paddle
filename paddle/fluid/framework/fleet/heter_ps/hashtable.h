@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
 #endif
 #include "thrust/pair.h"
+#include "paddle/fluid/framework/rw_lock.h"
 //#include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #ifdef PADDLE_WITH_HETERPS
@@ -63,11 +64,13 @@ class HashTable {
 
   int size() { return container_->size(); }
 
+ std::unique_ptr<RWLock> rwlock_{nullptr}; 
  private:
   TableContainer<KeyType, ValType>* container_;
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;
+  
 };
 }  // end namespace framework
 }  // end namespace paddle
