@@ -66,6 +66,8 @@ def margin_softmax_with_cross_entropy(logits,
     return loss, softmax
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMarginSoftmaxWithCrossEntropyOp(OpTest):
     def initParams(self):
         self.op_type = "margin_softmax_with_cross_entropy"
@@ -123,6 +125,8 @@ class TestMarginSoftmaxWithCrossEntropyOp(OpTest):
         self.check_grad_with_place(core.CUDAPlace(0), ["Logits"], "Loss")
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMarginSoftmaxWithCrossEntropyOpFP32(
         TestMarginSoftmaxWithCrossEntropyOp):
     def init_dtype(self):
@@ -136,6 +140,8 @@ class TestMarginSoftmaxWithCrossEntropyOpFP32(
             max_relative_error=5e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMarginSoftmaxWithCrossEntropyOpFP16(
         TestMarginSoftmaxWithCrossEntropyOp):
     def init_dtype(self):
@@ -152,6 +158,8 @@ class TestMarginSoftmaxWithCrossEntropyOpFP16(
             max_relative_error=6e-1)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMarginSoftmaxWithCrossEntropyOpCosFace(
         TestMarginSoftmaxWithCrossEntropyOp):
     def init_loss_params(self):
@@ -161,6 +169,8 @@ class TestMarginSoftmaxWithCrossEntropyOpCosFace(
         self.scale = 2.0
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMarginSoftmaxWithCrossEntropyOpSphereFace(
         TestMarginSoftmaxWithCrossEntropyOp):
     def init_loss_params(self):
