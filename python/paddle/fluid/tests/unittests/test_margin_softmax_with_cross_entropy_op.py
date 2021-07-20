@@ -185,6 +185,8 @@ class TestMarginSoftmaxWithCrossEntropyOpCPU(
             pass
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMarginSoftmaxWithCrossEntropyOpV2(unittest.TestCase):
     def setUp(self):
         self.initParams()
@@ -306,18 +308,24 @@ class TestMarginSoftmaxWithCrossEntropyOpV2(unittest.TestCase):
             np.testing.assert_allclose(softmax_res, softmax_np)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMarginSoftmaxWithCrossEntropyOpV3(
         TestMarginSoftmaxWithCrossEntropyOpV2):
     def init_reduction(self):
         self.reduction = 'mean'
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMarginSoftmaxWithCrossEntropyOpV4(
         TestMarginSoftmaxWithCrossEntropyOpV2):
     def init_reduction(self):
         self.reduction = 'sum'
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMarginSoftmaxWithCrossEntropyOpAPIError(unittest.TestCase):
     def setUp(self):
         self.initParams()
