@@ -25,7 +25,7 @@ from paddle.fluid.distributed_attribute import set_op_distributed_attr_program
 from paddle.fluid.distributed_attribute import generate_tensor_distributed_attr_uid
 from paddle.fluid.distributed_attribute import generate_op_distributed_attr_uid
 
-from .distributed_operators import find_best_compatible_distributed_operator_impl 
+from .distributed_operators import find_best_compatible_distributed_operator_impl
 
 ELEMENT_WISE_OP_LIST = ["elementwise_add", "gelu"]
 TENSOR_DISTRIBUTED_ATTR_MAP_FOR_GRAPH = {}
@@ -235,7 +235,7 @@ def update_op_dims_mapping_by_elementwise_dist_impl(op_dist_attr):
 
     input_arg_names = op_desc.input_arg_names()
     input_dims_mapping_dict = {}
-    input_dims_mapping_lens = {} 
+    input_dims_mapping_lens = {}
     max_dims_mapping_len = -1
     for arg_name in input_arg_names:
         dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
@@ -249,8 +249,9 @@ def update_op_dims_mapping_by_elementwise_dist_impl(op_dist_attr):
         if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
             new_dims_mapping = [-1 for _ in range(max_dims_mapping_len)]
             for i in range(input_dims_mapping_lens[arg_name]):
-                new_idx = (max_dims_mapping_len - input_dims_mapping_lens[arg_name]) + i
-                new_dims_mapping[new_idx] = input_dims_mapping_dict[arg_name][i] 
+                new_idx = (max_dims_mapping_len -
+                           input_dims_mapping_lens[arg_name]) + i
+                new_dims_mapping[new_idx] = input_dims_mapping_dict[arg_name][i]
             dims_mapping_list.append(new_dims_mapping)
         else:
             dims_mapping_list.append(input_dims_mapping_dict[arg_name])
@@ -259,28 +260,33 @@ def update_op_dims_mapping_by_elementwise_dist_impl(op_dist_attr):
         dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
         assert len(dims_mapping) == max_dims_mapping_len
         dims_mapping_list.append(dims_mapping)
-    
+
     compatible_dims_mapping = compute_compatible_dims_mapping(dims_mapping_list)
     assert compatible_dims_mapping is not None, "There is no compatible dim mapping."
 
     for arg_name in input_arg_names:
         if input_dims_mapping_lens[arg_name] < max_dims_mapping_len:
-            new_dims_mapping = [-1 for _ in range(input_dims_mapping_lens[arg_name])]
+            new_dims_mapping = [
+                -1 for _ in range(input_dims_mapping_lens[arg_name])
+            ]
             for i in range(input_dims_mapping_lens[arg_name]):
-                new_idx = (max_dims_mapping_len - input_dims_mapping_lens[arg_name]) + i
-                new_dims_mapping[i] = compatible_dims_mapping[new_idx] 
+                new_idx = (max_dims_mapping_len -
+                           input_dims_mapping_lens[arg_name]) + i
+                new_dims_mapping[i] = compatible_dims_mapping[new_idx]
             if new_dims_mapping != input_dims_mapping_dict[arg_name]:
                 op_dist_attr.set_input_dims_mapping(arg_name, new_dims_mapping)
                 changed = True
         else:
             if compatible_dims_mapping != input_dims_mapping_dict[arg_name]:
-                op_dist_attr.set_input_dims_mapping(arg_name, compatible_dims_mapping)
+                op_dist_attr.set_input_dims_mapping(arg_name,
+                                                    compatible_dims_mapping)
                 changed = True
 
     for arg_name in output_arg_names:
         dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
         if compatible_dims_mapping != dims_mapping:
-            op_dist_attr.set_output_dims_mapping(arg_name, compatible_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(arg_name,
+                                                 compatible_dims_mapping)
             changed = True
 
     return changed
@@ -377,7 +383,8 @@ def update_op_node_dims_mapping(op_node, fwd=True):
         for tensor_node in op_node.inputs:
             if tensor_node.var() is not None:
                 tensor_desc = tensor_node.var()
-                if op_dist_attr.is_annotated_input_dims_mapping(tensor_desc.name()):
+                if op_dist_attr.is_annotated_input_dims_mapping(
+                        tensor_desc.name()):
                     continue
                 tensor_dist_attr = get_tensor_distributed_attr_graph(
                     tensor_node)
@@ -416,7 +423,8 @@ def update_op_node_dims_mapping(op_node, fwd=True):
         for tensor_node in op_node.outputs:
             if tensor_node.var() is not None:
                 tensor_desc = tensor_node.var()
-                if op_dist_attr.is_annotated_output_dims_mapping(tensor_desc.name()):
+                if op_dist_attr.is_annotated_output_dims_mapping(
+                        tensor_desc.name()):
                     continue
                 tensor_dist_attr = get_tensor_distributed_attr_graph(
                     tensor_node)
@@ -620,7 +628,7 @@ def complete_annotation(program):
             reach_fix_point = True
         # reach_fix_point = True
 
-    # Copy the corresponding distributed attribute from graph to program
+        # Copy the corresponding distributed attribute from graph to program
     copy_distribute_attr_from_graph_to_program(graph, program)
 
     return program

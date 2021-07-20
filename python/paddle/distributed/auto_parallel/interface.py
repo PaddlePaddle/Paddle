@@ -35,6 +35,7 @@ def shard_tensor(tensor, mesh, dims_mapping):
         The tensor itself.
     """
     validate_check()
+    assert len(tensor.shape) == len(dims_mapping)
     tensor_dist_attr = get_tensor_distributed_attr_program(tensor.desc)
     if tensor_dist_attr is None:
         tensor_dist_attr = TensorDistributedAttribute(tensor.desc)

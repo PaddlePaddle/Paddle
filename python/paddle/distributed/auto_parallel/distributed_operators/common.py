@@ -116,7 +116,7 @@ class OperatorDistributedSignature:
                 assert length == len(op_desc.input(param_name))
                 for idx, arg_name in enumerate(op_desc.input(param_name)):
                     dim_mapping = op_dist_attr.get_input_dim_mapping(arg_name,
-                                                                      dim)
+                                                                     dim)
                     if dim_mapping != saved_dim_mappings[idx]:
                         return False
         return True
@@ -163,7 +163,7 @@ class OperatorDistributedSignature:
                 assert length == len(op_desc.output(param_name))
                 for idx, arg_name in enumerate(op_desc.output(param_name)):
                     dim_mapping = op_dist_attr.get_output_dim_mapping(arg_name,
-                                                                       dim)
+                                                                      dim)
                     if dim_mapping != saved_dim_mappings[idx]:
                         return False
         return True
@@ -238,7 +238,7 @@ class DistributedOperatorImpl:
 
     def get_distributed_signature(self):
         return self._dist_signature
-    
+
     def get_name(self):
         return self._name
 
@@ -275,11 +275,13 @@ def find_best_compatible_distributed_operator_impl(name, op_dist_attr,
     impls = dist_op.get_impls()
     if fwd:
         for idx, impl in enumerate(impls):
-            if impl.get_distributed_signature().is_input_compatible(op_dist_attr):
+            if impl.get_distributed_signature().is_input_compatible(
+                    op_dist_attr):
                 compatible_impls.append((impl, idx))
     else:
         for idx, impl in enumerate(impls):
-            if impl.get_distributed_signature().is_output_compatible(op_dist_attr):
+            if impl.get_distributed_signature().is_output_compatible(
+                    op_dist_attr):
                 compatible_impls.append((impl, idx))
 
     if compatible_impls:
