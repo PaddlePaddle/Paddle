@@ -309,8 +309,7 @@ void NPUTensorCheckerVisitor<platform::NPUDeviceContext>::apply(
   // use env strategy control in future, -1=print_all.
   framework::LoDTensor cpu_tensor;
   cpu_tensor.Resize(tensor_.dims());
-  T* cpu_data = static_cast<T*>(
-      cpu_tensor.mutable_data(platform::CPUPlace(), tensor_.type()));
+  cpu_tensor.mutable_data(platform::CPUPlace(), tensor_.type());
 
   framework::TensorCopySync(tensor_, platform::CPUPlace(), &cpu_tensor);
 
