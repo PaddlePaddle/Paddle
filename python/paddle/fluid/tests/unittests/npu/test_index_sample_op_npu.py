@@ -26,8 +26,6 @@ import paddle.fluid as fluid
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestIndexSampleOp(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
@@ -65,8 +63,6 @@ class TestIndexSampleOp(OpTest):
         self.index_type = "int32"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase1(TestIndexSampleOp):
     def config(self):
         """
@@ -78,8 +74,6 @@ class TestCase1(TestIndexSampleOp):
         self.index_type = "int32"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase2(TestIndexSampleOp):
     def config(self):
         """
@@ -91,8 +85,6 @@ class TestCase2(TestIndexSampleOp):
         self.index_type = "int64"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase3(TestIndexSampleOp):
     def config(self):
         """
@@ -104,8 +96,6 @@ class TestCase3(TestIndexSampleOp):
         self.index_type = "int32"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase4(TestIndexSampleOp):
     def config(self):
         """
@@ -117,8 +107,6 @@ class TestCase4(TestIndexSampleOp):
         self.index_type = "int64"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase5(TestIndexSampleOp):
     def config(self):
         """
@@ -134,8 +122,6 @@ class TestCase5(TestIndexSampleOp):
         pass
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase6(TestCase5):
     def config(self):
         """
@@ -148,8 +134,6 @@ class TestCase6(TestCase5):
         self.index_type = "int64"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase7(TestCase5):
     def config(self):
         """
@@ -162,8 +146,6 @@ class TestCase7(TestCase5):
         self.index_type = "int64"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestIndexSampleShape(unittest.TestCase):
     def test_shape(self):
         paddle.enable_static()
@@ -190,8 +172,6 @@ class TestIndexSampleShape(unittest.TestCase):
         res = exe.run(feed=feed, fetch_list=[output])
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestIndexSampleDynamic(unittest.TestCase):
     def test_result(self):
         with fluid.dygraph.guard(paddle.NPUPlace(0)):
