@@ -29,13 +29,13 @@ class TestDropoutBiasFuseOp(OpTest):
     def setUp(self):
         self.op_type = "fused_dropout_bias"
         self.inputs = {
-            'X': np.random.random((16, 128)).astype("float64"),
+            'X': np.random.random((2, 128)).astype("float64"),
             'Bias': np.random.random((1, 128)).astype("float64")
         }
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'] + self.inputs['Bias'],
-            'Mask': np.ones((16, 128)).astype('uint8')
+            'Mask': np.ones((2, 128)).astype('uint8')
         }
 
     def test_check_output(self):
@@ -45,78 +45,11 @@ class TestDropoutBiasFuseOp(OpTest):
         self.check_grad(['X', 'Bias'], 'Out')
 
 
-class TestDropoutBiasFuseOp1(TestDropoutBiasFuseOp):
-    def setUp(self):
-        self.op_type = "fused_dropout_bias"
-        self.inputs = {
-            'X': np.random.random((16, 128)).astype("float64"),
-            'Bias': np.random.random((1, 128)).astype("float64")
-        }
-        self.attrs = {
-            'dropout_prob': 1.0,
-            'fix_seed': True,
-            'is_test': False,
-            'dropout_implementation': 'upscale_in_train'
-        }
-        self.outputs = {
-            'Out': np.zeros((16, 128)).astype('float64'),
-            'Mask': np.zeros((16, 128)).astype('uint8')
-        }
-
-
-class TestDropoutBiasFuseOp2(TestDropoutBiasFuseOp):
-    def setUp(self):
-        self.op_type = "fused_dropout_bias"
-        self.inputs = {
-            'X': np.random.random((8, 16, 128)).astype("float64"),
-            'Bias': np.random.random((1, 128)).astype("float64")
-        }
-        self.attrs = {
-            'dropout_prob': 0.0,
-            'fix_seed': True,
-            'is_test': False,
-            'dropout_implementation': 'upscale_in_train'
-        }
-        self.outputs = {
-            'Out': self.inputs['X'] + self.inputs['Bias'],
-            'Mask': np.ones((8, 16, 128)).astype('uint8')
-        }
-
-
-class TestDropoutBiasFuseOp3(TestDropoutBiasFuseOp):
-    def setUp(self):
-        self.op_type = "fused_dropout_bias"
-        self.inputs = {
-            'X': np.random.random((2000, )).astype("float64"),
-            'Bias': np.random.random((2000, )).astype("float64")
-        }
-        self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
-        self.outputs = {
-            'Out': self.inputs['X'] + self.inputs['Bias'],
-            'Mask': np.ones((2000)).astype('uint8')
-        }
-
-
-class TestDropoutBiasFuseOp4(TestDropoutBiasFuseOp):
-    def setUp(self):
-        self.op_type = "fused_dropout_bias"
-        self.inputs = {
-            "X": np.random.random((16, 128)).astype("float64"),
-            "Bias": np.random.random((1, 128)).astype("float64"),
-            "Seed": np.asarray(
-                [125], dtype="int32")
-        }
-        self.attrs = {'dropout_prob': 0.0, }
-        self.outputs = {
-            'Out': self.inputs['X'] + self.inputs['Bias'],
-            'Mask': np.ones((16, 128)).astype('uint8')
-        }
-
-
 class TestDropoutBiasFuseOp5(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
+        paddle.seed(102)
         if core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
@@ -128,27 +61,8 @@ class TestDropoutBiasFuseOp5(unittest.TestCase):
                 x=input_x,
                 bias=input_bias,
                 dropout_prob=0.,
-                is_test=False,
                 dropout_implementation='upscale_in_train')
             res1 = incubate.dropout_bias_fuse(
-                x=input_x,
-                bias=input_bias,
-                dropout_prob=0.,
-                is_test=False,
-                dropout_implementation='downscale_in_infer')
-            res2 = incubate.dropout_bias_fuse(
-                x=input_x,
-                bias=input_bias,
-                dropout_prob=0.,
-                is_test=True,
-                dropout_implementation='upscale_in_train')
-            res3 = incubate.dropout_bias_fuse(
-                x=input_x,
-                bias=input_bias,
-                dropout_prob=0.,
-                is_test=True,
-                dropout_implementation='downscale_in_infer')
-            res4 = incubate.dropout_bias_fuse(
                 x=input_x, bias=input_bias, dropout_prob=1., is_test=True)
 
             x_in_np = np.random.random([40, 40]).astype("float32")
@@ -157,17 +71,15 @@ class TestDropoutBiasFuseOp5(unittest.TestCase):
             res_np2 = np.zeros_like(x_in_np)
 
             exe = fluid.Executor(place)
-            res_list = [res0, res1, res2, res3]
-            for res in res_list:
-                fetches = exe.run(fluid.default_main_program(),
-                                  feed={"x": x_in_np,
-                                        "bias": bias_in_np},
-                                  fetch_list=[res])
-                self.assertTrue(np.allclose(fetches[0], res_np))
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"x": x_in_np,
+                                    "bias": bias_in_np},
+                              fetch_list=[res0])
+            self.assertTrue(np.allclose(fetches[0], res_np))
             fetches2 = exe.run(fluid.default_main_program(),
                                feed={"x": x_in_np,
                                      "bias": bias_in_np},
-                               fetch_list=[res4])
+                               fetch_list=[res1])
             self.assertTrue(np.allclose(fetches2[0], res_np2))
 
     def test_static(self):
@@ -188,33 +100,13 @@ class TestDropoutBiasFuseOp5(unittest.TestCase):
                     x=input_x,
                     bias=input_bias,
                     dropout_prob=0.,
-                    is_test=False,
-                    dropout_implementation='upscale_in_train')
+                    dropout_implementation='upscale_in_train',
+                    is_test=None)
                 res1 = incubate.dropout_bias_fuse(
-                    x=input_x,
-                    bias=input_bias,
-                    dropout_prob=0.,
-                    is_test=False,
-                    dropout_implementation='downscale_in_infer')
-                res2 = incubate.dropout_bias_fuse(
-                    x=input_x,
-                    bias=input_bias,
-                    dropout_prob=0.,
-                    is_test=True,
-                    dropout_implementation='upscale_in_train')
-                res3 = incubate.dropout_bias_fuse(
-                    x=input_x,
-                    bias=input_bias,
-                    dropout_prob=0.,
-                    is_test=True,
-                    dropout_implementation='downscale_in_infer')
-                res4 = incubate.dropout_bias_fuse(
                     x=input_x, bias=input_bias, dropout_prob=1., is_test=True)
 
-            res_list = [res0, res1, res2, res3]
-            for res in res_list:
-                self.assertTrue(np.allclose(res.numpy(), res_np))
-            self.assertTrue(np.allclose(res4.numpy(), res_np2))
+            self.assertTrue(np.allclose(res0.numpy(), res_np))
+            self.assertTrue(np.allclose(res1.numpy(), res_np2))
 
 
 if __name__ == '__main__':
