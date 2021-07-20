@@ -23,6 +23,7 @@ from ...fluid.initializer import Constant
 from ...fluid.param_attr import ParamAttr
 from ...fluid import core, dygraph_utils
 import numbers
+from paddle import _C_ops
 
 __all__ = []
 
@@ -79,9 +80,9 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = core.ops.p_norm(x, 'axis', axis, 'porder',
-                              float(p), 'keepdim', True, 'epsilon', epsilon)
-        return x / core.ops.elementwise_max(out, eps)
+        out = _C_ops.p_norm(x, 'axis', axis, 'porder',
+                            float(p), 'keepdim', True, 'epsilon', epsilon)
+        return x / _C_ops.elementwise_max(out, eps)
 
     check_type(p, 'p', (float, int), 'normalize')
     check_type(axis, 'axis', (int), 'normalize')
@@ -185,7 +186,7 @@ def batch_norm(x,
                  not training, "data_layout", data_format, "use_mkldnn", False,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
                  "trainable_statistics", trainable_statistics)
-        batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
+        batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
         return dygraph_utils._append_activation_in_dygraph(
@@ -301,8 +302,8 @@ def layer_norm(x,
                              1:] + ', but got input shape ' + str(input_shape))
 
     if in_dygraph_mode():
-        pre_act, _, _ = core.ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
-                                            'begin_norm_axis', begin_norm_axis)
+        pre_act, _, _ = _C_ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
+                                          'begin_norm_axis', begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
@@ -385,9 +386,9 @@ def instance_norm(x,
     """
 
     if in_dygraph_mode():
-        out, _, _ = core.ops.instance_norm(x, weight, bias, "epsilon", eps,
-                                           "momentum", momentum, "data_format",
-                                           data_format)
+        out, _, _ = _C_ops.instance_norm(x, weight, bias, "epsilon", eps,
+                                         "momentum", momentum, "data_format",
+                                         data_format)
         return out
 
     check_variable_and_dtype(x, 'input', ['float32', 'float64'], "InstanceNorm")

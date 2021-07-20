@@ -240,6 +240,12 @@ class AllocatorFacadePrivate {
       places.emplace_back(platform::XPUPlace(dev_id));
     }
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+    int device_count = platform::GetNPUDeviceCount();
+    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
+      places.emplace_back(platform::NPUPlace(dev_id));
+    }
+#endif
 
     for (auto& p : places) {
       zero_size_allocators_[p] = std::make_shared<ZeroSizeAllocator>(p);

@@ -41,7 +41,8 @@ static inline const Tensor &GetTensorFromVar(const Variable *var) {
     return var->Get<LoDTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor."));
+        "Variable must be type of LoDTensor, but received %s.",
+        framework::ToTypeName(var->Type())));
   }
 }
 
@@ -50,19 +51,22 @@ static inline Tensor *GetMutableTensorFromVar(Variable *var) {
     return var->GetMutable<LoDTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor."));
+        "Variable must be type of LoDTensor, but received %s.",
+        framework::ToTypeName(var->Type())));
   }
 }
 
 ShareTensorBufferFunctor::ShareTensorBufferFunctor(
     Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-    const std::vector<std::string> &out_var_names, bool share_dims)
+    const std::vector<std::string> &out_var_names, const bool &is_variant_scope,
+    bool share_dims)
     : scope_(scope),
       scope_idx_(scope_idx),
       op_type_(op_type),
       in_var_infos_(in_var_infos),
       out_var_names_(out_var_names),
+      is_variant_scope_(is_variant_scope),
       share_dims_(share_dims) {
   PADDLE_ENFORCE_EQ(in_var_infos_.size(), out_var_names_.size(),
                     platform::errors::PreconditionNotMet(
@@ -126,12 +130,13 @@ void ShareTensorBufferFunctor::CallOnce() {
 }
 
 void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
-  if (!exec_scope_) {
+  if (!exec_scope_ || is_variant_scope_) {
     PADDLE_ENFORCE_NOT_NULL(exec_scope,
                             platform::errors::InvalidArgument(
                                 "The given execution scope should not be NULL "
                                 "if the cached scope is NULL."));
     exec_scope_ = exec_scope;
+    in_out_vars_.clear();
     CallOnce();
   } else {
     PADDLE_ENFORCE_EQ(exec_scope_, exec_scope,

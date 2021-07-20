@@ -33,23 +33,21 @@ class PReluPlugin : public PluginTensorRT {
   float* p_gpu_weight_;
   std::string mode_;
 
- protected:
-  size_t getSerializationSize() override {
+ public:
+  size_t getSerializationSize() const override {
     return getBaseSerializationSize() + SerializedSize(mode_.c_str()) +
-           SerializedSize(weight_) + SerializedSize(getPluginType());
+           SerializedSize(weight_);
   }
 
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
-  void serialize(void* buffer) override {
-    SerializeValue(&buffer, getPluginType());
+  void serialize(void* buffer) const override {
     serializeBase(buffer);
     SerializeValue(&buffer, weight_);
     SerializeValue(&buffer, mode_.c_str());
   }
 
- public:
   PReluPlugin(const float* weight, const int weight_num,
               std::string const& mode)
       : mode_(mode) {
@@ -88,6 +86,20 @@ class PReluPlugin : public PluginTensorRT {
               void* workspace, cudaStream_t stream) override;
 };
 
+class PReluPluginCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const override { return "prelu_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    return new PReluPlugin(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(PReluPluginCreator);
+
 #if IS_TRT_VERSION_GE(6000)
 class PReluPluginDynamic : public DynamicPluginTensorRT {
  public:
@@ -98,15 +110,7 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
     std::copy(weight, weight + weight_num, weight_.data());
   }
 
-  // It was used for tensorrt deserialization.
-  // It should not be called by users.
-  PReluPluginDynamic(void const* serialData, size_t serialLength) {
-    deserializeBase(serialData, serialLength);
-    DeserializeValue(&serialData, &serialLength, &weight_);
-    const char* prelu_mode;
-    DeserializeValue(&serialData, &serialLength, &prelu_mode);
-    mode_ = std::string(prelu_mode);
-  }
+  PReluPluginDynamic(void const* serialData, size_t serialLength);
   ~PReluPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     auto ptr = new PReluPluginDynamic(weight_.data(), weight_.size(), mode_);
@@ -114,7 +118,7 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
     return ptr;
   }
 
-  const char* getPluginType() const override { return "prelu_plugin"; }
+  const char* getPluginType() const override { return "prelu_plugin_dynamic"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
   void terminate() override;
@@ -158,6 +162,20 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
   std::string mode_;
 };
 #endif
+
+class PReluPluginDynamicCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const override { return "prelu_plugin_dynamic"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    return new PReluPluginDynamic(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(PReluPluginDynamicCreator);
 
 }  // namespace plugin
 }  // namespace tensorrt

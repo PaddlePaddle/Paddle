@@ -60,7 +60,10 @@ class TestGelu(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_dygraph=False)
+            self.place, ['X'],
+            'Out',
+            check_dygraph=False,
+            max_relative_error=0.007)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),

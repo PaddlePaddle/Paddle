@@ -190,6 +190,7 @@ if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sharding_parallel)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mp_layers)
     LIST(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
+    LIST(REMOVE_ITEM TEST_OPS test_mixed_precision)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_base_single)
     LIST(REMOVE_ITEM TEST_OPS test_dygraph_recompute)
 elseif(WITH_GPU)
@@ -269,6 +270,12 @@ function(py_test_modules TARGET_NAME)
                 COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
                 COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
                 ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    elseif(WITH_ASCEND_CL)
+        # AscendCL need to include ascend toolkit python path, or ACL error will be thrown when running ctest
+        add_test(NAME ${TARGET_NAME}
+                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH} ${py_test_modules_ENVS}
+                ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
@@ -485,6 +492,9 @@ py_test_modules(test_imperative_static_runner_while MODULES test_imperative_stat
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")

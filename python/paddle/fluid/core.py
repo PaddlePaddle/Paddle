@@ -263,6 +263,7 @@ if avx_supported():
         from .core_avx import _get_all_register_op_kernels
         from .core_avx import _is_program_version_supported
         from .core_avx import _set_eager_deletion_mode
+        from .core_avx import _get_eager_deletion_vars
         from .core_avx import _set_fuse_parameter_group_size
         from .core_avx import _set_fuse_parameter_memory_size
         from .core_avx import _is_dygraph_debug_enabled
@@ -271,7 +272,10 @@ if avx_supported():
         from .core_avx import _set_paddle_lib_path
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
+        from .core_avx import _is_compiled_with_heterps
         from .core_avx import _promote_types_if_complex_exists
+        from .core_avx import _device_synchronize
+        from .core_avx import _get_current_stream
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
             from .core_avx import _erase_process_pids
@@ -310,6 +314,7 @@ if load_noavx:
         from .core_noavx import _get_all_register_op_kernels
         from .core_noavx import _is_program_version_supported
         from .core_noavx import _set_eager_deletion_mode
+        from .core_noavx import _get_eager_deletion_vars
         from .core_noavx import _set_fuse_parameter_group_size
         from .core_noavx import _set_fuse_parameter_memory_size
         from .core_noavx import _is_dygraph_debug_enabled
@@ -318,7 +323,10 @@ if load_noavx:
         from .core_noavx import _set_paddle_lib_path
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
+        from .core_noavx import _is_compiled_with_heterps
         from .core_noavx import _promote_types_if_complex_exists
+        from .core_noavx import _device_synchronize
+        from .core_noavx import _get_current_stream
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids
