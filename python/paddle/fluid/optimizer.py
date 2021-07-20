@@ -5277,6 +5277,7 @@ class PipelineOptimizer(object):
                 backward_recv_index = index
                 break
 
+        # last pipeline stage
         if backward_recv_index is None: return
 
         offset = 0
