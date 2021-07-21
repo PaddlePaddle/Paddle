@@ -13,22 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
 #include "paddle/fluid/operators/randperm_op.h"
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-void RangeFun(const platform::Place& place, const aclrtStream& stream, int n,
-              Tensor* y) {
-  y->mutable_data<int>({n}, place);
-  const auto& runner = NpuOpRunner("Range", {0, n, 1}, {*y}, {});
-  runner.Run(stream);
-}
+using Tensor = framework::Tensor;
+
 template <typename T>
 class RandPermNPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    int n = ctx.Attr<int>("n");
+    int seed = ctx.Attr<int>("seed");
+    auto* out = framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
+        ctx.OutputVar("Out"));
+    Tensor tmp_tensor;
+    tmp_tensor.Resize({n});
+    T* tmp_data = tmp_tensor.mutable_data<T>(platform::CPUPlace());
+    random_permate<T>(tmp_data, n, seed);
+    framework::TensorCopy(tmp_tensor, ctx.GetPlace(), out);
+  }
 };
 
 }  // namespace operators
