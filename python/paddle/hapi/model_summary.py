@@ -323,13 +323,13 @@ def summary_string(model, input_size, input, dtypes=None):
         model(x)
     else:
         x = build_input(input_size, dtypes)
-        
+
         # register hook
         model.apply(register_hook)
-        
+
         # make a forward pass
         model(*x)
-        
+
         # remove these hooks
         for h in hooks:
             h.remove()
