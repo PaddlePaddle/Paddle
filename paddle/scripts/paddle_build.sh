@@ -225,7 +225,11 @@ function cmake_base() {
         -DLITE_GIT_TAG=release/v2.8
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+        -DWITH_ARM=${WITH_ARM:-OFF}
+        -DWITH_ASCEND=${WITH_ASCEND:-OFF}
+        -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
+        -DON_INFER=${ON_INFER:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -262,7 +266,11 @@ EOF
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
+        -DWITH_ARM=${WITH_ARM:-OFF} \
+        -DWITH_ASCEND=${WITH_ASCEND:-OFF} \
+        -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
+        -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -343,7 +351,11 @@ function build_base() {
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
 
-    make install -j ${parallel_number};build_error=$?
+    if [ "$WITH_ARM" == "ON" ];then
+        make TARGET=ARMV8 -j ${parallel_number};build_error=$?
+    else
+        make install -j ${parallel_number};build_error=$?
+    fi
 
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -1023,6 +1035,8 @@ function card_test() {
     # get the CUDA device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
+    elif [ "${WITH_ASCEND_CL}" == "ON" ];then
+        CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ROCM}" == "ON" ];then
         CUDA_DEVICE_COUNT=4
     else
@@ -1567,13 +1581,49 @@ function parallel_test_base_xpu() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
-    Running unit cpu tests ...
+    Running unit xpu tests ...
     ========================================
 EOF
 
 set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
+        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            if [[ "$single_card_tests" == "" ]]; then
+                single_card_tests="^$testcase$"
+            else
+                single_card_tests="$single_card_tests|^$testcase$"
+            fi
+        done <<< "$test_cases";
+        card_test "$single_card_tests" 1
+        collect_failed_tests
+set -x
+        ut_endTime_s=`date +%s`
+        echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi   
+}
+
+function parallel_test_base_npu() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit npu tests ...
+    ========================================
+EOF
+
+set +x
+        ut_startTime_s=`date +%s`
+        test_cases=$(ctest -N -V | grep "op_npu" )        # cases list which would be run exclusively
         get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
@@ -1605,12 +1655,12 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
+    elif [ "$WITH_XPU" == "ON" ];then
+        parallel_test_base_xpu
+    elif [ "$WITH_ASCEND_CL" == "ON" ];then
+        parallel_test_base_npu
     else
-        if [ "$WITH_XPU" == "ON" ];then
-            parallel_test_base_xpu
-        else
-            parallel_test_base_cpu ${PROC_RUN:-1}
-        fi
+        parallel_test_base_cpu ${PROC_RUN:-1}
     fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
@@ -2255,6 +2305,11 @@ function main() {
         check_coverage
         ;;
       check_rocm_coverage)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        check_coverage
+        ;;
+      check_npu_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage

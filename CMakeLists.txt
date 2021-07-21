@@ -326,6 +326,12 @@ if(WITH_DISTRIBUTE)
     if(LINUX)
         set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
     endif()
+    if(WITH_ASCEND_CL)
+        MESSAGE(WARNING
+            "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
+        set(WITH_PSCORE OFF CACHE STRING
+            "Disable WITH_PSCORE when compiling with NPU" FORCE)
+    endif()
 endif()
 
 include(ccache)             # set ccache for compilation
