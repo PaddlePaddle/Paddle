@@ -660,50 +660,34 @@ class TestVarBase(unittest.TestCase):
         var_fp32 = paddle.to_tensor(np_fp32_value)
         var_int = paddle.to_tensor(np_int_value)
 
-        # test for float32
-        var = [
-            var_fp32[..., 0].numpy(),
-            var_fp32[..., 1, 0].numpy(),
-            var_fp32[0, ..., 1, 0].numpy(),
-            var_fp32[1, ..., 1].numpy(),
-            var_fp32[2, ...].numpy(),
-            var_fp32[2, 0, ...].numpy(),
-            var_fp32[2, 0, 1, ...].numpy(),
-            var_fp32[...].numpy(),
-            var_fp32[:, ..., 100].numpy(),
-        ]
+        def assert_getitem_ellipsis_index(var_tensor, var_np):
+            var = [
+                var_tensor[..., 0].numpy(),
+                var_tensor[..., 1, 0].numpy(),
+                var_tensor[0, ..., 1, 0].numpy(),
+                var_tensor[1, ..., 1].numpy(),
+                var_tensor[2, ...].numpy(),
+                var_tensor[2, 0, ...].numpy(),
+                var_tensor[2, 0, 1, ...].numpy(),
+                var_tensor[...].numpy(),
+                var_tensor[:, ..., 100].numpy(),
+            ]
 
-        self.assertTrue(np.array_equal(var[0], np_fp32_value[..., 0]))
-        self.assertTrue(np.array_equal(var[1], np_fp32_value[..., 1, 0]))
-        self.assertTrue(np.array_equal(var[2], np_fp32_value[0, ..., 1, 0]))
-        self.assertTrue(np.array_equal(var[3], np_fp32_value[1, ..., 1]))
-        self.assertTrue(np.array_equal(var[4], np_fp32_value[2, ...]))
-        self.assertTrue(np.array_equal(var[5], np_fp32_value[2, 0, ...]))
-        self.assertTrue(np.array_equal(var[6], np_fp32_value[2, 0, 1, ...]))
-        self.assertTrue(np.array_equal(var[7], np_fp32_value[...]))
-        self.assertTrue(np.array_equal(var[8], np_fp32_value[:, ..., 100]))
+            self.assertTrue(np.array_equal(var[0], var_np[..., 0]))
+            self.assertTrue(np.array_equal(var[1], var_np[..., 1, 0]))
+            self.assertTrue(np.array_equal(var[2], var_np[0, ..., 1, 0]))
+            self.assertTrue(np.array_equal(var[3], var_np[1, ..., 1]))
+            self.assertTrue(np.array_equal(var[4], var_np[2, ...]))
+            self.assertTrue(np.array_equal(var[5], var_np[2, 0, ...]))
+            self.assertTrue(np.array_equal(var[6], var_np[2, 0, 1, ...]))
+            self.assertTrue(np.array_equal(var[7], var_np[...]))
+            self.assertTrue(np.array_equal(var[8], var_np[:, ..., 100]))
 
-        # test for int type
-        var = [
-            var_int[..., 0].numpy(),
-            var_int[..., 1, 0].numpy(),
-            var_int[0, ..., 1, 0].numpy(),
-            var_int[1, ..., 1].numpy(),
-            var_int[2, ...].numpy(),
-            var_int[2, 0, ...].numpy(),
-            var_int[2, 0, 1, ...].numpy(),
-            var_int[...].numpy(),
-            var_int[:, ..., 100].numpy(),
-        ]
-        self.assertTrue(np.array_equal(var[0], np_int_value[..., 0]))
-        self.assertTrue(np.array_equal(var[1], np_int_value[..., 1, 0]))
-        self.assertTrue(np.array_equal(var[2], np_int_value[0, ..., 1, 0]))
-        self.assertTrue(np.array_equal(var[3], np_int_value[1, ..., 1]))
-        self.assertTrue(np.array_equal(var[4], np_int_value[2, ...]))
-        self.assertTrue(np.array_equal(var[5], np_int_value[2, 0, ...]))
-        self.assertTrue(np.array_equal(var[6], np_int_value[2, 0, 1, ...]))
-        self.assertTrue(np.array_equal(var[7], np_int_value[...]))
-        self.assertTrue(np.array_equal(var[8], np_int_value[:, ..., 100]))
+        var_fp32 = paddle.to_tensor(np_fp32_value)
+        var_int = paddle.to_tensor(np_int_value)
+
+        assert_getitem_ellipsis_index(var_fp32, np_fp32_value)
+        assert_getitem_ellipsis_index(var_int, np_int_value)
 
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')

@@ -449,14 +449,7 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
           "too many indices (%d) for tensor of dimension %d", size, rank));
   for (int i = 0, dim = 0; i < size; ++i) {
     PyObject *slice_item = PyTuple_GetItem(index, i);
-    PADDLE_ENFORCE_EQ(
-        PyCheckInteger(slice_item) || PySlice_Check(slice_item) ||
-            slice_item == Py_Ellipsis,
-        true, platform::errors::InvalidArgument(
-                  "Currently, VarBase.__getitem__() only allows "
-                  "indexing by Integers, Slices, Ellipsis, and tuples of "
-                  "these types, but received %s in %dth slice item",
-                  std::string(Py_TYPE(slice_item)->tp_name), i + 1));
+
     infer_flags->push_back(1);
     int dim_len = shape[dim];
     if (PyCheckInteger(slice_item)) {
@@ -498,6 +491,12 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
       dim++;
     } else if (slice_item == Py_Ellipsis) {
       dim += rank - specified_dims;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Currently, VarBase.__getitem__() only allows "
+          "indexing by Integers, Slices, Ellipsis, and tuples of "
+          "these types, but received %s in %dth slice item",
+          std::string(Py_TYPE(slice_item)->tp_name), i + 1));
     }
   }
   if (!PyTuple_Check(_index)) Py_DecRef(index);
