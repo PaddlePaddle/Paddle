@@ -147,6 +147,7 @@ def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
         if op_dist_attr.is_parameter(arg_name):
             continue
         dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        # print(op_desc.type(), arg_name, dims_mapping, op_dist_attr)
         for idx, mapping in enumerate(dims_mapping[1:]):
             assert mapping == -1, \
                 "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part."\
@@ -309,14 +310,17 @@ def update_op_node_dims_mapping(op_node, fwd=True):
                     tensor_desc.name())
                 compatible_dims_mapping = compute_compatible_dims_mapping(
                     [op_dims_mapping, tensor_dims_mapping])
+                # print("fwd", tensor_desc.name(), op_dims_mapping, tensor_dims_mapping, compatible_dims_mapping)
                 if (compatible_dims_mapping is not None) and \
                     (compatible_dims_mapping != op_dims_mapping):
                     op_dist_attr.set_input_dims_mapping(tensor_desc.name(),
                                                         compatible_dims_mapping)
                     changed = True
         # Find the most compatible implemenetations from the distributed operator
+        # print("fwd", op_desc.type(), op_dist_attr)
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), op_dist_attr, fwd=True)
+        # print("fwd", op_desc.type(), op_dist_impl_idx)
         if op_dist_impl is not None:
             dim_changed = op_dist_impl.update_dims_mapping(op_dist_attr)
             if dim_changed:
@@ -348,14 +352,17 @@ def update_op_node_dims_mapping(op_node, fwd=True):
                     tensor_desc.name())
                 compatible_dims_mapping = compute_compatible_dims_mapping(
                     [op_dims_mapping, tensor_dims_mapping])
+                # print("bwd", tensor_desc.name(), op_dims_mapping, tensor_dims_mapping, compatible_dims_mapping)
                 if (compatible_dims_mapping is not None) and \
                     (compatible_dims_mapping != op_dims_mapping):
                     op_dist_attr.set_output_dims_mapping(
                         tensor_desc.name(), compatible_dims_mapping)
                     changed = True
         # Find the most compatible implemenetations from the distributed operator
+        # print("bwd", op_desc.type(), op_dist_attr)
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), op_dist_attr, fwd=False)
+        # print("bwd", op_desc.type(), op_dist_impl_idx)
         if op_dist_impl is not None:
             dim_changed = op_dist_impl.update_dims_mapping(op_dist_attr)
             if dim_changed:
