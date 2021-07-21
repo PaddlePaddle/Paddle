@@ -435,7 +435,7 @@ class GradScaler(AmpScaler):
 
     def state_dict(self):
         """
-        Returns state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
+        Returns the state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
 
         Reurns:
             A dict of scaler includes:
