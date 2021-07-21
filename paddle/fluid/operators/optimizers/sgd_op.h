@@ -106,15 +106,11 @@ struct sgd_dense_param_kernel<
     const auto *grad = ctx.Input<framework::Tensor>("Grad");
     param_out->mutable_data<platform::bfloat16>(ctx.GetPlace());
 
+    const auto *lr = learning_rate->data<float>();
     auto p = framework::EigenVector<platform::bfloat16>::Flatten(*param);
     auto g = framework::EigenVector<platform::bfloat16>::Flatten(*grad);
     auto o = framework::EigenVector<platform::bfloat16>::Flatten(*param_out);
-    const auto *lr = learning_rate->data<float>();
-#ifdef PADDLE_WITH_MKLDNN
-    operators::onednn_handler_axpy(p.size(), -lr[0], g.data(), o.data());
-#else
     o = p - static_cast<platform::bfloat16>(lr[0]) * g;
-#endif
   }
 };
 
