@@ -85,11 +85,11 @@ class TestMKLDNNSigmoidBF16Op(TestActivation):
     def config(self):
         self.op_type = "sigmoid"
 
-    def op_func(self, x):
+    def op_forward(self, x):
         return 1 / (1 + np.exp(-x))
 
-    def op_grad_func(self, dout, x):
-        return dout * self.op_func(x) * (1 - self.op_func(x))
+    def op_grad(self, dout, x):
+        return dout * self.op_forward(x) * (1 - self.op_forward(x))
 
     def set_attrs(self):
         self.attrs = {"use_mkldnn": True}
@@ -101,14 +101,14 @@ class TestMKLDNNSigmoidBF16Op(TestActivation):
         self.dtype = np.uint16
         self.init_data()
         self.config()
-        self.out = self.op_func(self.x)
+        self.out = self.op_forward(self.x)
 
         self.inputs = {'X': convert_float_to_uint16(self.x)}
         self.outputs = {'Out': self.out}
         self.set_attrs()
 
     def calculate_grads(self):
-        self.dx = self.op_grad_func(self.out, self.x)
+        self.dx = self.op_grad(self.out, self.x)
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
@@ -126,10 +126,10 @@ class TestMKLDNNGeluErfBF16Op(TestMKLDNNSigmoidBF16Op):
     def config(self):
         self.op_type = "gelu"
 
-    def op_func(self, x):
+    def op_forward(self, x):
         return gelu(x, False)
 
-    def op_grad_func(self, dout, x):
+    def op_grad(self, dout, x):
         return (dout *
                 (0.5 + 0.5 * erf(x / np.sqrt(2)) +
                  (x / np.sqrt(2 * np.pi) * np.exp(-0.5 * np.power(x, 2)))))
@@ -144,10 +144,10 @@ class TestMKLDNNGeluTanhBF16Op(TestMKLDNNSigmoidBF16Op):
     def config(self):
         self.op_type = "gelu"
 
-    def op_func(self, x):
+    def op_forward(self, x):
         return gelu(x, True)
 
-    def op_grad_func(self, dout, x):
+    def op_grad(self, dout, x):
         grad_part = np.tanh(
             np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
         return dout * 0.5 * (1 + grad_part) * (1 + np.sqrt(2 / np.pi) *
