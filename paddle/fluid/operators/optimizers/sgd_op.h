@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/operators/mkldnn/axpy_handler.h"
@@ -248,6 +249,8 @@ class SGDOpKernel : public framework::OpKernel<T> {
 template <typename T>
 class SGDOpKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
+  using MPDType = typename details::MPTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
@@ -282,7 +285,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
               "[%s]",
               param_row_width, grad_row_width));
 
-      const auto *lr = learning_rate->data<T>();
+      const auto *lr = learning_rate->data<MPDType>();
       const auto *grad_data = grad.value().data<T>();
       auto *out_data = param_out->mutable_value()->data<T>();
       for (size_t i = 0; i < grad.rows().size(); i++) {
