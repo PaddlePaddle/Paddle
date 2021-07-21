@@ -113,6 +113,7 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
                 output_data, k, indices_data, input_data, input_width,
                 input_width, static_cast<int>(k), gridx, input_height,
                 largest));
+#endif
         default:
           PADDLE_THROW(platform::errors::Fatal(
               "the input data shape has error in the topk cuda kernel."));
@@ -191,6 +192,7 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
                 trans_out.data<T>(), k, trans_ind.data<int64_t>(),
                 trans_input.data<T>(), input_width, input_width,
                 static_cast<int>(k), gridx, input_height, largest));
+#endif
         default:
           PADDLE_THROW(platform::errors::Fatal(
               "the input data shape has error in the topk cuda kernel."));
