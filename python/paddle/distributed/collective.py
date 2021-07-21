@@ -1341,7 +1341,7 @@ def split(x,
 
     Examples:
         .. code-block:: python
-
+            # required: distributed
             import paddle
             import paddle.distributed.fleet as fleet
 
