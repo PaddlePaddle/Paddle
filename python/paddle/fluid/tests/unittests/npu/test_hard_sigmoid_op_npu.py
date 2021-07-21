@@ -20,6 +20,8 @@ import sys
 from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 SEED = 2021
@@ -29,10 +31,10 @@ def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
     return np.maximum(np.minimum(x * slope + offset, 1.), 0.).astype(x.dtype)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUHardSigmoid(OpTest):
     def setUp(self):
+        paddle.enable_static()
+
         self.op_type = "hard_sigmoid"
         self.set_npu()
         self.init_dtype()
@@ -54,7 +56,7 @@ class TestNPUHardSigmoid(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, atol=1e-5)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -74,30 +76,82 @@ class TestNPUHardSigmoid(OpTest):
         self.offset = 0.5
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUHardSigmoid2(TestNPUHardSigmoid):
     def set_attrs(self):
         self.slope = 0.2
         self.offset = 0.5
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUHardSigmoid3(TestNPUHardSigmoid):
     def set_attrs(self):
         self.slope = 0.2
         self.offset = 0.4
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUHardSigmoidFp16(TestNPUHardSigmoid):
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
 
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TestHardsigmoidAPI(unittest.TestCase):
+    # test paddle.nn.Hardsigmoid, paddle.nn.functional.hardsigmoid
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float32)
+        self.place = paddle.NPUPlace(0)
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+            out1 = F.hardsigmoid(x)
+            m = paddle.nn.Hardsigmoid()
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_hardsigmoid(self.x_np)
+        for r in res:
+            self.assertTrue(np.allclose(out_ref, r))
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.hardsigmoid(x)
+        m = paddle.nn.Hardsigmoid()
+        out2 = m(x)
+        out_ref = ref_hardsigmoid(self.x_np)
+        for r in [out1, out2]:
+            self.assertTrue(np.allclose(out_ref, r.numpy()))
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            out = fluid.layers.hard_sigmoid(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_hardsigmoid(self.x_np, 0.2, 0.5)
+        self.assertTrue(np.allclose(out_ref, res[0]))
+
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.fluid.layers.hard_sigmoid(x)
+        self.assertTrue(np.allclose(out_ref, out.numpy()))
+        paddle.enable_static()
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.hardsigmoid, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.hardsigmoid, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
+            F.hardsigmoid(x_fp16)
 
 
 if __name__ == '__main__':
