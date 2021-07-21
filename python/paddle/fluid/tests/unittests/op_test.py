@@ -365,6 +365,10 @@ class OpTest(unittest.TestCase):
                 self.attrs['mkldnn_data_type'] == 'bfloat16')
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
+        # (arogowie-intel) Do nothing if the user explicitly set dtype.
+        if self.dtype is not None:
+            return
+
         def is_np_data(input):
             return isinstance(input, (np.ndarray, np.generic))
 
