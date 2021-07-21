@@ -761,5 +761,12 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
   }
 };
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+template <typename DeviceContext, typename T>
+class MatMulV2GradNPUKernel;
+template <typename DeviceContext, typename T>
+class MatMulV2NPUKernel;
+#endif
+
 }  // namespace operators
 }  // namespace paddle

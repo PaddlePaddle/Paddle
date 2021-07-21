@@ -48,7 +48,7 @@ class SimpleNet(nn.Layer):
 
 class AMPTest(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.NPUPlace(0)
+        self.place = paddle.CUDAPlace(0)
 
     def net(self):
         input_size = 4096

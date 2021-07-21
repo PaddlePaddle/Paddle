@@ -13,20 +13,15 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.contrib.mixed_precision import fp16_utils
+import sys
 import paddle
-import paddle.nn as nn
-import paddle.static as static
-import numpy as np
 sys.path.append("..")
-from paddle.fluid.tests.test_mixed_precision import AMPTest
+import test_mixed_precision
 
 paddle.enable_static()
 
 
-class AMPTestNpu(AMPTest):
+class AMPTestNpu(test_mixed_precision.AMPTest):
     def setUp(self):
         self.place = paddle.NPUPlace(0)
 
