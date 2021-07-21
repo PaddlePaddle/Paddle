@@ -67,7 +67,7 @@ class AllocatorFacadePrivate {
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        for (int dev_id = 0; dev_id < GetCUDADeviceCount(); ++dev_id) {
+        for (int dev_id = 0; dev_id < CUDACount(); ++dev_id) {
           InitNaiveBestFitCUDAAllocator(platform::CUDAPlace(dev_id));
         }
         InitNaiveBestFitCUDAPinnedAllocator();
@@ -156,7 +156,7 @@ class AllocatorFacadePrivate {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     system_allocators_[platform::CUDAPinnedPlace()] =
         std::make_shared<CPUPinnedAllocator>();
-    int device_count = GetCUDADeviceCount();
+    int device_count = CUDACount();
     for (int i = 0; i < device_count; ++i) {
       platform::CUDAPlace p(i);
       system_allocators_[p] = std::make_shared<CUDAAllocator>(p);
@@ -229,7 +229,7 @@ class AllocatorFacadePrivate {
     std::vector<platform::Place> places;
     places.emplace_back(platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    int device_count = GetCUDADeviceCount();
+    int device_count = CUDACount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::CUDAPlace(dev_id));
     }
@@ -279,7 +279,7 @@ class AllocatorFacadePrivate {
     }
   }
 
-  int GetCUDADeviceCount() {
+  int CUDACount() {
     return FLAGS_initial_gpu_memory_in_mb ? platform::GetCUDADeviceCount() : 0;
   }
 
