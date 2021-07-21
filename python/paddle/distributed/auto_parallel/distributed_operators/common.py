@@ -18,198 +18,6 @@ from collections import defaultdict
 DISTRIBUTED_OPERATORS = {}
 
 
-class ShardTag(IntEnum):
-    # Replicate
-    Replicate = -1
-    # Split
-    Split = -2
-    # Any
-    Any = -3
-
-
-class OperatorDistributedSignature:
-    def __init__(self):
-        self._declared_proc_mesh_ndim_set = set()
-        self._declared_inputs_dims_mapping = defaultdict(dict)
-        self._declared_outputs_dims_mapping = defaultdict(dict)
-        self._declared_inputs_same_shard_dims_list = list()
-        self._declared_outputs_same_shard_dims_list = list()
-        self._declared_inputs_outputs_same_shard_dims_list = list()
-
-    def add_valid_proc_mesh_ndim(self, ndim):
-        self._declared_proc_mesh_ndim_set.add(ndim)
-
-    def get_valid_proc_mesh_ndim_set(self):
-        return self._declared_proc_mesh_ndim_set
-
-    def set_valid_input_dim_shard(self, name, dim, tag):
-        self._declared_inputs_dims_mapping[name][dim] = tag
-
-    def get_valid_input_dims_mapping(self, name):
-        return self._declared_inputs_dims_mapping[name]
-
-    def set_valid_output_dim_shard(self, name, dim, tag):
-        self._declared_outputs_dims_mapping[name][dim] = tag
-
-    def get_valid_output_dims_mapping(self, name):
-        return self._declared_outputs_dims_mapping[name]
-
-    def add_valid_inputs_same_shard_dims(self, same_shard_dims):
-        self._declared_inputs_same_shard_dims_list.append(same_shard_dims)
-
-    def get_valid_inputs_same_shard_dims_list(self):
-        return self._declared_inputs_same_shard_dims_list
-
-    def add_valid_outputs_same_shard_dims(self, same_shard_dims):
-        self._declared_outputs_same_shard_dims_list.append(same_shard_dims)
-
-    def get_valid_outputs_same_shard_dims_list(self):
-        return self._declared_outputs_same_shard_dims_list
-
-    def add_valid_inputs_outputs_same_shard_dims(self, same_shard_dims):
-        self._declared_inputs_outputs_same_shard_dims_list.append(
-            same_shard_dims)
-
-    def get_valid_inputs_outputs_same_shard_dims_list(self):
-        return self._declared_inputs_outputs_same_shard_dims_list
-
-    def is_input_compatible(self, op_dist_attr):
-        # Check whether proc_mesh_ndim is valid
-        proc_mesh = op_dist_attr.get_process_mesh()
-        proc_mesh_ndim = proc_mesh.get_ndim()
-        if proc_mesh_ndim not in self._declared_proc_mesh_ndim_set:
-            return False
-        # Check each input_dims_mapping
-        op_desc = op_dist_attr.get_desc()
-        for param_name in self._declared_inputs_dims_mapping.keys():
-            # Each Argument must conform to its corresponding parameter
-            for arg_name in op_desc.input(param_name):
-                input_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                    arg_name)
-                assert input_dims_mapping is not None, "Declared input is not valid"
-                for dim in self._declared_inputs_dims_mapping[param_name].keys(
-                ):
-                    if dim < -len(input_dims_mapping) or dim >= len(
-                            input_dims_mapping):
-                        return False
-                    if (self._declared_inputs_dims_mapping[param_name][dim] ==
-                            ShardTag.Replicate and
-                            input_dims_mapping[dim] != -1):
-                        return False
-                    if (self._declared_inputs_dims_mapping[param_name][dim] ==
-                            ShardTag.Split and input_dims_mapping[dim] == -1):
-                        return False
-        # TODO: args's length may not same
-        # Check input_dims_mapping between inputs 
-        for same_shard_dims in self._declared_inputs_same_shard_dims_list:
-            # Save dim_mappings from first param_name 
-            in_or_out, param_name, dim = same_shard_dims[0]
-            saved_dim_mappings = []
-            assert in_or_out == "input"
-            length = len(op_desc.input(param_name))
-            for arg_name in op_desc.input(param_name):
-                saved_dim_mappings.append(
-                    op_dist_attr.get_input_dim_mapping(arg_name, dim))
-            # Check other param with saved results
-            for in_or_out, param_name, dim in same_shard_dims[1:]:
-                assert in_or_out == "input"
-                assert length == len(op_desc.input(param_name))
-                for idx, arg_name in enumerate(op_desc.input(param_name)):
-                    dim_mapping = op_dist_attr.get_input_dim_mapping(arg_name,
-                                                                     dim)
-                    if dim_mapping != saved_dim_mappings[idx]:
-                        return False
-        return True
-
-    def is_output_compatible(self, op_dist_attr):
-        # Check whether proc_mesh_ndim is valid
-        proc_mesh = op_dist_attr.get_process_mesh()
-        proc_mesh_ndim = proc_mesh.get_ndim()
-        if proc_mesh_ndim not in self._declared_proc_mesh_ndim_set:
-            return False
-        # Check each output_dims_mapping
-        op_desc = op_dist_attr.get_desc()
-        for param_name in self._declared_outputs_dims_mapping.keys():
-            # Each Argument must conform to its corresponding parameter
-            for arg_name in op_desc.output(param_name):
-                output_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                    arg_name)
-                assert output_dims_mapping is not None, "Declared output is not valid"
-                for dim in self._declared_outputs_dims_mapping[param_name].keys(
-                ):
-                    if dim < -len(output_dims_mapping) or dim >= len(
-                            output_dims_mapping):
-                        return False
-                    if (self._declared_outputs_dims_mapping[param_name][dim] ==
-                            ShardTag.Replicate and
-                            output_dims_mapping[dim] != -1):
-                        return False
-                    if (self._declared_outputs_dims_mapping[param_name][dim] ==
-                            ShardTag.Split and output_dims_mapping[dim] == -1):
-                        return False
-        # Check output_dims_mapping between outputs 
-        for same_shard_dims in self._declared_outputs_same_shard_dims_list:
-            # Save dim_mappings from first param_name 
-            in_or_out, param_name, dim = same_shard_dims[0]
-            saved_dim_mappings = []
-            assert in_or_out == "output"
-            length = len(op_desc.output(param_name))
-            for arg_name in op_desc.output(param_name):
-                saved_dim_mappings.append(
-                    op_dist_attr.get_output_dim_mapping(arg_name, dim))
-            # Check other param with saved results
-            for in_or_out, param_name, dim in same_shard_dims[1:]:
-                assert in_or_out == "output"
-                assert length == len(op_desc.output(param_name))
-                for idx, arg_name in enumerate(op_desc.output(param_name)):
-                    dim_mapping = op_dist_attr.get_output_dim_mapping(arg_name,
-                                                                      dim)
-                    if dim_mapping != saved_dim_mappings[idx]:
-                        return False
-        return True
-
-    def is_input_output_compatible(self, op_dist_attr):
-        # Check whether proc_mesh_ndim is valid
-        proc_mesh = op_dist_attr.get_process_mesh()
-        proc_mesh_ndim = proc_mesh.get_ndim()
-        if proc_mesh_ndim not in self._declared_proc_mesh_ndim_set:
-            return False
-        # Check output_dims_mapping between outputs
-        op_desc = op_dist_attr.get_desc()
-        for same_shard_dims in self._declared_inputs_outputs_same_shard_dims_list:
-            # Save dim_mappings from first param_name 
-            in_or_out, param_name, dim = same_shard_dims[0]
-            saved_dim_mappings = []
-            if in_or_out == 'input':
-                length = len(op_desc.input(param_name))
-                for arg_name in op_desc.input(param_name):
-                    saved_dim_mappings.append(
-                        op_dist_attr.get_input_dim_mapping(arg_name, dim))
-            else:
-                length = len(op_desc.output(param_name))
-                for arg_name in op_desc.output(param_name):
-                    saved_dim_mappings.append(
-                        op_dist_attr.get_output_dim_mapping(arg_name, dim))
-
-            # Check other param with saved results
-            for in_or_out, param_name, dim in same_shard_dims[1:]:
-                if in_or_out == 'input':
-                    assert length == len(op_desc.input(param_name))
-                    for idx, arg_name in enumerate(op_desc.input(param_name)):
-                        dim_mapping = op_dist_attr.get_input_dim_mapping(
-                            arg_name, idx)
-                        if dim_mapping != saved_dim_mappings[idx]:
-                            return False
-                else:
-                    assert length == len(op_desc.output(param_name))
-                    for idx, arg_name in enumerate(op_desc.output(param_name)):
-                        dim_mapping = op_dist_attr.get_output_dim_mapping(
-                            arg_name, idx)
-                        if dim_mapping != saved_dim_mappings[idx]:
-                            return False
-        return True
-
-
 class DistributedOperator:
     def __init__(self):
         self._impls = []
@@ -227,20 +35,33 @@ class DistributedOperator:
 
 class DistributedOperatorImpl:
     def __init__(self):
-        self._dist_signature = None
         self._name = None
 
     def forward(self, serial_op):
-        pass
+        raise NotImplementedError("Please Implement this method in Subclass.")
 
     def backward(self, serial_grad_op):
-        pass
-
-    def get_distributed_signature(self):
-        return self._dist_signature
+        raise NotImplementedError("Please Implement this method in Subclass.")
 
     def get_name(self):
         return self._name
+    
+    def is_process_mesh_compatible(self, op_dist_attr):
+        raise NotImplementedError("Please Implement this method in Subclass.")
+
+    def is_input_compatible(self, op_dist_attr):
+        raise NotImplementedError("Please Implement this method in Subclass.")
+
+    def is_output_compatible(self, op_dist_attr):
+        raise NotImplementedError("Please Implement this method in Subclass.")
+
+    def is_compatible(self, op_dist_attr):
+        return self.is_process_mesh_compatible(op_dist_attr) \
+            and self.is_input_compatible(op_dist_attr) \
+            and self.is_output_compatible(op_dist_attr)
+    
+    def update_dims_mapping(self, op_dist_attr):
+        raise NotImplementedError("Please Implement this method in Subclass.")
 
 
 def register_distributed_operator(name, dist_op):
@@ -275,14 +96,15 @@ def find_best_compatible_distributed_operator_impl(name, op_dist_attr,
     impls = dist_op.get_impls()
     if fwd:
         for idx, impl in enumerate(impls):
-            if impl.get_distributed_signature().is_input_compatible(
-                    op_dist_attr):
+            if impl.is_process_mesh_compatible(op_dist_attr) \
+                and impl.is_input_compatible(op_dist_attr):
                 compatible_impls.append((impl, idx))
     else:
         for idx, impl in enumerate(impls):
-            if impl.get_distributed_signature().is_output_compatible(
-                    op_dist_attr):
+            if impl.is_process_mesh_compatible(op_dist_attr) \
+                and impl.is_output_compatible(op_dist_attr):
                 compatible_impls.append((impl, idx))
+
 
     if compatible_impls:
         best_compatible_impl, idx = compatible_impls[0]

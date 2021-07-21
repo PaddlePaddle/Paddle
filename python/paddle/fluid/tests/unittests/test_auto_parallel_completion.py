@@ -174,5 +174,89 @@ class TestMLPAutoCompletion(unittest.TestCase):
         print(complete_prog)
 
 
+class TestAttentionAutoCompletion(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 4
+        self.hidden_size = 1024
+        self.sequence_len = 128
+        self.embed_dim = self.hidden_size 
+        self.kdim = self.embed_dim
+        self.vdim = self.embed_dim
+        self.num_heads = 8 
+        self.dropout_ratio = 0.1 
+        self.initializer_range = 0.02
+        self.training = True
+        self.attn_mask = None
+
+        self.head_dim = self.embed_dim // self.num_heads
+        assert self.head_dim * self.num_heads == self.embed_dim, \
+            "embed_dim must be divisible by num_heads"
+
+        self.prog = static.Program()
+        with static.program_guard(self.prog), utils.unique_name.guard():
+            self.input = static.data(
+                name="query", shape=[self.batch_size, self.sequence_len, self.hidden_size], dtype='float32')
+            weight_attr = paddle.ParamAttr(
+                initializer=nn.initializer.Normal(
+                    mean=0.0, std=self.initializer_range))
+            bias_attr = None
+            self.q_proj = nn.Linear(
+                    self.embed_dim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+            self.k_proj = nn.Linear(
+                self.kdim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+            self.v_proj = nn.Linear(
+                self.vdim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+            self.out_proj = nn.Linear(
+                self.embed_dim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+
+    def test_attn_dp_mp(self):
+        proc_mesh = auto.ProcessMesh(
+            shape=[2, 4], process_group=[0, 1, 2, 3, 4, 5, 6, 7])
+        assert proc_mesh.get_ndim() == 2, "The number dimension of process mesh must to be 2"
+
+        with static.program_guard(self.prog), utils.unique_name.guard():
+            auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
+            q = self.q_proj(self.input)
+            auto.shard_tensor(self.q_proj.weight, proc_mesh, dims_mapping=[-1, 1])
+            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
+            q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
+
+            k = self.k_proj(self.input)
+            v = self.v_proj(self.input)
+            k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
+            k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
+            v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
+            v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+
+            # scale dot product attention
+            product = layers.matmul(
+                x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
+
+            if self.attn_mask is not None:
+                product = product + self.attn_mask
+
+            weights = F.softmax(product)
+
+            if self.dropout_ratio:
+                weights = F.dropout(
+                    weights,
+                    self.dropout_ratio,
+                    training=self.training,
+                    mode="upscale_in_train")
+
+            out = tensor.matmul(weights, v)
+
+            # combine heads
+            out = tensor.transpose(out, perm=[0, 2, 1, 3])
+            out = tensor.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+
+            # project to output
+            out = self.out_proj(out)
+            auto.shard_tensor(self.out_proj.weight, proc_mesh, dims_mapping=[1, -1])
+
+        print(self.prog)
+        # complete_prog = auto.complete_annotation(self.prog)
+        # print(complete_prog)
+
 if __name__ == "__main__":
     unittest.main()

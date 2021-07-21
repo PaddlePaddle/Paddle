@@ -26,6 +26,9 @@ from paddle.fluid.distributed_attribute import generate_tensor_distributed_attr_
 from paddle.fluid.distributed_attribute import generate_op_distributed_attr_uid
 
 from .distributed_operators import find_best_compatible_distributed_operator_impl
+from .utils import compute_compatible_process_mesh
+from .utils import compute_compatible_dim_mapping
+from .utils import compute_compatible_dims_mapping
 
 ELEMENT_WISE_OP_LIST = ["elementwise_add", "gelu"]
 TENSOR_DISTRIBUTED_ATTR_MAP_FOR_GRAPH = {}
@@ -65,20 +68,6 @@ def set_op_distributed_attr_graph(op_node, op_dist_attr):
     op_node_id = op_node.id()
     global OP_DISTRIBUTED_ATTR_MAP_FOR_GRAPH
     OP_DISTRIBUTED_ATTR_MAP_FOR_GRAPH[op_node_id] = op_dist_attr
-
-
-def compute_compatible_process_mesh(process_mesh_list):
-    compatible_process_mesh = None
-    if not process_mesh_list:
-        return compatible_process_mesh
-    for process_mesh in process_mesh_list:
-        if process_mesh is not None:
-            if compatible_process_mesh is None:
-                compatible_process_mesh = process_mesh
-            else:
-                assert process_mesh == compatible_process_mesh, \
-                    "There is no compatible process mesh."
-    return compatible_process_mesh
 
 
 def update_tensor_node_process_mesh(tensor_node, fwd=True):
@@ -147,41 +136,6 @@ def update_op_node_process_mesh(op_node, fwd=True):
             op_dist_attr.set_process_mesh(compatible_process_mesh)
             changed = True
     return changed
-
-
-def compute_compatible_dim_mapping(dim_mappings):
-    if not dim_mappings:
-        return None
-    compatible_mapping = dim_mappings[0]
-    for mapping in dim_mappings:
-        if compatible_mapping == -1:
-            compatible_mapping = mapping
-        elif mapping == -1:
-            continue
-        elif compatible_mapping == mapping:
-            continue
-        else:
-            return None
-    return compatible_mapping
-
-
-def compute_compatible_dims_mapping(dims_mapping_list):
-    if not dims_mapping_list:
-        return None
-    length = len(dims_mapping_list[0])
-    for dims_mapping in dims_mapping_list:
-        assert dims_mapping is not None, \
-            "Dims mapping must not be None for compatible computation"
-        assert len(dims_mapping) == length, \
-            "The length of dims_mapping in list must be same for compatible computation."
-    compatible_result = []
-    for dim_mappings in zip(*dims_mapping_list):
-        compatible_dim_mapping = compute_compatible_dim_mapping(
-            list(dim_mappings))
-        if compatible_dim_mapping is None:
-            return None
-        compatible_result.append(compatible_dim_mapping)
-    return compatible_result
 
 
 def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
@@ -292,44 +246,6 @@ def update_op_dims_mapping_by_elementwise_dist_impl(op_dist_attr):
     return changed
 
 
-def update_op_dims_mapping_by_dist_impl(op_dist_attr, op_dist_impl):
-    """Update dims mapping by the selected distributed implemention."""
-    changed = False
-    op_desc = op_dist_attr.get_desc()
-    dist_singnature = op_dist_impl.get_distributed_signature()
-    same_shard_dims_list = dist_singnature.get_valid_inputs_outputs_same_shard_dims_list(
-    )
-    for same_shard_dims in same_shard_dims_list:
-        dim_mappings = []
-        for in_or_out, para_name, dim in same_shard_dims:
-            if in_or_out == 'input':
-                for arg_name in op_desc.input(para_name):
-                    dim_mappings.append(
-                        op_dist_attr.get_input_dim_mapping(arg_name, dim))
-            else:
-                for arg_name in op_desc.output(para_name):
-                    dim_mappings.append(
-                        op_dist_attr.get_output_dim_mapping(arg_name, dim))
-        compatible_dim_mapping = compute_compatible_dim_mapping(dim_mappings)
-        assert compatible_dim_mapping is not None, "There is no compatible dim mapping."
-        for in_or_out, para_name, dim in same_shard_dims:
-            if in_or_out == 'input':
-                for arg_name in op_desc.input(para_name):
-                    if compatible_dim_mapping != op_dist_attr.get_input_dim_mapping(
-                            arg_name, dim):
-                        op_dist_attr.set_input_dim_mapping(
-                            arg_name, dim, compatible_dim_mapping)
-                        changed = True
-            else:
-                for arg_name in op_desc.output(para_name):
-                    if compatible_dim_mapping != op_dist_attr.get_output_dim_mapping(
-                            arg_name, dim):
-                        op_dist_attr.set_output_dim_mapping(
-                            arg_name, dim, compatible_dim_mapping)
-                        changed = True
-    return changed
-
-
 def update_tensor_node_dims_mapping(tensor_node, fwd=True):
     changed = False
     if (not tensor_node.is_var()) or (tensor_node.var() is None):
@@ -402,8 +318,7 @@ def update_op_node_dims_mapping(op_node, fwd=True):
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), op_dist_attr, fwd=True)
         if op_dist_impl is not None:
-            dim_changed = update_op_dims_mapping_by_dist_impl(op_dist_attr,
-                                                              op_dist_impl)
+            dim_changed = op_dist_impl.update_dims_mapping(op_dist_attr)
             if dim_changed:
                 changed = True
             op_dist_attr.set_impl_idx(op_dist_impl_idx)
@@ -442,8 +357,7 @@ def update_op_node_dims_mapping(op_node, fwd=True):
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), op_dist_attr, fwd=False)
         if op_dist_impl is not None:
-            dim_changed = update_op_dims_mapping_by_dist_impl(op_dist_attr,
-                                                              op_dist_impl)
+            dim_changed = op_dist_impl.update_dims_mapping(op_dist_attr)
             if dim_changed:
                 changed = True
             op_dist_attr.set_impl_idx(op_dist_impl_idx)

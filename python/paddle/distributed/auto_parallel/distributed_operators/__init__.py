@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import ShardTag
 from .common import DistributedOperator
 from .common import DistributedOperatorImpl
-from .common import OperatorDistributedSignature
 from .common import register_distributed_operator
 from .common import register_distributed_operator_impl
 from .common import find_best_compatible_distributed_operator_impl
