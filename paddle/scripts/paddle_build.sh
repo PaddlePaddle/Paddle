@@ -364,8 +364,11 @@ EOF
         cp -r paddle_inference_install_dir paddle_inference
         tar -czf paddle_inference.tgz paddle_inference
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
+        soLibSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
         echo "Paddle_Inference Size: $buildSize"
+        echo "Paddle_Inference Dynamic Library Size: $soLibSize"
         echo "ipipe_log_param_Paddle_Inference_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
+        echo "ipipe_log_param_Paddle_Inference_So_Size: $soLibSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     elif [ "$1" == "paddle_inference_c" ]; then
         cd ${PADDLE_ROOT}/build
         cp -r paddle_inference_c_install_dir paddle_inference_c
@@ -806,6 +809,31 @@ function check_approvals_of_unittest() {
                 exit 6
             fi
         fi
+    elif [ $check_times == 3 ]; then
+        rm -f fluidInference_so_size
+        curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
+        oriBuildSize=`cat fluidInference_so_size`
+        curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
+        apt-get install -y bc
+        diffSize=$(printf "%.2f" `echo "$curBuildSize - $oriBuildSize" | bc`)
+        cat <<EOF
+        ========================================
+        Original libpaddle_inference.so Size is ${oriBuildSize}M.
+        Current libpaddle_inference.so Size is ${curBuildSize}M.
+        Diff size of libpaddle_inference.so is ${diffSize}M.
+        ========================================
+EOF
+        if [ `echo "5 < $diffSize"|bc` -eq 1 ] ; then
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 328693`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "=========================================================================================="
+                echo -e "Diff size is no less than 5 M. Then you must have one RD (Shixiaowei02 (Recommend) or Superjomn) approval for this PR\n"
+                echo "=========================================================================================="
+                exit 6
+            fi
+        fi
     fi
     set -x
 }
@@ -1224,8 +1252,10 @@ set +x
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] )
                     do
+                        set +e
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        set -e
                         if [[ "${exec_times}" == "1" ]];then
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
@@ -2180,6 +2210,7 @@ function main() {
         #test_fluid_lib_train
         #go inference test
         test_go_inference_api
+        check_approvals_of_unittest 3 
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
@@ -2206,6 +2237,12 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        ;;
+      cpu_cicheck_py35)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        ;;
+      gpu_cicheck_py35)
         parallel_test
         ;;
       check_xpu)

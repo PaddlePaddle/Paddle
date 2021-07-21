@@ -136,6 +136,7 @@ class GraphTable : public SparseTable {
   std::string table_type;
 
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
+  std::vector<std::shared_ptr<std::mt19937_64>> _shards_task_rng_pool;
 };
 }  // namespace distributed
 

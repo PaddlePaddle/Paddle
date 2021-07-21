@@ -195,5 +195,8 @@ __all__ = [     #noqa
            'gather_tree',
            'one_hot',
            'normalize',
-           'temporal_shift'
+           'temporal_shift',
+           'batch_norm',
+           'layer_norm',
+           'instance_norm'
 ]

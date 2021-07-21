@@ -141,8 +141,14 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
       strides[axis_index] = -strides[axis_index];
       if (starts[axis_index] > ends[axis_index]) {
         // swap the reverse
-        starts[axis_index] = starts[axis_index] + 1;
-        ends[axis_index] = ends[axis_index] + 1;
+        auto end_dim = dims[axis_index] - 1 < starts[axis_index]
+                           ? dims[axis_index] - 1
+                           : starts[axis_index];
+        auto offset = (end_dim - ends[axis_index]) % strides[axis_index];
+        offset = offset == 0 ? strides[axis_index] : offset;
+
+        starts[axis_index] = starts[axis_index] + offset;
+        ends[axis_index] = ends[axis_index] + offset;
       }
       std::swap(starts[axis_index], ends[axis_index]);
     } else {

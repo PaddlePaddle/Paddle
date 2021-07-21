@@ -21,7 +21,7 @@ PaddlePaddle is originated from industrial practices with dedication and commitm
 
 ## Installation
 
-### Latest PaddlePaddle Release: [v2.0](https://github.com/PaddlePaddle/Paddle/tree/release/2.0)
+### Latest PaddlePaddle Release: [v2.1](https://github.com/PaddlePaddle/Paddle/tree/release/2.1)
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest features of PaddlePaddle.
@@ -35,7 +35,7 @@ pip install paddlepaddle-gpu
 ```
 For more information about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
 
-Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 10 hours to train models online per day. [Click here to start](https://aistudio.baidu.com/aistudio/index).
+Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 8 hours to train models online per day. [Click here to start](https://aistudio.baidu.com/aistudio/index).
 
 ## FOUR LEADING TECHNOLOGIES
 
@@ -87,6 +87,11 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 - [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
 - QQ discussion group: 793866180 (PaddlePaddle).
 - [Forums](https://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
+    
+## Courses
+
+- [Server Deployments](https://aistudio.baidu.com/aistudio/course/introduce/19084): Courses intorducing high performance server deployments via local and remote services.
+- [Edge Deployments](https://aistudio.baidu.com/aistudio/course/introduce/22690): Courses intorducing edge deployments from mobile, IoT to web and applets.   
 
 ## Copyright and License
 PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).
