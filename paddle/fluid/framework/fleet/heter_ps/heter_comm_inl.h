@@ -528,7 +528,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     tables_[i]->rwlock_->RDLock();
     tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
                     reinterpret_cast<ValType*>(node.val_storage),
-                    h_right[i] - h_left[i] + 1, resource_->remote_stream(i, num));
+                    h_right[i] - h_left[i] + 1,
+                    resource_->remote_stream(i, num));
   }
   for (int i = 0; i < total_gpu; ++i) {
     cudaStreamSynchronize(resource_->remote_stream(i, num));
