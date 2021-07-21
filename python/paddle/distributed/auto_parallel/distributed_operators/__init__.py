@@ -17,4 +17,4 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator
 from .common import register_distributed_operator_impl
 from .common import find_best_compatible_distributed_operator_impl
-from . import matmul
+from . import matmul, reshape, transpose, softmax
