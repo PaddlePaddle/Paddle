@@ -105,15 +105,9 @@ class TestMLPAutoCompletion(unittest.TestCase):
             bias_attr = None
 
             self.linear3 = nn.Linear(
-                d_model,
-                dim_feedforward,
-                weight_attr,
-                bias_attr=bias_attr)
+                d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
             self.linear4 = nn.Linear(
-                dim_feedforward,
-                d_model,
-                weight_attr,
-                bias_attr=bias_attr)
+                dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
             self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
             self.dropout = nn.Dropout(
                 self.dropout_ratio, mode="upscale_in_train")
