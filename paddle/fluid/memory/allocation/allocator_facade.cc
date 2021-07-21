@@ -279,9 +279,11 @@ class AllocatorFacadePrivate {
     }
   }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int CUDACount() {
     return FLAGS_initial_gpu_memory_in_mb ? platform::GetCUDADeviceCount() : 0;
   }
+#endif
 
  private:
   AllocatorMap allocators_;
