@@ -25,8 +25,6 @@ from paddle.fluid import compiler, Program, program_guard
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCumsumOp(unittest.TestCase):
     def run_cases(self):
         data_np = np.arange(12).reshape(3, 4)
@@ -97,8 +95,6 @@ class TestCumsumOp(unittest.TestCase):
             self.assertTrue('out' in y.name)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumOp1(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
@@ -122,8 +118,6 @@ class TestNPUCumSumOp1(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=2)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumOp2(TestNPUCumSumOp1):
     def init_testcase(self):
         self.attrs = {'axis': -1, 'reverse': True}
@@ -135,8 +129,6 @@ class TestNPUCumSumOp2(TestNPUCumSumOp1):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumOp3(TestNPUCumSumOp1):
     def init_testcase(self):
         self.attrs = {'axis': 1}
@@ -144,8 +136,6 @@ class TestNPUCumSumOp3(TestNPUCumSumOp1):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumOp4(TestNPUCumSumOp1):
     def init_testcase(self):
         self.attrs = {'axis': 0}
@@ -153,24 +143,18 @@ class TestNPUCumSumOp4(TestNPUCumSumOp1):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumOp5(TestNPUCumSumOp1):
     def init_testcase(self):
         self.inputs = {'X': np.random.random((5, 20)).astype(self.dtype)}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumOp7(TestNPUCumSumOp1):
     def init_testcase(self):
         self.inputs = {'X': np.random.random((100)).astype(self.dtype)}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumExclusive1(TestNPUCumSumOp1):
     def init_testcase(self):
         self.attrs = {'axis': 2, "exclusive": True}
@@ -184,8 +168,6 @@ class TestNPUCumSumExclusive1(TestNPUCumSumOp1):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumExclusive2(TestNPUCumSumOp1):
     def init_testcase(self):
         self.attrs = {'axis': 2, "exclusive": True}
@@ -199,8 +181,6 @@ class TestNPUCumSumExclusive2(TestNPUCumSumOp1):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumExclusive3(TestNPUCumSumOp1):
     def init_testcase(self):
         self.attrs = {'axis': 2, "exclusive": True}
@@ -227,8 +207,6 @@ class TestNPUCumSumExclusive4(TestNPUCumSumOp1):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumExclusive5(TestNPUCumSumOp1):
     def init_testcase(self):
         self.attrs = {'axis': 2, "exclusive": True}
@@ -242,8 +220,6 @@ class TestNPUCumSumExclusive5(TestNPUCumSumOp1):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumReverseExclusive(TestNPUCumSumOp1):
     def init_testcase(self):
         self.attrs = {'axis': 2, 'reverse': True, "exclusive": True}
@@ -259,8 +235,6 @@ class TestNPUCumSumReverseExclusive(TestNPUCumSumOp1):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumWithFlatten1(TestNPUCumSumOp1):
     def init_testcase(self):
         self.attrs = {'flatten': True}
@@ -268,8 +242,6 @@ class TestNPUCumSumWithFlatten1(TestNPUCumSumOp1):
         self.outputs = {'Out': self.inputs['X'].cumsum()}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUCumSumWithFlatten2(TestNPUCumSumOp1):
     def init_testcase(self):
         self.attrs = {'flatten': True}
