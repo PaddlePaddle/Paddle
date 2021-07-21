@@ -218,8 +218,6 @@ def prepare_distributed_context(place=None):
             fluid.disable_dygraph()
             _init_context()
             fluid.enable_dygraph(place)
-        else:
-            _init_context()
 
     else:
         assert ("Only support CUDAPlace for now.")
