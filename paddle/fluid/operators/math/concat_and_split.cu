@@ -53,8 +53,8 @@ __global__ void ConcatKernel(const T** inputs, const int64_t* input_cols,
 
 template <typename T>
 __device__ void ConcatKernelDetail(const T** inputs_data,
-                                   const int64_t fixed_in_col, const int64_t out_rows,
-                                   const int64_t out_cols, T* output_data) {
+                                   const int fixed_in_col, const int out_rows,
+                                   const int out_cols, T* output_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
   for (; tid_x < out_cols; tid_x += blockDim.x * gridDim.x) {
     int split = tid_x * 1.0 / fixed_in_col;
