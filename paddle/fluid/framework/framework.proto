@@ -64,8 +64,8 @@ message OpDesc {
     required string name = 1;
     required AttrType type = 2;
     optional int32 i = 3;
-    optional string s = 5;
-    repeated int32 ints = 6;
+    optional string s = 4;
+    repeated int32 ints = 5;
   };
 
   message Var {
@@ -178,11 +178,16 @@ message VarType {
 message VarDesc {
 
   message DistributedAttr {
+    message ProcessMesh {
+      required string name = 1;
+      repeated int32 ints = 2;
+    }
     required string name = 1;
     required AttrType type = 2;
     optional int32 i = 3;
     optional string s = 5;
     repeated int32 ints = 6;
+    optional ProcessMesh mesh = 7;
   };
 
   required string name = 1;
