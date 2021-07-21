@@ -332,17 +332,36 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     saved_mean->mutable_data<T>(ctx.GetPlace());
     saved_variance->mutable_data<T>(ctx.GetPlace());
 
+    const int NxC = N * C;
+    Eigen::IndexList<int, Eigen::type2index<1>> NxC_shape;
+    Eigen::IndexList<Eigen::type2index<1>> rdims;
+    NxC_shape.set(0, NxC);
+
     if (!global_stats) {
       // saved_xx is use just in this batch of data
-      EigenVectorArrayMap<T> saved_mean_e(
-          saved_mean->mutable_data<T>(ctx.GetPlace()), C);
-      EigenVectorArrayMap<T> saved_variance_e(
-          saved_variance->mutable_data<T>(ctx.GetPlace()), C);
+      // EigenVectorArrayMap<T> saved_mean_e(
+      //     saved_mean->mutable_data<T>(ctx.GetPlace()), C);
+
+      auto saved_mean_a = framework::EigenVector<T>::Flatten(*saved_mean);
+      auto saved_mean_e = saved_mean_a.reshape(NxC_shape);
+
+      // EigenVectorArrayMap<T> saved_variance_e(
+      //     saved_variance->mutable_data<T>(ctx.GetPlace()), C);
+      auto saved_variance_a =
+          framework::EigenVector<T>::Flatten(*saved_variance);
+      auto saved_variance_e = saved_variance_a.reshape(NxC_shape);
+
       saved_mean_e.setZero();
       saved_variance_e.setZero();
 
-      EigenVectorArrayMap<T> running_mean_arr(
-          mean_out->mutable_data<T>(ctx.GetPlace()), C);
+      auto x_e = framework::EigenVector<T>::Flatten(*x);
+      auto x_arr = x_e.reshape(shape);
+
+      auto running_mean_arr_a = framework::EigenVector<T>::Flatten(*mean_out);
+      auto running_mean_arr = running_mean_arr_a.reshape(C);
+
+      // EigenVectorArrayMap<T> running_mean_arr(
+      //     mean_out->mutable_data<T>(ctx.GetPlace()), C);
       EigenVectorArrayMap<T> running_var_arr(
           variance_out->mutable_data<T>(ctx.GetPlace()), C);
 
@@ -355,18 +374,25 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
       switch (data_layout) {
         case DataLayout::kNCHW: {
-          ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
-          for (int nc = 0; nc < N * C; ++nc) {
-            saved_mean_e(nc % C) += x_arr.col(nc).sum();
-          }
-          saved_mean_e /= N * sample_size;
-          std::cout << "saved_mean_e" << saved_mean_e << std::endl;
+          // ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
+          // for (int nc = 0; nc < N * C; ++nc) {
+          //   saved_mean_e(nc % C) += x_arr.col(nc).sum();
+          // }
+          // saved_mean_e /= N * sample_size;
+          saved_mean_e.device(*place) = x_arr.mean(rdims);
+
+          std::cout << "saved_mean_e：" << saved_mean_e << std::endl;
           std::cout << "\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n";
-          for (int nc = 0; nc < N * C; ++nc) {
-            saved_variance_e(nc % C) +=
-                (x_arr.col(nc) - saved_mean_e(nc % C)).matrix().squaredNorm();
-          }
-          saved_variance_e /= N * sample_size;
+          auto saved_variance_arr =
+              (x_arr - saved_mean_e.broadcast(bcast)).square().mean(rdims) +
+              epsilon;
+          saved_variance_e.device(*place) = saved_variance_arr.sqrt().inverse();
+          // for (int nc = 0; nc < N * C; ++nc) {
+          //   saved_variance_e(nc % C) +=
+          //       (x_arr.col(nc) - saved_mean_e(nc %
+          //       C)).matrix().squaredNorm();
+          // }
+          // saved_variance_e /= N * sample_size;
           std::cout << "saved_variance_e: " << saved_variance_e << std::endl;
           break;
         }
@@ -432,13 +458,18 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
     switch (data_layout) {
       case DataLayout::kNCHW: {
-        EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
+        auto y_e = framework::EigenVector<T>::Flatten(*y);
+        auto y_arr = y_e.reshape(shape);
+        // EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()),
+        // sample_size,
                                N * C);
-        ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
-        for (int nc = 0; nc < N * C; ++nc) {
-          y_arr.col(nc) = x_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
-        }
-        break;
+                               ConstEigenArrayMap<T> x_arr(x->data<T>(),
+                                                           sample_size, N * C);
+                               // for (int nc = 0; nc < N * C; ++nc) {
+                               //   y_arr.col(nc) = x_arr.col(nc) * new_scale(nc
+                               //   % C) + new_bias(nc % C);
+                               // }
+                               break;
       }
       case DataLayout::kNHWC: {
         EigenArrayMap<T>(y->mutable_data<T>(ctx.GetPlace()), C,
