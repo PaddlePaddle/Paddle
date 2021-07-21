@@ -528,10 +528,10 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     tables_[i]->rwlock_->RDLock();
     tables_[i]->get(reinterpret_cast<KeyType*>(node.key_storage),
                     reinterpret_cast<ValType*>(node.val_storage),
-                    h_right[i] - h_left[i] + 1, resource_->remote_stream(num, i));
+                    h_right[i] - h_left[i] + 1, resource_->remote_stream(i, num));
   }
   for (int i = 0; i < total_gpu; ++i) {
-    cudaStreamSynchronize(resource_->remote_stream(num, i));
+    cudaStreamSynchronize(resource_->remote_stream(i, num));
     tables_[i]->rwlock_->UNLock();
   }
 
@@ -627,10 +627,10 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
     tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
                        reinterpret_cast<GradType*>(node.val_storage),
                        h_right[i] - h_left[i] + 1, sgd,
-                       resource_->remote_stream(gpu_num, i));
+                       resource_->remote_stream(i, gpu_num));
   }
   for (int i = 0; i < total_gpu; ++i) {
-    cudaStreamSynchronize(resource_->remote_stream(gpu_num, i));
+    cudaStreamSynchronize(resource_->remote_stream(i, gpu_num));
     tables_[i]->rwlock_->UNLock();
   }
 }
