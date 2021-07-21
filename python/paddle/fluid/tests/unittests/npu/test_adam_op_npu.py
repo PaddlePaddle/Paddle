@@ -25,8 +25,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAdam(OpTest):
     def setUp(self):
         self.set_npu()
@@ -75,11 +73,9 @@ class TestAdam(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAdamWithEpsilonTensor(OpTest):
     def setUp(self):
         self.set_npu()
@@ -131,11 +127,9 @@ class TestAdamWithEpsilonTensor(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAdamOpWithSkipUpdate(OpTest):
     def setUp(self):
         self.set_npu()
@@ -185,11 +179,9 @@ class TestAdamOpWithSkipUpdate(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAdamOpWithGlobalBetaPow(OpTest):
     def setUp(self):
         self.set_npu()
@@ -244,11 +236,9 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -309,8 +299,6 @@ class TestNet(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-3))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNetWithEpsilonTensor(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

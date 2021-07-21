@@ -28,8 +28,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSoftmaxWithCrossEntropyOp(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
@@ -86,7 +84,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             self.attrs['axis'] = self.axis
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -95,13 +93,10 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.check_grad_with_place(
             self.place, ['Logits'],
             'Loss',
-            check_dygraph=False,
             numeric_grad_delta=0.001,
             max_relative_error=0.5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestPowNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
