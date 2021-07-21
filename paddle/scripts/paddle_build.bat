@@ -324,14 +324,17 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     if %day_now% EQU 21 (
+        del D:\sccache\sccache_log.txt
         rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 11 (
+        del D:\sccache\sccache_log.txt
         rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 01 (
+        del D:\sccache\sccache_log.txt
         rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )

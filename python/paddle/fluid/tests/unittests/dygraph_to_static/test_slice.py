@@ -176,5 +176,32 @@ class TestSetValueWithLayerAndSave(unittest.TestCase):
             output_spec=None)
 
 
+class TestPaddleStridedSlice(unittest.TestCase):
+    def test_compare_paddle_strided_slice_with_numpy(self):
+        paddle.disable_static()
+        array = np.arange(5)
+        pt = paddle.to_tensor(array)
+
+        s1 = 3
+        e1 = 1
+        stride1 = -2
+        sl = paddle.strided_slice(
+            pt, axes=[0, ], starts=[s1, ], ends=[e1, ], strides=[stride1, ])
+
+        self.assertTrue(array[s1:e1:stride1], sl)
+
+        array = np.arange(6 * 6).reshape((6, 6))
+        pt = paddle.to_tensor(array)
+        s2 = [8, -1]
+        e2 = [1, -5]
+        stride2 = [-2, -3]
+        sl = paddle.strided_slice(
+            pt, axes=[0, 1], starts=s2, ends=e2, strides=stride2)
+
+        self.assertTrue(
+            np.array_equal(sl.numpy(), array[s2[0]:e2[0]:stride2[0], s2[1]:e2[
+                1]:stride2[1]]))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -25,6 +25,7 @@ from .. import core
 from ..param_attr import ParamAttr
 from . import nn
 from ..data_feeder import check_variable_and_dtype
+from paddle import _C_ops
 
 __all__ = ['accuracy', 'auc']
 
@@ -84,8 +85,8 @@ def accuracy(input, label, k=1, correct=None, total=None):
             total = _varbase_creator(dtype="int32")
 
         topk_out, topk_indices = nn.topk(input, k=k)
-        _acc, _, _ = core.ops.accuracy(topk_out, topk_indices, label, correct,
-                                       total)
+        _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label, correct,
+                                     total)
         return _acc
 
     helper = LayerHelper("accuracy", **locals())

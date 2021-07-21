@@ -25,6 +25,7 @@ from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 import paddle.compat as cpt
+from paddle import _C_ops
 
 
 class NestSequence(object):
@@ -228,7 +229,7 @@ class PartialProgramLayer:
         attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
                  0, 'end_op_index', self._infer_program.desc.block(0).op_size(),
                  'is_test', not self.training)
-        core.ops.run_program(
+        _C_ops.run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
             self._valid_vars(out_vars), self._tmp_scope_vec, self._double_grads,

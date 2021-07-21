@@ -24,8 +24,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestUnStackOpBase(OpTest):
     def initDefaultParameters(self):
         self.input_dim = (5, 6, 7)
@@ -75,29 +73,21 @@ class TestUnStackOpBase(OpTest):
         self.check_grad_with_place(self.place, ['X'], self.get_y_names())
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp3(TestUnStackOpBase):
     def initParameters(self):
         self.axis = -1
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp4(TestUnStackOpBase):
     def initParameters(self):
         self.axis = -3
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp5(TestUnStackOpBase):
     def initParameters(self):
         self.axis = 1
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp6(TestUnStackOpBase):
     def initParameters(self):
         self.axis = 2
