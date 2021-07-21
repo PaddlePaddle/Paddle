@@ -220,8 +220,6 @@ def type_map_factory():
     } for x_type in x_type_list for y_type in y_type_list]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCPU(unittest.TestCase):
     def test(self):
         test(self)
@@ -235,8 +233,6 @@ class TestCPU(unittest.TestCase):
             test_type_error(self, False, type_map)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPU(unittest.TestCase):
     def test(self):
         test(self, True)
