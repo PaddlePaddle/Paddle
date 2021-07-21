@@ -36,6 +36,7 @@ enum class Priority : uint8_t {
 #endif
 class CUDAStream final {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
  public:
   CUDAStream() = default;
   explicit CUDAStream(const Place& place,
@@ -125,6 +126,8 @@ class CUDAStream final {
 #endif
   }
 
+  const Place& GetPlace() const { return place_; }
+
  private:
   Place place_;
 #ifdef PADDLE_WITH_HIP
@@ -139,6 +142,7 @@ class CUDAStream final {
 };
 
 CUDAStream* get_current_stream(int deviceId);
+CUDAStream* set_current_stream(CUDAStream* stream);
 
 }  // namespace stream
 }  // namespace platform
