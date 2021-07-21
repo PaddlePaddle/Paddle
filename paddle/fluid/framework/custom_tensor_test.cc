@@ -76,32 +76,37 @@ void TestAPISizeAndShape() {
 }
 
 void TestAPISlice() {
-  std::vector<int64_t> tensor_shape_origin = {5, 5};
+  std::vector<int64_t> tensor_shape_origin1 = {5, 5};
   std::vector<int64_t> tensor_shape_sub1 = {3, 5};
-  std::vector<int64_t> tensor_shape_sub2 = {1, 5};
+  std::vector<int64_t> tensor_shape_origin2 = {5, 5, 5};
+  std::vector<int64_t> tensor_shape_sub2 = {1, 5, 5};
 #ifdef PADDLE_WITH_CUDA
-  auto t1 = paddle::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin);
+  auto t1 = paddle::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin1);
   t1.mutable_data<float>();
-  CHECK(t1.slice(0, 5).shape() == tensor_shape_origin);
+  CHECK(t1.slice(0, 5).shape() == tensor_shape_origin1);
   CHECK(t1.slice(0, 3).shape() == tensor_shape_sub1);
-  CHECK(t1.slice(4, 5).shape() == tensor_shape_sub2);
-#endif
-  auto t2 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape_origin);
+  auto t2 = paddle::Tensor(paddle::PlaceType::kGPU, tensor_shape_origin2);
   t2.mutable_data<float>();
-  CHECK(t2.slice(0, 5).shape() == tensor_shape_origin);
-  CHECK(t2.slice(0, 3).shape() == tensor_shape_sub1);
   CHECK(t2.slice(4, 5).shape() == tensor_shape_sub2);
+#endif
+  auto t3 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape_origin1);
+  t3.mutable_data<float>();
+  CHECK(t3.slice(0, 5).shape() == tensor_shape_origin1);
+  CHECK(t3.slice(0, 3).shape() == tensor_shape_sub1);
+  auto t4 = paddle::Tensor(paddle::PlaceType::kCPU, tensor_shape_origin2);
+  t4.mutable_data<float>();
+  CHECK(t4.slice(4, 5).shape() == tensor_shape_sub2);
 
   // Test writing function for sliced tensor
   auto t = InitCPUTensorForTest<float>();
   auto t_sliced = t.slice(0, 1);
   auto* t_sliced_data_ptr = t_sliced.mutable_data<float>();
   for (int64_t i = 0; i < t_sliced.size(); i++) {
-    t_sliced_data_ptr[i] += float(5);
+    t_sliced_data_ptr[i] += static_cast<float>(5);
   }
   auto* t_data_ptr = t.mutable_data<float>();
   for (int64_t i = 0; i < t_sliced.size(); i++) {
-    CHECK_EQ(t_data_ptr[i], float(10));
+    CHECK_EQ(t_data_ptr[i], static_cast<float>(10));
   }
 }
 
