@@ -202,9 +202,12 @@ rem ------Build windows inference library------
 set ON_INFER=ON
 set WITH_PYTHON=OFF
 set CUDA_ARCH_NAME=All
+python %work_dir%\tools\remove_grad_op_and_kernel.py
+if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
+call :test_inference || goto test_inference_error
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
 goto:success
@@ -678,6 +681,7 @@ exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :zip_cc_file
+cd /d %work_dir%\build
 tree /F %cd%\paddle_inference_install_dir\paddle
 if exist paddle_inference.zip del paddle_inference.zip
 python -c "import shutil;shutil.make_archive('paddle_inference', 'zip', root_dir='paddle_inference_install_dir')"
@@ -695,6 +699,7 @@ exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :zip_c_file
+cd /d %work_dir%\build
 tree /F %cd%\paddle_inference_c_install_dir\paddle
 if exist paddle_inference_c.zip del paddle_inference_c.zip
 python -c "import shutil;shutil.make_archive('paddle_inference_c', 'zip', root_dir='paddle_inference_c_install_dir')"
