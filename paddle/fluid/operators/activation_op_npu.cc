@@ -303,6 +303,7 @@ class SquareNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+<<<<<<< HEAD
 template <typename DeviceContext, typename T>
 class SigmoidNPUKernel : public framework::OpKernel<T> {
  public:
@@ -400,6 +401,8 @@ class HardSigmoidGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+=======
+>>>>>>> [NPU] temp delete hard_sigmoid for resovle conficts
 }  // namespace operators
 }  // namespace paddle
 
@@ -463,6 +466,7 @@ REGISTER_OP_NPU_KERNEL(
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>,
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, int>);
+<<<<<<< HEAD
 
 REGISTER_OP_NPU_KERNEL(
     sigmoid, ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext, float>,
@@ -486,3 +490,5 @@ REGISTER_OP_NPU_KERNEL(
     ops::HardSigmoidGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::HardSigmoidGradNPUKernel<paddle::platform::NPUDeviceContext,
                                   paddle::platform::float16>);
+=======
+>>>>>>> [NPU] temp delete hard_sigmoid for resovle conficts
