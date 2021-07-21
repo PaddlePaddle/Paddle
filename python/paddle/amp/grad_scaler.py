@@ -409,7 +409,7 @@ class GradScaler(AmpScaler):
 
     def set_decr_every_n_nan_or_inf(self, new_decr_every_n_nan_or_inf):
         """
-        Set the num `n` by `new_decr_every_n_nan_or_inf`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+        Set the num of `n` by `new_decr_every_n_nan_or_inf`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
 
         Args:
             new_decr_every_n_nan_or_inf(int):  The new_decr_every_n_nan_or_inf used to update the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
