@@ -315,9 +315,9 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
           memory::Alloc(context, inputs_col_num * sizeof(int64_t));
       memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
-                   static_cast<void*>(inputs_col), 
-                   inputs_col_num * sizeof(int64_t),context.stream());
-      int64_t* dev_ins_col_data = 
+                   static_cast<void*>(inputs_col),
+                   inputs_col_num * sizeof(int64_t), context.stream());
+      int64_t* dev_ins_col_data =
           static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
 
       ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
@@ -438,7 +438,7 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
       memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
                    reinterpret_cast<void*>(outputs_cols),
-                   outputs_cols_num * sizeof(int64_t),  context.stream());
+                   outputs_cols_num * sizeof(int64_t), context.stream());
       int64_t* dev_outs_col_data =
           reinterpret_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
 
