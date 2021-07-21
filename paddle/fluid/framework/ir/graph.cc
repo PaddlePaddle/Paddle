@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/operator.h"
 
-DEFINE_bool(convert_all_blocks, false,
+DEFINE_bool(convert_all_blocks, true,
             "Convert all blocks in program into SSAgraphs");
 
 namespace paddle {
