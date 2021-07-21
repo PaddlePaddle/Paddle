@@ -132,6 +132,18 @@ class SliceOp : public framework::OperatorWithKernel {
       if (platform::is_cuda_pinned_place(in_tensor.place())) {
         return framework::OpKernelType(in_tensor.type(), ctx.device_context());
       }
+
+      auto input_data_type =
+          framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+
+  #ifdef PADDLE_WITH_MKLDNN
+      if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+        return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                      framework::DataLayout::kMKLDNN,
+                                      framework::LibraryType::kMKLDNN);
+      }
+  #endif
+
       return framework::OpKernelType(in_tensor.type(), in_tensor.place());
     }
     return framework::OpKernelType(
@@ -216,6 +228,14 @@ class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<int>>("decrease_axis", "(list<int>) decrease_axis")
         .SetDefault({});
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"});
     AddComment(R"DOC(
 Slice Operator.
 
