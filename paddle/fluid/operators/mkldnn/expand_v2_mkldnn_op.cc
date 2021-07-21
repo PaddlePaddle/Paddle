@@ -98,7 +98,6 @@ class ExpandGradMKLDNNKernel : public framework::OpKernel<T> {
     auto dx_vec_dims = framework::vectorize(dx->dims());
     auto dout_vec_dims = framework::vectorize(dout->dims());
 
-    dnnl::memory::format_tag dx_format_tag = dout->format();
     if (dx_vec_dims.size() != dout_vec_dims.size()) {
       dx_vec_dims.insert(dx_vec_dims.begin(),
                          dout_vec_dims.size() - dx_vec_dims.size(), 1);

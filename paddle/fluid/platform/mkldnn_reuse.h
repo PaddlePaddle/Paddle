@@ -726,7 +726,7 @@ class BroadcastDataMKLDNNHandler
                                               src1_md, src0_md);
     }
   }
-  
+
   template <typename T_out = T>
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output) {
     T_out* ptr = output->mutable_data<T_out>(
