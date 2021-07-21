@@ -85,7 +85,7 @@ class SingleGraphToProgramPass(GraphToProgramPassTest):
         program = static.Program()
         with static.program_guard(program):
             data = static.data(name='x', shape=[None, 13], dtype='float32')
-            hidden = static.nn.fc(input=data, size=10)
+            hidden = static.nn.fc(data, size=10)
             loss = paddle.mean(hidden)
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
         return program
