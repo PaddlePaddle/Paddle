@@ -940,3 +940,55 @@ def mv(x, vec, name=None):
         type='mv', inputs={'X': x,
                            'Vec': vec}, outputs={'Out': out})
     return out
+
+
+def matrix_power(x, n):
+    r"""
+    Computes the n-th power of a square matrix or a batch of square matrices.
+
+    If `n > 0`, it returns the matrix or each matrices in the batch being raised
+    to power of `n`.
+    
+    If `n = 0`, it returns an identity matrix or batch of identity matrices.
+
+    If `n < 0`, it returns the inverse of each matrix (if invertible) raised to
+    the power of `-n`.
+
+    Args:
+        x (Tensor): A square matrix or a batch of square matrices to be raised
+            to power(n). Its data type should be float or double.
+        n (int): The exponent. It can be any positive, negative integer or zero.
+
+    Returns:
+        Tensor: The n-th power of matrix (or batch of matrices) x. Its data type is
+            the same with the data type of x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([[1, 2, 3],
+                                  [1, 4, 9],
+                                  [1, 8, 27]], dtype='float64')
+            n = -2
+            out = paddle.linalg.matrix_power(x, n)
+            print(out)
+            # [[ 12.91666667, -12.75000000,  2.83333333 ],
+            #  [-7.66666667 ,  8.         , -1.83333333 ],
+            #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.matrix_power(x, "n", n)
+
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
+    check_type(n, 'n', int, 'matrix_power')
+    helper = LayerHelper('matrix_power', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='matrix_power',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'n': n})
+    return out

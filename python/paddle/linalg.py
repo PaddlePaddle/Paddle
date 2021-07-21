@@ -14,10 +14,12 @@
 
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
+from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor import inverse as inv  # noqa: F401
 
 __all__ = [
     'cholesky',  #noqa
     'norm',
-    'inv'
+    'inv',
+    'matrix_power'
 ]
