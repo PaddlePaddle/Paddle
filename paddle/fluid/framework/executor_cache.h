@@ -125,7 +125,7 @@ class ExecutorInfoCache {
 using CacheInfo =
     std::pair<std::shared_ptr<ParallelExecutor>, bool /*is_new_created*/>;
 
-CacheInfo GetExecutorInfoFromCache(const ProgramDesc* program_desc,
+CacheInfo GetExecutorInfoFromCache(const ProgramDesc& program_desc,
                                    const platform::Place& place,
                                    int64_t start_op_index, int64_t end_op_index,
                                    bool is_grad, int64_t program_id,

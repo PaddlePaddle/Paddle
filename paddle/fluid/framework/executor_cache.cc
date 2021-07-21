@@ -137,7 +137,7 @@ ExecutorInfoCache &ExecutorInfoCache::Instance() {
   return g_exe_cache_info_map;
 }
 
-CacheInfo GetExecutorInfoFromCache(const ProgramDesc *program_desc,
+CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
                                    const platform::Place &place,
                                    int64_t start_op_index, int64_t end_op_index,
                                    bool is_grad, int64_t program_id,
@@ -151,7 +151,7 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc *program_desc,
 
     // 2. Construct Graph and ParallelExecutor.
     auto graph = std::make_shared<framework::ir::Graph>(
-        *program_desc, start_op_index, end_op_index);
+        program_desc, start_op_index, end_op_index);
     auto parallel_executor = std::make_shared<framework::ParallelExecutor>(
         place, scope, execution_strategy, build_strategy, graph.get());
     parallel_executor->PrepareVariables(scope);

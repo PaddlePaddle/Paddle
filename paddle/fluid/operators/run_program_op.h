@@ -217,7 +217,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     if (end_op_index > start_op_index) {
       auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
       auto cache_info = framework::GetExecutorInfoFromCache(
-          program, ctx.GetPlace(), start_op_index, end_op_index,
+          *program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad=*/false, program_id, &scope);
       auto &parallel_executor = cache_info.first;
       // all out_vars are skip_eager_var
@@ -312,7 +312,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
       // Step 2. prepare executor and scope
       auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
       auto cache_info = framework::GetExecutorInfoFromCache(
-          program, ctx.GetPlace(), start_op_index, end_op_index,
+          *program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad*/ true, program_id, &scope);
       auto &parallel_executor = cache_info.first;
 
