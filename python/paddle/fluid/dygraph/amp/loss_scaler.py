@@ -360,7 +360,7 @@ class AmpScaler(object):
 
     def state_dict(self):
         """
-        Returns the state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
+        Returns state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
 
         Reurns:
             A dict of scaler includes:
@@ -370,11 +370,13 @@ class AmpScaler(object):
             incr_every_n_steps(int, optional): Increases loss scaling every n consecutive steps with finite gradients.
             decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n accumulated steps with nan or inf gradients.
         """
-        return {"init_loss_scaling": self._init_loss_scaling,
-                "incr_ratio": self._incr_ratio,
-                "decr_ratio": self._decr_ratio,
-                "incr_every_n_steps": self._incr_every_n_steps,
-                "decr_every_n_nan_or_inf": self._decr_every_n_nan_or_inf} if self._enable else {}
+        return {
+            "init_loss_scaling": self._init_loss_scaling,
+            "incr_ratio": self._incr_ratio,
+            "decr_ratio": self._decr_ratio,
+            "incr_every_n_steps": self._incr_every_n_steps,
+            "decr_every_n_nan_or_inf": self._decr_every_n_nan_or_inf
+        } if self._enable else {}
 
     def load_state_dict(self, state_dict):
         """
@@ -387,8 +389,9 @@ class AmpScaler(object):
             return
 
         if len(state_dict) == 0:
-            raise RuntimeError("The input state dict is empty, possibly because it was saved "
-                               "from a disabled instance of GradScaler.")
+            raise RuntimeError(
+                "The input state dict is empty, possibly because it was saved "
+                "from a disabled instance of GradScaler.")
 
         self._init_loss_scaling = state_dict["init_loss_scaling"]
         self._incr_ratio = state_dict["incr_ratio"]
