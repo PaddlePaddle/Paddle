@@ -303,7 +303,6 @@ class SquareNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-<<<<<<< HEAD
 template <typename DeviceContext, typename T>
 class SigmoidNPUKernel : public framework::OpKernel<T> {
  public:
@@ -329,7 +328,6 @@ template <typename DeviceContext, typename T>
 class SigmoidGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-<<<<<<< HEAD
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* out = ctx.Input<Tensor>("Out");
 
@@ -353,8 +351,6 @@ template <typename DeviceContext, typename T>
 class HardSigmoidNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-=======
->>>>>>> [NPU] delete debug codes
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
     float slope = ctx.Attr<float>("slope");
@@ -401,8 +397,6 @@ class HardSigmoidGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-=======
->>>>>>> [NPU] temp delete hard_sigmoid for resovle conficts
 }  // namespace operators
 }  // namespace paddle
 
@@ -466,7 +460,6 @@ REGISTER_OP_NPU_KERNEL(
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>,
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, int>);
-<<<<<<< HEAD
 
 REGISTER_OP_NPU_KERNEL(
     sigmoid, ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext, float>,
@@ -490,5 +483,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::HardSigmoidGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::HardSigmoidGradNPUKernel<paddle::platform::NPUDeviceContext,
                                   paddle::platform::float16>);
-=======
->>>>>>> [NPU] temp delete hard_sigmoid for resovle conficts
