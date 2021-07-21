@@ -324,6 +324,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
           dev_ins_data, dev_ins_col_data, static_cast<int>(inputs_col_num),
           out_row, out_col, output->data<T>());
     }
+      
 #ifdef PADDLE_WITH_HIP
     // Prevent the pinned memory value from being covered and release the memory
     // after the launch kernel of the stream is executed (reapply pinned memory
