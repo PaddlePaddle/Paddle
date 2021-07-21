@@ -360,6 +360,44 @@ class DistributedStrategy(object):
                           "a_sync_configs")
         assign_configs_value(self.strategy.a_sync_configs, configs)
 
+
+    @property
+    def dump_configs(self):
+        """
+        Set dump configurations. 
+
+        **Notes**:
+            dump_fields_path(str): the path of dump fields
+
+            dump_fields(list(str)): the fields that you want to dump
+
+            dump_param(list(str)): the param that you want to dump
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+
+            strategy = fleet.DistributedStrategy()
+            configs = {"dump_fields_path": "./dump_data", "dump_fields": ["xxx", "yyy"]}
+            strategy.dump_configs = configs
+
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+
+        """
+        return get_msg_dict(self.strategy.dump_configs)
+
+    @dump_configs.setter
+    @is_strict_auto
+    def dump_configs(self, configs):
+        check_configs_key(self.strategy.dump_configs, configs,
+                          "dump_configs")
+        assign_configs_value(self.strategy.dump_configs, configs)
+
     @property
     def amp(self):
         """

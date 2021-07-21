@@ -145,6 +145,12 @@ message AsyncConfig {
   optional int32 use_ps_gpu = 12 [ default = 0 ];
 }
 
+message DumpConfig {
+  optional string dump_fields_path = 1;
+  repeated string dump_fields = 2;
+  repeated string dump_param = 3;
+}
+
 message PipelineConfig {
   optional int32 micro_batch_size = 1 [ default = 1 ];
   optional int32 accumulate_steps = 2 [ default = 1 ];
@@ -205,6 +211,7 @@ message DistributedStrategy {
   optional ShardingConfig sharding_configs = 111;
   optional HybridConfig hybrid_configs = 112;
   optional TensorParallelConfig tensor_parallel_configs = 113;
+  optional DumpConfig dump_configs = 114;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
   optional GradientScaleConfig gradient_scale_configs = 203;

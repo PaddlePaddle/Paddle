@@ -1460,6 +1460,16 @@ class Fleet(object):
             context["graph_optimize_ops"] = optimize_ops
             context["graph_optimize_grads"] = params_grads
 
+        program = paddle.static.default_main_program()
+        opt_info = {}
+        opt_info["mpi_size"] = self.worker_num()
+        opt_info["mpi_rank"] = self.worker_index()
+        opt_info["stat_var_names"] = []
+        for key in self._user_defined_strategy.dump_configs:
+            opt_info[key] = self._user_defined_strategy.dump_configs[key]
+        program._fleet_opt = opt_info
+        print("program_fleet_opt======= ", program._fleet_opt)
+
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
