@@ -130,6 +130,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "nearest_interp",
       "anchor_generator",
       "reduce_sum",
+      "reduce_mean",
   };
 };
 
@@ -709,17 +710,23 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape && shape[0] == -1) return false;
     }
 
-    if (op_type == "reduce_sum") {
-      if (!with_dynamic_shape) {
-        VLOG(3) << "the reduce_sum does not support static shape yet";
+    if (op_type == "reduce_sum" || op_type == "reduce_mean") {
+      if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
+            desc.HasAttr("reduce_all"))) {
+        VLOG(3) << "the " << op_type
+                << " does not have attr (keep_dim or dim or "
+                   "reduce_all)";
         return false;
       }
 
-      if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
-            desc.HasAttr("reduce_all"))) {
-        VLOG(3) << "the reduce_sum does not have attr (keep_dim or dim or "
-                   "reduce_all)";
-        return false;
+      // The batch size dimension cannot be reduced if it's not dynamic shape.
+      if (!with_dynamic_shape) {
+        if (desc.HasAttr("reduce_all")) return false;
+        std::vector<int32_t> dim =
+            BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
+        for (auto x : dim) {
+          if (!x) return false;
+        }
       }
     }
 
