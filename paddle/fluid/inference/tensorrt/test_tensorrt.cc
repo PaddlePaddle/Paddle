@@ -16,14 +16,15 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "NvInfer.h"
-#include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/platform/dynload/tensorrt.h"
 
 namespace dy = paddle::platform::dynload;
 
 class Logger : public nvinfer1::ILogger {
  public:
-  void log(nvinfer1::ILogger::Severity severity, const char* msg) TRT_NOEXCEPT override {
+  void log(nvinfer1::ILogger::Severity severity,
+           const char* msg) TRT_NOEXCEPT override {
     switch (severity) {
       case Severity::kINFO:
         LOG(INFO) << msg;
