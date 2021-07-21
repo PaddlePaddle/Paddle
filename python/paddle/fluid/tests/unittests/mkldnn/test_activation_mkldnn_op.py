@@ -84,8 +84,12 @@ class TestMKLDNNSigmoidBF16Op(TestActivation):
     @OpTestTool.skip_if_not_cpu_bf16()
     def config(self):
         self.op_type = "sigmoid"
-        self.op_func = lambda x: (1 / (1 + np.exp(-x)))
-        self.op_grad_func = lambda dout, x: (dout * self.op_func(x)) * (1 - self.op_func(x))
+
+    def op_func(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def op_grad_func(self, dout, x):
+        return dout * self.op_func(x) * (1 - self.op_func(x))
 
     def set_attrs(self):
         self.attrs = {"use_mkldnn": True}
@@ -121,8 +125,14 @@ class TestMKLDNNSigmoidBF16Op(TestActivation):
 class TestMKLDNNGeluErfBF16Op(TestMKLDNNSigmoidBF16Op):
     def config(self):
         self.op_type = "gelu"
-        self.op_func = lambda x: gelu(x, False)
-        self.op_grad_func = lambda dout, x: (dout * (0.5 + 0.5 * erf(x / np.sqrt(2)) + (x / np.sqrt(2 * np.pi) * np.exp(-0.5 * np.power(x, 2)))))
+
+    def op_func(self, x):
+        return gelu(x, False)
+
+    def op_grad_func(self, dout, x):
+        return (dout *
+                (0.5 + 0.5 * erf(x / np.sqrt(2)) +
+                 (x / np.sqrt(2 * np.pi) * np.exp(-0.5 * np.power(x, 2)))))
 
 
 class TestMKLDNNGeluErfDim2BF16Op(TestMKLDNNGeluErfBF16Op):
@@ -133,8 +143,16 @@ class TestMKLDNNGeluErfDim2BF16Op(TestMKLDNNGeluErfBF16Op):
 class TestMKLDNNGeluTanhBF16Op(TestMKLDNNSigmoidBF16Op):
     def config(self):
         self.op_type = "gelu"
-        self.op_func = lambda x: gelu(x, True)
-        self.op_grad_func = lambda dout, x: (dout * 0.5 * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))) * (1 + np.sqrt(2 / np.pi) * (x + 0.134145 * np.power(x, 3)) * (1 - np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))))
+
+    def op_func(self, x):
+        return gelu(x, True)
+
+    def op_grad_func(self, dout, x):
+        grad_part = np.tanh(
+            np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
+        return dout * 0.5 * (1 + grad_part) * (1 + np.sqrt(2 / np.pi) *
+                                               (x + 0.134145 * np.power(x, 3)) *
+                                               (1 - grad_part))
 
     def set_attrs(self):
         self.attrs = {"use_mkldnn": True, "approximate": True}
