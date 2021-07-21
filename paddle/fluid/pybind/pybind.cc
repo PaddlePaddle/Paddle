@@ -1184,6 +1184,10 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self, std::vector<std::string> str_list) {
              *self.GetMutable<std::vector<std::string>>() = str_list;
            })
+      .def("set_string_map",
+           [](Variable &self, std::unordered_map<std::string, int32_t> map) {
+             *self.GetMutable<std::unordered_map<std::string, int32_t>>() = map;
+           })
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
