@@ -144,6 +144,7 @@ class TestDistRunnerBase(object):
             loss = loss[0] if loss else None
             out_losses.append(loss)
             print_to_err(type(self).__name__, "run step %d finished" % i)
+        data_loader.reset()
         print_to_err(type(self).__name__, "trainer run finished")
 
         sys.stdout.buffer.write(pickle.dumps(out_losses))
@@ -1257,7 +1258,7 @@ class TestDistBase(unittest.TestCase):
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
                 "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10," \
-                "grpc_server=10,request_handler_impl=10"
+                "grpc_server=10,request_handler_impl=10,section_worker=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         required_envs.update(need_envs)
