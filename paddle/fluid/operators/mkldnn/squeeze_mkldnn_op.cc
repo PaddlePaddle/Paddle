@@ -18,11 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
-                               const framework::DDim& in_dims, bool is_runtime);
-
 using paddle::framework::LoDTensor;
-using paddle::framework::Tensor;
 using platform::to_void_cast;
 
 template <typename T>
