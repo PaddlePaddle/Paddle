@@ -749,10 +749,10 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         })
 
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float16', 'uint16', 'float32', 'float64', 'int8',
-                'int16', 'int32', 'int64', 'uint8',
-                u'bool', u'float16', u'uint16', u'float32', u'float64', u'int8',
-                u'int16', u'int32', u'int64', u'uint8'], 'sum')
+        x, 'x', ['bool', 'float16', 'float32', 'float64',
+                'int32', 'int64', 'complex64', 'complex128',
+                u'bool', u'float16', u'float32', u'float64',
+                u'int32', u'int64', u'complex64', u'complex128'], 'sum')
 
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'sum')
 
