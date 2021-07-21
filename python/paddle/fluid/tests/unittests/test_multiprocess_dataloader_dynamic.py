@@ -114,7 +114,8 @@ class TestDygraphDataLoader(unittest.TestCase):
             for persistent_workers in [False, True]:
                 results = []
                 for num_workers in [0, 2]:
-                    print(self.__class__.__name__, p, num_workers)
+                    print(self.__class__.__name__, p, num_workers,
+                          persistent_workers)
                     sys.stdout.flush()
                     ret = self.run_main(
                         num_workers=num_workers,

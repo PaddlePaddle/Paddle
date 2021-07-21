@@ -94,7 +94,7 @@ def prepare_places(with_data_parallel, with_cpu=False, with_gpu=True):
     if with_gpu and fluid.core.is_compiled_with_cuda():
         tmp = fluid.cuda_places()[:2]
         assert len(tmp) > 0, "no gpu detected"
-        if with_data_parallel:
+        if with_data_parallel and len(tmp) > 1:
             places.append(tmp)
         places.append([tmp[0]])
     return places
@@ -166,7 +166,8 @@ class TestStaticDataLoader(unittest.TestCase):
             for persistent_workers in [True, False]:
                 results = []
                 for num_workers in [0, 2]:
-                    print(self.__class__.__name__, p, num_workers)
+                    print(self.__class__.__name__, p, num_workers,
+                          persistent_workers)
                     sys.stdout.flush()
                     ret = self.run_main(
                         num_workers=num_workers,
