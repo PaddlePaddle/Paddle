@@ -310,24 +310,27 @@ def update_op_node_dims_mapping(op_node, fwd=True):
                     tensor_desc.name())
                 compatible_dims_mapping = compute_compatible_dims_mapping(
                     [op_dims_mapping, tensor_dims_mapping])
-                print("fwd0", tensor_desc.name(), op_dims_mapping,
-                      tensor_dims_mapping, compatible_dims_mapping)
+                # print("fwd0", tensor_desc.name(), op_dims_mapping,
+                #       tensor_dims_mapping, compatible_dims_mapping)
                 if (compatible_dims_mapping is not None) and \
                     (compatible_dims_mapping != op_dims_mapping):
                     op_dist_attr.set_input_dims_mapping(tensor_desc.name(),
                                                         compatible_dims_mapping)
                     changed = True
         # Find the most compatible implemenetations from the distributed operator
-        print("fwd1", op_desc.type(), op_dist_attr)
+        # print("fwd1", op_desc.type(), op_dist_attr)
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), op_dist_attr, fwd=True)
-        print("fwd2", op_desc.type(), op_dist_impl_idx)
+        # print("fwd2", op_desc.type(), op_dist_impl_idx)
         if op_dist_impl is not None:
             dim_changed = op_dist_impl.update_dims_mapping(op_dist_attr)
             if dim_changed:
                 changed = True
-            op_dist_attr.set_impl_idx(op_dist_impl_idx)
-            print("fwd3", op_desc.type(), op_dist_impl_idx, op_dist_attr)
+            # This statement will be replaced by a good way
+            if op_dist_impl.is_compatible(op_dist_attr):
+                op_dist_attr.set_impl_idx(op_dist_impl_idx)
+                # print("fwd3", op_dist_impl.get_name(), op_dist_impl_idx)
+            # print("bwd4", op_dist_impl.get_name(), op_dist_impl_idx, op_dist_attr)
         elif is_elementwise_like_op(op_desc.type()):
             dim_changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
                 op_dist_attr)
@@ -354,25 +357,27 @@ def update_op_node_dims_mapping(op_node, fwd=True):
                     tensor_desc.name())
                 compatible_dims_mapping = compute_compatible_dims_mapping(
                     [op_dims_mapping, tensor_dims_mapping])
-                print("bwd0", tensor_desc.name(), op_dims_mapping,
-                      tensor_dims_mapping, compatible_dims_mapping)
+                # print("bwd0", tensor_desc.name(), op_dims_mapping,
+                #       tensor_dims_mapping, compatible_dims_mapping)
                 if (compatible_dims_mapping is not None) and \
                     (compatible_dims_mapping != op_dims_mapping):
                     op_dist_attr.set_output_dims_mapping(
                         tensor_desc.name(), compatible_dims_mapping)
                     changed = True
         # Find the most compatible implemenetations from the distributed operator
-        print("bwd1", op_desc.type(), op_dist_attr)
+        # print("bwd1", op_desc.type(), op_dist_attr)
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), op_dist_attr, fwd=False)
-        print("bwd2", op_desc.type(), op_dist_impl_idx)
+        # print("bwd2", op_desc.type(), op_dist_impl_idx)
         if op_dist_impl is not None:
             dim_changed = op_dist_impl.update_dims_mapping(op_dist_attr)
             if dim_changed:
                 changed = True
-            op_dist_attr.set_impl_idx(op_dist_impl_idx)
-            print("bwd3", op_dist_impl.get_name(), op_dist_impl_idx,
-                  op_dist_attr)
+            # This statement will be replaced by a good way
+            if op_dist_impl.is_compatible(op_dist_attr):
+                op_dist_attr.set_impl_idx(op_dist_impl_idx)
+            #     print("bwd3", op_dist_impl.get_name(), op_dist_impl_idx)
+            # print("bwd4", op_dist_impl.get_name(), op_dist_impl_idx, op_dist_attr)
         elif is_elementwise_like_op(op_desc.type()):
             dim_changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
                 op_dist_attr)
@@ -412,6 +417,8 @@ def initialize_distributed_attr_for_program(program):
                 distributed_attr_uid = generate_op_distributed_attr_uid()
                 op.desc.set_distributed_attr_uid(distributed_attr_uid)
                 op_dist_attr = OperatorDistributedAttribute(op.desc)
+                # Default distributed implementation for all operators
+                op_dist_attr.set_impl_idx(-2)
                 set_op_distributed_attr_program(op.desc, op_dist_attr)
             for tensor_name in op.input_arg_names:
                 # There may be a better way to find the tensor by name
@@ -553,9 +560,8 @@ def complete_annotation(program):
             reach_fix_point = False
         else:
             reach_fix_point = True
-        # reach_fix_point = True
-
-        # Copy the corresponding distributed attribute from graph to program
+        
+    # Copy the corresponding distributed attribute from graph to program
     copy_distribute_attr_from_graph_to_program(graph, program)
 
     return program

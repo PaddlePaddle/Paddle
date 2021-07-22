@@ -95,8 +95,9 @@ class TestMLPAutoCompletion(unittest.TestCase):
         self.dropout_ratio = 0.1
         self.initializer_range = 0.02
 
-        self.prog = static.Program()
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        self.train_prog = static.Program()
+        self.start_prog = static.Program()
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             intermediate_size = 4 * self.hidden_size
             d_model = self.hidden_size
             dim_feedforward = intermediate_size
@@ -116,7 +117,7 @@ class TestMLPAutoCompletion(unittest.TestCase):
         proc_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             input = static.data(
                 name="input",
                 shape=[self.batch_size, self.sequence_len, self.hidden_size],
@@ -127,15 +128,15 @@ class TestMLPAutoCompletion(unittest.TestCase):
             out3 = self.linear4(out2)
             out4 = self.dropout(out3)
             auto.shard_tensor(out4, proc_mesh, dims_mapping=[0, -1, -1])
-        print(self.prog)
-        complete_prog = auto.complete_annotation(self.prog)
+        print(self.train_prog)
+        complete_prog = auto.complete_annotation(self.train_prog)
         print(complete_prog)
 
     def test_mlp_mp(self):
         proc_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             input = static.data(
                 name="input",
                 shape=[self.batch_size, self.sequence_len, self.hidden_size],
@@ -149,8 +150,8 @@ class TestMLPAutoCompletion(unittest.TestCase):
             auto.shard_tensor(
                 self.linear4.weight, proc_mesh, dims_mapping=[0, -1])
             out4 = self.dropout(out3)
-        print(self.prog)
-        complete_prog = auto.complete_annotation(self.prog)
+        print(self.train_prog)
+        complete_prog = auto.complete_annotation(self.train_prog)
         print(complete_prog)
 
     def test_mlp_dp_mp(self):
@@ -158,7 +159,7 @@ class TestMLPAutoCompletion(unittest.TestCase):
             shape=[2, 4], process_group=[0, 1, 2, 3, 4, 5, 6, 7])
         assert proc_mesh.get_ndim(
         ) == 2, "The number dimension of process mesh must to be 2"
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             input = static.data(
                 name="input",
                 shape=[self.batch_size, self.sequence_len, self.hidden_size],
@@ -173,8 +174,8 @@ class TestMLPAutoCompletion(unittest.TestCase):
             auto.shard_tensor(
                 self.linear4.weight, proc_mesh, dims_mapping=[1, -1])
             out4 = self.dropout(out3)
-        print(self.prog)
-        complete_prog = auto.complete_annotation(self.prog)
+        print(self.train_prog)
+        complete_prog = auto.complete_annotation(self.train_prog)
         print(complete_prog)
 
 
@@ -196,8 +197,9 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         assert self.head_dim * self.num_heads == self.embed_dim, \
             "embed_dim must be divisible by num_heads"
 
-        self.prog = static.Program()
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        self.train_prog = static.Program()
+        self.start_prog = static.Program()
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             self.input = static.data(
                 name="query",
                 shape=[self.batch_size, self.sequence_len, self.hidden_size],
@@ -225,7 +227,7 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
 
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
             q = self.q_proj(self.input)
             q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
@@ -264,8 +266,8 @@ class TestAttentionAutoCompletion(unittest.TestCase):
             # project to output
             out = self.out_proj(out)
 
-        print(self.prog)
-        complete_prog = auto.complete_annotation(self.prog)
+        print(self.train_prog)
+        complete_prog = auto.complete_annotation(self.train_prog)
         print(complete_prog)
 
     def test_attn_mp(self):
@@ -273,7 +275,7 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
 
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             q = self.q_proj(self.input)
             auto.shard_tensor(
                 self.q_proj.weight, proc_mesh, dims_mapping=[-1, 0])
@@ -319,8 +321,8 @@ class TestAttentionAutoCompletion(unittest.TestCase):
             auto.shard_tensor(
                 self.out_proj.weight, proc_mesh, dims_mapping=[0, -1])
 
-        print(self.prog)
-        complete_prog = auto.complete_annotation(self.prog)
+        print(self.train_prog)
+        complete_prog = auto.complete_annotation(self.train_prog)
         print(complete_prog)
 
     def test_attn_dp_mp(self):
@@ -329,7 +331,7 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 2, "The number dimension of process mesh must to be 2"
 
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
             q = self.q_proj(self.input)
             auto.shard_tensor(
@@ -376,8 +378,8 @@ class TestAttentionAutoCompletion(unittest.TestCase):
             auto.shard_tensor(
                 self.out_proj.weight, proc_mesh, dims_mapping=[1, -1])
 
-        print(self.prog)
-        complete_prog = auto.complete_annotation(self.prog)
+        print(self.train_prog)
+        complete_prog = auto.complete_annotation(self.train_prog)
         print(complete_prog)
 
 
@@ -399,8 +401,9 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         assert self.head_dim * self.num_heads == self.embed_dim, \
             "embed_dim must be divisible by num_heads"
 
-        self.prog = static.Program()
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        self.train_prog = static.Program()
+        self.start_prog = static.Program()
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             self.input = static.data(
                 name="query",
                 shape=[self.batch_size, self.sequence_len, self.hidden_size],
@@ -451,7 +454,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
 
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
             # Pre-norm
             target = self.norm(self.input)
@@ -508,8 +511,8 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
             # Add residual
             final = residual + self.dropout(out3)
 
-        print(self.prog)
-        complete_prog = auto.complete_annotation(self.prog)
+        print(self.train_prog)
+        complete_prog = auto.complete_annotation(self.train_prog)
         print(complete_prog)
 
     def test_decoder_mp(self):
@@ -517,7 +520,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
 
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             # Pre-norm
             target = self.norm(self.input)
 
@@ -585,8 +588,8 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
             # Add residual
             final = residual + self.dropout(out3)
 
-        print(self.prog)
-        complete_prog = auto.complete_annotation(self.prog)
+        print(self.train_prog)
+        complete_prog = auto.complete_annotation(self.train_prog)
         print(complete_prog)
 
     def test_decoder_dp_mp(self):
@@ -595,7 +598,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 2, "The number dimension of process mesh must to be 2"
 
-        with static.program_guard(self.prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
             auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
             # Pre-norm
             target = self.norm(self.input)
@@ -664,8 +667,8 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
             # Add residual
             final = residual + self.dropout(out3)
 
-        print(self.prog)
-        complete_prog = auto.complete_annotation(self.prog)
+        print(self.train_prog)
+        complete_prog = auto.complete_annotation(self.train_prog)
         print(complete_prog)
 
 

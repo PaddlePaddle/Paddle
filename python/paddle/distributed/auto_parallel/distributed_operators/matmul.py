@@ -265,7 +265,6 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
         op_desc = op_dist_attr.get_desc()
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        print("matmul_v2", out_dims_mapping)
 
         if is_dim_shard(out_dims_mapping[-1]):
             return False

@@ -59,7 +59,7 @@ class DistributedTranspose2Impl0(DistributedOperatorImpl):
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         perm = op_desc.attr('axis')
-        print("transpose2 perm", perm)
+        # print("transpose2 perm", perm)
 
         assert len(x_dims_mapping) == len(perm)
 
