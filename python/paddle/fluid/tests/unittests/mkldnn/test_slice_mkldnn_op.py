@@ -23,7 +23,8 @@ import paddle.fluid.layers as layers
 import paddle
 
 
-@OpTestTool.skip_if(core.is_compiled_with_cuda())
+@OpTestTool.skip_if(core.is_compiled_with_cuda(),
+                    "CUDA required dygraph so oneDNN UT must be skipped")
 class TestSliceOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
