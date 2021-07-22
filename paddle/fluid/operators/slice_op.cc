@@ -133,14 +133,25 @@ class SliceOp : public framework::OperatorWithKernel {
         return framework::OpKernelType(in_tensor.type(), ctx.device_context());
       }
 
+#ifdef PADDLE_WITH_MKLDNN
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-#ifdef PADDLE_WITH_MKLDNN
       if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-        return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                       framework::DataLayout::kMKLDNN,
-                                       framework::LibraryType::kMKLDNN);
+        // OneDNN uses blocking format, which cannot be always
+        // supported with reorders, because if blocked dimension is not
+        // divisible
+        // by
+        // 8 or 16(depending on which blocking format is used) submemory cannot
+        // be
+        // created, so in that scenario a fallback is needed
+        auto tmp_md = dnnl::memory::desc(
+            framework::vectorize(ctx.Input<Tensor>("Input")->dims()),
+            dnnl::memory::data_type::f32, ctx.Input<Tensor>("Input")->format());
+        if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+          return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                         framework::DataLayout::kMKLDNN,
+                                         framework::LibraryType::kMKLDNN);
       }
 #endif
 
@@ -306,6 +317,16 @@ class SliceOpGrad : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      // OneDNN uses blocking format, which cannot be always
+      // supported with reorders, because if blocked dimension is not divisible
+      // by
+      // 8 or 16(depending on which blocking format is used) submemory cannot be
+      // created, so in that scenario a fallback is needed
+      auto tmp_md = dnnl::memory::desc(
+          framework::vectorize(
+              ctx.Input<Tensor>(framework::GradVarName("Out"))->dims()),
+          dnnl::memory::data_type::f32,
+          ctx.Input<Tensor>(framework::GradVarName("Out"))->format());
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);

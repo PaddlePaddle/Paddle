@@ -25,6 +25,7 @@ import paddle
 
 # Situation 1: starts(list, no tensor), ends(list, no tensor)
 # 1.1 without attr(decrease)
+@OpTestTool.skip_if(core.is_compiled_with_cuda())
 class TestSliceOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
