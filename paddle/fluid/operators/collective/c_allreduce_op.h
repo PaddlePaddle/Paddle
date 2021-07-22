@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU_BKCL)
@@ -119,13 +120,37 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
   }
 };
 
+inline bool FoundNanOrInf(const paddle::platform::NPUDeviceContext& ctx, aclrtStream stream,
+        const paddle::framework::Tensor* float_status, paddle::framework::Tensor* tmp){
+    //using float16 = paddle::platform::float16;
+    const auto& runner_float_status =
+        NpuOpRunner("NPUGetFloatStatus", {*float_status}, {*tmp},
+                    {{"message", std::string("check_nan_and_inf")}});
+    runner_float_status.Run(stream);
+
+    paddle::framework::Tensor sum;
+    sum.mutable_data<float>({1}, ctx.GetPlace());
+    const auto& runner_reduce_sum =
+        NpuOpRunner("ReduceSumD", {*float_status}, {sum},
+                    {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
+    runner_reduce_sum.Run(stream);
+
+    std::vector<float> sum_vec;
+    TensorToVector(sum, ctx, &sum_vec);
+    bool found_inf_data = (sum_vec[0] > 1);
+
+    VLOG(4) << "found_inf_data:" << found_inf_data;
+    return found_inf_data;
+}
+
 template <ReduceType red_type, typename T>
 class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto in = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
+    const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
     auto place = ctx.GetPlace();
     HcclDataType dtype = platform::ToHCCLDataType(in->type());
     int64_t numel = in->numel();
@@ -141,9 +166,9 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    auto dev_ctx = static_cast<platform::NPUDeviceContext*>(platform::DeviceContextPool::Instance().Get(place));
     if (ctx.Attr<bool>("use_calc_stream")) {
-      stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
+      stream = dev_ctx->stream();
     } else {
       stream = comm->stream();
     }
@@ -171,9 +196,36 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
+    VLOG(3) << "after hccl allreduce, parameter is: "
+            << "input num: " << numel << "dtype: " << dtype
+            << "hccl_red_type: " << hccl_red_type << ", group is: " << group
+            << ", sendbuff:" << sendbuff << ", recvbuff:" << recvbuff
+            << ", out_size:" << out->memory_size()
+            << ", use_calc_stream:" << ctx.Attr<bool>("use_calc_stream")
+            << ", stream:" << stream;
+
+    VLOG(4) << "prepare to FoundNanInf";
+    framework::Tensor tmp;
+    tmp.mutable_data<float>({8}, ctx.GetPlace());
+
+    bool nan_or_inf=false;
+    if (float_status){
+        nan_or_inf = FoundNanOrInf(ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+                dev_ctx->stream(), float_status, &tmp);
+
+        if (nan_or_inf){
+            T inf = static_cast<T>(std::numeric_limits<float>::infinity());
+            VLOG(4) << "fill input data constant inf";
+            FillNpuTensorWithConstant<T>(const_cast<framework::Tensor*>(in), inf);
+        }
+    }
+
     VLOG(3) << "begin hccl allreduce, parameter is: "
             << "input num: " << numel << "dtype: " << dtype
-            << "hccl_red_type: " << hccl_red_type << ", group is: " << group;
+            << "hccl_red_type: " << hccl_red_type << ", group is: " << group
+            << ", sendbuff:" << sendbuff
+            << ", recvbuff:" <<  recvbuff
+            << ", out_size:" << out->memory_size();
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
         sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
@@ -198,7 +250,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     BKCLDataType dtype = platform::ToBKCLDataType(in->type());
     int64_t numel = in->numel();
-    const void* sendbuff = in->data<void>();
+    const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
@@ -260,7 +312,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
-    const void* sendbuff = in->data<void>();
+    const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
@@ -328,6 +380,11 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "parallel mode, the backward is c_identity which returns itself for "
         "c_allreduce_sum.")
         .SetDefault(false);
+#if defined(PADDLE_WITH_ASCEND_CL)
+     AddInput("FloatStatus",
+             "(Tensor) 1-dim tensor of shape [8], allocated by "
+             "alloc_float_status op").AsDispensable();
+#endif
     AddComment(string::Sprintf(R"DOC(
 CAllReduce %s Operator
 
