@@ -19,7 +19,7 @@ import numpy as np
 from scipy.special import expit, erf
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
-from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestHardSwish, TestRelu6, TestSigmoid
+from paddle.fluid.tests.unittests.test_activation_op import TestActivation
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 
 
