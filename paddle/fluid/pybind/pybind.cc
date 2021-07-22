@@ -78,7 +78,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
-#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
@@ -240,6 +239,7 @@ OpSupportedInfos(const std::string &place,
       {"GPU", &platform::is_gpu_place},
       {"CPU", &platform::is_cpu_place},
       {"XPU", &platform::is_xpu_place},
+      {"NPU", &platform::is_npu_place},
   };
   PADDLE_ENFORCE_NE(
       is_target_place.count(query_place), 0,
