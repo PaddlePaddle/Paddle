@@ -816,20 +816,25 @@ function check_approvals_of_unittest() {
         curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
         apt-get install -y bc
         diffSize=$(printf "%.2f" `echo "$curBuildSize - $oriBuildSize" | bc`)
+        AllDiffSize=$(printf "%.2f" `echo "$diffSize * 4" | bc`)
         cat <<EOF
         ========================================
         Original libpaddle_inference.so Size is ${oriBuildSize}M.
         Current libpaddle_inference.so Size is ${curBuildSize}M.
-        Diff size of libpaddle_inference.so is ${diffSize}M.
+        In single gpu architecture, Growing size of libpaddle_inference.so is ${diffSize}M.
+        In release version, The gpu architecture parameter is "All", The library size is four times to single gpu architecture.
+        It means the release version library size growth is about ${AllDiffSize}M.
         ========================================
 EOF
-        if [ `echo "5 < $diffSize"|bc` -eq 1 ] ; then
+        if [ `echo "20 < $AllDiffSize"|bc` -eq 1 ] ; then
+            
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 328693`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "=========================================================================================="
-                echo -e "Diff size is no less than 5 M. Then you must have one RD (Shixiaowei02 (Recommend) or Superjomn) approval for this PR\n"
+                echo "This PR make the release inference library size growth exceeds 20 M."
+                echo "Then you must have one RD (Shixiaowei02 (Recommend) or Superjomn) approval for this PR\n"
                 echo "=========================================================================================="
                 exit 6
             fi
