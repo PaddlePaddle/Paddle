@@ -222,8 +222,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def _shutdown_thread(self):
         if self._thread:
             self._thread_done_event.set()
-            if self._thread is not threading.current_thread():
-                self._thread.join()
             self._thread = None
 
     # python2 compatibility
