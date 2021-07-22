@@ -149,7 +149,8 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
 
             framework::Tensor x_tmp;
             x_tmp.ShareDataWith(*x);
-            std::vector<int> vec_dim_x = framework::vectorize<int>(x_.dims());
+            std::vector<int> vec_dim_x =
+                framework::vectorize<int>(x_tmp.dims());
             std::vector<int> vec_dim_x_v{vec_dim_x[0] * vec_dim_x[1],
                                          vec_dim_x[2]};
             x_tmp.Resize(framework::make_ddim(vec_dim_x_v));
