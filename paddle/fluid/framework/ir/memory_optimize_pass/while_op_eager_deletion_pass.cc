@@ -26,6 +26,14 @@ using OpVariant = operators::OpVariant;
 class WhileOpEagerDeletionPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
+    if (!graph->IsMainGraph()) {
+      // TODO(zhhsplendid): the WhileOpEagerDeletionPass is based on old Graph,
+      // which only applies to the main block graph. The new Eager Deletion
+      // Technical can be added after we write new while_op based on SubGraph
+      // instead of SubBlock
+      return;
+    }
+
     auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
 
     // Find all while_op and while_grad_op. In case of @to_static, graph
@@ -36,7 +44,9 @@ class WhileOpEagerDeletionPass : public ir::Pass {
         target_ops;
     for (auto *op : all_ops) {
       auto compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
-      if (compute_op == nullptr) continue;
+      if (compute_op == nullptr) {
+        continue;
+      }
 
       if (compute_op->Name() == "while") {
         target_ops[compute_op->GetScopeIdx()].first.emplace_back(

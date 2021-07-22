@@ -55,7 +55,7 @@ Graph::Graph(const ProgramDesc &program, const int64_t start_op_index,
     // NOTE(levi): start_op_index and end_op_index only work on the first
     // sub_graph.
     std::unique_ptr<Graph> first_sub_graph = std::make_unique<Graph>(
-        program_.Block(0), this, start_op_index, end_op_index);
+        program_.Block(0), nullptr, start_op_index, end_op_index);
     sub_graphs_.push_back(std::move(first_sub_graph));
     for (size_t idx = 1; idx < program_.Size(); ++idx) {
       std::unique_ptr<Graph> sub_graph =
@@ -93,8 +93,8 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
   std::unordered_map<std::string, VarDesc *> all_vars;
   // var nodes for each var name, will have multiple versions in SSA
   std::map<std::string, std::vector<ir::Node *>> var_nodes;
-  
-  const BlockDesc* block_var_visible = &block;
+
+  const BlockDesc *block_var_visible = &block;
   while (block_var_visible != nullptr) {
     for (auto *var : block_var_visible->AllVars()) {
       all_vars.emplace(var->Name(), var);
