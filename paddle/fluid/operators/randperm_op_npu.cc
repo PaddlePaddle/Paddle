@@ -35,6 +35,7 @@ class RandPermNPUKernel : public framework::OpKernel<T> {
     T* tmp_data = tmp_tensor.mutable_data<T>(platform::CPUPlace());
     random_permate<T>(tmp_data, n, seed);
     framework::TensorCopy(tmp_tensor, ctx.GetPlace(), out);
+    ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
   }
 };
 
