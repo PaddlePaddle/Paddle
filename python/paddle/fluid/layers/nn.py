@@ -3924,6 +3924,10 @@ def conv2d_transpose(input,
           print(conv2d_transpose.shape) # [-1, 2, 34, 34]
     """
     assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
+    if len(input.shape) != 4:
+        raise ValueError("Input size should be 4, "
+                         "but received {}".format(len(input.shape)))
+
     if data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Attr(data_format) of Op(fluid.layers.conv2d_transpose) got wrong value: received "
@@ -4015,7 +4019,14 @@ def conv2d_transpose(input,
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
     else:
         raise ValueError("output_size should be int, list[int] or tuple[int]")
-    groups = 1 if groups is None else groups
+
+    if groups is None:
+        groups = 1
+    elif groups <= 0:
+        raise ValueError("the groups of input must be greater than 0, "
+                         "but received the groups of input is {}".format(
+                             groups))
+
     filter_shape = [input_channel, num_filters // groups] + filter_size
 
     img_filter = helper.create_parameter(
@@ -9058,16 +9069,16 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
                               [6, 7, 8]]]
 
     Parameters:
-        x (Variable): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
-        shape (list|tuple|Variable): The output shape is specified
+        x (Tensor): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
+        shape (list|tuple|Tensor): The output shape is specified
             by `shape`. Its data type is int32. If a list/tuple, it's length must be
-            the same as the dimension size of `x`. If a Variable, it should be a 1-D Tensor.
+            the same as the dimension size of `x`. If a Tensor, it should be a 1-D Tensor.
             When it is a list, each element can be an integer or a Tensor of shape: [1].
             If Variable contained, it is suitable for the case that the shape may
             be changed each iteration.
         offsets (list|tuple|Variable, optional): Specifies the cropping
             offsets at each dimension. Its data type is int32. If a list/tuple, it's length
-            must be the same as the dimension size of `x`. If a Variable, it should be a 1-D
+            must be the same as the dimension size of `x`. If a Tensor, it should be a 1-D
             Tensor. When it is a list, each element can be an integer or a Tensor of shape: [1].
             If Variable contained, it is suitable for the case that the offsets may be changed
             each iteration. Default: None, the offsets are 0 at each dimension.
@@ -9075,51 +9086,36 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
             this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: The cropped Tensor has same data type with `x`.
-
-    Raises:
-        TypeError: If the data type of `x` is not in: float32, float64, int32, int64.
-        TypeError: If `shape` is not a list, tuple or Variable.
-        TypeError: If the data type of `shape` is not int32.
-        TypeError: If `offsets` is not None and not a list, tuple or Variable.
-        TypeError: If the data type of `offsets` is not int32.
-        ValueError: If the element in `offsets` is less than zero.
+        Tensor: The cropped Tensor has same data type with `x`.
 
     Examples:
 
         .. code-block:: python
+          :name: code-example1
 
-            import paddle.fluid as fluid
-            import paddle.fluid as fluid
             import paddle
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[None, 3, 5], dtype="float32")
-            # x.shape = [-1, 3, 5], where -1 indicates batch size, and it will get the exact value in runtime.
+            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+            # x.shape = [3, 3]
+            # x = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
-            # shape is a 1-D Tensor
-            crop_shape = fluid.data(name="crop_shape", shape=[3], dtype="int32")
-            crop0 = fluid.layers.crop_tensor(x, shape=crop_shape)
-            # crop0.shape = [-1, -1, -1], it means crop0.shape[0] = x.shape[0] in runtime.
+            # shape can be a 1-D Tensor or list or tuple.
+            shape = paddle.to_tensor([2, 2], dtype='int32')
+            # shape = [2, 2]
+            # shape = (2, 2)
+            out = paddle.crop(x, shape)
+            # out.shape = [2, 2]
+            # out = [[1,2], [4,5]]
 
-            # or shape is a list in which each element is a constant
-            crop1 = fluid.layers.crop_tensor(x, shape=[-1, -1, 3], offsets=[0, 1, 0])
-            # crop1.shape = [-1, 2, 3]
-
-            # or shape is a list in which each element is a constant or Variable
-            y = fluid.data(name="y", shape=[3, 8, 8], dtype="float32")
-            dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
-            crop2 = fluid.layers.crop_tensor(y, shape=[3, dim1, 4])
-            # crop2.shape = [3, -1, 4]
-
-            # offsets is a 1-D Tensor
-            crop_offsets = fluid.data(name="crop_offsets", shape=[3], dtype="int32")
-            crop3 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=crop_offsets)
-            # crop3.shape = [-1, 2, 3]
-
-            # offsets is a list in which each element is a constant or Variable
-            offsets_var =  fluid.data(name="dim1", shape=[1], dtype="int32")
-            crop4 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=[0, 1, offsets_var])
-            # crop4.shape = [-1, 2, 3]
+            # offsets can be a 1-D Tensor or list or tuple.
+            offsets = paddle.to_tensor([0, 1], dtype='int32')
+            # offsets = [1, 0]
+            # offsets = (1, 1)
+            out = paddle.crop(x, shape, offsets)
+            # out.shape = [2, 2]
+            # if offsets = [0, 0], out = [[1,2], [4,5]]
+            # if offsets = [0, 1], out = [[2,3], [5,6]]
+            # if offsets = [1, 0], out = [[4,5], [7,8]]
+            # if offsets = [1, 1], out = [[5,6], [8,9]]
 
     """
     helper = LayerHelper('crop_tensor', **locals())

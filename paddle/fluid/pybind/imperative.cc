@@ -432,19 +432,24 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
   const auto &shape = tensor->dims();
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
+
+  // specified_dims is the number of dimensions which indexed by Interger,
+  // Slices.
+  int specified_dims = 0;
+  for (int dim = 0; dim < size; ++dim) {
+    PyObject *slice_item = PyTuple_GetItem(index, dim);
+    if (PyCheckInteger(slice_item) || PySlice_Check(slice_item)) {
+      specified_dims++;
+    }
+  }
+
   PADDLE_ENFORCE_EQ(
       size <= rank, true,
       platform::errors::InvalidArgument(
           "too many indices (%d) for tensor of dimension %d", size, rank));
-  for (int dim = 0; dim < size; ++dim) {
-    PyObject *slice_item = PyTuple_GetItem(index, dim);
-    PADDLE_ENFORCE_EQ(PyCheckInteger(slice_item) || PySlice_Check(slice_item),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Currently, VarBase.__getitem__() only allows "
-                          "indexing by Integers, Slices, and tuples of "
-                          "these types, but received %s in %dth slice item",
-                          std::string(Py_TYPE(slice_item)->tp_name), dim + 1));
+  for (int i = 0, dim = 0; i < size; ++i) {
+    PyObject *slice_item = PyTuple_GetItem(index, i);
+
     infer_flags->push_back(1);
     int dim_len = shape[dim];
     if (PyCheckInteger(slice_item)) {
@@ -467,7 +472,8 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
       slice_ends->push_back(start + 1);
       slice_strides->push_back(1);
       decrease_axis->push_back(dim);
-    } else {
+      dim++;
+    } else if (PySlice_Check(slice_item)) {
       // slice item
       Py_ssize_t start, end, step;
       PySliceObject *p = reinterpret_cast<PySliceObject *>(slice_item);
@@ -475,12 +481,22 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
 
       // :: or : or 0:dim_len:1
       if (start == 0 && end == dim_len && step == 1) {
+        dim++;
         continue;
       }
       slice_axes->push_back(dim);
       slice_starts->push_back(start);
       slice_ends->push_back(end);
       slice_strides->push_back(step);
+      dim++;
+    } else if (slice_item == Py_Ellipsis) {
+      dim += rank - specified_dims;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Currently, VarBase.__getitem__() only allows "
+          "indexing by Integers, Slices, Ellipsis, and tuples of "
+          "these types, but received %s in %dth slice item",
+          std::string(Py_TYPE(slice_item)->tp_name), i + 1));
     }
   }
   if (!PyTuple_Check(_index)) Py_DecRef(index);
