@@ -298,12 +298,22 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
   }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, framework::GradVarName("Out"));
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
