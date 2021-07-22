@@ -41,20 +41,24 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
     auto ends_int = ctx.Attr<std::vector<int>>("ends");
 
-    std::vector<int64_t> axes(ctx.Attr<std::vector<int>>("axes").begin(), ctx.Attr<std::vector<int>>("axes").end());
-    std::vector<int64_t> starts(ctx.Attr<std::vector<int>>("starts").begin(), ctx.Attr<std::vector<int>>("starts").end());
-    std::vector<int64_t> ends(ctx.Attr<std::vector<int>>("ends").begin(), ctx.Attr<std::vector<int>>("ends").end());
+    std::vector<int64_t> axes(ctx.Attr<std::vector<int>>("axes").begin(),
+                              ctx.Attr<std::vector<int>>("axes").end());
+    std::vector<int64_t> starts(ctx.Attr<std::vector<int>>("starts").begin(),
+                                ctx.Attr<std::vector<int>>("starts").end());
+    std::vector<int64_t> ends(ctx.Attr<std::vector<int>>("ends").begin(),
+                              ctx.Attr<std::vector<int>>("ends").end());
 
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
 
     std::vector<int64_t> offsets(x_vec_dims.size(), 0);
     std::vector<int64_t> slice_dims(x_vec_dims);
 
-    for(size_t i=0;i<axes.size(); ++i){
-        starts[i] = starts[i] < 0 ? x_vec_dims[axes[i]] + starts[i] : starts[i];
-        ends[i] = ends[i] < 0 ? x_vec_dims[axes[i]] + ends[i] : std::min(ends[i], x_vec_dims[axes[i]]);
-        offsets[axes[i]] = starts[i];
-        slice_dims[axes[i]] = ends[i] - starts[i];
+    for (size_t i = 0; i < axes.size(); ++i) {
+      starts[i] = starts[i] < 0 ? x_vec_dims[axes[i]] + starts[i] : starts[i];
+      ends[i] = ends[i] < 0 ? x_vec_dims[axes[i]] + ends[i]
+                            : std::min(ends[i], x_vec_dims[axes[i]]);
+      offsets[axes[i]] = starts[i];
+      slice_dims[axes[i]] = ends[i] - starts[i];
     }
 
     mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
@@ -66,10 +70,10 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
-    auto slice_mem_p = reorder_handler.AcquireSubmemory(
-        slice_dims, offsets, reorder_src_memory_p);
-    auto reorder_dst_memory_p =
-        reorder_handler.AcquireDstMemory(out, slice_dims, 0, x->format(), ctx.GetPlace());
+    auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,
+                                                        reorder_src_memory_p);
+    auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+        out, slice_dims, 0, x->format(), ctx.GetPlace());
 
     auto reorder_p =
         reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
@@ -78,7 +82,8 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(out_vec_dims)));
+    out->set_format(platform::GetMKLDNNFormat(
+        reorder_dst_memory_p->get_desc().reshape(out_vec_dims)));
   }
 };
 
@@ -104,25 +109,32 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
     auto ends_int = ctx.Attr<std::vector<int>>("ends");
 
-    std::vector<int64_t> axes(ctx.Attr<std::vector<int>>("axes").begin(), ctx.Attr<std::vector<int>>("axes").end());
-    std::vector<int64_t> starts(ctx.Attr<std::vector<int>>("starts").begin(), ctx.Attr<std::vector<int>>("starts").end());
-    std::vector<int64_t> ends(ctx.Attr<std::vector<int>>("ends").begin(), ctx.Attr<std::vector<int>>("ends").end());
+    std::vector<int64_t> axes(ctx.Attr<std::vector<int>>("axes").begin(),
+                              ctx.Attr<std::vector<int>>("axes").end());
+    std::vector<int64_t> starts(ctx.Attr<std::vector<int>>("starts").begin(),
+                                ctx.Attr<std::vector<int>>("starts").end());
+    std::vector<int64_t> ends(ctx.Attr<std::vector<int>>("ends").begin(),
+                              ctx.Attr<std::vector<int>>("ends").end());
 
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
 
     std::vector<int64_t> offsets(dx_vec_dims.size(), 0);
     std::vector<int64_t> slice_dims(dx_vec_dims);
 
-    for(size_t i=0;i<axes.size(); ++i){
-        starts[i] = starts[i] < 0 ? dx_vec_dims[axes[i]] + starts[i] : starts[i];
-        ends[i] = ends[i] < 0 ? dx_vec_dims[axes[i]] + ends[i] : std::min(ends[i], dx_vec_dims[axes[i]]);
-        offsets[axes[i]] = starts[i];
-        slice_dims[axes[i]] = ends[i] - starts[i];
+    for (size_t i = 0; i < axes.size(); ++i) {
+      starts[i] = starts[i] < 0 ? dx_vec_dims[axes[i]] + starts[i] : starts[i];
+      ends[i] = ends[i] < 0 ? dx_vec_dims[axes[i]] + ends[i]
+                            : std::min(ends[i], dx_vec_dims[axes[i]]);
+      offsets[axes[i]] = starts[i];
+      slice_dims[axes[i]] = ends[i] - starts[i];
     }
 
-    mkldnn::memory::data_type dout_type = framework::ToMKLDNNDataType(dout->type());
-    mkldnn::memory::desc md(dout_vec_dims, platform::MKLDNNGetDataType<T>(), dout->format());
-    mkldnn::memory::format_tag reorder_format_tag = platform::GetMKLDNNFormat(md.reshape(slice_dims));
+    mkldnn::memory::data_type dout_type =
+        framework::ToMKLDNNDataType(dout->type());
+    mkldnn::memory::desc md(dout_vec_dims, platform::MKLDNNGetDataType<T>(),
+                            dout->format());
+    mkldnn::memory::format_tag reorder_format_tag =
+        platform::GetMKLDNNFormat(md.reshape(slice_dims));
 
     auto key = platform::CreateKey(dev_ctx, dout_vec_dims, axes, starts, ends,
                                    reorder_format_tag, dout_type);
@@ -132,12 +144,12 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         reorder_format_tag, platform::to_void_cast(dout->data<T>()));
-    auto reorder_dst_memory_p =
-        reorder_handler.AcquireDstMemory(dx, dx_vec_dims, 0, reorder_format_tag, ctx.GetPlace());
+    auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+        dx, dx_vec_dims, 0, reorder_format_tag, ctx.GetPlace());
     memset(dx->data<T>(), 0, reorder_dst_memory_p->get_desc().get_size());
 
-    auto slice_mem_p = reorder_handler.AcquireSubmemory(
-        slice_dims, offsets, reorder_dst_memory_p);
+    auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,
+                                                        reorder_dst_memory_p);
 
     auto reorder_p =
         reorder_handler.AcquireReorder(slice_mem_p, reorder_src_memory_p);

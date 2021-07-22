@@ -136,13 +136,13 @@ class SliceOp : public framework::OperatorWithKernel {
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-  #ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
       if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
         return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                      framework::DataLayout::kMKLDNN,
-                                      framework::LibraryType::kMKLDNN);
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
       }
-  #endif
+#endif
 
       return framework::OpKernelType(in_tensor.type(), in_tensor.place());
     }
@@ -301,8 +301,8 @@ class SliceOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::OperatorWithKernel::IndicateVarDataType(ctx, framework::GradVarName("Out"));
+    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
