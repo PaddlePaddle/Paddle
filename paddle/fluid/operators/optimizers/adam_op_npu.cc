@@ -130,7 +130,7 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     }
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     if (ctx.HasInput("Beta2Tensor")) {
-      auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+      beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
       PADDLE_ENFORCE_EQ(beta2_tensor->numel(), 1,
                         platform::errors::InvalidArgument(
                             "Input(Beta2Tensor) size must be 1, but get %d",
