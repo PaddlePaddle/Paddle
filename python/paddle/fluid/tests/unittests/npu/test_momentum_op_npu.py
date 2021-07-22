@@ -28,8 +28,6 @@ from test_momentum_op import calculate_momentum_by_numpy
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMomentumOp1(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
@@ -76,8 +74,6 @@ class TestMomentumOp1(OpTest):
         self.check_output_with_place(core.NPUPlace(0))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMomentumOpFp16(TestMomentumOp1):
     def init_dtype(self):
         self.dtype = np.float16
@@ -86,8 +82,6 @@ class TestMomentumOpFp16(TestMomentumOp1):
         self.check_output(atol=1e-3)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMomentumOp2(TestMomentumOp1):
     def init_case(self):
         self.shape = (123, 321)

@@ -68,7 +68,7 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
       }
       framework::TensorCopy(*param, ctx.GetPlace(), dev_ctx, param_out);
       framework::TensorCopy(*velocity, ctx.GetPlace(), dev_ctx, velocity_out);
-
+      // NOTE: ApplyMomentum will change the input
       const auto& runner = NpuOpRunner(
           "ApplyMomentum", {*param_out, *velocity_out, *learning_rate,
                             regularized_grad, mu_tensor},
