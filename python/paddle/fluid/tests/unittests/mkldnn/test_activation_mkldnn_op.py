@@ -16,9 +16,9 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from scipy.special import expit, erf
+from scipy.special import expit
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestHardSwish, TestRelu6, TestSigmoid
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
@@ -79,88 +79,46 @@ class TestMKLDNNGeluDim2Approx(TestActivation):
         self.attrs = {"use_mkldnn": True, "approximate": True}
 
 
-#Use it as a base class for BF16 activation tests, just override necessary functions
-class TestMKLDNNSigmoidBF16Op(TestActivation):
-    @OpTestTool.skip_if_not_cpu_bf16()
-    def config(self):
-        self.op_type = "sigmoid"
-
-    def op_forward(self, x):
-        return 1 / (1 + np.exp(-x))
-
-    def op_grad(self, dout, x):
-        return dout * self.op_forward(x) * (1 - self.op_forward(x))
-
-    def set_attrs(self):
-        self.attrs = {"use_mkldnn": True}
-
-    def init_data(self):
-        self.x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
-
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestMKLDNNGeluBf16Dim2(TestActivation):
     def setUp(self):
+        self.op_type = "gelu"
         self.dtype = np.uint16
-        self.init_data()
-        self.config()
-        self.out = self.op_forward(self.x)
 
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
-        self.outputs = {'Out': self.out}
-        self.set_attrs()
+        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+        out = convert_float_to_uint16(gelu(x, False))
 
-    def calculate_grads(self):
-        self.dx = self.op_grad(self.out, self.x)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad(self):
-        self.calculate_grads()
-        self.check_grad_with_place(
-            core.CPUPlace(), ["X"],
-            "Out",
-            user_defined_grads=[self.dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.out)])
+        pass
 
 
-class TestMKLDNNGeluErfBF16Op(TestMKLDNNSigmoidBF16Op):
-    def config(self):
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestMKLDNNGeluBf16Dim2Approx(TestActivation):
+    def setUp(self):
         self.op_type = "gelu"
+        self.dtype = np.uint16
 
-    def op_forward(self, x):
-        return gelu(x, False)
+        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+        out = convert_float_to_uint16(gelu(x, True))
 
-    def op_grad(self, dout, x):
-        return (dout *
-                (0.5 + 0.5 * erf(x / np.sqrt(2)) +
-                 (x / np.sqrt(2 * np.pi) * np.exp(-0.5 * np.power(x, 2)))))
-
-
-class TestMKLDNNGeluErfDim2BF16Op(TestMKLDNNGeluErfBF16Op):
-    def init_data(self):
-        self.x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
-
-
-class TestMKLDNNGeluTanhBF16Op(TestMKLDNNSigmoidBF16Op):
-    def config(self):
-        self.op_type = "gelu"
-
-    def op_forward(self, x):
-        return gelu(x, True)
-
-    def op_grad(self, dout, x):
-        grad_part = np.tanh(
-            np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
-        return dout * 0.5 * (1 + grad_part) * (1 + np.sqrt(2 / np.pi) *
-                                               (x + 0.134145 * np.power(x, 3)) *
-                                               (1 - grad_part))
-
-    def set_attrs(self):
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "approximate": True}
 
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
 
-class TestMKLDNNGeluTanhDim2BF16Op(TestMKLDNNGeluTanhBF16Op):
-    def init_data(self):
-        self.x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+    def test_check_grad(self):
+        pass
 
 
 class TestMKLDNNTanhDim2(TestTanh):
