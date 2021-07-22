@@ -67,19 +67,19 @@ class LeNetDygraph(paddle.nn.Layer):
             x = self.fc(x)
         return x
 
-class MultioutputModel_inner(paddle.nn.Layer):
+class ModelInner(paddle.nn.Layer):
     def __init__(self):
-        super(MultioutputModel_inner, self).__init__()
+        super(ModelInner, self).__init__()
         self.fc = paddle.nn.Linear(3, 4)
 
     def forward(self, x):
         y = self.fc(x)
         return y, 0
 
-class MultioutputModel_outter(paddle.nn.Layer):
+class ModelOutter(paddle.nn.Layer):
     def __init__(self):
-        super(MultioutputModel_outter, self).__init__()
-        self.module1 = MultioutputModel_inner()
+        super(ModelOutter, self).__init__()
+        self.module1 = ModelInner()
         self.module2 = paddle.nn.Linear(4, 5)
 
     def forward(self, x):
@@ -606,7 +606,7 @@ class TestModelFunction(unittest.TestCase):
             model.summary(input_size=(20), dtype='float32')
 
     def test_summary_non_tensor(self):
-        paddle.summary(MultioutputModel_outter(), input_size=(-1, 3))
+        paddle.summary(ModelOutter(), input_size=(-1, 3))
 
     def test_summary_nlp(self):
         def _get_param_from_state_dict(state_dict):
