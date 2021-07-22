@@ -1428,8 +1428,13 @@ class Unfold(layers.Layer):
         self.name = name
 
     def forward(self, input):
-        return F.unfold(input, self.kernel_sizes, self.dilations, self.paddings,
-                        self.strides, self.name)
+        return F.unfold(
+            input,
+            kernel_sizes=self.kernel_sizes,
+            strides=self.strides,
+            paddings=self.paddings,
+            dilations=self.dilations,
+            name=self.name)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
