@@ -327,9 +327,10 @@ class SliceOpGrad : public framework::OperatorWithKernel {
               ctx.Input<Tensor>(framework::GradVarName("Out"))->dims()),
           dnnl::memory::data_type::f32,
           ctx.Input<Tensor>(framework::GradVarName("Out"))->format());
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+      if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+        return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
