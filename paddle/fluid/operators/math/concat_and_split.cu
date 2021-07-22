@@ -53,8 +53,8 @@ __global__ void ConcatKernel(const T** inputs, const int64_t* input_cols,
 
 template <typename T>
 __device__ void ConcatKernelDetail(const T** inputs_data,
-                                   const int64_t fixed_in_col, const int64_t out_rows,
-                                   const int64_t out_cols, T* output_data) {
+                                   const int fixed_in_col, const int out_rows,
+                                   const int out_cols, T* output_data) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
   for (; tid_x < out_cols; tid_x += blockDim.x * gridDim.x) {
     int split = tid_x * 1.0 / fixed_in_col;
@@ -315,14 +315,16 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
           memory::Alloc(context, inputs_col_num * sizeof(int64_t));
       memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
-                   static_cast<void*>(inputs_col), inputs_col_num * sizeof(int64_t),
-                   context.stream());
-      int64_t* dev_ins_col_data = static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
+                   static_cast<void*>(inputs_col),
+                   inputs_col_num * sizeof(int64_t), context.stream());
+      int64_t* dev_ins_col_data =
+          static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
 
       ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
           dev_ins_data, dev_ins_col_data, static_cast<int>(inputs_col_num),
           out_row, out_col, output->data<T>());
     }
+
 #ifdef PADDLE_WITH_HIP
     // Prevent the pinned memory value from being covered and release the memory
     // after the launch kernel of the stream is executed (reapply pinned memory
