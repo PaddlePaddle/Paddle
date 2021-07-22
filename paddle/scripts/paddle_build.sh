@@ -1613,7 +1613,7 @@ set -x
 
 function parallel_test_base_npu() {
     mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/npu
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -1623,7 +1623,7 @@ EOF
 
 set +x
         ut_startTime_s=`date +%s`
-        test_cases=$(ctest -N -V | grep "op_npu" )        # cases list which would be run exclusively
+        test_cases=$(ctest -N -V) # get all test cases
         get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
@@ -1640,7 +1640,7 @@ set +x
         collect_failed_tests
 set -x
         ut_endTime_s=`date +%s`
-        echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "NPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
