@@ -39,6 +39,7 @@ from ...utils import deprecated
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
 from paddle.utils import deprecated
+from paddle import _C_ops
 
 __all__ = [
     'fc',
@@ -201,7 +202,7 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    op = getattr(core.ops, op_name)
+    op = getattr(_C_ops, op_name)
     out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
@@ -1029,7 +1030,7 @@ def dropout(x,
             seed = default_main_program().random_seed
         if is_test is None:
             is_test = not _dygraph_tracer()._train_mode
-        out, mask = core.ops.dropout(
+        out, mask = _C_ops.dropout(
             x, 'dropout_prob', dropout_prob, 'is_test', is_test, 'fix_seed',
             seed is not None, 'seed', seed if seed is not None else 0,
             'dropout_implementation', dropout_implementation)
@@ -1333,7 +1334,7 @@ def softmax(input, use_cudnn=True, name=None, axis=-1):
     """
 
     if in_dygraph_mode():
-        return core.ops.softmax(input, 'axis', axis, 'use_cudnn', use_cudnn)
+        return _C_ops.softmax(input, 'axis', axis, 'use_cudnn', use_cudnn)
 
     inputs = {"X": [input]}
     attrs = {"axis": axis, "use_cudnn": use_cudnn}
@@ -3923,6 +3924,10 @@ def conv2d_transpose(input,
           print(conv2d_transpose.shape) # [-1, 2, 34, 34]
     """
     assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
+    if len(input.shape) != 4:
+        raise ValueError("Input size should be 4, "
+                         "but received {}".format(len(input.shape)))
+
     if data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Attr(data_format) of Op(fluid.layers.conv2d_transpose) got wrong value: received "
@@ -4014,7 +4019,14 @@ def conv2d_transpose(input,
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
     else:
         raise ValueError("output_size should be int, list[int] or tuple[int]")
-    groups = 1 if groups is None else groups
+
+    if groups is None:
+        groups = 1
+    elif groups <= 0:
+        raise ValueError("the groups of input must be greater than 0, "
+                         "but received the groups of input is {}".format(
+                             groups))
+
     filter_shape = [input_channel, num_filters // groups] + filter_size
 
     img_filter = helper.create_parameter(
@@ -4415,8 +4427,8 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         reduce_all = True if dim == None or dim == [] or len(dim) == len(
             input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
-        return core.ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
-                                   'reduce_all', reduce_all)
+        return _C_ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
+                                 'reduce_all', reduce_all)
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
@@ -4898,7 +4910,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections)))
-        return core.ops.split(input, num, *attrs)
+        return _C_ops.split(input, num, *attrs)
 
     check_variable_and_dtype(
         input, 'input',
@@ -5133,8 +5145,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
     if in_dygraph_mode():
         out = _varbase_creator(dtype=x.dtype)
-        core.ops.matmul(x, y, out, 'transpose_X', transpose_x, 'transpose_Y',
-                        transpose_y, 'alpha', float(alpha))
+        _C_ops.matmul(x, y, out, 'transpose_X', transpose_x, 'transpose_Y',
+                      transpose_y, 'alpha', float(alpha))
         return out
 
     def __check_input(x, y):
@@ -5265,7 +5277,7 @@ def topk(input, k, name=None):
     """
     if in_dygraph_mode():
         _k = k.numpy().item(0) if isinstance(k, Variable) else k
-        out, indices = core.ops.top_k(input, 'k', _k)
+        out, indices = _C_ops.top_k(input, 'k', _k)
         out.stop_gradient = True
         indices.stop_gradient = True
         return out, indices
@@ -5508,7 +5520,7 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
-        out, _ = core.ops.transpose2(x, 'axis', perm)
+        out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 
     check_variable_and_dtype(
@@ -5790,7 +5802,7 @@ def multiplex(inputs, index, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.multiplex(index, inputs)
+        return _C_ops.multiplex(index, inputs)
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')
@@ -5976,8 +5988,8 @@ def one_hot(input, depth, allow_out_of_range=False):
             assert depth.shape == (
                 1, ), "depth of type Variable should have shape [1]"
             depth = depth.item(0)
-        out = core.ops.one_hot(input, 'depth', depth, 'allow_out_of_range',
-                               allow_out_of_range)
+        out = _C_ops.one_hot(input, 'depth', depth, 'allow_out_of_range',
+                             allow_out_of_range)
         out.stop_gradient = True
         return out
 
@@ -6158,10 +6170,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in shape
             ]
-            out, _ = core.ops.reshape2(x, None, 'shape', shape)
+            out, _ = _C_ops.reshape2(x, None, 'shape', shape)
         elif isinstance(shape, Variable):
             shape.stop_gradient = True
-            out, _ = core.ops.reshape2(x, shape)
+            out, _ = _C_ops.reshape2(x, shape)
 
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
@@ -6282,7 +6294,7 @@ def squeeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
-        out, _ = core.ops.squeeze2(input, 'axes', axes)
+        out, _ = _C_ops.squeeze2(input, 'axes', axes)
         return out
 
     helper = LayerHelper("squeeze", **locals())
@@ -6342,7 +6354,7 @@ def unsqueeze(input, axes, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
-        out, _ = core.ops.unsqueeze2(input, 'axes', axes)
+        out, _ = _C_ops.unsqueeze2(input, 'axes', axes)
         return out
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
@@ -6865,8 +6877,7 @@ def label_smooth(label,
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
     if in_dygraph_mode():
-        return core.ops.label_smooth(label, prior_dist, 'epsilon',
-                                     float(epsilon))
+        return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                              'label_smooth')
@@ -6957,7 +6968,7 @@ def roi_pool(input,
     """
     if in_dygraph_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
-        pool_out, argmaxes = core.ops.roi_pool(
+        pool_out, argmaxes = _C_ops.roi_pool(
             input, rois, rois_num, "pooled_height", pooled_height,
             "pooled_width", pooled_width, "spatial_scale", spatial_scale)
         return pool_out, argmaxes
@@ -7045,7 +7056,7 @@ def roi_align(input,
     """
     if in_dygraph_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
-        align_out = core.ops.roi_align(
+        align_out = _C_ops.roi_align(
             input, rois, rois_num, "pooled_height", pooled_height,
             "pooled_width", pooled_width, "spatial_scale", spatial_scale,
             "sampling_ratio", sampling_ratio)
@@ -8314,7 +8325,7 @@ def gather(input, index, overwrite=True):
             output = fluid.layers.gather(x, index)
     """
     if in_dygraph_mode():
-        return core.ops.gather(input, index, None, 'overwrite', overwrite)
+        return _C_ops.gather(input, index, None, 'overwrite', overwrite)
 
     check_variable_and_dtype(
         input, 'x',
@@ -8405,7 +8416,7 @@ def gather_nd(input, index, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.gather_nd(input, index)
+        return _C_ops.gather_nd(input, index)
     check_variable_and_dtype(input, 'input',
                              ['bool', 'float32', 'float64', 'int32', 'int64'],
                              'gather_np')
@@ -8578,7 +8589,7 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
 
     if in_dygraph_mode():
-        op = getattr(core.ops, 'scatter_nd_add')
+        op = getattr(_C_ops, 'scatter_nd_add')
         return op(ref, index, updates)
 
     if ref.dtype != updates.dtype:
@@ -8724,7 +8735,7 @@ def log(x, name=None):
             # [[0.693147, 1.09861, 1.38629], [1.94591, 2.07944, 2.19722]]
     """
     if in_dygraph_mode():
-        return core.ops.log(x)
+        return _C_ops.log(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
     inputs = {'X': [x]}
@@ -8764,7 +8775,7 @@ def relu(x, name=None):
                 #  [1.  2.6]]
 """
     if in_dygraph_mode():
-        return core.ops.relu(x)
+        return _C_ops.relu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
 
@@ -8890,7 +8901,7 @@ def mean_iou(input, label, num_classes):
             mean_iou, out_wrong, out_correct = paddle.metric.mean_iou(predict, label, num_classes)
     """
     if in_dygraph_mode():
-        return core.ops.mean_iou(input, label, 'num_classes', num_classes)
+        return _C_ops.mean_iou(input, label, 'num_classes', num_classes)
 
     helper = LayerHelper('mean_iou', **locals())
     check_variable_and_dtype(input, 'Predictions', ['int32', 'int64'],
@@ -9058,16 +9069,16 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
                               [6, 7, 8]]]
 
     Parameters:
-        x (Variable): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
-        shape (list|tuple|Variable): The output shape is specified
+        x (Tensor): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
+        shape (list|tuple|Tensor): The output shape is specified
             by `shape`. Its data type is int32. If a list/tuple, it's length must be
-            the same as the dimension size of `x`. If a Variable, it should be a 1-D Tensor.
+            the same as the dimension size of `x`. If a Tensor, it should be a 1-D Tensor.
             When it is a list, each element can be an integer or a Tensor of shape: [1].
             If Variable contained, it is suitable for the case that the shape may
             be changed each iteration.
         offsets (list|tuple|Variable, optional): Specifies the cropping
             offsets at each dimension. Its data type is int32. If a list/tuple, it's length
-            must be the same as the dimension size of `x`. If a Variable, it should be a 1-D
+            must be the same as the dimension size of `x`. If a Tensor, it should be a 1-D
             Tensor. When it is a list, each element can be an integer or a Tensor of shape: [1].
             If Variable contained, it is suitable for the case that the offsets may be changed
             each iteration. Default: None, the offsets are 0 at each dimension.
@@ -9075,51 +9086,36 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
             this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: The cropped Tensor has same data type with `x`.
-
-    Raises:
-        TypeError: If the data type of `x` is not in: float32, float64, int32, int64.
-        TypeError: If `shape` is not a list, tuple or Variable.
-        TypeError: If the data type of `shape` is not int32.
-        TypeError: If `offsets` is not None and not a list, tuple or Variable.
-        TypeError: If the data type of `offsets` is not int32.
-        ValueError: If the element in `offsets` is less than zero.
+        Tensor: The cropped Tensor has same data type with `x`.
 
     Examples:
 
         .. code-block:: python
+          :name: code-example1
 
-            import paddle.fluid as fluid
-            import paddle.fluid as fluid
             import paddle
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[None, 3, 5], dtype="float32")
-            # x.shape = [-1, 3, 5], where -1 indicates batch size, and it will get the exact value in runtime.
+            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+            # x.shape = [3, 3]
+            # x = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
-            # shape is a 1-D Tensor
-            crop_shape = fluid.data(name="crop_shape", shape=[3], dtype="int32")
-            crop0 = fluid.layers.crop_tensor(x, shape=crop_shape)
-            # crop0.shape = [-1, -1, -1], it means crop0.shape[0] = x.shape[0] in runtime.
+            # shape can be a 1-D Tensor or list or tuple.
+            shape = paddle.to_tensor([2, 2], dtype='int32')
+            # shape = [2, 2]
+            # shape = (2, 2)
+            out = paddle.crop(x, shape)
+            # out.shape = [2, 2]
+            # out = [[1,2], [4,5]]
 
-            # or shape is a list in which each element is a constant
-            crop1 = fluid.layers.crop_tensor(x, shape=[-1, -1, 3], offsets=[0, 1, 0])
-            # crop1.shape = [-1, 2, 3]
-
-            # or shape is a list in which each element is a constant or Variable
-            y = fluid.data(name="y", shape=[3, 8, 8], dtype="float32")
-            dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
-            crop2 = fluid.layers.crop_tensor(y, shape=[3, dim1, 4])
-            # crop2.shape = [3, -1, 4]
-
-            # offsets is a 1-D Tensor
-            crop_offsets = fluid.data(name="crop_offsets", shape=[3], dtype="int32")
-            crop3 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=crop_offsets)
-            # crop3.shape = [-1, 2, 3]
-
-            # offsets is a list in which each element is a constant or Variable
-            offsets_var =  fluid.data(name="dim1", shape=[1], dtype="int32")
-            crop4 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=[0, 1, offsets_var])
-            # crop4.shape = [-1, 2, 3]
+            # offsets can be a 1-D Tensor or list or tuple.
+            offsets = paddle.to_tensor([0, 1], dtype='int32')
+            # offsets = [1, 0]
+            # offsets = (1, 1)
+            out = paddle.crop(x, shape, offsets)
+            # out.shape = [2, 2]
+            # if offsets = [0, 0], out = [[1,2], [4,5]]
+            # if offsets = [0, 1], out = [[2,3], [5,6]]
+            # if offsets = [1, 0], out = [[4,5], [7,8]]
+            # if offsets = [1, 1], out = [[5,6], [8,9]]
 
     """
     helper = LayerHelper('crop_tensor', **locals())
@@ -9390,8 +9386,8 @@ def pad2d(input,
     if in_dygraph_mode():
         _paddings = paddings.numpy().tolist() if isinstance(
             paddings, Variable) else paddings
-        return core.ops.pad2d(input, 'mode', mode, 'pad_value', pad_value,
-                              'data_format', data_format, 'paddings', _paddings)
+        return _C_ops.pad2d(input, 'mode', mode, 'pad_value', pad_value,
+                            'data_format', data_format, 'paddings', _paddings)
 
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -9587,7 +9583,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
+        return _C_ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
 
@@ -9629,7 +9625,7 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
             result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
     if in_dygraph_mode():
-        return core.ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
+        return _C_ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hard_sigmoid')
@@ -9839,7 +9835,7 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
                 #[ 1. 10.]]
     """
     if in_dygraph_mode():
-        return core.ops.brelu(x, 't_min', t_min, 't_max', t_max)
+        return _C_ops.brelu(x, 't_min', t_min, 't_max', t_max)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'brelu')
 
@@ -10098,7 +10094,7 @@ def stack(x, axis=0, name=None):
     axis = 0 if axis is None else axis
 
     if in_dygraph_mode():
-        return core.ops.stack(x, 'axis', axis)
+        return _C_ops.stack(x, 'axis', axis)
 
     if not isinstance(x, list) and not isinstance(x, tuple):
         # NOTE:(zhiqiu) Only support Variable as input if the Variable is a LOD_TENSOR_ARRAY create by create_array, array_write, array_read, etc.
@@ -10251,7 +10247,7 @@ def unstack(x, axis=0, num=None):
     if in_dygraph_mode():
         if num == None:
             num = x.shape[axis]
-        return core.ops.unstack(x, num, 'axis', int(axis), 'num', num)
+        return _C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
 
     helper = LayerHelper('unstack', **locals())
     if num is None:
@@ -10347,7 +10343,7 @@ def expand(x, expand_times, name=None):
             expand_times_tensor = expand_times
             expand_times_tensor.stop_gradient = True
 
-        return core.ops.expand(x, expand_times_tensor, *attrs)
+        return _C_ops.expand(x, expand_times_tensor, *attrs)
 
     inputs = {"X": [x]}
     attrs = {}
@@ -10455,7 +10451,7 @@ def expand_as(x, target_tensor, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.expand_as(x, target_tensor)
+        return _C_ops.expand_as(x, target_tensor)
 
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64', 'bool'], 'expand_as')
@@ -10671,10 +10667,9 @@ def gaussian_random(shape,
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return core.ops.gaussian_random('shape', shape, 'mean',
-                                        float(mean), 'std',
-                                        float(std), 'seed', seed, 'dtype',
-                                        dtype)
+        return _C_ops.gaussian_random('shape', shape, 'mean',
+                                      float(mean), 'std',
+                                      float(std), 'seed', seed, 'dtype', dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'gaussian_random/randn')
     check_dtype(dtype, 'dtype', ['float32', 'float64'], 'gaussian_random/randn')
@@ -10979,8 +10974,8 @@ def slice(input, axes, starts, ends):
             ends_tensor.stop_gradient = True
             infer_flags = list(-1 for i in range(len(axes)))
 
-        return core.ops.slice(input, starts_tensor, ends_tensor, 'axes', axes,
-                              'infer_flags', infer_flags, *attrs)
+        return _C_ops.slice(input, starts_tensor, ends_tensor, 'axes', axes,
+                            'infer_flags', infer_flags, *attrs)
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
@@ -11370,7 +11365,7 @@ def size(input):
     """
 
     if in_dygraph_mode():
-        return core.ops.size(input)
+        return _C_ops.size(input)
     check_variable_and_dtype(
         input, 'input',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], "size")
@@ -11459,9 +11454,9 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     if in_dygraph_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-        out = core.ops.scale(x, 'scale',
-                             float(_scale), 'bias',
-                             float(bias), 'bias_after_scale', bias_after_scale)
+        out = _C_ops.scale(x, 'scale',
+                           float(_scale), 'bias',
+                           float(bias), 'bias_after_scale', bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out)
 
     check_variable_and_dtype(x, "x", [
@@ -12147,7 +12142,7 @@ Examples:
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
     if in_dygraph_mode():
-        op = getattr(core.ops, op_name)
+        op = getattr(_C_ops, op_name)
         if binary_op:
             return op(x, y)
         else:
@@ -12404,7 +12399,7 @@ def clip_by_norm(x, max_norm, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.clip_by_norm(x, 'max_norm', max_norm)
+        return _C_ops.clip_by_norm(x, 'max_norm', max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
     check_variable_and_dtype(x, 'X', ['float32'], 'clip_by_norm')
@@ -12449,7 +12444,7 @@ def mean(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.mean(x)
+        return _C_ops.mean(x)
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')
@@ -12530,8 +12525,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.mul(x, y, 'x_num_col_dims', x_num_col_dims,
-                            'y_num_col_dims', y_num_col_dims)
+        return _C_ops.mul(x, y, 'x_num_col_dims', x_num_col_dims,
+                          'y_num_col_dims', y_num_col_dims)
 
     inputs = {"X": [x], "Y": [y]}
     attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
@@ -13156,8 +13151,7 @@ def add_position_encoding(input, alpha, beta, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.add_position_encoding(input, "alpha", alpha, "beta",
-                                              beta)
+        return _C_ops.add_position_encoding(input, "alpha", alpha, "beta", beta)
 
     helper = LayerHelper('add_position_encoding', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -13411,8 +13405,8 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
         raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'. "
                          "Received Attr(data_format): {}.".format(data_format))
     if in_dygraph_mode():
-        return core.ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
-                                       shift_ratio, 'data_format', data_format)
+        return _C_ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
+                                     shift_ratio, 'data_format', data_format)
 
     helper = LayerHelper("temporal_shift", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
@@ -14107,7 +14101,7 @@ def where(condition):
 
     """
     if in_dygraph_mode():
-        return core.ops.where_index(condition)
+        return _C_ops.where_index(condition)
 
     helper = LayerHelper("where_index", **locals())
 
@@ -14890,8 +14884,8 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         print(out)  # [[0.66666667, 1.66666667,3., 4.]]
     """
     if in_dygraph_mode():
-        return core.ops.hard_swish(x, 'threshold', threshold, 'scale', scale,
-                                   'offset', offset)
+        return _C_ops.hard_swish(x, 'threshold', threshold, 'scale', scale,
+                                 'offset', offset)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hard_swish')
@@ -15045,7 +15039,7 @@ def gather_tree(ids, parents):
 
     """
     if in_dygraph_mode():
-        return core.ops.gather_tree(ids, parents)
+        return _C_ops.gather_tree(ids, parents)
     else:
         helper = LayerHelper('gather_tree', **locals())
         check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
@@ -15143,9 +15137,9 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return core.ops.uniform_random('shape', shape, 'min',
-                                       float(min), 'max',
-                                       float(max), 'seed', seed, 'dtype', dtype)
+        return _C_ops.uniform_random('shape', shape, 'min',
+                                     float(min), 'max',
+                                     float(max), 'seed', seed, 'dtype', dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
     check_dtype(dtype, 'dtype', ('float32', 'float64', 'uint16'),
