@@ -652,6 +652,43 @@ class TestVarBase(unittest.TestCase):
             np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
         self.assertTrue(np.array_equal(local_out[16], tensor_array[-4:4]))
 
+    def _test_for_getitem_ellipsis_index(self):
+        shape = (64, 3, 5, 256)
+        np_fp32_value = np.random.random(shape).astype('float32')
+        np_int_value = np.random.randint(1, 100, shape)
+
+        var_fp32 = paddle.to_tensor(np_fp32_value)
+        var_int = paddle.to_tensor(np_int_value)
+
+        def assert_getitem_ellipsis_index(var_tensor, var_np):
+            var = [
+                var_tensor[..., 0].numpy(),
+                var_tensor[..., 1, 0].numpy(),
+                var_tensor[0, ..., 1, 0].numpy(),
+                var_tensor[1, ..., 1].numpy(),
+                var_tensor[2, ...].numpy(),
+                var_tensor[2, 0, ...].numpy(),
+                var_tensor[2, 0, 1, ...].numpy(),
+                var_tensor[...].numpy(),
+                var_tensor[:, ..., 100].numpy(),
+            ]
+
+            self.assertTrue(np.array_equal(var[0], var_np[..., 0]))
+            self.assertTrue(np.array_equal(var[1], var_np[..., 1, 0]))
+            self.assertTrue(np.array_equal(var[2], var_np[0, ..., 1, 0]))
+            self.assertTrue(np.array_equal(var[3], var_np[1, ..., 1]))
+            self.assertTrue(np.array_equal(var[4], var_np[2, ...]))
+            self.assertTrue(np.array_equal(var[5], var_np[2, 0, ...]))
+            self.assertTrue(np.array_equal(var[6], var_np[2, 0, 1, ...]))
+            self.assertTrue(np.array_equal(var[7], var_np[...]))
+            self.assertTrue(np.array_equal(var[8], var_np[:, ..., 100]))
+
+        var_fp32 = paddle.to_tensor(np_fp32_value)
+        var_int = paddle.to_tensor(np_int_value)
+
+        assert_getitem_ellipsis_index(var_fp32, np_fp32_value)
+        assert_getitem_ellipsis_index(var_int, np_int_value)
+
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')
         w = fluid.dygraph.to_variable(np_value)
@@ -664,6 +701,7 @@ class TestVarBase(unittest.TestCase):
             self._test_slice()
             self._test_slice_for_tensor_attr()
             self._test_for_var()
+            self._test_for_getitem_ellipsis_index()
 
             var = fluid.dygraph.to_variable(self.array)
             self.assertTrue(np.array_equal(var[1, :].numpy(), self.array[1, :]))
