@@ -143,6 +143,39 @@ inline bool FoundNanOrInf(const paddle::platform::NPUDeviceContext& ctx, aclrtSt
     return found_inf_data;
 }
 
+// return true if found_inf_or_nan or return false;
+template<typename T>
+bool CheckNumerics(const framework::ExecutionContext& exe_ctx, 
+        aclrtStream stream, const paddle::framework::Tensor* in){
+    auto& dev_ctx = exe_ctx.template device_context<paddle::platform::NPUDeviceContext>();
+    using Tensor = paddle::framework::Tensor;
+    Tensor out(in->type());
+    out.Resize(in->dims());
+    out.mutable_data(dev_ctx.GetPlace());
+
+    bool found_inf_data=false;
+
+    try {
+        const auto& runner =
+            NpuOpRunner("CheckNumerics", {*in}, {out},
+                        {{"message", std::string("check_numberics")}});
+        runner.Run(stream);
+        dev_ctx.Wait();
+    } catch (platform::EnforceNotMet& exception) {
+        LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
+        found_inf_data = true;
+    } catch (...) {
+        LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
+        found_inf_data = true;
+    }
+    
+    //std::vector<T> out_cpu;
+    //TensorToVector(out, exe_ctx.device_context(), &out_cpu);
+    //VLOG(4) << "out_cpu size:" << out_cpu.size() << ", poistion 0:" << out_cpu[0];
+
+    return found_inf_data;
+}
+
 template <ReduceType red_type, typename T>
 class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
@@ -209,15 +242,31 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     tmp.mutable_data<float>({8}, ctx.GetPlace());
 
     bool nan_or_inf=false;
+    bool check_numerics=false;
     if (float_status){
         nan_or_inf = FoundNanOrInf(ctx.template device_context<paddle::platform::NPUDeviceContext>(),
                 dev_ctx->stream(), float_status, &tmp);
-
-        if (nan_or_inf){
-            T inf = static_cast<T>(std::numeric_limits<float>::infinity());
-            VLOG(4) << "fill input data constant inf";
-            FillNpuTensorWithConstant<T>(const_cast<framework::Tensor*>(in), inf);
+    }else{
+        auto d_type = in->type();
+        switch (d_type) {
+            case framework::proto::VarType::FP16:
+            case framework::proto::VarType::FP32:{
+                check_numerics=CheckNumerics<T>(ctx, dev_ctx->stream(), in);
+                VLOG(4) << "check_numerics:" << check_numerics;
+                break;
+            }
+            default:
+              break;
         }
+    }
+
+    if(nan_or_inf || check_numerics){
+        T inf = static_cast<T>(std::numeric_limits<float>::infinity());
+        VLOG(4) << "fill input data constant inf";
+        auto dims=in->dims();
+        auto mutable_in=const_cast<framework::Tensor*>(in);
+        FillNpuTensorWithConstant<T>(mutable_in, inf);
+        mutable_in->Resize(dims);
     }
 
     VLOG(3) << "begin hccl allreduce, parameter is: "

@@ -62,7 +62,7 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
 
     out->Clear();
     out->Reset(framework::MakeDecoratedReader<BufferedReader>(underlying_reader,
-                                                              place, 1));
+                                                              place, 2));
   }
 };
 
