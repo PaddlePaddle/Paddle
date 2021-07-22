@@ -33,7 +33,6 @@ class WhileOpEagerDeletionPass : public ir::Pass {
       // instead of SubBlock
       return;
     }
-
     auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
 
     // Find all while_op and while_grad_op. In case of @to_static, graph
@@ -56,7 +55,9 @@ class WhileOpEagerDeletionPass : public ir::Pass {
             compute_op->GetOp());
       }
     }
+
     if (graph->IsConstructedByPartialProgram()) {
+      VLOG(4) << "Is Paritial Program";
       PADDLE_ENFORCE_LE(
           target_ops.size(), 1,
           platform::errors::InvalidArgument(
@@ -79,8 +80,11 @@ class WhileOpEagerDeletionPass : public ir::Pass {
     }
 
     for (auto &ops_pair : target_ops) {
+      VLOG(4) << "Scope Idx = " << ops_pair.first;
       auto &while_ops = ops_pair.second.first;
+      VLOG(4) << "while_ops.size() = " << while_ops.size();
       auto &while_grad_ops = ops_pair.second.second;
+      VLOG(4) << "while_grad_ops.size() = " << while_grad_ops.size();
       operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
           graph->OriginProgram(), while_ops, while_grad_ops);
     }
