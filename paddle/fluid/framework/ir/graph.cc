@@ -93,8 +93,13 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
   std::unordered_map<std::string, VarDesc *> all_vars;
   // var nodes for each var name, will have multiple versions in SSA
   std::map<std::string, std::vector<ir::Node *>> var_nodes;
-  for (auto *var : block.AllVars()) {
-    all_vars.emplace(var->Name(), var);
+  
+  const BlockDesc* block_var_visible = &block;
+  while (block_var_visible != nullptr) {
+    for (auto *var : block_var_visible->AllVars()) {
+      all_vars.emplace(var->Name(), var);
+    }
+    block_var_visible = block_var_visible->ParentBlock();
   }
 
   int desc_order = 0;
