@@ -88,6 +88,7 @@ from .manipulation import squeeze_  # noqa: F401
 from .manipulation import stack  # noqa: F401
 from .manipulation import strided_slice  # noqa: F401
 from .manipulation import unique  # noqa: F401
+from .manipulation import unique_consecutive
 from .manipulation import unsqueeze  # noqa: F401
 from .manipulation import unsqueeze_  # noqa: F401
 from .manipulation import unstack  # noqa: F401
@@ -331,6 +332,7 @@ tensor_method_func  = [ #noqa
            'strided_slice',
            'transpose',
            'unique',
+           'unique_consecutive'
            'unsqueeze',
            'unsqueeze_',
            'unstack',

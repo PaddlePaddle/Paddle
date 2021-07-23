@@ -291,6 +291,7 @@ register_unity_group(cc
     uniform_random_batch_size_like_op.cc
     uniform_random_op.cc
     unique_op.cc
+    unique_consecutive_op.cc
     unique_with_counts_op.cc
     unpool_op.cc
     unsqueeze_op.cc
@@ -547,6 +548,7 @@ register_unity_group(cu top_k_op.cu)
 register_unity_group(cu argsort_op.cu)
 register_unity_group(cu kron_op.cu)
 register_unity_group(cu unique_op.cu)
+register_unity_group(cu unique_consecutive_op.cu)
 register_unity_group(cu tile_op.cu)
 register_unity_group(cu trace_op.cu)
 register_unity_group(cu transpose_op.cu)

@@ -86,6 +86,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
     {"unique", {"Out", "Index", "Indices", "Counts"}},
+    {"unique_consecutive", {"Out", "Index", "Counts"}},
     {"generate_proposals", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"collect_fpn_proposals", {"FpnRois", "RoisNum"}},
     {"matrix_nms", {"Out", "Index", "RoisNum"}},

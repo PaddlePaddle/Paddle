@@ -717,6 +717,117 @@ def squeeze_(x, axis=None, name=None):
     return out
 
 
+def unique_consecutive(x,
+                       return_inverse=False,
+                       return_counts=False,
+                       axis=None,
+                       dtype="int64",
+                       name=None):
+    r"""Eliminates all but the first element from every consecutive group of equivalent elements.
+
+    .. note:: This function is different from :func:`paddle.unique` in the sense that this function
+        only eliminates consecutive duplicate values. This semantics is similar to `std::unique`
+        in C++.
+    Args:
+        input (Tensor): the input tensor
+        return_inverse (bool): Whether to also return the indices for where
+            elements in the original input ended up in the returned unique list.
+        return_counts (bool): Whether to also return the counts for each unique
+            element.
+        aixs (int): the dimension to apply unique. If ``None``, the unique of the
+            flattened input is returned. default: ``None``
+    Returns:
+        (Tensor, Tensor (optional), Tensor (optional)): A tensor or a tuple of tensors containing
+            - **output** (*Tensor*): the output list of unique scalar elements.
+            - **inverse_indices** (*Tensor*): (optional) if
+              :attr:`return_inverse` is True, there will be an additional
+              returned tensor (same shape as input) representing the indices
+              for where elements in the original input map to in the output;
+              otherwise, this function will only return a single tensor.
+            - **counts** (*Tensor*): (optional) if
+              :attr:`return_counts` is True, there will be an additional
+              returned tensor (same shape as output or output.size(dim),
+              if dim was specified) representing the number of occurrences
+              for each unique value or tensor.
+    Example::
+        >>> x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
+        >>> output = paddle.unique_consecutive(x)
+        >>> output
+        Tensor([1, 2, 3, 1, 2])
+        >>> output, inverse_indices = paddle.unique_consecutive(x, return_inverse=True)
+        >>> output
+        Tensor([1, 2, 3, 1, 2])
+        >>> inverse_indices
+        Tensor([0, 0, 1, 1, 2, 3, 3, 4])
+        >>> output, counts = paddle.unique_consecutive(x, return_counts=True)
+        >>> output
+        Tensor([1, 2, 3, 1, 2])
+        >>> counts
+        Tensor([2, 2, 1, 2, 1])
+    """
+
+
+    if axis is None:
+        axis = []
+    else:
+        axis = [axis]
+    attr_dtype = convert_np_dtype_to_dtype_(dtype)
+    if in_dygraph_mode():
+        out, inverse, counts = core.ops.unique_consecutive(
+            x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
+            'return_counts', return_counts, 'axis', axis)
+        outs = [out]
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+
+        if len(outs) == 1:
+            return outs[0]
+
+        return tuple(outs)
+
+    check_variable_and_dtype(x, "input",
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'unique_consecutive')
+    check_type(return_inverse, 'return_inverse', bool, 'unique_consecutive')
+    check_type(return_counts, 'return_counts', bool, 'unique_consecutive')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'unique_consecutive')
+    if len(axis) != 0:
+        check_type(axis[0], 'axis', int, 'unique_consecutive')
+
+    helper = LayerHelper('unique_consecutive', **locals())
+    attrs = {
+        'dtype': attr_dtype,
+        "return_inverse": return_inverse,
+        "return_counts": return_counts,
+        "axis": axis,
+    }
+    out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+    inverse = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
+    counts = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
+    outputs = {"Out": out, "Index": inverse, "Counts": counts}
+    outs = [out]
+    if return_inverse:
+        outs.append(inverse)
+    if return_counts:
+        outs.append(counts)
+
+    helper.append_op(
+        type="unique_consecutive",
+        inputs={"X": x},
+        attrs=attrs,
+        outputs=outputs)
+
+    if len(outs) == 1:
+        return outs[0]
+
+    return tuple(outs)
+
+
 def unique(x,
            return_index=False,
            return_inverse=False,
