@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 
 namespace paddle {
@@ -137,7 +136,9 @@ std::string join_strings(const Container& strs, char delim) {
       str += delim;
     }
 
-    str += boost::lexical_cast<std::string>(elem);
+    std::stringstream ss;
+    ss << elem;
+    str += ss.str();
     ++i;
   }
 
