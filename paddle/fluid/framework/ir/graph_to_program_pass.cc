@@ -12,11 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
-
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 
+#include <gflags/gflags.h>
+#include <algorithm>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 DECLARE_bool(convert_all_blocks);
 
@@ -64,6 +66,37 @@ void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
   program.CopyFrom(*program_pb);
 }
 
+OpDesc* ReplaceScaleLossGradOp(ir::Node* node, OpDesc* desc) {
+  desc->SetType("fill_constant");
+  desc->SetAttr(
+      OpProtoAndCheckerMaker::OpRoleAttrName(),
+      (static_cast<int>(OpRole::kBackward) | static_cast<int>(OpRole::kLoss)));
+  desc->SetAttr("value", 1.0f);
+  std::vector<std::string> output_names;
+  for (auto out : node->outputs) {
+    output_names.emplace_back(out->Name());
+  }
+  desc->SetOutput("Out", output_names);
+  return desc;
+}
+
+std::vector<OpDesc> GetGraphOpDesc(std::vector<ir::Node*>* nodes) {
+  std::vector<OpDesc> ops;
+  for (ir::Node* n : *nodes) {
+    // if node is not Op, skip
+    if (!n->IsOp()) continue;
+
+    // create fill_constant op
+    if (n->Name() == "scale_loss_grad") {
+      OpDesc desc;
+      ops.emplace_back(*ReplaceScaleLossGradOp(n, &desc));
+    } else if (n->Op()) {
+      ops.emplace_back(*n->Op());
+    }
+  }
+  return ops;
+}
+
 void GraphToProgramPass::GraphToBlock(const Graph* graph,
                                       proto::BlockDesc* block) const {
   // Remove the unneeded variables after memory optimization.
@@ -102,10 +135,10 @@ void GraphToProgramPass::GraphToBlock(const Graph* graph,
     }
   }
 
-  for (ir::Node* n : nodes) {
-    if (!n->Op()) continue;
+  auto ops = GetGraphOpDesc(&nodes);
 
-    block->add_ops()->MergeFrom(*n->Op()->Proto());
+  for (auto& op : ops) {
+    block->add_ops()->MergeFrom(*op.Proto());
   }
 }
 
