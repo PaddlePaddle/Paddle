@@ -166,11 +166,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_program_id(self):
-        return _hash_program(self._infer_program, self)
+        return _hash_program(self._infer_program)
 
     @LazyInitialized
     def _train_program_id(self):
-        return _hash_program(self._train_program, self)
+        return _hash_program(self._train_program)
 
     def _verify_program(self, main_program):
         """
