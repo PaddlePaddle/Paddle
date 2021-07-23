@@ -154,15 +154,17 @@ dir %cache_dir%
 dir paddle\fluid\pybind\Release
 rem -------Caching strategy 1: End --------------------------------
 
+
 rem -------Caching strategy 2: sccache decorate compiler-----------
 if "%WITH_SCCACHE%"=="ON" (
+    del D:\sccache\sccache_log.txt
     cmd /C sccache -V || call :install_sccache
     sccache --stop-server 2> NUL
     if not exist D:\sccache mkdir D:\sccache
     set SCCACHE_DIR=D:\sccache\.cache
     set SCCACHE_CACHE_SIZE=30G
     set SCCACHE_ERROR_LOG=D:\sccache\sccache_log.txt
-    set SCCACHE_LOG=quiet
+    set SCCACHE_LOG=trace
     sccache --start-server
     sccache -z
     goto :CASE_%1
