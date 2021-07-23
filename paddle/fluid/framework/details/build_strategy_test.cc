@@ -25,8 +25,10 @@
 #include "gtest/gtest_pred_impl.h"
 
 #include "paddle/fluid/framework/details/build_strategy.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/platform/place.h"
 
 DECLARE_bool(convert_all_blocks);
 
@@ -112,11 +114,7 @@ void BuildStrategyApply(BuildStrategy *build_strategy, ir::Graph *graph) {
   Scope scope;
   std::vector<Scope *> scopes = {&scope};
 
-  bool use_cuda = false;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  use_cuda = true;
-#endif
-  auto places = CreatePlaces(1, use_cuda);
+  auto places = CreatePlaces(1, false);
   auto device = platform::Place2DeviceType(places[0]);
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
