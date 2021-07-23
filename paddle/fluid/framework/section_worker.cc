@@ -14,6 +14,7 @@ limitations under the License. */
 #include <float.h>
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -101,8 +102,22 @@ void SectionWorker::PrepareUnusedVar() {
   unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
 }
 
+void SectionWorker::WaitOnNPU() {
+#ifdef PADDLE_WITH_ASCEND_CL
+  dev_ctx_->Wait();
+
+  const auto &obj = paddle::platform::HCCLCommContext::Instance();
+  std::vector<int> ids = obj.GetAllRingIds();
+  for (auto &rid : ids) {
+    paddle::platform::HCCLComm *comm = obj.Get(rid, place_);
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(comm->stream()));
+  }
+#endif
+}
+
 void SectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
+  VLOG(3) << "mini batch steps:" << batch_id_;
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
@@ -164,24 +179,35 @@ void SectionWorker::TrainFiles() {
     int bw_step = 0;
     // startup phase
     while (fw_step < startup_steps) {
+      VLOG(3) << "micro steps fw_step:" << fw_step;
       RunForward(fw_step, gc, unused_vars_);
+      WaitOnNPU();
       fw_step += 1;
     }
 
     // 1f1b phase
     while (fw_step < num_microbatches_) {
+      VLOG(3) << "micro steps fw_step:" << fw_step;
       RunForward(fw_step, gc, unused_vars_);
+      WaitOnNPU();
       fw_step += 1;
+
+      VLOG(3) << "micro steps bw_step:" << bw_step;
       RunBackward(bw_step, gc, unused_vars_);
+      WaitOnNPU();
       bw_step += 1;
     }
     // backward phase
     while (bw_step < num_microbatches_) {
+      VLOG(3) << "micro steps bw_step:" << bw_step;
       RunBackward(bw_step, gc, unused_vars_);
+      WaitOnNPU();
       bw_step += 1;
     }
+    VLOG(3) << "micro steps update step";
     RunUpdate(gc, unused_vars_);
   }
+  WaitOnNPU();
   dev_ctx_->Wait();
   ++batch_id_;
 }

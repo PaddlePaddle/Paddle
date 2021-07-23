@@ -211,6 +211,14 @@ class HCCLCommContext {
     return Get(ring_id, BOOST_GET_CONST(NPUPlace, place).device);
   }
 
+  std::vector<int> GetAllRingIds() const {
+    std::vector<int> ret;
+    for (auto& it : comm_map_) {
+      ret.push_back(it.first);
+    }
+    return ret;
+  }
+
  private:
   // Init global hcom
   HCCLCommContext() {}

@@ -583,6 +583,8 @@ class SectionWorker : public DeviceWorker {
       std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
   void PrepareUnusedVar();
 
+  void WaitOnNPU();
+
  protected:
   int section_id_;
   int thread_id_;
