@@ -85,7 +85,7 @@ TEST(NodeTest, ToString) {
   OpDesc desc;
   desc.SetType("op2");
   std::unique_ptr<Node> op2(CreateNodeForTest(&desc));
-  EXPECT_EQ(op1->ToString(), "op2");
+  EXPECT_EQ(op2->ToString(), "op2");
 }
 
 }  // namespace ir
