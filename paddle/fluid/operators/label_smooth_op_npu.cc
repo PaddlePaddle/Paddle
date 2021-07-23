@@ -22,32 +22,33 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
-void Muls(const platform::Place& place, const aclrtStream& stream,
-          const Tensor* in, float val, Tensor* out) {
+void LabelSmoothMuls(const platform::Place& place, const aclrtStream& stream,
+                     const Tensor* in, float val, Tensor* out) {
   out->mutable_data<T>(in->dims(), place);
   const auto& runner = NpuOpRunner("Muls", {*in}, {*out}, {{"value", val}});
   runner.Run(stream);
 }
 
 template <typename T>
-void Adds(const platform::Place& place, const aclrtStream& stream,
-          const Tensor* in, float val, Tensor* out) {
+void LabelSmoothAdds(const platform::Place& place, const aclrtStream& stream,
+                     const Tensor* in, float val, Tensor* out) {
   out->mutable_data<T>(in->dims(), place);
   const auto& runner = NpuOpRunner("Adds", {*in}, {*out}, {{"value", val}});
   runner.Run(stream);
 }
 
 template <typename T>
-void AddBroadCast(const platform::Place& place, const aclrtStream& stream,
-                  const Tensor* in1, const Tensor* in2, Tensor* out) {
+void LabelSmoothAddBroadCast(const platform::Place& place,
+                             const aclrtStream& stream, const Tensor* in1,
+                             const Tensor* in2, Tensor* out) {
   out->mutable_data<T>(place);
   const auto& runner = NpuOpRunner("AddV2", {*in1, *in2}, {*out}, {});
   runner.Run(stream);
 }
 
 template <typename T>
-void Flatten(const platform::Place& place, const aclrtStream& stream,
-             const Tensor* in, Tensor* out) {
+void LabelSmoothFlatten(const platform::Place& place, const aclrtStream& stream,
+                        const Tensor* in, Tensor* out) {
   out->mutable_data<T>({in->numel()}, place);
   const auto& runner = NpuOpRunner("Flatten", {*in}, {*out}, {});
   runner.Run(stream);
@@ -73,14 +74,14 @@ class LabelSmoothNPUKernel : public framework::OpKernel<T> {
       Tensor tmp;
       Tensor dist;
       Tensor tmp2;
-      Muls<T>(place, stream, in_t, (1 - epsilon), &tmp);
-      Flatten<T>(place, stream, dist_t, &dist);
-      Muls<T>(place, stream, &dist, epsilon, &tmp2);
-      AddBroadCast<T>(place, stream, &tmp, &tmp2, out_t);
+      LabelSmoothMuls<T>(place, stream, in_t, (1 - epsilon), &tmp);
+      LabelSmoothFlatten<T>(place, stream, dist_t, &dist);
+      LabelSmoothMuls<T>(place, stream, &dist, epsilon, &tmp2);
+      LabelSmoothAddBroadCast<T>(place, stream, &tmp, &tmp2, out_t);
     } else {
       Tensor tmp;
-      Muls<T>(place, stream, in_t, (1 - epsilon), &tmp);
-      Adds<T>(place, stream, &tmp, (epsilon / label_dim), out_t);
+      LabelSmoothMuls<T>(place, stream, in_t, (1 - epsilon), &tmp);
+      LabelSmoothAdds<T>(place, stream, &tmp, (epsilon / label_dim), out_t);
     }
   }
 };
@@ -99,7 +100,7 @@ class LabelSmoothGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    Muls<T>(place, stream, d_out_t, 1 - epsilon, d_in_t);
+    LabelSmoothMuls<T>(place, stream, d_out_t, 1 - epsilon, d_in_t);
   }
 };
 
