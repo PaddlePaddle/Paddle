@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor_cache.h"
-#include "paddle/fluid/framework/op_info.h"
 
 namespace paddle {
 namespace framework {
@@ -26,11 +25,11 @@ namespace framework {
 
 namespace details {
 
-static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
+static ExecutionStrategy GetExecutionStrategy(
+    const ExecutorInfoCache::CacheKey &cache_key) {
   framework::ExecutionStrategy execution_strategy;
 
-  auto device_type = platform::Place2DeviceType(place);
-  switch (device_type) {
+  switch (cache_key.device_type_) {
     case platform::DeviceType::CPU: {
       execution_strategy.num_threads_ = 2;
       break;
@@ -47,9 +46,9 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
     }
     default:
       PADDLE_THROW(platform::errors::Unavailable("Unsupported Device type %d.",
-                                                 device_type));
+                                                 cache_key.device_type_));
   }
-  execution_strategy.use_device_ = device_type;
+  execution_strategy.use_device_ = cache_key.device_type_;
 
   return execution_strategy;
 }
@@ -137,36 +136,50 @@ ExecutorInfoCache &ExecutorInfoCache::Instance() {
   return g_exe_cache_info_map;
 }
 
-CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
-                                   const platform::Place &place,
-                                   int64_t start_op_index, int64_t end_op_index,
-                                   bool is_grad, int64_t program_id,
+void ExecutorInfoCache::Finalize() {
+  // NOTE(Aurelius84): DO NOT perform finalize in destructor
+  // to avoid problems caused by destructor order of static
+  // object.
+  info_map_.clear();
+}
+
+CacheInfo GetExecutorInfoFromCache(const ExecutorInfoCache::CacheKey &cache_key,
                                    framework::Scope *scope) {
   auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
 
-  if (!cached_exe_info.Has(program_id, is_grad)) {
-    VLOG(1) << "create exe_info for " << program_id << " is_grad: " << is_grad;
-    auto execution_strategy = details::GetExecutionStrategy(place);
-    auto &build_strategy = cached_exe_info.GetBuildStrategy(program_id);
+  if (!cached_exe_info.Has(cache_key)) {
+    VLOG(1) << "create exe_info for " << cache_key.DebugString();
 
-    // 2. Construct Graph and ParallelExecutor.
+    // TODO(Aurelius84): Consider to use LRU algorithm to replace this.
+    if (cached_exe_info.Size() > 4u /* max_cached_size*/) {
+      VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
+                 "all cache!";
+      cached_exe_info.Finalize();
+    }
+
+    framework::BuildStrategy build_strategy;
+    auto execution_strategy = details::GetExecutionStrategy(cache_key);
+
     auto graph = std::make_shared<framework::ir::Graph>(
-        program_desc, start_op_index, end_op_index);
+        *cache_key.program_desc_, cache_key.start_op_index_,
+        cache_key.end_op_index_);
     auto parallel_executor = std::make_shared<framework::ParallelExecutor>(
-        place, scope, execution_strategy, build_strategy, graph.get());
+        cache_key.place_, scope, execution_strategy, build_strategy,
+        graph.get());
     parallel_executor->PrepareVariables(scope);
 
-    // 3. Insert value into cached map.
-    auto &cached_value = cached_exe_info.GetMutable(program_id, is_grad);
-    cached_value.executor_ = parallel_executor;
-    cached_value.graph_ = std::move(graph);
-    return std::make_pair(parallel_executor, /*is_new_created=*/true);
-  } else {
-    VLOG(1) << "get exe_info from cache by: " << program_id
-            << " is_grad: " << is_grad;
-    auto &cached_value = cached_exe_info.GetMutable(program_id, is_grad);
+    framework::ExecutorInfoCache::ValueType cache_val = {parallel_executor,
+                                                         graph};
+    cached_exe_info.Insert(cache_key, cache_val);
 
-    auto &parallel_executor = cached_value.executor_;
+    bool is_new_created = true;
+    return std::make_pair(parallel_executor, is_new_created);
+  } else {
+    VLOG(1) << "get exe_info from cache by: " << cache_key.DebugString();
+    bool is_new_created = false;
+    auto cache_val = cached_exe_info.GetMutable(cache_key);
+    auto parallel_executor = cache_val.first;
+
     // update op_handle scope_map in pe->executor_->Graph
     std::unordered_map<Scope *, Scope *> scope_map = {
         {parallel_executor->GetLocalScopes().front(), scope}};
@@ -174,7 +187,7 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
     // need to recreate tmp variables in new scope
     parallel_executor->PrepareVariables(scope);
 
-    return std::make_pair(parallel_executor, /*is_new_created=*/false);
+    return std::make_pair(parallel_executor, is_new_created);
   }
 }
 
