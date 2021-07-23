@@ -52,11 +52,13 @@ class TestExpandV2ExpandDimOneDNNOp(TestExpandV2OneDNNOp):
         self.shape = [2, 120]
         self.expand_times = [2, 1]
 
+
 class TestExpandV2CopyScenarioOneDNNOp(TestExpandV2OneDNNOp):
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.shape = (2, 10, 5)
         self.expand_times = (1, 1, 1)
+
 
 class TestExpandV2CopyScenarioShapeNotGivenOneDNNOp(TestExpandV2OneDNNOp):
     def init_data(self):
@@ -76,7 +78,7 @@ def create_expand_v2_bf16_test_class(parent):
             self.dout = self.outputs['Out']
             self.dx = self.dout.copy()
 
-            for i in range (len(self.shape)):
+            for i in range(len(self.shape)):
                 if self.expand_times[i] != 1:
                     self.dx = np.sum(self.dx, axis=i, keepdims=True)
 
