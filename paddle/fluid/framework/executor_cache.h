@@ -76,7 +76,11 @@ class ExecutorInfoCache {
 
   const BuildStrategy& GetBuildStrategy(int64_t program_id) {
     // If not found, insert build_strategy with default value.
-    return strategy_map_[program_id];
+    auto& build_strategy = strategy_map_[program_id];
+    // NOTE(Aurelius84): It's not recommended to set it as true because
+    // it hurts performance.
+    build_strategy.memory_optimize_ = false;
+    return build_strategy;
   }
 
   void SetBuildStrategy(int64_t program_id,
