@@ -21,8 +21,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-void AddsFun(const platform::Place& place, const aclrtStream& stream,
-             const Tensor* x, float scale, Tensor* y) {
+void LogLossAdds(const platform::Place& place, const aclrtStream& stream,
+                 const Tensor* x, float scale, Tensor* y) {
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scale}});
@@ -30,8 +30,8 @@ void AddsFun(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void MulsFun(const platform::Place& place, const aclrtStream& stream,
-             const Tensor* x, float scale, Tensor* y) {
+void LogLossMuls(const platform::Place& place, const aclrtStream& stream,
+                 const Tensor* x, float scale, Tensor* y) {
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scale}});
@@ -39,8 +39,8 @@ void MulsFun(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void MulFun(const platform::Place& place, const aclrtStream& stream,
-            const Tensor* x, const Tensor* y, Tensor* z) {
+void LogLossMul(const platform::Place& place, const aclrtStream& stream,
+                const Tensor* x, const Tensor* y, Tensor* z) {
   //  Calculate z = x * y
   z->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*z}, {});
@@ -48,8 +48,8 @@ void MulFun(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void DivFun(const platform::Place& place, const aclrtStream& stream,
-            const Tensor* x, const Tensor* y, Tensor* z) {
+void LogLossDiv(const platform::Place& place, const aclrtStream& stream,
+                const Tensor* x, const Tensor* y, Tensor* z) {
   //  Calculate z = x / y
   z->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Div", {*x, *y}, {*z}, {});
@@ -57,8 +57,8 @@ void DivFun(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void AddFun(const platform::Place& place, const aclrtStream& stream,
-            const Tensor* x, const Tensor* y, Tensor* z) {
+void LogLossAdd(const platform::Place& place, const aclrtStream& stream,
+                const Tensor* x, const Tensor* y, Tensor* z) {
   //  Calculate z = x + y
   z->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Add", {*x, *y}, {*z}, {});
@@ -66,8 +66,8 @@ void AddFun(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void SubFun(const platform::Place& place, const aclrtStream& stream,
-            const Tensor* x, const Tensor* y, Tensor* z) {
+void LogLossSub(const platform::Place& place, const aclrtStream& stream,
+                const Tensor* x, const Tensor* y, Tensor* z) {
   //  Calculate z = x - y
   z->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
@@ -75,16 +75,16 @@ void SubFun(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void LogFun(const platform::Place& place, const aclrtStream& stream,
-            const Tensor* x, float scale, float shift, Tensor* y) {
+void LogLossLog(const platform::Place& place, const aclrtStream& stream,
+                const Tensor* x, float scale, float shift, Tensor* y) {
   //  Calculate y = log ( scale * x + shift )
   //  Try to use Log API directly but failed, it seems that something is wrong
   //  with this API
   y->mutable_data<T>(x->dims(), place);
   Tensor t_x_scale;
-  MulsFun<T>(place, stream, x, scale, &t_x_scale);
+  LogLossMuls<T>(place, stream, x, scale, &t_x_scale);
   Tensor t_add;
-  AddsFun<T>(place, stream, &t_x_scale, shift - 1, &t_add);
+  LogLossAdds<T>(place, stream, &t_x_scale, shift - 1, &t_add);
   const auto& runner = NpuOpRunner("Log1p", {t_add}, {*y}, {});
   runner.Run(stream);
 }
@@ -107,21 +107,21 @@ class LogLossNPUKernel : public framework::OpKernel<T> {
 
     //  t_log_0 = log ( input + epsilon )
     Tensor t_log_0;
-    LogFun<T>(place, stream, pred, 1, epsilon, &t_log_0);
+    LogLossLog<T>(place, stream, pred, 1, epsilon, &t_log_0);
     //  t_log_1 = log ( 1 - input + epsilon )
     Tensor t_log_1;
-    LogFun<T>(place, stream, pred, -1, epsilon + 1, &t_log_1);
+    LogLossLog<T>(place, stream, pred, -1, epsilon + 1, &t_log_1);
     //  t_mul_0 = label * t_log_0
     Tensor t_mul_0;
-    MulFun<T>(place, stream, label, &t_log_0, &t_mul_0);
+    LogLossMul<T>(place, stream, label, &t_log_0, &t_mul_0);
     //  t_label_m1 = label - 1
     Tensor t_label_m1;
-    AddsFun<T>(place, stream, label, -1, &t_label_m1);
+    LogLossAdds<T>(place, stream, label, -1, &t_label_m1);
     //  t_mul_1 = t_label_m1 * t_log_1
     Tensor t_mul_1;
-    MulFun<T>(place, stream, &t_label_m1, &t_log_1, &t_mul_1);
+    LogLossMul<T>(place, stream, &t_label_m1, &t_log_1, &t_mul_1);
     //  loss_out = t_mul_1 - t_mul_0
-    SubFun<T>(place, stream, &t_mul_1, &t_mul_0, y);
+    LogLossSub<T>(place, stream, &t_mul_1, &t_mul_0, y);
   }
 };
 
@@ -145,24 +145,24 @@ class LogLossGradNPUKernel : public framework::OpKernel<T> {
     if (dpred) {
       //  t_label_m1 = label - 1
       Tensor t_label_m1;
-      AddsFun<T>(place, stream, label, -1, &t_label_m1);
+      LogLossAdds<T>(place, stream, label, -1, &t_label_m1);
       //  t_pred_m = pred - 1 - epsilon
       Tensor t_pred_m;
-      AddsFun<T>(place, stream, pred, -1 - epsilon, &t_pred_m);
+      LogLossAdds<T>(place, stream, pred, -1 - epsilon, &t_pred_m);
       //  t_div_0 = t_label_m1 / t_pred_m
       Tensor t_div_0;
-      DivFun<T>(place, stream, &t_label_m1, &t_pred_m, &t_div_0);
+      LogLossDiv<T>(place, stream, &t_label_m1, &t_pred_m, &t_div_0);
       //  t_pred_p = pred + epsilon
       Tensor t_pred_p;
-      AddsFun<T>(place, stream, pred, epsilon, &t_pred_p);
+      LogLossAdds<T>(place, stream, pred, epsilon, &t_pred_p);
       //  t_div_1 = label / t_pred_p
       Tensor t_div_1;
-      DivFun<T>(place, stream, label, &t_pred_p, &t_div_1);
+      LogLossDiv<T>(place, stream, label, &t_pred_p, &t_div_1);
       //  t_sub = t_div_0 - t_div_1
       Tensor t_sub;
-      SubFun<T>(place, stream, &t_div_0, &t_div_1, &t_sub);
+      LogLossSub<T>(place, stream, &t_div_0, &t_div_1, &t_sub);
       //  dpred = dloss * t_sub
-      MulFun<T>(place, stream, dloss, &t_sub, dpred);
+      LogLossMul<T>(place, stream, dloss, &t_sub, dpred);
     }
   }
 };
