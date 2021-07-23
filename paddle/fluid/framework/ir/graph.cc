@@ -94,8 +94,6 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
     const int64_t end_op_index) {
   std::unordered_map<std::string, std::pair<VarDesc *, int>>
       name_to_desc_block_id;
-  // var nodes for each var name, will have multiple versions in SSA
-  std::map<std::string, std::vector<ir::Node *>> var_nodes;
 
   const BlockDesc *block_var_visible = &block;
   while (block_var_visible != nullptr) {
@@ -103,11 +101,25 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
       name_to_desc_block_id.emplace(
           var->Name(), std::make_pair(var, block_var_visible->ID()));
     }
+    const BlockDesc *forward_block = block_var_visible->ForwardBlock();
+    if (forward_block != nullptr) {
+      for (auto *var : forward_block->AllVars()) {
+        name_to_desc_block_id.emplace(var->Name(),
+                                      std::make_pair(var, forward_block->ID()));
+      }
+    }
     block_var_visible = block_var_visible->ParentBlock();
   }
 
+  // var nodes for each var name, will have multiple versions in SSA
+  std::map<std::string, std::vector<ir::Node *>> var_nodes;
+
+  std::unordered_map<std::string, VarDesc *> not_visited_vars;
+  for (auto *var : block.AllVars()) {
+    not_visited_vars.emplace(var->Name(), var);
+  }
+
   int desc_order = 0;
-  auto not_visited_vars = name_to_desc_block_id;
   auto all_ops = block.AllOps();
   PADDLE_ENFORCE_LE(
       end_op_index, all_ops.size(),
@@ -178,11 +190,10 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
   if (!is_partial_) {
     for (auto &pair : not_visited_vars) {
       const auto &var_name = pair.first;
-      auto *var_desc = pair.second.first;
+      auto *var_desc = pair.second;
       if (var_name != kEmptyVarName) {
         VLOG(10) << "Create isolated var node " << var_name;
-        var_nodes[var_name].push_back(
-            CreateVarNode(var_desc, pair.second.second));
+        var_nodes[var_name].push_back(CreateVarNode(var_desc));
       }
     }
   }

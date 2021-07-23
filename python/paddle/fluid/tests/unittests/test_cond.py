@@ -18,6 +18,7 @@ import numpy as np
 import os
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
@@ -27,6 +28,8 @@ from paddle.fluid.framework import Program, program_guard
 from simple_nets import simple_fc_net_with_inputs, batchnorm_fc_with_inputs
 
 np.random.seed(123)
+
+paddle.enable_static()
 
 
 class TestCondInputOutput(unittest.TestCase):
