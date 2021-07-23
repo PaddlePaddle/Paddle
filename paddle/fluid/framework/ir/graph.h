@@ -412,7 +412,7 @@ class Graph {
         this->IsMainGraph(), true,
         platform::errors::InvalidArgument("This graph is not main_graph"));
     sub_graphs_.push_back(std::move(sub_graph));
-    PADDLE_ENFORCE_EQ(sub_graphs_.size() - 1, block_id_,
+    PADDLE_ENFORCE_EQ(sub_graphs_.size() - 1, sub_graph->block_id_,
                       platform::errors::InvalidArgument(
                           "sub_graph idx is not equal to block_id_"));
   }
