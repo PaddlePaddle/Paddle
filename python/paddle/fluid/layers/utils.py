@@ -17,7 +17,7 @@ import collections
 import copy
 import six
 import numpy as np
-from ..framework import Block, Variable, in_dygraph_mode
+from ..framework import Block, Variable, in_dygraph_mode, Program
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
 from sys import version_info
@@ -76,6 +76,15 @@ def is_sequence(seq):
         return True
     return (isinstance(seq, collections.Sequence) and
             not isinstance(seq, six.string_types))
+
+
+def _hash_program(prog):
+    """
+    Return int hash value calculated by program's string..
+    """
+    assert isinstance(prog, Program)
+    prog_str = prog.to_string(throw_on_error=False, with_details=False)
+    return hash(prog_str) & 0xfffffff
 
 
 def _hash_with_id(*args):
