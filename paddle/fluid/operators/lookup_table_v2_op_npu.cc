@@ -21,6 +21,36 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static int iter_num = 0;
+
+template <typename T>
+void vector_to_file(const std::vector<T> &vec, std::string base_file_name) {
+  std::ostringstream sout;
+  sout << base_file_name << "_" << iter_num;
+  std::string file_name = sout.str();
+  std::cout << file_name << std::endl;
+
+  auto f = fopen(file_name.c_str(), "w");
+  for (size_t i = 0; i < vec.size(); i++) {
+    fprintf(f, "%f\n", static_cast<float>(vec[i]));
+  }
+  fclose(f);
+}
+
+template <>
+void vector_to_file(const std::vector<int> &vec, std::string base_file_name) {
+  std::ostringstream sout;
+  sout << base_file_name << "_" << iter_num;
+  std::string file_name = sout.str();
+  std::cout << file_name << std::endl;
+
+  auto f = fopen(file_name.c_str(), "w");
+  for (size_t i = 0; i < vec.size(); i++) {
+    fprintf(f, "%d\n", vec[i]);
+  }
+  fclose(f);
+}
+
 template <typename DeviceContext, typename T>
 class LookupTableV2NPUKernel : public framework::OpKernel<T> {
  public:
@@ -41,8 +71,14 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     output_t->mutable_data<T>(ctx.GetPlace());
 
     // add copy ids to ensure ids_t is prepared.
-    //std::vector<int> ids;
-    //TensorToVector(*ids_t, ctx.device_context(), &ids);
+    // std::vector<T> table;
+    // TensorToVector(*table_t, ctx.device_context(), &table);
+    // vector_to_file(table, "./output/table");
+
+    std::vector<int> ids;
+    iter_num += 1;
+    TensorToVector(*ids_t, ctx.device_context(), &ids);
+    vector_to_file(ids, "./output/ids");
     VLOG(4) << "input ids:" << ids_t;
 
     NpuOpRunner runner;
@@ -69,6 +105,12 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
+
+    std::vector<int> ids;
+    iter_num += 1;
+    TensorToVector(*ids_t, ctx.device_context(), &ids);
+    vector_to_file(ids, "./output/ids");
+    VLOG(4) << "input ids:" << ids_t;
 
     int embedding_dim = table_grad_t->dims()[1];
 
