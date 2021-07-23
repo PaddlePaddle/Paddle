@@ -169,7 +169,7 @@ size_t NPUMinChunkSize() {
   // though no document specify that explicitly.
   // See https://gitee.com/zhiqiuchen/Ascend/tree/master/test_reduce_sum_d for
   // details.
-  return 1 << 9;
+  return 1 << 10;
 }
 
 size_t NPUMaxChunkSize() {

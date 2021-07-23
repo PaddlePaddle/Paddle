@@ -103,15 +103,18 @@ void SectionWorker::PrepareUnusedVar() {
 }
 
 void SectionWorker::WaitOnNPU() {
+  return;
 #ifdef PADDLE_WITH_ASCEND_CL
   dev_ctx_->Wait();
 
-  const auto &obj = paddle::platform::HCCLCommContext::Instance();
-  std::vector<int> ids = obj.GetAllRingIds();
-  for (auto &rid : ids) {
-    paddle::platform::HCCLComm *comm = obj.Get(rid, place_);
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(comm->stream()));
-  }
+/*
+const auto &obj = paddle::platform::HCCLCommContext::Instance();
+std::vector<int> ids = obj.GetAllRingIds();
+for (auto &rid : ids) {
+  paddle::platform::HCCLComm *comm = obj.Get(rid, place_);
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(comm->stream()));
+}
+*/
 #endif
 }
 
