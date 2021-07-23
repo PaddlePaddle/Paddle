@@ -75,6 +75,19 @@ TEST(NodeTest, Basic) {
   EXPECT_FALSE(alive2);
 }
 
+TEST(NodeTest, ToString) {
+  std::unique_ptr<Node> n1(CreateNodeForTest("n1", Node::Type::kVariable));
+  EXPECT_EQ(n1->ToString(), "n1");
+
+  std::unique_ptr<Node> op1(CreateNodeForTest("op1", Node::Type::kOperation));
+  EXPECT_EQ(op1->ToString(), "op1");
+
+  OpDesc desc;
+  desc.SetType("op2");
+  std::unique_ptr<Node> op2(CreateNodeForTest(&desc));
+  EXPECT_EQ(op1->ToString(), "op2");
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
