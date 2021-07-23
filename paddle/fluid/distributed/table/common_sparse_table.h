@@ -33,7 +33,6 @@
 #include "paddle/fluid/string/string_helper.h"
 
 #define PSERVER_SAVE_SUFFIX ".shard"
-using boost::lexical_cast;
 
 namespace paddle {
 namespace distributed {
@@ -164,7 +163,7 @@ class CommonSparseTable : public SparseTable {
   virtual int32_t push_sparse_param(const uint64_t* keys, const float* values,
                                     size_t num);
 
-  virtual int32_t set_global_lr(float* lr) override;
+  int32_t set_global_lr(float* lr) override;
 
   virtual int32_t pour();
   virtual int32_t flush();
