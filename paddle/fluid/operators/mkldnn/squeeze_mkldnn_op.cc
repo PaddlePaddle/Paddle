@@ -20,6 +20,7 @@ namespace operators {
 
 using paddle::framework::LoDTensor;
 using platform::to_void_cast;
+using platform::GetMKLDNNFormat;
 
 template <typename T>
 class SqueezeMKLDNNKernel : public framework::OpKernel<T> {
@@ -36,21 +37,27 @@ class SqueezeMKLDNNKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
 
-    auto& axes = ctx.Attr<std::vector<int>>("axes");
     auto x_dims = x->dims();
     auto x_vec_dims = framework::vectorize(x_dims);
-    auto out_dims = GetOutputShape(axes, x_dims, true);
+
+    framework::DDim out_dims;
+    if (ctx.Type() == "squeeze"){
+      auto& axes = ctx.Attr<std::vector<int>>("axes");
+      out_dims = GetOutputShape(axes, x_dims, true);
+    } else {
+      out_dims = out->dims();
+    }
 
     mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
     std::string key = platform::CreateKey(dev_ctx, x_vec_dims, x->format(),
-                                          x->format(), x_type);
+                                          out->format(), x_type);
     platform::ReorderMKLDNNHandler reorder_handler(
         x_vec_dims, x->type(), x_type, dev_ctx, onednn_engine, key);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
     auto reorder_dst_memory_p =
-        reorder_handler.AcquireDstMemory(out, x->format(), ctx.GetPlace());
+        reorder_handler.AcquireDstMemory(out, getPlainFormatTag(x), ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                     reorder_dst_memory_p);
 
@@ -61,27 +68,31 @@ class SqueezeMKLDNNKernel : public framework::OpKernel<T> {
 
     out->Resize(out_dims);
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(getSqueezedFormatTagFromStrides(
-        reorder_src_memory_p->get_desc(), out_dims));
+    out->set_format(GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(framework::vectorize(out_dims))));
   }
+ protected:
+   mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
+    auto tensor_dims_size = tensor->dims().size();
+    PADDLE_ENFORCE_EQ(
+        tensor_dims_size <= 6 && tensor_dims_size >= 1, true,
+        platform::errors::InvalidArgument(
+            "Dims for squeeze_grad oneDNN op must be in range <1, 6>"));
 
- private:
-  mkldnn::memory::format_tag getSqueezedFormatTagFromStrides(
-      const mkldnn::memory::desc& md, const framework::DDim& out_dims) const {
-    const int64_t* in_strides = md.data.format_desc.blocking.strides;
-    const int64_t* in_dims = md.data.dims;
-    const int64_t ndims = md.data.ndims;
-
-    std::vector<int64_t> out_strides(out_dims.size(), 1);
-
-    int j = out_dims.size() - 1;
-    for (int i = ndims - 1; i >= 0 || j >= 0; --i)
-      if (out_dims[j] == in_dims[i]) out_strides[j--] = in_strides[i];
-
-    mkldnn::memory::desc out_md(framework::vectorize(out_dims),
-                                platform::MKLDNNGetDataType<T>(), out_strides);
-    return platform::GetMKLDNNFormat(out_md);
-  }
+    switch (tensor_dims_size) {
+      case 1:
+        return mkldnn::memory::format_tag::a;
+      case 2:
+        return mkldnn::memory::format_tag::ab;
+      case 3:
+        return mkldnn::memory::format_tag::abc;
+      case 4:
+        return mkldnn::memory::format_tag::abcd;
+      case 5:
+        return mkldnn::memory::format_tag::abcde;
+      default:
+        return mkldnn::memory::format_tag::abcdef;
+    }
+   }
 };
 
 template <typename T>
@@ -100,9 +111,9 @@ class SqueezeGradMKLDNNKernel : public SqueezeMKLDNNKernel<T> {
     auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
 
     framework::DDim x_dims;
-    if (ctx.Type() == "squeeze_grad") {
-      x_dims = ctx.Input<LoDTensor>("X")->dims();
-    } else {
+    if (ctx.Type() != "squeeze2_grad") {
+      x_dims = dx->dims();
+    } else if(ctx.Type() == "squeeze2_grad"){
       auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
       x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     }
@@ -111,14 +122,14 @@ class SqueezeGradMKLDNNKernel : public SqueezeMKLDNNKernel<T> {
     mkldnn::memory::data_type dout_type =
         framework::ToMKLDNNDataType(dout->type());
     std::string key = platform::CreateKey(
-        dev_ctx, dout_vec_dims, dout->format(), dout->format(), dout_type);
+        dev_ctx, dout_vec_dims,  this->getPlainFormatTag(dx), dx->format(), dout_type);
     platform::ReorderMKLDNNHandler reorder_handler(
         dout_vec_dims, dout->type(), dout_type, dev_ctx, onednn_engine, key);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->format(), platform::to_void_cast(dout->data<T>()));
     auto reorder_dst_memory_p =
-        reorder_handler.AcquireDstMemory(dx, dout->format(), ctx.GetPlace());
+        reorder_handler.AcquireDstMemory(dx,  this->getPlainFormatTag(dout), ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                     reorder_dst_memory_p);
 
@@ -128,35 +139,7 @@ class SqueezeGradMKLDNNKernel : public SqueezeMKLDNNKernel<T> {
 
     dx->Resize(x_dims);
     dx->set_layout(framework::DataLayout::kMKLDNN);
-    dx->set_format(getExtendedFormatTagFromStrides(
-        reorder_src_memory_p->get_desc(), x_dims));
-  }
-
- private:
-  mkldnn::memory::format_tag getExtendedFormatTagFromStrides(
-      const mkldnn::memory::desc& md, const framework::DDim& out_dims) const {
-    const int64_t* in_strides = md.data.format_desc.blocking.strides;
-    const int64_t* in_dims = md.data.dims;
-    const int64_t ndims = md.data.ndims;
-
-    std::vector<int64_t> out_strides(out_dims.size(), 1);
-
-    int j = ndims - 1;
-    for (int i = out_dims.size() - 1; i >= 0; --i) {
-      if (j >= 0) {
-        if (out_dims[i] == in_dims[j])
-          out_strides[i] = in_strides[j--];
-        else
-          out_strides[i] =
-              (i != ndims - 1) ? out_dims[i + 1] * out_strides[i + 1] : 1;
-      } else {
-        out_strides[i] = out_dims[i + 1] * out_strides[i + 1];
-      }
-    }
-
-    mkldnn::memory::desc out_md(framework::vectorize(out_dims),
-                                platform::MKLDNNGetDataType<T>(), out_strides);
-    return platform::GetMKLDNNFormat(out_md);
+    dx->set_format(GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(framework::vectorize(x_dims))));
   }
 };
 }  // namespace operators
@@ -176,5 +159,21 @@ REGISTER_OP_KERNEL(squeeze2, MKLDNN, paddle::platform::CPUPlace,
                    ops::SqueezeMKLDNNKernel<paddle::platform::bfloat16>);
 
 REGISTER_OP_KERNEL(squeeze2_grad, MKLDNN, paddle::platform::CPUPlace,
+                   ops::SqueezeGradMKLDNNKernel<float>,
+                   ops::SqueezeGradMKLDNNKernel<paddle::platform::bfloat16>);
+
+REGISTER_OP_KERNEL(reshape, MKLDNN, paddle::platform::CPUPlace,
+                   ops::SqueezeMKLDNNKernel<float>,
+                   ops::SqueezeMKLDNNKernel<paddle::platform::bfloat16>);
+
+REGISTER_OP_KERNEL(reshape_grad, MKLDNN, paddle::platform::CPUPlace,
+                   ops::SqueezeGradMKLDNNKernel<float>,
+                   ops::SqueezeGradMKLDNNKernel<paddle::platform::bfloat16>);
+
+REGISTER_OP_KERNEL(reshape2, MKLDNN, paddle::platform::CPUPlace,
+                   ops::SqueezeMKLDNNKernel<float>,
+                   ops::SqueezeMKLDNNKernel<paddle::platform::bfloat16>);
+
+REGISTER_OP_KERNEL(reshape2_grad, MKLDNN, paddle::platform::CPUPlace,
                    ops::SqueezeGradMKLDNNKernel<float>,
                    ops::SqueezeGradMKLDNNKernel<paddle::platform::bfloat16>);
