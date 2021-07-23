@@ -131,6 +131,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "anchor_generator",
       "reduce_sum",
       "reduce_mean",
+      "tile",
   };
 };
 
@@ -728,6 +729,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           if (!x) return false;
         }
       }
+    }
+
+    if (op_type == "tile") {
+      // Paddle-TRT does not support the input tensors.
+      auto inputs = desc.InputArgumentNames();
+      for (auto& input : inputs) {
+        if (input == "repeat_times_tensor" &&
+            desc.Input("repeat_times_tensor").size() > 0)
+          return false;
+        if (input == "RepeatTimes" && desc.Input("RepeatTimes").size() > 0)
+          return false;
+      }
+      if (with_dynamic_shape) return false;
+      if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
     }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
