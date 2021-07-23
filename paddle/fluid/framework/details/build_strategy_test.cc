@@ -310,9 +310,11 @@ TEST(BuildStrategy, Basic) {
   BuildStrategy build_strategy;
 
   ProgramDesc prog;
-  ir::Graph graph(prog);
+  ir::Graph old_graph(prog), graph(prog);
 
   BuildStrategyApply(&build_strategy, &graph);
+
+  ASSERT_TRUE(CheckGraphSame(&old_graph, &graph));
 }
 
 TEST(BuildStrategy, TestSingleGraph) {
@@ -323,7 +325,7 @@ TEST(BuildStrategy, TestSingleGraph) {
   BuildStrategyApply(&build_strategy, graph.get());
 
   // graph should be change after pass optimize
-  ASSERT_FALSE(CheckGraphSame(&old_graph, graph.get()));
+  ASSERT_TRUE(CheckGraphSame(&old_graph, graph.get()));
 }
 
 TEST(BuildStrategy, TestMultiGraph) {
@@ -338,7 +340,7 @@ TEST(BuildStrategy, TestMultiGraph) {
   BuildStrategyApply(&build_strategy, graph.get());
 
   // graph should be change after pass optimize
-  ASSERT_FALSE(CheckGraphSame(&old_graph, graph.get()));
+  ASSERT_TRUE(CheckGraphSame(&old_graph, graph.get()));
 
   // Recover FLAGS_convert_all_blocks.
   FLAGS_convert_all_blocks = flag_temp;
