@@ -26,7 +26,6 @@ program_translator = ProgramTranslator()
 
 class TestResnetWithPass(unittest.TestCase):
     def setUp(self):
-        os.environ[''] = str(2)
         self.build_strategy = paddle.static.BuildStrategy()
         self.build_strategy.fuse_elewise_add_act_ops = True
         self.build_strategy.fuse_bn_act_ops = True
