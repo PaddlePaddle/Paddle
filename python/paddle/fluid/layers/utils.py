@@ -17,7 +17,7 @@ import collections
 import copy
 import six
 import numpy as np
-from ..framework import Block, Variable, in_dygraph_mode, Program
+from ..framework import Block, Variable, in_dygraph_mode, core, Program
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
 from sys import version_info
@@ -82,9 +82,12 @@ def _hash_program(prog):
     """
     Return int hash value calculated by program's string..
     """
-    assert isinstance(prog, Program)
-    prog_str = prog.to_string(throw_on_error=False, with_details=False)
-    return hash(prog_str) & 0xfffffff
+    assert isinstance(prog, (Program, core.ProgramDesc))
+    if isinstance(prog, Program):
+        prog = prog.desc
+
+    proto_str = prog.serialize_to_string()
+    return hash(proto_str) & 0xfffffff
 
 
 def _hash_with_id(*args):
