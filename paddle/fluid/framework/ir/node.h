@@ -138,6 +138,13 @@ class Node {
 
   int DescOrder() const { return desc_order_; }
 
+  int GetVarNodeBlockId() const {
+    PADDLE_ENFORCE_EQ(
+        type_ == Type::kVariable && var_desc_, true,
+        platform::errors::InvalidArgument("Node must be type of variable."));
+    return block_id_;
+  }
+
   const std::string ToString() const {
     if (IsOp()) {
       std::string op_str(Name());
@@ -203,6 +210,7 @@ class Node {
   int id_;
 
   int desc_order_;
+  int block_id_{-1};
 
  private:
   // ID can only set by a Graph.
@@ -218,19 +226,21 @@ class Node {
   friend std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
   friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 
-  explicit Node(const std::string& name, Type type)
+  explicit Node(const std::string& name, Type type, int block_id = 0)
       : name_(name),
         var_desc_(nullptr),
         op_desc_(nullptr),
         type_(type),
-        desc_order_(NO_DESC_ORDER) {}
+        desc_order_(NO_DESC_ORDER),
+        block_id_(block_id) {}
 
-  explicit Node(VarDesc* var_desc)
+  explicit Node(VarDesc* var_desc, int block_id)
       : name_(var_desc->Name()),
         var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
         type_(Type::kVariable),
-        desc_order_(NO_DESC_ORDER) {}
+        desc_order_(NO_DESC_ORDER),
+        block_id_(block_id) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),

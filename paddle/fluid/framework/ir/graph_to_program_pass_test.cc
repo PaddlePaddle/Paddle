@@ -130,7 +130,7 @@ void BuildProgramWithMultiBlock(ProgramDesc* program) {
   mul_op_1->SetType("mul");
   mul_op_1->SetInput("X", {mul_1_x->Name()});
   mul_op_1->SetInput("Y", {mul_1_y->Name()});
-  mul_op_1->SetOutput("Y", {mul_1_out->Name()});
+  mul_op_1->SetOutput("Out", {mul_1_out->Name()});
 
   // building cond op such as less_than
   auto* less_than_op_1 = global_block->AppendOp();
@@ -206,7 +206,7 @@ void BuildProgramWithMultiBlock(ProgramDesc* program) {
 
   auto* mul_2_out = global_block->Var("Mul_2_Out");
   mul_2_out->SetType(proto::VarType::LOD_TENSOR);
-  mul_op_2->SetOutput("Y", {mul_2_out->Name()});
+  mul_op_2->SetOutput("Out", {mul_2_out->Name()});
 
   auto* less_than_op_2 = sub_blocks[0]->AppendOp();
   less_than_op_2->SetType("less_than");
@@ -273,7 +273,7 @@ void BuildProgramWithMultiBlock(ProgramDesc* program) {
   mul_op_3->SetType("mul");
   mul_op_3->SetInput("X", {mul_3_x->Name()});
   mul_op_3->SetInput("Y", {mul_3_y->Name()});
-  mul_op_3->SetOutput("Y", {mul_3_out->Name()});
+  mul_op_3->SetOutput("Out", {mul_3_out->Name()});
 }
 
 bool VarComparator(const VarDesc* a, const VarDesc* b) {
