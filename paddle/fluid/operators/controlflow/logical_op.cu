@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/logical_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
