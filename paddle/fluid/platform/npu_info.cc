@@ -99,6 +99,7 @@ void SetNPUDeviceId(int id) {
                         id, GetNPUDeviceCount()));
   // NOTE(zihqiu): It is recommended to call aclrtSetDevice and aclrtResetDevice
   // pairly.
+  VLOG(3) << "SetNPUDeviceId aclrtSetDevice " << id;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(id));
 }
 
@@ -108,6 +109,7 @@ void ResetNPUDeviceId(int id) {
                         "Device id must be less than NPU count, "
                         "but received id is: %d. NPU count is: %d.",
                         id, GetNPUDeviceCount()));
+  VLOG(3) << "ResetNPUDeviceId aclrtResetDevice " << id;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetDevice(id));
 }
 
@@ -382,7 +384,7 @@ AclInstance &AclInstance::Instance() {
 
 AclInstance::AclInstance() {
   PADDLE_ENFORCE_NPU_SUCCESS(aclInit(nullptr));
-  VLOG(4) << "Call aclrtSetDevice ";
+  VLOG(3) << "Call aclrtSetDevice ";
   // NOTE(zhiqiu): why set devices here?
   // Because ACL creates a default context which contains 2 streams
   // when calling aclrtSetDeviceId, so usually we do not need to
@@ -393,7 +395,7 @@ AclInstance::AclInstance() {
   devices_ = platform::GetSelectedNPUDevices();
   for (auto it = devices_.rbegin(); it != devices_.rend(); ++it) {
     SetNPUDeviceId(*it);
-    VLOG(4) << "Call aclrtSetDevice " << *it;
+    VLOG(3) << "Call aclrtSetDevice " << *it;
   }
 }
 
@@ -403,11 +405,11 @@ void AclInstance::Finalize() {
   // object.
   for (size_t i = 0; i < devices_.size(); ++i) {
     auto status = aclrtResetDevice(devices_[i]);
-    VLOG(4) << "Call aclrtResetDevice " << devices_[i]
+    VLOG(3) << "Call aclrtResetDevice " << devices_[i]
             << " status = " << status;
   }
   auto status = aclFinalize();
-  VLOG(4) << "Call aclFinalize, status = " << status;
+  VLOG(3) << "Call aclFinalize, status = " << status;
 }
 
 }  // namespace platform
