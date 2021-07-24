@@ -68,26 +68,10 @@ class SumOpVarTypeInference : public VarTypeInference {
   }
 };
 
-class DummyOpMaker : public OpProtoAndCheckerMaker {
- public:
-  void Make() {
-    AddInput("X", "").AsDuplicable();
-    AddOutput("Out", "").AsDuplicable();
-    AddComment("");
-  }
-};
-
-class DummyOpVarTypeInference : public VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext *ctx) const override {}
-};
-
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_OPERATOR(sum, paddle::framework::NOP, paddle::framework::SumOpMaker,
-                  paddle::framework::SumOpVarTypeInference);
-REGISTER_OPERATOR(dummy, paddle::framework::NOP, paddle::framework::SumOpMaker,
                   paddle::framework::SumOpVarTypeInference);
 REGISTER_OPERATOR(sum_without_infer_var_type, paddle::framework::NOP,
                   paddle::framework::SumOpMaker);
@@ -141,15 +125,8 @@ std::unique_ptr<ir::Graph> CreateGraph() {
   op->SetOutput("Out", {"b1"});
   op->SetAttr("op_role", 1);
 
-  op = prog.MutableBlock(0)->AppendOp();
-  op->SetType("dummy");
-  op->SetInput("X", {"c1"});
-  op->SetOutput("Out", {"a1"});
-  op->SetAttr("op_role", 1);
-
   prog.MutableBlock(0)->Var("a1")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(0)->Var("b1")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("c1")->SetType(proto::VarType::LOD_TENSOR);
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   return g;
@@ -183,15 +160,8 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
   op->SetOutput("Out", {"b1"});
   op->SetAttr("op_role", 1);
 
-  op = prog.MutableBlock(1)->AppendOp();
-  op->SetType("dummy");
-  op->SetInput("X", {"c1"});
-  op->SetOutput("Out", {"a1"});
-  op->SetAttr("op_role", 1);
-
   prog.MutableBlock(1)->Var("a1")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(1)->Var("b1")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(1)->Var("c1")->SetType(proto::VarType::LOD_TENSOR);
 
   // Set contents in block_2.
   op = prog.MutableBlock(2)->AppendOp();
@@ -200,15 +170,8 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
   op->SetOutput("Out", {"b2"});
   op->SetAttr("op_role", 1);
 
-  op = prog.MutableBlock(2)->AppendOp();
-  op->SetType("dummy");
-  op->SetInput("X", {"c2"});
-  op->SetOutput("Out", {"b2"});
-  op->SetAttr("op_role", 1);
-
   prog.MutableBlock(2)->Var("a2")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(2)->Var("b2")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(2)->Var("c2")->SetType(proto::VarType::LOD_TENSOR);
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   return g;
@@ -324,16 +287,8 @@ TEST(BuildStrategy, TestSingleGraph) {
 
   BuildStrategyApply(&build_strategy, graph.get());
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  // graph should be change after pass optimize in NCCL
-  ASSERT_FALSE(CheckGraphSame(&old_graph, graph.get()));
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-  // graph should be change after pass optimize in XPU
-  ASSERT_FALSE(CheckGraphSame(&old_graph, graph.get()));
-#else
-  // else graph should not change
+  // graph should not change for no pass here
   ASSERT_TRUE(CheckGraphSame(&old_graph, graph.get()));
-#endif
 }
 
 TEST(BuildStrategy, TestMultiGraph) {
@@ -347,16 +302,8 @@ TEST(BuildStrategy, TestMultiGraph) {
 
   BuildStrategyApply(&build_strategy, graph.get());
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  // graph should be change after pass optimize in NCCL
-  ASSERT_FALSE(CheckGraphSame(&old_graph, graph.get()));
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-  // graph should be change after pass optimize in XPU
-  ASSERT_FALSE(CheckGraphSame(&old_graph, graph.get()));
-#else
-  // else graph should not change
+  // graph should not change for no pass here
   ASSERT_TRUE(CheckGraphSame(&old_graph, graph.get()));
-#endif
 
   // Recover FLAGS_convert_all_blocks.
   FLAGS_convert_all_blocks = flag_temp;
