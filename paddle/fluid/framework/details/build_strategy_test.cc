@@ -324,8 +324,16 @@ TEST(BuildStrategy, TestSingleGraph) {
 
   BuildStrategyApply(&build_strategy, graph.get());
 
-  // graph should be change after pass optimize
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  // graph should be change after pass optimize in NCCL
+  ASSERT_FALSE(CheckGraphSame(&old_graph, graph.get()));
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+  // graph should be change after pass optimize in XPU
+  ASSERT_FALSE(CheckGraphSame(&old_graph, graph.get()));
+#else
+  // else graph should not change
   ASSERT_TRUE(CheckGraphSame(&old_graph, graph.get()));
+#endif
 }
 
 TEST(BuildStrategy, TestMultiGraph) {
@@ -339,8 +347,16 @@ TEST(BuildStrategy, TestMultiGraph) {
 
   BuildStrategyApply(&build_strategy, graph.get());
 
-  // graph should be change after pass optimize
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  // graph should be change after pass optimize in NCCL
+  ASSERT_FALSE(CheckGraphSame(&old_graph, graph.get()));
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+  // graph should be change after pass optimize in XPU
+  ASSERT_FALSE(CheckGraphSame(&old_graph, graph.get()));
+#else
+  // else graph should not change
   ASSERT_TRUE(CheckGraphSame(&old_graph, graph.get()));
+#endif
 
   // Recover FLAGS_convert_all_blocks.
   FLAGS_convert_all_blocks = flag_temp;
