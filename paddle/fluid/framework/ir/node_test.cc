@@ -80,12 +80,20 @@ TEST(NodeTest, ToString) {
   EXPECT_EQ(n1->ToString(), "n1");
 
   std::unique_ptr<Node> op1(CreateNodeForTest("op1", Node::Type::kOperation));
-  EXPECT_EQ(op1->ToString(), "op1");
+
+  std::unique_ptr<Node> n2(CreateNodeForTest("n2", Node::Type::kVariable));
+  std::unique_ptr<Node> n3(CreateNodeForTest("n3", Node::Type::kVariable));
+
+  op1->inputs.emplace_back(n2.get());
+  op1->outputs.emplace_back(n3.get());
+  EXPECT_EQ(op1->ToString(), "op1n2n3");
 
   OpDesc desc;
   desc.SetType("op2");
+  desc.SetInput("X", {"arg1"});
+  desc.SetOutput("Out", {"res1"});
   std::unique_ptr<Node> op2(CreateNodeForTest(&desc));
-  EXPECT_EQ(op2->ToString(), "op2");
+  EXPECT_EQ(op2->ToString(), "op2Xarg1Outres1");
 }
 
 }  // namespace ir
