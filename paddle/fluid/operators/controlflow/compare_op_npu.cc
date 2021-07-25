@@ -83,6 +83,7 @@ class GreaterThanNPUKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
 
+    // testing:int axis = context.Attr<int>("axis");
     z->mutable_data<bool>(ctx.GetPlace());
     const auto& runner = NpuOpRunner("Greater", {*x, *y}, {*z});
     auto stream =
