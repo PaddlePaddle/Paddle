@@ -82,6 +82,90 @@ class TestLessthan(OpTest):
         self.check_output_with_place(self.place)
 
 
+class TestLessEqual(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "less_equal"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        out = x <= y
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.outputs = {'Out': out}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+
+class TestGreaterThan(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "greater_than"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        out = x > y
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.outputs = {'Out': out}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+
+class TestGreaterEqual(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "greater_equal"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        out = x >= y
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.outputs = {'Out': out}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+
 class TestEqual2(TestEqual):
     def setUp(self):
         self.set_npu()
@@ -122,6 +206,66 @@ class TestLessthan2(TestLessthan):
         self.outputs = {'Out': out}
 
 
+class TestLessEqual2(TestLessEqual):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "less_equal"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = x.copy()
+        y[0][1] = 1
+        out = x <= y  # all elements are equal, except position [0][1]
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.outputs = {'Out': out}
+
+
+class TestGreaterThan2(TestGreaterThan):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "greater_than"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = x.copy()
+        y[0][1] = 1
+        out = x > y  # all elements are equal, except position [0][1]
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.outputs = {'Out': out}
+
+
+class TestGreaterEqual2(TestGreaterEqual):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "greater_equal"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = x.copy()
+        y[0][1] = 1
+        out = x >= y  # all elements are equal, except position [0][1]
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.outputs = {'Out': out}
+
+
 class TestEqual2FP16(TestEqual2):
     def init_dtype(self):
         self.dtype = np.float16
@@ -133,6 +277,21 @@ class TestEqual2Int(TestEqual2):
 
 
 class TestLessthan2FP16(TestLessthan2):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestLessEqual2FP16(TestLessEqual2):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestGreatherThan2FP16(TestGreaterThan2):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestGreaterEqual2FP16(TestGreaterEqual2):
     def init_dtype(self):
         self.dtype = np.float16
 
