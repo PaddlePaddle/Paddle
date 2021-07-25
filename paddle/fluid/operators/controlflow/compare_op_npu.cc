@@ -83,7 +83,6 @@ class GreaterThanNPUKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
 
-    // testing:int axis = context.Attr<int>("axis");
     z->mutable_data<bool>(ctx.GetPlace());
     const auto& runner = NpuOpRunner("Greater", {*x, *y}, {*z});
     auto stream =
@@ -136,12 +135,12 @@ REGISTER_OP_NPU_KERNEL(
     greater_than,
     ops::GreaterThanNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::GreaterThanNPUKernel<paddle::platform::NPUDeviceContext,
-                                paddle::platform::float16>);
+                              paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     greater_equal,
     ops::GreaterEqualNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::GreaterEqualNPUKernel<paddle::platform::NPUDeviceContext,
-                                paddle::platform::float16>);
+                               paddle::platform::float16>);
 
 #endif
