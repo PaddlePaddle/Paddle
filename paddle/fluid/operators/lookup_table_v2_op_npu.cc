@@ -75,11 +75,13 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     // TensorToVector(*table_t, ctx.device_context(), &table);
     // vector_to_file(table, "./output/table");
 
+    /*
     std::vector<int> ids;
     iter_num += 1;
     TensorToVector(*ids_t, ctx.device_context(), &ids);
     vector_to_file(ids, "./output/ids");
     VLOG(4) << "input ids:" << ids_t;
+    */
 
     NpuOpRunner runner;
     runner.SetType("GatherV2")
@@ -106,11 +108,13 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+    /*
     std::vector<int> ids;
     iter_num += 1;
     TensorToVector(*ids_t, ctx.device_context(), &ids);
     vector_to_file(ids, "./output/ids");
     VLOG(4) << "input ids:" << ids_t;
+    */
 
     int embedding_dim = table_grad_t->dims()[1];
 
