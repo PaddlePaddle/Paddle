@@ -177,7 +177,7 @@ class Node {
         std::string in_str = "(";
         pre_str = "";
         for (const auto& input : sorted_inputs) {
-          op_str.append(pre_str + input->Name());
+          in_str.append(pre_str + input->Name());
           pre_str = ", ";
         }
         in_str.append(")");

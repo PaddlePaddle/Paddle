@@ -96,6 +96,11 @@ TEST(NodeTest, ToString) {
   EXPECT_EQ(n3->ToString(), "{} = n3()");
   EXPECT_NE(n4->Op(), nullptr);
   EXPECT_EQ(n4->ToString(), "{Y=[y1 ,y2]} = test_op(X=[x1 ,x2 ,x3])");
+
+  n3->inputs.push_back(n1.get());
+  n3->outputs.push_back(n2.get());
+  EXPECT_EQ(n3->Op(), nullptr);
+  EXPECT_EQ(n3->ToString(), "{n2} = n3(n1)");
 }
 
 }  // namespace ir
