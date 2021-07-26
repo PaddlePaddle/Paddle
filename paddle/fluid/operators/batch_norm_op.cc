@@ -712,6 +712,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     //    (y - bias) / (scale * inv_var) + est_mean
     switch (data_layout) {
       case DataLayout::kNCHW: {
+        std::cout << "is_inplace: " << is_inplace << std::endl;
         if (is_inplace) {
           auto px = *x;
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
@@ -723,8 +724,11 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                              mean_arr(nc % C);
           }
         }
+
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
+        std::cout << "x_arr: " << x_arr << std::endl;
+        std::cout << "d_y_arr: " << d_y_arr << std::endl;
 
         for (int nc = 0; nc < N * C; ++nc) {
           int c = nc % C;
@@ -733,7 +737,9 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
               ((x_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * d_y_arr.col(nc))
                   .sum();
         }
-
+        std::cout << "dy_sum_arr: " << dy_sum_arr << std::endl;
+        std::cout << "dy_mul_x_sub_mean_mul_invstd_sum_arr: "
+                  << dy_mul_x_sub_mean_mul_invstd_sum_arr << std::endl;
         if (d_scale && d_bias) {
           d_bias_arr = dy_sum_arr;
           d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
@@ -742,6 +748,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         if (d_x) {
           EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
                                    sample_size, N * C);
+          std::cout << d_x_arr << std::endl;
           if (!use_global_stats) {
             for (int nc = 0; nc < N * C; ++nc) {
               int c = nc % C;
