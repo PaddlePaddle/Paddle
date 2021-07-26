@@ -108,6 +108,9 @@ class PipelineParallel(MetaParallelBase):
         # store total loss of entire batch
         self.total_loss = None
 
+        # store data id for micro_batch
+        self.data_id = 0
+
         self.micro_batch_size = self._strategy.pipeline_configs[
             'micro_batch_size']
         self.accumulate_steps = self._strategy.pipeline_configs[
@@ -121,29 +124,21 @@ class PipelineParallel(MetaParallelBase):
         num_warmup_microbatches = min(num_warmup_microbatches, num_microbatches)
         num_microbatches_remaining = num_microbatches - num_warmup_microbatches
 
-        print("num_warmup_microbatches: ", num_warmup_microbatches,
-              "num_microbatches_remaining: ", num_microbatches_remaining)
-
         input_tensors = []
         output_tensors = []
         losses_reduced = []
 
         for step_id in range(num_warmup_microbatches):
-            logger("==recv F==")
             input_tensor = p2p.recv_forward()
             if input_tensor is not None:
                 input_tensor.stop_gradient = False
             output_tensor = self._forward_step(input_tensor)
-            print("==send F==")
             p2p.send_forward(output_tensor)
 
             input_tensors.append(input_tensor)
             output_tensors.append(output_tensor)
 
-        #print("warmup is endding..")
-
         if num_microbatches_remaining > 0:
-            print("==recv F==")
             input_tensor = p2p.recv_forward()
 
         for i in range(num_microbatches_remaining):
@@ -153,7 +148,6 @@ class PipelineParallel(MetaParallelBase):
                 input_tensor.stop_gradient = False
             output_tensor = self._forward_step(input_tensor)
 
-            print("==send F; recv B==")
             output_tensor_grad = p2p.send_forward_recv_backward(output_tensor)
 
             input_tensors.append(input_tensor)
@@ -162,20 +156,13 @@ class PipelineParallel(MetaParallelBase):
             input_tensor, output_tensor = input_tensors.pop(
                 0), output_tensors.pop(0)
 
-            print("input_tensor: ", input_tensor, "output_tensor: ",
-                  output_tensor, "output_tensor_grad: ", output_tensor_grad)
             input_tensor_grad = \
                 self._backward_step(input_tensor, output_tensor, output_tensor_grad)
 
-            print("input_tensor_grad: ", input_tensor_grad)
             if last_iteration:
                 input_tensor = None
-                #print("start send backward")
-                print("==send B==")
                 p2p.send_backward(input_tensor_grad)
             else:
-                print("==send B; recv F==")
-                print("input_tensor_grad: ", input_tensor_grad)
                 input_tensor = \
                     p2p.send_backward_recv_forward(input_tensor_grad)
 
@@ -183,16 +170,19 @@ class PipelineParallel(MetaParallelBase):
             input_tensor = input_tensors.pop(0)
             output_tensor = output_tensors.pop(0)
 
-            print("==recv B==")
             output_tensor_grad = p2p.recv_backward()
 
             input_tensor_grad = \
                 self._backward_step(input_tensor, output_tensor, output_tensor_grad)
-            print("==send B==")
             p2p.send_backward(input_tensor_grad)
 
-        self.data_id = 0
-        return 10.0
+        self._layers.allreduce_shared_weight_gradients()
+
+        # optimizer
+        self.train_loss = self._reduce_final_loss()
+
+        self._step()
+        return self.train_loss
 
     def _forward_step(self, input_tensor):
         if self.stage_id == 0:
@@ -203,12 +193,21 @@ class PipelineParallel(MetaParallelBase):
         if self.is_last_stage:
             labels = self._load_micro_batch(self.data_id)
             output_tensor = self._layers._loss_fn(output_tensor, labels)
-        #print("micro batch id: ", self.data_id, "output_tensor: ", output_tensor)
+            assert isinstance(
+                output_tensor, paddle.
+                Tensor), "Currently, loss_fn should obtain Paddle.Tensor dtype"
+
+            if self.accumulate_steps > 1:
+                output_tensor = output_tensor / self.accumulate_steps
+
+            if self.total_loss is None:
+                self.total_loss = paddle.zeros_like(output_tensor)
+            self.total_loss += output_tensor.detach()
+
         self.data_id += 1
         return output_tensor
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
-        #print("output_tensor: ", output_tensor, "output_tensor_grad", output_tensor_grad)
         paddle.autograd.backward(
             tensors=[output_tensor], grad_tensors=[output_tensor_grad])
         input_tensor_grad = None
@@ -255,3 +254,31 @@ class PipelineParallel(MetaParallelBase):
         else:
             # No data input is required for other stages
             inputs = None
+
+    def _reduce_final_loss(self):
+        if self.is_last_stage:
+            assert self.total_loss is not None, "train_batch() in last stage should obtain vaild loss"
+            loss = self.total_loss.clone()
+            paddle.distributed.broadcast(
+                loss,
+                src=self.global_rank,
+                use_calc_stream=True,
+                group=self.pp_group)
+        else:
+            loss = paddle.to_tensor(0.0)
+            paddle.distributed.broadcast(
+                loss,
+                src=self._hcg.get_rank_from_stage(self.num_stages - 1),
+                use_calc_stream=True,
+                group=self.pp_group)
+        return loss
+
+    def _step(self):
+        if self.scaler:
+            self.scaler.minimize(self.optimizer, self.train_loss)
+        else:
+            self.optimizer.step()
+
+        self.optimizer.clear_grad()
+        if self.lr_scheduler:
+            self.lr_scheduler.step()
