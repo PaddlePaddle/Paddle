@@ -165,27 +165,53 @@ class Node {
                          comparator);
         std::stable_sort(sorted_outputs.begin(), sorted_outputs.end(),
                          comparator);
-        for (const auto& input : sorted_inputs) {
-          op_str.append(input->Name());
-        }
+
+        std::string out_str = "{";
+        std::string pre_str = "";
         for (const auto& output : sorted_outputs) {
-          op_str.append(output->Name());
+          out_str.append(pre_str + output->Name());
+          pre_str = ", ";
         }
+        out_str.append("} = ");
+
+        std::string in_str = "(";
+        pre_str = "";
+        for (const auto& input : sorted_inputs) {
+          op_str.append(pre_str + input->Name());
+          pre_str = ", ";
+        }
+        in_str.append(")");
+        op_str = out_str + op_str + in_str;
       } else {
         // A normal Op, has OpDesc, create from ProgramDesc
-        for (const auto& input : op->InputNames()) {
-          op_str.append(input);
-          for (const auto& arg : op->Input(input)) {
-            op_str.append(arg);
-          }
-        }
-
+        std::string out_str = "{";
+        std::string outer_pre_str = "";
         for (const auto& output : op->OutputNames()) {
-          op_str.append(output);
+          out_str.append(outer_pre_str + output + "=[");
+          std::string inner_pre_str = "";
           for (const auto& arg : op->Output(output)) {
-            op_str.append(arg);
+            out_str.append(inner_pre_str + arg);
+            inner_pre_str = " ,";
           }
+          outer_pre_str = ", ";
+          out_str.append("]");
         }
+        out_str.append("} = ");
+
+        std::string in_str = "(";
+        outer_pre_str = "";
+        for (const auto& input : op->InputNames()) {
+          in_str.append(outer_pre_str + input + "=[");
+          std::string inner_pre_str = "";
+          for (const auto& arg : op->Input(input)) {
+            in_str.append(inner_pre_str + arg);
+            inner_pre_str = " ,";
+          }
+          outer_pre_str = " ,";
+          in_str.append("]");
+        }
+        in_str.append(")");
+        op_str = out_str + op_str + in_str;
       }
 
       return op_str;
