@@ -116,8 +116,7 @@ void GraphToProgramPass::GraphToBlock(const Graph* graph,
   for (ir::Node* n : graph->Nodes()) {
     if (n->IsVar()) {
       if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
-          !vars2remove.count(n->Var()->Name()) &&
-          n->GetVarNodeBlockId() == graph->GetBlockId()) {
+          !vars2remove.count(n->Var()->Name())) {
         visited_vars.insert(n->Var()->Name());
         block->add_vars()->MergeFrom(*n->Var()->Proto());
       }
