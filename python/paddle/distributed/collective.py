@@ -1341,6 +1341,7 @@ def split(x,
 
     Examples:
         .. code-block:: python
+
             # required: distributed
             import paddle
             import paddle.distributed.fleet as fleet
@@ -1475,6 +1476,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
+            
             init_parallel_env()
             out_tensor_list = []
             if paddle.distributed.ParallelEnv().rank == 0:
@@ -1545,9 +1547,11 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
 
     Examples:
         .. code-block:: python
+
             # required: distributed
             import paddle
             from paddle.distributed import init_parallel_env
+
             init_parallel_env()
             if paddle.distributed.ParallelEnv().rank == 0:
                 data = paddle.to_tensor([7, 8, 9])
@@ -1596,9 +1600,11 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
 
     Examples:
         .. code-block:: python
+
             # required: distributed
             import paddle
             from paddle.distributed import init_parallel_env
+
             init_parallel_env()
             if paddle.distributed.ParallelEnv().rank == 0:
                 data = paddle.to_tensor([7, 8, 9])
