@@ -134,7 +134,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "anchor_generator",
       "reduce_sum",
       "reduce_mean",
-      "tile",
   };
 };
 
