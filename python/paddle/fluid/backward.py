@@ -30,7 +30,6 @@ from .data_feeder import check_type
 __all__ = [
     'append_backward',
     'gradients',
-    'gradients_with_optimizer',
 ]
 
 _logger = log_helper.get_logger(
