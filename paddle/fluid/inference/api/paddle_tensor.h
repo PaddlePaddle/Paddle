@@ -91,6 +91,10 @@ class PD_INFER_DECL Tensor {
   /// \return The data type of the tensor.
   DataType type() const;
 
+  /// \brief Return the place type of the tensor.
+  /// \return The place type of the tensor.
+  PlaceType place() const;
+
  protected:
   explicit Tensor(void* scope);
   void* FindTensor() const;

@@ -110,6 +110,21 @@ DataType Tensor::type() const {
   return DataType::FLOAT32;
 }
 
+PlaceType Tensor::place() const {
+  EAGER_GET_TENSOR;
+  PlaceType place = PlaceType::kUNK;
+
+  if (paddle::platform::is_cpu_place(tensor->place())) {
+    place = PlaceType::kCPU;
+  } else if (paddle::platform::is_gpu_place(tensor->place())) {
+    place = PlaceType::kGPU;
+  } else if (paddle::platform::is_xpu_place(tensor->place())) {
+    place = PlaceType::kXPU;
+  }
+
+  return place;
+}
+
 template <typename T>
 void Tensor::CopyFromCpu(const T *data) {
   EAGER_GET_TENSOR;

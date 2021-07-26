@@ -160,6 +160,54 @@ void PaddleInferTensorCreate(
   tensor.CopyFromCpu(static_cast<const T *>(data.data()));
 }
 
+void PaddleInferTensorCopyFromTensor (
+    paddle_infer::Tensor &tensor,  // NOLINT
+    const paddle_infer::Tensor &from_tensor  // NOLINT
+    ) {
+  auto from_place = from_tensor.place();
+  
+  int out_numel = 0;
+  size_t element_size = 0;
+  void *from_ptr = nullptr;
+  void *to_ptr = nullptr;
+
+  tensor.Reshape(from_tensor.shape());
+  auto to_place = tensor.place();
+
+  switch (from_tensor.type()) {
+    case PaddleDType::INT32:
+      from_ptr = static_cast<void *>(from_tensor.data<int32_t>(&from_place, &out_numel));
+      to_ptr = static_cast<void *>(tensor.mutable_data<int32_t>(to_place));
+      element_size = sizeof(int32_t);
+      break;
+    case PaddleDType::INT64:
+      from_ptr = static_cast<void *>(from_tensor.data<int64_t>(&from_place, &out_numel));
+      to_ptr = static_cast<void *>(tensor.mutable_data<int64_t>(to_place));
+      element_size = sizeof(int64_t);
+      break;
+    case PaddleDType::FLOAT32:
+      from_ptr = static_cast<void *>(from_tensor.data<float>(&from_place, &out_numel));
+      to_ptr = static_cast<void *>(tensor.mutable_data<float>(to_place));
+      element_size = sizeof(float);
+      break;
+    case PaddleDType::UINT8:
+      from_ptr = static_cast<void *>(from_tensor.data<uint8_t>(&from_place, &out_numel));
+      to_ptr = static_cast<void *>(tensor.mutable_data<uint8_t>(to_place));
+      element_size = sizeof(uint8_t);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type. Now only supports INT32, INT64, UINT8 and "
+          "FLOAT32."));
+  }
+
+  if (from_place == paddle_infer::PlaceType::kGPU && from_place == to_place) {
+    cudaMemcpy(to_ptr, from_ptr, out_numel * element_size, cudaMemcpyDeviceToDevice);
+  } else if (from_place == paddle_infer::PlaceType::kCPU && from_place == to_place) {
+    cudaMemcpy(to_ptr, from_ptr, out_numel * element_size, cudaMemcpyDeviceToDevice);
+  }
+}
+
 size_t PaddleGetDTypeSize(PaddleDType dt) {
   size_t size{0};
   switch (dt) {
@@ -650,6 +698,7 @@ void BindPaddleInferTensor(py::module *m) {
       .def("copy_from_cpu", &PaddleInferTensorCreate<int64_t>)
       .def("copy_from_cpu", &PaddleInferTensorCreate<float>)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
+      .def("copy_from_tensor", &PaddleInferTensorCopyFromTensor)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)
       .def("lod", &paddle_infer::Tensor::lod)
