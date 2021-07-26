@@ -26,8 +26,6 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
@@ -56,8 +54,6 @@ class TestNPUReduceMaxOp(OpTest):
         self.dtype = np.float32
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
