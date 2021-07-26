@@ -205,7 +205,7 @@ static void UniqueConsecutiveFlattendCUDATensor(
 // from above function
 template <typename InT, typename IndexT, typename equal_T, typename not_equal_T>
 static void ComputeUniqueConsecutiveDims(
-    const framework::ExecutionContext& context, const Tensor* sorted_indices,
+    const framework::ExecutionContext& context, Tensor* sorted_indices,
     IndexT* sorted_indices_data, Tensor* out, bool return_inverse,
     bool return_counts, equal_T equal, not_equal_T not_equal, int64_t row) {
   // 1. inverse indices: 'inverse'
