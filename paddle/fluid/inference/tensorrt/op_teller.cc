@@ -730,7 +730,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
     }
-
+#if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {
       // Paddle-TRT does not support the input tensors.
       auto inputs = desc.InputArgumentNames();
@@ -744,6 +744,11 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (with_dynamic_shape) return false;
       if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
     }
+#elif
+    if (op_type == "tile") {
+      return false;
+    }
+#endif
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }

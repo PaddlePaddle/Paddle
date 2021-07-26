@@ -31,13 +31,16 @@ class TileOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
+#if IS_TRT_VERSION_GE(7000)
+    VLOG(4) << "convert a fluid tile op to tensorrt tile layer";
+
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     nvinfer1::Dims input_shape = input->getDimensions();
     std::vector<int> repeat_times =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("repeat_times"));
-    int nbDims_num = repeat_times.size();
+
     nvinfer1::Dims output_dim = input_shape;
     nvinfer1::Dims output_stride;
     // If input_dims.nbDims + 1 < repeat_times.size() means we
@@ -59,6 +62,7 @@ class TileOpConverter : public OpConverter {
     layer->setMode(nvinfer1::SliceMode::kWRAP);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
+#endif
   }
 };
 
