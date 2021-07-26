@@ -725,11 +725,9 @@ def unique_consecutive(x,
                        name=None):
     r"""
     Eliminates all but the first element from every consecutive group of equivalent elements.
-
     .. note:: This function is different from :func:`paddle.unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to `std::unique`
         in C++.
-
     Args:
         x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
         return_inverse(bool, optional): If True, also return the indices for where elements in
@@ -737,12 +735,10 @@ def unique_consecutive(x,
         return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
         axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
             Default: None.
-
     Returns:
         tuple: (out, inverse, counts). `out` is the unique consecutive tensor for `x`.`inverse` is \
            provided only if `return_inverse` is True. `counts` is provided only if `return_counts` \
            is True.
-
     Example:
         .. code-block:: python
 
@@ -781,12 +777,9 @@ def unique_consecutive(x,
             outs.append(inverse)
         if return_counts:
             outs.append(counts)
-
         if len(outs) == 1:
             return outs[0]
-
         return tuple(outs)
-
     check_variable_and_dtype(x, "input",
                              ['float32', 'float64', 'int32', 'int64'],
                              'unique_consecutive')
@@ -795,7 +788,6 @@ def unique_consecutive(x,
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'unique_consecutive')
     if len(axis) != 0:
         check_type(axis[0], 'axis', int, 'unique_consecutive')
-
     helper = LayerHelper('unique_consecutive', **locals())
     attrs = {
         'dtype': attr_dtype,
@@ -815,16 +807,13 @@ def unique_consecutive(x,
         outs.append(inverse)
     if return_counts:
         outs.append(counts)
-
     helper.append_op(
         type="unique_consecutive",
         inputs={"X": x},
         attrs=attrs,
         outputs=outputs)
-
     if len(outs) == 1:
         return outs[0]
-
     return tuple(outs)
 
 

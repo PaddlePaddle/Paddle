@@ -149,7 +149,6 @@ static void UniqueConsecutiveDim(const framework::ExecutionContext& context,
            in_trans_data + static_cast<int64_t>(sorted_indices_vec[i]) * col,
            col * sizeof(InT));
   }
-
   std::vector<framework::Tensor> input_unbind = Unbind(input_sorted);
   std::vector<IndexT> inverse_vec(sorted_indices_vec.size(), 0);
   std::vector<IndexT> counts_vec(sorted_indices_vec.size(), 0);
@@ -172,12 +171,10 @@ static void UniqueConsecutiveDim(const framework::ExecutionContext& context,
   concat_functor(dev_ctx, input_unbind, 0, &out_trans);
   TransCompute<DeviceContext, InT>(out_trans.dims().size(), dev_ctx, out_trans,
                                    out, permute);
-
   if (return_inverse) {
     auto* inverse = context.Output<framework::Tensor>("Index");
     framework::TensorFromVector(inverse_vec, context.device_context(), inverse);
   }
-
   if (return_counts) {
     auto* count = context.Output<framework::Tensor>("Counts");
     framework::TensorFromVector(counts_vec, context.device_context(), count);
@@ -233,7 +230,6 @@ struct UniqueConsecutiveDimFunctor {
         ctx_, in_, out_, return_inverse_, return_counts_, axis_);
   }
 };
-
 template <typename DeviceContext, typename T>
 class UniqueConsecutiveKernel : public framework::OpKernel<T> {
  public:
@@ -251,7 +247,6 @@ class UniqueConsecutiveKernel : public framework::OpKernel<T> {
               "int64.",
               x->numel()));
     }
-
     std::vector<int> axis_vec = context.Attr<std::vector<int>>("axis");
     bool return_inverse = context.Attr<bool>("return_inverse");
     bool return_counts = context.Attr<bool>("return_counts");
@@ -269,6 +264,5 @@ class UniqueConsecutiveKernel : public framework::OpKernel<T> {
     }
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
