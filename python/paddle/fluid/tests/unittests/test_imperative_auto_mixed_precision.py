@@ -256,6 +256,18 @@ class TestAmpScaler(unittest.TestCase):
             self.assertEqual(scaler2.get_incr_every_n_steps() == 1090, True)
             self.assertEqual(scaler2.get_decr_every_n_nan_or_inf() == 20, True)
 
+            scaler3 = paddle.amp.GradScaler(enable=False)
+            scaler3.load_state_dict(scaler_state)
+            self.assertEqual(scaler3.is_enable() == False, True)
+
+    def test_state_dict_and_load_state_dict_error(self):
+        def test_error():
+            state_empty = {}
+            scaler = paddle.amp.GradScaler(enable=True)
+            scaler.load_state_dict(state_empty)
+
+        self.assertRaises(RuntimeError, test_error)
+
 
 def reader_decorator(reader):
     def __reader__():
