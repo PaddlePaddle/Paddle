@@ -48,5 +48,74 @@ class TRTTileTest(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
+class TRTTileExpandTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
+            tile_out = paddle.tile(x=data, repeat_times=[1, 4, 1080, 1920])
+            out = fluid.layers.batch_norm(tile_out, is_test=True)
+
+        self.feeds = {
+            "data": np.random.random([1, 1, 1, 1]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TRTTileExpandTest.TensorRTParam(
+            1 << 30, 1, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu, flatten=True)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TRTTileExpandStaticTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
+            tile_out = paddle.tile(x=data, repeat_times=[1, 4, 1080, 1920])
+            out = fluid.layers.batch_norm(tile_out, is_test=True)
+
+        self.feeds = {
+            "data": np.random.random([1, 1, 1, 1]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TRTTileExpandStaticTest.TensorRTParam(
+            1 << 30, 1, 1, AnalysisConfig.Precision.Float32, True, False)
+        self.fetch_list = [out]
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu, flatten=True)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TRTTileExpandHalfTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
+            tile_out = paddle.tile(x=data, repeat_times=[1, 4, 1080, 1920])
+            out = fluid.layers.batch_norm(tile_out, is_test=True)
+
+        self.feeds = {
+            "data": np.random.random([1, 1, 1, 1]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TRTTileExpandHalfTest.TensorRTParam(
+            1 << 30, 1, 1, AnalysisConfig.Precision.Half, False, False)
+        self.fetch_list = [out]
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu, flatten=True)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
 if __name__ == "__main__":
     unittest.main()
