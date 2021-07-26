@@ -562,11 +562,13 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
 
       auto* d_input_var = context.InputVar(framework::GradVarName("Out"));
 
-      PADDLE_ENFORCE_EQ(d_input_var->IsType<LoDTensorArray>(), true,
-                        "When the output of `strided_slice_grad_op` is "
-                        "`TensorArray`, the input is excepted `TensorArray` , "
-                        "but received %s.",
-                        framework::ToTypeName(d_input_var->Type()));
+      PADDLE_ENFORCE_EQ(
+          d_input_var->IsType<LoDTensorArray>(), true,
+          platform::errors::InvalidArgument(
+              "When the output of `strided_slice_grad_op` is "
+              "`TensorArray`, the input is excepted `TensorArray` , "
+              "but received %s.",
+              framework::ToTypeName(d_input_var->Type())));
 
       PADDLE_ENFORCE_EQ(
           out_dims.size(), 1,
