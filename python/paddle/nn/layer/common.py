@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
-from ...fluid.dygraph import Flatten  # noqa: F401
-from ...fluid.dygraph import layers
-from ...fluid.framework import in_dygraph_mode
-from .. import functional as F
-from ...fluid.framework import _dygraph_tracer
+from paddle.fluid.dygraph import Flatten  # noqa: F401
+from paddle.fluid.dygraph import layers
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.nn import functional as F
+from paddle.fluid.framework import _dygraph_tracer
 
 __all__ = []
 
@@ -28,6 +28,35 @@ def _npairs(x, n):
         return x
     x = [x] * (n * 2)
     return x
+
+
+class Identity(layers.Layer):
+    r"""A placeholder identity operator that is argument-insensitive.
+
+    Args:
+        args: any argument (unused)
+        kwargs: any keyword argument (unused)
+
+    Examples::
+
+    >>> import numpy
+    >>> layer = Identity(54)
+    >>> input_tensor = paddle.to_tensor(numpy.random.randn(128, 20))
+    >>> input_tensor = input_tensor+1
+    >>> input_tensor.stop_gradient=False
+    >>> input_tensor.register_hook(lambda grad: print('input grad', grad))
+    >>> print('input_tensor.grad', input_tensor.grad)
+    >>> out = m(input_tensor)
+    >>> out.backward()
+    >>> print(out.shape, paddle.sum(input_tensor), paddle.sum(out))
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(Identity, self).__init__()
+
+    def forward(self, input):
+        return input
 
 
 class Linear(layers.Layer):
