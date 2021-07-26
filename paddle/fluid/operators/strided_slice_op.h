@@ -318,21 +318,21 @@ class StridedSliceKernel : public framework::OpKernel<T> {
           starts_indices.size(), 1,
           platform::errors::InvalidArgument(
               "When the input of 'strided_slice_op' is `TensorArray`, the "
-              "dimension of start index  should be 1, but received %d",
+              "dimension of start index  should be 1, but received %d.",
               starts_indices.size()));
 
       PADDLE_ENFORCE_EQ(
           ends_indices.size(), 1,
           platform::errors::InvalidArgument(
               "When the input of 'strided_slice_op' is `TensorArray`, the "
-              "dimension of end index should be 1, but received %d",
+              "dimension of end index should be 1, but received %d.",
               ends_indices.size()));
 
       PADDLE_ENFORCE_EQ(
           strides_indices.size(), 1,
           platform::errors::InvalidArgument(
               "When the input of 'strided_slice_op' is `TensorArray`, the "
-              "dimension of stride should be 1, but received %d",
+              "dimension of stride should be 1, but received %d.",
               strides_indices.size()));
 
       auto* output_var = context.OutputVar("Out");
@@ -545,19 +545,19 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
           starts_indices.size(), 1,
           platform::errors::InvalidArgument(
               "When the input of 'strided_slice_grad_op' is `TensorArray`, the "
-              "dimension of start index  should be 1, but received %d",
+              "dimension of start index  should be 1, but received %d.",
               starts_indices.size()));
       PADDLE_ENFORCE_EQ(
           ends_indices.size(), 1,
           platform::errors::InvalidArgument(
               "When the input of 'strided_slice_op' is `TensorArray`, the "
-              "dimension of end index should be 1, but received %d",
+              "dimension of end index should be 1, but received %d.",
               ends_indices.size()));
       PADDLE_ENFORCE_EQ(
           strides_indices.size(), 1,
           platform::errors::InvalidArgument(
               "When the input of 'strided_slice_grad_op' is `TensorArray`, the "
-              "dimension of stride should be 1, but received %d",
+              "dimension of stride should be 1, but received %d.",
               strides_indices.size()));
 
       auto* d_input_var = context.InputVar(framework::GradVarName("Out"));
@@ -574,7 +574,7 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
           out_dims.size(), 1,
           platform::errors::InvalidArgument(
               "When the output of `strided_slice_grad_op` is `TensorArray`, "
-              "the dimension of output should be 1, but received %d",
+              "the dimension of output should be 1, but received %d.",
               out_dims.size()));
       auto& d_in_array = d_input_var->Get<framework::LoDTensorArray>();
 

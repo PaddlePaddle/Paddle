@@ -865,7 +865,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
         self.create_case(Net(input_size=112, array_size=13))
 
         # TODO(weixin):Currently, the case that the starting index is 
-        # less than `array_size` is not supported.
+        # less than `-array_size` is not supported.
         # The index passed from the slice of the VarBase/Variable 
         # is processed before being passed to `strided_slice_op`. 
         # and the slice should be processed uniformly, instead of 
