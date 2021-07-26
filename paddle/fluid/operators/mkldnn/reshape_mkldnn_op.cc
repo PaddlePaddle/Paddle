@@ -29,6 +29,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     RunKernel(ctx);
   }
 
+ private:
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
@@ -199,6 +200,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T> {
     RunKernel(ctx);
   }
 
+ private:
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
