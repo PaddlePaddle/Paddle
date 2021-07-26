@@ -73,12 +73,13 @@ function prepare_data {
 }
 
 function run_model_benchmark {
-    cd ${cache_dir}/benchmark_data
+    mkdir -p /workspace/benchmark_data
+    cd /workspace/benchmark_data
     if [ -d "benchmark" ];then rm -rf benchmark
     fi
     git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/paddlepaddle/benchmark.git
     export data_path=${cache_dir}/benchmark_data/dataset
-    export BENCHMARK_ROOT=${cache_dir}/benchmark_data/benchmark
+    export BENCHMARK_ROOT=/workspace/benchmark_data/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
     bash model_ci.sh
 }
