@@ -26,8 +26,6 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUReduceProd(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
@@ -51,8 +49,6 @@ class TestNPUReduceProd(OpTest):
         self.dtype = np.float32
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUReduceProd6D(TestNPUReduceProd):
     def setUp(self):
         self.op_type = "reduce_prod"
@@ -68,8 +64,6 @@ class TestNPUReduceProd6D(TestNPUReduceProd):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUReduceProd8D(TestNPUReduceProd):
     def setUp(self):
         self.op_type = "reduce_prod"
