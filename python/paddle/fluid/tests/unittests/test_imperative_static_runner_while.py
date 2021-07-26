@@ -33,6 +33,7 @@ LOADED_VAR_SUFFIX = ".load_0"
 
 paddle.enable_static()
 
+
 def while_softmax_regression(img):
     def cond(i, times, pred):
         return i < times
