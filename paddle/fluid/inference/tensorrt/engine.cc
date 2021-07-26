@@ -217,8 +217,12 @@ void TensorRTEngine::FreezeNetwork() {
     }
 #endif
   }
-  infer_engine_.reset(infer_builder_->buildEngineWithConfig(
+
+  infer_ptr<nvinfer1::IHostMemory> plan(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
+  infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
+  infer_engine_.reset(
+      runtime->deserializeCudaEngine(plan->data(), plan->size()));
 
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_, platform::errors::Fatal(
