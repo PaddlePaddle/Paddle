@@ -503,7 +503,7 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
   const int valid_indexs = size - none_axes->size();
   PADDLE_ENFORCE_EQ(valid_indexs <= rank, true,
                     platform::errors::InvalidArgument(
-                        "too many indices (%d) for tensor of dimension %d",
+                        "Too many indices (%d) for tensor of dimension %d.",
                         valid_indexs, rank));
 
   if (!PyTuple_Check(_index)) Py_DecRef(index);
@@ -921,9 +921,6 @@ void BindImperative(py::module *m_ptr) {
                    axis -= len;
                  }
 
-                 for (auto &axis : none_axes) {
-                   VLOG(2) << "none_axes: " << axis;
-                 }
                  imperative::NameVarBaseMap ins = {{"X", {out}}};
                  framework::AttributeMap attrs = {{"axes", none_axes}};
                  auto new_out = std::shared_ptr<imperative::VarBase>(
