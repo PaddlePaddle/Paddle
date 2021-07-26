@@ -79,29 +79,11 @@ class LogicalAndPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(
-    logical_not, ops::LogicalNotNPUKernel<plat::NPUDeviceContext, bool>,
-    ops::LogicalNotNPUKernel<plat::NPUDeviceContext, int8_t>,
-    ops::LogicalNotNPUKernel<plat::NPUDeviceContext, int16_t>,
-    ops::LogicalNotNPUKernel<plat::NPUDeviceContext, int>,
-    ops::LogicalNotNPUKernel<plat::NPUDeviceContext, int64_t>,
-    ops::LogicalNotNPUKernel<plat::NPUDeviceContext, float>,
-    ops::LogicalNotNPUKernel<plat::NPUDeviceContext, double>);
+REGISTER_OP_NPU_KERNEL(logical_not,
+                       ops::LogicalNotNPUKernel<plat::NPUDeviceContext, bool>);
 
 REGISTER_OP_NPU_KERNEL(logical_or,
-                       ops::LogicalOrNPUKernel<plat::NPUDeviceContext, bool>,
-                       ops::LogicalOrNPUKernel<plat::NPUDeviceContext, int8_t>,
-                       ops::LogicalOrNPUKernel<plat::NPUDeviceContext, int16_t>,
-                       ops::LogicalOrNPUKernel<plat::NPUDeviceContext, int>,
-                       ops::LogicalOrNPUKernel<plat::NPUDeviceContext, int64_t>,
-                       ops::LogicalOrNPUKernel<plat::NPUDeviceContext, float>,
-                       ops::LogicalOrNPUKernel<plat::NPUDeviceContext, double>);
+                       ops::LogicalOrNPUKernel<plat::NPUDeviceContext, bool>);
 
 REGISTER_OP_NPU_KERNEL(logical_and,
-                       ops::LogicalAndPUKernel<plat::NPUDeviceContext, bool>,
-                       ops::LogicalAndPUKernel<plat::NPUDeviceContext, int8_t>,
-                       ops::LogicalAndPUKernel<plat::NPUDeviceContext, int16_t>,
-                       ops::LogicalAndPUKernel<plat::NPUDeviceContext, int>,
-                       ops::LogicalAndPUKernel<plat::NPUDeviceContext, int64_t>,
-                       ops::LogicalAndPUKernel<plat::NPUDeviceContext, float>,
-                       ops::LogicalAndPUKernel<plat::NPUDeviceContext, double>);
+                       ops::LogicalAndPUKernel<plat::NPUDeviceContext, bool>);

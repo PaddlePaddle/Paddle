@@ -23,9 +23,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.static import Program, program_guard
 
-SUPPORTED_DTYPES = [
-    bool, np.int8, np.int16, np.int32, np.int64, np.float32, np.float64
-]
+SUPPORTED_DTYPES = [bool]
 
 TEST_META_OP_DATA = [{
     'op_str': 'logical_and',
