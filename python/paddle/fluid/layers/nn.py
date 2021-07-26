@@ -14957,7 +14957,7 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
             seed is not None, 'seed', seed if seed is not None else 0)
         return remapped_label, sampled_class_center
 
-    check_variable_and_dtype(label, 'label', ['int64', 'int'],
+    check_variable_and_dtype(label, 'label', ['int64', 'int32'],
                              'class_center_sample')
     op_type = 'class_center_sample'
     helper = LayerHelper(op_type, **locals())

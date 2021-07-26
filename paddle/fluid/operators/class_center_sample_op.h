@@ -67,15 +67,12 @@ class ClassCenterSampleCPUKernel : public framework::OpKernel<T> {
     }
 
     // constrcut a lookup table and get sampled_local_class_center
-    int actual_num_samples = unique_label.size();
-    T* sampled_local_class_center_ptr =
-        sampled_local_class_center->mutable_data<T>({actual_num_samples},
-                                                    ctx.GetPlace());
+    std::vector<T> actual_sampled;
     std::map<T, T> new_class_dict;
     T idx = 0;
     for (auto& t : unique_label) {
       new_class_dict[t] = idx;
-      sampled_local_class_center_ptr[idx] = t;
+      actual_sampled.push_back(t);
       idx++;
     }
 
@@ -87,7 +84,22 @@ class ClassCenterSampleCPUKernel : public framework::OpKernel<T> {
     auto engine = framework::GetCPURandomEngine(seed);
     // sample negative class center randomly
     while (unique_label.size() < static_cast<size_t>(num_samples)) {
-      unique_label.insert(dist(*engine));
+      T neg = dist(*engine);
+      if (unique_label.find(neg) == unique_label.end()) {
+        unique_label.insert(neg);
+        // unorder for negative class center
+        actual_sampled.push_back(neg);
+      }
+    }
+
+    int actual_num_samples = unique_label.size();
+    T* sampled_local_class_center_ptr =
+        sampled_local_class_center->mutable_data<T>({actual_num_samples},
+                                                    ctx.GetPlace());
+    idx = 0;
+    for (auto& t : actual_sampled) {
+      sampled_local_class_center_ptr[idx] = t;
+      idx++;
     }
 
     // remap the input label to sampled class
