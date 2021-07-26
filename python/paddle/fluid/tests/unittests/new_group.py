@@ -27,6 +27,7 @@ class TestNewGroupAPI(object):
 
     def test_all(self):
         gp = paddle.distributed.new_group([0, 1])
+        print("gp info:", gp)
         print("test new group api ok")
 
         tmp = np.array([0, 0, 0])

@@ -312,8 +312,8 @@ class PiecewiseDecay(LRScheduler):
             learning_rate = 0.1
 
     Args:
-        boundaries(list): A list of steps numbers. The type of element in the list is python int. 
-        values(list): A list of learning rate values that will be picked during different epoch boundaries. 
+        boundaries(list|tuple): A list/tuple of steps numbers. The type of element in the list is python int. 
+        values(list|tuple): A list/tuple of learning rate values that will be picked during different epoch boundaries. 
             The type of element in the list is python float.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
@@ -1349,7 +1349,7 @@ class ReduceOnPlateau(LRScheduler):
         if isinstance(metrics, (Tensor, numpy.ndarray)):
             assert len(metrics.shape) == 1 and metrics.shape[0] == 1, "the metrics.shape " \
                 "should be (1L,), but the current metrics.shape is {}. Maybe that "  \
-                "you should call paddle.mean to process it first.".format(loss.shape)
+                "you should call paddle.mean to process it first.".format(metrics.shape)
         elif not isinstance(metrics,
                             (int, float, numpy.float32, numpy.float64)):
             raise TypeError(

@@ -80,6 +80,16 @@ class NPUAllocator : public SystemAllocator {
   size_t npu_alloc_size_ = 0;
   int npu_id_;
 };
+
+class NPUPinnedAllocator : public SystemAllocator {
+ public:
+  virtual void* Alloc(size_t* index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+  virtual bool UseGpu() const;
+
+ private:
+  size_t npu_pinnd_alloc_size_ = 0;
+};
 #endif
 
 }  // namespace detail

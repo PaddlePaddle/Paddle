@@ -15,11 +15,10 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 #ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
-                       ops::FillConstantKernel<int64_t>,
-                       ops::FillConstantKernel<double>,
-                       ops::FillConstantKernel<bool>,
-                       ops::FillConstantKernel<int>,
-                       ops::FillConstantKernel<paddle::platform::complex64>,
-                       ops::FillConstantKernel<paddle::platform::complex128>);
+REGISTER_OP_XPU_KERNEL(
+    fill_constant, ops::FillConstantKernel<float>,
+    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<double>,
+    ops::FillConstantKernel<bool>, ops::FillConstantKernel<int>,
+    ops::FillConstantKernel<paddle::platform::complex<float>>,
+    ops::FillConstantKernel<paddle::platform::complex<double>>);
 #endif

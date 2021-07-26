@@ -36,12 +36,23 @@ GetUnusedVars(const BlockDesc &block,
               const std::vector<std::unique_ptr<OperatorBase>> &ops,
               const std::vector<std::string> &skip_vars);
 
+// Collect unused tensors
+void DeleteUnusedTensors(const Scope &scope,
+                         const std::vector<std::string> &delete_vars,
+                         GarbageCollector *gc);
+
 // Collect unused tensors after op runs
 void DeleteUnusedTensors(
     const Scope &scope, const OperatorBase *op,
     const std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &delete_vars_map,
     GarbageCollector *gc);
+
+// Get the clean vars of GC after each op runs. This function is used for
+// analysis statically.
+// result is in the format: result[block_idx][op_idx][delete_var_idx]
+std::vector<std::vector<std::vector<std::string>>> GetEagerDeletionCleanVars(
+    const ProgramDesc &program, const std::vector<std::string> &skip_vars = {});
 
 }  // namespace framework
 }  // namespace paddle

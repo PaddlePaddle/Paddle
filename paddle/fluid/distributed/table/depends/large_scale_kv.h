@@ -83,6 +83,7 @@ inline bool probility_entry(VALUE *value, float threshold) {
 
 class ValueBlock {
  public:
+  typedef typename robin_hood::unordered_map<uint64_t, VALUE *> map_type;
   explicit ValueBlock(const std::vector<std::string> &value_names,
                       const std::vector<int> &value_dims,
                       const std::vector<int> &value_offsets,
@@ -261,6 +262,18 @@ class ValueBlock {
     value->is_entry_ = state;
   }
 
+  void erase(uint64_t feasign) {
+    size_t hash = _hasher(feasign);
+    size_t bucket = compute_bucket(hash);
+    auto &table = values_[bucket];
+
+    auto iter = table.find(feasign);
+    if (iter != table.end()) {
+      butil::return_object(iter->second);
+      iter = table.erase(iter);
+    }
+  }
+
   void Shrink(const int threshold) {
     for (auto &table : values_) {
       for (auto iter = table.begin(); iter != table.end();) {
@@ -289,6 +302,23 @@ class ValueBlock {
     }
   }
 
+  map_type::iterator end() {
+    return values_[SPARSE_SHARD_BUCKET_NUM - 1].end();
+  }
+
+  map_type::iterator Find(uint64_t id) {
+    size_t hash = _hasher(id);
+    size_t bucket = compute_bucket(hash);
+    auto &table = values_[bucket];
+
+    auto got = table.find(id);
+    if (got == table.end()) {
+      return end();
+    } else {
+      return got;
+    }
+  }
+
  private:
   bool Has(const uint64_t id) {
     size_t hash = _hasher(id);
@@ -304,7 +334,7 @@ class ValueBlock {
   }
 
  public:
-  robin_hood::unordered_map<uint64_t, VALUE *> values_[SPARSE_SHARD_BUCKET_NUM];
+  map_type values_[SPARSE_SHARD_BUCKET_NUM];
   size_t value_length_ = 0;
   std::hash<uint64_t> _hasher;
 

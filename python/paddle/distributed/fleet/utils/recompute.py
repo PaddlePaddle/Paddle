@@ -19,9 +19,14 @@ from paddle.fluid import framework
 import contextlib
 
 import logging
-logging.basicConfig(
-    format='%(asctime)s %(levelname)-8s %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
+formatter = logging.Formatter(
+    fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+__all__ = []
 
 
 def detach_variable(inputs):
@@ -40,7 +45,7 @@ def detach_variable(inputs):
 def check_recompute_necessary(inputs):
     if not any(input_.stop_gradient == False for input_ in inputs
                if isinstance(input_, paddle.Tensor)):
-        logging.warn(
+        logger.warn(
             "[Recompute]: None of the inputs to current recompute block need grad, "
             "therefore there is NO need to recompute this block in backward !")
 
@@ -92,10 +97,12 @@ class RecomputeFunction(PyLayer):
             ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
 
         # TODO support AMP
+        tracer = framework._dygraph_tracer()
+        ctx.is_fw_autocast = tracer._enable_autocast
+        ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
             outputs = run_function(*args)
-
         return outputs
 
     @staticmethod
@@ -114,15 +121,23 @@ class RecomputeFunction(PyLayer):
             tracer = framework._dygraph_tracer()
             tracer._has_grad = True
 
-            # TODO support AMP
-
+            # NOTE support AMP
+            # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
                 with swith_rng_state(ctx.fw_cuda_rng_state):
+                    with paddle.amp.auto_cast(
+                            enable=ctx.is_fw_autocast,
+                            custom_white_list=ctx.amp_white_list,
+                            custom_black_list=ctx.amp_black_list):
+                        detached_inputs = detach_variable(tuple(inputs))
+                        outputs = ctx.run_function(*detached_inputs)
+            else:
+                with paddle.amp.auto_cast(
+                        enable=ctx.is_fw_autocast,
+                        custom_white_list=ctx.amp_white_list,
+                        custom_black_list=ctx.amp_black_list):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
-            else:
-                detached_inputs = detach_variable(tuple(inputs))
-                outputs = ctx.run_function(*detached_inputs)
 
             if isinstance(outputs, core.VarBase):
                 outputs = (outputs, )
@@ -150,7 +165,6 @@ class RecomputeFunction(PyLayer):
 
             grads = list(inp._grad_ivar() for inp in detached_inputs
                          if isinstance(inp, core.VarBase))
-
             return grads
 
 

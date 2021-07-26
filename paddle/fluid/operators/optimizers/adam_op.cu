@@ -154,7 +154,9 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
-    MPDType epsilon = static_cast<MPDType>(ctx.Attr<float>("epsilon"));
+    bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+    VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
     auto* mom1 = ctx.Input<LoDTensor>("Moment1");
@@ -169,6 +171,42 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
     auto* mom2_out = ctx.Output<LoDTensor>("Moment2Out");
     auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
     auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
+
+    bool skip_update = false;
+    if (ctx.HasInput("SkipUpdate")) {
+      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(SkipUpdate) size must be 1, but get %d",
+                            skip_update_tensor->numel()));
+      std::vector<bool> skip_update_vec;
+      TensorToVector(*skip_update_tensor, ctx.device_context(),
+                     &skip_update_vec);
+      skip_update = skip_update_vec[0];
+    }
+    // skip_update=true, just copy input to output, and TensorCopy will call
+    // mutable_data
+    if (skip_update) {
+      VLOG(4) << "Adam skip update";
+      framework::TensorCopy(
+          *param, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), param_out);
+      framework::TensorCopy(
+          *mom1, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom1_out);
+      framework::TensorCopy(
+          *mom2, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom2_out);
+      framework::TensorCopy(
+          *beta1_pow, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          beta1_pow_out);
+      framework::TensorCopy(
+          *beta2_pow, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          beta2_pow_out);
+      return;
+    }
 
     MPDType beta1 = static_cast<MPDType>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
@@ -187,6 +225,15 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
                             "Input(Beta2Tensor) size must be 1, but get %d",
                             beta2_tensor->numel()));
       beta2 = static_cast<MPDType>(GetAttrFromTensor(beta2_tensor));
+    }
+    MPDType epsilon = static_cast<MPDType>(ctx.Attr<float>("epsilon"));
+    if (ctx.HasInput("EpsilonTensor")) {
+      auto* epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+      PADDLE_ENFORCE_EQ(epsilon_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(EpsilonTensor) size must be 1, but get %d",
+                            epsilon_tensor->numel()));
+      epsilon = static_cast<MPDType>(GetAttrFromTensor(epsilon_tensor));
     }
     VLOG(3) << "beta1_pow.numel() : " << beta1_pow->numel()
             << "beta2_pow.numel() : " << beta2_pow->numel();
@@ -245,11 +292,13 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
             lr->data<MPDType>(), grad->data<T>(), param->data<T>(),
             param_out->mutable_data<T>(ctx.GetPlace()), master_in_data,
             master_out_data, param->numel());
-        // Cpu update
-        beta1_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
-            beta1 * beta1_pow->data<MPDType>()[0];
-        beta2_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
-            beta2 * beta2_pow->data<MPDType>()[0];
+        if (!use_global_beta_pow) {
+          // Cpu update
+          beta1_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
+              beta1 * beta1_pow->data<MPDType>()[0];
+          beta2_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
+              beta2 * beta2_pow->data<MPDType>()[0];
+        }
       } else {
         AdamKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1, beta2, epsilon, beta1_pow->data<MPDType>(),
@@ -260,14 +309,15 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
             lr->data<MPDType>(), grad->data<T>(), param->data<T>(),
             param_out->mutable_data<T>(ctx.GetPlace()), master_in_data,
             master_out_data, param->numel());
-        // Update with gpu
-        UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
-            beta1, beta2, beta1_pow->data<MPDType>(),
-            beta2_pow->data<MPDType>(),
-            beta1_pow_out->mutable_data<MPDType>(ctx.GetPlace()),
-            beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
+        if (!use_global_beta_pow) {
+          // Update with gpu
+          UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+              beta1, beta2, beta1_pow->data<MPDType>(),
+              beta2_pow->data<MPDType>(),
+              beta1_pow_out->mutable_data<MPDType>(ctx.GetPlace()),
+              beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
+        }
       }
-
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
@@ -319,11 +369,13 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
             param_out->mutable_data<T>(ctx.GetPlace()), master_in_data,
             master_out_data, rows, row_numel, grad_merge.rows().size(),
             lazy_mode, ndim);
-        // Update with cpu
-        beta1_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
-            beta1 * beta1_pow->data<MPDType>()[0];
-        beta2_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
-            beta2 * beta2_pow->data<MPDType>()[0];
+        if (!use_global_beta_pow) {
+          // Update with cpu
+          beta1_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
+              beta1 * beta1_pow->data<MPDType>()[0];
+          beta2_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
+              beta2 * beta2_pow->data<MPDType>()[0];
+        }
       } else {
         SparseAdamFunctor<T, GPUAdam, MPDType> functor(
             beta1, beta2, epsilon, beta1_pow->data<MPDType>(),
@@ -342,12 +394,14 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
                 ctx.device_context()),
             param->numel());
         for_range(functor);
-        // update beta1 and beta2
-        UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
-            beta1, beta2, beta1_pow->data<MPDType>(),
-            beta2_pow->data<MPDType>(),
-            beta1_pow_out->mutable_data<MPDType>(ctx.GetPlace()),
-            beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
+        if (!use_global_beta_pow) {
+          // update beta1 and beta2
+          UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+              beta1, beta2, beta1_pow->data<MPDType>(),
+              beta2_pow->data<MPDType>(),
+              beta1_pow_out->mutable_data<MPDType>(ctx.GetPlace()),
+              beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
+        }
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(

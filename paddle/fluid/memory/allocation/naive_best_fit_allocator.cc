@@ -287,6 +287,21 @@ class NPUBuddyAllocatorList {
 BuddyAllocator *GetNPUBuddyAllocator(int npu_id) {
   return NPUBuddyAllocatorList::Instance()->Get(npu_id);
 }
+
+BuddyAllocator *GetNPUPinnedBuddyAllocator() {
+  static std::once_flag init_flag;
+  static BuddyAllocator *ba = nullptr;
+
+  std::call_once(init_flag, []() {
+    ba = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
+                                new detail::NPUPinnedAllocator),
+                            platform::NPUPinnedMinChunkSize(),
+                            platform::NPUPinnedMaxChunkSize());
+  });
+
+  return ba;
+}
+
 #endif
 
 template <>
@@ -348,6 +363,59 @@ uint64_t Release<platform::NPUPlace>(const platform::NPUPlace &place) {
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'NPUPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+size_t Used<platform::NPUPinnedPlace>(const platform::NPUPinnedPlace &place) {
+#ifdef PADDLE_WITH_ASCEND_CL
+  return GetNPUPinnedBuddyAllocator()->Used();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'NPUPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void *Alloc<platform::NPUPinnedPlace>(const platform::NPUPinnedPlace &place,
+                                      size_t size) {
+#ifdef PADDLE_WITH_ASCEND_CL
+  auto *buddy_allocator = GetNPUPinnedBuddyAllocator();
+  void *ptr = buddy_allocator->Alloc(size);
+
+  if (ptr == nullptr) {
+    LOG(WARNING) << "aclrtMallocHost Cannot allocate " << size
+                 << " bytes in NPUPinnedPlace";
+  }
+  if (FLAGS_init_allocated_mem) {
+    memset(ptr, 0xEF, size);
+  }
+  return ptr;
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'NPUPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void Free<platform::NPUPinnedPlace>(const platform::NPUPinnedPlace &place,
+                                    void *p, size_t size) {
+#ifdef PADDLE_WITH_ASCEND_CL
+  GetNPUPinnedBuddyAllocator()->Free(p);
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'NPUPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+uint64_t Release<platform::NPUPinnedPlace>(
+    const platform::NPUPinnedPlace &place) {
+#ifdef PADDLE_WITH_ASCEND_CL
+  return GetNPUPinnedBuddyAllocator()->Release();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'NPUPinnedPlace' is not supported in CPU only device."));
 #endif
 }
 

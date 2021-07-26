@@ -27,10 +27,7 @@ from collections import namedtuple
 from paddle.fluid.framework import _set_expected_place, _current_expected_place
 
 # NOTE: queue has a different name in python2 and python3
-if six.PY2:
-    import Queue as queue
-else:
-    import queue
+import queue
 
 import paddle
 from .. import core, layers
@@ -124,13 +121,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._blocking_queue_capacity = 2 * len(self._places)
 
         self._init_thread()
-
-        # if user exit python program when dataloader is still
-        # iterating, resource may no release safely, so we
-        # add __del__ function to to CleanupFuncRegistrar
-        # to make sure __del__ is always called when program
-        # exit for resoure releasing safely
-        CleanupFuncRegistrar.register(self.__del__)
 
     def _init_thread(self):
         self._var_names = [v.name for v in self._feed_list]
@@ -231,7 +221,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._thread_done_event.set()
             if self._thread is not threading.current_thread():
                 self._thread.join()
-                self._thread = None
+            self._thread = None
 
     # python2 compatibility
     def next(self):
@@ -286,13 +276,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         self._init_thread()
         self._shutdown = False
-
-        # if user exit python program when dataloader is still
-        # iterating, resource may no release safely, so we
-        # add __del__ function to to CleanupFuncRegistrar
-        # to make sure __del__ is always called when program
-        # exit for resoure releasing safely
-        CleanupFuncRegistrar.register(self.__del__)
 
     def _init_workers(self):
         # multiprocess worker and indice queue list initial as empty
@@ -363,7 +346,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._indices_queues[worker_id].put(None)
             self._worker_status[worker_id] = False
 
-    def _try_shutdown_all(self):
+    def _try_shutdown_all(self, timeout=None):
         if not self._shutdown:
             try:
                 self._exit_thread_expectedly()
@@ -376,11 +359,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 for i in range(self._num_workers):
                     self._shutdown_worker(i)
 
-                for w in self._workers:
-                    w.join()
-                for q in self._indices_queues:
-                    q.cancel_join_thread()
-                    q.close()
+                if not self._shutdown:
+                    for w in self._workers:
+                        w.join(timeout)
+                    for q in self._indices_queues:
+                        q.cancel_join_thread()
+                        q.close()
             finally:
                 core._erase_process_pids(id(self))
                 self._shutdown = True
@@ -559,6 +543,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
     def __del__(self):
         self._try_shutdown_all()
+
+    def _shutdown_on_exit(self):
+        self._try_shutdown_all(1)
 
     def __next__(self):
         try:

@@ -44,19 +44,13 @@ DIST_UT_PORT = 0
 
 
 def print_to_out(out_losses):
-    if six.PY2:
-        print(pickle.dumps(out_losses))
-    else:
-        sys.stdout.buffer.write(pickle.dumps(out_losses))
+    sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 def print_to_err(class_name, log_str):
     localtime = time.asctime(time.localtime(time.time()))
     print_str = localtime + "\t" + class_name + "\t" + log_str
-    if six.PY2:
-        sys.stderr.write(pickle.dumps(print_str))
-    else:
-        sys.stderr.buffer.write(pickle.dumps(print_str))
+    sys.stderr.buffer.write(pickle.dumps(print_str))
 
 
 def eprint(*args, **kwargs):
@@ -68,7 +62,8 @@ class TestDistRunnerBase(object):
                   batch_size=DEFAULT_BATCH_SIZE,
                   lr=0.1,
                   single_device=False,
-                  use_dgc=False):
+                  use_dgc=False,
+                  dist_strategy=None):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
@@ -149,12 +144,10 @@ class TestDistRunnerBase(object):
             loss = loss[0] if loss else None
             out_losses.append(loss)
             print_to_err(type(self).__name__, "run step %d finished" % i)
+        data_loader.reset()
         print_to_err(type(self).__name__, "trainer run finished")
 
-        if six.PY2:
-            print(pickle.dumps(out_losses))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
+        sys.stdout.buffer.write(pickle.dumps(out_losses))
 
         if args.save_model:
             model_save_dir = "/tmp"
@@ -185,6 +178,73 @@ class TestDistRunnerBase(object):
                                           fleet._origin_program)
             fleet.save_inference_model(exe, infer_save_dir_fleet,
                                        feeded_var_names, [avg_cost])
+
+    def run_use_fleet_api_20_trainer(self, args):
+        """
+        1. remove codes for DistributedStrategy and leave the DistributedStrategy part to get_model()
+        2. to run with fleet 2.0 api, set flags _use_fleet_api and _use_fleet_api_20 to True
+        3. for now, not support test for model save
+        """
+        assert args.update_method == "nccl2" or "bkcl"
+
+        self.lr = args.lr
+        print_to_err("use_fleet 2.0", "fleet.node_num:")
+
+        test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
+            self.get_model(batch_size=args.batch_size)
+
+        if fluid.core.is_compiled_with_cuda():
+            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            place = fluid.CUDAPlace(device_id)
+        elif fluid.core.is_compiled_with_xpu():
+            device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+            place = fluid.XPUPlace(device_id)
+        else:
+            raise ValueError(
+                "fleet dygraph api must in paddlepaddle-xpu or paddlepaddle-gpu."
+            )
+
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        eprint(type(self).__name__, "run worker startup program done.")
+
+        feed_var_list = [
+            var
+            for var in fluid.default_main_program().global_block().vars.values()
+            if var.is_data
+        ]
+
+        eprint("feed_var_list:", feed_var_list)
+
+        if feed_var_list[0].name == 'label':
+            feed_var_list = feed_var_list[::-1]
+
+        feeder = fluid.DataFeeder(feed_var_list, place)
+        reader_generator = train_reader()
+
+        def get_data():
+            origin_batch = next(reader_generator)
+            if args.update_method != "local" and args.use_reader_alloc:
+                new_batch = []
+                for offset, item in enumerate(origin_batch):
+                    if offset % 2 == args.trainer_id:
+                        new_batch.append(item)
+                return new_batch
+            else:
+                return origin_batch
+
+        print_to_err(type(self).__name__, "begin to train on trainer")
+        out_losses = []
+        for i in six.moves.xrange(RUN_STEP):
+            loss, = exe.run(fluid.default_main_program(),
+                            fetch_list=[avg_cost.name],
+                            feed=feeder.feed(get_data()))
+            out_losses.append(loss[0])
+            print_to_err(type(self).__name__, "run step %d finished" % i)
+        print_to_err(type(self).__name__, "trainer run finished")
+        print_to_err(type(self).__name__, "dist losses: {}".format(out_losses))
+
+        sys.stdout.buffer.write(pickle.dumps(out_losses))
 
     def run_use_fleet_api_trainer(self, args):
         assert args.update_method == "nccl2" or "bkcl"
@@ -268,10 +328,7 @@ class TestDistRunnerBase(object):
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
 
-        if six.PY2:
-            print(pickle.dumps(out_losses))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
+        sys.stdout.buffer.write(pickle.dumps(out_losses))
 
         if args.save_model:
             model_save_dir = "/tmp"
@@ -548,7 +605,10 @@ class TestParallelDyGraphRunnerBase(object):
         # 4. train model
         model, train_reader, opt = self.get_model()
         if args.update_method == "nccl2":
-            model = paddle.DataParallel(model)
+            if args.find_unused_parameters:
+                model = paddle.DataParallel(model, find_unused_parameters=True)
+            else:
+                model = paddle.DataParallel(model, find_unused_parameters=False)
 
         out_losses = []
         for step_id, data in enumerate(train_reader()):
@@ -581,8 +641,8 @@ class TestParallelDyGraphRunnerBase(object):
 
         # set strategy
         strategy = fleet.DistributedStrategy()
-        if not args.find_unused_parameters:
-            strategy.find_unused_parameters = False
+        if args.find_unused_parameters:
+            strategy.find_unused_parameters = True
 
         # 3. init parallel env
         if args.update_method == "nccl2" or "bkcl":
@@ -627,6 +687,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_hallreduce', action='store_true')
     parser.add_argument('--use_pipeline', action='store_true')
     parser.add_argument('--use_fleet_api', action='store_true')
+    parser.add_argument('--use_fleet_api_20', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
     parser.add_argument(
@@ -668,6 +729,8 @@ def runtime_main(test_class):
         model.run_pserver(args)
     elif args.use_fleet_api:
         model.run_use_fleet_api_trainer(args)
+    elif args.use_fleet_api_20:
+        model.run_use_fleet_api_20_trainer(args)
     elif args.use_pipeline:
         model.run_pipeline_trainer(args)
     else:
@@ -731,13 +794,14 @@ class TestDistBase(unittest.TestCase):
         self._nccl_comm_num = 1
         self._enable_backward_deps = False
         self._use_fleet_api = False
+        self._use_fleet_api_20 = False
         self._use_local_sgd = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
         self._save_model = False
         self._fuse_all_reduce = None
         self._accumulate_gradient = False
-        self._find_unused_parameters = True
+        self._find_unused_parameters = False
         self._setup_config()
 
         global DIST_UT_PORT
@@ -1057,7 +1121,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
 
         if self._use_fleet_api:
-            tr_cmd += " --use_fleet_api"
+            tr_cmd += " --use_fleet_api_20" if self._use_fleet_api_20 else " --use_fleet_api"
             if self._use_local_sgd:
                 tr_cmd += " --use_local_sgd"
             if self._ut4grad_allreduce:
@@ -1194,7 +1258,7 @@ class TestDistBase(unittest.TestCase):
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
                 "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10," \
-                "grpc_server=10,request_handler_impl=10"
+                "grpc_server=10,request_handler_impl=10,section_worker=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         required_envs.update(need_envs)

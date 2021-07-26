@@ -1228,6 +1228,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
       // will be executed and a warning will be given at the same time.
       if (SupportGPU()) {
         expected_kernel_key.place_ = dev_ctx->GetPlace();
+      } else if (SupportNPU()) {
+        expected_kernel_key.place_ = dev_ctx->GetPlace();
       } else {
         expected_kernel_key.place_ = platform::CPUPlace();
         LOG_FIRST_N(WARNING, 1)
@@ -1299,7 +1301,11 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
-    original_tensor->Resize(original_dims);
+    // In order to solve the problem that the output latitude of NPU reshape
+    // operator is not changed when inplace.
+    if (type_ != "reshape2" && type_ != "reshape2_grad") {
+      original_tensor->Resize(original_dims);
+    }
   }
 }
 
@@ -1525,7 +1531,12 @@ Scope* OperatorWithKernel::PrepareData(
   // the rest iterations to save the elapsed time.
   // We do not support skipping PrepareData in while block, because the Op's
   // input may be changed by subsequent Ops, which may cause an error.
-  if (pre_scope_ == &scope && new_scope == nullptr) {
+
+  // For inference, ops that behind conditional branch aren't supported well,
+  // so disable prepare optimization conservatively.
+  bool force_prepare_data = HasAttr("inference_force_prepare_data") &&
+                            Attr<bool>("inference_force_prepare_data");
+  if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data) {
     need_prepare_data_ = false;
   }
 
@@ -1549,10 +1560,10 @@ void OperatorWithKernel::ParseInputDataType(
       } else if (var->IsType<SelectedRows>()) {
         t = &(var->Get<SelectedRows>().value());
       } else if (var->IsType<LoDTensorArray>()) {
-        auto t_arr = var->Get<LoDTensorArray>();
-        for (size_t j = 0; j < t_arr.size(); j++) {
-          if (t_arr[j].IsInitialized()) {
-            t = &(t_arr[j]);
+        auto t_arr = &var->Get<LoDTensorArray>();
+        for (size_t j = 0; j < t_arr->size(); j++) {
+          if (t_arr->at(j).IsInitialized()) {
+            t = &(t_arr->at(j));
           }
         }
       }

@@ -37,10 +37,11 @@ struct GpuLaunchConfig {
   dim3 theory_thread_count = dim3(1, 1, 1);
   dim3 thread_per_block = dim3(1, 1, 1);
   dim3 block_per_grid = dim3(1, 1, 1);
+  int compute_capability = 0;
 };
 
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
-    const platform::CUDADeviceContext& context, int element_count,
+    const platform::CUDADeviceContext& context, int64_t element_count,
 #ifdef PADDLE_WITH_HIP
     // HIP will throw GPU memory access fault if threads > 256
     int max_threads = 256) {
@@ -67,11 +68,14 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
       std::min(max_threads, context.GetMaxThreadsPerBlock());
   const int block_count =
       std::min(DivUp(physical_thread_count, thread_per_block), sm);
+  // Get compute_capability
+  const int capability = context.GetComputeCapability();
 
   GpuLaunchConfig config;
   config.theory_thread_count.x = theory_thread_count;
   config.thread_per_block.x = thread_per_block;
   config.block_per_grid.x = block_count;
+  config.compute_capability = capability;
   return config;
 }
 

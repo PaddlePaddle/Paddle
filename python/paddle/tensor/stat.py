@@ -14,8 +14,6 @@
 
 # TODO: define statistical functions of a tensor  
 
-__all__ = ['mean', 'std', 'var', 'numel', 'median']
-
 import numpy as np
 from ..fluid.framework import Variable
 from ..fluid.layer_helper import LayerHelper
@@ -24,6 +22,9 @@ from ..fluid import layers
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
+from paddle import _C_ops
+
+__all__ = []
 
 
 def mean(x, axis=None, keepdim=False, name=None):
@@ -88,8 +89,8 @@ def mean(x, axis=None, keepdim=False, name=None):
         axis = [0]
 
     if in_dygraph_mode():
-        return core.ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
-                                    'reduce_all', reduce_all)
+        return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
+                                  'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x/input', ['float32', 'float64'],
                              'mean/reduce_mean')
@@ -236,7 +237,7 @@ def numel(x, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.size(x)
+        return _C_ops.size(x)
 
     if not isinstance(x, Variable):
         raise TypeError("x must be a Tensor in numel")

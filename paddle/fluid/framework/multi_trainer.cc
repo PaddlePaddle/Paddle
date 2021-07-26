@@ -112,6 +112,8 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 #ifdef PADDLE_WITH_HETERPS
     workers_[i]->SetPlace(places_[i]);
     workers_[i]->SetReaderPlace(places_[i]);
+    workers_[i]->SetDeviceContext(
+        platform::DeviceContextPool::Instance().Get(places_[i]));
 #else
     workers_[i]->SetPlace(place);
     workers_[i]->SetReaderPlace(place);
@@ -176,6 +178,7 @@ void MultiTrainer::Run() {
 
 #ifdef PADDLE_WITH_HETERPS
 void MultiTrainer::MergeDenseParam() {
+#ifdef PADDLE_WTIH_PSCORE
   auto communicator = paddle::distributed::Communicator::GetInstance();
   auto& recv_ctx = communicator->GetRecvCtxMap();
   Scope* thread_scope = workers_[0]->GetThreadScope();
@@ -189,6 +192,7 @@ void MultiTrainer::MergeDenseParam() {
       TensorCopy((*tensor), root_tensor->place(), root_tensor);
     }
   }
+#endif
 }
 #endif
 

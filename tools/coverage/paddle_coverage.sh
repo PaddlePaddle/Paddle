@@ -119,13 +119,11 @@ gen_diff_html_report || true
 
 export COVERAGE_FILE=/paddle/build/python-coverage.data
 
-set +x
-coverage combine `ls python-coverage.data.*`
-set -x
+coverage combine `$(ls python-coverage.data.*)` || NO_PYTHON_COVERAGE_DATA=1
 
-coverage xml -i -o python-coverage.xml
+`$(coverage xml -i -o python-coverage.xml)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
 
-python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info
+`$(python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
 
 # python full html report
 #
@@ -186,7 +184,9 @@ echo "Assert Python Diff Coverage"
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     echo "XPU has no python coverage!"
 else
-    python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
+    if [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]];then
+        python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
+    fi
 fi
 
 if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then

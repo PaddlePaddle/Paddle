@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -68,11 +69,8 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    if (bias_after_scale) {
-      eigen_out.device(dev) = scale * eigen_in + bias;
-    } else {
-      eigen_out.device(dev) = scale * (eigen_in + bias);
-    }
+    EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
+        dev, eigen_out, eigen_in, scale, bias, bias_after_scale);
   }
 };
 

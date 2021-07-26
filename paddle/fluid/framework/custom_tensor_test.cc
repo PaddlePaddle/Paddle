@@ -45,7 +45,19 @@ void TestCopyTensor() {
   auto t1_gpu_cp_cp = t1_gpu_cp.template copy_to<T>(paddle::PlaceType::kGPU);
   CHECK((paddle::PlaceType::kGPU == t1_gpu_cp_cp.place()));
   auto t1_gpu_cp_cp_cpu =
-      t1_gpu_cp.template copy_to<T>(paddle::PlaceType::kCPU);
+      t1_gpu_cp_cp.template copy_to<T>(paddle::PlaceType::kCPU);
+  CHECK((paddle::PlaceType::kCPU == t1_gpu_cp_cp_cpu.place()));
+  for (int64_t i = 0; i < t1.size(); i++) {
+    CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], T(5));
+  }
+#elif defined(PADDLE_WITH_HIP)
+  VLOG(2) << "Do HIP copy test";
+  auto t1_gpu_cp = t1_cpu_cp.template copy_to<T>(paddle::PlaceType::kHIP);
+  CHECK((paddle::PlaceType::kHIP == t1_gpu_cp.place()));
+  auto t1_gpu_cp_cp = t1_gpu_cp.template copy_to<T>(paddle::PlaceType::kHIP);
+  CHECK((paddle::PlaceType::kHIP == t1_gpu_cp_cp.place()));
+  auto t1_gpu_cp_cp_cpu =
+      t1_gpu_cp_cp.template copy_to<T>(paddle::PlaceType::kCPU);
   CHECK((paddle::PlaceType::kCPU == t1_gpu_cp_cp_cpu.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
     CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], T(5));
@@ -60,6 +72,11 @@ void TestAPIPlace() {
   t1.reshape(tensor_shape);
   t1.mutable_data<float>();
   CHECK((paddle::PlaceType::kGPU == t1.place()));
+#elif defined(PADDLE_WITH_HIP)
+  auto t1 = paddle::Tensor(paddle::PlaceType::kHIP);
+  t1.reshape(tensor_shape);
+  t1.mutable_data<float>();
+  CHECK((paddle::PlaceType::kHIP == t1.place()));
 #endif
   auto t2 = paddle::Tensor(paddle::PlaceType::kCPU);
   t2.reshape(tensor_shape);
@@ -109,9 +126,9 @@ void GroupTestCopy() {
   TestCopyTensor<int8_t>();
   VLOG(2) << "uint8 cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<uint8_t>();
-  VLOG(2) << "complex64 cpu-cpu-gpu-gpu-cpu";
+  VLOG(2) << "complex<float> cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<paddle::complex64>();
-  VLOG(2) << "complex128 cpu-cpu-gpu-gpu-cpu";
+  VLOG(2) << "complex<double> cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<paddle::complex128>();
   VLOG(2) << "Fp16 cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<paddle::float16>();
@@ -132,9 +149,9 @@ void GroupTestCast() {
   TestCast<uint8_t>(paddle::DataType::FLOAT32);
   VLOG(2) << "float cast";
   TestCast<float>(paddle::DataType::FLOAT32);
-  VLOG(2) << "complex64 cast";
+  VLOG(2) << "complex<float> cast";
   TestCast<paddle::complex64>(paddle::DataType::FLOAT32);
-  VLOG(2) << "complex128 cast";
+  VLOG(2) << "complex<double> cast";
   TestCast<paddle::complex128>(paddle::DataType::FLOAT32);
   VLOG(2) << "float16 cast";
   TestCast<paddle::float16>(paddle::DataType::FLOAT16);

@@ -22,9 +22,11 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "dnnl_debug.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -61,6 +63,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
             << dst_place;
     return;
   }
+  VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
 #ifdef PADDLE_WITH_MKLDNN
   auto size = src.layout() == DataLayout::kMKLDNN
@@ -278,7 +281,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
-  if (platform::is_gpu_place(dst_place)) {
+  if (platform::is_gpu_place(dst_place) || platform::is_npu_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
   } else {
     dev_ctx = pool.Get(src.place());
@@ -504,6 +507,11 @@ class AnyVisitor : public boost::static_visitor<bool> {
   }
 
   bool GetResult(const framework::Tensor& out,
+                 const platform::NPUPinnedPlace& cpu) const {
+    return *out.data<bool>();
+  }
+
+  bool GetResult(const framework::Tensor& out,
                  const platform::CPUPlace& cpu) const {
     return *out.data<bool>();
   }
@@ -722,6 +730,18 @@ struct BothFalseVisitor : public boost::static_visitor<> {
 
   void VisitorImpl(
       const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
+    int num = in_.numel();
+    const bool* in_ptr = in_.data<bool>();
+    bool* out_ptr = out_->data<bool>();
+    for (int i = 0; i < num; ++i) {
+      bool lhs = !in_ptr[i];
+      bool rhs = !out_ptr[i];
+      out_ptr[i] = lhs && rhs;
+    }
+  }
+
+  void VisitorImpl(
+      const platform::NPUPinnedPlace& cpu /* equals to cpu*/) const {
     int num = in_.numel();
     const bool* in_ptr = in_.data<bool>();
     bool* out_ptr = out_->data<bool>();
@@ -1120,9 +1140,9 @@ std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
 }
 
 template <>
-std::ostream& print_tensor<paddle::platform::complex64>(
+std::ostream& print_tensor<paddle::platform::complex<float>>(
     std::ostream& os, const framework::Tensor& tensor) {
-  auto inspect = tensor.data<paddle::platform::complex64>();
+  auto inspect = tensor.data<paddle::platform::complex<float>>();
   auto element_num = tensor.numel();
 
   os << "  - data: [";
@@ -1138,9 +1158,9 @@ std::ostream& print_tensor<paddle::platform::complex64>(
 }
 
 template <>
-std::ostream& print_tensor<paddle::platform::complex128>(
+std::ostream& print_tensor<paddle::platform::complex<double>>(
     std::ostream& os, const framework::Tensor& tensor) {
-  auto inspect = tensor.data<paddle::platform::complex128>();
+  auto inspect = tensor.data<paddle::platform::complex<double>>();
   auto element_num = tensor.numel();
 
   os << "  - data: [";
@@ -1159,6 +1179,11 @@ std::ostream& operator<<(std::ostream& os, const Tensor& t) {
   os << "  - place: " << t.place() << "\n";
   os << "  - shape: [" << t.dims() << "]\n";
   os << "  - layout: " << DataLayoutToString(t.layout()) << "\n";
+
+#ifdef PADDLE_WITH_MKLDNN
+  os << "  - format: "
+     << dnnl_fmt_tag2str(static_cast<dnnl_format_tag_t>(t.format())) << "\n";
+#endif
 
   Tensor tensor;
   tensor.Resize(t.dims());

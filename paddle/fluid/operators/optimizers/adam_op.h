@@ -406,13 +406,14 @@ class AdamOpKernel : public framework::OpKernel<T> {
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
-    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+    bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+    VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
     auto* mom1 = ctx.Input<LoDTensor>("Moment1");
     auto* mom2 = ctx.Input<LoDTensor>("Moment2");
     auto* lr = ctx.Input<LoDTensor>("LearningRate");
-
     auto* beta1_pow = ctx.Input<LoDTensor>("Beta1Pow");
     auto* beta2_pow = ctx.Input<LoDTensor>("Beta2Pow");
 
@@ -421,6 +422,42 @@ class AdamOpKernel : public framework::OpKernel<T> {
     auto* mom2_out = ctx.Output<LoDTensor>("Moment2Out");
     auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
     auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
+
+    bool skip_update = false;
+    if (ctx.HasInput("SkipUpdate")) {
+      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(SkipUpdate) size must be 1, but get %d",
+                            skip_update_tensor->numel()));
+      std::vector<bool> skip_update_vec;
+      TensorToVector(*skip_update_tensor, ctx.device_context(),
+                     &skip_update_vec);
+      skip_update = skip_update_vec[0];
+    }
+    // skip_update=true, just copy input to output, and TensorCopy will call
+    // mutable_data
+    if (skip_update) {
+      VLOG(4) << "Adam skip update";
+      framework::TensorCopy(
+          *param, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), param_out);
+      framework::TensorCopy(
+          *mom1, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom1_out);
+      framework::TensorCopy(
+          *mom2, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom2_out);
+      framework::TensorCopy(
+          *beta1_pow, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          beta1_pow_out);
+      framework::TensorCopy(
+          *beta2_pow, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          beta2_pow_out);
+      return;
+    }
 
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
@@ -440,6 +477,16 @@ class AdamOpKernel : public framework::OpKernel<T> {
                             beta2_tensor->numel()));
       beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
     }
+    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+    if (ctx.HasInput("EpsilonTensor")) {
+      auto* epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+      PADDLE_ENFORCE_EQ(epsilon_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(EpsilonTensor) size must be 1, but get %d",
+                            epsilon_tensor->numel()));
+      epsilon = static_cast<T>(GetAttrFromTensor(epsilon_tensor));
+    }
+
     VLOG(3) << "beta1_pow.numel() : " << beta1_pow->numel()
             << "beta2_pow.numel() : " << beta2_pow->numel();
     VLOG(3) << "param.numel(): " << param->numel();
@@ -466,11 +513,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
           lr->data<T>(), grad->data<T>(), param->data<T>(),
           param_out->mutable_data<T>(ctx.GetPlace()));
       functor(param->numel());
-      beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
-          beta1 * beta1_pow->data<T>()[0];
-      beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
-          beta2 * beta2_pow->data<T>()[0];
-
+      if (!use_global_beta_pow) {
+        beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+            beta1 * beta1_pow->data<T>()[0];
+        beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+            beta2 * beta2_pow->data<T>()[0];
+      }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
@@ -514,10 +562,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
           param_out->mutable_data<T>(ctx.GetPlace()), rows, row_numel,
           grad_merge.rows().size(), lazy_mode);
       // update beta1 and beta2
-      beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
-          beta1 * beta1_pow->data<T>()[0];
-      beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
-          beta2 * beta2_pow->data<T>()[0];
+      if (!use_global_beta_pow) {
+        beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+            beta1 * beta1_pow->data<T>()[0];
+        beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+            beta2 * beta2_pow->data<T>()[0];
+      }
       if (lazy_mode) {
         VLOG(3) << "run cpu lazy mode";
         size_t row_count = grad_merge.rows().size();

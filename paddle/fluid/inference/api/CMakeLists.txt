@@ -27,7 +27,7 @@ if(WITH_MKLDNN)
   set(mkldnn_quantizer_cfg ${mkldnn_quantizer_cfg} PARENT_SCOPE)
 endif()
 
-cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder)
+cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer)
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 if(WITH_CRYPTO)
@@ -71,7 +71,7 @@ elseif (WIN32)
   cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
 endif()
-if(WITH_TESTING)
+if(WITH_TESTING AND TEST test_api_impl)
     if(NOT APPLE)
         set_tests_properties(test_api_impl PROPERTIES TIMEOUT 120)
     endif()

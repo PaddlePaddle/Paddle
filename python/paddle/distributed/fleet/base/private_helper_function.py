@@ -17,6 +17,8 @@ import socket
 from contextlib import closing
 from six import string_types
 
+__all__ = []
+
 
 def wait_server_ready(endpoints):
     """
@@ -24,7 +26,7 @@ def wait_server_ready(endpoints):
     port readiness.
     
     Args:
-    endpoints (list): endpoints string list, like:
+    endpoints (list|tuple): endpoints string list, like:
     ["127.0.0.1:8080", "127.0.0.1:8081"]
     
     Examples:

@@ -37,6 +37,8 @@ from paddle.fluid.framework import static_only, Parameter
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.log_helper import get_logger
 
+__all__ = []
+
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
@@ -155,7 +157,7 @@ def normalize_program(program, feed_vars, fetch_vars):
             exe.run(paddle.static.default_startup_program())
 
             # normalize main program.
-            program = default_main_program()
+            program = paddle.static.default_main_program()
             normalized_program = paddle.static.normalize_program(program, [image], [predict])
 
     """

@@ -25,8 +25,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestUpdateLossScalingOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -71,8 +69,7 @@ class TestUpdateLossScalingOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(
-            self.place, check_dygraph=False, no_check_set=['Out'])
+        self.check_output_with_place(self.place)
 
 
 class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
@@ -103,12 +100,7 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
             'OutBadSteps': self.zero_steps
         }
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
 
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestUpdateLossScalingLayer(unittest.TestCase):
     def loss_scaling_check(self, use_npu=True, scope=fluid.Scope()):
         a = fluid.data(name="a", shape=[1024, 1024], dtype='float32')
