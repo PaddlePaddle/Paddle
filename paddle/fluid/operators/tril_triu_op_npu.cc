@@ -29,10 +29,7 @@ class TrilTriuNPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    std::string op_type = "Tril";
-    if (!lower) {
-      op_type = "Triu";
-    }
+    std::string op_type = lower ? "Tril" : "Triu";
 
     framework::NPUAttributeMap attr_input = {{"diagonal", diagonal}};
 
