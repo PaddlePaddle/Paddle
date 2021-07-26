@@ -30,12 +30,10 @@ def reference_unique_consecutive(X,
                                  dim=None):
     """Reference unique_consecutive implementation using python."""
     X = list(X)
-    #if return_counts:
     counts_vec = [1] * len(X)
     i = 0
     counts = 1
     last = 0
-    #if return_inverse:
     inverse_vec = [0] * len(X)
     inverse_vec[last] = i
     cnt = 0

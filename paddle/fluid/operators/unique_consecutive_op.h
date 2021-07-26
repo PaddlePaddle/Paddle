@@ -52,25 +52,21 @@ static void UniqueConsecutiveFlattendTensor(
       inverse_vec[i] = p - out_vec.data();
     }
   }
-
   int64_t output_size = p - out_vec.data() + 1;
   if (return_counts) {
     *q = in.numel() - last;
     counts_vec.resize(output_size);
   }
   out_vec.resize(output_size);
-
   out->Resize(framework::make_ddim({output_size}));
   auto* out_data = out->mutable_data<InT>(context.GetPlace());
   std::copy(out_vec.begin(), out_vec.end(), out_data);
-
   if (return_inverse) {
     auto* inverse = context.Output<framework::Tensor>("Index");
     inverse->Resize(framework::make_ddim({in.numel()}));
     auto* inverse_data = inverse->mutable_data<IndexT>(context.GetPlace());
     std::copy(inverse_vec.begin(), inverse_vec.end(), inverse_data);
   }
-
   if (return_counts) {
     auto* count = context.Output<framework::Tensor>("Counts");
     count->Resize(framework::make_ddim({out->numel()}));
@@ -87,13 +83,10 @@ static ForwardIt UniqueConsecutiveDimImpl(
   if (first == last) {
     return last;
   }
-
   (*inverse_vec)[sorted_indices_vec[0]] = 0;
   (*counts_vec)[0] = 1;
-
   ForwardIt begin = first;
   ForwardIt result = first;
-
   while (++first != last) {
     int64_t idx_first = std::distance(begin, first);
     int64_t idx_result = std::distance(begin, result);
@@ -133,12 +126,10 @@ static void UniqueConsecutiveDim(const framework::ExecutionContext& context,
   framework::DDim in_trans_flat_dims =
       framework::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
-
   std::vector<IndexT> sorted_indices_vec(in_trans.dims()[0]);
   std::iota(sorted_indices_vec.begin(), sorted_indices_vec.end(), 0);
   int64_t col = in_trans.dims()[1];
   const InT* in_trans_data = in_trans.data<InT>();
-
   // sort tensor according to indices
   framework::Tensor input_sorted;
   input_sorted.Resize(in_trans_dims);
@@ -250,7 +241,6 @@ class UniqueConsecutiveKernel : public framework::OpKernel<T> {
     std::vector<int> axis_vec = context.Attr<std::vector<int>>("axis");
     bool return_inverse = context.Attr<bool>("return_inverse");
     bool return_counts = context.Attr<bool>("return_counts");
-
     if (axis_vec.empty()) {
       framework::VisitDataTypeTiny(
           data_type, UniqueConsecutiveFlattendTensorFunctor<DeviceContext, T>(
