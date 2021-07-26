@@ -273,7 +273,6 @@ if avx_supported():
         from .core_avx import _cuda_synchronize
         from .core_avx import _is_compiled_with_heterps
         from .core_avx import _promote_types_if_complex_exists
-        from .core_avx import _set_cached_executor_build_strategy
         from .core_avx import _device_synchronize
         from .core_avx import _get_current_stream
         if sys.platform != 'win32':
@@ -325,7 +324,6 @@ if load_noavx:
         from .core_noavx import _cuda_synchronize
         from .core_noavx import _is_compiled_with_heterps
         from .core_noavx import _promote_types_if_complex_exists
-        from .core_noavx import _set_cached_executor_build_strategy
         from .core_noavx import _device_synchronize
         from .core_noavx import _get_current_stream
         if sys.platform != 'win32':

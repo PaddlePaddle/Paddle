@@ -24,8 +24,6 @@ from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
-from paddle.fluid.layers.utils import _hash_with_id
-from paddle.fluid.compiler import BuildStrategy
 import paddle.compat as cpt
 from paddle import _C_ops
 
@@ -164,14 +162,6 @@ class PartialProgramLayer:
 
         return train_program
 
-    @LazyInitialized
-    def _infer_program_id(self):
-        return _hash_with_id(self._infer_program, self)
-
-    @LazyInitialized
-    def _train_program_id(self):
-        return _hash_with_id(self._train_program, self)
-
     def _verify_program(self, main_program):
         """
         Verify that the program parameter is initialized, prune some unused params,
@@ -238,7 +228,7 @@ class PartialProgramLayer:
 
         attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
                  0, 'end_op_index', self._infer_program.desc.block(0).op_size(),
-                 'is_test', not self.training, 'program_id', self.program_id)
+                 'is_test', not self.training)
         _C_ops.run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
@@ -251,10 +241,6 @@ class PartialProgramLayer:
     @property
     def program(self):
         return self._train_program if self.training else self._infer_program
-
-    @property
-    def program_id(self):
-        return self._train_program_id if self.training else self._infer_program_id
 
     def _prepare(self, inputs):
         """
