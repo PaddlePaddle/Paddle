@@ -744,7 +744,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (with_dynamic_shape) return false;
       if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
     }
-#elif
+#else
     if (op_type == "tile") {
       return false;
     }
