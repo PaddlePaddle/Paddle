@@ -2037,7 +2037,7 @@ def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
     """
     check_type(program, 'program', paddle.fluid.Program,
                'paddle.static.gradients_with_optimizer')
-    check_type(optimizer, 'optimizer', paddle.fluid.optimizer,
+    check_type(optimizer, 'optimizer', paddle.optimizer.Optimizer,
                'paddle.static.gradients_with_optimizer')
 
     if inputs is None or outputs is None:
@@ -2045,15 +2045,21 @@ def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
         out_set = set()
         for block in program.blocks:
             for op in block.ops:
-                in_set.update(op.input_arg_names)
-                out_set.update(op.output_arg_names)
+                for name in op.input_arg_names:
+                    in_set.add(block.vars[name])
+                for name in op.output_arg_names:
+                    out_set.add(block.vars[name])
         if inputs is None:
             inputs = list(in_set.difference(out_set))
         if outputs is None:
             outputs = list(out_set.difference(in_set))
+
     grads = gradients(outputs, inputs)
 
     with program_guard(program, None):
-        optimize_ops = optimizer.apply_gradients(grads)
+        pram_grads = [(pram, grad) for pram, grad in zip(inputs, grads)
+                      if isinstance(pram, paddle.fluid.framework.Parameter)]
+
+        optimize_ops = optimizer.apply_gradients(pram_grads)
 
     return optimize_ops, grads
