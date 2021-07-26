@@ -14,11 +14,11 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
-from paddle.fluid.dygraph import Flatten  # noqa: F401
-from paddle.fluid.dygraph import layers
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.nn import functional as F
-from paddle.fluid.framework import _dygraph_tracer
+from ...fluid.dygraph import Flatten  # noqa: F401
+from ...fluid.dygraph import layers
+from ...fluid.framework import in_dygraph_mode
+from .. import functional as F
+from ...fluid.framework import _dygraph_tracer
 
 __all__ = []
 
