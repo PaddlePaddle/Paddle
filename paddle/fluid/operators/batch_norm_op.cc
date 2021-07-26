@@ -712,7 +712,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     //    (y - bias) / (scale * inv_var) + est_mean
     switch (data_layout) {
       case DataLayout::kNCHW: {
-        // std::cout << "is_inplace: " << is_inplace << std::endl;
         if (is_inplace) {
           auto px = *x;
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
