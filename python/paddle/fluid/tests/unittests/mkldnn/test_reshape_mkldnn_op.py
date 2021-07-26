@@ -20,7 +20,9 @@ import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 
-@OpTestTool.skip_if_not_cpu_bf16()
+
+@OpTestTool.skip_if(core.is_compiled_with_cuda(),
+                    "CUDA has to be skipped because it forces dygraph")
 class TestReshape2OneDNNOp(OpTest):
     def setUp(self):
         self.init_data()
