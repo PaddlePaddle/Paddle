@@ -712,7 +712,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     //    (y - bias) / (scale * inv_var) + est_mean
     switch (data_layout) {
       case DataLayout::kNCHW: {
-        // std::cout << "is_inplace: " << is_inplace << std::endl;
         if (is_inplace) {
           auto px = *x;
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
@@ -729,7 +728,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
         EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
                                  sample_size, N * C);
-        auto x_data = x->data<T>();
+        auto px_data = x->data<T>();
         auto d_y_data = d_y->data<T>();
         auto dy_sum_data = dy_sum.mutable_data<T>(ctx.GetPlace());
         auto d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
@@ -741,7 +740,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 #endif
         for (int nc = 0; nc < C; ++nc) {
           auto t_d_y_data = d_y_data + nc * sample_size;
-          auto t_x_data = x_data + nc * sample_size;
+          auto t_x_data = px_data + nc * sample_size;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp simd
 #endif
@@ -773,7 +772,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
             for (int nc = 0; nc < N * C; ++nc) {
               auto t_d_x_data = d_x_data + nc * sample_size;
               auto t_d_y_data = d_y_data + nc * sample_size;
-              auto t_x_data = x_data + nc * sample_size;
+              auto t_x_data = px_data + nc * sample_size;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp simd
 #endif
