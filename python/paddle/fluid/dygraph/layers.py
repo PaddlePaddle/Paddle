@@ -98,6 +98,7 @@ class Layer(core.Layer):
     """
 
     def __init__(self, name_scope=None, dtype="float32"):
+        core.Layer.__init__(self)
         self.training = True
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)

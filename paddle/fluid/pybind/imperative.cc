@@ -62,8 +62,8 @@ class Layer : public imperative::Layer {
   std::vector<std::shared_ptr<imperative::VarBase>> Forward(
       const std::vector<std::shared_ptr<imperative::VarBase>> &inputs)
       override {
-    PYBIND11_OVERLOAD(std::vector<std::shared_ptr<imperative::VarBase>>, Layer,
-                      Forward, inputs);  // NOLINT
+    PYBIND11_OVERLOAD(std::vector<std::shared_ptr<imperative::VarBase>>,
+                      imperative::Layer, Forward, inputs);  // NOLINT
   }
 };
 
