@@ -25,6 +25,10 @@
 namespace paddle {
 namespace framework {
 namespace details {
+
+bool CheckDataValid(const std::string& op_type, const framework::Scope& scope,
+                    const std::string& var_name, const platform::Place& place);
+
 // assert false when meets NAN or inf
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const framework::Scope& scope,

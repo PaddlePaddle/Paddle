@@ -1180,6 +1180,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
   }
 
+  if (type_ == "increment" || type_ == "create_py_reader" ||
+      type_ == "create_double_buffer_reader") {
+  } else {
+    bool flag =
+        framework::details::CheckDataValid(type_, scope, "src_ids", place);
+    if (!flag) {
+      LOG(FATAL) << "Operator(" << Type() << "): find invalid ids";
+      PADDLE_ENFORCE_NE(flag, false);
+    }
+  }
+
   if (FLAGS_check_nan_inf) {
     framework::details::CheckOpHasNanOrInf(*this, exec_scope, place);
   }
