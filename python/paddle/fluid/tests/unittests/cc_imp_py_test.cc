@@ -22,7 +22,7 @@ TEST(CC, IMPORT_PY) {
   ASSERT_TRUE(Py_IsInitialized());
 
   // 1. C/C++ Run Python simple string
-  std::cout << PyRun_SimpleString("import paddle");
+  ASSERT_FALSE(PyRun_SimpleString("import paddle"));
   ASSERT_FALSE(PyRun_SimpleString("print(paddle.to_tensor(1))"));
 
   // 2. C/C++ Run Python funciton
