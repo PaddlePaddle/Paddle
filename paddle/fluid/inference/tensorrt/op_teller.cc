@@ -51,6 +51,9 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
 #endif
+#if IS_TRT_VERSION_GE(7000)
+    teller_set.insert("tile");
+#endif
 #if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
@@ -743,10 +746,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
       if (with_dynamic_shape) return false;
       if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
-    }
-#else
-    if (op_type == "tile") {
-      return false;
     }
 #endif
 
