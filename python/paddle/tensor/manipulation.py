@@ -723,49 +723,49 @@ def unique_consecutive(x,
                        axis=None,
                        dtype="int64",
                        name=None):
-    r"""Eliminates all but the first element from every consecutive group of equivalent elements.
+    r"""
+    Eliminates all but the first element from every consecutive group of equivalent elements.
 
     .. note:: This function is different from :func:`paddle.unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to `std::unique`
         in C++.
-    Args:
-        input (Tensor): the input tensor
-        return_inverse (bool): Whether to also return the indices for where
-            elements in the original input ended up in the returned unique list.
-        return_counts (bool): Whether to also return the counts for each unique
-            element.
-        aixs (int): the dimension to apply unique. If ``None``, the unique of the
-            flattened input is returned. default: ``None``
-    Returns:
-        (Tensor, Tensor (optional), Tensor (optional)): A tensor or a tuple of tensors containing
-            - **output** (*Tensor*): the output list of unique scalar elements.
-            - **inverse_indices** (*Tensor*): (optional) if
-              :attr:`return_inverse` is True, there will be an additional
-              returned tensor (same shape as input) representing the indices
-              for where elements in the original input map to in the output;
-              otherwise, this function will only return a single tensor.
-            - **counts** (*Tensor*): (optional) if
-              :attr:`return_counts` is True, there will be an additional
-              returned tensor (same shape as output or output.size(dim),
-              if dim was specified) representing the number of occurrences
-              for each unique value or tensor.
-    Example::
-        >>> x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
-        >>> output = paddle.unique_consecutive(x)
-        >>> output
-        Tensor([1, 2, 3, 1, 2])
-        >>> output, inverse_indices = paddle.unique_consecutive(x, return_inverse=True)
-        >>> output
-        Tensor([1, 2, 3, 1, 2])
-        >>> inverse_indices
-        Tensor([0, 0, 1, 1, 2, 3, 3, 4])
-        >>> output, counts = paddle.unique_consecutive(x, return_counts=True)
-        >>> output
-        Tensor([1, 2, 3, 1, 2])
-        >>> counts
-        Tensor([2, 2, 1, 2, 1])
-    """
 
+    Args:
+        x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        return_inverse(bool, optional): If True, also return the indices for where elements in
+            the original input ended up in the returned unique consecutive tensor.
+        return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
+        axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
+            Default: None.
+
+    Returns:
+        tuple: (out, inverse, counts). `out` is the unique consecutive tensor for `x`.`inverse` is \
+           provided only if `return_inverse` is True. `counts` is provided only if `return_counts` \
+           is True.
+
+    Example:
+        .. code-block:: python
+
+            import paddle 
+
+            x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
+            output = paddle.unique_consecutive(x) # 
+            np_output = output.numpy() # [1 2 3 1 2]
+            _, inverse, counts = paddle.unique_consecutive(x, return_inverse=True, return_counts=True)
+            np_inverse = inverse.numpy() # [0 0 1 1 2 3 3 4]
+            np_counts = inverse.numpy() # [2 2 1 2 1]
+
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
+            output = paddle.unique_consecutive(x, axis=0) # 
+            np_output = output.numpy() # [2 1 3 0 1 2 1 3 2 1 3]
+
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
+            output = paddle.unique_consecutive(x, axis=0) # 
+            np_output = output.numpy()
+            # [[2 1 3]
+            #  [3 0 1]
+            #  [2 1 3]]
+    """
 
     if axis is None:
         axis = []
