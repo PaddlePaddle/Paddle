@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 
-
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestReshape2OneDNNOp(OpTest):
     def setUp(self):
         self.init_data()
