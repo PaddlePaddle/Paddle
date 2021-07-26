@@ -3003,6 +3003,12 @@ All parameter, weight, gradient are variables in Paddle.
              const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
             self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
           })
+      .def_property(
+          "fix_op_run_order",
+          [](const BuildStrategy &self) { return self.fix_op_run_order_; },
+          [](BuildStrategy &self, bool fix_op_run_order) {
+            self.fix_op_run_order_ = fix_op_run_order;
+          })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
