@@ -24,39 +24,15 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/transpose_op.h"
+#include "paddle/fluid/operators/unique_op.h"
 
 namespace paddle {
 namespace operators {
-
-static std::vector<framework::Tensor> Unbind(const framework::Tensor& in) {
-  int64_t size = in.dims()[0];
-  std::vector<framework::Tensor> tensors(size);
-  for (int64_t i = 0; i < size; ++i) {
-    tensors[i] = in.Slice(i, i + 1);
-  }
-  return tensors;
-}
-
-template <typename T>
-static bool Equal(const framework::Tensor& a, const framework::Tensor& b) {
-  if (a.numel() != b.numel()) {
-    return false;
-  }
-  for (int64_t i = 0; i < a.numel(); ++i) {
-    if (a.data<T>()[i] != b.data<T>()[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
 template <typename InT, typename IndexT>
-static void UniqueFlattendTensor(const framework::ExecutionContext& context,
-                                 const framework::Tensor& in,
-                                 framework::Tensor* out, bool return_inverse,
-                                 bool return_counts) {
+static void UniqueConsecutiveFlattendTensor(
+    const framework::ExecutionContext& context, const framework::Tensor& in,
+    framework::Tensor* out, bool return_inverse, bool return_counts) {
   const InT* in_data = in.data<InT>();
-
   std::vector<InT> out_vec(in.numel());
   std::vector<IndexT> inverse_vec(in.numel());
   std::vector<IndexT> counts_vec(in.numel());
@@ -209,17 +185,16 @@ static void UniqueConsecutiveDim(const framework::ExecutionContext& context,
 }
 
 template <typename DeviceContext, typename InT>
-struct UniqueFlattendTensorFunctor {
+struct UniqueConsecutiveFlattendTensorFunctor {
   const framework::ExecutionContext& ctx_;
   const framework::Tensor& in_;
   framework::Tensor* out_;
   const bool return_inverse_;
   const bool return_counts_;
 
-  UniqueFlattendTensorFunctor(const framework::ExecutionContext& context,
-                              const framework::Tensor& in,
-                              framework::Tensor* out, bool return_inverse,
-                              bool return_counts)
+  UniqueConsecutiveFlattendTensorFunctor(
+      const framework::ExecutionContext& context, const framework::Tensor& in,
+      framework::Tensor* out, bool return_inverse, bool return_counts)
       : ctx_(context),
         in_(in),
         out_(out),
@@ -228,8 +203,8 @@ struct UniqueFlattendTensorFunctor {
 
   template <typename IndexT>
   void apply() const {
-    UniqueFlattendTensor<InT, IndexT>(ctx_, in_, out_, return_inverse_,
-                                      return_counts_);
+    UniqueConsecutiveFlattendTensor<InT, IndexT>(
+        ctx_, in_, out_, return_inverse_, return_counts_);
   }
 };
 
@@ -283,7 +258,7 @@ class UniqueConsecutiveKernel : public framework::OpKernel<T> {
 
     if (axis_vec.empty()) {
       framework::VisitDataTypeTiny(
-          data_type, UniqueFlattendTensorFunctor<DeviceContext, T>(
+          data_type, UniqueConsecutiveFlattendTensorFunctor<DeviceContext, T>(
                          context, *x, out, return_inverse, return_counts));
     } else {
       int axis = axis_vec[0];
