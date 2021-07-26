@@ -116,7 +116,7 @@ class TRTYoloBoxFP16Test(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
-class TRTYoloBoxTest(InferencePassTest):
+class TRTYoloBoxIoUAwareTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
