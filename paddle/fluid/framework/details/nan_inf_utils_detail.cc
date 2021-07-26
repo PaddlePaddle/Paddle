@@ -296,6 +296,19 @@ void tensor_check<platform::CPUDeviceContext>(const std::string& op_type,
   VisitDataType(tensor.type(), vistor);
 }
 
+void vector_to_file2(const int* vec, int len, std::string base_file_name) {
+  std::ostringstream sout;
+  sout << "output/" << base_file_name;
+  std::string file_name = sout.str();
+  std::cout << file_name << std::endl;
+
+  auto f = fopen(file_name.c_str(), "w");
+  for (int i = 0; i < len; i++) {
+    fprintf(f, "%d\n", vec[i]);
+  }
+  fclose(f);
+}
+
 bool CheckDataValid(const std::string& op_type, const framework::Scope& scope,
                     const std::string& var_name, const platform::Place& place) {
   auto* var = scope.FindVar(var_name);
@@ -313,19 +326,16 @@ bool CheckDataValid(const std::string& op_type, const framework::Scope& scope,
     return false;
   }
 
-  VLOG(3) << "CheckDataValid 1";
   if (tensor->memory_size() == 0) {
     VLOG(3) << var_name << " var_name need not to check, size == 0";
     return false;
   }
 
-  VLOG(3) << "CheckDataValid 2";
   framework::LoDTensor cpu_tensor;
   cpu_tensor.Resize(tensor->dims());
   int* cpu_data = static_cast<int*>(
       cpu_tensor.mutable_data(platform::CPUPlace(), tensor->type()));
 
-  VLOG(3) << "CheckDataValid 3";
   framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
   bool flag = false;
   for (int i = 0; i < cpu_tensor.numel(); i++) {
@@ -333,6 +343,16 @@ bool CheckDataValid(const std::string& op_type, const framework::Scope& scope,
       flag = true;
       break;
     }
+  }
+
+  if (flag) {
+    /*
+  for (int i = 0; i < cpu_tensor.numel(); i++) {
+      printf("%d,", cpu_data[i]);
+  }
+  printf("\n");
+  */
+    vector_to_file2(cpu_data, cpu_tensor.numel(), op_type);
   }
 
   return flag;

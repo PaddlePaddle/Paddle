@@ -1180,10 +1180,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
   }
 
-  int is_main_block = static_cast<int>(*std::getenv("PADDLE_MAIN_BLOCK"));
+  char is_main_block = *std::getenv("PADDLE_MAIN_BLOCK");
   VLOG(3) << "is_main_block:" << is_main_block;
 
-  if (is_main_block) {
+  if (is_main_block == '1') {
     if (type_ == "increment" || type_ == "create_py_reader" ||
         type_ == "create_double_buffer_reader") {
     } else {
