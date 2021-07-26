@@ -324,7 +324,7 @@ class TestLocalResponseNormFAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_dim)
 
             def test_shape():
-                x = fluid.data(name='x', shape=[0, 0, 2, 3], dtype="float32")
+                x = paddle.rand(shape=[0, 0, 2, 3], dtype="float32")
                 paddle.nn.functional.local_response_norm(x, size=5)
 
             self.assertRaises(ValueError, test_shape)
