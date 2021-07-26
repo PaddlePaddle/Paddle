@@ -86,6 +86,112 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
 setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
 
 
+def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
+    inshape = x.shape
+    assert dim1 < len(inshape) and dim1 >= -len(inshape), (
+        'dim1 should between [-rank,rank) in fill_diagonal_tensor_')
+    assert dim2 < len(inshape) and dim2 >= -len(inshape), (
+        'dim2 should between [-rank,rank) in fill_diagonal_tensor_')
+    assert len(inshape) >= 2, (
+        'Tensor dims should >= 2 in fill_diagonal_tensor_')
+    dim1 %= len(inshape)
+    dim2 %= len(inshape)
+
+    predshape = []
+    for i in range(len(inshape)):
+        if i != dim1 and i != dim2:
+            predshape.append(inshape[i])
+    diaglen = min(
+        min(inshape[dim1], inshape[dim1] + offset),
+        min(inshape[dim2], inshape[dim2] - offset))
+    predshape.append(diaglen)
+    assert tuple(predshape) == tuple(y.shape), (
+        "the y shape should be {}".format(predshape))
+    if len(y.shape) == 1:
+        y = y.reshape([1, -1])
+
+    if inplace:
+        return core.ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
+                                              'offset', offset)
+    return core.ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
+                                         'offset', offset)
+
+
+def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function fill the source Tensor y into the x Tensor's diagonal inplace.
+
+    Args:
+        x(Tensor): ``x`` is the original Tensor
+        y(Tensor): ``y`` is the Tensor to filled in x
+        dim1(int,optional): first dimension with respect to which to fill diagonal. Default: 0.
+        dim2(int,optional): second dimension with respect to which to fill diagonal. Default: 1.
+        offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
+        name(str,optional): Name for the operation (optional, default is None)
+
+    Returns:
+        Tensor: Tensor with diagonal filled with y.
+
+    Returns type:
+        list: dtype is same as x Tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones((4, 3)) * 2
+            y = paddle.ones((3,))
+            x.fill_diagonal_tensor_(y)
+            print(x.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+
+    """
+    return _fill_diagonal_tensor_impl(
+        x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=True)
+
+
+setattr(core.VarBase, 'fill_diagonal_tensor_', fill_diagonal_tensor_)
+
+
+def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
+    """
+    This function fill the source Tensor y into the x Tensor's diagonal.
+
+    Args:
+        x(Tensor): ``x`` is the original Tensor
+        y(Tensor): ``y`` is the Tensor to filled in x
+        dim1(int,optional): first dimension with respect to which to fill diagonal. Default: 0.
+        dim2(int,optional): second dimension with respect to which to fill diagonal. Default: 1.
+        offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
+        name(str,optional): Name for the operation (optional, default is None)
+
+    Returns:
+        Tensor: Tensor with diagonal filled with y.
+
+    Returns type:
+        list: dtype is same as x Tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones((4, 3)) * 2
+            y = paddle.ones((3,))
+            nx = x.fill_diagonal_tensor(y)
+            print(nx.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+
+    """
+    return _fill_diagonal_tensor_impl(
+        x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=False)
+
+
+setattr(core.VarBase, 'fill_diagonal_tensor', fill_diagonal_tensor)
+
+
 @dygraph_only
 def tolist(x):
     """
