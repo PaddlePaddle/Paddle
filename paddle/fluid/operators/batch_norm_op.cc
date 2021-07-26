@@ -1,8 +1,11 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,8 +20,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#include "paddle/fluid/platform/timer.h"
-
 namespace paddle {
 namespace operators {
 
@@ -267,12 +268,14 @@ void BatchNormOpMaker::Make() {
       .SetDefault(false);
   AddComment(R"DOC(
 Batch Normalization.
+
 Batch Norm has been implemented as discussed in the paper:
 https://arxiv.org/pdf/1502.03167.pdf
 Can be used as a normalizer function for conv2d and fully_connected operations.
 The required data format for this layer is one of the following:
 1. NHWC `[batch, in_height, in_width, in_channels]`
 2. NCHW `[batch, in_channels, in_height, in_width]`
+
 )DOC");
 }
 
@@ -351,21 +354,38 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
       switch (data_layout) {
         case DataLayout::kNCHW: {
-          platform::Timer timeline;
-          timeline.Start();
-          ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
-          for (int nc = 0; nc < N * C; ++nc) {
-            saved_mean_e(nc % C) += x_arr.col(nc).sum();
+          auto x_data = x->data<T>();
+          auto mean = saved_mean->mutable_data<T>(ctx.GetPlace());
+          auto variance = saved_variance->mutable_data<T>(ctx.GetPlace());
+#pragma omp parallel for
+          for (int nc = 0; nc < C; ++nc) {
+            T sum = 0.0f;
+            auto mean_data =
+                x_data + nc * sample_size;  // mean value of each channel
+
+#pragma omp simd
+            for (auto i = 0; i < N; ++i) {
+              for (auto j = 0; j < sample_size; ++j) {
+                sum += mean_data[j];  // add data for each channel
+              }
+              mean_data = mean_data +
+                          C * sample_size;  // jump to the same channel index
+            }
+            mean[nc] = sum / (N * sample_size);
+
+            T var = 0.0f;
+            auto var_data =
+                x_data + nc * sample_size;  // variance value of each channel
+
+#pragma omp simd
+            for (auto i = 0; i < N; ++i) {
+              for (auto j = 0; j < sample_size; ++j) {
+                var += (var_data[j] - mean[nc]) * (var_data[j] - mean[nc]);
+              }
+              var_data = var_data + C * sample_size;
+            }
+            variance[nc] = var / (N * sample_size);
           }
-          saved_mean_e /= N * sample_size;
-          for (int nc = 0; nc < N * C; ++nc) {
-            saved_variance_e(nc % C) +=
-                (x_arr.col(nc) - saved_mean_e(nc % C)).matrix().squaredNorm();
-          }
-          saved_variance_e /= N * sample_size;
-          timeline.Pause();
-          VLOG(1) << "batch norm cost time=" << timeline.ElapsedSec()
-                  << " seconds";
           break;
         }
         case DataLayout::kNHWC: {
@@ -430,11 +450,26 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
     switch (data_layout) {
       case DataLayout::kNCHW: {
-        EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
-                               N * C);
-        ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
+        // EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()),
+        // sample_size,
+        //                        N * C);
+        // ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
+
+        // for (int nc = 0; nc < N * C; ++nc) {
+        //   y_arr.col(nc) = x_arr.col(nc) * new_scale(nc % C) + new_bias(nc %
+        //   C);
+        // }
+
+        auto y_data = y->mutable_data<T>(ctx.GetPlace());
+        auto x_data = x->data<T>();
+#pragma omp parallel for
         for (int nc = 0; nc < N * C; ++nc) {
-          y_arr.col(nc) = x_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
+          auto var_data = x_data + nc * sample_size;
+          auto temp_y = y_data + nc * sample_size;
+#pragma omp simd
+          for (int j = 0; j < sample_size; ++j) {
+            temp_y[j] = var_data[j] * new_scale[nc % C] + new_bias[nc % C];
+          }
         }
         break;
       }
