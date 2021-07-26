@@ -14,11 +14,11 @@
 
 #pragma once
 #include <stdio.h>
-#include <cassert>
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
@@ -31,14 +31,12 @@ class MishPlugin : public PluginTensorRT {
 
  protected:
   size_t getSerializationSize() const override {
-    return SerializedSize(getPluginType()) + getBaseSerializationSize() +
-           SerializedSize(threshold_);
+    return getBaseSerializationSize() + SerializedSize(threshold_);
   }
 
   // TRT will call this func  to serialize the configuration of TRT
   // It should not be called by users.
   void serialize(void* buffer) const override {
-    SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, threshold_);
   }
@@ -64,6 +62,8 @@ class MishPlugin : public PluginTensorRT {
   const char* getPluginType() const override { return "mish_plugin"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
+  bool supportsFormat(nvinfer1::DataType type,
+                      nvinfer1::PluginFormat format) const override;
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
                                      int nbInputDims) override;
 #if IS_TRT_VERSION_LT(8000)
@@ -89,7 +89,6 @@ class MishPluginCreator : public TensorRTPluginCreator {
 
 REGISTER_TRT_PLUGIN_V2(MishPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class MishPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit MishPluginDynamic(const float threshold, const bool with_fp16)
@@ -104,7 +103,7 @@ class MishPluginDynamic : public DynamicPluginTensorRT {
     return new MishPluginDynamic(threshold_, with_fp16_);
   }
 
-  const char* getPluginType() const override { return "mish_plugin"; }
+  const char* getPluginType() const override { return "mish_plugin_dynamic"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
 
@@ -147,7 +146,7 @@ class MishPluginDynamic : public DynamicPluginTensorRT {
 
 class MishPluginDynamicCreator : public TensorRTPluginCreator {
  public:
-  const char* getPluginName() const override { return "mish_plugin"; }
+  const char* getPluginName() const override { return "mish_plugin_dynamic"; }
 
   const char* getPluginVersion() const override { return "1"; }
 
@@ -160,7 +159,6 @@ class MishPluginDynamicCreator : public TensorRTPluginCreator {
 };
 
 REGISTER_TRT_PLUGIN_V2(MishPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt
