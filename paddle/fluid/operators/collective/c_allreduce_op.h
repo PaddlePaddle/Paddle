@@ -282,9 +282,9 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             << ", sendbuff:" << sendbuff << ", recvbuff:" << recvbuff
             << ", out_size:" << out->memory_size();
 
-    // PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-    // sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
-    // reinterpret_cast<void*>(stream)));
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
+        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
+        reinterpret_cast<void*>(stream)));
 
     out->Resize(in->dims());
 #else

@@ -25,15 +25,14 @@ class PartialSendOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    // auto x = ctx.Input<framework::LoDTensor>("X");
-    // int num = ctx.Attr<int>("num");
-    // int id = ctx.Attr<int>("id");
-    // int send_numel = x->numel() / num;
-    // int offset = send_numel * id;
-    // void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()) +
-    // offset);
-    // int numel = send_numel;
-    // HcclDataType dtype = platform::ToHCCLDataType(x->type());
+    auto x = ctx.Input<framework::LoDTensor>("X");
+    int num = ctx.Attr<int>("num");
+    int id = ctx.Attr<int>("id");
+    int send_numel = x->numel() / num;
+    int offset = send_numel * id;
+    void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()) + offset);
+    int numel = send_numel;
+    HcclDataType dtype = platform::ToHCCLDataType(x->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
@@ -60,8 +59,8 @@ class PartialSendOpASCENDKernel : public framework::OpKernel<T> {
             << "root " << root << ", comm: " << comm->comm()
             << ", stream: " << stream;
 
-    // PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
-    //   ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
+        ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
     VLOG(3) << "ommit send";
 
 #else

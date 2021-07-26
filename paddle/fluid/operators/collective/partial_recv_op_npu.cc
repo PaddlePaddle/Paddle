@@ -66,12 +66,14 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
             << ", dtype:" << dtype << ", root:" << root
             << ", comm: " << comm->comm() << ", stream: " << stream;
 
-    // PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
-    // ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
-    VLOG(3) << "ommit recv";
-    auto dims = out->dims();
-    FillNpuTensorWithConstant<T>(out, static_cast<T>(0.0));
-    out->Resize(dims);
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
+        ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
+/*
+VLOG(3) << "ommit recv";
+auto dims = out->dims();
+FillNpuTensorWithConstant<T>(out, static_cast<T>(0.0));
+out->Resize(dims);
+*/
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
