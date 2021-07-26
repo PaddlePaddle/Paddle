@@ -58,19 +58,19 @@ __global__ void GatherNdCUDAKernel(const T* input, const int32_t* input_dims,
   }
 }
 
-int GatherNdPluginDynamic::initialize() { return 0; }
+int GatherNdPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
-size_t GatherNdPluginDynamic::getSerializationSize() const {
+size_t GatherNdPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(with_fp16_);
 }
 
-void GatherNdPluginDynamic::serialize(void* buffer) const {
+void GatherNdPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, with_fp16_);
 }
 
 nvinfer1::DimsExprs GatherNdPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-    nvinfer1::IExprBuilder& expr_builder) {
+    nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
       nb_inputs, 2,
       platform::errors::InvalidArgument(
@@ -100,7 +100,7 @@ nvinfer1::DimsExprs GatherNdPluginDynamic::getOutputDimensions(
 
 bool GatherNdPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of gather_nd plugin should not be nullptr."));
@@ -134,14 +134,15 @@ bool GatherNdPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType GatherNdPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType* input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   return input_types[0];
 }
 
 int GatherNdPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc* input_desc,
     const nvinfer1::PluginTensorDesc* output_desc, const void* const* inputs,
-    void* const* outputs, void* workspace, cudaStream_t stream) {
+    void* const* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   auto index_dims = input_desc[1].dims;
   auto input_dims_size = input_dims.nbDims;

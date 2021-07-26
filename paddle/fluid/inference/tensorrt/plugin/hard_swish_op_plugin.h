@@ -40,30 +40,32 @@ class HardSwishPlugin : public PluginTensorRT {
   }
 
   ~HardSwishPlugin() {}
-  HardSwishPlugin* clone() const override {
+  HardSwishPlugin* clone() const TRT_NOEXCEPT override {
     return new HardSwishPlugin(threshold_, scale_, offset_);
   }
 
-  const char* getPluginType() const override { return "hard_swish_plugin"; }
-  int getNbOutputs() const override { return 1; }
-  int initialize() override { return 0; }
+  const char* getPluginType() const TRT_NOEXCEPT override {
+    return "hard_swish_plugin";
+  }
+  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
+  int initialize() TRT_NOEXCEPT override { return 0; }
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
-                                     int nbInputDims) override;
+                                     int nbInputDims) TRT_NOEXCEPT override;
 #if IS_TRT_VERSION_LT(8000)
   int enqueue(int batchSize, const void* const* inputs, void** outputs,
 #else
   int enqueue(int batchSize, const void* const* inputs, void* const* outputs,
 #endif
-              void* workspace, cudaStream_t stream) override;
+              void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
 
-  size_t getSerializationSize() const override {
+  size_t getSerializationSize() const TRT_NOEXCEPT override {
     return getBaseSerializationSize() + SerializedSize(threshold_) +
            SerializedSize(scale_) + SerializedSize(offset_);
   }
 
   // TRT will call this func  to serialize the configuration of TRT
   // It should not be called by users.
-  void serialize(void* buffer) const override {
+  void serialize(void* buffer) const TRT_NOEXCEPT override {
     serializeBase(buffer);
     SerializeValue(&buffer, threshold_);
     SerializeValue(&buffer, scale_);
@@ -78,13 +80,15 @@ class HardSwishPlugin : public PluginTensorRT {
 
 class HardSwishPluginCreator : public TensorRTPluginCreator {
  public:
-  const char* getPluginName() const override { return "hard_swish_plugin"; }
+  const char* getPluginName() const TRT_NOEXCEPT override {
+    return "hard_swish_plugin";
+  }
 
-  const char* getPluginVersion() const override { return "1"; }
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(const char* name,
-                                         const void* serial_data,
-                                         size_t serial_length) override {
+  nvinfer1::IPluginV2* deserializePlugin(
+      const char* name, const void* serial_data,
+      size_t serial_length) TRT_NOEXCEPT override {
     return new HardSwishPlugin(serial_data, serial_length);
   }
 };
