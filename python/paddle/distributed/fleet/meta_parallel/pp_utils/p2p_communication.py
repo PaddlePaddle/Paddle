@@ -21,10 +21,10 @@ _tensor_shape = (2, 1024, 768)
 
 def initialize_p2p_groups(hcg):
     global _groups, _hcg
-    _groups = [
-        paddle.distributed.new_group(ranks=group)
-        for group in hcg.get_p2p_groups()
-    ]
+    # _groups = [
+    #     paddle.distributed.new_group(ranks=group)
+    #     for group in hcg.get_p2p_groups()
+    # ]
     _hcg = hcg
 
 
@@ -164,33 +164,45 @@ def _communicate(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
         tensor_recv_next = paddle.empty(shape=tensor_chunk_shape, dtype=dtype)
 
     if tensor_send_prev is not None:
-        group = _get_send_recv_group(
-            src_stage=current_stage, dest_stage=prev_stage)
+        # group = _get_send_recv_group(
+        # src_stage=current_stage, dest_stage=prev_stage)
         #print("group msg:", group)
         paddle.distributed.wait(tensor_send_prev, use_calc_stream=True)
         paddle.distributed.send(
-            tensor_send_prev, dst=0, group=group, use_calc_stream=False)
+            tensor_send_prev,
+            dst=0,
+            group=_hcg.send_prev_group,
+            use_calc_stream=False)
     if tensor_recv_prev is not None:
-        group = _get_send_recv_group(
-            src_stage=prev_stage, dest_stage=current_stage)
+        # group = _get_send_recv_group(
+        # src_stage=prev_stage, dest_stage=current_stage)
         #print("group msg:", group)
         paddle.distributed.recv(
-            tensor_recv_prev, src=0, group=group, use_calc_stream=True)
+            tensor_recv_prev,
+            src=0,
+            group=_hcg.recv_prev_group,
+            use_calc_stream=True)
         #print("tensor_recv_prev", tensor_recv_prev.numpy())
 
     if tensor_send_next is not None:
-        group = _get_send_recv_group(
-            src_stage=current_stage, dest_stage=next_stage)
+        # group = _get_send_recv_group(
+        # src_stage=current_stage, dest_stage=next_stage)
         #print("group msg:", group)
         paddle.distributed.wait(tensor_send_next, use_calc_stream=True)
         paddle.distributed.send(
-            tensor_send_next, dst=1, group=group, use_calc_stream=False)
+            tensor_send_next,
+            dst=1,
+            group=_hcg.send_next_group,
+            use_calc_stream=False)
     if tensor_recv_next is not None:
-        group = _get_send_recv_group(
-            src_stage=next_stage, dest_stage=current_stage)
+        # group = _get_send_recv_group(
+        # src_stage=next_stage, dest_stage=current_stage)
         #print("group msg:", group)
         paddle.distributed.recv(
-            tensor_recv_next, src=1, group=group, use_calc_stream=True)
+            tensor_recv_next,
+            src=1,
+            group=_hcg.recv_next_group,
+            use_calc_stream=True)
         #print("tensor_recv_next", tensor_recv_next.numpy())
 
     return tensor_recv_prev, tensor_recv_next

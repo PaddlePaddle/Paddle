@@ -156,6 +156,16 @@ class HybridCommunicateGroup(object):
         self.is_first_stage = (self.stage_id == 0)
         self.is_last_stage = (self.stage_id == (self._pp_degree - 1))
 
+        # create p2p_groups
+        self._p2p_groups = self._build_p2p_lists()
+        if self._pp_degree > 1:
+            self._set_p2p_group()
+            print("send_next_group: ", self.send_next_group)
+            print("send_prev_group: ", self.send_prev_group)
+            print("recv_next_group: ", self.recv_next_group)
+            print("recv_prev_group: ", self.recv_prev_group)
+
+
         debug_str = "HybridParallelInfo: rank_id: %d, mp_degree: %d, " \
                     "sharding_degree: %d, pp_degree: %d, dp_degree: %d" % (self.global_rank, self._mp_degree,
                     self._sharding_degree, self._pp_degree, self._dp_degree)
@@ -163,9 +173,6 @@ class HybridCommunicateGroup(object):
             self._mp_group, self._sharding_group, self._pp_group,
             self._dp_group, self._check_group)
         logger.info(debug_str)
-
-        # create p2p_groups and no new group
-        self._p2p_groups = self._build_p2p_lists()
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
@@ -235,6 +242,39 @@ class HybridCommunicateGroup(object):
         assert parallel_comm_group is not None
 
         return parallel_group, parallel_comm_group
+
+    def _set_p2p_group(self):
+        comm_lists = self._topo.get_comm_list('pipe')
+
+        self.send_next_group = None
+        self.send_prev_group = None
+        self.recv_next_group = None
+        self.recv_prev_group = None
+        for comm_ranks in comm_lists:
+            assert len(comm_ranks) == self._pp_degree
+            for idx, rank in enumerate(comm_ranks):
+                curr_rank = rank
+                next_rank = comm_ranks[(idx + 1) % self._pp_degree]
+                prev_rank = comm_ranks[(idx - 1) % self._pp_degree]
+                next_group = paddle.distributed.new_group(
+                    ranks=[curr_rank, next_rank])
+                prev_group = paddle.distributed.new_group(
+                    ranks=[prev_rank, curr_rank])
+
+                if self.global_rank == curr_rank:
+                    self.send_next_group = next_group
+                    self.send_prev_group = prev_group
+                elif self.global_rank == next_rank:
+                    self.recv_prev_group = next_group
+                elif self.global_rank == prev_rank:
+                    self.recv_next_group = prev_group
+                else:
+                    pass
+
+        assert self.send_next_group is not None
+        assert self.send_prev_group is not None
+        assert self.recv_next_group is not None
+        assert self.recv_prev_group is not None
 
     def topology(self):
         return self._topo

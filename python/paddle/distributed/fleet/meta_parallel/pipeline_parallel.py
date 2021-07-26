@@ -121,13 +121,20 @@ class PipelineParallel(MetaParallelBase):
         num_warmup_microbatches = min(num_warmup_microbatches, num_microbatches)
         num_microbatches_remaining = num_microbatches - num_warmup_microbatches
 
+        print("num_warmup_microbatches: ", num_warmup_microbatches,
+              "num_microbatches_remaining: ", num_microbatches_remaining)
+
         input_tensors = []
         output_tensors = []
         losses_reduced = []
 
         for step_id in range(num_warmup_microbatches):
+            logger("==recv F==")
             input_tensor = p2p.recv_forward()
+            if input_tensor is not None:
+                input_tensor.stop_gradient = False
             output_tensor = self._forward_step(input_tensor)
+            print("==send F==")
             p2p.send_forward(output_tensor)
 
             input_tensors.append(input_tensor)
@@ -136,6 +143,7 @@ class PipelineParallel(MetaParallelBase):
         #print("warmup is endding..")
 
         if num_microbatches_remaining > 0:
+            print("==recv F==")
             input_tensor = p2p.recv_forward()
 
         for i in range(num_microbatches_remaining):
@@ -145,6 +153,7 @@ class PipelineParallel(MetaParallelBase):
                 input_tensor.stop_gradient = False
             output_tensor = self._forward_step(input_tensor)
 
+            print("==send F; recv B==")
             output_tensor_grad = p2p.send_forward_recv_backward(output_tensor)
 
             input_tensors.append(input_tensor)
@@ -153,16 +162,20 @@ class PipelineParallel(MetaParallelBase):
             input_tensor, output_tensor = input_tensors.pop(
                 0), output_tensors.pop(0)
 
-            #print("input_tensor: ", input_tensor, "output_tensor: ", output_tensor, "output_tensor_grad: ", output_tensor_grad)
+            print("input_tensor: ", input_tensor, "output_tensor: ",
+                  output_tensor, "output_tensor_grad: ", output_tensor_grad)
             input_tensor_grad = \
                 self._backward_step(input_tensor, output_tensor, output_tensor_grad)
 
-            #print("input_tensor_grad: ", input_tensor_grad)
+            print("input_tensor_grad: ", input_tensor_grad)
             if last_iteration:
                 input_tensor = None
                 #print("start send backward")
+                print("==send B==")
                 p2p.send_backward(input_tensor_grad)
             else:
+                print("==send B; recv F==")
+                print("input_tensor_grad: ", input_tensor_grad)
                 input_tensor = \
                     p2p.send_backward_recv_forward(input_tensor_grad)
 
@@ -170,10 +183,12 @@ class PipelineParallel(MetaParallelBase):
             input_tensor = input_tensors.pop(0)
             output_tensor = output_tensors.pop(0)
 
+            print("==recv B==")
             output_tensor_grad = p2p.recv_backward()
 
             input_tensor_grad = \
                 self._backward_step(input_tensor, output_tensor, output_tensor_grad)
+            print("==send B==")
             p2p.send_backward(input_tensor_grad)
 
         self.data_id = 0
