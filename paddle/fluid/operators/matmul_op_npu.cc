@@ -14,22 +14,22 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
-
-#include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class MatMulV2NPUKernel : public framework::OpKernel<T> {
+class MatMulNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::Tensor>("X");
     auto* y = ctx.Input<framework::Tensor>("Y");
     auto* out = ctx.Output<framework::Tensor>("Out");
-    bool transpose_x = ctx.Attr<bool>("trans_x");
-    bool transpose_y = ctx.Attr<bool>("trans_y");
+    bool transpose_x = ctx.Attr<bool>("transpose_X");
+    bool transpose_y = ctx.Attr<bool>("transpose_Y");
 
     if (x->dims().size() == 2) {
       out->mutable_data<T>(ctx.GetPlace());
@@ -59,7 +59,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
+class MatMulGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::Tensor>("X");
@@ -67,7 +67,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
     auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
-    bool transpose_y = ctx.Attr<bool>("trans_y");
+    bool transpose_y = ctx.Attr<bool>("transpose_Y");
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -175,12 +175,11 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    matmul_v2,
-    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext,
-                           paddle::platform::float16>);
+    matmul, ops::MatMulNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::MatMulNPUKernel<paddle::platform::NPUDeviceContext,
+                         paddle::platform::float16>);
 REGISTER_OP_NPU_KERNEL(
-    matmul_v2_grad,
-    ops::MatMulV2GradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MatMulV2GradNPUKernel<paddle::platform::NPUDeviceContext,
-                               paddle::platform::float16>);
+    matmul_grad,
+    ops::MatMulGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::MatMulGradNPUKernel<paddle::platform::NPUDeviceContext,
+                             paddle::platform::float16>);

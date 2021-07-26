@@ -1,20 +1,20 @@
 # A image for building paddle binaries
-# Use cann 5.0.2.alpha005 and aarch64 for A300t-9000
+# Use cann 5.0.2.alpha005 and x86_64 for A300t-9000
 # Update CANN_VERSION if using other versions
 #
 # Build: CANN 5.0.2.alpha005
 # Download pkgs from https://www.hiascend.com/software/cann/community 
 # and copy them to current dir first, then run build commands
 # cd Paddle/tools/dockerfile
-# docker build -f Dockerfile.npu_aarch64  \
+# docker build -f Dockerfile.npu_x86_64  \
 # --build-arg CANN_VERSION=5.0.2.alpha005 \
-# -t paddlepaddle/paddle:latest-dev-5.0.2.alpha005-gcc82-aarch64 .
+# -t paddlepaddle/paddle:latest-dev-5.0.2.alpha005-gcc82-x86_64 .
 #
 # docker run -it --pids-limit 409600 \
 # -v /usr/local/Ascend/driver:/usr/local/Ascend/driver \
 # -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
 # -v /usr/local/dcmi:/usr/local/dcmi \
-# paddlepaddle/paddle:latest-dev-5.0.2.alpha005-gcc82-aarch64 /bin/bash
+# paddlepaddle/paddle:latest-dev-5.0.2.alpha005-gcc82-x86_64 /bin/bash
 
 FROM ubuntu:18.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
@@ -38,27 +38,27 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz && \
     ../gcc-8.2.0/configure --prefix=/opt/compiler/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
     make -j8 && make install && \
     cd .. && rm -rf temp_gcc82 && rm -rf gcc-8.2.0* && \
-    cd /usr/lib/aarch64-linux-gnu && \
+    cd /usr/lib/x86_64-linux-gnu && \
     mv libstdc++.so.6 libstdc++.so.6.bak && mv libstdc++.so.6.0.25 libstdc++.so.6.0.25.bak && \
-    ln -s /opt/compiler/gcc-8.2/lib64/libgfortran.so.5 /usr/lib/aarch64-linux-gnu/libstdc++.so.5 && \
-    ln -s /opt/compiler/gcc-8.2/lib64/libstdc++.so.6   /usr/lib/aarch64-linux-gnu/libstdc++.so.6 && \
-    cp /opt/compiler/gcc-8.2/lib64/libstdc++.so.6.0.25 /usr/lib/aarch64-linux-gnu && \
+    ln -s /opt/compiler/gcc-8.2/lib64/libgfortran.so.5 /usr/lib/x86_64-linux-gnu/libstdc++.so.5 && \
+    ln -s /opt/compiler/gcc-8.2/lib64/libstdc++.so.6   /usr/lib/x86_64-linux-gnu/libstdc++.so.6 && \
+    cp /opt/compiler/gcc-8.2/lib64/libstdc++.so.6.0.25 /usr/lib/x86_64-linux-gnu && \
     cd /usr/bin && mv gcc gcc.bak && mv g++ g++.bak && \
     ln -s /opt/compiler/gcc-8.2/bin/gcc /usr/bin/gcc && \
     ln -s /opt/compiler/gcc-8.2/bin/g++ /usr/bin/g++
 ENV PATH=/opt/compiler/gcc-8.2/bin:$PATH
 ENV LD_LIBRARY_PATH=/opt/compiler/gcc-8.2/lib:/opt/compiler/gcc-8.2/lib64:$LD_LIBRARY_PATH
 
-# cmake 3.19
+# cmake 3.16
 WORKDIR /opt
-RUN wget -q https://cmake.org/files/v3.19/cmake-3.19.8-Linux-aarch64.tar.gz && \
-    tar -zxvf cmake-3.19.8-Linux-aarch64.tar.gz && rm cmake-3.19.8-Linux-aarch64.tar.gz && \
-    mv cmake-3.19.8-Linux-aarch64 cmake-3.19
-ENV PATH=/opt/cmake-3.19/bin:${PATH}
+RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && \
+    tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz && rm cmake-3.16.0-Linux-x86_64.tar.gz && \
+    mv cmake-3.16.0-Linux-x86_64 cmake-3.16
+ENV PATH=/opt/cmake-3.16/bin:${PATH}
 
 # conda 4.9.2
 WORKDIR /opt
-ARG CONDA_FILE=Miniconda3-py37_4.9.2-Linux-aarch64.sh
+ARG CONDA_FILE=Miniconda3-py37_4.9.2-Linux-x86_64.sh
 RUN cd /opt && wget -q https://repo.anaconda.com/miniconda/${CONDA_FILE} && chmod +x ${CONDA_FILE}
 RUN mkdir /opt/conda && ./${CONDA_FILE} -b -f -p "/opt/conda" && rm -rf ${CONDA_FILE}
 ENV PATH=/opt/conda/bin:${PATH}
@@ -77,7 +77,7 @@ RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/un
 RUN /opt/conda/bin/pip install -r /root/requirements.txt && rm -rf /root/requirements.txt
 
 # Install Go and glide
-RUN wget -qO- https://golang.org/dl/go1.16.5.linux-arm64.tar.gz | \
+RUN wget -qO- https://paddle-ci.cdn.bcebos.com/go1.8.1.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
@@ -99,8 +99,8 @@ RUN apt-get install libprotobuf-dev -y
 # Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
 # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
 # So install a newer version here.
-RUN wget -q http://ports.ubuntu.com/pool/universe/p/patchelf/patchelf_0.10-2build1_arm64.deb && \
-    dpkg -i patchelf_0.10-2build1_arm64.deb && rm -rf patchelf_0.10-2build1_arm64.deb
+RUN wget -q https://paddle-ci.cdn.bcebos.com/patchelf_0.10-2_amd64.deb && \
+    dpkg -i patchelf_0.10-2_amd64.deb && rm -rf patchelf_0.10-2_amd64.deb
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
@@ -114,9 +114,10 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
 
 # clang-form 3.8.0
-RUN wget https://releases.llvm.org/3.8.0/clang+llvm-3.8.0-aarch64-linux-gnu.tar.xz && \ 
-    tar xf clang+llvm-3.8.0-aarch64-linux-gnu.tar.xz && cd clang+llvm-3.8.0-aarch64-linux-gnu && \
-    cp -r * /usr/local && cd .. && rm -rf clang+llvm-3.8.0-aarch64-linux-gnu*
+RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && \ 
+    tar xf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && cd clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && \
+    cp -r * /usr/local && cd .. && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && \
+    rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz 
 
 # HwHiAiUser
 RUN groupadd HwHiAiUser && \
@@ -138,10 +139,10 @@ ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:$LD_LIBRARY_PATH
 ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/driver:$LD_LIBRARY_PATH
 
 # Install Ascend toolkit
-COPY Ascend-cann-toolkit_${CANN_VERSION}_linux-aarch64.run /usr/local/Ascend/
-RUN chmod +x Ascend-cann-toolkit_${CANN_VERSION}_linux-aarch64.run && \
-    ./Ascend-cann-toolkit_${CANN_VERSION}_linux-aarch64.run --install --quiet && \
-    rm -rf Ascend-cann-toolkit_${CANN_VERSION}_linux-aarch64.run
+COPY Ascend-cann-toolkit_${CANN_VERSION}_linux-x86_64.run /usr/local/Ascend/
+RUN chmod +x Ascend-cann-toolkit_${CANN_VERSION}_linux-x86_64.run && \
+    ./Ascend-cann-toolkit_${CANN_VERSION}_linux-x86_64.run --install --quiet && \
+    rm -rf Ascend-cann-toolkit_${CANN_VERSION}_linux-x86_64.run
 # udpate envs for model transformation and operator develop
 ENV PATH=/usr/local/Ascend/ascend-toolkit/latest/atc/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/Ascend/ascend-toolkit/latest/atc/lib64:$LD_LIBRARY_PATH
@@ -151,11 +152,10 @@ ENV PYTHONPATH=/usr/local/Ascend/ascend-toolkit/latest/toolkit/python/site-packa
 ENV TOOLCHAIN_HOME=/usr/local/Ascend/ascend-toolkit/latest/toolkit
 
 # Install Ascend NNAE
-COPY Ascend-cann-nnae_${CANN_VERSION}_linux-aarch64.run /usr/local/Ascend/
-RUN chmod +x Ascend-cann-nnae_${CANN_VERSION}_linux-aarch64.run && \
-    ./Ascend-cann-nnae_${CANN_VERSION}_linux-aarch64.run --install --quiet && \
-    rm -rf Ascend-cann-nnae_${CANN_VERSION}_linux-aarch64.run
-
+COPY Ascend-cann-nnae_${CANN_VERSION}_linux-x86_64.run /usr/local/Ascend/
+RUN chmod +x Ascend-cann-nnae_${CANN_VERSION}_linux-x86_64.run && \
+    ./Ascend-cann-nnae_${CANN_VERSION}_linux-x86_64.run --install --quiet && \
+    rm -rf Ascend-cann-nnae_${CANN_VERSION}_linux-x86_64.run
 # update envs for third party AI framework develop
 ENV PATH=/usr/local/Ascend/nnae/latest/fwkacllib/bin:$PATH
 ENV PATH=/usr/local/Ascend/nnae/latest/fwkacllib/ccec_compiler/bin:$PATH
@@ -168,13 +168,6 @@ ENV ASCEND_OPP_PATH=/usr/local/Ascend/nnae/latest/opp
 # 0 debug; 1 info; 2 warning; 3 error; 4 null
 ENV ASCEND_GLOBAL_LOG_LEVEL=3
 RUN rm -rf /usr/local/Ascend/driver
-
-# Create /lib64/ld-linux-aarch64.so.1
-RUN umask 0022 && \
-    if [ ! -d "/lib64" ]; \
-    then \
-        mkdir /lib64 && ln -sf /lib/ld-linux-aarch64.so.1 /lib64/ld-linux-aarch64.so.1; \
-    fi
 
 # Clean
 RUN apt-get clean -y
