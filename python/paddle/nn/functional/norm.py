@@ -488,6 +488,12 @@ def local_response_norm(x,
             'Expected 3D or higher dimensionality input, but got {} dimensions'.
             format(dim))
 
+    for i, size in enumerate(sizes):
+        if not size > 0:
+            raise ValueError("Expected every dim's size to be larger than 0, "
+                             "but the size of the {}-th dim is {}".format(i,
+                                                                          size))
+
     channel_last = True if data_format[-1] == "C" else False
 
     from functools import reduce
