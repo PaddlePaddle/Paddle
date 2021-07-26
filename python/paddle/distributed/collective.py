@@ -1456,6 +1456,7 @@ def split(x,
 def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     """
     Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
+    
     Args:
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
@@ -1463,10 +1464,13 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             data type of the input Tensors.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
+    
     Returns:
         None.
+    
     Examples:
         .. code-block:: python
+
             # required: distributed
             import numpy as np
             import paddle
@@ -1535,6 +1539,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         dst (int): The destination rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+    
     Returns:
         None.
 
@@ -1585,6 +1590,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+    
     Returns:
         None.
 
