@@ -16,23 +16,27 @@ import warnings
 import paddle
 from ...fluid.framework import in_dygraph_mode, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
+from paddle.fluid.layers.tensor import fill_constant
+from ...tensor import concat
+from ...tensor.creation import zeros
+from paddle.static import Variable
 from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
 from ...fluid.layers import unfold  # noqa: F401
-from ...fluid.layers import squeeze
-from ...fluid.layers import unsqueeze
+from ...tensor.manipulation import squeeze
+from ...tensor.manipulation import unsqueeze
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid.framework import Variable, in_dygraph_mode, _varbase_creator
+from ...fluid.framework import in_dygraph_mode, _varbase_creator
 
 from ...fluid.framework import in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
 from ...fluid.data_feeder import check_variable_and_dtype
+from paddle import _C_ops
 
 __all__ = []
 
@@ -452,15 +456,15 @@ def interpolate(x,
         dy_attr = tuple(attr_list)
 
         if resample_type == "linear":
-            out = core.ops.linear_interp_v2(x, *dy_attr)
+            out = _C_ops.linear_interp_v2(x, *dy_attr)
         elif resample_type == "bilinear":
-            out = core.ops.bilinear_interp_v2(x, *dy_attr)
+            out = _C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
-            out = core.ops.trilinear_interp_v2(x, *dy_attr)
+            out = _C_ops.trilinear_interp_v2(x, *dy_attr)
         elif resample_type == "nearest":
-            out = core.ops.nearest_interp_v2(x, *dy_attr)
+            out = _C_ops.nearest_interp_v2(x, *dy_attr)
         elif resample_type == "bicubic":
-            out = core.ops.bicubic_interp_v2(x, *dy_attr)
+            out = _C_ops.bicubic_interp_v2(x, *dy_attr)
         return out
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
@@ -710,7 +714,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.bilinear_tensor_product(x1, x2, weight, bias)
+        return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
 
     check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
     check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
@@ -884,7 +888,7 @@ def dropout(x,
         if in_dygraph_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
-            out, mask = core.ops.dropout(
+            out, mask = _C_ops.dropout(
                 x, 'dropout_prob', p, 'is_test', not training, 'fix_seed',
                 seed is not None, 'seed', seed
                 if seed is not None else 0, 'dropout_implementation', mode)
@@ -926,9 +930,9 @@ def dropout(x,
         keep_prob = 1 - p
         if training:
             if p == 1.:
-                return layers.scale(x, scale=0.)
+                return paddle.scale(x, scale=0.)
 
-            scale_input = layers.scale(
+            scale_input = paddle.scale(
                 x, scale=1 / keep_prob) if mode == 'upscale_in_train' else x
 
             #get mask shape
@@ -946,17 +950,17 @@ def dropout(x,
                 mask_shape[i] = input_shape[i]
 
             #get mask
-            random_tensor = layers.uniform_random(
+            random_tensor = paddle.uniform(
                 mask_shape, dtype='float32', min=0., max=1.0)
             p = layers.fill_constant(shape=[1], dtype='float32', value=p)
-            keep_mask = layers.greater_equal(random_tensor, p)
+            keep_mask = paddle.greater_equal(random_tensor, p)
 
-            scale_input = layers.cast(scale_input, dtype)
-            keep_mask = layers.cast(keep_mask, dtype)
+            scale_input = paddle.cast(scale_input, dtype)
+            keep_mask = paddle.cast(keep_mask, dtype)
             ret = paddle.multiply(scale_input, keep_mask, name=name)
             return ret
         else:  # test
-            ret = layers.scale(
+            ret = paddle.scale(
                 x, scale=keep_prob) if mode == 'downscale_in_infer' else x
             return ret
 
@@ -1112,7 +1116,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     if training:
         if p == 1:
-            return layers.scale(x, scale=0.)
+            return paddle.scale(x, scale=0.)
         #get transformation params
         alpha = 1.6732632423543772848170429916717
         scale = 1.0507009873554804934193349852946
@@ -1124,23 +1128,22 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         input_shape = x.shape
 
         #get mask
-        random_tensor = layers.uniform_random(
+        random_tensor = paddle.uniform(
             input_shape, dtype='float32', min=0., max=1.0)
         p = layers.fill_constant(shape=[1], dtype='float32', value=p)
-        keep_mask = layers.greater_equal(random_tensor, p)
-        keep_mask = layers.cast(keep_mask, dtype)
-        drop_mask = layers.elementwise_sub(
+        keep_mask = paddle.greater_equal(random_tensor, p)
+        keep_mask = paddle.cast(keep_mask, dtype)
+        drop_mask = paddle.subtract(
             layers.fill_constant(
                 shape=input_shape, dtype=dtype, value=1.),
             keep_mask)
 
         #apply mask
         b = layers.fill_constant(shape=[1], dtype=dtype, value=b)
-        y = layers.elementwise_add(
-            paddle.multiply(x, keep_mask),
-            layers.scale(
-                drop_mask, scale=alpha_p))
-        res = layers.elementwise_add(layers.scale(y, scale=a), b, name=name)
+        y = paddle.add(paddle.multiply(x, keep_mask),
+                       paddle.scale(
+                           drop_mask, scale=alpha_p))
+        res = paddle.add(paddle.scale(y, scale=a), b, name=name)
         return res
     else:  # test
         return x
@@ -1276,48 +1279,48 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             if x_dim == 3:
                 pad = concat([zeros((4, ), dtype="int32"), pad], axis=0)
                 unsqueezed_dim = [3, 4]
-                x = unsqueeze(x, axes=unsqueezed_dim)
+                x = unsqueeze(x, axis=unsqueezed_dim)
             elif x_dim == 4:
                 pad = concat([pad, zeros((2, ), dtype="int32")], axis=0)
                 unsqueezed_dim = [2]
-                x = unsqueeze(x, axes=unsqueezed_dim)
+                x = unsqueeze(x, axis=unsqueezed_dim)
         elif data_format in ["NLC", "NHWC", "NDHWC"]:
             data_format = "NDHWC"
             if x_dim == 3:
                 pad = concat([zeros((4, ), dtype="int32"), pad], axis=0)
                 unsqueezed_dim = [2, 3]
-                x = unsqueeze(x, axes=unsqueezed_dim)
+                x = unsqueeze(x, axis=unsqueezed_dim)
             elif x_dim == 4:
                 pad = concat([pad, zeros((2, ), dtype="int32")], axis=0)
                 unsqueezed_dim = [1]
-                x = unsqueeze(x, axes=unsqueezed_dim)
+                x = unsqueeze(x, axis=unsqueezed_dim)
     else:
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
                 pad = [0, 0, 0, 0] + pad
                 unsqueezed_dim = [3, 4]
-                x = unsqueeze(x, axes=unsqueezed_dim)
+                x = unsqueeze(x, axis=unsqueezed_dim)
             elif x_dim == 4:
                 pad = pad + [0, 0]
                 unsqueezed_dim = [2]
-                x = unsqueeze(x, axes=unsqueezed_dim)
+                x = unsqueeze(x, axis=unsqueezed_dim)
         elif data_format in ["NLC", "NHWC", "NDHWC"]:
             data_format = "NDHWC"
             if x_dim == 3:
                 pad = [0, 0, 0, 0] + pad
                 unsqueezed_dim = [2, 3]
-                x = unsqueeze(x, axes=unsqueezed_dim)
+                x = unsqueeze(x, axis=unsqueezed_dim)
             elif x_dim == 4:
                 pad = pad + [0, 0]
                 unsqueezed_dim = [1]
-                x = unsqueeze(x, axes=unsqueezed_dim)
+                x = unsqueeze(x, axis=unsqueezed_dim)
 
     if in_dygraph_mode():
         if isinstance(pad, Variable):
             pad = pad.numpy()
-        out = core.ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
-                             "data_format", data_format, "name", name)
+        out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
+                           "data_format", data_format, "name", name)
     else:
         attrs = {'mode': mode, 'value': value, 'data_format': data_format}
         inputs = {'X': [x]}
@@ -1335,7 +1338,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
 
     if len(unsqueezed_dim) != 0:
-        out = squeeze(out, axes=unsqueezed_dim)
+        out = squeeze(out, axis=unsqueezed_dim)
 
     return out
 
@@ -1447,13 +1450,13 @@ def linear(x, weight, bias=None, name=None):
     """
     if in_dygraph_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
-        core.ops.matmul(x, weight, pre_bias, 'transpose_X', False,
-                        'transpose_Y', False, "alpha", 1)
+        _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
+                      False, "alpha", 1)
 
         if bias is None:
             return pre_bias
 
-        return core.ops.elementwise_add(pre_bias, bias)
+        return _C_ops.elementwise_add(pre_bias, bias)
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype
@@ -1546,8 +1549,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
     if in_dygraph_mode():
-        return core.ops.label_smooth(label, prior_dist, 'epsilon',
-                                     float(epsilon))
+        return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                              'label_smooth')

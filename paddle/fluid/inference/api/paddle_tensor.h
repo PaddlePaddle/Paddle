@@ -28,7 +28,7 @@ enum DataType {
   // TODO(Superjomn) support more data types if needed.
 };
 
-enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU };
+enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU };
 
 /// \brief Represents an n-dimensional array of values.
 /// The Tensor is used to store the input or output of the network.

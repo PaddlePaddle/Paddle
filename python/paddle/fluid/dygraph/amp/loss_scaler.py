@@ -20,6 +20,7 @@ from paddle.fluid.data_feeder import check_type
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import warnings
 import numpy as np
+from paddle import _C_ops
 
 __all__ = ['AmpScaler']
 
@@ -215,8 +216,8 @@ class AmpScaler(object):
             param._grad_ivar() for param in optimizer._parameter_list
             if param._grad_ivar() is not None
         ]
-        core.ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
-                                          self._found_inf)
+        _C_ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
+                                        self._found_inf)
 
     def _update(self):
         """

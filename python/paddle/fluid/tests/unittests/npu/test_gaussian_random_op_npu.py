@@ -26,8 +26,6 @@ from test_gaussian_random_op import TestGaussianRandomOp
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNPUGaussianRandomOp(OpTest):
     def setUp(self):
         self.set_npu()

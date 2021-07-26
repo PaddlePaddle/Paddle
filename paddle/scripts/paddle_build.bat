@@ -156,7 +156,7 @@ rem -------Caching strategy 1: End --------------------------------
 
 rem -------Caching strategy 2: sccache decorate compiler-----------
 if "%WITH_SCCACHE%"=="ON" (
-    rem cmd /C sccache -V || call :install_sccache
+    cmd /C sccache -V || call :install_sccache
     sccache --stop-server 2> NUL
     if not exist D:\sccache mkdir D:\sccache
     set SCCACHE_DIR=D:\sccache\.cache
@@ -164,11 +164,10 @@ if "%WITH_SCCACHE%"=="ON" (
     set SCCACHE_ERROR_LOG=D:\sccache\sccache_log.txt
     set SCCACHE_LOG=quiet
     sccache --start-server
-    if !errorlevel! NEQ 0 exit /b 1
     sccache -z
     goto :CASE_%1
 ) else (
-    del %PYTHON_ROOT%\sccache.exe
+    del %PYTHON_ROOT%\sccache.exe 2> NUL
     goto :CASE_%1
 )
 
@@ -325,14 +324,17 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     if %day_now% EQU 21 (
+        del D:\sccache\sccache_log.txt
         rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 11 (
+        del D:\sccache\sccache_log.txt
         rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 01 (
+        del D:\sccache\sccache_log.txt
         rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
@@ -473,7 +475,7 @@ echo Build Paddle successfully!
 echo 0 > %cache_dir%\error_code.txt
 type %cache_dir%\error_code.txt
 
-:: ci will collect clcache hit rate
+:: ci will collect sccache hit rate
 if "%WITH_SCCACHE%"=="ON" (
     call :collect_sccache_hits
 )
@@ -809,11 +811,11 @@ type sccache_summary.txt
 for /f "tokens=2,3" %%i in ('type sccache_summary.txt ^| findstr "requests hits" ^| findstr /V "executed C/C++ CUDA"') do set %%i=%%j
 if %requests% EQU 0 (
     echo "sccache hit rate: 0%"
-    echo ipipe_log_param_Clcache_Hit_Hate: 0%
+    echo ipipe_log_param_sccache_Hit_Hate: 0%
 ) else (
     set /a rate=!hits!*10000/!requests!
     echo "sccache hit rate: !rate:~0,-2!.!rate:~-2!%%"
-    echo ipipe_log_param_Clcache_Hit_Hate: !rate:~0,2!.!rate:~2,2!%%
+    echo ipipe_log_param_sccache_Hit_Hate: !rate:~0,-2!.!rate:~-2!%%
 )
 
 goto:eof
