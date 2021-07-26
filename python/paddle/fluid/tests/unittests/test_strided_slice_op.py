@@ -866,9 +866,9 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
         # TODO(weixin):Currently, the case that the starting index is 
         # less than `-array_size` is not supported.
-        # The index passed from the slice of the VarBase/Variable 
+        # The index parsed from the slice of the VarBase/Variable 
         # is processed before being passed to `strided_slice_op`. 
-        # and the slice should be processed uniformly, instead of 
+        # The slice may be processed uniformly, instead of 
         # processing separately for TensorArray\VarBase\Variable.
         #
         # class Net(ArrayLayer):
