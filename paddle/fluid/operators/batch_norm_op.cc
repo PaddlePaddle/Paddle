@@ -357,13 +357,16 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           auto x_data = x->data<T>();
           auto mean = saved_mean->mutable_data<T>(ctx.GetPlace());
           auto variance = saved_variance->mutable_data<T>(ctx.GetPlace());
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
+#endif
           for (int nc = 0; nc < C; ++nc) {
             T sum = 0.0f;
             auto mean_data =
                 x_data + nc * sample_size;  // mean value of each channel
-
+#ifdef PADDLE_WITH_MKLML
 #pragma omp simd
+#endif
             for (auto i = 0; i < N; ++i) {
               for (auto j = 0; j < sample_size; ++j) {
                 sum += mean_data[j];  // add data for each channel
@@ -376,8 +379,9 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
             T var = 0.0f;
             auto var_data =
                 x_data + nc * sample_size;  // variance value of each channel
-
+#ifdef PADDLE_WITH_MKLML
 #pragma omp simd
+#endif
             for (auto i = 0; i < N; ++i) {
               for (auto j = 0; j < sample_size; ++j) {
                 var += (var_data[j] - mean[nc]) * (var_data[j] - mean[nc]);
@@ -450,23 +454,17 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
     switch (data_layout) {
       case DataLayout::kNCHW: {
-        // EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()),
-        // sample_size,
-        //                        N * C);
-        // ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
-
-        // for (int nc = 0; nc < N * C; ++nc) {
-        //   y_arr.col(nc) = x_arr.col(nc) * new_scale(nc % C) + new_bias(nc %
-        //   C);
-        // }
-
         auto y_data = y->mutable_data<T>(ctx.GetPlace());
         auto x_data = x->data<T>();
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
+#endif
         for (int nc = 0; nc < N * C; ++nc) {
           auto var_data = x_data + nc * sample_size;
           auto temp_y = y_data + nc * sample_size;
+#ifdef PADDLE_WITH_MKLML
 #pragma omp simd
+#endif
           for (int j = 0; j < sample_size; ++j) {
             temp_y[j] = var_data[j] * new_scale[nc % C] + new_bias[nc % C];
           }
