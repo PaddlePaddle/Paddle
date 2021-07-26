@@ -41,15 +41,7 @@ class MishOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     int input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE_EQ(input_num, 1,
-                      platform::errors::InvalidArgument(
-                          "Mish op has only 1 input, but got %d", input_num));
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    // Get output
-    size_t output_num = op_desc.Output("Out").size();
-    PADDLE_ENFORCE_EQ(output_num, 1,
-                      platform::errors::InvalidArgument(
-                          "Mish op has only 1 output, but got %d", output_num));
 
     const float threshold =
         op_desc.HasAttr("threshold")
@@ -58,17 +50,11 @@ class MishOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::MishPluginDynamic* plugin =
           new plugin::MishPluginDynamic(threshold, with_fp16);
       layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();

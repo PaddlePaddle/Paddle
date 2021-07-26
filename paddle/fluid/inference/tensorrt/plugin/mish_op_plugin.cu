@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cassert>
 #include <cstring>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/mish_op_plugin.h"
@@ -24,11 +23,32 @@ namespace plugin {
 
 int MishPlugin::initialize() { return 0; }
 
+bool MishPlugin::supportsFormat(nvinfer1::DataType type,
+                                nvinfer1::PluginFormat format) const {
+  if (with_fp16_) {
+    return ((type == nvinfer1::DataType::kFLOAT ||
+             type == nvinfer1::DataType::kHALF) &&
+            (format == nvinfer1::PluginFormat::kLINEAR));
+  } else {
+    return ((type == nvinfer1::DataType::kFLOAT) &&
+            (format == nvinfer1::PluginFormat::kLINEAR));
+  }
+}
+
 nvinfer1::Dims MishPlugin::getOutputDimensions(int index,
                                                const nvinfer1::Dims* in_dims,
                                                int nb_inputs) {
-  assert(nb_inputs == 1);
-  assert(index < this->getNbOutputs());
+  PADDLE_ENFORCE_EQ(nb_inputs, 1, platform::errors::InvalidArgument(
+                                      "We expect [number of inputs] == 1"
+                                      "in TRT Mish op plugin, but got "
+                                      "[number of inputs] = %d.",
+                                      nb_inputs));
+  PADDLE_ENFORCE_LT(index, this->getNbOutputs(),
+                    platform::errors::InvalidArgument(
+                        "We expect [index] < [number of outputs]"
+                        "in TRT Mish op plugin, but got "
+                        "[index] = %d, [number of outputs] = %d.",
+                        index, this->getNbOutputs()));
   nvinfer1::Dims const& input_dims = in_dims[0];
   nvinfer1::Dims output_dims = input_dims;
   return output_dims;
@@ -49,21 +69,13 @@ __device__ half kTanh<half>(half x) {
 
 template <typename T>
 __device__ T kSoftplus(T x, T threshold) {
-  if (x > threshold) {
-    return x;
-  } else {
-    return log(exp(x) + static_cast<T>(1.0f));
-  }
+  return x > threshold ? x : log(exp(x) + static_cast<T>(1.0f));
 }
 
 template <>
 __device__ half kSoftplus<half>(half x, half threshold) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  if (x > threshold) {
-    return x;
-  } else {
-    return hlog(hexp(x) + static_cast<half>(1.0f));
-  }
+  return x > threshold ? x : hlog(hexp(x) + static_cast<half>(1.0f));
 #endif
 }
 
@@ -105,17 +117,28 @@ int MishPlugin::enqueue(int batch_size, const void* const* inputs,
   const int block_size = 256;
   const int grid_size = (num + block_size - 1) / block_size;
 
-  const float* input = static_cast<const float*>(inputs[0]);
-  float* output = static_cast<float*>(outputs[0]);
-  mish_kernel<float><<<grid_size, block_size, 0, stream>>>(threshold_, num,
-                                                           input, output);
+  auto type = getDataType();
+  if (type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Mish-->fp32";
+    const float* input = static_cast<const float*>(inputs[0]);
+    float* output = static_cast<float*>(outputs[0]);
+    mish_kernel<float><<<grid_size, block_size, 0, stream>>>(threshold_, num,
+                                                             input, output);
+  } else if (type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. Mish-->fp16";
+    const half* input = static_cast<const half*>(inputs[0]);
+    half* output = static_cast<half*>(outputs[0]);
+    mish_kernel<half><<<grid_size, block_size, 0, stream>>>(threshold_, num,
+                                                            input, output);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The Mish TRT Plugin's input type should be float or half."));
+  }
 
   return cudaGetLastError() != cudaSuccess;
 }
 
 // Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
-
 int MishPluginDynamic::initialize() {
   getPluginNamespace();
   return 0;
@@ -148,7 +171,6 @@ bool MishPluginDynamic::supportsFormatCombination(
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
                                         pos, nb_inputs + nb_outputs));
-  (in_out && pos < (nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0) {
@@ -203,7 +225,6 @@ int MishPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   }
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt
