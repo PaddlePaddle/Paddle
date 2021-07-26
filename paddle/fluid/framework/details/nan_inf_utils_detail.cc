@@ -314,7 +314,7 @@ bool CheckDataValid(const std::string& op_type, const framework::Scope& scope,
   auto* var = scope.FindVar(var_name);
   if (var == nullptr) {
     VLOG(3) << "can't find var_name:" << var_name;
-    return false;
+    return true;
   }
   const Tensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
@@ -323,12 +323,12 @@ bool CheckDataValid(const std::string& op_type, const framework::Scope& scope,
     tensor = &var->Get<framework::SelectedRows>().value();
   } else {
     VLOG(3) << var_name << " var_name need not to check";
-    return false;
+    return true;
   }
 
   if (tensor->memory_size() == 0) {
     VLOG(3) << var_name << " var_name need not to check, size == 0";
-    return false;
+    return true;
   }
 
   framework::LoDTensor cpu_tensor;
@@ -337,15 +337,15 @@ bool CheckDataValid(const std::string& op_type, const framework::Scope& scope,
       cpu_tensor.mutable_data(platform::CPUPlace(), tensor->type()));
 
   framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
-  bool flag = false;
+  bool flag = true;
   for (int i = 0; i < cpu_tensor.numel(); i++) {
     if (cpu_data[i] != 0) {
-      flag = true;
+      flag = false;
       break;
     }
   }
 
-  if (flag) {
+  if (!flag) {
     /*
   for (int i = 0; i < cpu_tensor.numel(); i++) {
       printf("%d,", cpu_data[i]);
