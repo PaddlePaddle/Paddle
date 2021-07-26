@@ -746,16 +746,16 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 #pragma omp simd
 #endif
           for (int i = 0; i < N; ++i) {
-            T sum = 0.0;
+            T dy_sum = 0.0;
             T invstd_sum = 0.0;
             for (int j = 0; j < sample_size; ++j) {
-              sum += t_d_y_data[j];
+              dy_sum += t_d_y_data[j];
               invstd_sum += (t_x_data[j] - mean_data[nc]) * inv_var_data[nc] *
                             t_d_y_data[j];
             }
             t_d_y_data = t_d_y_data + C * sample_size;
             t_x_data = t_x_data + C * sample_size;
-            dy_sum_data[nc] += sum;
+            dy_sum_data[nc] += dy_sum;
             dy_mul_x_sub_mean_mul_invstd_sum_data[nc] += invstd_sum;
           }
         }
