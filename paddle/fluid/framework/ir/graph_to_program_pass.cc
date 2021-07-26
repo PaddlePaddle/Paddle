@@ -80,18 +80,21 @@ OpDesc* ReplaceScaleLossGradOp(ir::Node* node, OpDesc* desc) {
   return desc;
 }
 
-std::vector<OpDesc> GetGraphOpDesc(std::vector<ir::Node*>* nodes) {
-  std::vector<OpDesc> ops;
-  for (ir::Node* n : *nodes) {
+std::vector<OpDesc>* GetGraphOpDesc(const std::vector<ir::Node*>& nodes,
+                                    std::vector<OpDesc>* ops) {
+  for (ir::Node* n : nodes) {
     // if node is not Op, skip
     if (!n->IsOp()) continue;
 
     // create fill_constant op
     if (n->Name() == "scale_loss_grad") {
-      OpDesc desc;
-      ops.emplace_back(*ReplaceScaleLossGradOp(n, &desc));
+      ops->emplace_back();
+      auto& desc = ops->back();
+      ReplaceScaleLossGradOp(n, &desc);
     } else if (n->Op()) {
-      ops.emplace_back(*n->Op());
+      ops->emplace_back(*n->Op());
+    } else {
+      // delete no OpDesc op
     }
   }
   return ops;
@@ -113,7 +116,8 @@ void GraphToProgramPass::GraphToBlock(const Graph* graph,
   for (ir::Node* n : graph->Nodes()) {
     if (n->IsVar()) {
       if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
-          !vars2remove.count(n->Var()->Name())) {
+          !vars2remove.count(n->Var()->Name()) &&
+          n->GetVarNodeBlockId() == graph->GetBlockId()) {
         visited_vars.insert(n->Var()->Name());
         block->add_vars()->MergeFrom(*n->Var()->Proto());
       }
@@ -135,8 +139,8 @@ void GraphToProgramPass::GraphToBlock(const Graph* graph,
     }
   }
 
-  auto ops = GetGraphOpDesc(&nodes);
-
+  std::vector<OpDesc> ops;
+  GetGraphOpDesc(nodes, &ops);
   for (auto& op : ops) {
     block->add_ops()->MergeFrom(*op.Proto());
   }
