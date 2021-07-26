@@ -1180,14 +1180,19 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
   }
 
-  if (type_ == "increment" || type_ == "create_py_reader" ||
-      type_ == "create_double_buffer_reader") {
-  } else {
-    bool flag =
-        framework::details::CheckDataValid(type_, scope, "src_ids", place);
-    if (!flag) {
-      LOG(FATAL) << "Operator(" << Type() << "): find invalid ids";
-      PADDLE_ENFORCE_NE(flag, false);
+  int is_main_block = static_cast<int>(*std::getenv("PADDLE_MAIN_BLOCK"));
+  VLOG(3) << "is_main_block:" << is_main_block;
+
+  if (is_main_block) {
+    if (type_ == "increment" || type_ == "create_py_reader" ||
+        type_ == "create_double_buffer_reader") {
+    } else {
+      bool flag = framework::details::CheckDataValid(type_, exec_scope,
+                                                     "src_ids", place);
+      if (!flag) {
+        LOG(FATAL) << "Operator(" << Type() << "): find invalid ids";
+        PADDLE_ENFORCE_NE(flag, false);
+      }
     }
   }
 
