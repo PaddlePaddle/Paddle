@@ -828,16 +828,6 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
         self.create_case(Net(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
-            def array_slice(self, tensors):
-                return tensors[-3:-60:-3]
-
-        self.create_case(Net(input_size=112, array_size=13))
-
-        class Net(ArrayLayer):
-            def array_slice(self, tensors):
-                return tensors[-1:-60:-3]
-
         self.create_case(Net(input_size=112, array_size=13))
 
         class Net(ArrayLayer):
@@ -864,7 +854,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
         self.create_case(Net(input_size=112, array_size=13))
 
-        # TODO(weixin):Currently, the case that the starting index is 
+        # TODO(weixin):Currently, the case that the start index is 
         # less than `-array_size` is not supported.
         # The index parsed from the slice of the VarBase/Variable 
         # is processed before being passed to `strided_slice_op`. 
@@ -876,6 +866,16 @@ class TestStridedSliceTensorArray(unittest.TestCase):
         #     def array_slice(self,tensors):
         #         return tensors[-60:20:3]
         # self.create_case(Net(input_size=112,array_size=13))
+
+        # class Net(ArrayLayer):
+        #     def array_slice(self, tensors):
+        #         return tensors[-3:-60:-3]
+
+        # self.create_case(Net(input_size=112, array_size=13))
+
+        # class Net(ArrayLayer):
+        #     def array_slice(self, tensors):
+        #         return tensors[-1:-60:-3]
 
 
 if __name__ == "__main__":
