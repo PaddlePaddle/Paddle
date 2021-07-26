@@ -23,7 +23,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle import compat as cpt
 from paddle.fluid import core, framework, executor
-from paddle.fluid.layers.utils import _hash_with_id
 
 paddle.enable_static()
 
@@ -175,7 +174,6 @@ class RunProgramOpTest(unittest.TestCase):
     def calc_dygraph_output(self, place):
         self.program_desc, self.fwd_op_num = self.get_program_desc()
         self.attrs = self.prepare_attrs()
-        self.attrs['program_id'] = _hash_with_id(self.program_desc)
 
         with fluid.dygraph.guard(place):
             inputs = self.prepare_dygraph_input(place)
@@ -191,7 +189,6 @@ class RunProgramOpTest(unittest.TestCase):
     def calc_dygraph_grad(self, place):
         self.program_desc, self.fwd_op_num = self.get_program_desc()
         self.attrs = self.prepare_attrs()
-        self.attrs['program_id'] = _hash_with_id(self.program_desc)
 
         with fluid.dygraph.guard(place):
             # Step 1. run forward
