@@ -712,7 +712,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     //    (y - bias) / (scale * inv_var) + est_mean
     switch (data_layout) {
       case DataLayout::kNCHW: {
-        std::cout << "is_inplace: " << is_inplace << std::endl;
+        // std::cout << "is_inplace: " << is_inplace << std::endl;
         if (is_inplace) {
           auto px = *x;
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
@@ -727,38 +727,66 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
-        std::cout << "x_arr: " << x_arr << std::endl;
-        std::cout << "d_y_arr: " << d_y_arr << std::endl;
+        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
+                                 sample_size, N * C);
+        auto x_data = x->data<T>();
+        auto d_y_data = d_y->data<T>();
+        auto dy_sum_data = dy_sum.mutable_data<T>(ctx.GetPlace());
+        auto d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
+        auto dy_mul_x_sub_mean_mul_invstd_sum_data =
+            dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
 
-        for (int nc = 0; nc < N * C; ++nc) {
-          int c = nc % C;
-          dy_sum_arr(c) += d_y_arr.col(nc).sum();
-          dy_mul_x_sub_mean_mul_invstd_sum_arr(c) +=
-              ((x_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * d_y_arr.col(nc))
-                  .sum();
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+        for (int nc = 0; nc < C; ++nc) {
+          auto t_d_y_data = d_y_data + nc * sample_size;
+          auto t_x_data = x_data + nc * sample_size;
+#ifdef PADDLE_WITH_MKLML
+#pragma omp simd
+#endif
+          for (int i = 0; i < N; ++i) {
+            T sum = 0.0;
+            T invstd_sum = 0.0;
+            for (int j = 0; j < sample_size; ++j) {
+              sum += t_d_y_data[j];
+              invstd_sum += (t_x_data[j] - mean_data[nc]) * inv_var_data[nc] *
+                            t_d_y_data[j];
+            }
+            t_d_y_data = t_d_y_data + C * sample_size;
+            t_x_data = t_x_data + C * sample_size;
+            dy_sum_data[nc] += sum;
+            dy_mul_x_sub_mean_mul_invstd_sum_data[nc] += invstd_sum;
+          }
         }
-        std::cout << "dy_sum_arr: " << dy_sum_arr << std::endl;
-        std::cout << "dy_mul_x_sub_mean_mul_invstd_sum_arr: "
-                  << dy_mul_x_sub_mean_mul_invstd_sum_arr << std::endl;
+
         if (d_scale && d_bias) {
           d_bias_arr = dy_sum_arr;
           d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
         }
 
         if (d_x) {
-          EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
-                                   sample_size, N * C);
-          std::cout << d_x_arr << std::endl;
           if (!use_global_stats) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
             for (int nc = 0; nc < N * C; ++nc) {
-              int c = nc % C;
-              d_x_arr.col(nc) =
-                  scale_inv_var_nhw(c) *
-                  (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(c) -
-                   (x_arr.col(nc) - mean_arr[c]) *
-                       dy_mul_x_sub_mean_mul_invstd_sum_arr(c) *
-                       inv_var_arr(c));
+              auto t_d_x_data = d_x_data + nc * sample_size;
+              auto t_d_y_data = d_y_data + nc * sample_size;
+              auto t_x_data = x_data + nc * sample_size;
+#ifdef PADDLE_WITH_MKLML
+#pragma omp simd
+#endif
+              for (int j = 0; j < sample_size; ++j) {
+                t_d_x_data[j] =
+                    scale_inv_var_nhw[nc % C] *
+                    (t_d_y_data[j] * N * sample_size - dy_sum_data[nc % C] -
+                     (t_x_data[j] - mean_data[nc % C]) *
+                         dy_mul_x_sub_mean_mul_invstd_sum_data[nc % C] *
+                         inv_var_data[nc % C]);
+              }
             }
+
           } else {
             for (int nc = 0; nc < N * C; ++nc) {
               int c = nc % C;
