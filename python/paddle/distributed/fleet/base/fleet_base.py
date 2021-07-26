@@ -275,6 +275,12 @@ class Fleet(object):
             sharding_configs = self._user_defined_strategy.sharding_configs
             mp_degree = int(sharding_configs['mp_degree'])
 
+            use_tensor_parallel = self._user_defined_strategy.tensor_parallel
+            if use_tensor_parallel:
+                tensor_parallel_configs = self._user_defined_strategy.tensor_parallel_configs
+                mp_degree = int(tensor_parallel_configs[
+                    'tensor_parallel_degree'])
+
             if mp_degree > 1:
                 assert global_world_size % mp_degree == 0
                 # NOTE(wangxi): mp_ring_id sync with sharding_optimizer.py _build_groups
