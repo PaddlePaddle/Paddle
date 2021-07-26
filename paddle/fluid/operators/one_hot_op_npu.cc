@@ -42,19 +42,14 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
     }
     out->mutable_data<float>(ctx.GetPlace());
 
-    Tensor on_value, off_value;
-    on_value.mutable_data<float>(framework::make_ddim({1}), ctx.GetPlace());
-    off_value.mutable_data<float>(framework::make_ddim({1}), ctx.GetPlace());
-    FillNpuTensorWithConstant<float>(&on_value, 1.0f);
-    FillNpuTensorWithConstant<float>(&off_value, 0.0f);
-
+    float on_value = 1.0f, off_value = 0.0f;
     if (in->type() == framework::proto::VarType::INT32) {
       NpuOpRunner runner;
       runner.SetType("OneHot")
           .AddInput(*in)
           .AddInput(std::vector<int32_t>({static_cast<int32_t>(depth)}))
-          .AddInput(on_value)
-          .AddInput(off_value)
+          .AddInput(std::vector<float>({on_value}))
+          .AddInput(std::vector<float>({off_value}))
           .AddAttr("axis", -1)
           .AddOutput(*out);
       runner.Run(dev_ctx.stream());
@@ -68,8 +63,8 @@ class OneHotNPUKernel : public framework::OpKernel<T> {
       runner.SetType("OneHot")
           .AddInput(transformed_in)
           .AddInput(std::vector<int32_t>({static_cast<int32_t>(depth)}))
-          .AddInput(on_value)
-          .AddInput(off_value)
+          .AddInput(std::vector<float>({on_value}))
+          .AddInput(std::vector<float>({off_value}))
           .AddAttr("axis", -1)
           .AddOutput(*out);
       runner.Run(dev_ctx.stream());
