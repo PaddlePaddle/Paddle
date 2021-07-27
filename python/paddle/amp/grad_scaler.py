@@ -220,7 +220,7 @@ class GradScaler(AmpScaler):
         Set the initial loss scaling factor by `new_init_loss_scaling`.
 
         Args:
-            new_init_loss_scaling(int):  The new_init_loss_scaling used to update initial loss scaling factor.
+            new_init_loss_scaling(float):  The new_init_loss_scaling used to update initial loss scaling factor.
         
         Examples:
             .. code-block:: python
@@ -459,7 +459,6 @@ class GradScaler(AmpScaler):
                                                decr_every_n_nan_or_inf=2,
                                                use_dynamic_loss_scaling=True)
                 scaler_state = scaler.state_dict()
-                scaler.load_state_dict(scaler_state)
         """
         return super(GradScaler, self).state_dict()
 
@@ -468,7 +467,7 @@ class GradScaler(AmpScaler):
         Loads the scaler state.
         
         Args:
-           state_dict(dict): scaler state.  Should be an object returned from a call to `AmpScaler.state_dict()`.
+           state_dict(dict): scaler state.  Should be an object returned from a call to `GradScaler.state_dict()`.
                 
         Examples:
 
