@@ -130,5 +130,7 @@ void IncreaseVarbaseReferenceCountUntilCopyComplete(
     const std::shared_ptr<imperative::VarBase>& var,
     const platform::Place& place);
 
+void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad);
+
 }  // namespace imperative
 }  // namespace paddle

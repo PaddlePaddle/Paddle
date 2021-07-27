@@ -36,6 +36,13 @@ DEFINE_string(nccl_dir, "",
               "For instance, /usr/local/cuda/lib64. If default, "
               "dlopen will search cuda from LD_LIBRARY_PATH");
 
+DEFINE_string(hccl_dir, "",
+              "Specify path for loading hccl library, such as libhccl.so. "
+              "For instance, "
+              "/usr/local/Ascend/ascend-toolkit/latest/fwkacllib/lib64/. If "
+              "default, "
+              "dlopen will search hccl from LD_LIBRARY_PATH");
+
 DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
 
 DEFINE_string(
@@ -93,6 +100,9 @@ static constexpr char* win_cublas_lib =
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;curand64_" CUDA_VERSION_MAJOR ".dll;curand64_10.dll";
+static constexpr char* win_nvjpeg_lib =
+    "nvjpeg64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;nvjpeg64_" CUDA_VERSION_MAJOR ".dll;nvjpeg64_10.dll";
 static constexpr char* win_cusolver_lib =
     "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll;cusolver64_10.dll";
@@ -100,6 +110,9 @@ static constexpr char* win_cusolver_lib =
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;curand64_" CUDA_VERSION_MAJOR ".dll";
+static constexpr char* win_nvjpeg_lib =
+    "nvjpeg64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;nvjpeg64_" CUDA_VERSION_MAJOR ".dll";
 static constexpr char* win_cusolver_lib =
     "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll";
@@ -206,16 +219,16 @@ static inline void* GetDsoHandleFromSearchPath(
   for (auto dso : dso_names) {
     // 1. search in user config path by FLAGS
     dso_handle = GetDsoHandleFromSpecificPath(config_path, dso, dynload_flags);
-    // 2. search in extra paths
+    // 2. search in system default path
+    if (nullptr == dso_handle) {
+      dso_handle = GetDsoHandleFromDefaultPath(dso, dynload_flags);
+    }
+    // 3. search in extra paths
     if (nullptr == dso_handle) {
       for (auto path : extra_paths) {
         VLOG(3) << "extra_paths: " << path;
         dso_handle = GetDsoHandleFromSpecificPath(path, dso, dynload_flags);
       }
-    }
-    // 3. search in system default path
-    if (nullptr == dso_handle) {
-      dso_handle = GetDsoHandleFromDefaultPath(dso, dynload_flags);
     }
     if (nullptr != dso_handle) break;
   }
@@ -323,6 +336,17 @@ void* GetCurandDsoHandle() {
 #endif
 }
 
+void* GetNvjpegDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvjpeg.dylib");
+#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_nvjpeg_lib, true,
+                                    {cuda_lib_path});
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvjpeg.so");
+#endif
+}
+
 void* GetCusolverDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.dylib");
@@ -392,6 +416,24 @@ void* GetNCCLDsoHandle() {
                                     warning_msg);
 #endif
 }
+void* GetHCCLDsoHandle() {
+  std::string warning_msg(
+      "You may need to install 'hccl2' from Huawei official website: "
+      "before install PaddlePaddle.");
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib", true, {},
+                                    warning_msg);
+#elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so", true);
+
+#elif defined(PADDLE_WITH_ASCEND_CL)
+  return GetDsoHandleFromSearchPath(FLAGS_hccl_dir, "libhccl.so", true, {},
+                                    warning_msg);
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so", true, {},
+                                    warning_msg);
+#endif
+}
 
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
@@ -414,12 +456,7 @@ void* GetMKLMLDsoHandle() {
 }
 
 void* GetOpDsoHandle(const std::string& dso_name) {
-#if defined(__APPLE__) || defined(__OSX__)
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Create custom cpp op outside framework do not support Apple."));
-#else
   return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
-#endif
 }
 
 void* GetNvtxDsoHandle() {

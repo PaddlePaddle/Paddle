@@ -1,7 +1,7 @@
 proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto simple_threadpool)
 proto_library(error_codes_proto SRCS error_codes.proto)
 if(WITH_GPU)
-  proto_library(cuda_error_proto SRCS cuda_error.proto)
+  proto_library(external_error_proto SRCS external_error.proto)
 endif(WITH_GPU)
 
 if(WITH_XPU)
@@ -9,6 +9,12 @@ if(WITH_XPU)
 ELSE()
   set(XPU_CTX_DEPS)
 endif(WITH_XPU)
+
+if(WITH_ASCEND)
+    set(ASCEND_DEPS xpulib)
+ELSE()
+  set(ASCEND_DEPS)
+endif(WITH_ASCEND)
 
 if (WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
@@ -39,7 +45,7 @@ cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
 
 set(enforce_deps flags errors boost)
 if(WITH_GPU)
-  set(enforce_deps ${enforce_deps} cuda_error_proto)
+  set(enforce_deps ${enforce_deps} external_error_proto)
 endif()
 cc_library(enforce INTERFACE SRCS enforce.cc DEPS ${enforce_deps})
 cc_library(monitor SRCS monitor.cc)
@@ -66,6 +72,14 @@ if(WITH_XPU)
 cc_library(xpu_info SRCS xpu_info.cc DEPS gflags glog enforce xpulib)
 endif()
 
+if(WITH_ASCEND)
+    cc_library(ascend_npu_info SRCS ascend_npu_info.cc DEPS gflags glog enforce atlas_acl)
+endif()
+
+if(WITH_ASCEND_CL)
+    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor ascendcl acl_op_compiler)
+endif()
+
 add_subdirectory(dynload)
 add_subdirectory(stream)
 
@@ -81,19 +95,30 @@ IF(WITH_GPU OR WITH_ROCM)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
 ENDIF()
 
+IF(WITH_ASCEND_CL)
+    set(NPU_CTX_DEPS npu_stream npu_info)
+ENDIF()
+
 IF(WITH_MKLDNN)
     set(MKLDNN_CTX_DEPS mkldnn)
 ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
+
+IF(WITH_ASCEND_CL)
+cc_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce)
+ENDIF()
+
 IF(WITH_GPU)
-    nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
+    nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce)
 ENDIF()
 IF(WITH_ROCM)
     hip_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce)
 ENDIF()
 
 IF(WITH_GPU OR WITH_ROCM)
+  set(STREAM_CALLBACK_DEPS stream_callback_manager)
+ELSEIF(WITH_ASCEND_CL)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
 ELSE()
   set(STREAM_CALLBACK_DEPS)
@@ -108,14 +133,19 @@ cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
-    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
+    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS})
 
-cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEPS framework_proto  device_context enforce)
+cc_library(collective_helper SRCS collective_helper.cc collective_helper_npu.cc gen_comm_id_helper.cc DEPS framework_proto  device_context enforce)
 
 if(WITH_GPU OR WITH_ROCM)
     cc_library(cuda_resource_pool SRCS cuda_resource_pool.cc DEPS gpu_info)
     target_link_libraries(device_context cuda_resource_pool)
+endif()
+
+if(WITH_ASCEND_CL)
+    cc_library(npu_resource_pool SRCS npu_resource_pool.cc DEPS npu_info)
+    target_link_libraries(device_context npu_resource_pool)
 endif()
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)
@@ -157,9 +187,12 @@ endif()
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
 cc_test(bfloat16_test SRCS bfloat16_test.cc DEPS lod_tensor)
+cc_test(complex_test SRCS complex_test.cc DEPS lod_tensor)
 
 IF(WITH_GPU)
   nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
+  nv_test(bfloat16_gpu_test SRCS bfloat16_test.cu DEPS lod_tensor)
+  nv_test(complex_gpu_test SRCS complex_test.cu DEPS lod_tensor)
   nv_test(test_limit_gpu_memory SRCS test_limit_gpu_memory.cu DEPS gpu_info flags)
   nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 ENDIF()

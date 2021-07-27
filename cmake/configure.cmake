@@ -82,6 +82,10 @@ if(WITH_ASCEND)
     add_definitions(-DPADDLE_WITH_ASCEND)
 endif()
 
+if(WITH_ASCEND_CL)
+    add_definitions(-DPADDLE_WITH_ASCEND_CL)
+endif()
+
 if(WITH_XPU)
     message(STATUS "Compile with XPU!")
     add_definitions(-DPADDLE_WITH_XPU)
@@ -93,13 +97,18 @@ if(WITH_GPU)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
-    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 7)
-        message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
+    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 10.1)
+        message(FATAL_ERROR "Paddle needs CUDA >= 10.1 to compile")
     endif()
 
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle needs cudnn to compile")
     endif()
+
+    if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+        message(FATAL_ERROR "Paddle needs CUDNN >= 7.0 to compile")
+    endif()
+
     if(CUPTI_FOUND)
         include_directories(${CUPTI_INCLUDE_DIR})
         add_definitions(-DPADDLE_WITH_CUPTI)
@@ -134,6 +143,14 @@ elseif(WITH_ROCM)
     add_definitions(-DPADDLE_WITH_HIP)
     add_definitions(-DEIGEN_USE_GPU)
     add_definitions(-DEIGEN_USE_HIP)
+
+    if(NOT MIOPEN_FOUND)
+        message(FATAL_ERROR "Paddle needs MIOpen to compile")
+    endif()
+
+    if(${MIOPEN_VERSION} VERSION_LESS 2090)
+        message(FATAL_ERROR "Paddle needs MIOPEN >= 2.9 to compile")
+    endif()
 else()
     add_definitions(-DHPPL_STUB_FUNC)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
@@ -164,10 +181,9 @@ if(WITH_PSCORE)
     add_definitions(-DPADDLE_WITH_PSCORE)
 endif()
 
-
-if(WITH_GRPC)
-    add_definitions(-DPADDLE_WITH_GRPC)
-endif(WITH_GRPC)
+if(WITH_HETERPS)
+    add_definitions(-DPADDLE_WITH_HETERPS)
+endif()
 
 if(WITH_BRPC_RDMA)
     add_definitions(-DPADDLE_WITH_BRPC_RDMA)

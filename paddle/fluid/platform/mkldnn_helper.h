@@ -135,13 +135,14 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
   return mkldnn::memory::desc({dims}, data_type, format);
 }
 
-inline void ClearMKLDNNCache(const platform::Place& place) {
+inline void ClearMKLDNNCache(const platform::Place& place,
+                             void* ptr = nullptr) {
   // Clear mkl-dnn cache,
   if (platform::is_cpu_place(place)) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place);
-    dev_ctx->ResetBlobMap();
+    dev_ctx->ResetBlobMap(ptr);
     platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
         paddle::framework::DataLayout::kNCHW);
   }
@@ -439,14 +440,26 @@ inline void AppendKey(std::string* key, const std::vector<T>& dims) {
 inline void AttachPointerHashToMKLDNNKey(void* ptr,
                                          const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::MKLDNNDeviceContext* dev_ctx =
-        (platform::MKLDNNDeviceContext*)pool.Get(place);
-    dev_ctx->SetKeySuffix("E" +
-                          std::to_string(reinterpret_cast<uintptr_t>(ptr)));
-    // When NaiveExecutor/Executor is used no info on thread id is needed in a
-    // key
-    dev_ctx->DisableThreadInfoInKey();
+    // Static vars will remember first executor and its thread
+    // so both of them need to be processed by the same thread within
+    // critical section
+    static std::mutex static_vars_barrier;
+    static_vars_barrier.lock();
+    static auto first_exec = ptr;
+    static auto first_thread = ThreadIDasStr();
+    static_vars_barrier.unlock();
+
+    if (first_exec != ptr) {
+      paddle::platform::MKLDNNDeviceContext::tls().set_key_suffix(
+          "E" + std::to_string(reinterpret_cast<uintptr_t>(ptr)));
+    }
+    // Let's register adress of current executor
+    paddle::platform::MKLDNNDeviceContext::tls().set_curr_exec(ptr);
+
+    // For first thread
+    if (first_thread == ThreadIDasStr()) {
+      paddle::platform::MKLDNNDeviceContext::tls().disable_tid_in_key();
+    }
   }
 }
 
@@ -457,13 +470,14 @@ inline std::string CreateKey(const platform::MKLDNNDeviceContext& dev_ctx,
   key.reserve(64);
   using expand_type = int[];
   expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
-  key += dev_ctx.GetKeySuffix();
+  key += paddle::platform::MKLDNNDeviceContext::tls().get_key_suffix();
   return key;
 }
 
 inline std::string ExtendKeyWithThreadInfoIfNeeded(
     const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
-  return ((dev_ctx.IsThreadIdUsedInKey() == true) &&
+  return ((paddle::platform::MKLDNNDeviceContext::tls().is_tid_used_in_key() ==
+           true) &&
           (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
            platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default))
              ? key + "-t:" + ThreadIDasStr()

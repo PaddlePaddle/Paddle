@@ -15,7 +15,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps.h"
 
-#ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
 namespace framework {
@@ -54,8 +54,8 @@ void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 
 void HeterPs::push_sparse(int num, FeatureKey* d_keys,
                           FeaturePushValue* d_grads, size_t len) {
-  // comm_->push_sparse(num, d_keys, d_grads, len, opt_);
-  comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
+  comm_->push_sparse(num, d_keys, d_grads, len, opt_);
+  // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }
 
 void HeterPs::set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,

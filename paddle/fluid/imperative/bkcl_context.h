@@ -36,6 +36,8 @@ class BKCLParallelContext : public ParallelContext {
 
   void Init() override;
 
+  void InitWithRingID(int ring_id) override;
+
   void AllReduceByStream(const framework::Variable& src,
                          framework::Variable* dst, int ring_id,
                          bool use_calc_stream) override;
@@ -45,6 +47,8 @@ class BKCLParallelContext : public ParallelContext {
   void WaitCompute(int ring_id) override;
 
   void WaitComm(int ring_id) override;
+
+  void SynchronizeCompute() override;
 };
 
 }  //  namespace imperative

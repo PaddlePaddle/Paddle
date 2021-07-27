@@ -34,6 +34,7 @@ import numpy as np
 import warnings
 
 from .fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from paddle import _C_ops
 
 __all__ = ['Distribution', 'Uniform', 'Normal', 'Categorical']
 
@@ -105,7 +106,7 @@ class Distribution(object):
         for arg in args:
             if isinstance(arg, float):
                 arg = [arg]
-            if not isinstance(arg, (list, np.ndarray, tensor.Variable)):
+            if not isinstance(arg, (list, tuple, np.ndarray, tensor.Variable)):
                 raise TypeError(
                     "Type of input args must be float, list, numpy.ndarray or Tensor, but received type {}".
                     format(type(arg)))
@@ -151,8 +152,8 @@ class Distribution(object):
                 warnings.warn(
                     "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
                 )
-                return core.ops.cast(value, 'in_dtype', value.dtype,
-                                     'out_dtype', param.dtype)
+                return _C_ops.cast(value, 'in_dtype', value.dtype, 'out_dtype',
+                                   param.dtype)
             return value
 
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
@@ -190,8 +191,8 @@ class Uniform(Distribution):
     [broadcasting](https://www.paddlepaddle.org.cn/documentation/docs/en/develop/beginners_guide/basic_concept/broadcasting_en.html) (e.g., `high - low` is a valid operation).
 
     Args:
-        low(int|float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
-        high(int|float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
+        low(int|float|list|tuple|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
+        high(int|float|list|tuple|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -229,10 +230,10 @@ class Uniform(Distribution):
     def __init__(self, low, high, name=None):
         if not in_dygraph_mode():
             check_type(low, 'low',
-                       (int, float, np.ndarray, tensor.Variable, list),
+                       (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Uniform')
             check_type(high, 'high',
-                       (int, float, np.ndarray, tensor.Variable, list),
+                       (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Uniform')
 
         self.all_arg_is_float = False
@@ -322,19 +323,19 @@ class Uniform(Distribution):
           Tensor: log probability.The data type is same with value.
 
         """
-        name = self.name + '_log_prob'
         value = self._check_values_dtype_in_probs(self.low, value)
         if in_dygraph_mode():
             # ensure value in [low, high]
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = core.ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
-                               value.dtype)
-            ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
-                               value.dtype)
+            lb = _C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
+                             value.dtype)
+            ub = _C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
+                             value.dtype)
             return nn.log(lb * ub) - nn.log(self.high - self.low)
 
+        name = self.name + '_log_prob'
         lb_bool = self.low < value
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
@@ -352,18 +353,18 @@ class Uniform(Distribution):
           Tensor: probability.The data type is same with value.
 
         """
-        name = self.name + '_probs'
         value = self._check_values_dtype_in_probs(self.low, value)
         if in_dygraph_mode():
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = core.ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
-                               value.dtype)
-            ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
-                               value.dtype)
+            lb = _C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
+                             value.dtype)
+            ub = _C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
+                             value.dtype)
             return (lb * ub) / (self.high - self.low)
 
+        name = self.name + '_probs'
         lb_bool = self.low < value
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
@@ -409,8 +410,8 @@ class Normal(Distribution):
     * :math:`Z`: is the normalization constant.
 
     Args:
-        loc(int|float|list|numpy.ndarray|Tensor): The mean of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
-        scale(int|float|list|numpy.ndarray|Tensor): The std of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
+        loc(int|float|list|tuple|numpy.ndarray|Tensor): The mean of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
+        scale(int|float|list|tuple|numpy.ndarray|Tensor): The std of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -451,10 +452,10 @@ class Normal(Distribution):
     def __init__(self, loc, scale, name=None):
         if not in_dygraph_mode():
             check_type(loc, 'loc',
-                       (int, float, np.ndarray, tensor.Variable, list),
+                       (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Normal')
             check_type(scale, 'scale',
-                       (int, float, np.ndarray, tensor.Variable, list),
+                       (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Normal')
 
         self.batch_size_unknown = False
@@ -655,7 +656,7 @@ class Categorical(Distribution):
     * :math:`[x=i]` : it evaluates to 1 if :math:`x==i` , 0 otherwise.
 
     Args:
-        logits(list|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
+        logits(list|tuple|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -702,11 +703,12 @@ class Categorical(Distribution):
     def __init__(self, logits, name=None):
         """
         Args:
-            logits(list|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
+            logits(list|tuple|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
             name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         """
         if not in_dygraph_mode():
-            check_type(logits, 'logits', (np.ndarray, tensor.Variable, list),
+            check_type(logits, 'logits',
+                       (np.ndarray, tensor.Variable, list, tuple),
                        'Categorical')
 
         self.name = name if name is not None else 'Categorical'

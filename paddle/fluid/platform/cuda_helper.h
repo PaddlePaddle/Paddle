@@ -25,10 +25,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 9000
-enum cublasMath_t { CUBLAS_DEFAULT_MATH = 0 };
-#endif
-
 namespace paddle {
 namespace platform {
 

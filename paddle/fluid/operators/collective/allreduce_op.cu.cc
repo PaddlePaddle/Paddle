@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/distributed_ops/allreduce_op.h"
+#include "paddle/fluid/operators/collective/allreduce_op.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;

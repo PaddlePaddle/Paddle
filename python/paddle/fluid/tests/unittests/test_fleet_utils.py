@@ -24,7 +24,6 @@ import sys
 from paddle.dataset.common import download, DATA_HOME
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.utils.fleet_barrier_util import check_all_trainers_ready
 from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
 import paddle.fluid.incubate.fleet.utils.utils as utils
 
@@ -49,15 +48,6 @@ class TestFleetUtils(unittest.TestCase):
         fleet_util_pslib = FleetUtil()
         fleet_util_transpiler = FleetUtil(mode="transpiler")
         self.assertRaises(Exception, FleetUtil, "other")
-
-    def test_fleet_barrier(self):
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=0,
-            role=role_maker.Role.WORKER,
-            worker_num=1,
-            server_endpoints=['127.0.0.1'])
-        fleet.init(role)
-        check_all_trainers_ready("/ready_path/", 0)
 
     def test_program_type_trans(self):
         data_dir = self.download_files()

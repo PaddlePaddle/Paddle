@@ -45,7 +45,10 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+// NOTE(zhiqiu): better to share the flags, otherwise we will have too many
+// flags.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 
 /**
  * CUDA related related FLAG
@@ -84,8 +87,15 @@ DEFINE_string(selected_gpus, "",
               "share-memory only.");
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_ASCEND_CL)
+DEFINE_string(selected_npus, "",
+              "A list of device ids separated by comma, like: 0,1,2,3. "
+              "This option is useful when doing multi process training and "
+              "each process have only one device (NPU). If you want to use "
+              "all visible devices, set this to empty string.");
+#endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * CUDNN related FLAG
  * Name: FLAGS_cudnn_deterministic
@@ -377,7 +387,10 @@ DEFINE_double(
     "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
     "reserve the rest for page tables, etc");
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+// NOTE(zhiqiu): better to share the flags, otherwise we will have too many
+// flags.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 
 /**
  * Memory related FLAG
@@ -564,6 +577,19 @@ DEFINE_string(tracer_mkldnn_ops_on, "",
  */
 DEFINE_string(tracer_mkldnn_ops_off, "",
               "List of OneDNN operation types to be turned off");
+
+/**
+ * Debug related FLAG
+ * Name: check_kernel_launch
+ * Since Version: 2.1.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Check kernel launch status after every kernel compute.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DEFINE_bool(check_kernel_launch, false,
+            "Check kernel launch status after every kernel compute");
+#endif
 
 /**
  * CUDNN related FLAG

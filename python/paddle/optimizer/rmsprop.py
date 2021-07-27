@@ -17,7 +17,7 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
-__all__ = ["RMSProp"]
+__all__ = []
 
 
 class RMSProp(Optimizer):
@@ -80,8 +80,11 @@ class RMSProp(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. \
+	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
+	    This parameter is required in dygraph mode. And you can specify different options for \
+            different parameter groups such as the learning rate, weight decay, etc, \
+            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            represents the scale of base learning_rate. \
 	    The default value is None in static mode, at this time all parameters will be updated.
 	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
 	    It canbe a float value as coeff of L2 regularization or \
@@ -117,6 +120,26 @@ class RMSProp(Optimizer):
             rmsprop.step()
             rmsprop.clear_grad()
 
+            #Note that the learning_rate of linear_2 is 0.01.
+            linear_1 = paddle.nn.Linear(10, 10)
+            linear_2 = paddle.nn.Linear(10, 10)
+            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            out = linear_1(inp)
+            out = linear_2(out)
+            loss = paddle.mean(out)
+            rmsprop = paddle.optimizer.RMSProp(
+                learning_rate=0.1,
+                parameters=[{
+                    'params': linear_1.parameters()
+                }, {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                    'learning_rate': 0.1
+                }],
+                weight_decay=0.01)                   
+            out.backward()
+            rmsprop.step()
+            rmsprop.clear_grad()
     """
 
     _momentum_acc_str = "momentum"
@@ -160,10 +183,19 @@ class RMSProp(Optimizer):
         self._epsilon = epsilon
         self._momentum = momentum
         self._centered = centered
+        self._default_dict = {
+            'rho': rho,
+            'epsilon': epsilon,
+            'momentum': momentum,
+            'centered': centered,
+        }
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
+
+        if isinstance(parameters, dict):
+            parameters = parameters.get('params')
 
         for p in parameters:
             self._add_accumulator(self._momentum_acc_str, p)
@@ -173,6 +205,9 @@ class RMSProp(Optimizer):
     def _append_optimize_op(self, block, param_and_grad):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
+
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
 
         momentum_acc = self._get_accumulator(self._momentum_acc_str,
                                              param_and_grad[0])
@@ -205,3 +240,13 @@ class RMSProp(Optimizer):
             stop_gradient=True)
 
         return rmsprop_op
+
+    def _update_param_group(self, parameters):
+        self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
+        self._rho = parameters.get('rho', self._default_dict['rho'])
+        self._momentum = parameters.get('momentum',
+                                        self._default_dict['momentum'])
+        self._centered = parameters.get('centered',
+                                        self._default_dict['centered'])
+        parameters = parameters.get('params')
+        return parameters

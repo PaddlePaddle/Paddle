@@ -39,29 +39,30 @@ set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/
 ExternalProject_Add(
         extern_brpc
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        # TODO(gongwb): change to de newst repo when they changed.
+        # TODO(gongwb): change to de newst repo when they changed
         GIT_REPOSITORY  "https://github.com/wangjiawei04/brpc"
-        GIT_TAG         "6d79e0b17f25107c35b705ea58d888083f59ff47"
+        GIT_TAG         "e203afb794caf027da0f1e0776443e7d20c0c28e"
         PREFIX          ${BRPC_SOURCES_DIR}
         UPDATE_COMMAND  ""
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-        -DCMAKE_INSTALL_PREFIX=${BRPC_INSTALL_DIR}
-        -DCMAKE_INSTALL_LIBDIR=${BRPC_INSTALL_DIR}/lib
-        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-        -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-        -DCMAKE_PREFIX_PATH=${prefix_path}
-        -DWITH_GLOG=ON
-        -DIOBUF_WITH_HUGE_BLOCK=ON
-        -DBRPC_WITH_RDMA=${WITH_BRPC_RDMA}
-        ${EXTERNAL_OPTIONAL_ARGS}
-        LIST_SEPARATOR |
+                        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                        -DCMAKE_INSTALL_PREFIX=${BRPC_INSTALL_DIR}
+                        -DCMAKE_INSTALL_LIBDIR=${BRPC_INSTALL_DIR}/lib
+                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                        -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                        -DCMAKE_PREFIX_PATH=${prefix_path}
+                        -DWITH_GLOG=ON
+                        -DIOBUF_WITH_HUGE_BLOCK=ON
+                        -DBRPC_WITH_RDMA=${WITH_BRPC_RDMA}
+                        ${EXTERNAL_OPTIONAL_ARGS}
+        LIST_SEPARATOR  |
         CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${BRPC_INSTALL_DIR}
-        -DCMAKE_INSTALL_LIBDIR:PATH=${BRPC_INSTALL_DIR}/lib
-        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-        -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+                         -DCMAKE_INSTALL_LIBDIR:PATH=${BRPC_INSTALL_DIR}/lib
+                         -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                         -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+        BUILD_BYPRODUCTS ${BRPC_LIBRARIES}
 )
 # ADD_DEPENDENCIES(extern_brpc protobuf ssl crypto leveldb gflags glog gtest snappy)
 ADD_DEPENDENCIES(extern_brpc protobuf ssl crypto leveldb gflags glog snappy)

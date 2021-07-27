@@ -14,11 +14,15 @@ limitations under the License. */
 #include <Python.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
 #include <string>
+#include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -27,6 +31,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/executor_cache.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/garbage_collector.h"
@@ -64,6 +70,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/io.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
@@ -101,6 +109,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_profiler.h"
 #endif
 #include "paddle/fluid/platform/gpu_info.h"
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/npu_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -143,6 +156,14 @@ bool IsCompiledWithROCM() {
 #endif
 }
 
+bool IsCompiledWithAscend() {
+#ifndef PADDLE_WITH_ASCEND
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
   return false;
@@ -151,8 +172,24 @@ bool IsCompiledWithXPU() {
 #endif
 }
 
+bool IsCompiledWithNPU() {
+#ifndef PADDLE_WITH_ASCEND_CL
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithMKLDNN() {
 #ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithHETERPS() {
+#ifndef PADDLE_WITH_HETERPS
   return false;
 #else
   return true;
@@ -181,15 +218,71 @@ bool SupportsBfloat16FastPerformance() {
 #endif
 }
 
+// According to the input `place` and `dtype`, this function returns a tuple
+// consists of three sets:
+// 1) All operators registered in the Paddle framework.
+// 2) All operators supported for `place` and `dtype`.
+// 3) All operators unsupported for `place` and `dtype`.
+// The input `place` is a type of string, which can only be `GPU` or `CPU`.
+// The input `dtype` is a type of paddle::framework::proto::VarType::Type,
+// which can be paddle::framework::proto::VarType::FP16,
+// paddle::framework::proto::VarType::FP32 and so on.
+std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
+           std::unordered_set<std::string>>
+OpSupportedInfos(const std::string &place,
+                 framework::proto::VarType::Type dtype) {
+  std::string query_place;
+  std::transform(place.begin(), place.end(), std::back_inserter(query_place),
+                 [](unsigned char c) { return std::toupper(c); });
+  using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
+  std::unordered_map<std::string, fn_type> is_target_place{
+      {"GPU", &platform::is_gpu_place},
+      {"CPU", &platform::is_cpu_place},
+      {"XPU", &platform::is_xpu_place},
+      {"NPU", &platform::is_npu_place},
+  };
+  PADDLE_ENFORCE_NE(
+      is_target_place.count(query_place), 0,
+      platform::errors::InvalidArgument(
+          "The argument `place` should be 'GPU' or 'CPU', but get '%s'.",
+          place));
+
+  std::unordered_set<std::string> all_ops;
+  const auto &op_info = framework::OpInfoMap::Instance().map();
+  for (auto it = op_info.begin(); it != op_info.end(); it++) {
+    all_ops.emplace(it->first);
+  }
+
+  std::unordered_set<std::string> supported_ops;
+  auto &all_kernels = framework::OperatorWithKernel::AllOpKernels();
+  for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
+    for (auto &kernel_type : it->second) {
+      if (is_target_place[query_place](kernel_type.first.place_) &&
+          kernel_type.first.data_type_ == dtype) {
+        supported_ops.emplace(it->first);
+      }
+    }
+  }
+
+  std::unordered_set<std::string> unsupported_ops;
+  for (auto &op : all_ops) {
+    if (!supported_ops.count(op)) {
+      unsupported_ops.emplace(op);
+    }
+  }
+
+  VLOG(4) << "-- The size of all_ops: " << all_ops.size() << " --";
+  VLOG(4) << "-- The size of supported_ops: " << supported_ops.size() << " --";
+  VLOG(4) << "-- The size of unsupported_ops: " << unsupported_ops.size()
+          << " --";
+  return std::make_tuple(std::move(all_ops), std::move(supported_ops),
+                         std::move(unsupported_ops));
+}
+
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
 #endif
-
-#ifdef PADDLE_WITH_GRPC
-  return false;
-#endif
-
   return true;
 }
 
@@ -380,6 +473,8 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
+  BindCudaStream(&m);
+
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
 
@@ -419,46 +514,11 @@ PYBIND11_MODULE(core_noavx, m) {
     return tensor;
   });
 
-  m.def("_save_static_dict",
-        [](const std::string &str_file_name, const py::handle &vec_var_list,
-           const Scope &scope) {
-          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
-          SaveStaticNameListToDisk(str_file_name, vec_name_list, scope);
-        });
-
-  m.def("_load_static_dict",
-        [](const std::string &str_file_name, const py::handle &vec_var_list,
-           const Scope &scope, const Executor *executor) {
-          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
-          CreateVariableIfNotExit(vec_var_list, scope, executor);
-          LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
-        });
-
   m.def("_create_loaded_parameter",
         [](const py::handle &vec_var_list, const Scope &scope,
            const Executor *executor) {
           CreateVariableIfNotExit(vec_var_list, scope, executor);
         });
-
-  m.def("_save_dygraph_dict", [](const std::string &str_file_name,
-                                 const PyNameVarBaseMap &state_dict) {
-    auto vec_var_base_list = GetVarBaseList(state_dict);
-
-    SaveDygraphVarBaseListToDisk(str_file_name, vec_var_base_list);
-  });
-
-  m.def("_load_dygraph_dict", [](const std::string &str_file_name) {
-    auto load_tensor = LoadDygraphVarBaseListFromDisk(str_file_name);
-
-    std::unordered_map<std::string, std::shared_ptr<imperative::VarBase>>
-        map_output;
-
-    for (size_t i = 0; i < load_tensor.size(); ++i) {
-      map_output.emplace(load_tensor[i]->Name(), load_tensor[i]);
-    }
-
-    return map_output;
-  });
 
   m.def("save_op_version_info", [](framework::ProgramDesc &desc) {
     framework::compatible::pb::OpVersionMap pb_vmap{desc.OpVersionMap()};
@@ -571,6 +631,10 @@ PYBIND11_MODULE(core_noavx, m) {
            [](framework::Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
+      .def("_alloc_float",
+           [](framework::Tensor &self, paddle::platform::NPUPlace &place) {
+             self.mutable_data<float>(place);
+           })
       .def("_alloc_double",
            [](framework::Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<double>(place);
@@ -618,11 +682,18 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_clear", &framework::Tensor::clear)
+      .def("_mutable_data",
+           [](framework::Tensor &self, paddle::platform::NPUPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+           })
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::XPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::NPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
@@ -631,7 +702,7 @@ PYBIND11_MODULE(core_noavx, m) {
         
         Args:
           lod (numpy.ndarray): The data to set.
-          place (CPUPlace|CUDAPlace|XPUPlace|CUDAPinnedPlace): The place where the 
+          place (CPUPlace|CUDAPlace|XPUPlace|CUDAPinnedPlace|NPUPlace): The place where the
           LoDTensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.
@@ -1253,7 +1324,7 @@ All parameter, weight, gradient are variables in Paddle.
           if (info != nullptr) {
             if (info->HasOpProtoAndChecker()) {
               auto op_checker = info->Checker();
-              res = op_checker->GetAttrsDefaultValuesMap();
+              res = op_checker->GetDefaultAttrsMap();
             }
           }
           return res;
@@ -1359,6 +1430,18 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::XPUDeviceContext(place);
 #endif
                   })
+        .def_static("create",
+                    [](paddle::platform::NPUPlace& place)
+                        -> paddle::platform::DeviceContext* {
+#ifndef PADDLE_WITH_ASCEND_CL
+             PADDLE_THROW(
+                 platform::errors::PermissionDenied(
+                 "Cannot use NPUPlace in CPU/GPU/XPU version, "
+                 "Please recompile or reinstall Paddle with NPU support."));
+#else
+                return new paddle::platform::NPUDeviceContext(place);
+#endif
+        })
       .def_static("create",
                   [](paddle::platform::CUDAPlace& place)
                       -> paddle::platform::DeviceContext* {
@@ -1459,6 +1542,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::XPUPlace>)
+      .def("_equals", &IsSamePlace<platform::CUDAPlace, platform::NPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPlace, platform::CUDAPinnedPlace>)
       .def("_get_device_id",
@@ -1528,6 +1612,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_XPU
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
 #endif
+
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
     It represents a CPU device on which a tensor will be allocated and a model will run.
@@ -1543,6 +1628,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_type", &PlaceIndex<platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::XPUPlace>)
+      .def("_equals", &IsSamePlace<platform::CPUPlace, platform::NPUPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
       .def("_equals",
@@ -1581,11 +1667,74 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::XPUPlace>)
       .def("_equals",
+           &IsSamePlace<platform::CUDAPinnedPlace, platform::NPUPlace>)
+      .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPinnedPlace>)
       .def("__repr__", string::to_string<const platform::CUDAPinnedPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
+
+  // NPUPlace
+  py::class_<platform::NPUPlace>(m, "NPUPlace", R"DOC(
+    NPUPlace is a descriptor of a device.
+    It represents a NPU device on which a tensor will be allocated and a model will run.
+
+    Examples:
+        .. code-block:: python
+          import paddle
+          npu_place = paddle.NPUPlace(0)
+
+        )DOC")
+      .def("__init__",
+           [](platform::NPUPlace &self, int dev_id) {
+#ifdef PADDLE_WITH_ASCEND_CL
+             if (UNLIKELY(dev_id < 0)) {
+               LOG(ERROR) << string::Sprintf(
+                   "Invalid NPUPlace(%d), device id must be 0 or "
+                   "positive integer",
+                   dev_id);
+               std::exit(-1);
+             }
+             if (UNLIKELY(dev_id >= platform::GetNPUDeviceCount())) {
+               if (platform::GetNPUDeviceCount() == 0) {
+                 LOG(ERROR) << "Cannot use NPU because there is no NPU "
+                               "detected on your "
+                               "machine.";
+                 std::exit(-1);
+               } else {
+                 LOG(ERROR) << string::Sprintf(
+                     "Invalid NPUPlace(%d), must inside [0, %d), because NPU "
+                     "number on your machine is %d",
+                     dev_id, platform::GetNPUDeviceCount(),
+                     platform::GetNPUDeviceCount());
+                 std::exit(-1);
+               }
+             }
+             new (&self) platform::NPUPlace(dev_id);
+#else
+             LOG(ERROR) << string::Sprintf(
+                 "Cannot use NPU because you have installed CPU/GPU version "
+                 "PaddlePaddle.\n"
+                 "If you want to use NPU, please try to install NPU version "
+                 "PaddlePaddle by: pip install paddlepaddle-npu\n"
+                 "If you only have CPU, please change NPUPlace(%d) to be "
+                 "CPUPlace().\n",
+                 dev_id);
+             std::exit(-1);
+#endif
+           })
+      .def("_type", &PlaceIndex<platform::NPUPlace>)
+      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::CUDAPlace>)
+      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::CPUPlace>)
+      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::XPUPlace>)
+      .def("_equals", &IsSamePlace<platform::NPUPlace, platform::NPUPlace>)
+      .def("_equals",
+           &IsSamePlace<platform::NPUPlace, platform::CUDAPinnedPlace>)
+      .def("get_device_id",
+           [](const platform::NPUPlace &self) { return self.GetDeviceId(); })
+      .def("__str__", string::to_string<const platform::NPUPlace &>);
 
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
@@ -1594,6 +1743,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::XPUPlace>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::NPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
@@ -1601,6 +1751,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](platform::Place &self) { return platform::is_cpu_place(self); })
       .def("is_xpu_place",
            [](platform::Place &self) { return platform::is_xpu_place(self); })
+      .def("is_npu_place",
+           [](platform::Place &self) { return platform::is_npu_place(self); })
       .def("is_cuda_pinned_place",
            [](platform::Place &self) {
              return platform::is_cuda_pinned_place(self);
@@ -1612,6 +1764,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("xpu_device_id",
            [](platform::Place &self) {
              return BOOST_GET_CONST(platform::XPUPlace, self).device;
+           })
+      .def("npu_device_id",
+           [](platform::Place &self) {
+             return BOOST_GET_CONST(platform::NPUPlace, self).device;
            })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
@@ -1631,6 +1787,10 @@ All parameter, weight, gradient are variables in Paddle.
            [](platform::Place &self,
               const platform::CUDAPinnedPlace &cuda_pinned_place) {
              self = cuda_pinned_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::NPUPlace &npu_place) {
+             self = npu_place;
            })
       .def("__repr__", string::to_string<const platform::Place &>)
       .def("__str__", string::to_string<const platform::Place &>);
@@ -1656,6 +1816,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::XPUPlace &place) { self.Run(scope, place); })
+      .def("run",
+           [](OperatorBase &self, const Scope &scope,
+              const platform::NPUPlace &place) { self.Run(scope, place); })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CUDAPlace &place) { self.Run(scope, place); })
@@ -1691,6 +1854,8 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference)
       .def("finalize", &TrainerBase::Finalize);
+
+  m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
@@ -1756,11 +1921,15 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices", []() { framework::InitDevices(); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
+  m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
+  m.def("op_supported_infos", OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
@@ -1989,6 +2158,29 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 
+#ifdef PADDLE_WITH_ASCEND_CL
+  m.def("get_npu_device_count", platform::GetNPUDeviceCount);
+  m.def("npu_finalize", []() { platform::AclInstance::Instance().Finalize(); });
+
+  py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
+
+  m.def("npu_prof_init", platform::NPUProfilerInit);
+  m.def("npu_prof_start", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerStart(c.ptr());
+  });
+  m.def("npu_prof_stop", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerStop(c.ptr());
+  });
+  m.def("npu_prof_finalize", platform::NPUProfilerFinalize);
+  m.def("npu_prof_create_config", []() {
+    return platform::NPUProfConfigWrapper(platform::NPUProfilerCreateConfig());
+  });
+
+  m.def("npu_prof_destropy_config", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerDestroyConfig(c.ptr());
+  });
+#endif
+
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
       .value("kDefault", platform::TracerOption::kDefault)
       .value("kOpDetail", platform::TracerOption::kOpDetail)
@@ -2029,6 +2221,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
   m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
+  m.def("clear_executor_cache",
+        []() { framework::ExecutorInfoCache::Instance().Finalize(); });
 
   using VarQuantScale =
       std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
@@ -2817,6 +3011,12 @@ All parameter, weight, gradient are variables in Paddle.
                 optimization passes should be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
 
+  m.def("_set_cached_executor_build_strategy",
+        [](int64_t program_id, const BuildStrategy &build_strategy) {
+          auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
+          cached_exe_info.SetBuildStrategy(program_id, build_strategy);
+        });
+
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::vector<std::string> &, const std::string &,
                   Scope *, std::vector<Scope *> &, const ExecutionStrategy &,
@@ -2857,12 +3057,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
+  BindIO(&m);
 
 #ifdef PADDLE_WITH_PSLIB
   BindHeterWrapper(&m);
 #endif
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
   BindPSGPUWrapper(&m);
 #endif
   BindGlooWrapper(&m);
@@ -2885,6 +3085,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_ASCEND
   BindAscendWrapper(&m);
   BindAscendGraph(&m);
+  BindAscendDevice(&m);
 #endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
@@ -2896,6 +3097,16 @@ All parameter, weight, gradient are variables in Paddle.
   BindCommunicatorContext(&m);
   BindDistCommunicator(&m);
   BindHeterClient(&m);
+  BindGraphPyFeatureNode(&m);
+  BindGraphNode(&m);
+  BindGraphPyService(&m);
+  BindGraphPyServer(&m);
+  BindGraphPyClient(&m);
+  BindIndexNode(&m);
+  BindTreeIndex(&m);
+  BindIndexWrapper(&m);
+  BindIndexSampler(&m);
+  BindSparseShardingTools(&m);
 #endif
 }
 }  // namespace pybind

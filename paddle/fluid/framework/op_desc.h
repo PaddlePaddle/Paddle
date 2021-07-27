@@ -65,6 +65,7 @@ class OpDesc {
 
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
+  void RemoveOutput(const std::string &name);
 
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
@@ -120,6 +121,16 @@ class OpDesc {
   const VariableNameMap &Inputs() const { return inputs_; }
 
   const VariableNameMap &Outputs() const { return outputs_; }
+
+  VariableNameMap *MutableInputs() {
+    this->need_update_ = true;
+    return &this->inputs_;
+  }
+
+  VariableNameMap *MutableOutputs() {
+    this->need_update_ = true;
+    return &this->outputs_;
+  }
 
   AttributeMap *MutableAttrMap() {
     this->need_update_ = true;

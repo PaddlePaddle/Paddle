@@ -43,8 +43,9 @@ void InterpolateMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
 
   int found_count = 0;
   const std::vector<std::string> interpolate_op_types = {
-      "bilinear_interp", "nearest_interp", "trilinear_interp", "bicubic_interp",
-      "linear_interp"};
+      "bilinear_interp",  "nearest_interp", "trilinear_interp",
+      "bicubic_interp",   "linear_interp",  "bilinear_interp_v2",
+      "nearest_interp_v2"};
 
   for (const Node* node : graph->Nodes()) {
     if (node->IsOp() &&

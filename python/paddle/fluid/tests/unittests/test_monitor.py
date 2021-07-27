@@ -17,6 +17,8 @@ TestCases for Monitor
 
 from __future__ import print_function
 import paddle
+paddle.enable_static()
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
@@ -52,6 +54,11 @@ class TestDatasetWithStat(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
+        embs = []
+        for x in slots_vars:
+            emb = fluid.layers.embedding(x, is_sparse=True, size=[100001, 4])
+            embs.append(emb)
+
         dataset = paddle.distributed.InMemoryDataset()
         dataset._set_batch_size(32)
         dataset._set_thread(3)
@@ -74,11 +81,17 @@ class TestDatasetWithStat(unittest.TestCase):
             for i in range(self.epoch_num):
                 for data in data_loader():
                     exe.run(fluid.default_main_program(), feed=data)
+
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(fluid.default_main_program(),
-                                           dataset)
+                    exe.train_from_dataset(
+                        fluid.default_main_program(),
+                        dataset,
+                        fetch_list=[embs[0], embs[1]],
+                        fetch_info=["emb0", "emb1"],
+                        print_period=1)
+
                 except Exception as e:
                     self.assertTrue(False)
 

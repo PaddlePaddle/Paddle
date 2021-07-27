@@ -102,9 +102,13 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
 
   // check src shape and dst shape should match
   for (int i = 1; i < src_dims.size(); i++)
-    PADDLE_ENFORCE_EQ(src_dims[i], dst_dims[i],
-                      platform::errors::InvalidArgument(
-                          "src shape and dst shape should match"));
+    PADDLE_ENFORCE_EQ(
+        src_dims[i], dst_dims[i],
+        platform::errors::InvalidArgument(
+            "The dimensions of the source tensor and target tensor should"
+            " match, but received source tensor's %d-th dimension is %d,"
+            "target tensor's %d-th dimension is %d.",
+            i, src_dims[i], i, dst_dims[i]));
 
   // slice size
   size_t slice_size = 1;
@@ -114,6 +118,15 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
 
   for (int i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
+
+    PADDLE_ENFORCE_GE(index_, 0,
+                      platform::errors::OutOfRange(
+                          "The index is out of bounds, "
+                          "please check whether the dimensions of index and "
+                          "input meet the requirements. It should "
+                          "be greater than or equal to 0, but received [%d]",
+                          index_));
+
     memcpy(p_output + index_ * slice_size, p_src + i * slice_size, slice_bytes);
   }
 }
@@ -146,9 +159,13 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
 
   // check src shape and dst shape should match
   for (int i = 1; i < src_dims.size(); i++)
-    PADDLE_ENFORCE_EQ(src_dims[i], dst_dims[i],
-                      platform::errors::InvalidArgument(
-                          "src shape and dst shape should match"));
+    PADDLE_ENFORCE_EQ(
+        src_dims[i], dst_dims[i],
+        platform::errors::InvalidArgument(
+            "The dimensions of the source tensor and target tensor should"
+            " match, but received source tensor's %d-th dimension is %d,"
+            "target tensor's %d-th dimension is %d.",
+            i, src_dims[i], i, dst_dims[i]));
 
   // slice size
   size_t slice_size = 1;
@@ -165,6 +182,15 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   // if not in overwrite mode, need to init output data
   for (int i = 0; i < index_size; ++i) {
     const IndexT& index_ = p_index[i];
+
+    PADDLE_ENFORCE_GE(index_, 0,
+                      platform::errors::OutOfRange(
+                          "The index is out of bounds, "
+                          "please check whether the dimensions of index and "
+                          "input meet the requirements. It should "
+                          "be greater than or equal to 0, but received [%d]",
+                          index_));
+
     elementwise_inner_add<T, IndexT>(ctx, p_src, p_output, result_p_output, src,
                                      output, i, index_, slice_size,
                                      slice_bytes);
@@ -225,6 +251,15 @@ void ScatterNdAdd(const framework::ExecutionContext& ctx, const Tensor& update,
     IndexT temp = 1;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = p_index[i * end_size + j];
+      PADDLE_ENFORCE_EQ(
+          (index_value >= 0 && index_value < output_dims[j]), true,
+          platform::errors::OutOfRange(
+              "The index is out of bounds, "
+              "please check whether the dimensions of index and "
+              "input meet the requirements. It should "
+              "be less than [%d] and greater or equal to 0, but received [%d]",
+              output_dims[j], index_value));
+
       index_ += (index_value * temp);
       temp *= output_dims[j];
     }

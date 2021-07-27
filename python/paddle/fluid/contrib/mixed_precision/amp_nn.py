@@ -20,7 +20,7 @@ from paddle.fluid import core
 __all__ = ['check_finite_and_unscale', 'update_loss_scaling']
 
 
-def check_finite_and_unscale(x, scale, name=None):
+def check_finite_and_unscale(x, scale, name=None, float_status=None):
     """
     Check if input X contains all finite data, if yes, scale it by input Scale.
 
@@ -30,9 +30,11 @@ def check_finite_and_unscale(x, scale, name=None):
     FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of 
     Out should not be used, and its data may not be deterministic. 
     Otherwise, FoundInfinite will be 0 (False).
+
     Args:
         x(list|tuple): The input tensors of check_finite_and_unscale operator.
         scale: The scale of check_finite_and_unscale operator.
+        float_status(Tensor): (Only used on NPU) The float status to check overflow.
     """
     check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')
     for e in x:
@@ -43,6 +45,11 @@ def check_finite_and_unscale(x, scale, name=None):
     found_inf = helper.create_variable_for_type_inference(dtype='bool')
 
     inputs = {'X': x, 'Scale': scale}
+    if core.is_compiled_with_npu():
+        check_variable_and_dtype(float_status, "float_status",
+                                 ['float16', 'float32'],
+                                 'check_finite_and_unscale')
+        inputs['FloatStatus'] = float_status
     outputs = {'Out': x, 'FoundInfinite': found_inf}
     helper.append_op(
         type='check_finite_and_unscale', inputs=inputs, outputs=outputs)

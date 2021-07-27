@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
 
@@ -42,9 +43,17 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("multihead_matmul");
     teller_set.insert("skip_layernorm");
     teller_set.insert("slice");
+    int8_teller_set.insert("fused_embedding_eltwise_layernorm");
+    int8_teller_set.insert("multihead_matmul");
+    int8_teller_set.insert("skip_layernorm");
+    int8_teller_set.insert("slice");
 #endif
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
+#endif
+#if CUDA_VERSION >= 10020
+    teller_set.insert("reshape");
+    teller_set.insert("reshape2");
 #endif
   }
 
@@ -61,6 +70,8 @@ struct SimpleOpTypeSetTeller : public Teller {
   // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{"mul",
                                                   "conv2d",
+                                                  "matmul",
+                                                  "stack",
                                                   "conv2d_fusion",
                                                   "pool2d",
                                                   "relu",
@@ -96,6 +107,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dropout",
       "prelu",
       "conv2d_transpose",
+      "depthwise_conv2d_transpose",
       "leaky_relu",
       "fc",
       "shuffle_channel",
@@ -111,11 +123,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten2",
       "flatten",
       "gather",
+      "gather_nd",
       "yolo_box",
       "roi_align",
       "affine_channel",
-      "multiclass_nms",
       "nearest_interp",
+      "anchor_generator",
+      "reduce_sum",
+      "reduce_mean",
   };
 };
 
@@ -131,13 +146,116 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    if (op_type == "pool2d" || op_type == "conv2d" ||
-        op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
+    if (op_type == "depthwise_conv2d") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
       if (paddings.size() > 2) return false;
     }
+
+    if (op_type == "pool2d") {
+      std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+      if (paddings.size() > 2) return false;
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "TRT Pool2d expect 1 input, but got "
+                << desc.Input("X").size();
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(3) << "TRT Pool2d has only 1 output, but got "
+                << desc.Output("Out").size();
+        return false;
+      }
+      if (!desc.HasAttr("pooling_type")) {
+        return false;
+      } else {
+        std::string pool_type =
+            BOOST_GET_CONST(std::string, desc.GetAttr("pooling_type"));
+        if (pool_type != "max" && pool_type != "avg") {
+          VLOG(3) << "Wrong pool op type, the trt do not support the "
+                  << pool_type << " pool type.";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
+        op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
+        op_type == "depthwise_conv2d_transpose") {
+      std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+
+      // conv2d and conv2d_transpose need padding check
+      if (paddings.size() > 2 && op_type != "conv2d_fusion") return false;
+
+      if (desc.Input("Input").size() != 1) {
+        VLOG(3) << "TRT Conv2d expect 1 input, but got "
+                << desc.Input("Input").size() << " input.";
+        return false;
+      }
+
+      if (desc.Input("Filter").size() != 1) {
+        VLOG(3) << "TRT Conv2d expect 1 filter, but got "
+                << desc.Input("Filter").size() << " filter.";
+        return false;
+      }
+
+      if (desc.HasAttr("enable_int8")) {
+        if (op_type == "conv2d" || op_type == "conv2d_fusion") {
+          if (!desc.HasAttr("Input_scale")) {
+            VLOG(3) << "Input scale not found. TRT int8"
+                       " requires conv/deconv to have "
+                       "input quantization scales.";
+            return false;
+          }
+        }
+      }
+
+      if (op_type == "conv2d_transpose" ||
+          op_type == "depthwise_conv2d_transpose") {
+        if (!desc.HasAttr("dilations")) {
+          return false;
+        } else {
+          const std::vector<int> dilations =
+              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
+          if (dilations[0] != 1 || dilations[1] != 1) {
+            VLOG(3) << "In conv2d_transpose, Dilations must be (1, 1) for "
+                       "tensorRT, but given ("
+                    << dilations[0] << ", " << dilations[1] << ")";
+            return false;
+          }
+        }
+      }
+
+      if (desc.Output("Output").size() != 1) {
+        VLOG(3) << "TRT Conv2d expect 1 output, but got "
+                << desc.Output("Output").size() << " output.";
+        return false;
+      }
+
+// strides > 1 and 'SAME' is only supported by trt7.0 above
+#if !IS_TRT_VERSION_GE(7000)
+      if (op_type == "conv2d" || op_type == "conv2d_fusion" ||
+          op_type == "depthwise_conv2d") {
+        if (desc.HasAttr("padding_algorithm") && with_dynamic_shape) {
+          auto padding_algorithm =
+              BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+          if (padding_algorithm == "SAME" && desc.HasAttr("strides")) {
+            const std::vector<int> strides =
+                BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+            // there is no issue if strides.size() less than 2
+            if (strides.size() > 1) {
+              for (size_t i = 0; i < strides.size(); i++) {
+                if (strides[i] > 1) return false;
+              }
+            }
+          }
+        }
+      }
+#endif
+    }
+
     if (op_type == "matmul") {
       auto* block = desc.Block();
       for (auto& param_name : desc.Inputs()) {
@@ -145,7 +263,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
           if (shape.size() < 3) {
-            VLOG(1)
+            VLOG(3)
                 << "matmul op dims < 3 not supported in tensorrt, but got dims "
                 << shape.size() << ", so jump it.";
             return false;
@@ -184,19 +302,50 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
     if (op_type == "flatten2" || op_type == "flatten") {
-      // flatten doesn't support dynamic shape currently
       if (!desc.HasAttr("axis")) {
         return false;
       } else {
+#if IS_TRT_VERSION_GE(7130)
+#else
         if (with_dynamic_shape) return false;
+#endif
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
     }
 
     if (op_type == "gather") {
+      if (!with_dynamic_shape) return false;
+      auto inputs = desc.InputArgumentNames();
+      for (auto& input : inputs) {
+        if (input == "Axis" && desc.Input("Axis").size() > 0) return false;
+      }
       // current not support axis from input, use default 0
-      if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
+      if (desc.GetAttrIfExists<int>("axis")) return false;
+    }
+
+    if (op_type == "gather_nd") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto index_var_name = desc.Input("Index")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* index_var_desc = block->FindVar(index_var_name);
+
+      // The index input must be int32 datatype.
+      if (index_var_desc->GetDataType() !=
+          paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+        VLOG(3) << "gather_nd op Index input data type must be int32";
+        return false;
+      }
+
+      const auto index_shape = index_var_desc->GetShape();
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() != index_shape.size()) {
+        VLOG(3) << "gather_nd op Index input dims size [" << index_shape.size()
+                << " ] not equal to x dims size [" << x_shape.size() << "]";
+        return false;
+      }
+      if (!with_dynamic_shape) return false;
     }
 
     if (op_type == "yolo_box") {
@@ -205,7 +354,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           (desc.HasAttr("class_num") && desc.HasAttr("anchors") &&
            desc.HasAttr("downsample_ratio") && desc.HasAttr("conf_thresh") &&
            desc.HasAttr("clip_bbox") && desc.HasAttr("scale_x_y"));
-      return has_attrs;
+      if (!has_attrs) return false;
     }
 
     if (op_type == "affine_channel") {
@@ -223,7 +372,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
           if (shape.size() != 3) {
-            VLOG(1) << "multiclass_nms op dims != 3 not supported in tensorrt, "
+            VLOG(3) << "multiclass_nms op dims != 3 not supported in tensorrt, "
                        "but got dims "
                     << shape.size() << ", so jump it.";
             return false;
@@ -246,18 +395,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (registry == nullptr) return false;
     }
 
-    if (op_type == "fc" || op_type == "mul") {
-      const int x_num_col_dims =
-          desc.HasAttr("x_num_col_dims")
-              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
-              : (desc.HasAttr("in_num_col_dims")
-                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
-                     : 1);
-      if (x_num_col_dims != 1 && x_num_col_dims != 2) {
-        return false;
-      }
-    }
-
     if (op_type == "nearest_interp") {
       std::vector<std::string> attrs{"data_layout",   "interp_method",
                                      "align_corners", "scale",
@@ -273,6 +410,25 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
+
+      if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
+          !desc.HasAttr("out_w")) {
+        return false;
+      } else {
+        auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
+        auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+        auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+        if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
+          if (out_h <= 0) {
+            VLOG(3) << "out_h must be greater than 0 if scale is not set.";
+            return false;
+          }
+          if (out_w <= 0) {
+            VLOG(3) << "out_w must be greater than 0 if scale is not set.";
+            return false;
+          }
+        }
+      }
     }
 
     if (op_type == "roi_align") {
@@ -297,8 +453,287 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (spatial_scale <= 0.f) return false;
     }
 
+    if (op_type == "hard_swish") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "HardSwish op has only 1 input, but got "
+                << desc.Input("X").size();
+        return false;
+      }
+
+      if (desc.Output("Out").size() != 1) {
+        VLOG(3) << "HardSwish op has only 1 output, but got "
+                << desc.Output("Out").size();
+        return false;
+      }
+    }
+
+    if (op_type == "batch_norm") {
+      const std::vector<std::string> bn_inputs = {"X", "Bias", "Mean", "Scale",
+                                                  "Variance"};
+      for (unsigned int i = 0; i < bn_inputs.size(); i++) {
+        if (desc.Input(bn_inputs[i]).size() != 1) {
+          VLOG(3) << "Invalid " << bn_inputs[i]
+                  << "'s size of batch_norm TRT "
+                     "converter. Expected 1, received "
+                  << desc.Input(bn_inputs[i]).size() << ".";
+          return false;
+        }
+      }
+
+      if (desc.Output("Y").size() != 1) {
+        VLOG(3) << "Invalid output Y's size of batch_norm TRT "
+                   "converter. Expected 1, received "
+                << desc.Output("Y").size() << ".";
+        return false;
+      }
+    }
+
+    if (op_type == "split") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "Invalid input X's size of split TRT converter. "
+                   "Expected 1, received "
+                << desc.Input("X").size() << ".";
+        return false;
+      }
+      if (!desc.HasAttr("axis")) {
+        return false;
+      } else {
+        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        if (axis == 0) {
+          VLOG(3) << "Invalid split axis. Split on batch is not supported in "
+                     "TensorRT";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "slice") {
+      if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
+          !desc.HasAttr("ends")) {
+        return false;
+      } else {
+        std::vector<int> axes =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+        std::vector<int> starts =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
+        std::vector<int> ends =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
+        if (axes.size() != starts.size() || axes.size() != ends.size()) {
+          return false;
+        }
+        if (!with_dynamic_shape) {
+          for (size_t i = 0; i < axes.size(); i++) {
+            if (axes[i] == 0) {
+              VLOG(3) << "Invalid slice axis. Slice on batch axis is not "
+                         "supported in TensorRT";
+              return false;
+            }
+          }
+        }
+      }
+    }
+
+    if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "The input op's Input(\"X\").size() "
+                   "should equal to 1, but received Input(\"X\").size() = "
+                << desc.Input("X").size() << ".";
+        return false;
+      }
+      if (desc.Input("Y").size() != 1) {
+        VLOG(3) << "The input op's Input(\"Y\").size() "
+                   "should equal to 1, but received Input(\"Y\").size() = "
+                << desc.Input("Y").size() << ".";
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(3) << "The input op's Output(\"Out\").size() "
+                   "should equal to 1, but reveceid Output(\"Out\").size() = "
+                << desc.Output("Out").size() << ".";
+        return false;
+      }
+    }
+
+    if (op_type == "stack") {
+      if (!with_dynamic_shape) {
+        VLOG(3)
+            << "static shape mode is not supported for TRT stack.\n"
+               "You can use the config.SetTRTDynamicShapeInfo(...) interface"
+               " to set the shape information to run the dynamic shape "
+               "mode.";
+        return false;
+      }
+    }
+
+    if (op_type == "fused_embedding_eltwise_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "fused_embedding_eltwise_layernorm should run on dynamic "
+                   "shape mode.";
+        return false;
+      }
+      if (desc.Input("Ids").size() != desc.Input("Embs").size()) {
+        VLOG(3) << "The id and emb size of fused EmbEltwiseLayerNormOp "
+                   "should be same ";
+        return false;
+      }
+    }
+
+    if (op_type == "gelu") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "gelu op has only 1 input, but got "
+                << desc.Input("X").size();
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(3) << "gelu op has only 1 output, but got "
+                << desc.Output("Out").size();
+        return false;
+      }
+    }
+
+    if (op_type == "layer_norm") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "input of layer_norm op converter should be 1, got "
+                << desc.Input("X").size();
+        return false;
+      }
+      if (desc.Input("Bias").size() != 1) {
+        VLOG(3) << "Bias of layer_norm op converter should be 1, got "
+                << desc.Input("Bias").size();
+        return false;
+      }
+      if (desc.Input("Scale").size() != 1) {
+        VLOG(3) << "Scale of layer_norm op converter should be 1, got "
+                << desc.Input("Scale").size();
+        return false;
+      }
+      if (desc.Output("Y").size() != 1) {
+        VLOG(3) << "output of layer_norm op converter should be 1, got "
+                << desc.Output("Y").size();
+        return false;
+      }
+    }
+
+    if (op_type == "leaky_relu") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "Invalid number of TRT leaky_relu op converter "
+                   "inputs. Expected 1, but received "
+                << desc.Input("X").size();
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(3) << "output of leaky_relu op converter should be 1, got "
+                << desc.Output("Out").size();
+        return false;
+      }
+    }
+
+    if (op_type == "pad") {
+      const float pad_value = BOOST_GET_CONST(float, desc.GetAttr("pad_value"));
+      if (pad_value != 0.0f) {
+        VLOG(3) << "The pad layer of TRT only support zero.";
+        return false;
+      }
+    }
+
+    if (op_type == "prelu") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "Invalid input X's size of prelu TRT converter. "
+                   "Expected 1, received "
+                << desc.Input("X").size() << ".";
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(3) << "Invalid output Out's size of prelu TRT converter. "
+                   "Expected 1, received "
+                << desc.Output("Out").size() << ".";
+        return false;
+      }
+    }
+
+    if (op_type == "roi_align") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "TRT roi align plugin only accept the dynamic shape, "
+                   "because that "
+                   "the roi_align will change the batch size.";
+        return false;
+      }
+    }
+
+    if (op_type == "shuffle_channel") {
+      if (with_dynamic_shape) {
+        VLOG(3) << "You are running the TRT Dynamic Shape mode, "
+                   "the shuffle_channel op does not support dynamic shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "skip_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the skip_layernorm does not support static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "multihead_matmul") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the multihead_matmul does not support static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "fc") {
+      int x_num_col_dims =
+          desc.HasAttr("x_num_col_dims")
+              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
+              : (desc.HasAttr("in_num_col_dims")
+                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
+                     : 1);
+      if (x_num_col_dims < 1) {
+        VLOG(3) << "converter expects x_num_col_dims >= 1, "
+                   "but x_num_col_dims = %d.";
+        return false;
+      }
+    }
+    if (op_type == "reshape" || op_type == "reshape2") {
+      if (!desc.HasAttr("shape")) {
+        return false;
+      }
+      // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
+      if (desc.Input("Shape").size() >= 1 ||
+          desc.Input("ShapeTensor").size() >= 1) {
+        return false;
+      }
+      std::vector<int> shape =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+      if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      if (!with_dynamic_shape && shape[0] == -1) return false;
+    }
+
+    if (op_type == "reduce_sum" || op_type == "reduce_mean") {
+      if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
+            desc.HasAttr("reduce_all"))) {
+        VLOG(3) << "the " << op_type
+                << " does not have attr (keep_dim or dim or "
+                   "reduce_all)";
+        return false;
+      }
+
+      // The batch size dimension cannot be reduced if it's not dynamic shape.
+      if (!with_dynamic_shape) {
+        if (desc.HasAttr("reduce_all")) return false;
+        std::vector<int32_t> dim =
+            BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
+        for (auto x : dim) {
+          if (!x) return false;
+        }
+      }
+    }
+
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
+
+  VLOG(3) << "trt unsupported op " << op_type;
   return false;
 }
 

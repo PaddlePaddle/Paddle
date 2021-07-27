@@ -26,7 +26,8 @@ import gzip
 import numpy
 import struct
 from six.moves import range
-__all__ = ['train', 'test']
+
+__all__ = []
 
 URL_PREFIX = 'https://dataset.bj.bcebos.com/mnist/'
 TEST_IMAGE_URL = URL_PREFIX + 't10k-images-idx3-ubyte.gz'
@@ -92,6 +93,7 @@ def reader_creator(image_filename, label_filename, buffer_size):
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.MNIST",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train():
     """
@@ -113,6 +115,7 @@ def train():
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.MNIST",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
     """
@@ -133,6 +136,7 @@ def test():
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.MNIST",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(TRAIN_IMAGE_URL, 'mnist', TRAIN_IMAGE_MD5)

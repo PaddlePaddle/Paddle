@@ -310,6 +310,8 @@ class Communicator {
     return _worker_ptr;
   }
 
+  RecvCtxMap &GetRecvCtxMap() { return recv_varname_to_ctx_; }
+
   std::shared_ptr<PSClient> _worker_ptr;  // pointer to worker
 
  protected:

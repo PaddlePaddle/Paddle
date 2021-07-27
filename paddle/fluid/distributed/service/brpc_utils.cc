@@ -324,7 +324,7 @@ std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port) {
 
   while (hp->h_addr_list[i] != NULL) {
     int_ip = inet_ntoa(*(struct in_addr*)hp->h_addr_list[i]);
-    VLOG(0) << "Brpc Get host by name, host:" << ip << " -> ip: " << int_ip;
+    VLOG(3) << "Brpc Get host by name, host:" << ip << " -> ip: " << int_ip;
     break;
   }
 

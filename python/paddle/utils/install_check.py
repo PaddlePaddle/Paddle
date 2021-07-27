@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 
-__all__ = ['run_check']
+__all__ = []
 
 
 def _simple_network():
@@ -72,6 +72,34 @@ def _is_cuda_available():
             "detected on your machine. Maybe CUDA devices is not set properly."
             "\n Original Error is {}".format(e))
         return False
+
+
+def _run_dygraph_single(use_cuda):
+    """
+    Testing the simple network in dygraph mode using one CPU/GPU.
+
+    Args:
+        use_cuda (bool): Whether running with CUDA.
+    """
+    paddle.disable_static()
+    if use_cuda:
+        paddle.set_device('gpu')
+    else:
+        paddle.set_device('cpu')
+    weight_attr = paddle.ParamAttr(
+        name="weight", initializer=paddle.nn.initializer.Constant(value=0.5))
+    bias_attr = paddle.ParamAttr(
+        name="bias", initializer=paddle.nn.initializer.Constant(value=1.0))
+    linear = paddle.nn.Linear(
+        2, 4, weight_attr=weight_attr, bias_attr=bias_attr)
+    input_np = _prepare_data(1)
+    input_tensor = paddle.to_tensor(input_np)
+    linear_out = linear(input_tensor)
+    out = paddle.tensor.sum(linear_out)
+    out.backward()
+    opt = paddle.optimizer.Adam(
+        learning_rate=0.001, parameters=linear.parameters())
+    opt.step()
 
 
 def _run_static_single(use_cuda):
@@ -152,7 +180,11 @@ def run_check():
 
     print("Running verify PaddlePaddle program ... ")
 
-    use_cuda = _is_cuda_available()
+    if paddle.is_compiled_with_cuda():
+        use_cuda = _is_cuda_available()
+    else:
+        use_cuda = False
+
     if use_cuda:
         device_str = "GPU"
         device_list = paddle.static.cuda_places()
@@ -162,6 +194,7 @@ def run_check():
     device_count = len(device_list)
 
     _run_static_single(use_cuda)
+    _run_dygraph_single(use_cuda)
     print("PaddlePaddle works well on 1 {}.".format(device_str))
 
     try:

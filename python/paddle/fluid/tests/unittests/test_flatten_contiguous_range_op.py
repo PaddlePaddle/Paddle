@@ -166,11 +166,12 @@ class TestFlatten2OpError(unittest.TestCase):
         self.assertRaises(ValueError, test_ValueError3)
 
         def test_type():
-            # dtype must be float32, float64, int8, int32, int64.
+            # dtype must be float32, float64, int8, int32, int64, uint8.
             x2 = np.arange(image_shape[0] * image_shape[1] * image_shape[2] *
                            image_shape[3]).reshape(image_shape) / 100.
             x2 = x2.astype('float16')
-            x2_var = paddle.fluid.data(name='x2', shape=[3, 2, 4, 5], dtype='float16')
+            x2_var = paddle.fluid.data(
+                name='x2', shape=[3, 2, 4, 5], dtype='float16')
             paddle.flatten(x2_var)
 
         self.assertRaises(TypeError, test_type)
@@ -179,6 +180,30 @@ class TestFlatten2OpError(unittest.TestCase):
             out = paddle.flatten(x)
 
         self.assertRaises(ValueError, test_InputError)
+
+
+class TestStaticFlattenPythonAPI(unittest.TestCase):
+    def execute_api(self, x, start_axis=0, stop_axis=-1):
+        return paddle.flatten(x, start_axis, stop_axis)
+
+    def test_static_api(self):
+        paddle.enable_static()
+        np_x = np.random.rand(2, 3, 4, 4).astype('float32')
+
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 4, 4], dtype='float32')
+            out = self.execute_api(x, start_axis=-2, stop_axis=-1)
+
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
+        fetch_out = exe.run(main_prog, feed={"x": np_x}, fetch_list=[out])
+        self.assertTrue((2, 3, 16) == fetch_out[0].shape)
+
+
+class TestStaticInplaceFlattenPythonAPI(TestStaticFlattenPythonAPI):
+    def execute_api(self, x, start_axis=0, stop_axis=-1):
+        return x.flatten_(start_axis, stop_axis)
 
 
 class TestFlattenPython(unittest.TestCase):
@@ -201,6 +226,24 @@ class TestFlattenPython(unittest.TestCase):
 
         res_shape = test_Negative()
         self.assertTrue((2, 3, 16) == res_shape)
+
+
+class TestDygraphInplaceFlattenPython(unittest.TestCase):
+    def test_python_api(self):
+        image_shape = (2, 3, 4, 4)
+        x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] *
+                      image_shape[3]).reshape(image_shape) / 100.
+        x = x.astype('float32')
+
+        def test_Negative():
+            paddle.disable_static()
+            img = paddle.to_tensor(x)
+            out = img.flatten_(start_axis=-2, stop_axis=-1)
+            return out.numpy().shape
+
+        res_shape = test_Negative()
+        self.assertTrue((2, 3, 16) == res_shape)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

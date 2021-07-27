@@ -102,6 +102,12 @@ class Hogwild(DeviceWorker):
         # when opt_info is None or empty dict, it should return
         if not opt_info:
             return
+        downpour = trainer_desc.downpour_param
+        hogwild = trainer_desc.hogwild_param
+        if opt_info["stat_var_names"]:
+            for i in opt_info["stat_var_names"]:
+                hogwild.stat_var_names.extend([i])
+                downpour.stat_var_names.extend([i])
 
         from paddle.fluid.incubate.fleet.parameter_server import version
 
@@ -109,8 +115,6 @@ class Hogwild(DeviceWorker):
             return
 
         program_configs = opt_info["program_configs"]
-        downpour = trainer_desc.downpour_param
-        hogwild = trainer_desc.hogwild_param
 
         for pid in program_configs:
             if pid == program_id:
@@ -161,10 +165,6 @@ class Hogwild(DeviceWorker):
             sparse_table.emb_dim = -1
             # not use hard code click
             sparse_table.label_var_name = ""
-        if opt_info["stat_var_names"]:
-            for i in opt_info["stat_var_names"]:
-                hogwild.stat_var_names.extend([i])
-                downpour.stat_var_names.extend([i])
 
         for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
@@ -433,7 +433,10 @@ class Section(DeviceWorker):
         # cfg.program_desc.CopyFrom(program.program._get_desc())
         place = pipeline_opt["place"]
         place_id = pipeline_opt["place_id"]
-        assert isinstance(place, core.CUDAPlace)
+        if core.is_compiled_with_cuda():
+            assert isinstance(place, core.CUDAPlace)
+        elif core.is_compiled_with_npu():
+            assert isinstance(place, core.NPUPlace)
         cfg.place = cfg.CUDAPlace
         cfg.place_id = place_id
 

@@ -13,34 +13,22 @@
 # limitations under the License.
 
 import numpy as np
-from paddle.common_ops_import import *
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
 from ..fluid.framework import in_dygraph_mode, _varbase_creator
 
-from ..fluid.layers import transpose  #DEFINE_ALIAS
+from ..fluid.layers import transpose  # noqa: F401
+from paddle.common_ops_import import core
+from paddle.common_ops_import import VarDesc
+from paddle import _C_ops
 
-__all__ = [
-    'matmul',
-    'dot',
-    #       'einsum',
-    'norm',
-    'transpose',
-    'dist',
-    't',
-    'cross',
-    'cholesky',
-    #       'tensordot',
-    'bmm',
-    'histogram',
-    'mv'
-]
+__all__ = []
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
-    Applies matrix multiplication to two tensors. `matmul` follows 
-    the complete broadcast rules, 
+    Applies matrix multiplication to two tensors. `matmul` follows
+    the complete broadcast rules,
     and its behavior is consistent with `np.matmul`.
 
     Currently, the input tensors' number of dimensions can be any, `matmul` can be used to
@@ -50,8 +38,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
 
     - If a transpose flag is specified, the last two dimensions of the tensor
-      are transposed. If the tensor is ndim-1 of shape, the transpose is invalid. If the tensor 
-      is ndim-1 of shape :math:`[D]`, then for :math:`x` it is treated as :math:`[1, D]`, whereas 
+      are transposed. If the tensor is ndim-1 of shape, the transpose is invalid. If the tensor
+      is ndim-1 of shape :math:`[D]`, then for :math:`x` it is treated as :math:`[1, D]`, whereas
       for :math:`y` it is the opposite: It is treated as :math:`[D, 1]`.
 
     The multiplication behavior depends on the dimensions of `x` and `y`. Specifically:
@@ -60,22 +48,22 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
     - If both tensors are 2-dimensional, the matrix-matrix product is obtained.
 
-    - If the `x` is 1-dimensional and the `y` is 2-dimensional, 
-      a `1` is prepended to its dimension in order to conduct the matrix multiply. 
+    - If the `x` is 1-dimensional and the `y` is 2-dimensional,
+      a `1` is prepended to its dimension in order to conduct the matrix multiply.
       After the matrix multiply, the prepended dimension is removed.
-      
-    - If the `x` is 2-dimensional and `y` is 1-dimensional, 
+
+    - If the `x` is 2-dimensional and `y` is 1-dimensional,
       the matrix-vector product is obtained.
 
-    - If both arguments are at least 1-dimensional and at least one argument 
-      is N-dimensional (where N > 2), then a batched matrix multiply is obtained. 
-      If the first argument is 1-dimensional, a 1 is prepended to its dimension 
-      in order to conduct the batched matrix multiply and removed after. 
-      If the second argument is 1-dimensional, a 1 is appended to its 
-      dimension for the purpose of the batched matrix multiple and removed after. 
-      The non-matrix (exclude the last two dimensions) dimensions are 
-      broadcasted according the broadcast rule. 
-      For example, if input is a (j, 1, n, m) tensor and the other is a (k, m, p) tensor, 
+    - If both arguments are at least 1-dimensional and at least one argument
+      is N-dimensional (where N > 2), then a batched matrix multiply is obtained.
+      If the first argument is 1-dimensional, a 1 is prepended to its dimension
+      in order to conduct the batched matrix multiply and removed after.
+      If the second argument is 1-dimensional, a 1 is appended to its
+      dimension for the purpose of the batched matrix multiple and removed after.
+      The non-matrix (exclude the last two dimensions) dimensions are
+      broadcasted according the broadcast rule.
+      For example, if input is a (j, 1, n, m) tensor and the other is a (k, m, p) tensor,
       out will be a (j, k, n, p) tensor.
 
     Args:
@@ -144,7 +132,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
     op_type = 'matmul_v2'
     if in_dygraph_mode():
-        op = getattr(core.ops, op_type)
+        op = getattr(_C_ops, op_type)
         return op(x, y, 'trans_x', transpose_x, 'trans_y', transpose_y)
 
     attrs = {
@@ -177,11 +165,17 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
     or 2-norm, and in general the p-norm for p > 0) of a given tensor.
 
+    .. note::
+        This norm API is different from `numpy.linalg.norm`.
+        This api supports high-order input tensors (rank >= 3), and certain axis need to be pointed out to calculate the norm.
+        But `numpy.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
+        For p-order matrix norm, this api actually treats matrix as a flattened vector to calculate the vector norm, NOT REAL MATRIX NORM.
+
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
         p (float|string, optional): Order of the norm. Supported values are `fro`, `0`, `1`, `2`,
-            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0 and nuclear norm. 
+            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0 and nuclear norm.
             Default value is `fro`.
         axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
             or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
@@ -198,10 +192,10 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     Returns:
         Tensor: results of norm operation on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
- 
+
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import numpy as np
             shape=[2, 3, 4]
@@ -251,10 +245,10 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         if in_dygraph_mode():
             if dim is None:
-                return core.ops.frobenius_norm(input, 'keep_dim', keepdim,
-                                               'reduce_all', True)
-            return core.ops.frobenius_norm(input, 'dim', dim, 'keep_dim',
-                                           keepdim, 'reduce_all', False)
+                return _C_ops.frobenius_norm(input, 'keep_dim', keepdim,
+                                             'reduce_all', True)
+            return _C_ops.frobenius_norm(input, 'dim', dim, 'keep_dim', keepdim,
+                                         'reduce_all', False)
         attrs = {'dim': dim, 'keep_dim': keepdim, 'reduce_all': False}
         if dim is None:
             attrs['reduce_all'] = True
@@ -288,8 +282,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         """
         if in_dygraph_mode():
             if axis is None: axis = -1
-            return core.ops.p_norm(input, 'porder', porder, 'axis', axis,
-                                   'keepdim', keepdim, 'asvector', asvector)
+            return _C_ops.p_norm(input, 'porder', porder, 'axis', axis,
+                                 'keepdim', keepdim, 'asvector', asvector)
         if porder is not None:
             check_type(porder, 'porder', (float, int), 'p_norm')
         if axis is not None:
@@ -344,6 +338,10 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         return reduce_out
 
     def p_matrix_norm(input, porder=1., axis=axis, keepdim=False, name=None):
+        """
+        NOTE:
+            This function actually treats the matrix as flattened vector to calculate vector norm instead of matrix norm.
+        """
         block = LayerHelper('norm', **locals())
         out = block.create_variable_for_type_inference(
             dtype=block.input_dtype())
@@ -548,10 +546,10 @@ def dist(x, y, p=2):
 def dot(x, y, name=None):
     """
     This operator calculates inner product for vectors.
-   
+
     .. note::
-       Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix 
-       is the batch dimension, which means that the vectors of multiple batches are dotted. 
+       Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix
+       is the batch dimension, which means that the vectors of multiple batches are dotted.
 
     Parameters:
         x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``
@@ -579,7 +577,7 @@ def dot(x, y, name=None):
     op_type = 'dot'
     # skip var type check in dygraph mode to improve efficiency
     if in_dygraph_mode():
-        op = getattr(core.ops, op_type)
+        op = getattr(_C_ops, op_type)
         return op(x, y)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
@@ -604,17 +602,17 @@ def dot(x, y, name=None):
 
 def t(input, name=None):
     """
-    Transpose <=2-D tensor. 
-    0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
+    Transpose <=2-D tensor.
+    0-D and 1-D tensors are returned as it is and 2-D tensor is equal to
     the paddle.transpose function which perm dimensions set 0 and 1.
-    
+
     Args:
         input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
-        name(str, optional): The default value is None.  Normally there is no need for 
+        name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
-    
+
     For Example:
 
         .. code-block:: text
@@ -654,7 +652,7 @@ def t(input, name=None):
             return input
         # 2-D tensor
         perm = [1, 0]
-        out, _ = core.ops.transpose2(input, 'axis', perm)
+        out, _ = _C_ops.transpose2(input, 'axis', perm)
         return out
 
     check_variable_and_dtype(
@@ -679,10 +677,10 @@ def t(input, name=None):
 def cross(x, y, axis=None, name=None):
     """
     Computes the cross product between two tensors along an axis.
-    
+
     Inputs must have the same shape, and the length of their axes should be equal to 3.
     If `axis` is not given, it defaults to the first axis found with the length 3.
-    
+
     Args:
         x (Tensor): The first input tensor.
         y (Tensor): The second input tensor.
@@ -691,7 +689,7 @@ def cross(x, y, axis=None, name=None):
 
     Returns:
         Tensor. A Tensor with same data type as `x`.
-        
+
     Examples:
         .. code-block:: python
 
@@ -716,9 +714,9 @@ def cross(x, y, axis=None, name=None):
     """
     if in_dygraph_mode():
         if axis is not None:
-            return core.ops.cross(x, y, 'dim', axis)
+            return _C_ops.cross(x, y, 'dim', axis)
         else:
-            return core.ops.cross(x, y)
+            return _C_ops.cross(x, y)
 
     helper = LayerHelper("cross", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -737,8 +735,8 @@ def cross(x, y, axis=None, name=None):
 def cholesky(x, upper=False, name=None):
     r"""
     Computes the Cholesky decomposition of one symmetric positive-definite
-    matrix or batches of symmetric positive-definite matrice. 
-    
+    matrix or batches of symmetric positive-definite matrice.
+
     If `upper` is `True`, the decomposition has the form :math:`A = U^{T}U` ,
     and the returned matrix :math:`U` is upper-triangular. Otherwise, the
     decomposition has the form  :math:`A = LL^{T}` , and the returned matrix
@@ -755,7 +753,7 @@ def cholesky(x, upper=False, name=None):
     Returns:
         Tensor: A Tensor with same shape and data type as `x`. It represents \
             triangular matrices generated by Cholesky decomposition.
-        
+
     Examples:
         .. code-block:: python
 
@@ -774,7 +772,7 @@ def cholesky(x, upper=False, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.cholesky(x, "upper", upper)
+        return _C_ops.cholesky(x, "upper", upper)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
     helper = LayerHelper('cholesky', **locals())
@@ -835,9 +833,11 @@ def bmm(x, y, name=None):
         raise ValueError(
             "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".
             format(x_shape, y_shape))
-    helper = LayerHelper('bmm', **locals())
+
     if in_dygraph_mode():
-        return core.ops.bmm(x, y)
+        return _C_ops.bmm(x, y)
+
+    helper = LayerHelper('bmm', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
     return out
@@ -845,7 +845,7 @@ def bmm(x, y, name=None):
 
 def histogram(input, bins=100, min=0, max=0):
     """
-    Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max. 
+    Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
     If min and max are both zero, the minimum and maximum values of the data are used.
 
     Args:
@@ -868,7 +868,7 @@ def histogram(input, bins=100, min=0, max=0):
             print(result) # [0, 2, 1, 0]
     """
     if in_dygraph_mode():
-        return core.ops.histogram(input, "bins", bins, "min", min, "max", max)
+        return _C_ops.histogram(input, "bins", bins, "min", min, "max", max)
 
     helper = LayerHelper('histogram', **locals())
     check_variable_and_dtype(
@@ -915,7 +915,7 @@ def mv(x, vec, name=None):
             out = paddle.mv(x, vec)
     """
     if in_dygraph_mode():
-        out = core.ops.mv(x, vec)
+        out = _C_ops.mv(x, vec)
         return out
 
     def __check_input(x, vec):

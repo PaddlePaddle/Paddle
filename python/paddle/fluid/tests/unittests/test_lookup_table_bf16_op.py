@@ -25,18 +25,21 @@ from paddle.fluid.op import Operator
 from paddle import enable_static
 
 
-def _lookup(weights, ids, flat_ids):
+def _lookup(weights, ids, flat_ids, op_version="lookup_table"):
     w_shape = weights.shape
-    out_shape = list(ids.shape[:-1])
+    out_shape = list(ids.shape[:-1]) if op_version is "lookup_table" else list(
+        ids.shape)
     out_shape.append(w_shape[-1])
     out = weights[flat_ids].reshape(out_shape)
     return out
 
 
-def _get_grad(weights, ids, flat_ids):
+def _get_grad(weights, ids, flat_ids, op_version="lookup_table"):
     w_shape = weights.shape
     w_grad = np.zeros((w_shape), dtype=weights.dtype)
-    out_grad_shape = (np.prod(ids.shape[:-1]), w_shape[-1])
+    out_shape = list(ids.shape[:-1]) if op_version is "lookup_table" else list(
+        ids.shape)
+    out_grad_shape = (np.prod(out_shape), w_shape[-1])
     out_grad = weights[flat_ids].reshape(out_grad_shape)
     for i, idx in enumerate(flat_ids):
         w_grad[idx, :] += out_grad[i]
@@ -46,18 +49,24 @@ def _get_grad(weights, ids, flat_ids):
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestLookupTableBF16Op(OpTest):
-    def setUp(self):
+    def init_test(self):
         self.op_type = "lookup_table"
+        self.ids_shape = (4, 1)
+
+    def setUp(self):
+        self.init_test()
         self.dtype = np.uint16
 
         table = np.random.random((17, 31)).astype("float32")
-        self.ids = np.random.randint(0, 17, (4, 1)).astype("int64")
+        self.ids = np.random.randint(0, 17, self.ids_shape).astype("int64")
         self.flat_ids = self.ids.flatten()
 
         self.w_bf16 = convert_float_to_uint16(table)
-        self.out_bf16 = _lookup(self.w_bf16, self.ids, self.flat_ids)
-        self.out_fp32 = _lookup(table, self.ids, self.flat_ids)
-        self.w_grad_fp32 = _get_grad(table, self.ids, self.flat_ids)
+        self.out_bf16 = _lookup(self.w_bf16, self.ids, self.flat_ids,
+                                self.op_type)
+        self.out_fp32 = _lookup(table, self.ids, self.flat_ids, self.op_type)
+        self.w_grad_fp32 = _get_grad(table, self.ids, self.flat_ids,
+                                     self.op_type)
 
         self.inputs = {'W': self.w_bf16, 'Ids': self.ids}
         self.outputs = {'Out': self.out_fp32}
@@ -79,17 +88,22 @@ class TestLookupTableBF16Op(OpTest):
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestLookupTableBF16OpIds4D(TestLookupTableBF16Op):
-    def setUp(self):
-        super(TestLookupTableBF16OpIds4D, self).setUp()
-        self.ids = np.random.randint(0, 17, (2, 4, 5, 1)).astype("int64")
+    def init_test(self):
+        self.op_type = "lookup_table"
+        self.ids_shape = (2, 4, 5, 1)
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
+    def init_test(self):
+        self.op_type = "lookup_table"
+        self.ids_shape = (10, 1)
+
     def setUp(self):
+        self.init_test()
         self.ids = np.random.randint(
-            low=0, high=15, size=(10, 1)).astype("int64")
+            low=0, high=15, size=self.ids_shape).astype("int64")
         self.flat_ids = self.ids.flatten()
         self.w_fp32 = np.random.random((15, 32)).astype("float32")
         self.w_bf16 = convert_float_to_uint16(self.w_fp32)
@@ -120,12 +134,12 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
         out_tensor = self.scope.var('Out').get_tensor()
 
         # create and run lookup_table operator
-        lookup_table = Operator("lookup_table", W='W', Ids='Ids', Out='Out')
+        lookup_table = Operator(self.op_type, W='W', Ids='Ids', Out='Out')
         lookup_table.run(self.scope, self.place)
 
         # get result from Out
         result_array = np.array(out_tensor)
-        ref = _lookup(self.w_fp32, self.ids, self.flat_ids)
+        ref = _lookup(self.w_fp32, self.ids, self.flat_ids, self.op_type)
         self._check_output(ref, result_array)
 
 
@@ -133,10 +147,12 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
                  "place does not support BF16 evaluation")
 class TestLookupTableBF16OpWIsSelectedRows4DIds(
         TestLookupTableBF16OpWIsSelectedRows):
+    def init_test(self):
+        self.op_type = "lookup_table"
+        self.ids_shape = (3, 4, 5, 1)
+
     def setUp(self):
         super(TestLookupTableBF16OpWIsSelectedRows4DIds, self).setUp()
-        self.ids = np.random.randint(
-            low=0, high=15, size=(3, 4, 5, 1)).astype("int64")
         self.flat_ids = self.ids.flatten()
 
 
@@ -169,6 +185,52 @@ class TestLookupTableBF16OpIds4DPadding(TestLookupTableBF16OpIds4D):
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
         self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+
+
+class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
+    """
+    Test embedding layer api and results for bfloat16
+    """
+
+    def set_initializer(self):
+        self.initializer = fluid.initializer.Constant(value=self.value)
+
+    def setUp(self):
+        self.ids_shape = [4, 1]
+        self.w_shape = [10, 64]
+        self.ids = np.random.randint(
+            low=0, high=9, size=self.ids_shape).astype("int64")
+        self.flat_ids = self.ids.flatten()
+        self.value = 3.0
+        self.w_fp32 = np.full(self.w_shape, self.value)
+        self.place = fluid.CPUPlace()
+        self.prog = fluid.Program()
+        self.startup_prog = fluid.Program()
+        self.set_initializer()
+
+        with fluid.program_guard(self.prog, self.startup_prog):
+            x = fluid.layers.data(name='x', shape=self.ids_shape, dtype='int64')
+            self.emb = fluid.layers.embedding(
+                input=x,
+                size=self.w_shape,
+                param_attr=fluid.ParamAttr(
+                    name="emb_weight", initializer=self.initializer),
+                is_sparse=False,
+                dtype="uint16")  # bfloat16
+        exe = fluid.Executor(self.place)
+        exe.run(self.startup_prog)
+        self.result = exe.run(self.prog,
+                              feed={'x': self.ids},
+                              fetch_list=['emb_weight', self.emb])
+
+    def test_embedding_weights(self):
+        result = convert_uint16_to_float(self.result[0])
+        self.assertTrue(np.array_equal(self.w_fp32, result))
+
+    def test_lookup_results(self):
+        lookup_result = convert_uint16_to_float(self.result[1])
+        lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids)
+        self.assertTrue(np.array_equal(lookup_result, lookup_ref))
 
 
 if __name__ == "__main__":

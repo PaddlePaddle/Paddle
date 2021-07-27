@@ -54,6 +54,7 @@ class TestParallelDygraphTransformerAccGrad(TestDistBase):
         self._nccl2_mode = True
         self._dygraph = True
         self._accumulate_gradient = True
+        self._find_unused_parameters = False
 
     def test_transformer(self):
         if fluid.core.is_compiled_with_cuda():

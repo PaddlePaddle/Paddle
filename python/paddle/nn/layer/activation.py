@@ -14,42 +14,18 @@
 
 # TODO: define activation functions of neural network
 
-__all__ = [
-    'ELU',
-    'GELU',
-    'Hardshrink',
-    'Hardswish',
-    'Tanh',
-    'Hardtanh',
-    'PReLU',
-    'ReLU',
-    'ReLU6',
-    'SELU',
-    'LeakyReLU',
-    'Sigmoid',
-    'Hardsigmoid',
-    'Softmax',
-    'Softplus',
-    'Softshrink',
-    'Softsign',
-    'Swish',
-    'Tanhshrink',
-    'ThresholdedReLU',
-    'LogSigmoid',
-    'LogSoftmax',
-    'Maxout',
-]
-
-from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
-from ...fluid.param_attr import ParamAttr
-from ...fluid.initializer import Constant
+from ...framework import ParamAttr
+from ..initializer import Constant
 from paddle.framework import get_default_dtype
 from .. import functional as F
+from paddle.nn import Layer
+
+__all__ = []
 
 
-class ELU(layers.Layer):
+class ELU(Layer):
     r"""
     ELU Activation.
 
@@ -91,7 +67,7 @@ class ELU(layers.Layer):
         return 'alpha={}{}'.format(self._alpha, name_str)
 
 
-class GELU(layers.Layer):
+class GELU(Layer):
     r"""
     GELU Activation.
 
@@ -144,7 +120,7 @@ class GELU(layers.Layer):
         return 'approximate={}{}'.format(self._approximate, name_str)
 
 
-class Hardshrink(layers.Layer):
+class Hardshrink(Layer):
     r"""
     Hardshrink Activation
 
@@ -192,7 +168,7 @@ class Hardshrink(layers.Layer):
         return 'threshold={}{}'.format(self._threshold, name_str)
 
 
-class Hardswish(layers.Layer):
+class Hardswish(Layer):
     r"""
     Hardswish activation
 
@@ -242,7 +218,7 @@ class Hardswish(layers.Layer):
         return name_str
 
 
-class Tanh(layers.Layer):
+class Tanh(Layer):
     r"""
     Tanh Activation.
 
@@ -283,7 +259,7 @@ class Tanh(layers.Layer):
         return name_str
 
 
-class Hardtanh(layers.Layer):
+class Hardtanh(Layer):
     r"""
     Hardtanh Activation
 
@@ -329,7 +305,7 @@ class Hardtanh(layers.Layer):
         return 'min={}, max={}{}'.format(self._min, self._max, name_str)
 
 
-class PReLU(layers.Layer):
+class PReLU(Layer):
     """
     PReLU Activation.
 
@@ -401,7 +377,7 @@ class PReLU(layers.Layer):
             self._num_parameters, self._init, self._dtype, name_str)
 
 
-class ReLU(layers.Layer):
+class ReLU(Layer):
     """
     ReLU Activation.
 
@@ -439,7 +415,7 @@ class ReLU(layers.Layer):
         return name_str
 
 
-class ReLU6(layers.Layer):
+class ReLU6(Layer):
     """
     ReLU6 Activation
 
@@ -478,7 +454,7 @@ class ReLU6(layers.Layer):
         return name_str
 
 
-class SELU(layers.Layer):
+class SELU(Layer):
     r"""
     SELU Activation
 
@@ -529,7 +505,7 @@ class SELU(layers.Layer):
                                                        name_str)
 
 
-class LeakyReLU(layers.Layer):
+class LeakyReLU(Layer):
     r"""
     Leaky ReLU Activation.
 
@@ -577,7 +553,7 @@ class LeakyReLU(layers.Layer):
         return 'negative_slope={}{}'.format(self._negative_slope, name_str)
 
 
-class Sigmoid(layers.Layer):
+class Sigmoid(Layer):
     """
     this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.
 
@@ -617,7 +593,7 @@ class Sigmoid(layers.Layer):
         return name_str
 
 
-class Hardsigmoid(layers.Layer):
+class Hardsigmoid(Layer):
     r"""
     This interface is used to construct a callable object of the ``Hardsigmoid`` class.
     This layer calcluate the `hardsigmoid` of input x.
@@ -668,7 +644,7 @@ class Hardsigmoid(layers.Layer):
         return name_str
 
 
-class Softplus(layers.Layer):
+class Softplus(Layer):
     r"""
     Softplus Activation
 
@@ -713,7 +689,7 @@ class Softplus(layers.Layer):
                                                 name_str)
 
 
-class Softshrink(layers.Layer):
+class Softshrink(Layer):
     r"""
     Softshrink Activation
 
@@ -758,7 +734,7 @@ class Softshrink(layers.Layer):
         return 'threshold={}{}'.format(self._threshold, name_str)
 
 
-class Softsign(layers.Layer):
+class Softsign(Layer):
     r"""
     Softsign Activation
 
@@ -797,7 +773,7 @@ class Softsign(layers.Layer):
         return name_str
 
 
-class Swish(layers.Layer):
+class Swish(Layer):
     r"""
     Swish Activation.
 
@@ -836,7 +812,7 @@ class Swish(layers.Layer):
         return name_str
 
 
-class Tanhshrink(layers.Layer):
+class Tanhshrink(Layer):
     """
     Tanhshrink Activation
 
@@ -875,7 +851,7 @@ class Tanhshrink(layers.Layer):
         return name_str
 
 
-class ThresholdedReLU(layers.Layer):
+class ThresholdedReLU(Layer):
     r"""
     Thresholded ReLU Activation
 
@@ -919,7 +895,45 @@ class ThresholdedReLU(layers.Layer):
         return 'threshold={}{}'.format(self._threshold, name_str)
 
 
-class LogSigmoid(layers.Layer):
+class Silu(Layer):
+    """
+    Silu Activation.
+    .. math::
+
+        Silu(x) = \frac{x}{1 + e^{-x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, or float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            m = paddle.nn.Silu()
+            out = m(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
+    """
+
+    def __init__(self, name=None):
+        super(Silu, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.silu(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
+
+
+class LogSigmoid(Layer):
     r"""
     LogSigmoid Activation.
 
@@ -958,7 +972,7 @@ class LogSigmoid(layers.Layer):
         return name_str
 
 
-class Softmax(layers.Layer):
+class Softmax(Layer):
     r"""
     Softmax Activation.
 
@@ -1085,7 +1099,7 @@ class Softmax(layers.Layer):
         return 'axis={}{}'.format(self._axis, name_str)
 
 
-class LogSoftmax(layers.Layer):
+class LogSoftmax(Layer):
     r"""
     This operator implements the log_softmax layer. The calculation process is as follows:
 
@@ -1143,7 +1157,7 @@ class LogSoftmax(layers.Layer):
         return 'axis={}{}'.format(self._axis, name_str)
 
 
-class Maxout(layers.Layer):
+class Maxout(Layer):
     r"""
     Maxout Activation.
 

@@ -36,21 +36,7 @@ class LeakyReluOpConverter : public OpConverter {
     VLOG(4) << "convert fluid leaky_relu op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
-    // Declare inputs
-    size_t input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE_EQ(input_num, 1UL,
-                      platform::errors::InvalidArgument(
-                          "Invalid number of TRT leaky_relu op converter "
-                          "inputs. Expected 1, but received %d",
-                          input_num));
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    // Get output
-    size_t output_num = op_desc.Output("Out").size();
-    PADDLE_ENFORCE_EQ(output_num, 1UL,
-                      platform::errors::InvalidArgument(
-                          "Invalid number of TRT leaky_relu op converter "
-                          "outputs. Expected 1, but received %d",
-                          output_num));
     // Get attrs
     float alpha = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
     nvinfer1::ILayer* output_layer = nullptr;

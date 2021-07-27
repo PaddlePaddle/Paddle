@@ -31,10 +31,10 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(context.GetPlace()), true,
         platform::errors::Unimplemented("This kernel only runs on CPU."));
-    const bool softmax_switch = context.Attr<bool>("softmax_switch");
+    const bool use_softmax = context.Attr<bool>("use_softmax");
 
     // do not with softmax op, and input is softmax
-    if (!softmax_switch) {
+    if (!use_softmax) {
       const Tensor* softmax = context.Input<Tensor>("Logits");
       const Tensor* labels = context.Input<Tensor>("Label");
       Tensor* softmax_out = context.Output<Tensor>("Softmax");
@@ -113,9 +113,9 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
         context.Output<Tensor>(framework::GradVarName("Logits"));
 
     const Tensor* softmax = context.Input<Tensor>("Softmax");
-    const bool softmax_switch = context.Attr<bool>("softmax_switch");
+    const bool use_softmax = context.Attr<bool>("use_softmax");
 
-    if (logit_grad != softmax || !softmax_switch) {
+    if (logit_grad != softmax || !use_softmax) {
       framework::TensorCopy(*softmax, context.GetPlace(),
                             context.device_context(), logit_grad);
     }
@@ -138,8 +138,8 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     auto logit_grad_mat = framework::EigenMatrix<T>::From(logit_grad_2d);
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
-    if (!softmax_switch) {
-      // softmax_switch step1
+    if (!use_softmax) {
+      // use_softmax step1
       if (soft_label) {
         auto lbl_mat = framework::EigenMatrix<T>::From(labels_2d);
         logit_grad_mat.device(place) =
@@ -148,7 +148,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
             out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, axis_dim)) *
             logit_grad_mat;
       }
-      // softmax_switch step2
+      // use_softmax step2
       else {
         const int64_t* label_data = labels->data<int64_t>();
         T* logit_grad_data = logit_grad->data<T>();
@@ -181,7 +181,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
       return;
     }
 
-    // for softmax_switch=False, continue
+    // for use_softmax=False, continue
 
     if (soft_label) {
       // when soft_label = True, ignore_index is not supported

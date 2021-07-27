@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/transform.h"
@@ -54,7 +53,7 @@ struct CastDataType {
       auto *context = static_cast<const platform::CPUDeviceContext *>(ctx_);
       trans(*context, in_begin, in_end, out_begin,
             CastDataTypeFunctor<InType, OutType>());
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     } else if (platform::is_gpu_place(in_.place())) {
       platform::Transform<platform::CUDADeviceContext> trans;
       auto *context = static_cast<const platform::CUDADeviceContext *>(ctx_);
@@ -68,10 +67,11 @@ struct CastDataType {
     }
   }
 };
+
 template <typename T>
-void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
-             int64_t ele_size) {
-#ifdef PADDLE_WITH_CUDA
+void DeviceCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
+                int64_t ele_size) {
+#if defined(PADDLE_WITH_CUDA)
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   int device_num = paddle::platform::GetCurrentDeviceId();
   platform::CUDAPlace gpu_place(device_num);
@@ -91,6 +91,30 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
         "Only GPU related Copy can reach this func."));
   }
   cudaStreamSynchronize(dev_ctx->stream());
+#elif defined(PADDLE_WITH_HIP)
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  int device_num = paddle::platform::GetCurrentDeviceId();
+  platform::CUDAPlace gpu_place(device_num);
+  auto *dev_ctx =
+      static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
+  if ((src_plc == PlaceType::kHIP) && (dst_plc == PlaceType::kCPU)) {
+    memory::Copy(platform::CPUPlace(), static_cast<void *>(dst), gpu_place, src,
+                 ele_size, dev_ctx->stream());
+  } else if ((src_plc == PlaceType::kHIP) && (dst_plc == PlaceType::kHIP)) {
+    memory::Copy(gpu_place, static_cast<void *>(dst), gpu_place, src, ele_size,
+                 dev_ctx->stream());
+  } else if ((src_plc == PlaceType::kCPU) && (dst_plc == PlaceType::kHIP)) {
+    memory::Copy(gpu_place, static_cast<void *>(dst), platform::CPUPlace(), src,
+                 ele_size, dev_ctx->stream());
+  } else {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Only GPU related Copy can reach this func."));
+  }
+  hipStreamSynchronize(dev_ctx->stream());
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "This function can only be used if compiled with"
+      "either -DWITH_ROCM=ON or -DWITH_GPU=ON"));
 #endif
 }
 
@@ -103,15 +127,6 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
 void Tensor::reshape(const std::vector<int64_t> &shape) {
   GET_CASTED_TENSOR
   auto new_dim = framework::make_ddim(shape);
-  if (tensor->numel() != framework::product(new_dim)) {
-    LOG(WARNING) << "Custom Op: Calling reshape to a new shape which is bigger "
-                    "or smaller"
-                 << "than original shape will not change your tensor's memory "
-                    "Please call"
-                 << "paddle::Tensor::mutable_data<T>() after to reallocate "
-                    "your tensor's size."
-                 << std::endl;
-  }
   tensor->Resize(new_dim);
 }
 
@@ -147,8 +162,13 @@ T *Tensor::mutable_data() {
     case static_cast<int>(PlaceType::kCPU): {
       return tensor->mutable_data<T>(platform::CPUPlace());
     }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
     case static_cast<int>(PlaceType::kGPU): {
+      int device_num = platform::GetCurrentDeviceId();
+      return tensor->mutable_data<T>(platform::CUDAPlace(device_num));
+    }
+#elif defined(PADDLE_WITH_HIP)
+    case static_cast<int>(PlaceType::kHIP): {
       int device_num = platform::GetCurrentDeviceId();
       return tensor->mutable_data<T>(platform::CUDAPlace(device_num));
     }
@@ -212,17 +232,23 @@ Tensor Tensor::copy_to(const PlaceType &target_place) const {
   target.reshape(shape());
   auto *p_target_data = target.template mutable_data<T>();
 
+  bool supported_gpu_transform = false;
+#if defined(PADDLE_WITH_CUDA)
+  supported_gpu_transform =
+      (src_place == PlaceType::kGPU && target_place == PlaceType::kCPU) ||
+      (src_place == PlaceType::kCPU && target_place == PlaceType::kGPU) ||
+      (src_place == PlaceType::kGPU && target_place == PlaceType::kGPU);
+#elif defined(PADDLE_WITH_HIP)
+  supported_gpu_transform =
+      (src_place == PlaceType::kHIP && target_place == PlaceType::kCPU) ||
+      (src_place == PlaceType::kCPU && target_place == PlaceType::kHIP) ||
+      (src_place == PlaceType::kHIP && target_place == PlaceType::kHIP);
+#endif
+
   if ((src_place == PlaceType::kCPU) && (target_place == PlaceType::kCPU)) {
     std::memcpy(static_cast<void *>(p_target_data), p_src_data, ele_size);
-  } else if ((src_place == PlaceType::kGPU) &&
-             (target_place == PlaceType::kCPU)) {
-    GpuCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
-  } else if ((src_place == PlaceType::kCPU) &&
-             (target_place == PlaceType::kGPU)) {
-    GpuCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
-  } else if ((src_place == PlaceType::kGPU) &&
-             (target_place == PlaceType::kGPU)) {
-    GpuCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
+  } else if (supported_gpu_transform) {
+    DeviceCopy<T>(p_src_data, p_target_data, src_place, target_place, ele_size);
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Not supported place transform of place: %d to place: %d",
@@ -247,9 +273,9 @@ template PD_DLL_DECL Tensor
 Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
 template PD_DLL_DECL Tensor
 Tensor::copy_to<bool>(const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex64>(
+template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex<float>>(
     const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex128>(
+template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex<double>>(
     const PlaceType &target_place) const;
 template PD_DLL_DECL Tensor
 Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
@@ -262,10 +288,10 @@ template PD_DLL_DECL uint8_t *Tensor::data<uint8_t>() const;
 template PD_DLL_DECL int8_t *Tensor::data<int8_t>() const;
 template PD_DLL_DECL int16_t *Tensor::data<int16_t>() const;
 template PD_DLL_DECL bool *Tensor::data<bool>() const;
-template PD_DLL_DECL paddle::platform::complex64 *
-Tensor::data<paddle::platform::complex64>() const;
-template PD_DLL_DECL paddle::platform::complex128 *
-Tensor::data<paddle::platform::complex128>() const;
+template PD_DLL_DECL paddle::platform::complex<float>
+    *Tensor::data<paddle::platform::complex<float>>() const;
+template PD_DLL_DECL paddle::platform::complex<double>
+    *Tensor::data<paddle::platform::complex<double>>() const;
 template PD_DLL_DECL paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>() const;
 
@@ -277,10 +303,10 @@ template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>();
 template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>();
 template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>();
 template PD_DLL_DECL bool *Tensor::mutable_data<bool>();
-template PD_DLL_DECL paddle::platform::complex64 *
-Tensor::mutable_data<paddle::platform::complex64>();
-template PD_DLL_DECL paddle::platform::complex128 *
-Tensor::mutable_data<paddle::platform::complex128>();
+template PD_DLL_DECL paddle::platform::complex<float>
+    *Tensor::mutable_data<paddle::platform::complex<float>>();
+template PD_DLL_DECL paddle::platform::complex<double>
+    *Tensor::mutable_data<paddle::platform::complex<double>>();
 template PD_DLL_DECL paddle::platform::float16 *
 Tensor::mutable_data<paddle::platform::float16>();
 
@@ -298,10 +324,10 @@ template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>(
 template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>(
     const PlaceType &place);
 template PD_DLL_DECL bool *Tensor::mutable_data<bool>(const PlaceType &place);
-template PD_DLL_DECL paddle::platform::complex64 *
-Tensor::mutable_data<paddle::platform::complex64>(const PlaceType &place);
-template PD_DLL_DECL paddle::platform::complex128 *
-Tensor::mutable_data<paddle::platform::complex128>(const PlaceType &place);
+template PD_DLL_DECL paddle::platform::complex<float> *
+Tensor::mutable_data<paddle::platform::complex<float>>(const PlaceType &place);
+template PD_DLL_DECL paddle::platform::complex<double> *
+Tensor::mutable_data<paddle::platform::complex<double>>(const PlaceType &place);
 template PD_DLL_DECL paddle::platform::float16 *
 Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 
@@ -314,13 +340,18 @@ const PlaceType &Tensor::place() const {
   GET_CASTED_TENSOR;
   if (platform::is_cpu_place(tensor->place())) {
     place_ = PlaceType::kCPU;
+#if defined(PADDLE_WITH_CUDA)
   } else if (platform::is_gpu_place(tensor->place())) {
     place_ = PlaceType::kGPU;
+#elif defined(PADDLE_WITH_HIP)
+  } else if (platform::is_gpu_place(tensor->place())) {
+    place_ = PlaceType::kHIP;
+#endif
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Current Tensor hold unsupported Place Type, Please Init it"
-        "using Tensor::mutable_data<T>(PaddlePlace) which T is"
-        "either Place::kCPU or Place::kGPU"));
+        "using Tensor::mutable_data<T>(PaddlePlace) with T among:"
+        "Place::kCPU or Place::kGPU or Place::kHIP"));
   }
   return place_;
 }
@@ -365,13 +396,13 @@ Tensor Tensor::cast(const DataType &target_type) const {
           dst_type, CastDataType<uint8_t>(*tensor, rlt_tensor_, ctx));
       break;
     case framework::proto::VarType::COMPLEX64:
-      framework::VisitDataType(
-          dst_type,
-          CastDataType<paddle::platform::complex64>(*tensor, rlt_tensor_, ctx));
+      framework::VisitDataType(dst_type,
+                               CastDataType<paddle::platform::complex<float>>(
+                                   *tensor, rlt_tensor_, ctx));
       break;
     case framework::proto::VarType::COMPLEX128:
       framework::VisitDataType(dst_type,
-                               CastDataType<paddle::platform::complex128>(
+                               CastDataType<paddle::platform::complex<double>>(
                                    *tensor, rlt_tensor_, ctx));
       break;
     case framework::proto::VarType::FP16:
@@ -393,16 +424,30 @@ int64_t Tensor::size() const {
   return tensor->numel();
 }
 
-#ifdef PADDLE_WITH_CUDA
-cudaStream_t Tensor::stream() const {
-  if (!stream_.IsStreamSet()) {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Stream is not Set, only input tensor will have "
-        "stream which is set by framework "));
+bool Tensor::is_initialized() const {
+  GET_CASTED_TENSOR;
+  if (tensor->IsInitialized()) {
+    return true;
   } else {
-    return reinterpret_cast<cudaStream_t>(stream_.GetStream());
+    return false;
   }
 }
+
+#define DEFINE_STREAM(_stream_t_)                               \
+  _stream_t_ Tensor::stream() const {                           \
+    if (!stream_.IsStreamSet()) {                               \
+      PADDLE_THROW(platform::errors::PreconditionNotMet(        \
+          "Stream is not Set, only input tensor will have "     \
+          "stream which is set by framework "));                \
+    } else {                                                    \
+      return reinterpret_cast<_stream_t_>(stream_.GetStream()); \
+    }                                                           \
+  }
+
+#if defined(PADDLE_WITH_CUDA)
+DEFINE_STREAM(cudaStream_t)
+#elif defined(PADDLE_WITH_HIP)
+DEFINE_STREAM(hipStream_t)
 #endif
 
 namespace framework {

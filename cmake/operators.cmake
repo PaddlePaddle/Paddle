@@ -11,6 +11,7 @@ function(op_library TARGET)
     set(cu_cc_srcs)
     set(hip_cc_srcs)
     set(xpu_cc_srcs)
+    set(npu_cc_srcs)
     set(cudnn_cu_cc_srcs)
     set(miopen_cu_cc_srcs)
     set(cudnn_cu_srcs)
@@ -20,6 +21,9 @@ function(op_library TARGET)
     set(mkldnn_cc_srcs)
     set(MKLDNN_FILE)
     set(op_common_deps operator op_registry math_function layer common_infer_shape_functions)
+    if (WITH_ASCEND_CL)
+      set(op_common_deps ${op_common_deps} npu_op_runner)
+    endif()
     # Option `UNITY` is used to specify that operator `TARGET` will compiles with Unity Build.
     set(options UNITY)
     set(oneValueArgs "")
@@ -39,6 +43,9 @@ function(op_library TARGET)
             endif()
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu)
                 list(APPEND cu_srcs ${TARGET}.cu)
+            endif()
+            if (WITH_NV_JETSON)
+                list(REMOVE_ITEM cu_srcs "decode_jpeg_op.cu")
             endif()
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu)
                 set(PART_CUDA_KERNEL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu
@@ -85,6 +92,12 @@ function(op_library TARGET)
                 list(APPEND xpu_cc_srcs ${XPU_FILE}.cc)
             endif()
         endif()
+        if(WITH_ASCEND_CL)
+            string(REPLACE "_op" "_op_npu" NPU_FILE "${TARGET}")
+            if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${NPU_FILE}.cc)
+                list(APPEND npu_cc_srcs ${NPU_FILE}.cc)
+            endif()
+        endif()
     else()
         foreach(src ${op_library_SRCS})
             if(WITH_ROCM AND ${src} MATCHES ".*_cudnn_op.cu$")
@@ -107,6 +120,8 @@ function(op_library TARGET)
                 list(APPEND cu_cc_srcs ${src})
             elseif(WITH_XPU AND ${src} MATCHES ".*_op_xpu.cc$")
                 list(APPEND xpu_cc_srcs ${src})
+            elseif(WITH_ASCEND_CL AND ${src} MATCHES ".*_op_npu.cc$")
+                list(APPEND npu_cc_srcs ${src})
             elseif(${src} MATCHES ".*\\.cc$")
                 list(APPEND cc_srcs ${src})
             else()
@@ -168,15 +183,15 @@ function(op_library TARGET)
         list(REMOVE_ITEM miopen_cu_cc_srcs "affine_grid_cudnn_op.cu.cc")
         list(REMOVE_ITEM miopen_cu_cc_srcs "grid_sampler_cudnn_op.cu.cc")
         list(REMOVE_ITEM hip_srcs "cholesky_op.cu")
-        list(REMOVE_ITEM hip_srcs "correlation_op.cu")
         list(REMOVE_ITEM hip_srcs "multinomial_op.cu")
+        list(REMOVE_ITEM hip_srcs "decode_jpeg_op.cu")
         hip_library(${TARGET} SRCS ${cc_srcs} ${hip_cc_srcs} ${miopen_cu_cc_srcs} ${miopen_cu_srcs} ${mkldnn_cc_srcs} ${hip_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
     else()
         # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
         if(WITH_UNITY_BUILD AND op_library_UNITY)
             # Combine the cc source files.
-            compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs})
+            compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${npu_cc_srcs})
             if(TARGET ${UNITY_TARGET})
                 # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
                 target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
@@ -187,13 +202,13 @@ function(op_library TARGET)
             # Add alias library to handle dependencies.
             add_library(${TARGET} ALIAS ${UNITY_TARGET})
         else()
-            cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} DEPS ${op_library_DEPS}
+            cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${npu_cc_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
         endif()
     endif()
 
     # Define operators that don't need pybind here.
-    foreach(manual_pybind_op "compare_all_op" "compare_op" "logical_op" "nccl_op"
+    foreach(manual_pybind_op "compare_all_op" "compare_op" "logical_op" "bitwise_op" "nccl_op"
 "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op"
 "fusion_transpose_flatten_concat_op" "fusion_conv_inception_op"
 "sync_batch_norm_op" "dgc_op" "fused_fc_elementwise_layernorm_op"
@@ -207,6 +222,7 @@ function(op_library TARGET)
     # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
     # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
     # And for detail pybind information, please see generated paddle/pybind/pybind.h.
+    set(ORIGINAL_TARGET ${TARGET})
     file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "REGISTER_OPERATOR\\(.*REGISTER_OPERATOR\\(" multi_register "${TARGET_CONTENT}")
     # [ \t\r\n]* is used for blank characters
@@ -239,8 +255,9 @@ function(op_library TARGET)
     list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
     list(LENGTH xpu_cc_srcs xpu_cc_srcs_len)
     list(LENGTH miopen_cu_cc_srcs miopen_cu_cc_srcs_len)
+    list(LENGTH npu_cc_srcs npu_cc_srcs_len)
     if (${pybind_flag} EQUAL 0 AND ${mkldnn_cc_srcs_len} EQUAL 0 AND ${cu_srcs_len} EQUAL 0 AND ${cu_cc_srcs_len} EQUAL 0 AND
-        ${hip_srcs_len} EQUAL 0 AND ${hip_cc_srcs_len} EQUAL 0 AND ${miopen_cu_cc_srcs_len} EQUAL 0 AND ${xpu_cc_srcs_len} EQUAL 0)
+        ${hip_srcs_len} EQUAL 0 AND ${hip_cc_srcs_len} EQUAL 0 AND ${miopen_cu_cc_srcs_len} EQUAL 0 AND ${xpu_cc_srcs_len} EQUAL 0 AND ${npu_cc_srcs_len} EQUAL 0)
         file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
         set(pybind_flag 1)
     endif()
@@ -280,6 +297,26 @@ function(op_library TARGET)
     if (WITH_XPU AND ${xpu_cc_srcs_len} GREATER 0)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
     endif()
+
+    if (WITH_ASCEND_CL AND ${npu_cc_srcs_len} GREATER 0)
+        file(READ ${ORIGINAL_TARGET}_npu.cc TARGET_NPU_CONTENT)
+        # It is different from the logic above, becareful
+        string(REGEX MATCH "REGISTER_OP_NPU_KERNEL\\(.*" multi_npu_register "${TARGET_NPU_CONTENT}")
+        # [ \t\r\n]* is used for blank characters
+        string(REGEX MATCH "REGISTER_OP_NPU_KERNEL\\([ \t\r\n]*[a-z0-9_]*," one_npu_register "${multi_npu_register}")
+
+        if (one_npu_register STREQUAL "")
+            string(REPLACE "_op" "" NPU_TARGET "${TARGET}")
+        else ()
+            string(REPLACE "REGISTER_OP_NPU_KERNEL(" "" NPU_TARGET "${one_npu_register}")
+            string(REPLACE "," "" NPU_TARGET "${NPU_TARGET}")
+            # [ \t\r\n]+ is used for blank characters.
+            # Here we use '+' instead of '*' since it is a REPLACE operation.
+            string(REGEX REPLACE "[ \t\r\n]+" "" NPU_TARGET "${NPU_TARGET}")
+        endif()
+        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${NPU_TARGET}, NPU);\n")
+    endif()
+
     # pybind USE_OP_DEVICE_KERNEL for MKLDNN
     if (WITH_MKLDNN AND ${mkldnn_cc_srcs_len} GREATER 0)
       # Append first implemented MKLDNN activation operator
@@ -330,6 +367,7 @@ function(register_operators)
     file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_op.cc")
     string(REPLACE "_mkldnn" "" OPS "${OPS}")
     string(REPLACE "_xpu" "" OPS "${OPS}")
+    string(REPLACE "_npu" "" OPS "${OPS}")
     string(REPLACE ".cc" "" OPS "${OPS}")
     list(REMOVE_DUPLICATES OPS)
     list(LENGTH register_operators_DEPS register_operators_DEPS_len)

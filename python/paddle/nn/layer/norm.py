@@ -28,20 +28,15 @@
 # TODO: define normalization api  
 
 import six
-#from ...fluid.dygraph.nn import InstanceNorm
 
-from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
-#from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import BatchNorm  # noqa: F401
+from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
-#from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
-from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
-
-from ...fluid.dygraph import layers
 from ...framework import get_default_dtype, set_default_dtype
 from ...fluid.framework import in_dygraph_mode
 
-from ...fluid.initializer import Constant
-from ...fluid.param_attr import ParamAttr
+from ..initializer import Constant
+from ...framework import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid import core, dygraph_utils
 
@@ -50,17 +45,15 @@ from ..functional import batch_norm, layer_norm, instance_norm
 import numpy as np
 import numbers
 import warnings
-from ...fluid.dygraph.base import no_grad
+from ...framework import no_grad
 from .. import functional as F
+from paddle import _C_ops
+from .. import Layer
 
-__all__ = [
-    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1D',
-    'BatchNorm2D', 'BatchNorm3D', 'InstanceNorm1D', 'InstanceNorm2D',
-    'InstanceNorm3D', 'SyncBatchNorm', 'LocalResponseNorm'
-]
+__all__ = []
 
 
-class _InstanceNormBase(layers.Layer):
+class _InstanceNormBase(Layer):
     """
     This class is based class for InstanceNorm1D, 2d, 3d. 
 
@@ -323,7 +316,7 @@ class InstanceNorm3D(_InstanceNormBase):
                 len(input.shape)))
 
 
-class GroupNorm(layers.Layer):
+class GroupNorm(Layer):
     """
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
@@ -382,7 +375,7 @@ class GroupNorm(layers.Layer):
         self._num_channels = num_channels
         self._num_groups = num_groups
         if data_format != 'NCHW':
-            raise ValueError("unsupported data layout:" + data_layout)
+            raise ValueError("unsupported data layout:" + data_format)
 
         param_shape = [self._num_channels]
 
@@ -442,7 +435,7 @@ class GroupNorm(layers.Layer):
             self._num_groups, self._num_channels, self._epsilon)
 
 
-class LayerNorm(layers.Layer):
+class LayerNorm(Layer):
     r"""
     :alias_main: paddle.nn.LayerNorm
 	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
@@ -550,7 +543,7 @@ class LayerNorm(layers.Layer):
                                                         self._epsilon)
 
 
-class _BatchNormBase(layers.Layer):
+class _BatchNormBase(Layer):
     """
     BatchNorm base .
     """
@@ -745,6 +738,19 @@ class BatchNorm1D(_BatchNormBase):
           print(batch_norm_out)
     """
 
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCL',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm1D,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, use_global_stats, name)
+
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NC' or input == 'NCL':
             self._data_format = 'NCHW'
@@ -924,6 +930,19 @@ class BatchNorm3D(_BatchNormBase):
           print(batch_norm_out)
     """
 
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCDHW',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm3D,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, use_global_stats, name)
+
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NCDHW':
             self._data_format = 'NCHW'
@@ -1036,9 +1055,20 @@ class SyncBatchNorm(_BatchNormBase):
                  name=None):
         super(SyncBatchNorm,
               self).__init__(num_features, momentum, epsilon, weight_attr,
-                             bias_attr, data_format, name)
+                             bias_attr, data_format, None, name)
+
+    def _check_data_format(self):
+        if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
+            self._data_format = 'NCHW'
+        elif self._data_format in ["NHWC", "NDHWC", 'NLC']:
+            self._data_format = 'NHWC'
+        else:
+            raise ValueError(
+                'expected \'NCDHW\', \'NDHWC\', \'NCL\', \'NLC\', \'NC\', \'NCHW\', \'NHWC\' for data_format'
+            )
 
     def forward(self, x):
+        self._check_data_format()
         # create output
         # mean and mean_out share the same memory
         mean_out = self._mean
@@ -1053,7 +1083,7 @@ class SyncBatchNorm(_BatchNormBase):
                      self._data_format, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", False, 'trainable_statistics',
                      False)
-            sync_batch_norm_out, _, _, _, _, _ = core.ops.sync_batch_norm(
+            sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm(
                 x, self.weight, self.bias, self._mean, self._variance, mean_out,
                 variance_out, *attrs)
 
@@ -1123,11 +1153,12 @@ class SyncBatchNorm(_BatchNormBase):
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            if layer._weight_attr != None and not isinstance(layer._weight_attr,
-                                                             bool):
+            if layer._weight_attr != None and not isinstance(
+                    layer._weight_attr,
+                    bool) and layer._weight_attr.name != None:
                 layer._weight_attr.name = layer._weight_attr.name + '_sync'
-            if layer._bias_attr != None and not isinstance(layer._weight_attr,
-                                                           bool):
+            if layer._bias_attr != None and not isinstance(
+                    layer._bias_attr, bool) and layer._bias_attr.name != None:
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 
             layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
@@ -1149,7 +1180,7 @@ class SyncBatchNorm(_BatchNormBase):
         return layer_output
 
 
-class LocalResponseNorm(layers.Layer):
+class LocalResponseNorm(Layer):
     """
         Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
         For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_

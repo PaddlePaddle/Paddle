@@ -447,6 +447,11 @@ void OpDesc::SetOutput(const std::string &param_name,
   this->outputs_[param_name] = args;
 }
 
+void OpDesc::RemoveOutput(const std::string &name) {
+  outputs_.erase(name);
+  need_update_ = true;
+}
+
 bool OpDesc::HasProtoAttr(const std::string &name) const {
   auto &op_info = OpInfoMap::Instance();
   if (op_info.Has(desc_.type())) {

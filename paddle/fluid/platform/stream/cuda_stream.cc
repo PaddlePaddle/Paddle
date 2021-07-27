@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -49,8 +50,8 @@ bool CUDAStream::Init(const Place& place, const Priority& priority) {
         cudaStreamCreateWithPriority(&stream_, kDefaultFlag, 0));
 #endif
   }
-  callback_manager_.reset(new StreamCallbackManager(stream_));
-  VLOG(3) << "CUDAStream Init stream: " << stream_
+  callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
+  VLOG(3) << "GPUStream Init stream: " << stream_
           << ", priority: " << static_cast<int>(priority);
   return true;
 }
@@ -93,6 +94,28 @@ void CUDAStream::Wait() const {
 #endif  // PADDLE_WITH_HIP
 
   PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
+}
+
+CUDAStream* get_current_stream(int deviceId) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (deviceId == -1) {
+    deviceId = platform::GetCurrentDeviceId();
+  }
+
+  auto& pool = platform::DeviceContextPool::Instance();
+
+  platform::Place device = CUDAPlace(deviceId);
+
+  auto stream = static_cast<platform::CUDADeviceContext*>(pool.Get(device))
+                    ->context()
+                    ->Stream()
+                    .get();
+  return stream;
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Paddle is not compiled with CUDA. Cannot visit cuda current stream."));
+  return nullptr;
+#endif
 }
 
 }  // namespace stream

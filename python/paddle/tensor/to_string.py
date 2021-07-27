@@ -17,7 +17,7 @@ import numpy as np
 from paddle.fluid.layers import core
 from paddle.fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
-__all__ = ['set_printoptions']
+__all__ = []
 
 
 class PrintOptions(object):
@@ -92,6 +92,10 @@ def set_printoptions(precision=None,
 
 def _to_sumary(var):
     edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
+
+    # Handle tensor of shape contains 0, like [0, 2], [3, 0, 3]
+    if np.prod(var.shape) == 0:
+        return np.array([])
 
     if len(var.shape) == 0:
         return var

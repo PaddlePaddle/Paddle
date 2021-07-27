@@ -672,7 +672,11 @@ template <typename T>
 static void SoftmaxWithCrossEntropyFusedKernel(
     const T* logits_data, const T* labels_data, T* softmax_data, T* loss_data,
     int64_t n, int64_t d, int axis_dim, gpuStream_t stream) {
+#ifdef __HIPCC__
+  constexpr int kMaxBlockDim = 256;
+#else
   constexpr int kMaxBlockDim = 512;
+#endif
   int64_t block_dim = axis_dim >= kMaxBlockDim
                           ? kMaxBlockDim
                           : (1 << static_cast<int>(std::log2(axis_dim)));
@@ -768,10 +772,10 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(context.GetPlace()), true,
         platform::errors::Unavailable("softmax_with_cross_entropy operator's "
                                       "CUDA kernel only runs on GPU device."));
-    const bool softmax_switch = context.Attr<bool>("softmax_switch");
+    const bool use_softmax = context.Attr<bool>("use_softmax");
 
     // do not with softmax op, and input is softmax
-    if (!softmax_switch) {
+    if (!use_softmax) {
       const Tensor* softmax = context.Input<Tensor>("Logits");
       const Tensor* labels = context.Input<Tensor>("Label");
       Tensor* softmax_out = context.Output<Tensor>("Softmax");
@@ -921,10 +925,10 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     int block = 512;
     auto stream = context.cuda_device_context().stream();
     auto ignore_index = context.Attr<int>("ignore_index");
-    auto softmax_switch = context.Attr<bool>("softmax_switch");
+    auto use_softmax = context.Attr<bool>("use_softmax");
 
     // do not with softmax op, and input is softmax
-    if (!softmax_switch) {
+    if (!use_softmax) {
       if (context.Attr<bool>("soft_label")) {
         int grid = (n * d + block - 1) / block;
         const T* label_data = labels->data<T>();

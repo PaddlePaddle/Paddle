@@ -70,7 +70,7 @@ class PSServer {
 
   virtual int32_t configure(
       const PSParameter &config, PSEnvironment &env, size_t server_rank,
-      const std::vector<framework::ProgramDesc> &server_sub_program = {}) final;
+      const std::vector<framework::ProgramDesc> &server_sub_program = {});
 
   // return server_ip
   virtual std::string ip() { return butil::my_ip_cstr(); }

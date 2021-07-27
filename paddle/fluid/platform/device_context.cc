@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-
 #include "glog/logging.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace memory {
@@ -75,16 +75,29 @@ void SetAllowTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
 bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
 #endif  // PADDLE_WITH_CUDA
 
+DeviceType Place2DeviceType(const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    return platform::DeviceType::CPU;
+  } else if (platform::is_gpu_place(place)) {
+    return platform::DeviceType::CUDA;
+  } else if (platform::is_xpu_place(place)) {
+    return platform::DeviceType::XPU;
+  } else {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported place %s to convert into platform::DeviceType.", place));
+  }
+}
+
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
+  VLOG(4) << "DeviceContextPool Get: " << place;
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU or WITH_XPU option or check that your train process "
-        "hold the "
-        "correct gpu_id if you use Executor.",
+        "with WITH_GPU, WITH_XPU or WITH_ASCEND_CL option or check that "
+        "your train process set the correct device id if you use Executor.",
         place));
   }
   return it->second.get().get();
@@ -145,6 +158,24 @@ DeviceContextPool::DeviceContextPool(
       PADDLE_THROW(
           platform::errors::Unimplemented("XPUPlace is not supported. Please "
                                           "re-compile with WITH_XPU option."));
+#endif
+    } else if (platform::is_npu_place(p)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_, p);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "NPUPlace is not supported. Please "
+          "re-compile with WITH_ASCEND_CL option."));
+#endif
+    } else if (platform::is_npu_pinned_place(p)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      EmplaceDeviceContext<NPUPinnedDeviceContext, NPUPinnedPlace>(
+          &device_contexts_, p);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "NPUPinnedPlace is not supported. Please re-compile with "
+          "WITH_ASCEND_CL "
+          "option."));
 #endif
     }
   }
@@ -229,8 +260,52 @@ Place XPUDeviceContext::GetPlace() const { return place_; }
 xpu::Context* XPUDeviceContext::x_context() const { return context_; }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_ASCEND_CL
+NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
+  NPUDeviceGuard guard(place_.device);
+  // PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(&context_, place_.device));
+  // NOTE(zhiqiu): Usually, no need to create context explicitly,
+  // ACL creates a default context which contains 1 default stream
+  // and 1 sync strean after aclrtSetDevice.
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetCurrentContext(&context_));
+  stream_.reset(new stream::NPUStream(place));
+}
 
+NPUDeviceContext::~NPUDeviceContext() {
+  // NPUDeviceGuard guard(place_.device);
+  // PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyContext(context_));
+}
+
+void NPUDeviceContext::Wait() const {
+  platform::RecordEvent record_event("NPUDeviceContext/wait");
+  VLOG(4) << "NPU context(" << this << ")  Wait";
+  stream_->Wait();
+}
+
+aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
+
+Place NPUDeviceContext::GetPlace() const { return place_; }
+
+aclrtContext NPUDeviceContext::context() const { return context_; }
+
+NPUPinnedDeviceContext::NPUPinnedDeviceContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+NPUPinnedDeviceContext::NPUPinnedDeviceContext(NPUPinnedPlace place)
+    : place_(place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* NPUPinnedDeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+Place NPUPinnedDeviceContext::GetPlace() const { return place_; }
+
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class EigenCudaStreamDevice : public Eigen::StreamInterface {
  public:
   EigenCudaStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
@@ -501,6 +576,7 @@ Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
     : CPUDeviceContext(place), p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
+  p_exec_items_.reset(new ExecShape());
   p_mutex_.reset(new std::mutex());
 }
 
@@ -524,7 +600,7 @@ MKLDNNDeviceContextThreadLocals::Body::~Body() {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::MKLDNNDeviceContext* dev_ctx =
       (platform::MKLDNNDeviceContext*)pool.Get(cpu_place);
-  dev_ctx->ResetBlobMap();
+  dev_ctx->ResetBlobMap(exec_ptr_);
 }
 
 void MKLDNNDeviceContextThreadLocals::Body::set_cur_mkldnn_session_id(
@@ -571,15 +647,50 @@ mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
   return cur_stream;
 }
 
-void MKLDNNDeviceContext::ResetBlobMap() {
+void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
   if (!block_next_cache_clearing_) {
     VLOG(3) << "Clearing DNNL cache.";
-    p_blobmap_->clear();
+    // If no specific executor pointer then clear
+    // everything. For executor pointer then clear only
+    // objects allocated when using given executor
+    if (ptr == nullptr) {
+      p_blobmap_->clear();
+    } else {
+      // Iterate through all shapes and release
+      // for each shape and active executor all entries
+      // of this executor
+      for (auto& s : *p_exec_items_) {
+        for (auto& v : (*s.second)[ptr]) {
+          (v.first)->erase(v.second);
+        }
+        s.second->erase(ptr);
+      }
+    }
   } else {
     VLOG(3) << "Prevented Clearing DNNL cache.";
     block_next_cache_clearing_ = false;
   }
+}
+
+void MKLDNNDeviceContext::RemoveShapeEntriesWithExecutor(void) const {
+  p_exec_items_->erase(p_exec_items_->begin());
+}
+
+void MKLDNNDeviceContext::LinkEntryWithExecutor(BlobPtr_t<KeyBlob> pblob,
+                                                KeyBlob::iterator it) const {
+  // Take current input shape from TLS
+  // Take current executor addess from TLS
+  // and for this executor's items add the one defined with arguments
+  auto key_it = p_exec_items_
+                    ->insert(std::make_pair(tls().cur_input_shape_str,
+                                            std::make_shared<ExecMap>()))
+                    .first;
+  (*key_it->second)[tls().get_curr_exec()].push_back(std::make_pair(pblob, it));
+
+  VLOG(3) << "LinkEntryWithExecutor, shapes: " << p_exec_items_->size()
+          << " curr exec size: "
+          << (*key_it->second)[tls().get_curr_exec()].size() << "\n";
 }
 
 void MKLDNNDeviceContext::BlockNextCacheClearing() {
@@ -636,6 +747,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
       VLOG(2) << "sid=" << sid
               << ", remove all blobs of shape: " << sBlob->begin()->first;
       sBlob->erase(sBlob->begin()->first);
+      RemoveShapeEntriesWithExecutor();
     }
     pBlob = std::make_shared<KeyBlob>();
     (*sBlob)[tls().cur_input_shape_str] = pBlob;
@@ -646,7 +758,11 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   // Find Blob via name
   auto blob_it = pBlob->find(name);
   if (blob_it == pBlob->end()) {
-    (*pBlob)[name] = data;
+    auto el =
+        pBlob->insert(std::make_pair(name, data));  //  (*pBlob)[name] = data;
+    // Register new element in per executor map
+    // to have easily erased when executor terminated
+    LinkEntryWithExecutor(pBlob, el.first);
   } else {
     blob_it->second = data;  // set data to existing blob
   }
@@ -655,7 +771,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   return;
 }
 
-unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) {
+unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   unsigned int num_entries = 0;
   for (auto const& l3 : *p_blobmap_) {
     for (auto const& l2 : *(l3.second)) {
@@ -706,6 +822,5 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 }
 
 #endif
-
 }  // namespace platform
 }  // namespace paddle

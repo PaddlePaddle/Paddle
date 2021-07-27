@@ -434,9 +434,10 @@ class ScopedPoolingDescriptor {
             "The size of kernel and strides should be equal. But "
             "received size of kernel is %d, size of strides is %d.",
             kernel.size(), strides.size()));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSet2dPoolingDescriptor(
-        desc_, GetPoolingMode(mode), kernel[0], kernel[1], pads[0], pads[1],
-        strides[0], strides[1]));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetNdPoolingDescriptor(
+        desc_, GetPoolingMode(mode), kernel.size(),
+        const_cast<int*>(kernel.data()), const_cast<int*>(pads.data()),
+        const_cast<int*>(strides.data())));
     return desc_;
   }
 

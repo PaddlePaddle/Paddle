@@ -162,7 +162,6 @@ function compile_install_paddlepaddle {
   export BUILD_TYPE=Release
   export CUDA_ARCH_NAME=Auto
   export WITH_DISTRIBUTE=OFF
-  export PYTHON_ABI=cp37-cp37m
   export CMAKE_BUILD_TYPE=Release
   [ -d build ] && rm -rf build
   bash paddle/scripts/paddle_build.sh build $(nproc)

@@ -12,46 +12,62 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import spawn
-from .spawn import spawn
+from .spawn import spawn  # noqa: F401
 
-from . import parallel
-from .parallel import init_parallel_env
-from .parallel import get_rank
-from .parallel import get_world_size
-from paddle.fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
-from paddle.distributed.fleet.dataset import *
+from .parallel import init_parallel_env  # noqa: F401
+from .parallel import get_rank  # noqa: F401
+from .parallel import get_world_size  # noqa: F401
 
-from . import collective
-from .collective import *
+from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
+from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
 
-from .entry_attr import ProbabilityEntry
-from .entry_attr import CountFilterEntry
+from .collective import broadcast  # noqa: F401
+from .collective import all_reduce  # noqa: F401
+from .collective import reduce  # noqa: F401
+from .collective import all_gather  # noqa: F401
+from .collective import scatter  # noqa: F401
+from .collective import barrier  # noqa: F401
+from .collective import ReduceOp  # noqa: F401
+from .collective import split  # noqa: F401
+from .collective import new_group  # noqa: F401
+from .collective import alltoall  # noqa: F401
+from .collective import recv  # noqa: F401
+from .collective import get_group  # noqa: F401
+from .collective import send  # noqa: F401
+from .collective import wait  # noqa: F401
 
-# start multiprocess apis
-__all__ = ["spawn"]
+from .fleet import BoxPSDataset  # noqa: F401
 
-# dygraph parallel apis
-__all__ += [
-    "init_parallel_env",
-    "get_rank",
-    "get_world_size",
-    "ParallelEnv",
-    "InMemoryDataset",
-    "QueueDataset",
+from .entry_attr import ProbabilityEntry  # noqa: F401
+from .entry_attr import CountFilterEntry  # noqa: F401
+
+from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
+
+from . import cloud_utils  # noqa: F401
+from . import utils  # noqa: F401
+
+__all__ = [     #noqa
+      "spawn",
+      "scatter",
+      "broadcast",
+      "ParallelEnv",
+      "new_group",
+      "init_parallel_env",
+      "QueueDataset",
+      "split",
+      "CountFilterEntry",
+      "get_world_size",
+      "get_group",
+      "all_gather",
+      "InMemoryDataset",
+      "barrier",
+      "all_reduce",
+      "alltoall",
+      "send",
+      "reduce",
+      "recv",
+      "ReduceOp",
+      "wait",
+      "get_rank",
+      "ProbabilityEntry"
 ]
-
-# dataset reader
-__all__ += [
-    "InMemoryDataset",
-    "QueueDataset",
-]
-
-# entry for embedding
-__all__ += [
-    "ProbabilityEntry",
-    "CountFilterEntry",
-]
-
-# collective apis
-__all__ += collective.__all__

@@ -242,7 +242,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
                 output5 = fluid.layers.scatter_nd_add(ref5, index5, updates5)
             except Exception as e:
                 t = \
-                "Input(Index).shape[-1] should be no greater than Input(X).rank"
+                "The last dimension of Input(Index)'s shape should be no greater "
                 if t in str(e):
                     raise IndexError
 

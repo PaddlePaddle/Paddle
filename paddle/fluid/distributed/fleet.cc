@@ -177,8 +177,11 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
   for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
-  return pserver_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+
+  bool training = true;
+  return pserver_ptr_->_worker_ptr->pull_sparse(pull_result_ptr.data(),
+                                                table_id, fea_keys->data(),
+                                                fea_keys->size(), training);
 }
 
 void FleetWrapper::PullSparseVarsSync(
@@ -224,8 +227,10 @@ void FleetWrapper::PullSparseVarsSync(
   for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
+  bool training = true;
   auto status = pserver_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size(),
+      training);
   pull_sparse_status.push_back(std::move(status));
   for (auto& t : pull_sparse_status) {
     t.wait();
@@ -238,9 +243,13 @@ void FleetWrapper::PullSparseVarsSync(
   }
 }
 
+// is_training is true means training, false means inference, the behavior is
+// different on pserver
+
 void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                                           uint64_t padding_id,
                                           platform::Place place,
+                                          bool is_training,
                                           std::vector<const LoDTensor*>* inputs,
                                           std::vector<LoDTensor*>* outputs) {
   std::vector<uint64_t> fea_keys;
@@ -279,7 +288,8 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
   }
   auto* communicator = Communicator::GetInstance();
   auto status = communicator->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size());
+      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(),
+      is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
@@ -407,8 +417,10 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   return;
 }
 
-void FleetWrapper::LoadModel(const std::string& path, const int mode) {
-  auto ret = pserver_ptr_->_worker_ptr->load(path, std::to_string(mode));
+void FleetWrapper::LoadModel(const std::string& path, const std::string& mode) {
+  auto* communicator = Communicator::GetInstance();
+  auto ret = communicator->_worker_ptr->load(path, mode);
+  // auto ret = pserver_ptr_->_worker_ptr->load(path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
@@ -419,8 +431,11 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 
 void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
                                      const std::string& path, const int mode) {
+  auto* communicator = Communicator::GetInstance();
   auto ret =
-      pserver_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
+      communicator->_worker_ptr->load(table_id, path, std::to_string(mode));
+  // auto ret =
+  //    pserver_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model of table id: " << table_id

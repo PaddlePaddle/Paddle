@@ -18,6 +18,9 @@ import math
 import numpy as np
 import unittest
 from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
 
 
 class TestUnfoldOp(OpTest):
@@ -96,6 +99,31 @@ class TestUnfoldOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y')
+
+
+class TestUnfoldAPI(TestUnfoldOp):
+    """
+    This is for test on paddle.nn.Unfold
+    """
+
+    def setUp(self):
+        self.op_type = 'unfold'
+        self.set_data()
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input = fluid.dygraph.to_variable(self.inputs['X'])
+                m = paddle.nn.Unfold(**self.attrs)
+                m.eval()
+                result = m(input)
+                self.assertTrue(np.allclose(result.numpy(), self.outputs['Y']))
+
+    def test_info(self):
+        str(paddle.nn.Unfold(**self.attrs))
 
 
 if __name__ == '__main__':

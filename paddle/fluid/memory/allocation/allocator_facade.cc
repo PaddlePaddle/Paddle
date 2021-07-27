@@ -20,6 +20,9 @@
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
+#endif
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -32,6 +35,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
+#include "paddle/fluid/platform/npu_info.h"
 
 DEFINE_int64(
     gpu_allocator_retry_time, 10000,
@@ -66,6 +70,12 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitCUDAAllocator(platform::CUDAPlace(dev_id));
         }
         InitNaiveBestFitCUDAPinnedAllocator();
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+        for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
+        }
+        InitNaiveBestFitNPUPinnedAllocator();
 #endif
         break;
       }
@@ -185,6 +195,18 @@ class AllocatorFacadePrivate {
   }
 #endif
 
+#ifdef PADDLE_WITH_ASCEND_CL
+  void InitNaiveBestFitNPUAllocator(platform::NPUPlace p) {
+    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+  }
+
+  void InitNaiveBestFitNPUPinnedAllocator() {
+    allocators_[platform::NPUPinnedPlace()] =
+        std::make_shared<paddle::memory::allocation::NPUPinnedAllocator>();
+  }
+
+#endif
+
   class ZeroSizeAllocator : public Allocator {
    public:
     explicit ZeroSizeAllocator(platform::Place place) : place_(place) {}
@@ -216,6 +238,12 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetXPUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::XPUPlace(dev_id));
+    }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+    int device_count = platform::GetNPUDeviceCount();
+    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
+      places.emplace_back(platform::NPUPlace(dev_id));
     }
 #endif
 
@@ -280,6 +308,11 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 uint64_t AllocatorFacade::Release(const platform::Place& place) {
   return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
       ->Release(place);
+}
+
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
+    const platform::Place& place) {
+  return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
 
 }  // namespace allocation

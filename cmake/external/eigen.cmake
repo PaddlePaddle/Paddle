@@ -27,6 +27,16 @@ cache_third_party(extern_eigen3
 
 if(WIN32)
     add_definitions(-DEIGEN_STRONG_INLINE=inline)
+elseif(LINUX)
+    if(WITH_ROCM)
+        # For HIPCC Eigen::internal::device::numeric_limits is not EIGEN_DEVICE_FUNC
+        # which will cause compiler error of using __host__ funciont in __host__ __device__
+        file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Meta.h native_src)
+        file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/util/Meta.h native_dst)
+        file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/TensorReductionGpu.h native_src1)
+        file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h native_dst1)
+        set(EIGEN_PATCH_COMMAND cp ${native_src} ${native_dst} && cp ${native_src1} ${native_dst1})
+    endif()
 endif()
 
 set(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR})
@@ -40,7 +50,7 @@ ExternalProject_Add(
     PREFIX          ${EIGEN_PREFIX_DIR}
     SOURCE_DIR      ${EIGEN_SOURCE_DIR}
     UPDATE_COMMAND    ""
-    PATCH_COMMAND     ""
+    PATCH_COMMAND     ${EIGEN_PATCH_COMMAND}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND     ""
     INSTALL_COMMAND   ""

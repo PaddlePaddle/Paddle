@@ -49,9 +49,12 @@ class NCCLParallelContext : public ParallelContext {
 
   ~NCCLParallelContext() override = default;
 
-  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids, int root);  // NOLINT
+  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids, int root,  // NOLINT
+                   int server_fd);
 
   void Init() override;
+
+  void InitWithRingID(int ring_id) override;
 
   void AllReduceByStream(const framework::Variable& src,
                          framework::Variable* dst, int ring_id,
@@ -62,6 +65,8 @@ class NCCLParallelContext : public ParallelContext {
   void WaitCompute(int ring_id) override;
 
   void WaitComm(int ring_id) override;
+
+  void SynchronizeCompute() override;
 
  private:
   // used for comm wait compute, compute_stream-->event-->comm_stream[ring_id]

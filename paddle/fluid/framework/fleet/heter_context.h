@@ -14,15 +14,22 @@ limitations under the License. */
 
 #pragma once
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
 
 #include <algorithm>
 #include <map>
 #include <unordered_map>
 #include <vector>
 
+#ifdef PADDLE_WITH_PSLIB
 #include "common_value.h"  // NOLINT
+#endif
+
+#ifdef PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
+#endif
+
+#include "paddle/fluid/distributed/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -39,7 +46,12 @@ class HeterContext {
   }
   Scope* scope_{nullptr};
   std::vector<std::vector<FeatureKey>> feature_keys_;
+#ifdef PADDLE_WITH_PSLIB
   std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> value_ptr_;
+#endif
+#ifdef PADDLE_WITH_PSCORE
+  std::vector<std::vector<paddle::distributed::VALUE*>> value_ptr_;
+#endif
   std::vector<std::vector<FeatureValue>> device_values_;
   std::vector<std::vector<FeatureKey>> device_keys_;
   std::vector<std::mutex*> mutex_;
@@ -66,6 +78,21 @@ class HeterContext {
       mutex_[i] = new std::mutex();
     }
   }
+
+  void Reset() {
+    for (size_t i = 0; i < feature_keys_.size(); ++i) {
+      feature_keys_[i].clear();
+    }
+    for (size_t i = 0; i < value_ptr_.size(); ++i) {
+      value_ptr_[i].clear();
+    }
+    for (size_t i = 0; i < device_values_.size(); ++i) {
+      device_values_[i].clear();
+    }
+    for (size_t i = 0; i < device_keys_.size(); ++i) {
+      device_keys_[i].clear();
+    }
+  }
   void batch_add_keys(
       const std::vector<std::unordered_set<uint64_t>>& thread_keys) {
     assert(thread_keys.size() == feature_keys_.size());
@@ -77,6 +104,15 @@ class HeterContext {
       std::copy(thread_keys[i].begin(), thread_keys[i].end(),
                 feature_keys_[i].begin() + idx);
     }
+  }
+
+  void batch_add_keys(int shard_num,
+                      const robin_hood::unordered_set<uint64_t>& shard_keys) {
+    int idx = feature_keys_[shard_num].size();
+    feature_keys_[shard_num].resize(feature_keys_[shard_num].size() +
+                                    shard_keys.size());
+    std::copy(shard_keys.begin(), shard_keys.end(),
+              feature_keys_[shard_num].begin() + idx);
   }
 
   void UniqueKeys() {

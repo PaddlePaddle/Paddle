@@ -22,12 +22,12 @@ from paddle.fluid.log_helper import get_logger
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer, HeterBoxTrainer, PSGPUTrainer
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer, PSGPUTrainer
 from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
 from .framework import Variable
 from multiprocessing import Process, Manager
 
-__all__ = ["TrainerFactory", "FetchHandler", "FetchHandlerMonitor"]
+__all__ = ["TrainerFactory", "FetchHandlerMonitor"]
 
 
 class TrainerFactory(object):
@@ -49,8 +49,8 @@ class TrainerFactory(object):
             device_worker = Hogwild()
             trainer._set_device_worker(device_worker)
         else:
-            trainer_class = opt_info["trainer"]
-            device_worker_class = opt_info["device_worker"]
+            trainer_class = opt_info.get("trainer", "MultiTrainer")
+            device_worker_class = opt_info.get("device_worker", "Hogwild")
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
 

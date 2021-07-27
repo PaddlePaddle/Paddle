@@ -121,12 +121,12 @@ class TestGRUUnitOp(OpTest):
         self.op_type = 'gru_unit'
         self.inputs = {
             'Input': np.random.uniform(
-                -0.1, 0.1, (batch_size, frame_size * 3)).astype('float64'),
+                -0.1, 0.1, (batch_size, frame_size * 3)).astype(self.dtype),
             'HiddenPrev': np.random.uniform(
-                -0.1, 0.1, (batch_size, frame_size)).astype('float64'),
+                -0.1, 0.1, (batch_size, frame_size)).astype(self.dtype),
             'Weight': np.random.uniform(
                 -1. / math.sqrt(frame_size), 1. / math.sqrt(frame_size),
-                (frame_size, frame_size * 3)).astype('float64'),
+                (frame_size, frame_size * 3)).astype(self.dtype),
         }
         self.attrs = {
             'activation': GRUActivationType.tanh,
@@ -161,12 +161,14 @@ class TestGRUUnitOp(OpTest):
         else:
             h = u * c + (1 - u) * h_p
         self.outputs = {
-            'Gate': g.astype('float64'),
-            'ResetHiddenPrev': r_h_p.astype('float64'),
-            'Hidden': h.astype('float64')
+            'Gate': g.astype(self.dtype),
+            'ResetHiddenPrev': r_h_p.astype(self.dtype),
+            'Hidden': h.astype(self.dtype)
         }
 
     def setUp(self):
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
         self.set_inputs()
         self.set_outputs()
 
@@ -179,6 +181,8 @@ class TestGRUUnitOp(OpTest):
 
 class TestGRUUnitOpOriginMode(TestGRUUnitOp):
     def setUp(self):
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
         self.set_inputs(origin_mode=True)
         self.set_outputs(origin_mode=True)
 
@@ -189,7 +193,7 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
         frame_size = self.frame_size
         super(TestGRUUnitOpWithBias, self).set_inputs()
         self.inputs['Bias'] = np.random.uniform(
-            -0.1, 0.1, (1, frame_size * 3)).astype('float64')
+            -0.1, 0.1, (1, frame_size * 3)).astype(self.dtype)
         self.attrs = {
             'activation': GRUActivationType.identity,
             'gate_activation': GRUActivationType.sigmoid,
@@ -207,6 +211,8 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
 
 class TestGRUUnitOpWithBiasOriginMode(TestGRUUnitOpWithBias):
     def setUp(self):
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
         self.set_inputs(origin_mode=True)
         self.set_outputs(origin_mode=True)
 

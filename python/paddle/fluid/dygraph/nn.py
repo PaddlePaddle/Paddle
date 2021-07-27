@@ -21,7 +21,7 @@ from ..layers import utils
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, _global_flags
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
@@ -33,6 +33,7 @@ import numbers
 import logging
 import os
 import paddle.utils.deprecated as deprecated
+from paddle import _C_ops
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
@@ -174,6 +175,11 @@ class Conv2D(layers.Layer):
                  dtype='float32'):
         assert param_attr is not False, "param_attr should not be False here."
         super(Conv2D, self).__init__()
+
+        if (core.is_compiled_with_cuda() and paddle.fluid.get_flags(
+                "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
+            use_cudnn = False
+
         self._num_channels = num_channels
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
@@ -183,7 +189,7 @@ class Conv2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
-        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+        self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
         self._filter_size = filter_size
         self._num_filters = num_filters
         self._param_attr = param_attr
@@ -231,7 +237,7 @@ class Conv2D(layers.Layer):
                      'dilations', self._dilation, 'groups', self._groups
                      if self._groups else 1, 'use_cudnn', self._use_cudnn,
                      'use_mkldnn', self._use_mkldnn)
-            out = core.ops.conv2d(input, self.weight, *attrs)
+            out = _C_ops.conv2d(input, self.weight, *attrs)
             pre_bias = out
 
             pre_act = dygraph_utils._append_bias_in_dygraph(
@@ -832,7 +838,7 @@ class Pool2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
 
-        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+        self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
@@ -861,7 +867,7 @@ class Pool2D(layers.Layer):
                      'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
                      'use_mkldnn', self._use_mkldnn, 'exclusive',
                      self._exclusive, 'data_format', self._data_format)
-            return core.ops.pool2d(input, *attrs)
+            return _C_ops.pool2d(input, *attrs)
 
         check_variable_and_dtype(
             input, 'input', ['int8', 'uint8', 'float16', 'float32', 'float64'],
@@ -961,14 +967,14 @@ class Linear(layers.Layer):
         self.bias = self.create_parameter(
             shape=[output_dim], attr=bias_attr, dtype=dtype, is_bias=True)
 
-        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+        self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
     def forward(self, input):
         if in_dygraph_mode():
             pre_bias = _varbase_creator(dtype=input.dtype)
-            core.ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
-                            'transpose_Y', False, "alpha", 1, "use_mkldnn",
-                            self._use_mkldnn)
+            _C_ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
+                          'transpose_Y', False, "alpha", 1, "use_mkldnn",
+                          self._use_mkldnn)
             pre_act = dygraph_utils._append_bias_in_dygraph(
                 pre_bias,
                 self.bias,
@@ -1111,8 +1117,8 @@ class InstanceNorm(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            out, _, _ = core.ops.instance_norm(input, self.scale, self.bias,
-                                               'epsilon', self._epsilon)
+            out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
+                                             'epsilon', self._epsilon)
             return out
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -1263,7 +1269,7 @@ class BatchNorm(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+        self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
@@ -1332,7 +1338,7 @@ class BatchNorm(layers.Layer):
                      "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
-            batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
+            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
                 mean_out, variance_out, *attrs)
             return dygraph_utils._append_activation_in_dygraph(
@@ -1483,7 +1489,7 @@ class Dropout(layers.Layer):
 
         if in_dygraph_mode():
             attrs = sum(attrs.items(), ())
-            out, mask = core.ops.dropout(input, *attrs)
+            out, mask = _C_ops.dropout(input, *attrs)
             return out
 
         out = self._helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -1635,7 +1641,7 @@ class Embedding(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            return core.ops.lookup_table_v2(
+            return _C_ops.lookup_table_v2(
                 self.weight, input, 'is_sparse', self._is_sparse,
                 'is_distributed', self._is_distributed, 'remote_prefetch',
                 self._remote_prefetch, 'padding_idx', self._padding_idx)
@@ -1789,7 +1795,7 @@ class LayerNorm(layers.Layer):
                     1:] + ', but got input shape ' + str(input_shape))
 
         if in_dygraph_mode():
-            pre_act, _, _ = core.ops.layer_norm(
+            pre_act, _, _ = _C_ops.layer_norm(
                 input, self.weight, self.bias, 'epsilon', self._epsilon,
                 'begin_norm_axis', self._begin_norm_axis)
             return dygraph_utils._append_activation_in_dygraph(
@@ -1974,7 +1980,7 @@ class GRUUnit(layers.Layer):
 
     def forward(self, input, hidden):
         if in_dygraph_mode():
-            gate, reset_hidden_pre, updated_hidden = core.ops.gru_unit(
+            gate, reset_hidden_pre, updated_hidden = _C_ops.gru_unit(
                 input, hidden, self.weight, self.bias, 'activation',
                 self.activation, 'gate_activation', self.gate_activation)
             return updated_hidden, reset_hidden_pre, gate
@@ -2660,7 +2666,7 @@ class Conv2DTranspose(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            op = getattr(core.ops, self._op_type)
+            op = getattr(_C_ops, self._op_type)
             out = op(input, self.weight, 'output_size', self._output_size,
                      'strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups,

@@ -50,6 +50,7 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
 import warnings
+from paddle import _C_ops
 
 __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
@@ -967,6 +968,7 @@ def sparse_embedding(input,
                      padding_idx=None,
                      is_test=False,
                      entry=None,
+                     table_class="CommonSparseTable",
                      param_attr=None,
                      dtype='float32'):
     helper = LayerHelper('sparse_embedding', **locals())
@@ -988,6 +990,10 @@ def sparse_embedding(input,
 
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         size[0] + padding_idx)
+
+    if table_class not in ["CommonSparseTable", "SSDSparseTable"]:
+        raise ValueError(
+            "table_class must be in [CommonSparseTable, SSDSparseTable]")
 
     entry_str = "none"
 
@@ -1011,7 +1017,8 @@ def sparse_embedding(input,
             'is_distributed': True,
             'remote_prefetch': True,
             'is_test': is_test,
-            'entry': entry_str
+            'entry': entry_str,
+            'table_class': table_class
         })
 
     return tmp
@@ -1532,19 +1539,18 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=True)
 
     """
-    helper = LayerHelper("bilateral_slice", **locals())
+    if paddle.fluid.in_dygraph_mode():
+        attrs = ('has_offset', has_offset)
+        return getattr(_C_ops, "bilateral_slice")(x, grid, guide, *attrs)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'bilateral_slice')
     check_variable_and_dtype(guide, 'guide', ['float32', 'float64'],
                              'bilateral_slice')
     check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
                              'bilateral_slice')
-
+    helper = LayerHelper("bilateral_slice", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     inputs = {'X': x, 'Guide': guide, 'Grid': grid}
-    if paddle.fluid.in_dygraph_mode():
-        attrs = ('has_offset', has_offset)
-        return getattr(core.ops, "bilateral_slice")(x, grid, guide, *attrs)
     helper.append_op(
         type='bilateral_slice',
         inputs=inputs,
@@ -1607,14 +1613,14 @@ def correlation(x,
 
     """
 
-    helper = LayerHelper("correlation", **locals())
-    output = helper.create_variable_for_type_inference(dtype=x.dtype)
     if paddle.fluid.in_dygraph_mode():
         attrs = ("pad_size", pad_size, "kernel_size", kernel_size,
                  "max_displacement", max_displacement, "stride1", stride1,
                  "stride2", stride2, "corr_type_multiply", corr_type_multiply)
-        output = getattr(core.ops, "correlation")(x, y, *attrs)
+        output = getattr(_C_ops, "correlation")(x, y, *attrs)
     else:
+        helper = LayerHelper("correlation", **locals())
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type="correlation",
             inputs={"Input1": x,

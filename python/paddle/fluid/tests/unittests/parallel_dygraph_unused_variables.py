@@ -37,7 +37,7 @@ class SimpleNet(Layer):
         self.embedding = Embedding(
             self.vocab_size,
             self.hidden_size,
-            sparse=True,
+            sparse=is_sparse,
             weight_attr=paddle.ParamAttr(
                 name='embedding_param',
                 initializer=paddle.nn.initializer.Uniform(
@@ -105,7 +105,7 @@ class TestSparseEmbeddingUnusedVars(TestParallelDyGraphRunnerBase):
             vocab_size=vocab_size,
             num_steps=num_steps,
             init_scale=init_scale,
-            is_sparse=True)
+            is_sparse=False)
 
         train_reader = paddle.batch(
             fake_sample_reader(), batch_size=batch_size, drop_last=True)

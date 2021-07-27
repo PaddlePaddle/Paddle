@@ -47,23 +47,13 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     float scale_o = ctx.Attr<float>("Scale_out");
     int axis = ctx.Attr<int>("axis");
 
-    bool is_inplaced = x->IsSharedBufferWith(*z);
-
-    std::string key = is_inplaced
-                          ? platform::CreateKey(dev_ctx, ctx.OutputName("Out"),
-                                                x->format(), y->format())
-                          : ctx.OutputName("Out");
-
     platform::BinaryMKLDNNHandler<T> handler(
         BINARY_OP, axis, dev_ctx, mkldnn_engine, ctx.GetPlace(), x, y, z,
-        scale_x, scale_y, scale_o, key);
+        scale_x, scale_y, scale_o, ctx.OutputName("Out"));
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
-
-    // For Inplace src and and dst are the same memory object
-    const auto dst_memory =
-        is_inplaced ? src_x_memory : handler.AcquireDstMemory(z);
+    const auto dst_memory = handler.AcquireDstMemory(z);
 
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
@@ -81,5 +71,20 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     z->set_format(platform::GetMKLDNNFormat(*dst_memory));
   }
 };
+
+inline std::vector<int64_t> CalculateBroadcastedDims(const Tensor* x,
+                                                     const Tensor* y) {
+  const auto src_tz = framework::vectorize(x->dims());
+  const auto dst_tz = framework::vectorize(y->dims());
+
+  size_t j = 0;
+  std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);
+  for (size_t i = 0; i < src_tz.size(); ++i) {
+    dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
+    if (j == dst_tz.size()) break;
+  }
+
+  return dst_tz_ex;
+}
 }  // namespace operators
 }  // namespace paddle

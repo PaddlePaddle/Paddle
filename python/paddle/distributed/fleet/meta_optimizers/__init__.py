@@ -1,4 +1,5 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +13,7 @@
 # See the License for the specific language governing permissions and
 
 from .amp_optimizer import AMPOptimizer
+from .asp_optimizer import ASPOptimizer
 from .recompute_optimizer import RecomputeOptimizer
 from .gradient_merge_optimizer import GradientMergeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
@@ -25,3 +27,7 @@ from .dgc_optimizer import DGCOptimizer
 from .lamb_optimizer import LambOptimizer
 from .fp16_allreduce_optimizer import FP16AllReduceOptimizer
 from .sharding_optimizer import ShardingOptimizer
+from .dygraph_optimizer import HybridParallelOptimizer
+from .dygraph_optimizer import HybridParallelGradScaler
+from .tensor_parallel_optimizer import TensorParallelOptimizer
+from .raw_program_optimizer import RawProgramOptimizer

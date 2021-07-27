@@ -27,6 +27,22 @@ add_subdirectory(fleet)
 add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
+
+proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
+cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto boost)
+
+FILE(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
+FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt 
+     "namespace { \n"
+     "const std::unordered_map<std::string, std::string> op_def_map =  { \n")
+foreach(OP_DEF_FILE ${OP_DEF_FILES})
+    FILE(READ ${OP_DEF_FILE}  OP_DEF_CONTENT)
+    get_filename_component(OP_NAME ${OP_DEF_FILE} NAME_WE)
+    FILE(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt
+    "{\"${OP_NAME}\",R\"(${OP_DEF_CONTENT})\"},\n")
+endforeach(OP_DEF_FILE)
+FILE(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt "{\"\",\"\"}};\n}")
+
 proto_library(heter_service_proto SRCS heter_service.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
@@ -94,14 +110,22 @@ cc_test(reader_test SRCS reader_test.cc DEPS reader)
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
-cc_library(var_type_traits SRCS var_type_traits DEPS lod_tensor selected_rows framework_proto)
+cc_library(var_type_traits SRCS var_type_traits.cc DEPS lod_tensor selected_rows framework_proto)
 if (WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
+set(BRPC_DEPS "")
+if(WITH_PSLIB OR WITH_PSCORE)
+    set(BRPC_DEPS brpc)
+    if(WITH_PSLIB_BRPC)
+        set(BRPC_DEPS pslib_brpc)
+    endif()
+endif()
+
 cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
-cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope)
+cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope ${BRPC_DEPS})
 cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
@@ -173,12 +197,16 @@ cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute shape_inference op_info operator glog version)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 
 cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
 cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
+
+cc_library(program_processing SRCS program_processing.cc DEPS boost proto_desc)
+cc_test(program_processing_test SRCS program_processing_test.cc DEPS proto_desc program_processing)
+
 if(WITH_GPU)
   nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 elseif(WITH_ROCM)
@@ -191,13 +219,15 @@ if(WITH_PYTHON)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
+  add_custom_target(fleet_proto_init ALL  
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py 
+  )
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto)
+  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto fleet_proto_init)
   if (NOT WIN32)
     add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-      COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
       COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -207,8 +237,6 @@ if(WITH_PYTHON)
     string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
     add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-	  COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-	  COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
           COMMAND copy /Y *.py ${proto_dstpath}
 	  COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -217,6 +245,12 @@ if(WITH_PYTHON)
   endif(NOT WIN32)
 endif()
 
+if (WITH_PSCORE)
+  add_custom_target(index_dataset_proto_init ALL DEPENDS fleet_proto_init index_dataset_py_proto
+    COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+    COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto.")
+endif(WITH_PSCORE)
+
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
@@ -224,28 +258,35 @@ cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
 cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry denormal device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
 
-cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
+cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector op_registry while_op_helper recurrent_op_helper conditional_block_op_helper)
 if(WITH_DISTRIBUTE)
   if(WITH_PSLIB)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
     dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
     heterxpu_trainer.cc
     data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-    heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+    ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
     lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
-    heter_service_proto pslib_brpc)
+    heter_service_proto ${BRPC_DEP})
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(DISTRIBUTE_COMPILE_FLAGS
+                "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    endif()
     set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(hetercpu_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(heterxpu_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   elseif(WITH_PSCORE)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-            heterbox_worker.cc heterbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+            downpour_worker.cc downpour_worker_opt.cc
             pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
@@ -259,28 +300,37 @@ if(WITH_DISTRIBUTE)
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-            heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+            ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
             pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
             graph_to_program_pass variable_helper timer monitor)
   endif()
 elseif(WITH_PSLIB)
+  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+      set(DISTRIBUTE_COMPILE_FLAGS
+              "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
+  set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(hetercpu_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(heterxpu_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-  heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+  ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
-  graph_to_program_pass variable_helper timer monitor pslib_brpc )
+  graph_to_program_pass variable_helper timer monitor ${BRPC_DEP})
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
-  heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+  ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
@@ -294,9 +344,15 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy bind_threaded_ssa_graph_executor collective_helper
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(executor_cache SRCS executor_cache.cc DEPS executor)
-cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
-    conditional_block_op executor)
+cc_library(executor_cache SRCS executor_cache.cc DEPS parallel_executor)
+if(WITH_PSCORE)
+    get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
+    cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
+        conditional_block_op executor ${RPC_DEPS})
+else()
+    cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
+        conditional_block_op executor)
+endif()
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
@@ -318,10 +374,10 @@ endif (NOT WIN32)
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
 
-cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper proto_desc)
+cc_library(op_compatible_info SRCS op_compatible_info.cc DEPS string_helper proto_desc)
 cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info proto_desc string_helper glog)
 
-cc_library(save_load_util SRCS save_load_util DEPS tensor scope layer)
+cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
@@ -351,10 +407,20 @@ configure_file(commit.h.in commit.h)
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
 
-cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+if(WITH_ROCM)
+  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+else()
+  cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+endif()
+
 cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_tensor)
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
-cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+
+if(WITH_ROCM)
+  hip_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+else()
+  cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+endif()
 
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
@@ -362,49 +428,4 @@ cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 
 if(WITH_TESTING AND TEST selected_rows_test)
   set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
-endif()
-
-##### 2.0 New custom op extension mechanism related #####
-
-# if not deps `layer`, will cause: undefined symbol: _ZN6paddle10imperative7VarBase9name_set_
-set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)
-
-set(PADDLE_CUSTOM_OP_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/custom_operator.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_tensor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_op_meta_info.cc
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc)
-set(PADDLE_CUSTOM_OP_SRCS ${PADDLE_CUSTOM_OP_SRCS} PARENT_SCOPE)
-
-cc_library(paddle_custom_op_shared
-    SHARED SRCS ${PADDLE_CUSTOM_OP_SRCS} DEPS ${PADDLE_CUSTOM_OP_MODULES})
-
-get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-set_target_properties(paddle_custom_op_shared PROPERTIES OUTPUT_NAME paddle_custom_op)
-target_link_libraries(paddle_custom_op_shared ${os_dependency_modules})
-
-if (LINUX)
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_custom_op.so
-      CACHE INTERNAL "Paddle custom op lib")
-endif()
-
-if (WIN32)
-  if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-    set(paddle_custom_op_lib_path ${CMAKE_CURRENT_BINARY_DIR})
-  else()
-    set(paddle_custom_op_lib_path ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE})
-  endif()
-  set(PADDLE_CUSTOM_OP_IMPORT_LIB
-      ${paddle_custom_op_lib_path}/paddle_custom_op.lib
-      CACHE INTERNAL "Paddle custom op import lib")
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${paddle_custom_op_lib_path}/paddle_custom_op.dll
-      CACHE INTERNAL "Paddle custom op dll")
-endif()
-
-if(APPLE)
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/paddle_custom_op.dylib
-      CACHE INTERNAL "Paddle custom op lib")
 endif()

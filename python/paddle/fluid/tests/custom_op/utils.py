@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import os
+import sys
 import six
 from distutils.sysconfig import get_python_lib
 from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
+
+IS_MAC = sys.platform.startswith('darwin')
 
 site_packages_path = get_python_lib()
 # Note(Aurelius84): We use `add_test` in Cmake to config how to run unittest in CI.

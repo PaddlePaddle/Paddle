@@ -45,6 +45,14 @@ static inline int SizeFromAxis(const int axis, DDim dims) {
   return size;
 }
 
+static inline int SizeOutAxis(const int axis, DDim dims) {
+  int size = 1;
+  for (int i = axis + 1; i < dims.size(); i++) {
+    size *= dims[i];
+  }
+  return size;
+}
+
 template <typename DeviceContext, typename T>
 class SoftmaxKernel : public framework::OpKernel<T> {
  public:
@@ -57,6 +65,9 @@ class SoftmaxKernel : public framework::OpKernel<T> {
 
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
+    if (Out->numel() == 0) {
+      return;
+    }
 
     const int n = SizeToAxis(axis, X->dims());
     const int d = SizeFromAxis(axis, X->dims());
@@ -89,6 +100,9 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
 
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
+    if (dX->numel() == 0) {
+      return;
+    }
 
     const int n = SizeToAxis(axis, dX->dims());
     const int d = SizeFromAxis(axis, dX->dims());

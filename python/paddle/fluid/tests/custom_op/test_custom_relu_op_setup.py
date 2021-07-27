@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,7 +34,10 @@ def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
 
     out.backward()
 
-    return out.numpy(), t.grad
+    if t.grad is None:
+        return out.numpy(), t.grad
+    else:
+        return out.numpy(), t.grad.numpy()
 
 
 def custom_relu_static(func,
@@ -142,7 +145,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             cmd = 'cd /d {} && python custom_relu_setup.py install'.format(
                 cur_dir)
         else:
-            cmd = 'cd {} && python custom_relu_setup.py install'.format(cur_dir)
+            cmd = 'cd {} && {} custom_relu_setup.py install'.format(
+                cur_dir, sys.executable)
         run_cmd(cmd)
 
         # NOTE(Aurelius84): Normally, it's no need to add following codes for users.
@@ -252,6 +256,35 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     np.array_equal(predict, predict_infer),
                     "custom op predict: {},\n custom op infer predict: {}".
                     format(predict, predict_infer))
+        paddle.disable_static()
+
+    def test_static_save_and_run_inference_predictor(self):
+        paddle.enable_static()
+        np_data = np.random.random((1, 1, 28, 28)).astype("float32")
+        np_label = np.random.random((1, 1)).astype("int64")
+        path_prefix = "custom_op_inference/custom_relu"
+        from paddle.inference import Config
+        from paddle.inference import create_predictor
+        for device in self.devices:
+            predict = custom_relu_static_inference(
+                self.custom_ops[0], device, np_data, np_label, path_prefix)
+            # load inference model
+            config = Config(path_prefix + ".pdmodel",
+                            path_prefix + ".pdiparams")
+            predictor = create_predictor(config)
+            input_tensor = predictor.get_input_handle(predictor.get_input_names(
+            )[0])
+            input_tensor.reshape(np_data.shape)
+            input_tensor.copy_from_cpu(np_data.copy())
+            predictor.run()
+            output_tensor = predictor.get_output_handle(
+                predictor.get_output_names()[0])
+            predict_infer = output_tensor.copy_to_cpu()
+            self.assertTrue(
+                np.isclose(
+                    predict, predict_infer, rtol=5e-5).any(),
+                "custom op predict: {},\n custom op infer predict: {}".format(
+                    predict, predict_infer))
         paddle.disable_static()
 
 

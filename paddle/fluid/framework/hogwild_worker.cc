@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <ctime>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
@@ -149,6 +150,9 @@ void HogwildWorker::TrainFilesWithProfiler() {
       VLOG(3) << "Going to run op " << op_name[i];
       if (!need_skip) {
         ops_[i]->Run(*thread_scope_, place_);
+#ifdef PADDLE_WITH_HETERPS
+        dev_ctx_->Wait();
+#endif
       }
       VLOG(3) << "Op " << op_name[i] << " Finished";
       timeline.Pause();
@@ -166,6 +170,16 @@ void HogwildWorker::TrainFilesWithProfiler() {
     total_inst += cur_batch;
     ++batch_cnt;
     PrintFetchVars();
+#ifdef PADDLE_WITH_HETERPS
+    dev_ctx_->Wait();
+    VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time
+            << " seconds, ins_num: " << total_inst;
+    for (size_t i = 0; i < op_name.size(); ++i) {
+      VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
+              << ", mean time: " << op_total_time[i] / total_inst
+              << "s, totol time:" << op_total_time[i] << "sec";
+    }
+#else
     if (thread_id_ == 0) {
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         for (size_t i = 0; i < ops_.size(); ++i) {
@@ -177,6 +191,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
         fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
       }
     }
+#endif
     thread_scope_->DropKids();
     timeline.Start();
   }
@@ -194,7 +209,10 @@ void HogwildWorker::TrainFilesWithProfiler() {
 
 void HogwildWorker::TrainFiles() {
   platform::SetNumThreads(1);
+  platform::Timer timeline;
+  timeline.Start();
 
+  int total_ins_num = 0;
   // how to accumulate fetched values here
   device_reader_->Start();
   int cur_batch;
@@ -212,9 +230,13 @@ void HogwildWorker::TrainFiles() {
       }
     }
 
+    total_ins_num += cur_batch;
     PrintFetchVars();
     thread_scope_->DropKids();
   }
+  timeline.Pause();
+  VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+          << " seconds, ins_num: " << total_ins_num;
 #if defined PADDLE_WITH_PSCORE
   if (thread_barrier_) {
     paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
@@ -226,14 +248,32 @@ void HogwildWorker::PrintFetchVars() {
   // call count
   batch_num_++;
   int batch_per_print = fetch_config_.print_period();
-  if (thread_id_ == 0) {
-    if (batch_num_ % batch_per_print == 0) {
-      int fetch_var_num = fetch_config_.fetch_var_names_size();
-      for (int i = 0; i < fetch_var_num; ++i) {
-        platform::PrintVar(thread_scope_, fetch_config_.fetch_var_names(i),
-                           fetch_config_.fetch_var_str_format(i));
+  int fetch_var_num = fetch_config_.fetch_var_names_size();
+
+  if (fetch_var_num == 0) {
+    return;
+  }
+
+  if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
+    time_t curtime;
+    time(&curtime);
+    char mbstr[80];
+    std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S",
+                  std::localtime(&curtime));
+
+    std::stringstream ss;
+    ss << "time: [" << mbstr << "], ";
+    ss << "batch: [" << batch_num_ << "], ";
+
+    for (int i = 0; i < fetch_var_num; ++i) {
+      platform::PrintVar(thread_scope_, fetch_config_.fetch_var_names(i),
+                         fetch_config_.fetch_var_str_format(i), &ss);
+      if (i < fetch_var_num - 1) {
+        ss << ", ";
       }
     }
+
+    std::cout << ss.str() << std::endl;
   }
 }
 

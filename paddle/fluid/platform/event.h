@@ -22,6 +22,7 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 namespace paddle {
 namespace platform {
@@ -40,7 +41,7 @@ class Event {
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
   Event(EventType type, std::string name, uint32_t thread_id,
-        EventRole role = EventRole::kOrdinary);
+        EventRole role = EventRole::kOrdinary, std::string attr = "none");
 
   const EventType& type() const;
   Event* parent() const { return parent_; }
@@ -50,7 +51,7 @@ class Event {
   uint32_t thread_id() const { return thread_id_; }
   void set_name(std::string name) { name_ = name; }
   void set_role(EventRole role) { role_ = role; }
-
+  std::string attr() const { return attr_; }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifndef PADDLE_WITH_CUPTI
   gpuEvent_t event() const { return event_; }
@@ -69,6 +70,7 @@ class Event {
   EventRole role_{};
   int64_t cpu_ns_;
   bool visited_status_{false};
+  std::string attr_;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUPTI
   int64_t gpu_ns_ = 0;
@@ -115,6 +117,99 @@ class MemEvent {
   int64_t thread_id_;
   std::string annotation_;
 };
+
+class CudaEvent {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+ public:
+  CudaEvent() {
+#ifdef PADDLE_WITH_HIP
+    hipEventCreateWithFlags(&event_, flags_);
+#else
+    cudaEventCreateWithFlags(&event_, flags_);
+#endif
+  }
+
+  CudaEvent(unsigned int flags) : flags_(flags) {
+#ifdef PADDLE_WITH_HIP
+    hipEventCreateWithFlags(&event_, flags_);
+#else
+    cudaEventCreateWithFlags(&event_, flags_);
+#endif
+  }
+
+  void Record(paddle::platform::stream::CUDAStream& stream) {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
+#endif
+  }
+
+  bool Query() {
+#ifdef PADDLE_WITH_HIP
+    gpuError_t err = hipEventQuery(event_);
+    if (err == hipSuccess) {
+      return true;
+    }
+    if (err == hipErrorNotReady) {
+      return false;
+    }
+#else
+    gpuError_t err = cudaEventQuery(event_);
+    if (err == cudaSuccess) {
+      return true;
+    }
+    if (err == cudaErrorNotReady) {
+      return false;
+    }
+#endif
+    PADDLE_ENFORCE_CUDA_SUCCESS(err);
+    return false;
+  }
+
+  void Synchronize() {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventSynchronize(event_));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventSynchronize(event_));
+#endif
+  }
+  gpuEvent_t GetRawCudaEvent() { return event_; }
+
+ private:
+#ifdef PADDLE_WITH_HIP
+  unsigned int flags_ = hipEventDefault;
+#else
+  unsigned int flags_ = cudaEventDefault;
+#endif
+  gpuEvent_t event_;
+#endif
+};
+
+static unsigned int get_cuda_flags(bool enable_timing, bool blocking,
+                                   bool interprocess) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+#ifdef PADDLE_WITH_HIP
+  unsigned int flags =
+      (blocking ? hipEventBlockingSync : hipEventDefault) |
+      (enable_timing ? hipEventDefault : hipEventDisableTiming) |
+      (interprocess ? hipEventInterprocess : hipEventDefault);
+  return flags;
+#else
+  unsigned int flags =
+      (blocking ? cudaEventBlockingSync : cudaEventDefault) |
+      (enable_timing ? cudaEventDefault : cudaEventDisableTiming) |
+      (interprocess ? cudaEventInterprocess : cudaEventDefault);
+  return flags;
+#endif
+
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Paddle is not compiled with CUDA. Cannot get the cuda event flags."));
+  return 0;
+#endif
+}
 
 }  // namespace platform
 }  // namespace paddle

@@ -15,9 +15,9 @@
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import six
 import unittest
 import paddle.nn as nn
+import os
 
 
 class SimpleFCLayer(nn.Layer):
@@ -49,10 +49,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
         self.feature_size = 3
         self.fc_size = 2
         self.layer = self._train_simple_net()
-        if six.PY2:
-            self.type_str = 'type'
-        else:
-            self.type_str = 'class'
+        self.type_str = 'class'
 
     def test_trace_err(self):
         with fluid.dygraph.guard():
@@ -71,7 +68,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                     self.layer, 3)
             self.assertEqual(
                 "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'int'>.".
-                format(self.type_str, self.type_str), str(e.exception))
+                format(self.type_str), str(e.exception))
             with self.assertRaises(TypeError) as e:
                 dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                     self.layer, [True, 1])
@@ -115,36 +112,41 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                 self.layer, [in_x])
 
-            dirname = './traced_layer_err_msg'
+            path = './traced_layer_err_msg'
             with self.assertRaises(TypeError) as e:
                 traced_layer.save_inference_model([0])
             self.assertEqual(
-                "The type of 'dirname' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'str'>, but received <{} 'list'>. ".
+                "The type of 'path' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'str'>, but received <{} 'list'>. ".
                 format(self.type_str, self.type_str), str(e.exception))
             with self.assertRaises(TypeError) as e:
-                traced_layer.save_inference_model(dirname, [0], [None])
+                traced_layer.save_inference_model(path, [0], [None])
             self.assertEqual(
                 "The type of 'each element of fetch' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'int'>, but received <{} 'NoneType'>. ".
                 format(self.type_str, self.type_str), str(e.exception))
             with self.assertRaises(TypeError) as e:
-                traced_layer.save_inference_model(dirname, [0], False)
+                traced_layer.save_inference_model(path, [0], False)
             self.assertEqual(
                 "The type of 'fetch' in fluid.dygraph.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. ".
                 format(self.type_str, self.type_str, self.type_str),
                 str(e.exception))
             with self.assertRaises(TypeError) as e:
-                traced_layer.save_inference_model(dirname, [None], [0])
+                traced_layer.save_inference_model(path, [None], [0])
             self.assertEqual(
                 "The type of 'each element of feed' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'int'>, but received <{} 'NoneType'>. ".
                 format(self.type_str, self.type_str), str(e.exception))
             with self.assertRaises(TypeError) as e:
-                traced_layer.save_inference_model(dirname, True, [0])
+                traced_layer.save_inference_model(path, True, [0])
             self.assertEqual(
                 "The type of 'feed' in fluid.dygraph.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. ".
                 format(self.type_str, self.type_str, self.type_str),
                 str(e.exception))
+            with self.assertRaises(ValueError) as e:
+                traced_layer.save_inference_model("")
+            self.assertEqual(
+                "The input path MUST be format of dirname/file_prefix [dirname\\file_prefix in Windows system], "
+                "but received file_prefix is empty string.", str(e.exception))
 
-            traced_layer.save_inference_model(dirname)
+            traced_layer.save_inference_model(path)
 
     def _train_simple_net(self):
         layer = None
@@ -172,6 +174,26 @@ class TestOutVarWithNoneErrMsg(unittest.TestCase):
         with self.assertRaises(TypeError):
             dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(model,
                                                                         [in_x])
+
+
+class TestTracedLayerSaveInferenceModel(unittest.TestCase):
+    """test save_inference_model will automaticlly create non-exist dir"""
+
+    def setUp(self):
+        self.save_path = "./nonexist_dir/fc"
+        import shutil
+        if os.path.exists(os.path.dirname(self.save_path)):
+            shutil.rmtree(os.path.dirname(self.save_path))
+
+    def test_mkdir_when_input_path_non_exist(self):
+        fc_layer = SimpleFCLayer(3, 4, 2)
+        input_var = paddle.to_tensor(np.random.random([4, 3]).astype('float32'))
+        with fluid.dygraph.guard():
+            dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+                fc_layer, inputs=[input_var])
+            self.assertFalse(os.path.exists(os.path.dirname(self.save_path)))
+            traced_layer.save_inference_model(self.save_path)
+            self.assertTrue(os.path.exists(os.path.dirname(self.save_path)))
 
 
 if __name__ == '__main__':

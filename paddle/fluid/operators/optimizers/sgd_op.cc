@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include <string>
+
+#include "paddle/fluid/operators/optimizers/sgd_op.h"
+
 namespace paddle {
 namespace operators {
 
@@ -127,4 +129,6 @@ REGISTER_OPERATOR(
     ops::SGDOpInferVarType);
 REGISTER_OP_CPU_KERNEL(
     sgd, ops::SGDOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SGDOpKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::bfloat16>,
     ops::SGDOpKernel<paddle::platform::CPUDeviceContext, double>);

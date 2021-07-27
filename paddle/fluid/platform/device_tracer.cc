@@ -511,7 +511,7 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         event->set_name(c->second->name());
-        event->set_detail_info(r.name);
+        event->set_detail_info(c->second->attr());
         find++;
       } else {
         VLOG(10) << "Missing Kernel Event: " + r.name;
@@ -587,6 +587,8 @@ class DeviceTracerImpl : public DeviceTracer {
               BOOST_GET_CONST(platform::CUDAPlace, r.place).GetDeviceId());
         } else if (platform::is_cuda_pinned_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
+        } else if (platform::is_npu_place(r.place)) {
+          event->set_place(proto::MemEvent::NPUPlace);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "The current place is not supported."));

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 #include <arpa/inet.h>
@@ -31,6 +31,10 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/collective_helper.h"
 #endif
 
 namespace paddle {
@@ -262,10 +266,17 @@ static int ConnectAddr(const std::string& ep, const char* head) {
   return sock;
 }
 
+// TODO(WANGXI): maybe need to unify this hard code
+#ifdef PADDLE_WITH_ASCEND_CL
+#define MAX_COMMUNIQUEID_LEN 4108
+#else
+#define MAX_COMMUNIQUEID_LEN 1024
+#endif
+
 template <typename CommUniqueId>
 static void RecvCommID(int conn, CommUniqueId* nccl_id) {
-  char buffer[1024] = {0};
-  static_assert(sizeof(CommUniqueId) <= 1024,
+  char buffer[MAX_COMMUNIQUEID_LEN] = {0};
+  static_assert(sizeof(CommUniqueId) <= MAX_COMMUNIQUEID_LEN,
                 "nccl id bytes must <= buffer size");
 
   CHECK_SYS_CALL(SocketRecv(conn, buffer, sizeof(CommUniqueId)),
@@ -275,7 +286,7 @@ static void RecvCommID(int conn, CommUniqueId* nccl_id) {
 
 template <typename CommUniqueId>
 static void SendCommID(int conn, CommUniqueId* nccl_id) {
-  char buffer[1024] = {0};
+  char buffer[MAX_COMMUNIQUEID_LEN] = {0};
   memcpy(buffer, nccl_id, sizeof(CommUniqueId));
 
   CHECK_SYS_CALL(SocketSend(conn, buffer, sizeof(CommUniqueId)),
@@ -360,6 +371,9 @@ INSTANT_TEMPLATE(ncclUniqueId)
 #endif
 #ifdef PADDLE_WITH_XPU_BKCL
 INSTANT_TEMPLATE(BKCLUniqueId)
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+INSTANT_TEMPLATE(HcclRootInfo)
 #endif
 }  // namespace platform
 }  // namespace paddle

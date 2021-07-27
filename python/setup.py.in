@@ -145,16 +145,23 @@ packages=['paddle',
           'paddle.distributed',
           'paddle.incubate',
           'paddle.incubate.optimizer',
+          'paddle.incubate.checkpoint',
+          'paddle.incubate.operators',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.meta_optimizers',
           'paddle.distributed.fleet.meta_optimizers.sharding',
+          'paddle.distributed.fleet.meta_optimizers.ascend',
+          'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
           'paddle.distributed.fleet.runtime',
           'paddle.distributed.fleet.dataset',
           'paddle.distributed.fleet.data_generator',
           'paddle.distributed.fleet.metrics',
           'paddle.distributed.fleet.proto',
           'paddle.distributed.fleet.utils',
+          'paddle.distributed.fleet.meta_parallel',
+          'paddle.distributed.fleet.meta_parallel.pp_utils',
+          'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -172,15 +179,14 @@ packages=['paddle',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.decoder',
           'paddle.fluid.contrib.quantize',
-          'paddle.fluid.contrib.reader',
           'paddle.fluid.contrib.slim',
           'paddle.fluid.contrib.slim.quantization',
           'paddle.fluid.contrib.slim.quantization.imperative',
-          'paddle.fluid.contrib.utils',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.contrib.mixed_precision',
           'paddle.fluid.contrib.mixed_precision.bf16',
           'paddle.fluid.contrib.layers',
+          'paddle.fluid.contrib.sparsity',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details',
           'paddle.fluid.incubate',
@@ -208,6 +214,7 @@ packages=['paddle',
           'paddle.nn',
           'paddle.nn.functional',
           'paddle.nn.layer',
+          'paddle.nn.quant',
           'paddle.nn.initializer',
           'paddle.nn.utils',
           'paddle.metric',
@@ -216,6 +223,9 @@ packages=['paddle',
           'paddle.static.amp',
           'paddle.tensor',
           'paddle.onnx',
+          'paddle.autograd',
+          'paddle.device',
+          'paddle.device.cuda',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -250,10 +260,14 @@ paddle_bins = ''
 
 if not '${WIN32}':
     paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
-package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + ('.so' if os.name != 'nt' else '.pyd')]}
+
+if os.name != 'nt':
+    package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.so']}
+else:
+    package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
+
 if '${HAS_NOAVX_CORE}' == 'ON':
     package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
-
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -336,30 +350,6 @@ if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
 
-# Only for lite xpu inference.
-if '${WITH_XPU}' == 'OFF' and '${XPU_SDK_ROOT}' != '':
-    xpu_api_lib = os.path.join('${XPU_SDK_ROOT}', 'XTDK/shlib/', 'libxpuapi.so')
-    xpu_rt_lib = os.path.join('${XPU_SDK_ROOT}', 'XTDK/runtime/shlib/', 'libxpurt.so')
-    if os.path.exists(xpu_api_lib):
-        shutil.copy(xpu_api_lib, libs_path)
-        package_data['paddle.libs']+=['libxpuapi.so']
-    if os.path.exists(xpu_rt_lib):
-        shutil.copy(xpu_rt_lib, libs_path)
-        package_data['paddle.libs']+=['libxpurt.so']
-
-
-### New custom op extension mechanism related ###
-# copy libpaddle_custom_op.so to libs on linux
-if sys.platform.startswith('linux'):
-    shutil.copy('${PADDLE_CUSTOM_OP_SHARED_LIB}', libs_path)
-    package_data['paddle.libs'] += ['libpaddle_custom_op.so']
-
-# copy paddle_custom_op.lib/paddle_custom_op.dll to libs on Windows
-if os.name == 'nt':
-    shutil.copy('${PADDLE_CUSTOM_OP_IMPORT_LIB}', libs_path)
-    shutil.copy('${PADDLE_CUSTOM_OP_SHARED_LIB}', libs_path)
-    package_data['paddle.libs'] += ['paddle_custom_op.lib', 'paddle_custom_op.dll']
-
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
@@ -393,21 +383,28 @@ if os.name == 'nt':
 elif sys.platform == 'darwin':
     ext_modules = []
 
-def find_files(pattern, root):
+def find_files(pattern, root, recursive=False):
     for dirpath, _, files in os.walk(root):
-      for filename in fnmatch.filter(files, pattern):
-          yield os.path.join(dirpath, filename)
+        for filename in fnmatch.filter(files, pattern):
+            yield os.path.join(dirpath, filename)
+        if not recursive:
+            break
 
 headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension')) +  # extension
-    list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')))  # boost
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension/include')) +  # extension
+    list(find_files('*', '${BOOST_INCLUDE_DIR}/boost', True)) + # boost
+    # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
+    # to `extension/incude`,
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
 if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
-    headers += list(find_files('*.pb', '${cudaerror_INCLUDE_DIR}'))   # errorMessage.pb for errormessage
+    # externalErrorMsg.pb for External Error message
+    headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
 
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
@@ -441,35 +438,18 @@ class InstallHeaders(Command):
                                    ('install_headers', 'install_dir'),
                                    ('force', 'force'))
 
-    def copy_data_type_headers(self):
-        # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
-        # to `extension/incude`,
-        data_type_headers = (['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex64.h'] + 
-                             ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex128.h'] + 
-                             ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
-
-        install_dir = os.path.join(self.install_dir, "paddle/fluid/extension/include")
-        if not os.path.exists(install_dir):
-            self.mkpath(install_dir)
-        for header in data_type_headers:
-            self.copy_file(header, install_dir)
-
     def mkdir_and_copy_file(self, header):
         if 'pb.h' in header:
             install_dir = re.sub('${PADDLE_BINARY_DIR}/', '', header)
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
+            if 'fluid' in install_dir:
+                install_dir = "paddle/extension/include/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            patterns = ['eigen3/src/extern_eigen3', 'boost/src/extern_boost',
-                       'dlpack/src/extern_dlpack/include',
-                       'install/protobuf/include',
-                       'install/gflags/include',
-                       'install/glog/include', 'install/xxhash/include',
-                       'install/mkldnn/include',
-                       'threadpool/src/extern_threadpool']
+            patterns = ['boost/src/extern_boost', 'install/mkldnn/include']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
@@ -485,7 +465,6 @@ class InstallHeaders(Command):
         for header in hdrs:
             (out, _) = self.mkdir_and_copy_file(header)
             self.outfiles.append(out)
-        self.copy_data_type_headers()
 
     def get_inputs(self):
         return self.distribution.headers or []
@@ -516,6 +495,12 @@ if sys.version_info > (3,0):
 else:
     with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r")as f:
         long_description = unicode(f.read(), 'UTF-8')
+
+# strip *.so to reduce package size
+if '${WITH_STRIP}' == 'ON':
+    command = 'find ${PADDLE_BINARY_DIR}/python/paddle -name "*.so" | xargs -i strip {}'
+    if os.system(command) != 0:
+        raise Exception("strip *.so failed, command: %s" % command)
 
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',

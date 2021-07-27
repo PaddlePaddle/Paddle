@@ -113,9 +113,14 @@ class PD_DLL_DECL Tensor {
   /// \brief Cast datatype from one to another
   Tensor cast(const DataType& target_type) const;
 
-#ifdef PADDLE_WITH_CUDA
+  /// \brief Check Tensor is initialized
+  bool is_initialized() const;
+
+#if defined(PADDLE_WITH_CUDA)
   /// \bref Get current stream of Tensor
   cudaStream_t stream() const;
+#elif defined(PADDLE_WITH_HIP)
+  hipStream_t stream() const;
 #endif
 
  private:

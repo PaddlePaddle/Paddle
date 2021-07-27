@@ -24,7 +24,6 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet.meta_optimizers.sharding as sharding
 
 import os
-import six
 import sys
 import pickle
 
@@ -59,7 +58,11 @@ def runtime_main():
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.sharding = True
-            strategy.sharding_configs = {"fuse_broadcast_MB": 0.2}
+            strategy.sharding_configs = {
+                "sharding_segment_strategy": "segment_broadcast_MB",
+                "segment_broadcast_MB": 0.2,
+                "sharding_degree": 2,
+            }
 
             optimizer = paddle.fluid.optimizer.Momentum(
                 learning_rate=0.01, momentum=0.9)
@@ -77,10 +80,7 @@ def runtime_main():
         exe, dirname, main_program=train_prog, filename=None)
 
     out_losses = []
-    if six.PY2:
-        print(pickle.dumps(out_losses))
-    else:
-        sys.stdout.buffer.write(pickle.dumps(out_losses))
+    sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 if __name__ == "__main__":

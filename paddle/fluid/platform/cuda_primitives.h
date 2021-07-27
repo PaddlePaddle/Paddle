@@ -20,8 +20,7 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 #include <stdio.h>
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -135,18 +134,18 @@ CUDA_ATOMIC_WRAPPER(Add, float16) {
 }
 #endif
 
-CUDA_ATOMIC_WRAPPER(Add, complex64) {
+CUDA_ATOMIC_WRAPPER(Add, complex<float>) {
   float *real = reinterpret_cast<float *>(address);
   float *imag = real + 1;
-  return complex64(CudaAtomicAdd(real, val.real),
-                   CudaAtomicAdd(imag, val.imag));
+  return complex<float>(CudaAtomicAdd(real, val.real),
+                        CudaAtomicAdd(imag, val.imag));
 }
 
-CUDA_ATOMIC_WRAPPER(Add, complex128) {
+CUDA_ATOMIC_WRAPPER(Add, complex<double>) {
   double *real = reinterpret_cast<double *>(address);
   double *imag = real + 1;
-  return complex128(CudaAtomicAdd(real, val.real),
-                    CudaAtomicAdd(imag, val.imag));
+  return complex<double>(CudaAtomicAdd(real, val.real),
+                         CudaAtomicAdd(imag, val.imag));
 }
 
 // For atomicMax
@@ -200,6 +199,8 @@ CUDA_ATOMIC_WRAPPER(Max, float) {
 
     old = atomicCAS(address_as_i, assumed, __float_as_int(val));
   } while (assumed != old);
+
+  return __int_as_float(old);
 }
 
 CUDA_ATOMIC_WRAPPER(Max, double) {
@@ -219,6 +220,8 @@ CUDA_ATOMIC_WRAPPER(Max, double) {
 
     old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val));
   } while (assumed != old);
+
+  return __longlong_as_double(old);
 }
 
 // For atomicMin
@@ -272,6 +275,8 @@ CUDA_ATOMIC_WRAPPER(Min, float) {
 
     old = atomicCAS(address_as_i, assumed, __float_as_int(val));
   } while (assumed != old);
+
+  return __int_as_float(old);
 }
 
 CUDA_ATOMIC_WRAPPER(Min, double) {
@@ -291,6 +296,8 @@ CUDA_ATOMIC_WRAPPER(Min, double) {
 
     old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val));
   } while (assumed != old);
+
+  return __longlong_as_double(old);
 }
 
 }  // namespace platform

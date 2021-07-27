@@ -83,6 +83,13 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
               "contains at most one scope."
               "NOTE: Do not use Scope directly because Scope output is not "
               "currently supported.");
+    AddOutput("DOut",
+              "(vector<LoDTensor>)"
+              "The output tensors for GRAD Tensors in RunProgram forward "
+              "operator, the forward operator contains GRAD Tensors when it "
+              "computes double grad.")
+        .AsDuplicable()
+        .AsDispensable();
     AddAttr<BlockDesc*>("global_block",
                         "(BlockDesc *)"
                         "The global block of executed program desc.");
@@ -96,6 +103,10 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training.")
         .SetDefault(false);
+    AddAttr<int64_t>(
+        "program_id",
+        "(int64_t)"
+        "The unique hash id used as cache key for ExecutorInfoCache.");
     AddComment(R"DOC(
 RunProgram operator.
 
@@ -154,6 +165,7 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput("Params", this->Input("Params"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetInput("OutScope", this->Output("OutScope"));
+    grad_op->SetInput("DOut", this->Output("DOut"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetOutput(framework::GradVarName("Params"),
                        this->InputGrad("Params"));

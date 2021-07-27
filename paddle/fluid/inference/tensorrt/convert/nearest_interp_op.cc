@@ -65,13 +65,6 @@ class NearestInterpolateOpConverter : public OpConverter {
       scale_w = scale;
     } else {
       // axis are different in static/dynamic mode
-      PADDLE_ENFORCE_GT(
-          out_h, 0, platform::errors::InvalidArgument(
-                        "out_h must be greater than 0 if scale is not set."));
-      PADDLE_ENFORCE_GT(
-          out_w, 0, platform::errors::InvalidArgument(
-                        "out_w must be greater than 0 if scale is not set."));
-
       bool with_dynamic = engine_->with_dynamic_shape();
 
       int h_axis = (data_layout == framework::DataLayout::kNCHW) + with_dynamic;

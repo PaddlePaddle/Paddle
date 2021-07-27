@@ -14,16 +14,48 @@
 
 import inspect
 import numpy as np
+import warnings
+import weakref
+import sys
 
 import paddle
 from .. import framework
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
+import paddle.utils.deprecated as deprecated
+
+
+class TensorHookRemoveHelper(object):
+    """
+    A helper class that for removing Tensor gradient's hook.
+    """
+
+    def __init__(self, tensor, hook_id):
+        self._tensor_ref = weakref.ref(tensor)
+        self._hook_id = hook_id
+
+    def remove(self):
+        """
+        Remove reference Tensor's hook.
+
+        Returns:
+            bool: Return True if removed successfully
+        """
+        tensor = self._tensor_ref()
+        if tensor is not None:
+            res = tensor._remove_grad_hook(self._hook_id)
+            if res is True:
+                return True
+            else:
+                warnings.warn(
+                    "The backward hook (ID: %d) of Tensor `%s` you want to remove does not exist or has been removed."
+                    % (self._hook_id, tensor.name), RuntimeWarning)
+        return False
 
 
 def monkey_patch_varbase():
@@ -55,7 +87,7 @@ def monkey_patch_varbase():
 
         """
 
-        # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph. 
+        # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery in dygraph only, should not let it getattr(self, attr, None).
         attr_not_need_keys = ['grad']
         if isinstance(self, ParamBase):
@@ -77,6 +109,8 @@ def monkey_patch_varbase():
 
         if to_parameter or isinstance(self, ParamBase):
             del attr_kwargs['persistable']
+            # NOTE(Aurelius84): All parameters should be placed into global block.
+            attr_kwargs['block'] = attr_kwargs['block'].program.global_block()
             static_var = Parameter(**attr_kwargs)
         else:
             static_var = Variable(**attr_kwargs)
@@ -133,7 +167,7 @@ def monkey_patch_varbase():
                                       framework._current_expected_place())
 
     @framework.dygraph_only
-    def backward(self, retain_graph=False):
+    def backward(self, grad_tensor=None, retain_graph=False):
         """
         Run backward of current Graph which starts from current Tensor.
 
@@ -142,17 +176,22 @@ def monkey_patch_varbase():
         You can clear gradient by ``Tensor.clear_grad()`` .
 
         Args:
+            grad_tensor(Tensor, optional): initial gradient values of the current Tensor. If `grad_tensor` is None, 
+            the initial gradient values of the current Tensor would be Tensor filled with 1.0; 
+            if `grad_tensor` is not None, it must have the same length as the current Tensor.
+            Teh default value is None.
+
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
                 :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
                 Defaults to False.
-
         Returns:
             NoneType: None
 
         Examples:
             .. code-block:: python
 
+                import paddle
                 x = paddle.to_tensor(5., stop_gradient=False)
                 for i in range(5):
                     y = paddle.pow(x, 4.0)
@@ -168,22 +207,52 @@ def monkey_patch_varbase():
                 print("{}".format(x.grad))
                 # 0.
 
+                grad_tensor=paddle.to_tensor(2.)
+                for i in range(5):
+                    y = paddle.pow(x, 4.0)
+                    y.backward(grad_tensor)
+                    print("{}: {}".format(i, x.grad))
+                # 0: [1000.]
+                # 1: [2000.]
+                # 2: [3000.]
+                # 3: [4000.]
+                # 4: [5000.]
+
         """
         if framework.in_dygraph_mode():
+            if grad_tensor is not None:
+                assert isinstance(
+                    grad_tensor, paddle.
+                    Tensor), "The type of grad_tensot must be paddle.Tensor"
+                assert grad_tensor.shape == self.shape, \
+                    "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
+                    grad_tensor.name, grad_tensor.shape, self.name, self.shape)
+
             if paddle.is_compiled_with_xpu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
-                scaled_loss._run_backward(framework._dygraph_tracer(),
-                                          retain_graph)
+                core.dygraph_run_backward([scaled_loss], [grad_tensor],
+                                          retain_graph,
+                                          framework._dygraph_tracer())
             else:
-                self._run_backward(framework._dygraph_tracer(), retain_graph)
+                core.dygraph_run_backward([self], [grad_tensor], retain_graph,
+                                          framework._dygraph_tracer())
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
 
     @framework.dygraph_only
+    @deprecated(
+        since="2.1.0",
+        level=1,
+        reason="Please use tensor.grad, which returns the tensor value of the gradient."
+    )
     def gradient(self):
         """
+        .. warning::
+          This API will be deprecated in the future, it is recommended to use
+          :code:`x.grad` which returns the tensor value of the gradient.
+
         Get the Gradient of Current Tensor.
 
         Returns:
@@ -197,7 +266,7 @@ def monkey_patch_varbase():
                 x = paddle.to_tensor(5., stop_gradient=False)
                 y = paddle.pow(x, 4.0)
                 y.backward()
-                print("grad of x: {}".format(x.grad))
+                print("grad of x: {}".format(x.gradient()))
                 # [500.]
 
         """
@@ -211,19 +280,156 @@ def monkey_patch_varbase():
         else:
             return np.array(new_ivar.value().get_tensor())
 
+    @framework.dygraph_only
+    def register_hook(self, hook):
+        """
+        Registers a backward hook for current Tensor.
+
+        The hook will be called every time the gradient Tensor of current Tensor is computed.
+
+        The hook should not modify the input gradient Tensor, but it can optionally return
+        a new gradient Tensor which will be used in place of current Tensor's gradient.
+
+        The hook should have the following signature:
+
+            hook(grad) -> Tensor or None
+
+        Args:
+            hook(function): A backward hook to be registered for Tensor.grad
+
+        Returns:
+            TensorHookRemoveHelper: A helper object that can be used to remove the registered hook by calling `remove()` method.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                # hook function return None
+                def print_hook_fn(grad):
+                    print(grad)
+
+                # hook function return Tensor
+                def double_hook_fn(grad):
+                    grad = grad * 2
+                    return grad
+
+                x = paddle.to_tensor([0., 1., 2., 3.], stop_gradient=False)
+                y = paddle.to_tensor([4., 5., 6., 7.], stop_gradient=False)
+                z = paddle.to_tensor([1., 2., 3., 4.])
+
+                # one Tensor can register multiple hooks
+                h = x.register_hook(print_hook_fn)
+                x.register_hook(double_hook_fn)
+
+                w = x + y
+                # register hook by lambda function
+                w.register_hook(lambda grad: grad * 2)
+
+                o = z.matmul(w)
+                o.backward()
+                # print_hook_fn print content in backward
+                # Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #        [2., 4., 6., 8.])
+
+                print("w.grad:", w.grad) # w.grad: [1. 2. 3. 4.]
+                print("x.grad:", x.grad) # x.grad: [ 4.  8. 12. 16.]
+                print("y.grad:", y.grad) # y.grad: [2. 4. 6. 8.]
+
+                # remove hook
+                h.remove()
+        """
+        if self.stop_gradient is True:
+            raise RuntimeError(
+                "Cannot register hook on a tensor that stop gradient.")
+
+        hook_id = self._register_grad_hook(hook)
+        helper = TensorHookRemoveHelper(self, hook_id)
+        return helper
+
     @property
     def grad(self):
         """
-        The alias of gradient().
-        """
+        .. warning::
+          This API will return the tensor value of the gradient. If you want 
+          to get the numpy value of the gradient, you can use :code:`x.grad.numpy()`.
 
-        return self.gradient()
+        Get the Gradient of Current Tensor.
+
+        Returns:
+            Tensor: the gradient of current Tensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                x = paddle.to_tensor(5., stop_gradient=False)
+                y = paddle.pow(x, 4.0)
+                y.backward()
+                print("grad of x: {}".format(x.grad))
+                # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False, [500.])
+
+        """
+        msg = 'tensor.grad will return the tensor value of the gradient.' \
+            ' This is an incompatible upgrade for tensor.grad API. ' \
+            ' It\'s return type changes from numpy.ndarray in version 2.0 to paddle.Tensor in version 2.1.0. ' \
+            ' If you want to get the numpy value of the gradient, you can use :code:`x.grad.numpy()`'
+        warning_msg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
+        # ensure ANSI escape sequences print correctly in cmd and powershell
+        if sys.platform.lower() == 'win32':
+            warning_msg = "\nWarning:\n%s " % (msg)
+        warnings.warn(warning_msg)
+        return self._grad_ivar()
 
     def clear_grad(self):
         """
         The alias of clear_gradient().
         """
         self.clear_gradient()
+
+    def item(self, *args):
+        """
+        Convert one element Tensor to a Python scalar.
+
+        Args:
+            *args(int): The input coordinates. If it's single int, the data in the corresponding order of flattened Tensor will be returned.
+                Default: None, and it must be in the case where Tensor has only one element.
+
+        Returns(Python scalar): A Python scalar, whose dtype is corresponds to the dtype of Tensor.
+
+        Raises:
+            ValueError: If the Tensor has more than one element, there must be coordinates.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                x = paddle.to_tensor(1)
+                print(x.item())             #1
+                print(type(x.item()))       #<class 'int'>
+
+                x = paddle.to_tensor(1.0)
+                print(x.item())             #1.0
+                print(type(x.item()))       #<class 'float'>
+
+                x = paddle.to_tensor(True)
+                print(x.item())             #True
+                print(type(x.item()))       #<class 'bool'>
+
+                x = paddle.to_tensor(1+1j)
+                print(x.item())             #(1+1j)
+                print(type(x.item()))       #<class 'complex'>
+
+                x = paddle.to_tensor([[1.1, 2.2, 3.3]])
+                print(x.item(2))            #3.3
+                print(x.item(0, 2))         #3.3
+
+                x = paddle.to_tensor([1, 2])
+                x.item()               #ValueError: only one element tensor can be converted to Python scalar when no input coordinates.
+        """
+        return self._getitem_from_offset(*args).item()
 
     @property
     def inplace_version(self):
@@ -311,14 +517,67 @@ def monkey_patch_varbase():
     def __bool__(self):
         return self.__nonzero__()
 
+    def __array__(self, dtype=None):
+        """
+        Returns a numpy array shows the value of current Tensor.
+        
+        Returns:
+            ndarray: The numpy value of current Tensor.
+
+        Returns type:
+            ndarray: dtype is same as current Tensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import numpy as np
+                x = paddle.randn([2, 2])
+                x_array = np.array(x)
+
+                print(type(x_array))      #<class 'numpy.ndarray'>
+                print(x_array.shape)      #(2, 2)
+        """
+        array = self.numpy()
+        if dtype:
+            array = array.astype(dtype)
+        return array
+
+    def __getitem__(self, item):
+        def contain_tensor(item):
+            if not isinstance(item, tuple):
+                item = [item]
+
+            for slice_item in item:
+                if isinstance(slice_item, slice):
+                    if isinstance(slice_item.start, Variable)  \
+                        or isinstance(slice_item.stop, Variable) \
+                           or isinstance(slice_item.step, Variable):
+                        return True
+                else:
+                    if isinstance(slice_item, Variable):
+                        return True
+            return False
+
+        if contain_tensor(item):
+            # 1. Call _getitem_impl_ when item contains tensor.
+            # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
+            return _getitem_impl_(self, item)
+
+        else:
+            # 2. Call c++ func getitem_index_not_tensor to speedup.
+            return self._getitem_index_not_tensor(item)
+
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
         ("block", block), ("backward", backward), ("clear_grad", clear_grad),
         ("inplace_version", inplace_version), ("grad", grad),
-        ("gradient", gradient), ("__str__", __str__), ("__repr__", __str__),
+        ("gradient", gradient), ("register_hook", register_hook),
+        ("__str__", __str__), ("__repr__", __str__),
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
-        ("__name__", "Tensor")):
+        ("__name__", "Tensor"), ("__array__", __array__),
+        ("__getitem__", __getitem__), ("item", item)):
         setattr(core.VarBase, method_name, method)
 
     # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.

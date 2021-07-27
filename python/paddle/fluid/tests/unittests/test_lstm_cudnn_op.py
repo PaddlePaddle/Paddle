@@ -390,8 +390,10 @@ class TestCUDNNLstmOp(OpTest):
 
     def setUp(self):
         self.op_type = "cudnn_lstm"
-        self.dtype = np.float64
-        self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.sequence_length = None if core.is_compiled_with_rocm(
+        ) else np.array(
+            [12, 11, 10, 9, 8], dtype=np.int32)
         self.num_layers = 1
         self.set_attrs()
 
@@ -447,6 +449,13 @@ class TestCUDNNLstmOp(OpTest):
                            hidden_size)).astype(self.dtype)
         state_out = np.ndarray((300)).astype("uint8")
 
+        if core.is_compiled_with_rocm():
+            for i in range(len(flat_w)):
+                w = np.split(flat_w[i][1], 4, 0)
+                w = [w[0], w[1], w[3], w[2]]
+                w = np.concatenate(w)
+                flat_w[i] = (flat_w[i][0], w)
+
         self.inputs = {
             'Input': input,
             'WeightList': flat_w,
@@ -454,6 +463,13 @@ class TestCUDNNLstmOp(OpTest):
             'InitC': init_c,
             'SequenceLength': self.sequence_length
         }
+        if self.sequence_length is None:
+            self.inputs = {
+                'Input': input,
+                'WeightList': flat_w,
+                'InitH': init_h,
+                'InitC': init_c,
+            }
         self.attrs = {
             'dropout_prob': 0.0,
             'is_bidirec': False,
@@ -474,8 +490,12 @@ class TestCUDNNLstmOp(OpTest):
 
     def test_output_with_place(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(
-            place, no_check_set=['Reserve', 'StateOut'])
+        if core.is_compiled_with_rocm():
+            self.check_output_with_place(
+                place, atol=1e-5, no_check_set=['Reserve', 'StateOut'])
+        else:
+            self.check_output_with_place(
+                place, no_check_set=['Reserve', 'StateOut'])
 
     def test_grad_with_place(self):
         place = core.CUDAPlace(0)
@@ -496,14 +516,13 @@ class TestCUDNNlstmAPI(unittest.TestCase):
         hidden_size = 20
         dropout_prob = 0.0
         num_layers = 1
+        dtype = 'float32' if core.is_compiled_with_rocm() else 'float64'
         input = fluid.data(
-            name='input',
-            shape=[seq_len, batch_size, hidden_size],
-            dtype='float64')
+            name='input', shape=[seq_len, batch_size, hidden_size], dtype=dtype)
         init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      'float64', 0.0)
+                                      dtype, 0.0)
         init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      'float64', 0.0)
+                                      dtype, 0.0)
         rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
                                               hidden_size, num_layers,
                                               dropout_prob, False)
@@ -526,14 +545,13 @@ class TestCUDNNlstmAPI(unittest.TestCase):
         hidden_size = 20
         dropout_prob = 0.0
         num_layers = 2
+        dtype = 'float32' if core.is_compiled_with_rocm() else 'float64'
         input = fluid.data(
-            name='input',
-            shape=[seq_len, batch_size, hidden_size],
-            dtype='float64')
+            name='input', shape=[seq_len, batch_size, hidden_size], dtype=dtype)
         init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      'float64', 0.0)
+                                      dtype, 0.0)
         init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      'float64', 0.0)
+                                      dtype, 0.0)
         rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
                                               hidden_size, num_layers,
                                               dropout_prob, False, True)
@@ -541,7 +559,7 @@ class TestCUDNNlstmAPI(unittest.TestCase):
         exe.run(fluid.default_startup_program())
         input_i = np.random.uniform(
             low=-0.1, high=0.1, size=(seq_len, batch_size,
-                                      hidden_size)).astype("float64")
+                                      hidden_size)).astype(dtype)
         out = exe.run(fluid.default_main_program(),
                       feed={'input': input_i},
                       fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])
