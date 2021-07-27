@@ -86,13 +86,9 @@ void BindProgramDesc(pybind11::module *m) {
 }
 
 void BindProcessMeshDesc(pybind11::module *m) {
-  pybind11::class_<pd::ProcessMeshDesc>(*m, "ProcessMesh", "")
-      .def("__init__",
-           [](pd::ProcessMeshDesc &self, const std::vector<int32_t> &topology,
-              const std::vector<int32_t> &process_group, int32_t parent_id) {
-             new (&self)
-                 pd::ProcessMeshDesc(topology, process_group, parent_id);
-           })
+  pybind11::class_<pd::ProcessMeshDesc>(*m, "ProcessMeshDesc", "")
+      .def(pybind11::init<const std::vector<int32_t> &,
+                          const std::vector<int32_t> &, int32_t>())
       .def_property_readonly("id", &pd::ProcessMeshDesc::ID)
       .def_property_readonly("parent", &pd::ProcessMeshDesc::Parent)
       .def("topology", &pd::ProcessMeshDesc::Topology)
