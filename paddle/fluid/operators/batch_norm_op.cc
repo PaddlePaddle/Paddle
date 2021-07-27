@@ -725,6 +725,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
+
         auto px_data = x->data<T>();
         auto d_y_data = d_y->data<T>();
         auto dy_sum_data = dy_sum.mutable_data<T>(ctx.GetPlace());
