@@ -22,10 +22,5 @@ constexpr int kRootBlockIndex = 0;
 // The Parent Index of root Block, this block does not exist.
 constexpr int kNoneBlockIndex = -1;
 
-// The Index of first ProcessMesh. also called root process mesh.
-constexpr int kRootProcessMeshIndex = 0;
-// The Parent Index of root Process Mesh, this process mesh does not exist.
-constexpr int kNoneProcessMeshIndex = -1;
-
 }  // namespace framework
 }  // namespace paddle
