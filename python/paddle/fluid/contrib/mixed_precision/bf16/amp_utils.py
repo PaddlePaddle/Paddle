@@ -265,11 +265,15 @@ def cast_initializers_to_bf16(startup_prog,
 
             if change_op and are_post_ops_bf16(op_post_ops, keep_fp32_ops):
                 for out_var in op_out_vars:
+                    # FP32 exceptions: variables which should be of fp32 data type.
+                    if 'learning_rate' in out_var.name:
+                        change_op = False
+                        continue
                     if out_var.dtype == core.VarDesc.VarType.FP32:
                         out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
                     if to_bf16_var_names is not None and out_var.name in to_bf16_var_names:
                         to_bf16_var_names.remove(out_var.name)
-                if op.has_attr('dtype') and op.attr(
+                if change_op and op.has_attr('dtype') and op.attr(
                         'dtype') == core.VarDesc.VarType.FP32:
                     op._set_attr('dtype', core.VarDesc.VarType.BF16)
 
