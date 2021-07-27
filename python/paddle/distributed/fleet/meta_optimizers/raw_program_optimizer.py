@@ -271,7 +271,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
             # nothing needs to be allreduced
             return
 
-        self.vars = collections.OrderedDict()
+        fused_vars = []
         index, pos, offset = 0, 0, 0
         start, end = record_idx[index]
         for idx, op in reversed(ops):
@@ -288,8 +288,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         dtype=done_output_var[0].dtype,
                         persistable=False,
                         stop_gradient=True)
-                    self.vars['FusedOutput_{}'.format(done_output_var[0]
-                                                      .name)] = tmp_var
+                    fused_vars.append(tmp_var)
 
                     block._insert_op(
                         idx + id_,
@@ -307,11 +306,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         })
                     pos += 1
 
-                for id_ in range(len(done_output_vars)):
-                    x = self.vars['FusedOutput_{}'.format(done_output_vars[id_][
-                        0].name)]
-                    out = x
-
+                for x in fused_vars:
                     # NOTE: there still some optimize space if use EVENT instead of sync
                     if not self.calc_comm_same_stream:
                         # need sync if the calc and comm stream are not the same
@@ -319,7 +314,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                             end + id_ + pos + 1,
                             type='c_sync_calc_stream',
                             inputs={'X': x},
-                            outputs={'Out': out},
+                            outputs={'Out': x},
                             attrs={OP_ROLE_KEY: OpRole.Backward})
 
                     block._insert_op(
@@ -327,7 +322,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         if self.calc_comm_same_stream else end + id_ + pos + 2,
                         type='c_allreduce_sum',
                         inputs={'X': x},
-                        outputs={'Out': out},
+                        outputs={'Out': x},
                         attrs={
                             'ring_id': ring_id,
                             'use_calc_stream': self.calc_comm_same_stream,
@@ -343,15 +338,16 @@ class RawProgramOptimizer(MetaOptimizerBase):
             # need sync if the calc and comm stream are not the same
             for idx, op in enumerate(block.ops):
                 if is_optimizer_op(op):
-                    block._insert_op(
-                        idx,
-                        type='c_sync_comm_stream',
-                        inputs={'X': block.create_var()},
-                        outputs={'Out': block.create_var()},
-                        attrs={
-                            'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
+                    for tmp_var in fused_vars:
+                        block._insert_op(
+                            idx,
+                            type='c_sync_comm_stream',
+                            inputs={'X': tmp_var},
+                            outputs={'Out': tmp_var},
+                            attrs={
+                                'ring_id': ring_id,
+                                OP_ROLE_KEY: OpRole.Backward
+                            })
                     break
 
     # Integrate grads of the same type to form a combination.
