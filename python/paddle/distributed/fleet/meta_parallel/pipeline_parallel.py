@@ -23,26 +23,10 @@ from .parallel_layers.pp_layers import PipelineLayer
 from ..utils.hybrid_parallel_util import broadcast_mp_parameters
 from ..utils.hybrid_parallel_util import broadcast_dp_parameters
 from ..utils.log_util import logger
-from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
+from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer, HybridParallelGradScaler
 from .pp_utils import p2p_communication as p2p
 
 __all__ = []
-
-
-class SendRecvMeta:
-    def __init__(self):
-        # next meta
-        self.next_shape_message = None
-        self.next_dtype_messgae = None
-
-        self.prev_shape_message = None
-        self.prev_dtype_message = None
-
-    def ready_for_next(self):
-        return self.next_shape_message is not None and self.next_dtype_messgae is not None
-
-    def ready_for_prev(self):
-        return self.next_shape_message is not None and self.next_dtype_messgae is not None
 
 
 class PipelineParallel(MetaParallelBase):
@@ -58,8 +42,6 @@ class PipelineParallel(MetaParallelBase):
         self.is_pipe_partitioned = self.use_model_parallel
 
         self.total_loss = None
-
-        self.send_recv_meta = SendRecvMeta()
 
         self.micro_batch_size = self._strategy.pipeline_configs[
             'micro_batch_size']
@@ -96,8 +78,9 @@ class PipelineParallel(MetaParallelBase):
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         assert isinstance(optimizer, HybridParallelOptimizer), (
             'optimizer should be HybridParallelOptimizer subclass.')
-        assert isinstance(scaler, (None, HybridParallelGradScaler)), (
-            'scaler should be HybridParallelGradScaler subclass or None.')
+        if scaler is not None:
+            assert isinstance(scaler, HybridParallelGradScaler), (
+                'scaler should be HybridParallelGradScaler subclass or None.')
         assert fluid.framework._dygraph_tracer()._has_grad, (
             'Please enable the generation of gradients.')
 
