@@ -18,8 +18,6 @@ namespace paddle {
 namespace framework {
 
 int32_t ProcessMeshDesc::next_id = -1;
-// std::shared_ptr<ProcessMeshDescMap> ProcessMeshDescMap::s_instance_ =
-// nullptr;
 
 ProcessMeshDesc::ProcessMeshDesc(const std::vector<int32_t> &topo,
                                  const std::vector<int32_t> &process_group,

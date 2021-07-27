@@ -58,6 +58,7 @@ class ProcessMeshDescMap {
 
  private:
   ProcessMeshDescMap() = default;
+  // Use raw pointer to avoid double free
   std::unordered_map<int32_t, ProcessMeshDesc*> map_;
   DISABLE_COPY_AND_ASSIGN(ProcessMeshDescMap);
 };
