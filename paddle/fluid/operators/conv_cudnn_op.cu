@@ -75,10 +75,15 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
-    const std::string data_format = ctx.Attr<std::string>("data_format");
-    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-
+    std::string data_format = ctx.Attr<std::string>("data_format");
     auto dtype = platform::CudnnDataType<T>::type;
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    std::string yaml_format = data_format;]
+    if (dtype == CUDNN_DATA_BFLOAT16) {
+      data_format = "NHWC";
+    }
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
+    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
 #ifdef PADDLE_WITH_HIP
     // HIP MIOPEN ONLY SUPPORT NCHW format
@@ -88,6 +93,11 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     // with FP16 in NHWC data format.
     const bool compute_in_nhwc =
         dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    if (dtype == CUDNN_DATA_BFLOAT16) {
+      compute_in_nhwc = true;
+    }
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
     // We will only do data format conversion from NHWC to NCHW.
     // cudnn will convert NCHW to NHWC automatically on Tensor Core.
     auto compute_format =
@@ -113,8 +123,24 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                                                            &transformed_output);
 
     } else {
+#if CUDNN_VERSION_MIN(8, 1, 0)
+      // transfor to channel last for input&output
+      if (dtype == CUDNN_DATA_BFLOAT16 && yaml_format == "NCHW") {
+        VLOG(3) << "Transform input & output from NCWH to NHWC.";
+        ResizeToChannelLast<platform::CUDADeviceContext, T>(
+            ctx, input, &transformed_input_channel);
+        TransToChannelLast<platform::CUDADeviceContext, T>(
+            ctx, input, &transformed_input_channel);
+        ResizeToChannelLast<platform::CUDADeviceContext, T>(
+            ctx, output, &transformed_output);
+      } else {
+        transformed_input_channel.ShareDataWith(*input);
+        transformed_output.ShareDataWith(*output);
+      }
+#else
       transformed_input_channel.ShareDataWith(*input);
       transformed_output.ShareDataWith(*output);
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
     }
     if (compute_format == DataLayout::kNHWC) {
       VLOG(3) << "Transform filter tensor from NCHW to NHWC.";
@@ -394,10 +420,15 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                           "Cann't set exhaustive_search True and "
                           "FLAGS_cudnn_deterministic True at same time."));
 
-    const std::string data_format = ctx.Attr<std::string>("data_format");
-    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-
+    std::string data_format = ctx.Attr<std::string>("data_format");
     auto dtype = platform::CudnnDataType<T>::type;
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    std::string yaml_format = data_format;
+    if (dtype == CUDNN_DATA_BFLOAT16) {
+      data_format = "NHWC";
+    }
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
+    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
 #ifdef PADDLE_WITH_HIP
     // HIP MIOPEN ONLY SUPPORT NCHW format
@@ -405,6 +436,11 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 #else
     const bool compute_in_nhwc =
         dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    if (dtype == CUDNN_DATA_BFLOAT16) {
+      compute_in_nhwc = true;
+    }
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
     auto compute_format =
         compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
 #endif
@@ -443,11 +479,44 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
         }
       }
     } else {
+#if CUDNN_VERSION_MIN(8, 1, 0)
+      // transfor to channel last as filter did
+      if (dtype == CUDNN_DATA_BFLOAT16 && yaml_format == "NCHW") {
+        VLOG(3) << "Transform input, output_grad, input_grad and tensor from "
+                   "NCHW to NHWC.";
+        // input & output_grad
+        ResizeToChannelLast<platform::CUDADeviceContext, T>(
+            ctx, input, &transformed_input_channel);
+        TransToChannelLast<platform::CUDADeviceContext, T>(
+            ctx, input, &transformed_input_channel);
+
+        ResizeToChannelLast<platform::CUDADeviceContext, T>(
+            ctx, output_grad, &transformed_output_grad_channel);
+        TransToChannelLast<platform::CUDADeviceContext, T>(
+            ctx, output_grad, &transformed_output_grad_channel);
+        // input_grad
+        if (input_grad) {
+          ResizeToChannelLast<platform::CUDADeviceContext, T>(
+              ctx, input_grad, &transformed_input_grad_channel);
+          if (ctx.Attr<bool>("use_addto")) {
+            TransToChannelLast<platform::CUDADeviceContext, T>(
+                ctx, input_grad, &transformed_input_grad_channel);
+          }
+        }
+      } else {
+        transformed_input_channel.ShareDataWith(*input);
+        transformed_output_grad_channel.ShareDataWith(*output_grad);
+        if (input_grad) {
+          transformed_input_grad_channel.ShareDataWith(*input_grad);
+        }
+      }
+#else
       transformed_input_channel.ShareDataWith(*input);
       transformed_output_grad_channel.ShareDataWith(*output_grad);
       if (input_grad) {
         transformed_input_grad_channel.ShareDataWith(*input_grad);
       }
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
     }
 
     if (compute_format == DataLayout::kNHWC) {
