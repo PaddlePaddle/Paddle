@@ -36,6 +36,10 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
     float _power = 1.0;
     VLOG(4) << "scale:" << scale << ", bias:" << bias
             << " ,bias_after_scale:" << bias_after_scale;
+    if (ctx.HasInput("ScaleTensor")) {
+      auto* scale_tensor = ctx.Input<framework::Tensor>("ScaleTensor");
+      scale = GetAttrFromTensor<T>(scale_tensor);
+    }
     if (bias_after_scale) {
       out->mutable_data<T>(ctx.GetPlace());
       const auto& runner =
