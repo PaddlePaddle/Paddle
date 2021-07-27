@@ -413,7 +413,6 @@ list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable test_cumsum_op temporaily
 # list(REMOVE_ITEM TEST_OPS test_cumsum_op)
-list(REMOVE_ITEM TEST_OPS test_dataloader_dataset)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
