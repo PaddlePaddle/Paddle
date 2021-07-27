@@ -360,7 +360,8 @@ class AmpScaler(object):
 
     def state_dict(self):
         """
-        Returns state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
+        Returns the state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
+
         Reurns:
             A dict of scaler includes:
             init_loss_scaling (float, optional): The initial loss scaling factor.
@@ -380,6 +381,7 @@ class AmpScaler(object):
     def load_state_dict(self, state_dict):
         """
         Loads the scaler state.
+        
         Args:
            state_dict(dict): scaler state.  Should be an object returned from a call to `AmpScaler.state_dict()`.
         """

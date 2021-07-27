@@ -436,6 +436,7 @@ class GradScaler(AmpScaler):
     def state_dict(self):
         """
         Returns the state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
+
         Reurns:
             A dict of scaler includes:
             init_loss_scaling (float, optional): The initial loss scaling factor.
@@ -445,8 +446,11 @@ class GradScaler(AmpScaler):
             decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n accumulated steps with nan or inf gradients.
         
         Examples:
+
             .. code-block:: python
+
                 import paddle
+
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
                                                incr_ratio=2.0,
@@ -462,12 +466,16 @@ class GradScaler(AmpScaler):
     def load_state_dict(self, state_dict):
         """
         Loads the scaler state.
+        
         Args:
            state_dict(dict): scaler state.  Should be an object returned from a call to `AmpScaler.state_dict()`.
                 
         Examples:
+
             .. code-block:: python
+
                 import paddle
+
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
                                                incr_ratio=2.0,
