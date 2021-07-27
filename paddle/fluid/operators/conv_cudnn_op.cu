@@ -78,7 +78,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     std::string data_format = ctx.Attr<std::string>("data_format");
     auto dtype = platform::CudnnDataType<T>::type;
 #if CUDNN_VERSION_MIN(8, 1, 0)
-    std::string yaml_format = data_format;]
+    std::string yaml_format = data_format;
     if (dtype == CUDNN_DATA_BFLOAT16) {
       data_format = "NHWC";
     }
