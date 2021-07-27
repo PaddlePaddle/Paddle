@@ -723,11 +723,9 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                              mean_arr(nc % C);
           }
         }
-
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
-        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
-                                 sample_size, N * C);
+
         auto px_data = x->data<T>();
         auto d_y_data = d_y->data<T>();
         auto dy_sum_data = dy_sum.mutable_data<T>(ctx.GetPlace());
@@ -765,6 +763,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
 
         if (d_x) {
+          EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
+                                   sample_size, N * C);
           if (!use_global_stats) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -785,7 +785,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                          inv_var_data[nc % C]);
               }
             }
-
           } else {
             for (int nc = 0; nc < N * C; ++nc) {
               int c = nc % C;
