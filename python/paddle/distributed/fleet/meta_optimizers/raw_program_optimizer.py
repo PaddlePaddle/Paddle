@@ -217,19 +217,16 @@ class RawProgramOptimizer(MetaOptimizerBase):
         block = self.main_program.global_block()
         ring_id = self.global_ring_id
         record_idx, allreduce_input_vars, allreduce_output_vars = [], [], []
-        ops = list(enumerate(block.ops))
+        block_ops = len(list(enumerate(block.ops)))
 
-        for idx, op in reversed(ops):
-            # we travers the ops reversely
+        for idx, op in reversed(list(enumerate(block.ops))):
             if is_backward_op(op) and \
                     OP_ROLE_VAR_KEY in op.attr_names:
                 op_role_var = op.attr(OP_ROLE_VAR_KEY)
                 if len(op_role_var) == 0:
                     continue
-                assert len(op_role_var) % 2 == 0, "vars need to be one param var followed by one grad var, " \
-                                                  "but got odd number of vars"
+                assert len(op_role_var) % 2 == 0
                 for i in range(0, len(op_role_var), 2):
-                    # handle vars in each op, each time handle a param and a grad
                     param_name = op_role_var[i]
                     param = block.var(param_name)
                     grad_name = op_role_var[i + 1]
@@ -237,7 +234,6 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     if param.is_distributed:
                         continue
                     if ".cast_fp16@GRAD" in grad_name:
-                        # when amp=True get the fp16 param
                         param_name = param_name + ".cast_fp16"
                         if not block.has_var(param_name):
                             raise ValueError("op cast name error {}".format(
@@ -245,30 +241,35 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         else:
                             param = block.var(param_name)
 
-                    if len(allreduce_output_vars) == 0 or \
-                            len(allreduce_output_vars[-1]) == \
-                            self.fuse_grad_size_in_num:
-                        # start of the fusion or last group meets the config size
+                    if len(allreduce_output_vars) == 0:
                         allreduce_output_vars.append([grad])
                         allreduce_input_vars.append([param])
-                        # add the start and end idx to the record idx
-                        record_idx.append([idx, idx])
+                        if self.fuse_grad_size_in_num == 1:
+                            record_idx.append([idx, idx])
+                            continue
+                        record_idx.append([-2, idx])
+                    elif len(allreduce_output_vars[
+                            -1]) == self.fuse_grad_size_in_num:
+                        allreduce_output_vars.append([grad])
+                        allreduce_input_vars.append([param])
+                        if self.fuse_grad_size_in_num == 1:
+                            record_idx.append([idx, idx])
+                            continue
+                        if idx != block_ops - 1:
+                            record_idx.append([-2, idx])
                     else:
-                        # Current group's size is below the config size
-                        # append grad and param to the last group (current group)
-                        # update the start idx to current op's idx
-                        # Since we travers the ops reversely, the idx is descending
-                        # we update the first entry of each entry for record_idx
                         allreduce_output_vars[-1].append(grad)
                         allreduce_input_vars[-1].append(param)
                         record_idx[-1][0] = idx
+
+                if record_idx[-1][0] == -2:
+                    record_idx[-1][0] = record_idx[-1][1]
 
         assert len(allreduce_output_vars) == len(
             record_idx
         ), "It has different lens between the allreduce_output_vars and record_idx."
 
         if not allreduce_output_vars or not allreduce_input_vars:
-            # nothing needs to be allreduced
             return
 
         self.vars = collections.OrderedDict()
@@ -282,7 +283,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         # For example:
         # [(3, 2), (2, 2), (1, 0)], (3, 2), (2, 2) using same op, but in different groups.
 
-        for idx, op in reversed(ops):
+        for idx, op in reversed(list(enumerate(block.ops))):
             if idx == start:
                 pos = 0
                 flag = True if end == men_list[-1] else False
@@ -292,109 +293,53 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     allreduce_input_vars[index]  # param
                 )
                 for id_, done_output_var in enumerate(done_output_vars):
-                    if flag:
-                        tmp_var = block.create_var(
-                            name=unique_name.generate(
-                                'FusedOutput_{}_{}'.format(start, id_ +
-                                                           offset)),
-                            dtype=done_output_var[0].dtype,
-                            persistable=False,
-                            stop_gradient=True)
-                        self.vars['FusedOutput_{}_{}'.format(start, id_ +
-                                                             offset)] = tmp_var
+                    tmp_var = block.create_var(
+                        name=unique_name.generate('FusedOutput_{}_{}'.format(
+                            start, id_ + offset if flag else id_)),
+                        dtype=done_output_var[0].dtype,
+                        persistable=False,
+                        stop_gradient=True)
+                    self.vars['FusedOutput_{}_{}'.format(
+                        start, id_ + offset if flag else id_)] = tmp_var
 
-                        block._insert_op(
-                            idx + id_ + offset,
-                            type="coalesce_tensor",
-                            inputs={"Input": done_input_vars[id_]},
-                            outputs={
-                                "Output": done_output_var,
-                                "FusedOutput": tmp_var
-                            },
-                            attrs={
-                                "copy_data": False,
-                                "use_align": True,
-                                "dtype": done_output_var[0].dtype
-                            })
-                        pos += 1
-                    else:
-                        tmp_var = block.create_var(
-                            name=unique_name.generate(
-                                'FusedOutput_{}_{}'.format(start, id_)),
-                            dtype=done_output_var[0].dtype,
-                            persistable=False,
-                            stop_gradient=True)
-                        self.vars['FusedOutput_{}_{}'.format(start,
-                                                             id_)] = tmp_var
-
-                        block._insert_op(
-                            idx + id_,
-                            type="coalesce_tensor",
-                            inputs={"Input": done_input_vars[id_]},
-                            outputs={
-                                "Output": done_output_var,
-                                "FusedOutput": tmp_var
-                            },
-                            attrs={
-                                "copy_data": False,
-                                "use_align": True,
-                                "dtype": done_output_var[0].dtype
-                            })
-                        pos += 1
+                    block._insert_op(
+                        idx + id_ + offset if flag else idx + id_,
+                        type="coalesce_tensor",
+                        inputs={"Input": done_input_vars[id_]},
+                        outputs={
+                            "Output": done_output_var,
+                            "FusedOutput": tmp_var
+                        },
+                        attrs={
+                            "copy_data": False,
+                            "use_align": True,
+                            "dtype": done_output_var[0].dtype
+                        })
+                    pos += 1
                 offset_pos = pos
 
                 for id_ in range(len(done_output_vars)):
-                    if flag:
-                        x = self.vars['FusedOutput_{}_{}'.format(start, id_ +
-                                                                 offset)]
-                        out = self.vars['FusedOutput_{}_{}'.format(start, id_ +
-                                                                   offset)]
-                        # NOTE: there still some optimize space if use EVENT instead of sync
-                        if not self.calc_comm_same_stream:
-                            # need sync if the calc and comm stream are not the same
-                            block._insert_op(
-                                end + id_ + pos + 1,
-                                type='c_sync_calc_stream',
-                                inputs={'X': x},
-                                outputs={'Out': out},
-                                attrs={OP_ROLE_KEY: OpRole.Backward})
-
+                    x = self.vars['FusedOutput_{}_{}'.format(start, id_ + offset)] \
+                        if flag else self.vars['FusedOutput_{}_{}'.format(start, id_)]
+                    if not self.calc_comm_same_stream:
                         block._insert_op(
-                            end + id_ + pos + 1 if self.calc_comm_same_stream
-                            else end + id_ + pos + 2,
-                            type='c_allreduce_sum',
+                            end + id_ + pos + 1,
+                            type='c_sync_calc_stream',
                             inputs={'X': x},
-                            outputs={'Out': out},
-                            attrs={
-                                'ring_id': ring_id,
-                                'use_calc_stream': True
-                                if self.calc_comm_same_stream else False,
-                                OP_ROLE_KEY: OpRole.Backward
-                            })
-                    else:
-                        x = self.vars['FusedOutput_{}_{}'.format(start, id_)]
-                        out = self.vars['FusedOutput_{}_{}'.format(start, id_)]
-                        # NOTE: there still some optimize space if use EVENT instead of sync
-                        if not self.calc_comm_same_stream:
-                            # need sync if the calc and comm stream are not the same
-                            block._insert_op(
-                                end + id_ + pos + 1,
-                                type='c_sync_calc_stream',
-                                inputs={'X': x},
-                                outputs={'Out': out},
-                                attrs={OP_ROLE_KEY: OpRole.Backward})
-                        block._insert_op(
-                            end + id_ + pos + 1 if self.calc_comm_same_stream
-                            else end + id_ + pos + 2,
-                            type='c_allreduce_sum',
-                            inputs={'X': x},
-                            outputs={'Out': out},
-                            attrs={
-                                'ring_id': ring_id,
-                                'use_calc_stream': True
-                                if self.calc_comm_same_stream else False,
-                                OP_ROLE_KEY: OpRole.Backward
-                            })
+                            outputs={'Out': x},
+                            attrs={OP_ROLE_KEY: OpRole.Backward})
+                    block._insert_op(
+                        end + id_ + pos + 1
+                        if self.calc_comm_same_stream else end + id_ + pos + 2,
+                        type='c_allreduce_sum',
+                        inputs={'X': x},
+                        outputs={'Out': x},
+                        attrs={
+                            'ring_id': ring_id,
+                            'use_calc_stream': True
+                            if self.calc_comm_same_stream else False,
+                            OP_ROLE_KEY: OpRole.Backward
+                        })
 
                 index += 1
                 men_list.append(end)
