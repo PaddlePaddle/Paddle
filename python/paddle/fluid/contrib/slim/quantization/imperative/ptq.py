@@ -23,6 +23,7 @@ from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from . import utils
+from . import fuse
 from . import ptq_hooks
 from . import ptq_config
 from . import ptq_quantizer
@@ -55,7 +56,7 @@ class ImperativePTQ(object):
 
         self._quant_config = quant_config
 
-    def quantize(self, model, inplace=False):
+    def quantize(self, model, inplace=False, fuse=False, fuse_list=None):
         """
         Add quant config and hook to the target layer.
 
@@ -63,12 +64,17 @@ class ImperativePTQ(object):
             model(paddle.nn.Layer): The model to be quantized.
             inplace(bool): Whether apply quantization to the input model.
                            Default: False.
+            fuse(bool): Whether fuse layers.
+                        Default: False.
+            fuse_list(list): The layers to fuse.
+                             Default: None.
         Returns:
             quantized_model(paddle.nn.Layer): The quantized model.
         """
         assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
-
+        if fuse:
+            model = utils.fuse_layers(model, fuse_list)
         if not inplace:
             model = copy.deepcopy(model)
 
