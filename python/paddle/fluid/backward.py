@@ -2057,7 +2057,8 @@ def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
 
     with program_guard(program, None):
         pram_grads = [(pram, grad) for pram, grad in zip(inputs, grads)
-                      if isinstance(pram, paddle.fluid.framework.Parameter)]
+                      if isinstance(pram, paddle.fluid.framework.Parameter) and
+                      grad is not None]
 
         optimize_ops = optimizer.apply_gradients(pram_grads)
 
