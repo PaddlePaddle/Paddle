@@ -47,6 +47,7 @@ EXPRESSION_MAP = {
     "__rpow__": "A **= B",
     "__floordiv__": "A //B",
     "__mod__": "A % B",
+    "__matmul__": "A @ B",
     "__eq__": "A == B",
     "__ne__": "A != B",
     "__lt__": "A < B",
@@ -197,6 +198,28 @@ def monkey_patch_variable():
     def _neg_(var):
         return _scalar_op_(var, -1.0, 0.0)
 
+    @property
+    def _ndim_(self):
+        """
+        Returns the dimension of current Variable
+
+        Returns:
+            the dimension
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # print the dimension of the Variable
+                print(x.ndim)
+        """
+        return len(self.shape)
+
     def _scalar_add_(var, value):
         return _scalar_op_(var, 1.0, value)
 
@@ -233,9 +256,9 @@ def monkey_patch_variable():
                 other_var = float(other_var)
                 # division is a special case
                 # NOTE(chenweihang): because we cast tensor to float32 instead float64,
-                # the division result can only guarantee the numerical accuracy of 6 digits 
-                # after the decimal point. The result of numpy calculation is of float64 type, 
-                # so the calculation result here and the calculation result of numpy are 
+                # the division result can only guarantee the numerical accuracy of 6 digits
+                # after the decimal point. The result of numpy calculation is of float64 type,
+                # so the calculation result here and the calculation result of numpy are
                 # different after 6 decimal point. If necessary, we can also use float64 here.
                 # torch's behavior here is consistent with ours
                 if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
@@ -323,6 +346,9 @@ def monkey_patch_variable():
         #   b=-a
         ('__neg__', _neg_),
         ('astype', astype),
+        ('dim', lambda x: len(x.shape)),
+        ('ndimension', lambda x: len(x.shape)),
+        ('ndim', _ndim_),
         ('__add__', _binary_creator_('__add__', 'elementwise_add', False,
                                      _scalar_add_)),
         #  a+b == b+a. Do not need to reverse explicitly
@@ -353,6 +379,8 @@ def monkey_patch_variable():
                                           'elementwise_floordiv', False, None)),
         ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
                                      None)),
+        ('__matmul__', _binary_creator_('__matmul__', "matmul_v2", False,
+                                        None)),
         #  for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
