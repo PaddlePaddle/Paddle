@@ -26,6 +26,7 @@ from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
+from paddle import _C_ops
 
 __all__ = []
 
@@ -60,7 +61,7 @@ def elu(x, alpha=1.0, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.elu(x, 'alpha', alpha)
+        return _C_ops.elu(x, 'alpha', alpha)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
     helper = LayerHelper("elu", **locals())
@@ -79,7 +80,7 @@ def elu_(x, alpha=1.0, name=None):
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_elu`.
     """
-    return core.ops.elu_(x, 'alpha', alpha)
+    return _C_ops.elu_(x, 'alpha', alpha)
 
 
 def gelu(x, approximate=False, name=None):
@@ -123,7 +124,7 @@ def gelu(x, approximate=False, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.gelu(x, 'approximate', approximate)
+        return _C_ops.gelu(x, 'approximate', approximate)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'gelu')
     helper = LayerHelper("gelu", **locals())
@@ -171,7 +172,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.hard_shrink(x, 'threshold', threshold)
+        return _C_ops.hard_shrink(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardshrink')
@@ -219,7 +220,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.brelu(x, 't_min', min, 't_max', max)
+        return _C_ops.brelu(x, 't_min', min, 't_max', max)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardtanh')
@@ -274,7 +275,7 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
+        return _C_ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardsigmoid')
@@ -328,7 +329,7 @@ def hardswish(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.hard_swish(x)
+        return _C_ops.hard_swish(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardswish')
@@ -373,7 +374,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.leaky_relu(x, 'alpha', negative_slope)
+        return _C_ops.leaky_relu(x, 'alpha', negative_slope)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'leaky_relu')
@@ -432,7 +433,6 @@ def prelu(x, weight, name=None):
     check_variable_and_dtype(weight, 'weight',
                              ['float16', 'float32', 'float64'], 'prelu')
 
-    helper = LayerHelper('prelu', **locals())
     assert len(weight.shape
                ) == 1, "The dim count of weight shape should be 1 in prelu()."
 
@@ -448,8 +448,9 @@ def prelu(x, weight, name=None):
         mode = 'channel'
 
     if in_dygraph_mode():
-        return core.ops.prelu(x, weight, 'mode', mode)
+        return _C_ops.prelu(x, weight, 'mode', mode)
 
+    helper = LayerHelper('prelu', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type="prelu",
@@ -488,7 +489,7 @@ def relu(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.relu(x)
+        return _C_ops.relu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
     helper = LayerHelper('relu', **locals())
@@ -503,7 +504,7 @@ def relu_(x, name=None):
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_relu`.
     """
-    return core.ops.relu_(x)
+    return _C_ops.relu_(x)
 
 
 def log_sigmoid(x, name=None):
@@ -533,7 +534,7 @@ def log_sigmoid(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.logsigmoid(x)
+        return _C_ops.logsigmoid(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'log_sigmoid')
@@ -597,7 +598,7 @@ def maxout(x, groups, axis=1, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.maxout(x, 'groups', groups, 'axis', axis)
+        return _C_ops.maxout(x, 'groups', groups, 'axis', axis)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
     if axis not in [1, -1, 3]:
@@ -646,7 +647,7 @@ def relu6(x, name=None):
     """
     threshold = 6.0
     if in_dygraph_mode():
-        return core.ops.relu6(x, 'threshold', threshold)
+        return _C_ops.relu6(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu6')
     helper = LayerHelper('relu6', **locals())
@@ -703,7 +704,7 @@ def selu(x,
             "The alpha must be no less than zero. Received: {}.".format(alpha))
 
     if in_dygraph_mode():
-        return core.ops.selu(x, 'scale', scale, 'alpha', alpha)
+        return _C_ops.selu(x, 'scale', scale, 'alpha', alpha)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'selu')
     helper = LayerHelper('selu', **locals())
@@ -741,7 +742,7 @@ def silu(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.silu(x)
+        return _C_ops.silu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'silu')
     helper = LayerHelper("silu", **locals())
@@ -872,8 +873,8 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
     if in_dygraph_mode():
         outs_cast = x if dtype is None \
-            else core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
-        return core.ops.softmax(outs_cast, 'axis', axis, 'use_cudnn', use_cudnn)
+            else _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return _C_ops.softmax(outs_cast, 'axis', axis, 'use_cudnn', use_cudnn)
 
     if dtype is None:
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -913,7 +914,7 @@ def softmax_(x, axis=-1, dtype=None, name=None):
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     use_cudnn = True
-    return core.ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
+    return _C_ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
 
 
 def softplus(x, beta=1, threshold=20, name=None):
@@ -946,7 +947,7 @@ def softplus(x, beta=1, threshold=20, name=None):
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
     if in_dygraph_mode():
-        return core.ops.softplus(x, 'beta', beta, 'threshold', threshold)
+        return _C_ops.softplus(x, 'beta', beta, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'softplus')
@@ -998,7 +999,7 @@ def softshrink(x, threshold=0.5, name=None):
                 threshold))
 
     if in_dygraph_mode():
-        return core.ops.softshrink(x, 'lambda', threshold)
+        return _C_ops.softshrink(x, 'lambda', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'softshrink')
@@ -1039,7 +1040,7 @@ def softsign(x, name=None):
             out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
     """
     if in_dygraph_mode():
-        return core.ops.softsign(x)
+        return _C_ops.softsign(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'softsign')
@@ -1077,7 +1078,7 @@ def swish(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.swish(x, 'beta', 1.0)
+        return _C_ops.swish(x, 'beta', 1.0)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
     helper = LayerHelper('swish', **locals())
@@ -1117,7 +1118,7 @@ def tanhshrink(x, name=None):
             out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
     """
     if in_dygraph_mode():
-        return core.ops.tanh_shrink(x)
+        return _C_ops.tanh_shrink(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'tanhshrink')
@@ -1159,7 +1160,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.thresholded_relu(x, 'threshold', threshold)
+        return _C_ops.thresholded_relu(x, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'thresholded_relu')
@@ -1234,8 +1235,8 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
     if in_dygraph_mode():
         if dtype is not None:
-            x = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
-        return core.ops.log_softmax(x, 'axis', axis)
+            x = _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return _C_ops.log_softmax(x, 'axis', axis)
 
     if dtype is None:
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],

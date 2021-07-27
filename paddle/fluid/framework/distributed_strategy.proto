@@ -1,4 +1,5 @@
 // Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -174,7 +175,7 @@ message DistributedStrategy {
   optional bool use_hierarchical_allreduce = 15 [ default = false ];
   optional int32 hierarchical_allreduce_inter_nranks = 16 [ default = 1 ];
   optional bool sync_batch_norm = 17 [ default = false ];
-  optional bool fuse_all_reduce_ops = 18 [ default = true ];
+  optional bool fuse_all_reduce_ops = 18 [ default = false ];
   optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
   optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
   optional bool cudnn_exhaustive_search = 21 [ default = false ];
@@ -189,6 +190,7 @@ message DistributedStrategy {
   optional bool without_graph_optimization = 30 [ default = false ];
   optional int32 fuse_grad_size_in_num = 31 [ default = 1 ];
   optional bool calc_comm_same_stream = 32 [ default = false ];
+  optional bool asp = 33 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;

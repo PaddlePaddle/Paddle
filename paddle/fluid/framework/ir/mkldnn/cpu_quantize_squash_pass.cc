@@ -67,6 +67,7 @@ CPUQuantizeSquashPass::CPUQuantizeSquashPass() {
       .AddAttr("paddings")
       .End()
       .AddAttr("padding_algorithm")
+      .IsOptional()
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")
@@ -75,6 +76,7 @@ CPUQuantizeSquashPass::CPUQuantizeSquashPass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
+      .IsOptional()
       .IsStringIn({"NCHW", "NHWC"})
       .End();
 }

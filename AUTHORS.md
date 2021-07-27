@@ -78,3 +78,6 @@
 | zhaopu7 | Pu Zhao |
 | zhouxiao-coder | Xiao Zhou |
 | Zrachel | Rui-Qing Zhang |
+| jeng1220 | Bai-Cheng(Ryan) Jeng (NVIDIA) |
+| mingxu1067 | Ming Huang (NVIDIA) |
+| zlsh80826 | Reese Wang (NVIDIA) |

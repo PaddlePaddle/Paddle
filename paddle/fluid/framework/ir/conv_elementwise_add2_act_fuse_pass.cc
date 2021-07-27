@@ -91,7 +91,8 @@ ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
       .End()
       .AddAttr("axis")
       // the first elementwise_add-axis needs to be 1, the second has to be -1
-      .IsIntIn({1, -1})
+      // or 0
+      .IsIntIn({1, -1, 0})
       .End();
 
   AddOpCompat(OpCompat("relu"))
