@@ -17,12 +17,41 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-ProcessMeshDesc* ProcessMeshDesc::ParentProcessMesh() const {
-  auto _map = ProcessMeshDescMap::Instance();
-  return &_map.Get(desc_->parent_idx());
+ProcessMeshDesc::ProcessMeshDesc(const std::vector<int32_t> &topo,
+                                 const std::vector<int32_t> &process_group,
+                                 int32_t parent_id) {
+  auto map_ = ProcessMeshDescMap::Instance();
+  int32_t cur_id = ++map_.next_id;
+  desc_.set_id(cur_id);
+  desc_.set_parent_id(parent_id);
+  for (size_t i = 0; i != topo.size(); ++i) {
+    desc_.add_topology(topo[i]);
+  }
+  for (size_t i = 0; i != topo.size(); ++i) {
+    desc_.add_process_group(process_group[i]);
+  }
+  map_.Insert(cur_id, *this);
 }
 
-ProcessMeshDescMap& ProcessMeshDescMap::Instance() {
+std::vector<int32_t> ProcessMeshDesc::Topology() const {
+  size_t size = desc_.topology_size();
+  std::vector<int32_t> ret(size);
+  for (auto i = 0; i != desc_.topology_size(); ++i) {
+    ret[i] = desc_.topology(i);
+  }
+  return ret;
+}
+
+std::vector<int32_t> ProcessMeshDesc::ProcessGroup() const {
+  size_t size = desc_.process_group_size();
+  std::vector<int32_t> ret(size);
+  for (auto i = 0; i != desc_.process_group_size(); ++i) {
+    ret[i] = desc_.process_group(i);
+  }
+  return ret;
+}
+
+ProcessMeshDescMap &ProcessMeshDescMap::Instance() {
   static ProcessMeshDescMap g_process_mesh_map;
   return g_process_mesh_map;
 }

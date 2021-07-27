@@ -25,36 +25,30 @@ namespace framework {
 class ProcessMeshDesc {
  public:
   ProcessMeshDesc(const std::vector<int32_t> &topo,
-                  const std::vector<int32_t> &process_group)
-      : topology(topo), process_group(process_group) {}
+                  const std::vector<int32_t> &process_group, int32_t parent_id);
 
-  int32_t ID() const { return desc_->idx(); }
+  int32_t ID() const { return desc_.id(); }
 
-  int32_t Parent() const { return desc_->parent_idx(); }
+  int32_t Parent() const { return desc_.parent_id(); }
 
-  ProcessMeshDesc *ParentProcessMeshDesc() const;
-  proto::ProcessMeshDesc *ProcessMeshDesc::Proto();
+  std::vector<int32_t> Topology() const;
 
-  std::vector<int32_t> Topology() const { return topology; }
-  std::vector<int32_t> ProcessGroup() const { return process_group; }
+  std::vector<int32_t> ProcessGroup() const;
 
  private:
-  proto::ProcessMeshDesc *desc_;  // not_own
-  std::vector<int32_t> topology;
-  std::vector<int32_t> process_group;
-
-  DISABLE_COPY_AND_ASSIGN(ProcessMeshDesc);
+  proto::ProcessMeshDesc desc_;  // not_own
 };
 
 class ProcessMeshDescMap {
  public:
   static ProcessMeshDescMap &Instance();
 
-  bool Has(int32_t index) const { return map_.find(index) != map.end(); }
+  bool Has(int32_t index) const { return map_.find(index) != map_.end(); }
 
   void Insert(int32_t index, const ProcessMeshDesc &mesh) {
-    PADDLE_ENFORCE_NE(Has(indx), true, platform::errors::AlreadyExists(
-                                           "Index (%d) has been used.", index));
+    PADDLE_ENFORCE_NE(
+        Has(index), true,
+        platform::errors::AlreadyExists("Index (%d) has been used.", index));
     map_.insert({index, mesh});
   }
 
@@ -72,6 +66,7 @@ class ProcessMeshDescMap {
  private:
   ProcessMeshDescMap() = default;
   std::unordered_map<int32_t, ProcessMeshDesc> map_;
+  int32_t next_id = -1;
 
   DISABLE_COPY_AND_ASSIGN(ProcessMeshDescMap);
 };

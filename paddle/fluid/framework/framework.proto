@@ -36,7 +36,15 @@ enum AttrType {
   BLOCKS = 10;
   LONGS = 11;
   FLOAT64S = 12;
+  PROCESS_MESH = 13;
 }
+
+message ProcessMeshDesc {
+  required int32 id = 1;
+  required int32 parent_id = 2;
+  repeated int32 topology = 3;
+  repeated int32 process_group = 4;
+};
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
@@ -178,16 +186,11 @@ message VarType {
 message VarDesc {
 
   message DistributedAttr {
-    message ProcessMesh {
-      required string name = 1;
-      repeated int32 ints = 2;
-    }
     required string name = 1;
     required AttrType type = 2;
     optional int32 i = 3;
     optional string s = 5;
     repeated int32 ints = 6;
-    optional ProcessMesh mesh = 7;
   };
 
   required string name = 1;
