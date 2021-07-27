@@ -128,6 +128,7 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
+            paddle.enable_static()
             input_x = fluid.data(name="input_x", shape=[100, ], dtype="float32")
             result = paddle.unique_consecutive(input_x)
             x_np = np.random.randint(20, size=100).astype("float32")
