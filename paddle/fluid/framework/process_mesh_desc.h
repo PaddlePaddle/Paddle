@@ -17,23 +17,26 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/proto_desc.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {
 
 class ProcessMeshDesc {
  public:
-  ProcessMeshDesc(const std::vector<int32_t> &topo,
-                  const std::vector<int32_t> &process_group, int32_t parent_id);
+  ProcessMeshDesc(const std::vector<int32_t>& topo,
+                  const std::vector<int32_t>& process_group, int32_t parent_id);
 
   int32_t ID() const { return desc_.id(); }
-
   int32_t Parent() const { return desc_.parent_id(); }
 
   std::vector<int32_t> Topology() const;
-
   std::vector<int32_t> ProcessGroup() const;
+
+  static int32_t next_id;
 
  private:
   proto::ProcessMeshDesc desc_;  // not_own
@@ -41,33 +44,21 @@ class ProcessMeshDesc {
 
 class ProcessMeshDescMap {
  public:
-  static ProcessMeshDescMap &Instance();
+  // static std::shared_ptr<ProcessMeshDescMap> GetInstance();
+  static ProcessMeshDescMap& GetInstance();
 
   bool Has(int32_t index) const { return map_.find(index) != map_.end(); }
 
-  void Insert(int32_t index, const ProcessMeshDesc &mesh) {
+  void Insert(int32_t index, ProcessMeshDesc* mesh) {
     PADDLE_ENFORCE_NE(
         Has(index), true,
         platform::errors::AlreadyExists("Index (%d) has been used.", index));
-    map_.insert({index, mesh});
-  }
-
-  const ProcessMeshDesc &Get(int32_t index) const {
-    auto it = map_.find(index);
-    PADDLE_ENFORCE_NE(it, map_.end(), platform::errors::InvalidArgument(
-                                          "Index (%d) does not exist.", index));
-    return it->second;
-  }
-
-  const std::unordered_map<int32_t, ProcessMeshDesc> &map() const {
-    return map_;
+    map_.insert(std::make_pair(index, mesh));
   }
 
  private:
   ProcessMeshDescMap() = default;
-  std::unordered_map<int32_t, ProcessMeshDesc> map_;
-  int32_t next_id = -1;
-
+  std::unordered_map<int32_t, ProcessMeshDesc*> map_;
   DISABLE_COPY_AND_ASSIGN(ProcessMeshDescMap);
 };
 }  // namespace framework

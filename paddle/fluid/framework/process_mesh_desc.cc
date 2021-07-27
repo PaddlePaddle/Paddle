@@ -17,11 +17,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+int32_t ProcessMeshDesc::next_id = -1;
+// std::shared_ptr<ProcessMeshDescMap> ProcessMeshDescMap::s_instance_ =
+// nullptr;
+
 ProcessMeshDesc::ProcessMeshDesc(const std::vector<int32_t> &topo,
                                  const std::vector<int32_t> &process_group,
                                  int32_t parent_id) {
-  auto map_ = ProcessMeshDescMap::Instance();
-  int32_t cur_id = ++map_.next_id;
+  int32_t cur_id = ++next_id;
   desc_.set_id(cur_id);
   desc_.set_parent_id(parent_id);
   for (size_t i = 0; i != topo.size(); ++i) {
@@ -30,7 +33,7 @@ ProcessMeshDesc::ProcessMeshDesc(const std::vector<int32_t> &topo,
   for (size_t i = 0; i != topo.size(); ++i) {
     desc_.add_process_group(process_group[i]);
   }
-  map_.Insert(cur_id, *this);
+  ProcessMeshDescMap::GetInstance().Insert(cur_id, this);
 }
 
 std::vector<int32_t> ProcessMeshDesc::Topology() const {
@@ -51,9 +54,9 @@ std::vector<int32_t> ProcessMeshDesc::ProcessGroup() const {
   return ret;
 }
 
-ProcessMeshDescMap &ProcessMeshDescMap::Instance() {
-  static ProcessMeshDescMap g_process_mesh_map;
-  return g_process_mesh_map;
+ProcessMeshDescMap &ProcessMeshDescMap::GetInstance() {
+  static ProcessMeshDescMap g_process_mesh_desc_map;
+  return g_process_mesh_desc_map;
 }
 
 }  // namespace framework
