@@ -725,13 +725,20 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
-
         auto px_data = x->data<T>();
         auto d_y_data = d_y->data<T>();
         auto dy_sum_data = dy_sum.mutable_data<T>(ctx.GetPlace());
-        auto d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
+
         auto dy_mul_x_sub_mean_mul_invstd_sum_data =
             dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
+
+// for (int nc = 0; nc < N * C; ++nc) {
+//   int c = nc % C;
+//   dy_sum_arr(c) += d_y_arr.col(nc).sum();
+//   dy_mul_x_sub_mean_mul_invstd_sum_arr(c) +=
+//       ((x_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * d_y_arr.col(nc))
+//           .sum();
+// }
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -744,7 +751,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 #endif
           for (int i = 0; i < N; ++i) {
             T dy_sum = 0.0;
-            T invstd_sum = 0.0;
+            double invstd_sum = 0.0;
             for (int j = 0; j < sample_size; ++j) {
               dy_sum += t_d_y_data[j];
               invstd_sum += (t_x_data[j] - mean_data[nc]) * inv_var_data[nc] *
@@ -754,6 +761,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
             t_x_data = t_x_data + C * sample_size;
             dy_sum_data[nc] += dy_sum;
             dy_mul_x_sub_mean_mul_invstd_sum_data[nc] += invstd_sum;
+            std::cout << "invstd_sum: " << invstd_sum << std::endl;
           }
         }
 
@@ -765,6 +773,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         if (d_x) {
           EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
                                    sample_size, N * C);
+          auto d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
+
           if (!use_global_stats) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -785,6 +795,15 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                          inv_var_data[nc % C]);
               }
             }
+            // for (int nc = 0; nc < N * C; ++nc) {
+            //   int c = nc % C;
+            //   d_x_arr.col(nc) =
+            //       scale_inv_var_nhw(c) *
+            //       (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(c) -
+            //        (x_arr.col(nc) - mean_arr[c]) *
+            //            dy_mul_x_sub_mean_mul_invstd_sum_arr(c) *
+            //            inv_var_arr(c));
+            // }
           } else {
             for (int nc = 0; nc < N * C; ++nc) {
               int c = nc % C;
