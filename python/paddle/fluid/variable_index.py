@@ -144,10 +144,6 @@ def _getitem_impl_(var, item):
 
             step = 1 if step is None else step
 
-            # if start is None and end is None and step == -1:
-            #     reverse_axes.append(dim)
-            #     continue
-
             if start is None:
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
