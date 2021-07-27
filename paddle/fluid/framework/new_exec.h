@@ -22,7 +22,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "gperftools/profiler.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/new_exec_util.h"

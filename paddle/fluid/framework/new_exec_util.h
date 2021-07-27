@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <gperftools/profiler.h>
 #include <chrono>
 #include <iostream>
 #include <string>
