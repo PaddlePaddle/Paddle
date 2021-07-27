@@ -55,6 +55,15 @@ struct CBlas<int8_t> {
 };
 
 template <>
+struct CBlas<int16_t> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Blas VCOPY do not supported on CPU, please check your code"));
+  }
+};
+
+template <>
 struct CBlas<platform::bfloat16> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
