@@ -70,6 +70,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/io.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
@@ -238,6 +239,7 @@ OpSupportedInfos(const std::string &place,
       {"GPU", &platform::is_gpu_place},
       {"CPU", &platform::is_cpu_place},
       {"XPU", &platform::is_xpu_place},
+      {"NPU", &platform::is_npu_place},
   };
   PADDLE_ENFORCE_NE(
       is_target_place.count(query_place), 0,
@@ -470,6 +472,8 @@ PYBIND11_MODULE(core_avx, m) {
 #else
 PYBIND11_MODULE(core_noavx, m) {
 #endif
+
+  BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
@@ -3006,6 +3010,12 @@ All parameter, weight, gradient are variables in Paddle.
            R"DOC(Allow user to customized passes. Normally model-specific
                 optimization passes should be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
+
+  m.def("_set_cached_executor_build_strategy",
+        [](int64_t program_id, const BuildStrategy &build_strategy) {
+          auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
+          cached_exe_info.SetBuildStrategy(program_id, build_strategy);
+        });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::vector<std::string> &, const std::string &,
