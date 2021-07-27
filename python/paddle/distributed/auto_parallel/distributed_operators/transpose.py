@@ -56,8 +56,11 @@ class DistributedTranspose2Impl0(DistributedOperatorImpl):
         op_desc = op_dist_attr.get_desc()
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
+        x_shape_name = op_desc.output('XShape')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            x_shape_name)
         perm = op_desc.attr('axis')
         # print("transpose2 perm", perm)
 
@@ -77,6 +80,9 @@ class DistributedTranspose2Impl0(DistributedOperatorImpl):
             if x_dims_mapping[perm[i]] != new_dims_mapping[i]:
                 x_dims_mapping[perm[i]] = new_dims_mapping[i]
                 changed = True
+
+        for i in range(len(x_dims_mapping)):
+            x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
         return changed
 

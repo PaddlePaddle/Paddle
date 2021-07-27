@@ -386,7 +386,9 @@ class TestAttentionAutoCompletion(unittest.TestCase):
 class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
     def setUp(self):
         self.batch_size = 4
+        self.vocab_size = 32768 
         self.hidden_size = 1024
+        self.max_position_embeddings = 1024
         self.sequence_len = 128
         self.embed_dim = self.hidden_size
         self.kdim = self.embed_dim
@@ -404,10 +406,30 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         self.train_prog = static.Program()
         self.start_prog = static.Program()
         with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
-            self.input = static.data(
-                name="query",
-                shape=[self.batch_size, self.sequence_len, self.hidden_size],
-                dtype='float32')
+            self.input_ids = static.data(
+                name="input_ids",
+                shape=[self.batch_size, self.sequence_len],
+                dtype='int64')
+            self.position_ids = static.data(
+                name="position_ids",
+                shape=[self.batch_size, self.sequence_len],
+                dtype='int64')
+
+            self.word_embeddings = nn.Embedding(
+                self.vocab_size,
+                self.hidden_size,
+                weight_attr=paddle.ParamAttr(
+                    name="word_embeddings",
+                    initializer=nn.initializer.Normal(
+                    mean=0.0, std=self.initializer_range)))
+            self.position_embeddings = nn.Embedding(
+                self.max_position_embeddings,
+                self.hidden_size,
+                weight_attr=paddle.ParamAttr(
+                    name="pos_embeddings",
+                    initializer=nn.initializer.Normal(
+                        mean=0.0, std=self.initializer_range)))
+
             weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
                 mean=0.0, std=self.initializer_range))
             bias_attr = None
@@ -446,7 +468,12 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
                 weight_attrs[2],
                 bias_attr=bias_attrs[2])
             self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
-            self.dropout = nn.Dropout(
+
+            self.dropout1 = nn.Dropout(
+                self.dropout_ratio)
+            self.dropout2 = nn.Dropout(
+                self.dropout_ratio, mode="upscale_in_train")
+            self.dropout3 = nn.Dropout(
                 self.dropout_ratio, mode="upscale_in_train")
 
     def test_decoder_dp(self):
@@ -455,9 +482,14 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         ) == 1, "The number dimension of process mesh must to be 1"
 
         with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
-            auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
+            auto.shard_tensor(self.input_ids, proc_mesh, dims_mapping=[0, -1])
+            input_embedings = self.word_embeddings(self.input_ids)
+            position_embeddings = self.position_embeddings(self.position_ids)
+            embeddings = input_embedings + position_embeddings
+            embeddings = self.dropout1(embeddings)
+
             # Pre-norm
-            target = self.norm(self.input)
+            target = self.norm(embeddings)
 
             # The following is the attention part
             q = self.q_proj(target)
@@ -498,7 +530,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
             out = self.out_proj(out)
 
             # Add residual
-            residual = self.input + self.dropout(out)
+            residual = embeddings + self.dropout2(out)
 
             # Pre-norm
             out0 = self.norm(residual)
@@ -509,7 +541,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
             out3 = self.linear1(out2)
 
             # Add residual
-            final = residual + self.dropout(out3)
+            final = residual + self.dropout3(out3)
 
         print(self.train_prog)
         complete_prog = auto.complete_annotation(self.train_prog)
@@ -521,8 +553,13 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         ) == 1, "The number dimension of process mesh must to be 1"
 
         with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+            input_embedings = self.word_embeddings(self.input_ids)
+            auto.shard_tensor(self.word_embeddings.weight, proc_mesh, dims_mapping=[0, -1])
+            position_embeddings = self.position_embeddings(self.position_ids)
+            embeddings = input_embedings + position_embeddings
+            embeddings = self.dropout1(embeddings)
             # Pre-norm
-            target = self.norm(self.input)
+            target = self.norm(embeddings)
 
             # The following is the attention part
             q = self.q_proj(target)
@@ -571,7 +608,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
                 self.out_proj.weight, proc_mesh, dims_mapping=[0, -1])
 
             # Add residual
-            residual = self.input + self.dropout(out)
+            residual = embeddings + self.dropout2(out)
 
             # Pre-norm
             out0 = self.norm(residual)
@@ -586,7 +623,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
                 self.linear1.weight, proc_mesh, dims_mapping=[0, -1])
 
             # Add residual
-            final = residual + self.dropout(out3)
+            final = residual + self.dropout3(out3)
 
         print(self.train_prog)
         complete_prog = auto.complete_annotation(self.train_prog)
@@ -599,9 +636,14 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         ) == 2, "The number dimension of process mesh must to be 2"
 
         with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
-            auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
+            auto.shard_tensor(self.input_ids, proc_mesh, dims_mapping=[0, -1])
+            input_embedings = self.word_embeddings(self.input_ids)
+            auto.shard_tensor(self.word_embeddings.weight, proc_mesh, dims_mapping=[1, -1])
+            position_embeddings = self.position_embeddings(self.position_ids)
+            embeddings = input_embedings + position_embeddings
+            embeddings = self.dropout1(embeddings)
             # Pre-norm
-            target = self.norm(self.input)
+            target = self.norm(embeddings)
 
             # The following is the attention part
             q = self.q_proj(target)
@@ -650,7 +692,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
                 self.out_proj.weight, proc_mesh, dims_mapping=[1, -1])
 
             # Add residual
-            residual = self.input + self.dropout(out)
+            residual = embeddings + self.dropout2(out)
 
             # Pre-norm
             out0 = self.norm(residual)
@@ -665,7 +707,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
                 self.linear1.weight, proc_mesh, dims_mapping=[1, -1])
 
             # Add residual
-            final = residual + self.dropout(out3)
+            final = residual + self.dropout3(out3)
 
         print(self.train_prog)
         complete_prog = auto.complete_annotation(self.train_prog)

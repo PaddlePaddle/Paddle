@@ -40,8 +40,7 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
-from .distributed_attribute import get_tensor_distributed_attr_program
-from .distributed_attribute import get_op_distributed_attr_program
+from .distributed_attribute import get_default_distributed_config
 
 __all__ = [
     'Program',
@@ -1195,7 +1194,8 @@ class Variable(object):
         if self.persistable:
             var_str = "persist " + var_str
 
-        var_dist_attr = get_tensor_distributed_attr_program(self.desc)
+        dist_config = get_default_distributed_config()
+        var_dist_attr = dist_config.get_tensor_distributed_attr_program(self.desc)
         if var_dist_attr is not None:
             var_str += ", {name} = {value}".format(
                 name="dist_attr", value=var_dist_attr)
@@ -2245,7 +2245,8 @@ class Operator(object):
             if i != len(attr_names) - 1:
                 attrs_str += ", "
 
-        op_dist_attr = get_op_distributed_attr_program(self.desc)
+        dist_config = get_default_distributed_config()
+        op_dist_attr = dist_config.get_op_distributed_attr_program(self.desc)
         if op_dist_attr is not None:
             attrs_str += ", {name} = {value}".format(
                 name="dist_attr", value=op_dist_attr)

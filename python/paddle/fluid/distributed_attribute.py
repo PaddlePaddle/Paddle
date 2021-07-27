@@ -13,58 +13,78 @@
 # limitations under the License
 
 import copy
-
-TENSOR_DISTRIBUTED_ATTR_ACC_NUM = -1
-OP_DISTRIBUTED_ATTR_ACC_NUM = -1
-TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM = {}
-OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM = {}
+from collections import defaultdict
+from . import core
+from . import framework
 
 
-def generate_tensor_distributed_attr_uid():
-    global TENSOR_DISTRIBUTED_ATTR_ACC_NUM
-    TENSOR_DISTRIBUTED_ATTR_ACC_NUM = TENSOR_DISTRIBUTED_ATTR_ACC_NUM + 1
-    return TENSOR_DISTRIBUTED_ATTR_ACC_NUM
+DEFAULT_DISTRIBUTED_CONFIGURATION = None
 
 
-def generate_op_distributed_attr_uid():
-    global OP_DISTRIBUTED_ATTR_ACC_NUM
-    OP_DISTRIBUTED_ATTR_ACC_NUM = OP_DISTRIBUTED_ATTR_ACC_NUM + 1
-    return OP_DISTRIBUTED_ATTR_ACC_NUM
+def get_default_distributed_config():
+    global DEFAULT_DISTRIBUTED_CONFIGURATION
+    if DEFAULT_DISTRIBUTED_CONFIGURATION is None:
+        dist_config = DistributedConfiguration()
+        set_default_distributed_config(dist_config)
+    return DEFAULT_DISTRIBUTED_CONFIGURATION
 
 
-def get_tensor_distributed_attr_program(tensor):
-    distributed_attr_uid = tensor.get_distributed_attr_uid()
-    global TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
-    tensor_dist_attr = TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM.get(
-        distributed_attr_uid, None)
-    return tensor_dist_attr
+def set_default_distributed_config(dist_config):
+    global DEFAULT_DISTRIBUTED_CONFIGURATION
+    DEFAULT_DISTRIBUTED_CONFIGURATION = dist_config
 
 
-def set_tensor_distributed_attr_program(tensor, tensor_dist_attr):
-    distributed_attr_uid = tensor.get_distributed_attr_uid()
-    if distributed_attr_uid == -1:
-        distributed_attr_uid = generate_tensor_distributed_attr_uid()
-        tensor.set_distributed_attr_uid(distributed_attr_uid)
-    global TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
-    TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM[
-        distributed_attr_uid] = tensor_dist_attr
-
-
-def get_op_distributed_attr_program(op):
-    distributed_attr_uid = op.get_distributed_attr_uid()
-    global OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
-    op_dist_attr = OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM.get(distributed_attr_uid,
-                                                           None)
-    return op_dist_attr
-
-
-def set_op_distributed_attr_program(op, op_dist_attr):
-    distributed_attr_uid = op.get_distributed_attr_uid()
-    if distributed_attr_uid == -1:
-        distributed_attr_uid = generate_op_distributed_attr_uid()
-        op.set_distributed_attr_uid(distributed_attr_uid)
-    global OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
-    OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM[distributed_attr_uid] = op_dist_attr
+# TENSOR_DISTRIBUTED_ATTR_ACC_NUM = -1
+# OP_DISTRIBUTED_ATTR_ACC_NUM = -1
+# TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM = {}
+# OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM = {}
+# 
+# 
+# def generate_tensor_distributed_attr_uid():
+#     global TENSOR_DISTRIBUTED_ATTR_ACC_NUM
+#     TENSOR_DISTRIBUTED_ATTR_ACC_NUM = TENSOR_DISTRIBUTED_ATTR_ACC_NUM + 1
+#     return TENSOR_DISTRIBUTED_ATTR_ACC_NUM
+# 
+# 
+# def generate_op_distributed_attr_uid():
+#     global OP_DISTRIBUTED_ATTR_ACC_NUM
+#     OP_DISTRIBUTED_ATTR_ACC_NUM = OP_DISTRIBUTED_ATTR_ACC_NUM + 1
+#     return OP_DISTRIBUTED_ATTR_ACC_NUM
+# 
+# 
+# def get_tensor_distributed_attr_program(tensor):
+#     distributed_attr_uid = tensor.get_distributed_attr_uid()
+#     global TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
+#     tensor_dist_attr = TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM.get(
+#         distributed_attr_uid, None)
+#     return tensor_dist_attr
+# 
+# 
+# def set_tensor_distributed_attr_program(tensor, tensor_dist_attr):
+#     distributed_attr_uid = tensor.get_distributed_attr_uid()
+#     if distributed_attr_uid == -1:
+#         distributed_attr_uid = generate_tensor_distributed_attr_uid()
+#         tensor.set_distributed_attr_uid(distributed_attr_uid)
+#     global TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
+#     TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM[
+#         distributed_attr_uid] = tensor_dist_attr
+# 
+# 
+# def get_op_distributed_attr_program(op):
+#     distributed_attr_uid = op.get_distributed_attr_uid()
+#     global OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
+#     op_dist_attr = OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM.get(distributed_attr_uid,
+#                                                            None)
+#     return op_dist_attr
+# 
+# 
+# def set_op_distributed_attr_program(op, op_dist_attr):
+#     distributed_attr_uid = op.get_distributed_attr_uid()
+#     if distributed_attr_uid == -1:
+#         distributed_attr_uid = generate_op_distributed_attr_uid()
+#         op.set_distributed_attr_uid(distributed_attr_uid)
+#     global OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
+#     OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM[distributed_attr_uid] = op_dist_attr
 
 
 class TensorDistributedAttribute:
@@ -300,3 +320,172 @@ class OperatorDistributedAttribute:
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
         return result
+
+
+class DistributedConfiguration:
+    def __init__(self):
+        self._tensor_distributed_attr_acc_num = -1
+        self._op_distributed_attr_acc_num = -1
+        self._tensor_distributed_attr_map_for_program = {}
+        self._op_distributed_attr_map_for_program = {}
+        # The following two dicts will be used for completion
+        self._tensor_distributed_attr_map_for_graph = {}
+        self._op_distributed_attr_map_for_graph = {}
+
+        # The following maps are used to store comm related info
+        self._comm_info_map = defaultdict(dict)
+        self._comm_group_map = {}
+
+    def generate_tensor_distributed_attr_uid(self):
+        self._tensor_distributed_attr_acc_num = self._tensor_distributed_attr_acc_num + 1
+        return self._tensor_distributed_attr_acc_num
+
+    def generate_op_distributed_attr_uid(self):
+        self._op_distributed_attr_acc_num = self._op_distributed_attr_acc_num + 1
+        return self._op_distributed_attr_acc_num
+
+    def get_tensor_distributed_attr_program(self, tensor):
+        distributed_attr_uid = tensor.get_distributed_attr_uid()
+        tensor_dist_attr = self._tensor_distributed_attr_map_for_program.get(
+            distributed_attr_uid, None)
+        return tensor_dist_attr
+
+    def set_tensor_distributed_attr_program(self, tensor, tensor_dist_attr):
+        distributed_attr_uid = tensor.get_distributed_attr_uid()
+        if distributed_attr_uid == -1:
+            distributed_attr_uid = self.generate_tensor_distributed_attr_uid()
+            tensor.set_distributed_attr_uid(distributed_attr_uid)
+        self._tensor_distributed_attr_map_for_program[
+            distributed_attr_uid] = tensor_dist_attr
+
+    def get_op_distributed_attr_program(self, op):
+        distributed_attr_uid = op.get_distributed_attr_uid()
+        op_dist_attr=self._op_distributed_attr_map_for_program.get(distributed_attr_uid,
+                                                                   None)
+        return op_dist_attr
+
+    def set_op_distributed_attr_program(self, op, op_dist_attr):
+        distributed_attr_uid = op.get_distributed_attr_uid()
+        if distributed_attr_uid == -1:
+            distributed_attr_uid = self.generate_op_distributed_attr_uid()
+            op.set_distributed_attr_uid(distributed_attr_uid)
+        self._op_distributed_attr_map_for_program[distributed_attr_uid] = op_dist_attr
+
+    def get_tensor_distributed_attr_graph(self, tensor_node):
+        tensor_node_id = tensor_node.id()
+        tensor_node_dist_attr = self._tensor_distributed_attr_map_for_graph.get(tensor_node_id, None)
+        return tensor_node_dist_attr
+
+    def set_tensor_distributed_attr_graph(self, tensor_node, tensor_node_dist_attr):
+        tensor_node_id = tensor_node.id()
+        self._tensor_distributed_attr_map_for_graph[tensor_node_id] = tensor_node_dist_attr
+
+    def get_op_distributed_attr_graph(self, op_node):
+        op_node_id = op_node.id()
+        op_dist_attr = self._op_distributed_attr_map_for_graph.get(op_node_id, None)
+        return op_dist_attr
+
+    def set_op_distributed_attr_graph(self, op_node, op_dist_attr):
+        op_node_id = op_node.id()
+        self._op_distributed_attr_map_for_graph[op_node_id] = op_dist_attr
+
+    def initialize_distributed_attr_for_program(self, program):
+        for block in program.blocks:
+            for tensor in block.vars.values():
+                # Need make sure var is a tensor
+                tensor_dist_attr = self.get_tensor_distributed_attr_program(tensor.desc)
+                if tensor_dist_attr is None:
+                    distributed_attr_uid = self.generate_tensor_distributed_attr_uid()
+                    tensor.desc.set_distributed_attr_uid(distributed_attr_uid)
+                    tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
+                    self.set_tensor_distributed_attr_program(tensor.desc,
+                                                             tensor_dist_attr)
+                if tensor_dist_attr.get_dims_mapping() is None:
+                    tensor_dims_mapping = [
+                        -1 for _ in range(len(tensor.desc.shape()))
+                    ]
+                    tensor_dist_attr.set_dims_mapping(tensor_dims_mapping)
+                if isinstance(tensor, framework.Parameter):
+                    tensor_dist_attr.mark_as_parameter()
+            for op in block.ops:
+                op_dist_attr = self.get_op_distributed_attr_program(op.desc)
+                if op_dist_attr is None:
+                    distributed_attr_uid = self.generate_op_distributed_attr_uid()
+                    op.desc.set_distributed_attr_uid(distributed_attr_uid)
+                    op_dist_attr = OperatorDistributedAttribute(op.desc)
+                    # Default distributed implementation for all operators
+                    op_dist_attr.set_impl_idx(-2)
+                    self.set_op_distributed_attr_program(op.desc, op_dist_attr)
+                for tensor_name in op.input_arg_names:
+                    # There may be a better way to find the tensor by name
+                    tensor = op.block._var_recursive(tensor_name)
+                    if op_dist_attr.get_input_dims_mapping(tensor_name) is None:
+                        tensor_dims_mapping = [
+                            -1 for _ in range(len(tensor.desc.shape()))
+                        ]
+                        op_dist_attr.set_input_dims_mapping(tensor_name,
+                                                            tensor_dims_mapping)
+                    if isinstance(tensor, framework.Parameter):
+                        op_dist_attr.mark_as_parameter(tensor_name)
+                for tensor_name in op.output_arg_names:
+                    tensor = op.block._var_recursive(tensor_name)
+                    if op_dist_attr.get_output_dims_mapping(tensor_name) is None:
+                        tensor_dims_mapping = [
+                            -1 for _ in range(len(tensor.desc.shape()))
+                        ]
+                        op_dist_attr.set_output_dims_mapping(tensor_name,
+                                                            tensor_dims_mapping)
+                    if isinstance(tensor, framework.Parameter):
+                        op_dist_attr.mark_as_parameter(tensor_name)
+
+    def initialize_distributed_attr_for_graph(self, graph):
+        all_nodes = graph.all_nodes()
+        for node in all_nodes:
+            if node.is_var() and node.var() is not None:
+                tensor_desc = node.var()
+                # Need make sure var is a tensor
+                tensor_dist_attr = self.get_tensor_distributed_attr_program(tensor_desc)
+                assert tensor_dist_attr is not None, \
+                    "Var must have a distributed attribute after the initialization for program."
+                new_tensor_dist_attr = copy.deepcopy(tensor_dist_attr)
+                self.set_tensor_distributed_attr_graph(node, new_tensor_dist_attr)
+
+            if node.is_op() and node.op() is not None:
+                op_desc = node.op()
+                op_dist_attr = self.get_op_distributed_attr_program(op_desc)
+                assert op_dist_attr is not None, \
+                    "Op must have a distributed attribute after the initialization for program."
+                new_op_dist_attr = copy.deepcopy(op_dist_attr)
+                self.set_op_distributed_attr_graph(node, new_op_dist_attr)
+
+    def clear_distributed_attr_for_program(self):
+        self._tensor_distributed_attr_map_for_program.clear()
+        self._op_distributed_attr_map_for_program.clear()
+
+    def clear_distributed_attr_for_graph(self):
+        self._tensor_distributed_attr_map_for_graph.clear()
+        self._op_distributed_attr_map_for_graph.clear()
+
+    def copy_distribute_attr_from_graph_to_program(self, graph, program):
+        updated_tensors = {}
+        all_nodes = graph.all_nodes()
+        for node in all_nodes:
+            if node.is_var() and node.var() is not None:
+                tensor_desc = node.var()
+                updated = updated_tensors.get(tensor_desc.name(), False)
+                # If a var has multiples var nodes in graph, only use the first one for now
+                if not updated:
+                    tensor_dist_attr = self.get_tensor_distributed_attr_graph(node)
+                    new_tensor_dist_attr = copy.deepcopy(tensor_dist_attr)
+                    self.set_tensor_distributed_attr_program(tensor_desc,
+                                                             new_tensor_dist_attr)
+                    updated_tensors[tensor_desc.name()] = True
+            if node.is_op() and node.op() is not None:
+                op_desc = node.op()
+                op_dist_attr = self.get_op_distributed_attr_graph(node)
+                new_op_dist_attr = copy.deepcopy(op_dist_attr)
+                self.set_op_distributed_attr_program(op_desc, new_op_dist_attr)
+    
+    def set_communication_info(self, rank, comm_op, process_group):
+        pass
+    

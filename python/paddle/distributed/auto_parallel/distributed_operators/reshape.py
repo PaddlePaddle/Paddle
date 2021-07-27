@@ -89,13 +89,8 @@ class DistributedReshape2Impl0(DistributedOperatorImpl):
             if dim_changed:
                 changed = True
 
-        # for i in range(len(x_dims_mapping)):
-        #     dim_changed = compute_compatible_and_update_dim_mapping(
-        #         [x_dims_mapping, x_shape_dims_mapping], [i, i])
-        #     if dim_changed:
-        #         changed = True
-
-        # assert x_shape_dims_mapping == x_dims_mapping
+        for i in range(len(x_dims_mapping)):
+            x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
         return changed
 
@@ -156,13 +151,8 @@ class DistributedReshape2Impl1(DistributedOperatorImpl):
             if dim_changed:
                 changed = True
 
-        # for i in range(len(out_dims_mapping)):
-        #     dim_changed = compute_compatible_and_update_dim_mapping(
-        #         [x_dims_mapping, x_shape_dims_mapping], [i, i])
-        #     if dim_changed:
-        #         changed = True
-
-        # assert x_shape_dims_mapping == x_dims_mapping
+        for i in range(len(x_dims_mapping)):
+            x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
         return changed
 
