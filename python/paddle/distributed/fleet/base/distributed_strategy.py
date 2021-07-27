@@ -362,9 +362,9 @@ class DistributedStrategy(object):
 
 
     @property
-    def dump_configs(self):
+    def trainer_desc_configs(self):
         """
-        Set dump configurations. 
+        Set trainer desc configurations. 
 
         **Notes**:
             dump_fields_path(str): the path of dump fields
@@ -372,6 +372,8 @@ class DistributedStrategy(object):
             dump_fields(list(str)): the fields that you want to dump
 
             dump_param(list(str)): the param that you want to dump
+
+            stat_var_names(list(str)): 
 
         Examples:
 
@@ -383,20 +385,20 @@ class DistributedStrategy(object):
 
             strategy = fleet.DistributedStrategy()
             configs = {"dump_fields_path": "./dump_data", "dump_fields": ["xxx", "yyy"]}
-            strategy.dump_configs = configs
+            strategy.trainer_desc_configs = configs
 
             # code block for defining loss and local optimizer
             # sgd = fleet.distributed_optimizer(optimizer, strategy)
 
         """
-        return get_msg_dict(self.strategy.dump_configs)
+        return get_msg_dict(self.strategy.trainer_desc_configs)
 
-    @dump_configs.setter
+    @trainer_desc_configs.setter
     @is_strict_auto
-    def dump_configs(self, configs):
-        check_configs_key(self.strategy.dump_configs, configs,
-                          "dump_configs")
-        assign_configs_value(self.strategy.dump_configs, configs)
+    def trainer_desc_configs(self, configs):
+        check_configs_key(self.strategy.trainer_desc_configs, configs,
+                          "trainer_desc_configs")
+        assign_configs_value(self.strategy.trainer_desc_configs, configs)
 
     @property
     def amp(self):

@@ -1464,9 +1464,8 @@ class Fleet(object):
         opt_info = {}
         opt_info["mpi_size"] = self.worker_num()
         opt_info["mpi_rank"] = self.worker_index()
-        opt_info["stat_var_names"] = []
-        for key in self._user_defined_strategy.dump_configs:
-            opt_info[key] = self._user_defined_strategy.dump_configs[key]
+        for key in self._user_defined_strategy.trainer_desc_configs:
+            opt_info[key] = self._user_defined_strategy.trainer_desc_configs[key]
         program._fleet_opt = opt_info
         print("program_fleet_opt======= ", program._fleet_opt)
 
