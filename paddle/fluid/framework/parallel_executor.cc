@@ -1485,7 +1485,9 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
       member_->executor_.reset(pg_exe);
       member_->inference_executor_ = pg_exe;
     } else {
-      member_->ApplyFixOpRunOrderPass(graph);
+      if (member_->places_.size() == 1) {
+        member_->ApplyFixOpRunOrderPass(graph);
+      }
       LOG_IF(WARNING, details::HasKeepLastReadOp(*graph))
           << "drop_last=False for DataLoader is not supported in training "
              "network. It is automatically turned to drop_last=True.";

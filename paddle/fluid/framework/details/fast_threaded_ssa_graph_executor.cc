@@ -43,7 +43,8 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       // add one more thread for generate op_deps
       prepare_pool_(1) {
   if (ir::IsTopologySortOperationsUnique(*graph_)) {
-    VLOG(3) << "Change thread number to 1 because the toposort order is unique";
+    VLOG(10)
+        << "Change thread number to 1 because the toposort order is unique";
     strategy_.num_threads_ = 1;
   }
   pool_.reset(new ::ThreadPool(strategy.num_threads_));

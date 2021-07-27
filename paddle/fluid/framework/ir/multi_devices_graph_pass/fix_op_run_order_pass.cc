@@ -27,11 +27,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class FixOpRunOrderPass : public Pass {
- protected:
-  void ApplyImpl(Graph *graph) const override;
-};
-
 static std::string kSep{{static_cast<char>(1), '\0'}};  // NOLINT
 
 // NOTE: VariableNameMap is sorted!
@@ -98,185 +93,168 @@ static std::vector<Node *> GetAllOpNodes(const Graph &graph) {
   return nodes;
 }
 
-static void CheckUniqueToposortOrder(const Graph &graph) {
-  OpGraphView view(FilterByNodeWrapper<details::OpHandleBase>(graph));
-  std::vector<Node *> nodes;
-  view.BreadthFirstVisit(
-      [&nodes](details::OpHandleBase *op) { nodes.push_back(op->Node()); });
-
-  size_t n = nodes.size();
-  for (size_t i = 1; i < n; ++i) {
-    auto prev_node = nodes[i - 1];
-    auto cur_node = nodes[i];
-
-    std::unordered_set<Node *> prev_out_nodes(prev_node->outputs.begin(),
-                                              prev_node->outputs.end());
-    bool found = false;
-    for (auto *node : cur_node->inputs) {
-      if (prev_out_nodes.count(node) > 0) {
-        found = true;
-        break;
-      }
-    }
-    PADDLE_ENFORCE_EQ(found, true, platform::errors::PermissionDenied(
-                                       "Topological order should be unique "
-                                       "after FixOpRunOrderPass is applied"));
-  }
-}
-
-void FixOpRunOrderPass::ApplyImpl(Graph *graph) const {
-  const auto &program = graph->OriginProgram();
-  std::unordered_map<std::string, size_t> op_to_idx;
-  size_t i = 0;
-  for (auto *op_desc : program.Block(0).AllOps()) {
-    auto op_desc_str = OpDescToString(*op_desc);
-    PADDLE_ENFORCE_EQ(op_to_idx.emplace(op_desc_str, i).second, true,
-                      platform::errors::PermissionDenied(
-                          "FixOpRunOrderPass cannot handle OpDesc with same "
-                          "type, inputs and outputs yet, error string repr: %s",
-                          op_desc_str));
-    ++i;
-  }
-
-  // a map to record: "Node" -> "Node Index"
-  std::unordered_map<Node *, size_t> node_to_idx;
-  // a map to record found "Node Index"
-  std::unordered_set<size_t> found_op_indices;
-  // a map to record the new OpDesc created by other Passes. These ops does not
-  // exist in the origin program
-  std::map<std::string, Node *> new_op_desc_nodes;
-  // a map to record the new OpHandle created by other Passes. These ops does
-  // not have OpDesc and does not exist in the origin program
-  std::map<std::string, Node *> new_op_handle_nodes;
-
-  // Step 1: handle the unchanged OpDesc, and record new OpDesc/OpHandle
-  auto op_handles = FilterByNodeWrapper<details::OpHandleBase>(*graph);
-  for (auto *op_handle : op_handles) {
-    auto *node = op_handle->Node();
-    if (node->Op() == nullptr) {
-      auto node_str = OpHandleToString(*op_handle);
-      PADDLE_ENFORCE_EQ(new_op_handle_nodes.emplace(node_str, node).second,
-                        true, platform::errors::PermissionDenied(
-                                  "FixOpRunOrderPass cannot OpHandle with same "
-                                  "inputs and outputs yet, error repr: %s",
-                                  node_str));
-      continue;
+class FixOpRunOrderPass : public Pass {
+ protected:
+  void ApplyImpl(Graph *graph) const override {
+    const auto &program = graph->OriginProgram();
+    std::unordered_map<std::string, size_t> op_to_idx;
+    size_t i = 0;
+    for (auto *op_desc : program.Block(0).AllOps()) {
+      auto op_desc_str = OpDescToString(*op_desc);
+      PADDLE_ENFORCE_EQ(
+          op_to_idx.emplace(op_desc_str, i).second, true,
+          platform::errors::PermissionDenied(
+              "FixOpRunOrderPass cannot handle OpDesc with same "
+              "type, inputs and outputs yet, error string repr: %s",
+              op_desc_str));
+      ++i;
     }
 
-    auto node_str = OpDescToString(*(node->Op()));
-    auto iter = op_to_idx.find(node_str);
-    if (iter != op_to_idx.end()) {
-      size_t idx = iter->second;
-      PADDLE_ENFORCE_EQ(found_op_indices.count(idx), 0,
-                        platform::errors::PermissionDenied(
-                            "FixOpRunOrderPass cannot handle OpDesc with same "
-                            "type, inputs and outputs yet, error repr: %s",
-                            node_str));
-      found_op_indices.insert(idx);
-      node_to_idx[node] = idx;
-    } else {
-      PADDLE_ENFORCE_EQ(new_op_desc_nodes.emplace(node_str, node).second, true,
-                        platform::errors::PermissionDenied(
-                            "FixOpRunOrderPass cannot handle OpDesc with same "
-                            "type, inputs and outputs yet, error repr: %s",
-                            node_str));
-    }
-  }
+    // a map to record: "Node" -> "Node Index"
+    std::unordered_map<Node *, size_t> node_to_idx;
+    // a map to record found "Node Index"
+    std::unordered_set<size_t> found_op_indices;
+    // a map to record the new OpDesc created by other Passes. These ops does
+    // not
+    // exist in the origin program
+    std::map<std::string, Node *> new_op_desc_nodes;
+    // a map to record the new OpHandle created by other Passes. These ops does
+    // not have OpDesc and does not exist in the origin program
+    std::map<std::string, Node *> new_op_handle_nodes;
 
-  VLOG(10) << "Found unchanged OpDesc " << op_to_idx.size() << ", new OpDesc "
-           << new_op_desc_nodes.size() << ", new OpHandle "
-           << new_op_handle_nodes.size();
-
-  // Step 2: assign node index to new OpDesc
-  size_t node_id_offset = op_to_idx.size();
-  for (auto &pair : new_op_desc_nodes) {
-    node_to_idx[pair.second] = node_id_offset;
-    ++node_id_offset;
-  }
-
-  // Step 3: assign node index to new OpHandle
-  for (auto &pair : new_op_handle_nodes) {
-    node_to_idx[pair.second] = node_id_offset;
-    ++node_id_offset;
-  }
-
-  // Step 4: sort unchanged OpDesc/new OpDesc/new OpHandle by topological order
-  // and node index
-  OpGraphView graph_view(op_handles);
-  auto comp = [&node_to_idx](details::OpHandleBase *op1,
-                             details::OpHandleBase *op2) {
-    return node_to_idx.at(op1->Node()) < node_to_idx.at(op2->Node());
-  };
-
-  std::vector<details::OpHandleBase *> sorted_ops;
-  sorted_ops.reserve(op_handles.size());
-  std::queue<details::OpHandleBase *> q;
-  std::vector<details::OpHandleBase *> tmp_ops;
-  std::unordered_set<details::OpHandleBase *> visited_ops;
-  auto op_deps = graph_view.GetPrecedingDepNum();
-  // Get ready ops first
-  for (auto iter = op_deps.begin(); iter != op_deps.end();) {
-    if (iter->second != 0) {
-      ++iter;
-      continue;
-    }
-    tmp_ops.push_back(iter->first);
-    visited_ops.insert(iter->first);
-    op_deps.erase(iter++);
-  }
-  // Sort ready ops by node index
-  std::sort(tmp_ops.begin(), tmp_ops.end(), comp);
-  for (auto *op : tmp_ops) {
-    q.push(op);
-  }
-  while (!q.empty()) {
-    auto *cur_op = q.front();
-    q.pop();
-    sorted_ops.push_back(cur_op);
-
-    auto &pending_ops = graph_view.PendingOps(cur_op);
-    tmp_ops.clear();
-    for (auto *pending_op : pending_ops) {
-      if (visited_ops.count(pending_op) > 0) {
+    // Step 1: handle the unchanged OpDesc, and record new OpDesc/OpHandle
+    auto op_handles = FilterByNodeWrapper<details::OpHandleBase>(*graph);
+    for (auto *op_handle : op_handles) {
+      auto *node = op_handle->Node();
+      if (node->Op() == nullptr) {
+        auto node_str = OpHandleToString(*op_handle);
+        PADDLE_ENFORCE_EQ(new_op_handle_nodes.emplace(node_str, node).second,
+                          true,
+                          platform::errors::PermissionDenied(
+                              "FixOpRunOrderPass cannot OpHandle with same "
+                              "inputs and outputs yet, error repr: %s",
+                              node_str));
         continue;
       }
 
-      if (--op_deps.at(pending_op) == 0) {
-        visited_ops.insert(pending_op);
-        op_deps.erase(pending_op);
-        tmp_ops.push_back(pending_op);
+      auto node_str = OpDescToString(*(node->Op()));
+      auto iter = op_to_idx.find(node_str);
+      if (iter != op_to_idx.end()) {
+        size_t idx = iter->second;
+        PADDLE_ENFORCE_EQ(
+            found_op_indices.count(idx), 0,
+            platform::errors::PermissionDenied(
+                "FixOpRunOrderPass cannot handle OpDesc with same "
+                "type, inputs and outputs yet, error repr: %s",
+                node_str));
+        found_op_indices.insert(idx);
+        node_to_idx[node] = idx;
+      } else {
+        PADDLE_ENFORCE_EQ(
+            new_op_desc_nodes.emplace(node_str, node).second, true,
+            platform::errors::PermissionDenied(
+                "FixOpRunOrderPass cannot handle OpDesc with same "
+                "type, inputs and outputs yet, error repr: %s",
+                node_str));
       }
     }
-    // sort next ready ops by node index
+
+    VLOG(10) << "Found unchanged OpDesc " << op_to_idx.size() << ", new OpDesc "
+             << new_op_desc_nodes.size() << ", new OpHandle "
+             << new_op_handle_nodes.size();
+
+    // Step 2: assign node index to new OpDesc
+    size_t node_id_offset = op_to_idx.size();
+    for (auto &pair : new_op_desc_nodes) {
+      node_to_idx[pair.second] = node_id_offset;
+      ++node_id_offset;
+    }
+
+    // Step 3: assign node index to new OpHandle
+    for (auto &pair : new_op_handle_nodes) {
+      node_to_idx[pair.second] = node_id_offset;
+      ++node_id_offset;
+    }
+
+    // Step 4: sort unchanged OpDesc/new OpDesc/new OpHandle by topological
+    // order
+    // and node index
+    OpGraphView graph_view(op_handles);
+    auto comp = [&node_to_idx](details::OpHandleBase *op1,
+                               details::OpHandleBase *op2) {
+      return node_to_idx.at(op1->Node()) < node_to_idx.at(op2->Node());
+    };
+
+    std::vector<details::OpHandleBase *> sorted_ops;
+    sorted_ops.reserve(op_handles.size());
+    std::queue<details::OpHandleBase *> q;
+    std::vector<details::OpHandleBase *> tmp_ops;
+    std::unordered_set<details::OpHandleBase *> visited_ops;
+    auto op_deps = graph_view.GetPrecedingDepNum();
+    // Get ready ops first
+    for (auto iter = op_deps.begin(); iter != op_deps.end();) {
+      if (iter->second != 0) {
+        ++iter;
+        continue;
+      }
+      tmp_ops.push_back(iter->first);
+      visited_ops.insert(iter->first);
+      op_deps.erase(iter++);
+    }
+    // Sort ready ops by node index
     std::sort(tmp_ops.begin(), tmp_ops.end(), comp);
     for (auto *op : tmp_ops) {
       q.push(op);
     }
-  }
+    while (!q.empty()) {
+      auto *cur_op = q.front();
+      q.pop();
+      sorted_ops.push_back(cur_op);
 
-  PADDLE_ENFORCE_EQ(
-      sorted_ops.size(), op_handles.size(),
-      platform::errors::PermissionDenied("There are unvisited ops"));
-  if (VLOG_IS_ON(10)) {
-    // print op order to debug
-    std::vector<size_t> sorted_ops_indices;
-    sorted_ops_indices.reserve(sorted_ops.size());
-    for (auto *op : sorted_ops) {
-      sorted_ops_indices.push_back(node_to_idx.at(op->Node()));
+      auto &pending_ops = graph_view.PendingOps(cur_op);
+      tmp_ops.clear();
+      for (auto *pending_op : pending_ops) {
+        if (visited_ops.count(pending_op) > 0) {
+          continue;
+        }
+
+        if (--op_deps.at(pending_op) == 0) {
+          visited_ops.insert(pending_op);
+          op_deps.erase(pending_op);
+          tmp_ops.push_back(pending_op);
+        }
+      }
+      // sort next ready ops by node index
+      std::sort(tmp_ops.begin(), tmp_ops.end(), comp);
+      for (auto *op : tmp_ops) {
+        q.push(op);
+      }
     }
-    VLOG(10) << "Fix op order: "
-             << string::join_strings(sorted_ops_indices, ',');
-  }
 
-  // Step 5: add sequential deps for ops to guarantee there is only one toposort
-  // order
-  AddSequentialDepsForSortedOps(graph, sorted_ops);
-  PADDLE_ENFORCE_EQ(
-      IsTopologySortOperationsUnique(*graph), true,
-      platform::errors::PermissionDenied("The topological order must be unique "
-                                         "after FixOpRunOrderPass is applied"));
-  CheckUniqueToposortOrder(*graph);
-}
+    PADDLE_ENFORCE_EQ(
+        sorted_ops.size(), op_handles.size(),
+        platform::errors::PermissionDenied("There are unvisited ops"));
+    if (VLOG_IS_ON(10)) {
+      // print op order to debug
+      std::vector<size_t> sorted_ops_indices;
+      sorted_ops_indices.reserve(sorted_ops.size());
+      for (auto *op : sorted_ops) {
+        sorted_ops_indices.push_back(node_to_idx.at(op->Node()));
+      }
+      VLOG(10) << "Fix op order: "
+               << string::join_strings(sorted_ops_indices, ',');
+    }
+
+    // Step 5: add sequential deps for ops to guarantee there is only one
+    // toposort
+    // order
+    AddSequentialDepsForSortedOps(graph, sorted_ops);
+    PADDLE_ENFORCE_EQ(IsTopologySortOperationsUnique(*graph), true,
+                      platform::errors::PermissionDenied(
+                          "The topological order must be unique "
+                          "after FixOpRunOrderPass is applied"));
+  }
+};
 
 }  // namespace ir
 }  // namespace framework

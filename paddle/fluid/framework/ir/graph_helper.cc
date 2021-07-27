@@ -154,13 +154,18 @@ bool IsTopologySortOperationsUnique(const Graph &graph) {
       prev_op_outputs.insert(output);
     }
 
+    bool found = false;
     for (auto *input : cur_op->inputs) {
       if (prev_op_outputs.count(input) > 0) {
-        return true;
+        found = true;
+        break;
       }
     }
+    if (!found) {
+      return false;
+    }
   }
-  return false;
+  return true;
 }
 
 // Build operator inlink edge table.
