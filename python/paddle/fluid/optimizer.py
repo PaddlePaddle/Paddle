@@ -2535,30 +2535,46 @@ class AdamOptimizer(Optimizer):
 
             with block.program._optimized_guard([]):
                 inputs = {"X": beta1_pow_acc}
+                outputs = {"Out": beta1_pow_acc}
                 attrs = {}
                 if isinstance(self._beta1, Variable):
-                    inputs['ScaleTensor'] = self._beta1
+                    inputs["Y"] = self._beta1
+                    # use elementwise_mul for better performance
+                    block.append_op(
+                        type="elementwise_mul",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
                 else:
                     attrs['scale'] = self._beta1
-                block.append_op(
-                    type="scale",
-                    inputs=inputs,
-                    outputs={"Out": beta1_pow_acc},
-                    attrs=attrs,
-                    stop_gradient=True)
+                    block.append_op(
+                        type="scale",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
 
                 inputs = {"X": beta2_pow_acc}
+                outputs = {"Out": beta2_pow_acc}
                 attrs = {}
                 if isinstance(self._beta2, Variable):
-                    inputs['ScaleTensor'] = self._beta2
+                    inputs["Y"] = self._beta2
+                    # use elementwise_mul for better performance
+                    block.append_op(
+                        type="elementwise_mul",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
                 else:
                     attrs['scale'] = self._beta2
-                block.append_op(
-                    type="scale",
-                    inputs=inputs,
-                    outputs={"Out": beta2_pow_acc},
-                    attrs=attrs,
-                    stop_gradient=True)
+                    block.append_op(
+                        type="scale",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
 
 
 class AdamaxOptimizer(Optimizer):
