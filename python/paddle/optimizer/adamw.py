@@ -161,12 +161,6 @@ class AdamW(Adam):
         self._coeff = coeff
         self._lr_to_coeff = dict()
 
-        self._device = "cpu"
-        if core.is_compiled_with_npu():
-            self._device = "npu"
-        elif core.is_compiled_with_cuda():
-            self._device = "gpu"
-
         super(AdamW, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,
@@ -218,7 +212,8 @@ class AdamW(Adam):
             # we do this in _create_optimization_pass
             decay_coeff = self._lr_to_coeff.get(learning_rate, None)
             if decay_coeff is None:
-                with paddle.static.device_guard("{}:all".format(self._device)):
+                # NOTE(wangxi): for pipeline to set device:all
+                with paddle.static.device_guard(None):
                     decay_coeff = 1.0 - learning_rate * self._coeff
                 self._lr_to_coeff[learning_rate] = decay_coeff
 
