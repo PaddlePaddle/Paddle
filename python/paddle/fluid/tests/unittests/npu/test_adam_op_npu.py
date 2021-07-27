@@ -19,6 +19,7 @@ sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from test_adam_op import adam_step
 
 paddle.enable_static()
@@ -443,7 +444,7 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
     def test_adam_api(self):
         # NOTE(zhiqiu): cpu and gpu has different seed, so should compare separatly.
         self._test_with_place(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_npu():
             self._test_with_place(paddle.NPUPlace(0))
 
 
