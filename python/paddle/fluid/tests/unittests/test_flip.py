@@ -33,6 +33,8 @@ class TestFlipOp_API(unittest.TestCase):
             axis = [0]
             input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.flip(input, axis)
+            output = paddle.flip(output, -1)
+            output = output.flip(0)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
@@ -43,7 +45,7 @@ class TestFlipOp_API(unittest.TestCase):
                           feed={'input': img},
                           fetch_list=[output])
             out_np = np.array(res[0])
-            out_ref = np.array([[4, 5, 6], [1, 2, 3]]).astype(np.float32)
+            out_ref = np.array([[3, 2, 1], [6, 5, 4]]).astype(np.float32)
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='flip output is wrong, out =' + str(out_np))
@@ -53,7 +55,10 @@ class TestFlipOp_API(unittest.TestCase):
         with fluid.dygraph.guard():
             inputs = fluid.dygraph.to_variable(img)
             ret = paddle.flip(inputs, [0])
-            out_ref = np.array([[4, 5, 6], [1, 2, 3]]).astype(np.float32)
+            ret = ret.flip(0)
+            ret = paddle.flip(ret, 1)
+            out_ref = np.array([[3, 2, 1], [6, 5, 4]]).astype(np.float32)
+
             self.assertTrue(
                 (ret.numpy() == out_ref).all(),
                 msg='flip output is wrong, out =' + str(ret.numpy()))
@@ -82,6 +87,8 @@ class TestFlipOp(OpTest):
 
     def calc_ref_res(self):
         res = self.inputs['X']
+        if isinstance(self.axis, int):
+            return np.flip(res, self.axis)
         for axis in self.axis:
             res = np.flip(res, axis)
         return res
