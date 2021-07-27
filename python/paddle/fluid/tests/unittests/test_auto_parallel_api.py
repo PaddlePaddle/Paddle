@@ -21,12 +21,11 @@ import paddle.nn as nn
 
 paddle.enable_static()
 
-mesh = paddle.distributed.ProcessMesh([2, 3])
-
 
 class SimpleNet(nn.Layer):
     def __init__(self, vocab_size=128, hidden_size=4):
         super(SimpleNet, self).__init__()
+        mesh = paddle.distributed.ProcessMesh([2, 3])
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
         self.dense1 = nn.Linear(hidden_size, hidden_size)
         self.dense2 = nn.Linear(hidden_size, hidden_size // 2)
@@ -42,17 +41,29 @@ class SimpleNet(nn.Layer):
 
 
 class TestAutoParallelAPI(unittest.TestCase):
-    def test_api(self):
-        net = SimpleNet()
-        x = fluid.layers.fill_constant(shape=[2, 4], value=1, dtype="int64")
-        y = fluid.layers.fill_constant(shape=[2, 4], value=2, dtype="float32")
-        emb_out, linear1, out = net.forward(x, y)
-        self.assertEqual(x.desc.distributed_attr('mesh_topology'), [2, 3])
-        self.assertEqual(
-            x.desc.distributed_attr('mesh_group'), [0, 1, 2, 3, 4, 5])
-        self.assertEqual(y.desc.distributed_attr('mesh_topology'), [2, 3])
-        self.assertEqual(
-            y.desc.distributed_attr('mesh_group'), [0, 1, 2, 3, 4, 5])
+    #def test_api(self):
+    #    net = SimpleNet()
+    #    x = fluid.layers.fill_constant(shape=[2, 4], value=1, dtype="int64")
+    #    y = fluid.layers.fill_constant(shape=[2, 4], value=2, dtype="float32")
+    #    emb_out, linear1, out = net.forward(x, y)
+    #    self.assertEqual(x.desc.distributed_attr('mesh_topology'), [2, 3])
+    #    self.assertEqual(
+    #        x.desc.distributed_attr('mesh_group'), [0, 1, 2, 3, 4, 5])
+    #    self.assertEqual(y.desc.distributed_attr('mesh_topology'), [2, 3])
+    #    self.assertEqual(
+    #        y.desc.distributed_attr('mesh_group'), [0, 1, 2, 3, 4, 5])
+
+    def test_process_mesh(self):
+        mesh1 = paddle.distributed.ProcessMesh([2, 3])
+        mesh2 = paddle.distributed.ProcessMesh([2, 3])
+        mesh3 = paddle.distributed.ProcessMesh(
+            [2, 3], process_group=[2, 3, 4, 5, 6, 7])
+        mesh4 = paddle.distributed.ProcessMesh([2, 2], parent_id=mesh1.id)
+
+        self.assertEqual(mesh1.parent, None)
+        self.assertEqual(mesh4.parent, mesh1)
+        self.assertEqual(mesh1 == mesh2, True)
+        self.assertEqual(mesh1 == mesh3, False)
 
 
 if __name__ == '__main__':

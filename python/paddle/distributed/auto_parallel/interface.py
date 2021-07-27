@@ -14,6 +14,8 @@
 
 import numpy as np
 
+import paddle.fluid.core as core
+
 __all__ = []
 
 g_process_mesh_map = dict()
@@ -41,31 +43,31 @@ class ProcessMesh(object):
             mesh = ProcessMesh([dp_degree, pp_degree, mp_degree])
     """
 
-    def __init__(self, topology, process_group=None, parent_index=None):
+    def __init__(self, topology, process_group=None, parent_id=None):
         assert topology, "You must specify the topology for ProcessMesh."
-        process_num = np.prod(mesh)
+        process_num = np.prod(topology)
         if process_group is None:
             process_group = list(range(process_num))
         assert len(process_group) == process_num
 
-        if parent_index is None: parent_index = -1
+        if parent_id is None: parent_id = -1
 
-        self.desc = core.ProcessMesh(topology, process_group, parent_index)
-        cur_idx = self.desc.id
-        assert cur_idx not in g_process_mesh_map, "%d already exists." % cur_idx
-        g_process_mesh_map[cur_idx] = self
+        self.desc = core.ProcessMeshDesc(topology, process_group, parent_id)
+        cur_id = self.desc.id
+        assert cur_id not in g_process_mesh_map, "%d already exists." % cur_id
+        g_process_mesh_map[cur_id] = self
 
     @property
     def topology(self):
-        return self.desc.topology
+        return self.desc.topology()
 
     @property
     def process_group(self):
-        return self.desc.process_group
+        return self.desc.process_group()
 
     @property
     def rank(self):
-        return len(self.desc.topology)
+        return len(self.desc.topology())
 
     @property
     def id(self):
@@ -73,15 +75,18 @@ class ProcessMesh(object):
 
     @property
     def parent(self):
-        parent_idx = self.desc.parent_idx
-        if parent_idx == -1: return None
-        assert parent_idx in g_process_mesh_map, \
-            "parent (%d) does not exist."%parent_idx
-        return g_process_mesh_map[parent_idx]
+        parent_id = self.desc.parent
+        if parent_id == -1: return None
+        assert parent_id in g_process_mesh_map, \
+            "parent (%d) does not exist."%parent_id
+        return g_process_mesh_map[parent_id]
 
     def __eq__(self, other):
-        assert other
-        return self.desc.equal(other.desc)
+        assert other and isinstance(other, ProcessMesh)
+        if len(self.topology) != len(other.topology): return False
+        if self.topology != other.topology or self.process_group != other.process_group:
+            return False
+        return True
 
     def __ne__(self, other):
         return not self.__eq__(other)
