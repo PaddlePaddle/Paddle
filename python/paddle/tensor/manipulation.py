@@ -728,6 +728,7 @@ def unique_consecutive(x,
     .. note:: This function is different from :func:`paddle.unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to `std::unique`
         in C++.
+
     Args:
         x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
         return_inverse(bool, optional): If True, also return the indices for where elements in
@@ -735,10 +736,12 @@ def unique_consecutive(x,
         return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
         axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
             Default: None.
+
     Returns:
         tuple: (out, inverse, counts). `out` is the unique consecutive tensor for `x`.`inverse` is \
            provided only if `return_inverse` is True. `counts` is provided only if `return_counts` \
            is True.
+
     Example:
         .. code-block:: python
 
