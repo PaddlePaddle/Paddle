@@ -2055,7 +2055,6 @@ def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
             opt_ops, pram_grads = paddle.fluid.backward.gradients_with_optimizer(static.default_main_program(), opt)
             print(opt_ops)
 
-print(opt_ops)
     """
     check_type(program, 'program', paddle.fluid.Program,
                'paddle.static.gradients_with_optimizer')
