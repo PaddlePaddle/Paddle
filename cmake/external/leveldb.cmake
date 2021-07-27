@@ -33,6 +33,7 @@ ExternalProject_Add(
         && cp ${LEVELDB_SOURCES_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
         && cp -r ${LEVELDB_SOURCES_DIR}/src/extern_leveldb/include ${LEVELDB_INSTALL_DIR}/
         BUILD_IN_SOURCE 1
+        BUILD_BYPRODUCTS ${LEVELDB_LIBRARIES}
 )
 
 ADD_DEPENDENCIES(extern_leveldb snappy)

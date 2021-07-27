@@ -17,7 +17,6 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/layer_norm_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/operators/layer_norm_op.h"
 
 namespace paddle {
@@ -25,16 +24,10 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-LayerNormPlugin *CreateLayerNormPluginDeserialize(const void *buffer,
-                                                  size_t length) {
-  return new LayerNormPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("layer_norm_plugin", CreateLayerNormPluginDeserialize);
-
-int LayerNormPlugin::initialize() { return 0; }
+int LayerNormPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims *inputDims, int nbInputs) {
+    int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
   assert(nbInputs == 1);
   assert(index < this->getNbOutputs());
   nvinfer1::Dims const &input_dims = inputDims[0];
@@ -43,11 +36,15 @@ nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
 }
 
 int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
+#if IS_TRT_VERSION_LT(8000)
                              void **outputs, void *workspace,
-                             cudaStream_t stream) {
+#else
+                             void *const *outputs, void *workspace,
+#endif
+                             cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);
-  float *output = reinterpret_cast<float **>(outputs)[0];
+  float *output = reinterpret_cast<float *const *>(outputs)[0];
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
 
@@ -94,13 +91,13 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
 
 nvinfer1::DimsExprs LayerNormPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputDims, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   return inputDims[0];
 }
 
 bool LayerNormPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of layernorm plugin shoule not be nullptr."));
@@ -121,7 +118,8 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType LayerNormPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index, 0,
                     platform::errors::InvalidArgument(
                         "The LayerNormPlugin only has one input, so the "
@@ -133,7 +131,7 @@ nvinfer1::DataType LayerNormPluginDynamic::getOutputDataType(
 int LayerNormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) {
+    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = input_desc[0].dims;
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
@@ -182,69 +180,9 @@ int LayerNormPluginDynamic::enqueue(
     paddle::operators::LayerNormDirectCUDAFunctor<float> layer_norm;
     layer_norm(stream, input, input_shape, bias_d, scale_d, output, mean_d,
                variance_d, begin_norm_axis, eps);
-  } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef TRT_PLUGIN_FP16_AVALIABLE
-    VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp16";
-    const half *input = reinterpret_cast<const half *>(inputs[0]);
-    half *output = static_cast<half *>(outputs[0]);
-    size_t mean_shape_product = 1;
-    for (auto s : mean_shape_) {
-      mean_shape_product *= s;
-    }
-    size_t variance_shape_product = 1;
-    for (auto s : variance_shape_) {
-      variance_shape_product *= s;
-    }
-    if (!scale_gpu_half_d_) {
-      cudaMalloc(&scale_gpu_half_d_, feature_size * sizeof(half));
-    }
-    if (!bias_gpu_half_d_) {
-      cudaMalloc(&bias_gpu_half_d_, feature_size * sizeof(half));
-    }
-    if (!mean_gpu_half_d_) {
-      cudaMalloc(&mean_gpu_half_d_, mean_shape_product * sizeof(half));
-    }
-    if (!variance_gpu_half_d_) {
-      cudaMalloc(&variance_gpu_half_d_, variance_shape_product * sizeof(half));
-    }
-
-    half *scale_cpu_half =
-        static_cast<half *>(malloc(feature_size * sizeof(half)));
-    half *bias_cpu_half =
-        static_cast<half *>(malloc(feature_size * sizeof(half)));
-    PADDLE_ENFORCE_EQ(
-        scale_cpu_half && bias_cpu_half, true,
-        platform::errors::Unavailable("Out of memory, malloc size %d.",
-                                      feature_size * sizeof(half)));
-
-    for (int i = 0; i < feature_size; i++) {
-      scale_cpu_half[i] = static_cast<half>(scale_[i]);
-      bias_cpu_half[i] = static_cast<half>(bias_[i]);
-    }
-    cudaMemcpyAsync(scale_gpu_half_d_, scale_cpu_half,
-                    sizeof(half) * feature_size, cudaMemcpyHostToDevice,
-                    stream);
-    cudaMemcpyAsync(bias_gpu_half_d_, bias_cpu_half,
-                    sizeof(half) * feature_size, cudaMemcpyHostToDevice,
-                    stream);
-    free(scale_cpu_half);
-    free(bias_cpu_half);
-
-    paddle::operators::LayerNormDirectCUDAFunctor<half> layer_norm;
-    layer_norm(stream, input, input_shape, bias_gpu_half_d_, scale_gpu_half_d_,
-               output, mean_gpu_half_d_, variance_gpu_half_d_, begin_norm_axis,
-               eps);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The layer_norm tensorRT plugin should be "
-        "complied with CUDA version >= 10.0 when running with fp16. "
-        "Please recomplie it or try to use fp32 by set "
-        "config.SetTRTDynamicShapeInfo(min_input_shape, "
-        "max_input_shape, opt_input_shape, true"));
-#endif
   } else {
     PADDLE_THROW(platform::errors::Fatal(
-        "The LayerNorm TRT Plugin's input type should be float or half."));
+        "The LayerNorm TRT Plugin's input type should be float."));
   }
   return cudaGetLastError() != cudaSuccess;
 }

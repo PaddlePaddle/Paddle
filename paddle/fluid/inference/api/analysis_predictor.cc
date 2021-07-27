@@ -152,8 +152,8 @@ bool AnalysisPredictor::Init(
                                              : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
   } else {
-    LOG(INFO) << "Profiler is deactivated, and no profiling report will be "
-                 "generated.";
+    VLOG(2) << "Profiler is deactivated, and no profiling report will be "
+               "generated.";
   }
 
   // no matter with or without MKLDNN
@@ -264,6 +264,14 @@ bool AnalysisPredictor::CreateExecutor() {
           "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
     }
+  } else if (config_.use_npu()) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    place_ = paddle::platform::NPUPlace(config_.npu_device_id());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use NPU forward propagation, but Paddle was not compiled "
+        "with WITH_ASCEND_CL."));
+#endif
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -343,8 +351,6 @@ void AnalysisPredictor::MkldnnPreSet(
     platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
         platform::MKLDNNDeviceContextThreadLocals::
             kMKLDNNSessionID_CacheClearing);
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(
-        config_.mkldnn_cache_capacity_);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
     for (size_t i = 0; i < inputs_shape.size(); ++i) {
@@ -355,6 +361,9 @@ void AnalysisPredictor::MkldnnPreSet(
     VLOG(2) << "Set input shape=" << ss.str();
     platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str(ss.str());
   }
+  platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(
+      config_.mkldnn_cache_capacity_);
+
 #endif
 }
 
@@ -370,10 +379,9 @@ void AnalysisPredictor::MkldnnPostReset() {
       CHECK_LE(shape_blob_size,
                static_cast<size_t>(config_.mkldnn_cache_capacity_));
     }
-    paddle::platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
-        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default);
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(0);
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str("");
+    // We cannot reset to the default cache settings
+    // as there maybe CopyToCPU method used and oneDNN
+    // primitives are used there so cache would grow
   }
 #endif
 }
@@ -847,6 +855,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
+  } else if (platform::is_npu_place(place_)) {
+    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+    res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -879,6 +890,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
+  } else if (platform::is_npu_place(place_)) {
+    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+    res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -1241,6 +1255,7 @@ USE_TRT_CONVERTER(nearest_interp);
 USE_TRT_CONVERTER(reshape);
 USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(gather_nd);
+USE_TRT_CONVERTER(reduce_mean);
 #endif
 
 namespace paddle_infer {

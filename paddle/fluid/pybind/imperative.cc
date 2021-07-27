@@ -51,6 +51,8 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+PyTypeObject *g_varbase_pytype = nullptr;
+
 namespace py = ::pybind11;
 
 class Layer : public imperative::Layer {
@@ -133,30 +135,44 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::XPUPlace>();
   } else if (py::isinstance<platform::CUDAPinnedPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
+  } else if (py::isinstance<platform::NPUPlace>(place_obj)) {
+    return place_obj.cast<platform::NPUPlace>();
   } else if (py::isinstance<platform::Place>(place_obj)) {
     return place_obj.cast<platform::Place>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace"));
   }
 }
 
-static void InitTensorForVarBase(imperative::VarBase *self,
-                                 const py::array &array,
-                                 const platform::Place place,
-                                 bool persistable = false,
-                                 bool zero_copy = false, std::string name = "",
-                                 int stop_gradient = -1) {
-  if (name == "") {
-    name =
-        imperative::GetCurrentTracer()->GenerateUniqueName("generated_tensor");
-  }
-  VLOG(5) << "Init Tensor as: / name: " << name
-          << " / persistable: " << persistable << " / zero_copy: " << zero_copy
+// only initialize varbase, but not its tensor.
+static void InitVarBaseOnly(imperative::VarBase *self, const std::string &name,
+                            bool persistable = false, int stop_gradient = -1) {
+  auto name_ = name == ""
+                   ? imperative::GetCurrentTracer()->GenerateUniqueName(
+                         "generated_tensor")
+                   : name;
+
+  VLOG(5) << "Init Tensor as: / name: " << name_
+          << " / persistable: " << persistable
           << " / stop_gradient: " << stop_gradient;
-  new (self) imperative::VarBase(name);
+  new (self) imperative::VarBase(name_);
+  if (stop_gradient != -1) {
+    self->SetOverridedStopGradient(stop_gradient);
+  }
+  self->SetPersistable(persistable);
+  self->SetType(framework::proto::VarType::LOD_TENSOR);
+}
+
+// initialize varbase and its tensor.
+static void InitVarBaseAndTensor(
+    imperative::VarBase *self, const py::array &array,
+    const platform::Place &place, const std::string &name,
+    bool persistable = false, bool zero_copy = false, int stop_gradient = -1) {
+  InitVarBaseOnly(self, name, persistable, stop_gradient);
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  VLOG(4) << "zero_copy: " << zero_copy;
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(
         tensor, array, BOOST_GET_CONST(platform::CPUPlace, place), zero_copy);
@@ -170,30 +186,23 @@ static void InitTensorForVarBase(imperative::VarBase *self,
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(
         tensor, array, BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
         zero_copy);
+  } else if (platform::is_npu_place(place)) {
+    SetTensorFromPyArray<platform::NPUPlace>(
+        tensor, array, BOOST_GET_CONST(platform::NPUPlace, place), zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place should be one of CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place should be one of "
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace"));
   }
-  if (stop_gradient != -1) {
-    self->SetOverridedStopGradient(stop_gradient);
-  }
-  self->SetPersistable(persistable);
-  self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor->type());
 }
 
 static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
                                            const py::kwargs &kwargs) {
   VLOG(4) << "Init VarBase from kwargs: ";
-  PADDLE_ENFORCE_EQ(
-      kwargs.contains("value"), true,
-      platform::errors::NotFound(
-          "The kwargs used to create Varbase misses argument: value"));
   auto persistable = kwargs.contains("persistable")
                          ? kwargs["persistable"].cast<bool>()
                          : false;
-  auto array = kwargs.contains("value") ? kwargs["value"].cast<py::array>()
-                                        : py::array();
   auto zero_copy =
       kwargs.contains("zero_copy") ? kwargs["zero_copy"].cast<bool>() : false;
   auto name = kwargs.contains("name") ? kwargs["name"].cast<std::string>() : "";
@@ -201,10 +210,18 @@ static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
                            ? kwargs["stop_gradient"].cast<int>()
                            : -1;
   auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
-  auto place = kwargs.contains("place") ? PyObjectToPlace(kwargs["place"])
-                                        : default_place;
-  InitTensorForVarBase(self, array, place, persistable, zero_copy, name,
-                       stop_gradient);
+
+  if (kwargs.contains("value")) {
+    auto array = kwargs["value"].cast<py::array>();
+    // place is only used when array is given, otherwise, it is meaningless and
+    // ignored
+    auto place = kwargs.contains("place") ? PyObjectToPlace(kwargs["place"])
+                                          : default_place;
+    InitVarBaseAndTensor(self, array, place, name, persistable, zero_copy,
+                         stop_gradient);
+  } else {
+    InitVarBaseOnly(self, name, persistable, stop_gradient);
+  }
 }
 
 template <typename P>
@@ -239,11 +256,11 @@ static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
                                                const py::array &array) {
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
   VLOG(4) << "Init VarBase from numpy at " << place;
-  InitTensorForVarBase(self, array, place);
+  InitVarBaseAndTensor(self, array, place, "");
 }
 
 static void InitVarBaseFromTensorWithArgDefault(
-    imperative::VarBase *self, const framework::LoDTensor &tensor) {
+    imperative::VarBase *self, const framework::Tensor &tensor) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
   new (self) imperative::VarBase(
@@ -403,6 +420,7 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
                                std::vector<int> *slice_ends,
                                std::vector<int> *slice_strides,
                                std::vector<int> *decrease_axis,
+                               std::vector<int> *none_axes,
                                std::vector<int> *infer_flags) {
   // We allow indexing by Integers, Slices, and tuples of those
   // types.
@@ -415,19 +433,20 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
   const auto &shape = tensor->dims();
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
-  PADDLE_ENFORCE_EQ(
-      size <= rank, true,
-      platform::errors::InvalidArgument(
-          "too many indices (%d) for tensor of dimension %d", size, rank));
+
+  // specified_dims is the number of dimensions which indexed by Interger,
+  // Slices.
+  int specified_dims = 0;
   for (int dim = 0; dim < size; ++dim) {
     PyObject *slice_item = PyTuple_GetItem(index, dim);
-    PADDLE_ENFORCE_EQ(PyCheckInteger(slice_item) || PySlice_Check(slice_item),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Currently, VarBase.__getitem__() only allows "
-                          "indexing by Integers, Slices, and tuples of "
-                          "these types, but received %s in %dth slice item",
-                          std::string(Py_TYPE(slice_item)->tp_name), dim + 1));
+    if (PyCheckInteger(slice_item) || PySlice_Check(slice_item)) {
+      specified_dims++;
+    }
+  }
+
+  for (int i = 0, dim = 0; i < size; ++i) {
+    PyObject *slice_item = PyTuple_GetItem(index, i);
+
     infer_flags->push_back(1);
     int dim_len = shape[dim];
     if (PyCheckInteger(slice_item)) {
@@ -450,7 +469,8 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
       slice_ends->push_back(start + 1);
       slice_strides->push_back(1);
       decrease_axis->push_back(dim);
-    } else {
+      dim++;
+    } else if (PySlice_Check(slice_item)) {
       // slice item
       Py_ssize_t start, end, step;
       PySliceObject *p = reinterpret_cast<PySliceObject *>(slice_item);
@@ -458,21 +478,41 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
 
       // :: or : or 0:dim_len:1
       if (start == 0 && end == dim_len && step == 1) {
+        dim++;
         continue;
       }
       slice_axes->push_back(dim);
       slice_starts->push_back(start);
       slice_ends->push_back(end);
       slice_strides->push_back(step);
+      dim++;
+    } else if (slice_item == Py_Ellipsis) {
+      dim += rank - specified_dims;
+    } else if (slice_item == Py_None) {
+      none_axes->push_back(dim);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Currently, VarBase.__getitem__() only allows indexing"
+          "by Integers, Slices, Ellipsis, None and tuples of "
+          "these types, but received %s in %dth slice item",
+          std::string(Py_TYPE(slice_item)->tp_name), i + 1));
     }
   }
+
+  // valid_index is the number of dimensions exclude None index
+  const int valid_indexs = size - none_axes->size();
+  PADDLE_ENFORCE_EQ(valid_indexs <= rank, true,
+                    platform::errors::InvalidArgument(
+                        "Too many indices (%d) for tensor of dimension %d.",
+                        valid_indexs, rank));
+
   if (!PyTuple_Check(_index)) Py_DecRef(index);
 }
 
 template <typename P>
-static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,
-                        imperative::VarBase &dst, const P &dst_device,
-                        const bool blocking) {
+static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
+                        imperative::VarBase &dst,                   // NOLINT
+                        const P &dst_device, const bool blocking) {
   if (dst.SharedVar()->IsEmpty()) {
     VLOG(3) << "deep copy Variable from " << src->Name() << " to "
             << dst.Name();
@@ -667,9 +707,10 @@ void BindImperative(py::module *m_ptr) {
           imperative::SetCurrentTracer(tracer);
         });
 
-  py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
-      m, "VarBase", R"DOC()DOC")
-      .def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
+  py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>> varbase(
+      m, "VarBase", R"DOC()DOC");
+  g_varbase_pytype = (PyTypeObject *)varbase.ptr();  // NOLINT
+  varbase.def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
            [](imperative::VarBase &self) {
              std::string name =
@@ -715,6 +756,10 @@ void BindImperative(py::module *m_ptr) {
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "",
            py::arg("stop_gradient") = -1)
+      .def("__init__", &InitVarBaseFromNumpyWithArg<platform::NPUPlace>,
+           py::arg("value"), py::arg("place"), py::arg("persistable") = false,
+           py::arg("zero_copy") = false, py::arg("name") = "",
+           py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
@@ -752,9 +797,10 @@ void BindImperative(py::module *m_ptr) {
              // copys data to cpu place, which reduces performance.
              if (parse_index && value_is_tensor) {
                std::vector<int> axes, starts, ends, steps, decrease_axes,
-                   infer_flags;
+                   none_axes, infer_flags;
                ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
-                                  &steps, &decrease_axes, &infer_flags);
+                                  &steps, &decrease_axes, &none_axes,
+                                  &infer_flags);
 
                framework::AttributeMap attrs = {
                    {"axes", axes},
@@ -812,18 +858,22 @@ void BindImperative(py::module *m_ptr) {
       .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              std::vector<int> slice_axes, slice_starts, slice_ends,
-                 slice_strides, decrease_axis, infer_flags;
+                 slice_strides, decrease_axis, none_axes, infer_flags;
              auto tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
              ParseIndexingSlice(tensor, _index.ptr(), &slice_axes,
                                 &slice_starts, &slice_ends, &slice_strides,
-                                &decrease_axis, &infer_flags);
+                                &decrease_axis, &none_axes, &infer_flags);
              // release gil and do tracing
              py::gil_scoped_release release;
              const auto &tracer = imperative::GetCurrentTracer();
-             if (slice_axes.empty()) {
-               return self;
-             } else {
+
+             auto out = slice_axes.empty()
+                            ? self
+                            : std::shared_ptr<imperative::VarBase>(
+                                  new imperative::VarBase(
+                                      tracer->GenerateUniqueName()));
+             if (!slice_axes.empty()) {
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                framework::AttributeMap attrs = {
                    {"axes", slice_axes},
@@ -831,8 +881,6 @@ void BindImperative(py::module *m_ptr) {
                    {"ends", slice_ends},
                    {"infer_flags", infer_flags},
                    {"decrease_axis", decrease_axis}};
-               auto out = std::shared_ptr<imperative::VarBase>(
-                   new imperative::VarBase(tracer->GenerateUniqueName()));
                imperative::NameVarBaseMap outs = {{"Out", {out}}};
                std::string op_type = "slice";
                for (auto stride : slice_strides) {
@@ -844,8 +892,50 @@ void BindImperative(py::module *m_ptr) {
                  }
                }
                tracer->TraceOp(op_type, ins, outs, std::move(attrs));
-               return out;
              }
+             if (!none_axes.empty()) {
+               // Deal with cases when all axes are decreased.
+               // After slice, the shape of out is [1], which should have been
+               // [], but Paddle doesn't support scalar.
+               // In order to ensure the correctness of the final shape of out,
+               // one dimension of out needs to be decreased.
+               // For example:
+               // # x.shape: (2,3,4)
+               // out = x[0, 1, 1, None] # out.shape : (1)
+               if (static_cast<int>(decrease_axis.size()) ==
+                   tensor->dims().size()) {
+                 none_axes.pop_back();
+               }
+               if (!none_axes.empty()) {
+                 // Deal with cases that decrease_axes is not empty
+                 // For example:
+                 // # x.shape: (2,3,4)
+                 // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+                 for (auto &axis : none_axes) {
+                   int len = 0;
+                   for (int da : decrease_axis) {
+                     if (da < axis) {
+                       len++;
+                     }
+                   }
+                   axis -= len;
+                 }
+
+                 imperative::NameVarBaseMap ins = {{"X", {out}}};
+                 framework::AttributeMap attrs = {{"axes", none_axes}};
+                 auto new_out = std::shared_ptr<imperative::VarBase>(
+                     new imperative::VarBase(tracer->GenerateUniqueName()));
+                 auto out_xshape = std::shared_ptr<imperative::VarBase>(
+                     new imperative::VarBase(tracer->GenerateUniqueName()));
+                 imperative::NameVarBaseMap outs = {{"Out", {new_out}},
+                                                    {"XShape", {out_xshape}}};
+                 tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
+
+                 return new_out;
+               }
+             }
+
+             return out;
            })
       .def(
           "_getitem_from_offset",
@@ -1451,6 +1541,16 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::copy)
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::NPUPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
+           py::return_value_policy::copy)
+      .def("_copy_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
               const platform::Place &place, bool blocking) {
              auto new_var = self->NewVarBase(place, blocking);
              if (!blocking) {
@@ -1468,28 +1568,22 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::VarBase::SetOverridedStopGradient)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property_readonly("shape",
-                             [](imperative::VarBase &self) {
-                               if (self.Var().IsType<framework::LoDTensor>()) {
-                                 return framework::vectorize<int>(
-                                     self.Var()
-                                         .Get<framework::LoDTensor>()
-                                         .dims());
-                               } else if (self.Var()
-                                              .IsType<
-                                                  framework::SelectedRows>()) {
-                                 return framework::vectorize<int>(
-                                     self.Var()
-                                         .Get<framework::SelectedRows>()
-                                         .value()
-                                         .dims());
-                               } else {
-                                 VLOG(2) << "It is meaningless to get shape of "
-                                            "variable type "
-                                         << GetTypeName(self);
-                                 return std::vector<int>();
-                               }
-                             })
+      .def_property_readonly(
+          "shape",
+          [](imperative::VarBase &self) {
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::LoDTensor>().dims());
+            } else if (self.Var().IsType<framework::SelectedRows>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::SelectedRows>().value().dims());
+            } else {
+              VLOG(2) << "It is meaningless to get shape of "
+                         "variable type "
+                      << GetTypeName(self);
+              return std::vector<int>();
+            }
+          })
       .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
                              R"DOC(
       Whether a Tensor is leaf Tensor.
@@ -1581,6 +1675,11 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
+            } else if (py::isinstance<platform::NPUPlace>(obj)) {
+              auto p = obj.cast<platform::NPUPlace *>();
+              self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else if (py::isinstance<platform::Place>(obj)) {
               auto p = obj.cast<platform::Place *>();
               self.SetExpectedPlace(*p);
@@ -1589,7 +1688,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, "
+                  "CPUPlace, NPUPlace"
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
@@ -1641,6 +1740,19 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs, const platform::CUDAPlace &place,
+              bool trace_backward) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+                            std::move(attrs), place, trace_backward);
+             }
+           })
+      .def("trace",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::NPUPlace &place,
               bool trace_backward) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
              auto outs_map = ConvertToNameVarBaseMap(outs);
@@ -1707,6 +1819,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
+  m.def("varbase_copy", &VarBaseCopy<platform::NPUPlace>);
 
   m.def(
       "dygraph_partial_grad",
@@ -1804,6 +1917,12 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("pylayer_apply",
         [](const platform::CUDAPinnedPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::NPUPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
           return imperative::PyLayerApply(place, cls, args, kwargs);
         });

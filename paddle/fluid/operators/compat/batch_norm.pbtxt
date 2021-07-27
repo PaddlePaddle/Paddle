@@ -15,45 +15,11 @@ def {
   inputs {
     name: "Variance"
   }
-  outputs {
-    name: "Y"
-  }
-  attrs {
-    name: "epsilon"
-    type: FLOAT
-  }
-}
-extra {
   inputs {
     name: "MomentumTensor"
   }
-  attrs {
-    name: "is_test"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "momentum"
-    type: FLOAT
-  }
-  attrs {
-    name: "data_layout"
-    type: STRING
-  }
-  attrs {
-    name: "use_mkldnn"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "fuse_with_relu"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "use_global_stats"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "trainable_statistics"
-    type: BOOLEAN
+  outputs {
+    name: "Y"
   }
   outputs {
     name: "MeanOut"
@@ -71,24 +37,34 @@ extra {
     name: "ReserveSpace"
   }
   attrs {
-    name: "op_role"
-    type: INT
+    name: "epsilon"
+    type: FLOAT
+  }
+}
+extra {
+  attrs {
+    name: "momentum"
+    type: FLOAT
   }
   attrs {
-    name: "op_role_var"
-    type: STRINGS
+    name: "Y0_threshold"
+    type: FLOAT
   }
   attrs {
-    name: "op_namescope"
+    name: "data_layout"
     type: STRING
   }
   attrs {
-    name: "op_callstack"
-    type: STRINGS
+    name: "fuse_with_relu"
+    type: BOOLEAN
   }
   attrs {
-    name: "op_device"
-    type: STRING
+    name: "use_global_stats"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "trainable_statistics"
+    type: BOOLEAN
   }
 }
 

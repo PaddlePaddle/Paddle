@@ -19,8 +19,8 @@ import numpy as np
 from ...fluid import get_flags
 from ...fluid import core
 from ...device import get_cudnn_version
-from ...fluid.dygraph import layers
-from ...fluid.initializer import Normal
+from .. import Layer
+from ..initializer import Normal
 from .. import functional as F
 from ...fluid.layers import utils
 from ..functional.conv import _update_padding_nd
@@ -31,7 +31,7 @@ __all__ = []
 def _get_default_param_initializer(num_channels, filter_size):
     filter_elem_num = num_channels * np.prod(filter_size)
     std = (2.0 / filter_elem_num)**0.5
-    return Normal(0.0, std, 0)
+    return Normal(0.0, std)
 
 
 def _reverse_repeat_list(t, n):
@@ -42,7 +42,7 @@ def _reverse_repeat_list(t, n):
     return list(x for x in reversed(t) for _ in range(n))
 
 
-class _ConvNd(layers.Layer):
+class _ConvNd(Layer):
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -98,7 +98,7 @@ class _ConvNd(layers.Layer):
                                                   'kernel_size')
         self._padding = padding
         self._padding_mode = padding_mode
-        self._output_padding = output_padding
+        self.output_padding = output_padding
         if dims != 1:
             self._updated_padding, self._padding_algorithm = _update_padding_nd(
                 padding, channel_last, dims)
@@ -127,7 +127,7 @@ class _ConvNd(layers.Layer):
                 return None
             filter_elem_num = np.prod(self._kernel_size) * self._in_channels
             std = (2.0 / filter_elem_num)**0.5
-            return Normal(0.0, std, 0)
+            return Normal(0.0, std)
 
         self.weight = self.create_parameter(
             shape=filter_shape,
@@ -163,8 +163,8 @@ class _ConvNd(layers.Layer):
             main_str += ', padding={_padding}'
         if self._padding_mode is not 'zeros':
             main_str += ', padding_mode={_padding_mode}'
-        if self._output_padding != 0:
-            main_str += ', output_padding={_output_padding}'
+        if self.output_padding != 0:
+            main_str += ', output_padding={output_padding}'
         if self._dilation != [1] * len(self._dilation):
             main_str += ', dilation={_dilation}'
         if self._groups != 1:
@@ -508,7 +508,7 @@ class Conv1DTranspose(_ConvNd):
             self.weight,
             bias=self.bias,
             output_size=output_size,
-            output_padding=self._output_padding,
+            output_padding=self.output_padding,
             padding=self._padding,
             stride=self._stride,
             dilation=self._dilation,
@@ -824,7 +824,7 @@ class Conv2DTranspose(_ConvNd):
 
     def forward(self, x, output_size=None):
         if output_size is None:
-            output_padding = self._output_padding
+            output_padding = self.output_padding
         else:
             output_padding = 0
 
@@ -1161,7 +1161,7 @@ class Conv3DTranspose(_ConvNd):
 
     def forward(self, x, output_size=None):
         if output_size is None:
-            output_padding = self._output_padding
+            output_padding = self.output_padding
         else:
             output_padding = 0
 

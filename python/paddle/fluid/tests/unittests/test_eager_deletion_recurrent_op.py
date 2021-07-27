@@ -26,6 +26,8 @@ from paddle.fluid import ParamAttr
 from paddle.fluid.framework import Program, grad_var_name
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
+import paddle
+paddle.enable_static()
 
 np.random.seed(123)
 os.environ["CPU_NUM"] = "1"
@@ -163,6 +165,9 @@ class EagerDeletionRecurrentOpTest1(unittest.TestCase):
         return rnn()
 
     def forward(self):
+        gc_vars = core._get_eager_deletion_vars(self.main_program.desc,
+                                                [self.output.name])
+        self.assertEqual(len(gc_vars), self.main_program.num_blocks)
         self.feed_map = {
             x: create_tensor(getattr(self.py_rnn, x), self.place)
             for x in self.data_field
@@ -183,6 +188,10 @@ class EagerDeletionRecurrentOpTest1(unittest.TestCase):
             self.main_program.global_block().var(grad_var_name(x))
             for x in self.data_field
         ]
+
+        gc_vars = core._get_eager_deletion_vars(
+            self.main_program.desc, [var.name for var in fetch_list])
+        self.assertEqual(len(gc_vars), self.main_program.num_blocks)
 
         exe = Executor(self.place)
         return exe.run(self.main_program,

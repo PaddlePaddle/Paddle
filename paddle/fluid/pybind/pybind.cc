@@ -31,6 +31,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/executor_cache.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/garbage_collector.h"
@@ -69,6 +71,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/io.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
@@ -186,6 +189,14 @@ bool IsCompiledWithMKLDNN() {
 #endif
 }
 
+bool IsCompiledWithHETERPS() {
+#ifndef PADDLE_WITH_HETERPS
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
@@ -226,7 +237,10 @@ OpSupportedInfos(const std::string &place,
                  [](unsigned char c) { return std::toupper(c); });
   using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
-      {"GPU", &platform::is_gpu_place}, {"CPU", &platform::is_cpu_place},
+      {"GPU", &platform::is_gpu_place},
+      {"CPU", &platform::is_cpu_place},
+      {"XPU", &platform::is_xpu_place},
+      {"NPU", &platform::is_npu_place},
   };
   PADDLE_ENFORCE_NE(
       is_target_place.count(query_place), 0,
@@ -459,6 +473,8 @@ PYBIND11_MODULE(core_avx, m) {
 #else
 PYBIND11_MODULE(core_noavx, m) {
 #endif
+
+  BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
@@ -1309,7 +1325,7 @@ All parameter, weight, gradient are variables in Paddle.
           if (info != nullptr) {
             if (info->HasOpProtoAndChecker()) {
               auto op_checker = info->Checker();
-              res = op_checker->GetAttrsDefaultValuesMap();
+              res = op_checker->GetDefaultAttrsMap();
             }
           }
           return res;
@@ -1717,6 +1733,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::NPUPlace, platform::NPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::NPUPlace, platform::CUDAPinnedPlace>)
+      .def("get_device_id",
+           [](const platform::NPUPlace &self) { return self.GetDeviceId(); })
       .def("__str__", string::to_string<const platform::NPUPlace &>);
 
   py::class_<platform::Place>(m, "Place")
@@ -1838,6 +1856,8 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("finalize", &TrainerBase::Finalize);
 
+  m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
+
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
@@ -1948,6 +1968,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("op_supported_infos", OpSupportedInfos);
@@ -2242,6 +2263,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
   m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
+  m.def("clear_executor_cache",
+        []() { framework::ExecutorInfoCache::Instance().Finalize(); });
 
   using VarQuantScale =
       std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
@@ -3029,6 +3052,12 @@ All parameter, weight, gradient are variables in Paddle.
            R"DOC(Allow user to customized passes. Normally model-specific
                 optimization passes should be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
+
+  m.def("_set_cached_executor_build_strategy",
+        [](int64_t program_id, const BuildStrategy &build_strategy) {
+          auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
+          cached_exe_info.SetBuildStrategy(program_id, build_strategy);
+        });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::vector<std::string> &, const std::string &,

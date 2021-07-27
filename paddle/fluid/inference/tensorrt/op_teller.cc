@@ -51,7 +51,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
 #endif
-#if CUDA_VERSION >= 10200
+#if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
 #endif
@@ -130,6 +130,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "nearest_interp",
       "anchor_generator",
       "reduce_sum",
+      "reduce_mean",
   };
 };
 
@@ -300,31 +301,27 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       }
     }
-    if (op_type == "flatten2") {
-      // flatten doesn't support dynamic shape currently
+    if (op_type == "flatten2" || op_type == "flatten") {
       if (!desc.HasAttr("axis")) {
         return false;
       } else {
+#if IS_TRT_VERSION_GE(7130)
+#else
         if (with_dynamic_shape) return false;
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (axis != 1) return false;
-      }
-    }
-
-    if (op_type == "flatten") {
-      // flatten doesn't support dynamic shape currently
-      if (!desc.HasAttr("axis")) {
-        return false;
-      } else {
-        if (with_dynamic_shape) return false;
+#endif
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
     }
 
     if (op_type == "gather") {
+      if (!with_dynamic_shape) return false;
+      auto inputs = desc.InputArgumentNames();
+      for (auto& input : inputs) {
+        if (input == "Axis" && desc.Input("Axis").size() > 0) return false;
+      }
       // current not support axis from input, use default 0
-      if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
+      if (desc.GetAttrIfExists<int>("axis")) return false;
     }
 
     if (op_type == "gather_nd") {
@@ -701,33 +698,42 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "reshape" || op_type == "reshape2") {
       if (!desc.HasAttr("shape")) {
         return false;
-        // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
-      } else if (desc.Input("Shape").size() >= 1 ||
-                 desc.Input("ShapeTensor").size() >= 1 || with_dynamic_shape) {
-        return false;
-      } else {
-        std::vector<int> shape =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
-        if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       }
+      // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
+      if (desc.Input("Shape").size() >= 1 ||
+          desc.Input("ShapeTensor").size() >= 1) {
+        return false;
+      }
+      std::vector<int> shape =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+      if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      if (!with_dynamic_shape && shape[0] == -1) return false;
     }
 
-    if (op_type == "reduce_sum") {
-      if (!with_dynamic_shape) {
-        VLOG(3) << "the reduce_sum does not support static shape yet";
+    if (op_type == "reduce_sum" || op_type == "reduce_mean") {
+      if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
+            desc.HasAttr("reduce_all"))) {
+        VLOG(3) << "the " << op_type
+                << " does not have attr (keep_dim or dim or "
+                   "reduce_all)";
         return false;
       }
 
-      if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
-            desc.HasAttr("reduce_all"))) {
-        VLOG(3) << "the reduce_sum does not have attr (keep_dim or dim or "
-                   "reduce_all)";
-        return false;
+      // The batch size dimension cannot be reduced if it's not dynamic shape.
+      if (!with_dynamic_shape) {
+        if (desc.HasAttr("reduce_all")) return false;
+        std::vector<int32_t> dim =
+            BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
+        for (auto x : dim) {
+          if (!x) return false;
+        }
       }
     }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
+
+  VLOG(3) << "trt unsupported op " << op_type;
   return false;
 }
 

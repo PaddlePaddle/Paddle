@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from types import MethodType
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
@@ -24,6 +24,7 @@ from ..utils.hybrid_parallel_util import broadcast_mp_parameters
 from ..utils.hybrid_parallel_util import broadcast_dp_parameters
 from ..utils.log_util import logger
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
+from .pp_utils import p2p_communication as p2p
 
 __all__ = []
 
@@ -37,6 +38,8 @@ class PipelineParallel(MetaParallelBase):
         self.use_pipe_parallel = self._hcg.get_pipe_parallel_world_size() > 1
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
+
+        self.is_pipe_partitioned = self.use_model_parallel
 
         self.num_caches = 0
         self.caches = {
@@ -63,10 +66,14 @@ class PipelineParallel(MetaParallelBase):
         self.prev_stage_id = self.stage_id - 1
         self.next_stage_id = self.stage_id + 1
         self.pp_group = self._hcg.get_pipe_parallel_group()
+        p2p.initialize_p2p_groups(hcg)
 
         self.is_first_stage = self.stage_id == 0
         self.is_last_stage = (self.stage_id == (self.num_stages - 1))
         self.global_rank = self._hcg.get_global_rank()
+
+        self.mp_degree = self._hcg.get_model_parallel_world_size()
+        self.mp_rank = self._hcg.get_model_parallel_rank()
 
         logger.info("Pipeline Info -- num_stages: {}, stage_id: {}".format(
             self.num_stages, self.stage_id))
@@ -104,11 +111,12 @@ class PipelineParallel(MetaParallelBase):
                 group=self.pp_group)
         return loss
 
-    def train_batch(self, data, optimizer, lr_scheduler=None):
+    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         assert isinstance(optimizer, HybridParallelOptimizer), (
             'optimizer should be HybridParallelOptimizer subclass.')
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
+        self.scaler = scaler
         assert fluid.framework._dygraph_tracer()._has_grad, (
             'Please enable the generation of gradients.')
 
@@ -138,9 +146,11 @@ class PipelineParallel(MetaParallelBase):
             self._backward(cache_id=backward_steps)
             backward_steps += 1
 
+        self._layers.allreduce_shared_weight_gradients()
+
         # optimizer
-        self._step()
         self.train_loss = self._reduce_final_loss()
+        self._step()
         return self.train_loss
 
     def _forward(self, cache_id):
@@ -154,8 +164,8 @@ class PipelineParallel(MetaParallelBase):
         else:
             inputs = self.caches['inputs'][cache_id]
 
-        outputs = self._layers.forward(inputs)
         self._clear_grads(inputs)
+        outputs = self._layers.forward(inputs)
 
         self.caches['outputs'][cache_id] = outputs
 
@@ -188,7 +198,12 @@ class PipelineParallel(MetaParallelBase):
 
     def _backward(self, cache_id):
         if self.is_last_stage:
-            paddle.autograd.backward(self.caches['outputs'][cache_id])
+            if self.scaler:
+                paddle.autograd.backward(
+                    self.scaler.scale(self.caches['outputs'][cache_id]))
+            else:
+                paddle.autograd.backward(self.caches['outputs'][cache_id])
+
             self._send_gradients(cache_id)
             return
         self._recv_gradients(cache_id)
@@ -273,102 +288,96 @@ class PipelineParallel(MetaParallelBase):
         if isinstance(data, paddle.Tensor):
             tensor_type = paddle.to_tensor([0])
             # send tensor type
-            paddle.distributed.send(
-                tensor_type, peer, use_calc_stream=True, group=self.pp_group)
+            p2p.send(tensor_type, self.next_stage_id)
 
             # send len(shape)
             dims = paddle.to_tensor(len(data.shape))
-            paddle.distributed.send(
-                dims, peer, use_calc_stream=True, group=self.pp_group)
+            p2p.send(dims, self.next_stage_id)
 
             # send shape
             shape = paddle.to_tensor(data.shape)
-            paddle.distributed.send(
-                shape, peer, use_calc_stream=True, group=self.pp_group)
+            p2p.send(shape, self.next_stage_id)
 
             # send dtype
             dtype = paddle.to_tensor(paddle_2_number(data.dtype))
-            paddle.distributed.send(
-                dtype, peer, use_calc_stream=True, group=self.pp_group)
+            p2p.send(dtype, self.next_stage_id)
 
         elif isinstance(data, tuple):
             tensor_type = paddle.to_tensor([1])
-            paddle.distributed.send(
-                tensor_type, peer, use_calc_stream=True, group=self.pp_group)
+            p2p.send(tensor_type, self.next_stage_id)
+
             nums = paddle.to_tensor(len(data))
-            paddle.distributed.send(
-                nums, peer, use_calc_stream=True, group=self.pp_group)
+            p2p.send(nums, self.next_stage_id)
+
             for idx, d in enumerate(data):
                 assert isinstance(d, paddle.Tensor)
                 # send len(shape)
                 dims = paddle.to_tensor(len(d.shape))
-                paddle.distributed.send(
-                    dims, peer, use_calc_stream=True, group=self.pp_group)
+                p2p.send(dims, self.next_stage_id)
 
                 # send shape
                 shape = paddle.to_tensor(d.shape)
-                paddle.distributed.send(
-                    shape, peer, use_calc_stream=True, group=self.pp_group)
+                p2p.send(shape, self.next_stage_id)
 
                 # send dtype
                 dtype = paddle.to_tensor(paddle_2_number(d.dtype))
-                paddle.distributed.send(
-                    dtype, peer, use_calc_stream=True, group=self.pp_group)
+                p2p.send(dtype, self.next_stage_id)
 
     def _recv_meta(self, peer):
         tensor_type = paddle.to_tensor([0])
-        paddle.distributed.recv(
-            tensor_type, peer, use_calc_stream=True, group=self.pp_group)
+        p2p.recv(tensor_type, self.prev_stage_id)
+
         tensor_type = tensor_type.item()
 
         if tensor_type == 0:
             # recv len(shape)
             dims = paddle.to_tensor([0])
-            paddle.distributed.recv(
-                dims, peer, use_calc_stream=True, group=self.pp_group)
+            p2p.recv(dims, self.prev_stage_id)
+
             dims = dims.item()
 
             # recv shape
             shape = paddle.to_tensor([0] * dims)
-            paddle.distributed.recv(
-                shape, peer, use_calc_stream=True, group=self.pp_group)
+            p2p.recv(shape, self.prev_stage_id)
+
             shape = shape.numpy().tolist()
 
             # recv dtype
             dtype = paddle.to_tensor([0])
-            paddle.distributed.recv(
-                dtype, peer, use_calc_stream=True, group=self.pp_group)
+            p2p.recv(dtype, self.prev_stage_id)
+
             return self._allocate_cache(
                 shape, dtype=number_2_dtype(dtype.item()), num_caches=1)[0]
         elif tensor_type == 1:
             num = paddle.to_tensor([0])
-            paddle.distributed.recv(
-                num, peer, use_calc_stream=True, group=self.pp_group)
+            p2p.recv(num, self.prev_stage_id)
             num = num.item()
             shapes = []
             dtypes = []
             for i in range(num):
                 # recv len(shape)
                 dims = paddle.to_tensor([0])
-                paddle.distributed.recv(
-                    dims, peer, use_calc_stream=True, group=self.pp_group)
+                p2p.recv(dims, self.prev_stage_id)
 
                 # recv shape
                 dims = dims.item()
                 shape = paddle.to_tensor([0] * dims)
-                paddle.distributed.recv(
-                    shape, peer, use_calc_stream=True, group=self.pp_group)
+                p2p.recv(shape, self.prev_stage_id)
                 shapes.append(shape.numpy().tolist())
 
                 # recv dtype
                 dtype = paddle.to_tensor([0])
-                paddle.distributed.recv(
-                    dtype, peer, use_calc_stream=True, group=self.pp_group)
+                p2p.recv(dtype, self.prev_stage_id)
                 dtypes.append(number_2_dtype(dtype.item()))
 
             caches = self._allocate_caches(shapes, dtypes, num_caches=1)[0]
             caches = tuple(caches)
             return caches
+
+    def _is_valid_send_recv(self, tensor):
+        tensor_numel = np.prod(tensor.shape)
+        assert tensor_numel != 0, "can't send/recv zero element"
+        return tensor_numel % self.mp_degree == 0
 
     def _send_activations(self, cache_id):
         outputs = self.caches['outputs'][cache_id]
@@ -378,39 +387,57 @@ class PipelineParallel(MetaParallelBase):
             self._send_meta(outputs, self.next_stage_id)
 
         if isinstance(outputs, paddle.Tensor):
-            paddle.distributed.send(
-                outputs,
-                self.next_stage_id,
-                use_calc_stream=True,
-                group=self.pp_group)
+            if self.is_pipe_partitioned and self._is_valid_send_recv(outputs):
+                p2p.send_partial(
+                    outputs.detach(),
+                    self.next_stage_id,
+                    mp_degree=self.mp_degree,
+                    mp_rank=self.mp_rank)
+            else:
+                p2p.send(outputs.detach(), self.next_stage_id)
+
         elif isinstance(outputs, tuple):
             for output in outputs:
-                paddle.distributed.send(
-                    output,
-                    self.next_stage_id,
-                    use_calc_stream=True,
-                    group=self.pp_group)
+                if self.is_pipe_partitioned and self._is_valid_send_recv(
+                        output):
+                    p2p.send_partial(
+                        output.detach(),
+                        self.next_stage_id,
+                        mp_degree=self.mp_degree,
+                        mp_rank=self.mp_rank)
+                else:
+                    p2p.send(output.detach(), self.next_stage_id)
 
     def _send_gradients(self, cache_id):
         inputs = self.caches['inputs'][cache_id]
         if isinstance(inputs, paddle.Tensor):
             assert inputs.grad is not None
-            paddle.distributed.send(
-                paddle.to_tensor(inputs.grad),
-                self.prev_stage_id,
-                use_calc_stream=True,
-                group=self.pp_group)
+            if self.is_pipe_partitioned and self._is_valid_send_recv(
+                    inputs.grad):
+                grad = p2p.send_partial(
+                    inputs.grad,
+                    self.prev_stage_id,
+                    mp_degree=self.mp_degree,
+                    mp_rank=self.mp_rank)
+            else:
+                p2p.send(inputs.grad, self.prev_stage_id)
         else:
             for idx, d in enumerate(inputs):
                 # Skip tensors that will not produce a grad
                 if not is_float_tensor(d):
                     assert d.grad is None
                     continue
-                paddle.distributed.send(
-                    d.grad,
-                    self.prev_stage_id,
-                    use_calc_stream=True,
-                    group=self.pp_group)
+
+                if self.is_pipe_partitioned and self._is_valid_send_recv(
+                        d.grad):
+                    grad = p2p.send_partial(
+                        d.grad,
+                        self.prev_stage_id,
+                        mp_degree=self.mp_degree,
+                        mp_rank=self.mp_rank)
+                else:
+                    p2p.send(d.grad, self.prev_stage_id)
+
         self.caches['inputs'][cache_id] = None
 
     def _recv_activations(self, cache_id):
@@ -419,24 +446,39 @@ class PipelineParallel(MetaParallelBase):
             self.recv_cache = self._recv_meta(self.prev_stage_id)
 
         if isinstance(self.recv_cache, paddle.Tensor):
-            paddle.distributed.recv(
-                self.recv_cache,
-                self.prev_stage_id,
-                use_calc_stream=True,
-                group=self.pp_group)
+            if self.is_pipe_partitioned and self._is_valid_send_recv(
+                    self.recv_cache):
+                p2p.recv_partial(self.recv_cache, self.prev_stage_id,
+                                 self.mp_degree, self.mp_rank)
+                p2p.partial_allgather_operator(
+                    self.recv_cache,
+                    mp_ranks=self.mp_degree,
+                    mp_rank_id=self.mp_rank,
+                    group=self._hcg.get_model_parallel_group(),
+                    use_calc_stream=True)
+            else:
+                p2p.recv(self.recv_cache, self.prev_stage_id)
+
             inputs = self.recv_cache.clone().detach()
             inputs.stop_gradient = not is_float_tensor(inputs)
+
         else:
             assert isinstance(self.recv_cache, tuple)
             inputs = [None] * len(self.recv_cache)
             for idx, d in enumerate(self.recv_cache):
-                assert isinstance(d, paddle.Tensor)
-
-                paddle.distributed.recv(
-                    d,
-                    self.prev_stage_id,
-                    use_calc_stream=True,
-                    group=self.pp_group)
+                if self.is_pipe_partitioned and self._is_valid_send_recv(d):
+                    assert isinstance(d, paddle.Tensor)
+                    p2p.recv_partial(d, self.prev_stage_id, self.mp_degree,
+                                     self.mp_rank)
+                    p2p.partial_allgather_operator(
+                        d,
+                        mp_ranks=self.mp_degree,
+                        mp_rank_id=self.mp_rank,
+                        group=self._hcg.get_model_parallel_group(),
+                        use_calc_stream=True)
+                else:
+                    assert isinstance(d, paddle.Tensor)
+                    p2p.recv(d, self.prev_stage_id)
                 inputs[idx] = d.clone().detach()
 
             inputs = tuple(inputs)
@@ -464,22 +506,39 @@ class PipelineParallel(MetaParallelBase):
                     sizes, dtypes, num_caches=1)[0]
 
         if isinstance(self.grad_tensors, paddle.Tensor):
-            paddle.distributed.recv(
-                self.grad_tensors,
-                self.next_stage_id,
-                use_calc_stream=True,
-                group=self.pp_group)
+            if self.is_pipe_partitioned and self._is_valid_send_recv(
+                    self.grad_tensors):
+                p2p.recv_partial(self.grad_tensors, self.next_stage_id,
+                                 self.mp_degree, self.mp_rank)
+                p2p.partial_allgather_operator(
+                    self.grad_tensors,
+                    mp_ranks=self.mp_degree,
+                    mp_rank_id=self.mp_rank,
+                    group=self._hcg.get_model_parallel_group(),
+                    use_calc_stream=True)
+            else:
+                p2p.recv(self.grad_tensors, self.next_stage_id)
+
         else:
             assert isinstance(outputs, tuple)
             for d in self.grad_tensors:
-                paddle.distributed.recv(
-                    d,
-                    self.next_stage_id,
-                    use_calc_stream=True,
-                    group=self.pp_group)
+                if self.is_pipe_partitioned and self._is_valid_send_recv(d):
+                    p2p.recv_partial(d, self.next_stage_id, self.mp_degree,
+                                     self.mp_rank)
+                    p2p.partial_allgather_operator(
+                        d,
+                        mp_ranks=self.mp_degree,
+                        mp_rank_id=self.mp_rank,
+                        group=self._hcg.get_model_parallel_group(),
+                        use_calc_stream=True)
+                else:
+                    p2p.recv(d, self.next_stage_id)
 
     def _step(self):
-        self.optimizer.step()
+        if self.scaler:
+            self.scaler.minimize(self.optimizer, self.train_loss)
+        else:
+            self.optimizer.step()
         self.optimizer.clear_grad()
         if self.lr_scheduler:
             self.lr_scheduler.step()

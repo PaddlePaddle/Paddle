@@ -44,19 +44,13 @@ DIST_UT_PORT = 0
 
 
 def print_to_out(out_losses):
-    if six.PY2:
-        print(pickle.dumps(out_losses))
-    else:
-        sys.stdout.buffer.write(pickle.dumps(out_losses))
+    sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 def print_to_err(class_name, log_str):
     localtime = time.asctime(time.localtime(time.time()))
     print_str = localtime + "\t" + class_name + "\t" + log_str
-    if six.PY2:
-        sys.stderr.write(pickle.dumps(print_str))
-    else:
-        sys.stderr.buffer.write(pickle.dumps(print_str))
+    sys.stderr.buffer.write(pickle.dumps(print_str))
 
 
 def eprint(*args, **kwargs):
@@ -68,7 +62,8 @@ class TestDistRunnerBase(object):
                   batch_size=DEFAULT_BATCH_SIZE,
                   lr=0.1,
                   single_device=False,
-                  use_dgc=False):
+                  use_dgc=False,
+                  dist_strategy=None):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
@@ -149,12 +144,10 @@ class TestDistRunnerBase(object):
             loss = loss[0] if loss else None
             out_losses.append(loss)
             print_to_err(type(self).__name__, "run step %d finished" % i)
+        data_loader.reset()
         print_to_err(type(self).__name__, "trainer run finished")
 
-        if six.PY2:
-            print(pickle.dumps(out_losses))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
+        sys.stdout.buffer.write(pickle.dumps(out_losses))
 
         if args.save_model:
             model_save_dir = "/tmp"
@@ -251,10 +244,7 @@ class TestDistRunnerBase(object):
         print_to_err(type(self).__name__, "trainer run finished")
         print_to_err(type(self).__name__, "dist losses: {}".format(out_losses))
 
-        if six.PY2:
-            print(pickle.dumps(out_losses))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
+        sys.stdout.buffer.write(pickle.dumps(out_losses))
 
     def run_use_fleet_api_trainer(self, args):
         assert args.update_method == "nccl2" or "bkcl"
@@ -338,10 +328,7 @@ class TestDistRunnerBase(object):
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
 
-        if six.PY2:
-            print(pickle.dumps(out_losses))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
+        sys.stdout.buffer.write(pickle.dumps(out_losses))
 
         if args.save_model:
             model_save_dir = "/tmp"
@@ -1271,7 +1258,7 @@ class TestDistBase(unittest.TestCase):
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
                 "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10," \
-                "grpc_server=10,request_handler_impl=10"
+                "grpc_server=10,request_handler_impl=10,section_worker=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         required_envs.update(need_envs)
