@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/process_mesh_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
@@ -82,6 +83,20 @@ void BindProgramDesc(pybind11::module *m) {
            pybind11::arg("version") = pd::kCurProgramVersion)
       .def("_version",
            [](pd::ProgramDesc &self) -> int64_t { return self.Version(); });
+}
+
+void BindProcessMeshDesc(pybind11::module *m) {
+  pybind11::class_<pd::ProcessMeshDesc>(*m, "ProcessMesh", "")
+      .def("__init__",
+           [](pd::ProcessMeshDesc &self, const std::vector<int32_t> &topology,
+              const std::vector<int32_t> &process_group, int32_t parent_id) {
+             new (&self)
+                 pd::ProcessMeshDesc(topology, process_group, parent_id);
+           })
+      .def_property_readonly("id", &pd::ProcessMeshDesc::ID)
+      .def_property_readonly("parent", &pd::ProcessMeshDesc::Parent)
+      .def("topology", &pd::ProcessMeshDesc::Topology)
+      .def("process_group", &pd::ProcessMeshDesc::ProcessGroup);
 }
 
 void BindBlockDesc(pybind11::module *m) {
