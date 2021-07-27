@@ -1467,7 +1467,6 @@ class Fleet(object):
         for key in self._user_defined_strategy.trainer_desc_configs:
             opt_info[key] = self._user_defined_strategy.trainer_desc_configs[key]
         program._fleet_opt = opt_info
-        print("program_fleet_opt======= ", program._fleet_opt)
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
