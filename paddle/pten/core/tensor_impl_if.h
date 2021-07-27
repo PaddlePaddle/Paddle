@@ -41,6 +41,13 @@ using Place = paddle::platform::Place;
  * The abstract class of Tensor implemention, it needs to define its basic
  * behavior through inherited classes.
  *
+ * TensorImplInterface allows Tensor to uniformly access various different
+ * TensorImpls within the framework. It will not be used as a kernel argument,
+ * but only contains the interfaces supported by various TensorImpls.
+ * In extreme cases, it can be an empty base class.
+ *
+ * If we don't use TensorImplInterface, we may need to use shared_ptr<void>
+ * to unify Tensor's API.
  */
 class TensorImplInterface {
  public:
@@ -54,46 +61,19 @@ class TensorImplInterface {
 
   virtual ~TensorImplInterface() {}
 
-  /**
-   * Most of Tensor's methods need to have corresponding implementations
-   * in TensorImplInterface
-   */
   virtual int64_t numel() const = 0;
 
   virtual DDim dims() const = 0;
 
-  virtual void resize(const DDim& dims) = 0;
-
   virtual DataType type() const = 0;
 
-  virtual Layout layout() const = 0;
+  virtual DataLayout layout() const = 0;
 
   virtual Place place() const = 0;
 
   virtual Backend backend() const = 0;
 
-  virtual const void* data() const = 0;
-
-  virtual void* mutable_data() = 0;
-
   virtual bool initialized() const = 0;
-
-  /**
-   * template methods can not be virtual
-   */
-  template <typename T>
-  const T* data() const {
-    static_assert(std::is_pod<T>::value,
-                  "T must be POD when call Tensor.data<T>().");
-    return reinterpret_cast<const T*>(data());
-  }
-
-  template <typename T>
-  T* mutable_data() {
-    static_assert(std::is_pod<T>::value,
-                  "T must be POD when call Tensor.mutable_data<T>().");
-    return reinterpret_cast<T*>(mutable_data());
-  }
 };
 
 }  // namespace pt

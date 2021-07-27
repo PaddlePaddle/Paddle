@@ -16,7 +16,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 
-#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/npu_op_runner.h"
@@ -28,8 +28,8 @@ using NPUDeviceContext = paddle::platfrom::NPUDeviceContext;
 
 template <typename T>
 void Mean(const NPUDeviceContext& dev_ctx,
-          const BaseTensor& x,
-          BaseTensor* out) {
+          const DenseTensor& x,
+          DenseTensor* out) {
   std::vector<int> axes;
   framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                            {"axes", axes}};
@@ -39,6 +39,43 @@ void Mean(const NPUDeviceContext& dev_ctx,
       ctx.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
   runner.Run(stream);
+}
+
+template <typename T>
+void Scale(const NPUDeviceContext& dev_ctx,
+           const DenseTensor& x,
+           float scale,
+           float bias,
+           bool bias_after_scale,
+           DenseTensor* out) {
+  out->mutable_data<T>();
+  auto stream = dev_ctx.stream();
+  float _power = 1.0;
+  if (bias_after_scale) {
+    auto runner =
+        NpuOpRunner("Power",
+                    {x},
+                    {*out},
+                    {{"power", _power}, {"scale", scale}, {"shift", bias}});
+
+    runner.Run(stream);
+  } else {
+    DenseTensor tmp_x(std::unique_ptr<TensorMeta>(
+        new TensorMeta(x.dims(), x.backend(), x.type(), x.layout())));
+    tmp_x.mutable_data<T>();
+
+    auto runner_tmp = NpuOpRunner("Adds", {x}, {tmp_x}, {{"value", bias}});
+    runner_tmp.Run(stream);
+
+    out->mutable_data<T>(x.place());
+    float _bias = 0.0;
+    auto runner =
+        NpuOpRunner("Power",
+                    {tmp_x},
+                    {*out},
+                    {{"power", _power}, {"scale", scale}, {"shift", _bias}});
+    runner.Run(stream);
+  }
 }
 
 }  // namespace pt

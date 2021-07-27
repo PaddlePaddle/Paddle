@@ -21,7 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/mixed_vector.h"
@@ -29,38 +29,55 @@ limitations under the License. */
 
 namespace pt {
 
-using Vector = paddle::framework::Vector;
+template <typename T>
+using Vector = paddle::framework::Vector<T>;
+using RWLock = paddle::framework::RWLock;
 
 /**
- * SelectedRows: compatible with SelectedRows in fluid and related operators.
+ * SelectedRowsTensor: compatible with SelectedRows in fluid and related
+ * operators.
+ *
+ * SelectedRowsTensor is not a typical design of sparse Tensor, and may
+ * no longer be recommended for use in the future, and there may be new
+ * SparseTensor later.
  */
-class SelectedRows final : public BaseTensor {
+
+// TODO(chenweihang): add other methods later
+
+class SelectedRowsTensor : public TensorImplInterface {
  public:
-  SelectedRows() = delete;
+  SelectedRowsTensor() = delete;
 
-  SelectedRows(const SelectedRows&) = delete;
-  SelectedRows& operator=(const SelectedRows&) = delete;
-  SelectedRows(SelectedRows&&) = delete;
-  SelectedRows& operator=(SelectedRows&&) = delete;
+  SelectedRowsTensor(const SelectedRowsTensor&) = delete;
+  SelectedRowsTensor& operator=(const SelectedRowsTensor&) = delete;
+  SelectedRowsTensor(SelectedRowsTensor&&) = delete;
+  SelectedRowsTensor& operator=(SelectedRowsTensor&&) = delete;
 
-  SelectedRows(const std::vector<int64_t>& rows,
-               int64_t height,
-               TensorMeta&& meta)
-      : rows_(rows), height_(height), BaseTensor(meta) {}
+  SelectedRowsTensor(std::unique_ptr<TensorMeta> meta,
+                     std::unique_ptr<TensorStatus> status,
+                     const std::vector<int64_t>& rows,
+                     int64_t height)
+      : rows_(rows), height_(height) {
+    value_.reset(new DenseTensor(std::move(meta), std::move(status)));
+  }
+
+  const DenseTensor& value() const { return *value_; }
+
+  DenseTensor* mutable_value() { return value_.get(); }
 
   const Vector<int64_t>& rows() const { return rows_; }
 
   Vector<int64_t>* mutable_rows() { return &rows_; }
 
-  void set_rows(const Vector<int64_t>& rows)()
+  void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 
-      int64_t height() const {
-    return height_;
-  }
+  int64_t height() const { return height_; }
 
   void set_height(int64_t height) { height_ = height; }
 
  private:
+  std::unique_ptr<DenseTensor> value_{nullptr};
+
   Vector<int64_t> rows_;
   int64_t height_;
 

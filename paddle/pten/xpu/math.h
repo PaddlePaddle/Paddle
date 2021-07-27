@@ -16,7 +16,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -28,8 +28,8 @@ using XPUDeviceContext = paddle::platform::XPUDeviceContext;
 
 template <typename T>
 void Sign(const XPUDeviceContext& dev_ctx,
-          const BaseTensor& x,
-          BaseTensor* out) {
+          const DenseTensor& x,
+          DenseTensor* out) {
   T* out_data = out->mutable_data<T>();
   auto xpu_ctx = dev_ctx.x_context();
   int r = xpu::activation_forward(
@@ -41,8 +41,8 @@ void Sign(const XPUDeviceContext& dev_ctx,
 
 template <typename T>
 void Mean(const XPUDeviceContext& dev_ctx,
-          const BaseTensor& x,
-          BaseTensor* out) {
+          const DenseTensor& x,
+          DenseTensor* out) {
   T* out_data = out->mutable_data<T>();
   auto xpu_ctx = dev_ctx.x_context();
   const T* x_data = x.Inputdata<T>();
@@ -52,6 +52,35 @@ void Mean(const XPUDeviceContext& dev_ctx,
       xpu::Error_t::SUCCESS,
       platform::errors::External(
           "XPU kernel error, Mean op execution not succeed, error code=%d", r));
+}
+
+template <typename T>
+void Scale(const XPUDeviceContext& dev_ctx,
+           const DenseTensor& x,
+           float scale,
+           float bias,
+           bool bias_after_scale,
+           DenseTensor* out) {
+  T* out_data = out->mutable_data<T>();
+  PADDLE_ENFORCE_EQ(
+      x.dims(),
+      out->dims(),
+      platform::errors::InvalidArgument("In and out should have the same dim,"
+                                        " expected %s, but got %s.",
+                                        x.dims().to_str().c_str(),
+                                        out->dims().to_str().c_str()));
+  int r = xpu::scale(dev_ctx.x_context(),
+                     x.data<T>(),
+                     out_data,
+                     x.numel(),
+                     bias_after_scale,
+                     scale,
+                     bias);
+  PADDLE_ENFORCE_EQ(
+      r,
+      XPU_SUCCESS,
+      platform::errors::External(
+          "XPU scale kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
 }
 
 }  // namespace pt

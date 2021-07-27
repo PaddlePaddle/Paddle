@@ -1,6 +1,6 @@
-add_subdirectory(user/src)
+add_subdirectory(src)
 
-set(PTEN_DEPS convert_utils base_tensor pten_lod_tensor pten_selected_rows)
+set(PTEN_DEPS convert_utils dense_tensor selected_rows_tensor)
 if(WITH_GPU)
   set(PTEN_DEPS ${PTEN_DEPS} math_cuda)
 endif()

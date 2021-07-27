@@ -1,1 +1,1 @@
-cc_test(base_tensor_test SRCS base_tensor_test.cc DEPS base_tensor)
+cc_test(dense_tensor_test SRCS dense_tensor_test.cc DEPS dense_tensor)

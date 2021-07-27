@@ -22,6 +22,14 @@ Backend TransToPtenBackend(const paddle::platform::Place& place) {
     return Backend::kCPU;
   } else if (paddle::platform::is_gpu_place(place)) {
     return Backend::kCUDA;
+  } else if (paddle::platform::is_cuda_pinned_place(place)) {
+    return Backend::kCUDAPinned;
+  } else if (paddle::platform::is_xpu_place(place)) {
+    return Backend::kXPU;
+  } else if (paddle::platform::is_npu_place(place)) {
+    return Backend::kNPU;
+  } else if (paddle::platform::is_npu_pinned_place(place)) {
+    return Backend::kNPUPinned;
   } else {
     return Backend::kUndef;
   }
@@ -59,18 +67,18 @@ pt::DataType TransToPtenDataType(
   }
 }
 
-Layout TransToPtenLayout(const paddle::framework::DataLayout& layout) {
+DataLayout TransToPtenLayout(const paddle::framework::DataLayout& layout) {
   switch (layout) {
     case paddle::framework::DataLayout::kNHWC:
-      return Layout::kNHWC;
+      return DataLayout::kNHWC;
     case paddle::framework::DataLayout::kNCHW:
-      return Layout::kNCHW;
+      return DataLayout::kNCHW;
     case paddle::framework::DataLayout::kAnyLayout:
-      return Layout::kAny;
+      return DataLayout::kAny;
     case paddle::framework::DataLayout::kMKLDNN:
-      return Layout::kMKLDNN;
+      return DataLayout::kMKLDNN;
     default:
-      return Layout::kUndef;
+      return DataLayout::kUndef;
   }
 }
 

@@ -12,34 +12,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 #include <gtest/gtest.h>
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
-TEST(BaseTensor, Constructor) {
-  pt::TensorMeta meta(framework::make_ddim({5, 10}),
-                      pt::Backend::kCPU,
-                      pt::DataType::kFLOAT32,
-                      pt::Layout::kNCHW,
-                      0UL);
-  pt::BaseTensor tensor(std::move(meta));
+TEST(DenseTensor, Constructor) {
+  pt::DenseTensor tensor(std::unique_ptr<pt::TensorMeta>(
+      new pt::TensorMeta(framework::make_ddim({5, 10}),
+                         pt::Backend::kCPU,
+                         pt::DataType::kFLOAT32,
+                         pt::DataLayout::kNCHW,
+                         0UL)));
   ASSERT_EQ(tensor.dims().size(), 2);
   ASSERT_EQ(tensor.backend(), pt::Backend::kCPU);
   ASSERT_EQ(tensor.type(), pt::DataType::kFLOAT32);
-  ASSERT_EQ(tensor.layout(), pt::Layout::kNCHW);
+  ASSERT_EQ(tensor.layout(), pt::DataLayout::kNCHW);
 }
 
-TEST(BaseTensor, Dims) {
+TEST(DenseTensor, Dims) {
   // impl later
 }
 
-TEST(BaseTensor, Place) {
+TEST(DenseTensor, Place) {
   // impl later
 }
 
-TEST(BaseTensor, Data) {
+TEST(DenseTensor, Data) {
   // impl later
 }

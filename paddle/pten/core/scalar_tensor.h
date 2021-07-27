@@ -14,6 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
 
-class LoDTensor : public BaseTensor {};
+class LoDTensor : public DenseTensor {};

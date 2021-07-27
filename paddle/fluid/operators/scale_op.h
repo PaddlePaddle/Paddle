@@ -14,9 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/framework/pten_utils.h"
+
+// only can include the headers in paddle/pten/api dirs
+#include "paddle/pten/api/dev/core.h"
+#include "paddle/pten/api/dev/math.h"
 
 namespace paddle {
 namespace operators {
@@ -39,13 +42,13 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto* in_var = ctx.InputVar("X");
     auto* in = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_var);
 
-    auto bias = static_cast<T>(ctx.Attr<float>("bias"));
+    auto bias = ctx.Attr<float>("bias");
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
 
-    auto scale = static_cast<T>(ctx.Attr<float>("scale"));
+    auto scale = ctx.Attr<float>("scale");
     if (ctx.HasInput("ScaleTensor")) {
       auto* scale_tensor = ctx.Input<framework::Tensor>("ScaleTensor");
-      scale = GetAttrFromTensor<T>(scale_tensor);
+      scale = static_cast<float>(GetAttrFromTensor<T>(scale_tensor));
     }
 
     auto* out_var = ctx.OutputVar("Out");
@@ -58,19 +61,19 @@ class ScaleKernel : public framework::OpKernel<T> {
 
     auto* out =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
-    out->mutable_data<T>(in->place());
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
 
-    PADDLE_ENFORCE_EQ(in->dims(), out->dims(),
-                      paddle::platform::errors::InvalidArgument(
-                          "the input and output should have the same dim"
-                          "but input dim is %s, output dim is %s",
-                          in->dims(), out->dims()));
+    auto pt_x = framework::MakeTensorImpl<pt::DenseTensor>(*in, in->place(),
+                                                           in->type());
+    auto pt_out = framework::MakeTensorImpl<pt::DenseTensor>(*out, in->place(),
+                                                             in->type());
 
-    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
-        dev, eigen_out, eigen_in, scale, bias, bias_after_scale);
+    // call new kernel
+    pt::Scale<T>(dev_ctx, *pt_x.get(), scale, bias, bias_after_scale,
+                 pt_out.get());
+
+    // share pt_out data to out
+    framework::ShareTensorImpl(pt_out.get(), out);
   }
 };
 

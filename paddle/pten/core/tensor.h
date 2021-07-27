@@ -34,6 +34,7 @@ limitations under the License. */
  * However, if we directly split the link relation, we need to make too many
  * changes, which will affect the stability of the framework, so here we still
  * rely on the implementation of the framework, which is a intermediate state.
+ *
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
@@ -64,6 +65,9 @@ namespace pt {
  *
  * Note: Tensor cannot be inherited. The heterogeneous Tensor implementation
  * can be achieved by inheriting the underlying TensorImplInterface.
+ *
+ * Note: This Tensor API is suitable for training and custom operators,
+ * another simple Tensor design may be required for inference.
  */
 
 class Tensor final {
@@ -85,7 +89,7 @@ class Tensor final {
     }
   }
 
-  /* Part 2: Dimension, DataType and Layout methods */
+  /* Part 2: Dimension, DataType and DataLayout methods */
   /**
    * @description: Return the number of elements of current Tensor.
    * @param None
@@ -101,13 +105,6 @@ class Tensor final {
   DDim shape() const { return impl_->dims(); }
 
   /**
-   * @description: Resize the shape (dimensions) of current Tensor.
-   * @param {const} DDim
-   * @return {*}
-   */
-  void resize(const DDim& dims) { impl_->resize(dims); }
-
-  /**
    * @description: Return the data type of current Tensor.
    * @param None
    * @return {DataType}
@@ -117,9 +114,9 @@ class Tensor final {
   /**
    * @description: Return the layout of current Tensor.
    * @param None
-   * @return {Layout}
+   * @return {DataLayout}
    */
-  Layout layout() const { return impl_->layout(); }
+  DataLayout layout() const { return impl_->layout(); }
 
   /* Part 3: Device and Backend methods */
   /**
@@ -152,6 +149,8 @@ class Tensor final {
   bool is_mkldnn() const;
   bool is_cudnn() const;
 
+  bool is_selected_rows() const;
+
   /**
    * Backend convert APIs.
    */
@@ -171,25 +170,7 @@ class Tensor final {
    */
   std::shared_ptr<TensorImplInterface> impl() const { return impl_; }
 
-  /**
-   * @description: Get the const memory pointer of current Tensor.
-   * @param None
-   * @return {const T*}
-   */
-  template <typename T>
-  const T* data() const {
-    return impl_->data<T>();
-  }
-
-  /**
-   * @description: Get the mutable memory pointer of current Tensor.
-   * @param None
-   * @return {T*}
-   */
-  template <typename T>
-  T* mutable_data() {
-    return impl_->mutable_data<T>();
-  }
+  // Whether API Tensor need `data` and `mutable_data`?
 
   // TODO(chenweihang): slice and split methods use kernels?
 

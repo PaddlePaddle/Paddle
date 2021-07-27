@@ -46,9 +46,9 @@ struct DivideFunctor {
  */
 
 template <typename T>
-void MeanCUDA(const CUDADeviceContext& dev_ctx,
-              const BaseTensor& x,
-              BaseTensor* out) {
+void Mean(const CUDADeviceContext& dev_ctx,
+          const DenseTensor& x,
+          DenseTensor* out) {
   auto size_prob = x.numel();
   const T* x_data = x.data<T>();
   T* out_data = out->mutable_data<T>();
@@ -63,27 +63,25 @@ void MeanCUDA(const CUDADeviceContext& dev_ctx,
       nullptr, temp_storage_bytes, trans_x, out_data, size_prob, stream);
   PADDLE_ENFORCE_CUDA_SUCCESS(err);
 
-  // TODO(chenweihang): maybe too complicated
-  pt::TensorMeta meta(
+  pt::DenseTensor tmp(std::unique_ptr<TensorMeta>(new TensorMeta(
       paddle::framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
       pt::TransToPtenBackend(dev_ctx.GetPlace()),
       x.type(),
-      x.layout(),
-      0);
-  pt::BaseTensor tmp(std::move(meta));
+      x.layout())));
   auto* temp_storage = tmp.mutable_data<uint8_t>();
   err = cub::DeviceReduce::Sum(
       temp_storage, temp_storage_bytes, trans_x, out_data, size_prob, stream);
   PADDLE_ENFORCE_CUDA_SUCCESS(err);
 }
 
-template void MeanCUDA<float>(const CUDADeviceContext& dev_ctx,
-                              const BaseTensor& x,
-                              BaseTensor* out);
-template void MeanCUDA<double>(const CUDADeviceContext& dev_ctx,
-                               const BaseTensor& x,
-                               BaseTensor* out);
-template void MeanCUDA<paddle::platform::float16>(
-    const CUDADeviceContext& dev_ctx, const BaseTensor& x, BaseTensor* out);
+template void Mean<float>(const CUDADeviceContext& dev_ctx,
+                          const DenseTensor& x,
+                          DenseTensor* out);
+template void Mean<double>(const CUDADeviceContext& dev_ctx,
+                           const DenseTensor& x,
+                           DenseTensor* out);
+template void Mean<paddle::platform::float16>(const CUDADeviceContext& dev_ctx,
+                                              const DenseTensor& x,
+                                              DenseTensor* out);
 
 }  // namespace pt

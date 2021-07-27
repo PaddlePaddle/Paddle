@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/pten/core/dtype.h"
 #include "paddle/pten/core/layout.h"
 
-// fluid headers [may be replaced by new impl]
+// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/place.h"
@@ -32,7 +32,7 @@ namespace pt {
 Backend TransToPtenBackend(const paddle::platform::Place& place);
 DataType TransToPtenDataType(
     const paddle::framework::proto::VarType::Type& dtype);
-Layout TransToPtenLayout(const paddle::framework::DataLayout& layout);
+DataLayout TransToPtenLayout(const paddle::framework::DataLayout& layout);
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const DataType& dtype);
 

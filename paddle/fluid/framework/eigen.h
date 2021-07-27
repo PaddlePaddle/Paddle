@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
-#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -70,25 +70,25 @@ struct EigenTensor {
     return From(tensor, tensor.dims_);
   }
 
-  // for pt::BaseTensor
-  static Type From(pt::BaseTensor& tensor, DDim dims) {  // NOLINT
+  // for pt::DenseTensor
+  static Type From(pt::DenseTensor& tensor, DDim dims) {  // NOLINT
     // why tensor.data<T>() not work?
     // return Type(const_cast<T*>(reinterpret_cast<const T*>(tensor.data())),
     // EigenDim<D>::From(dims));
     return Type(const_cast<T*>(tensor.data<T>()), EigenDim<D>::From(dims));
   }
 
-  static Type From(pt::BaseTensor& tensor) {  // NOLINT
+  static Type From(pt::DenseTensor& tensor) {  // NOLINT
     return From(tensor, tensor.dims());
   }  // NOLINT
 
-  static ConstType From(const pt::BaseTensor& tensor, DDim dims) {
+  static ConstType From(const pt::DenseTensor& tensor, DDim dims) {
     // return ConstType(reinterpret_cast<const T*>(tensor.data()),
     // EigenDim<D>::From(dims));
     return ConstType(tensor.data<T>(), EigenDim<D>::From(dims));
   }
 
-  static ConstType From(const pt::BaseTensor& tensor) {
+  static ConstType From(const pt::DenseTensor& tensor) {
     return From(tensor, tensor.dims());
   }
 };
@@ -134,13 +134,14 @@ struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
     return EigenVector::From(tensor, {product(tensor.dims_)});
   }
 
-  // for pt::BaseTensor
-  static typename EigenVector::Type Flatten(pt::BaseTensor& tensor) {  // NOLINT
+  // for pt::DenseTensor
+  static typename EigenVector::Type Flatten(
+      pt::DenseTensor& tensor) {  // NOLINT
     return EigenVector::From(tensor, {product(tensor.dims())});
   }
 
   static typename EigenVector::ConstType Flatten(
-      const pt::BaseTensor& tensor) {  // NOLINT
+      const pt::DenseTensor& tensor) {  // NOLINT
     return EigenVector::From(tensor, {product(tensor.dims())});
   }
 };
@@ -160,12 +161,12 @@ struct EigenScalar {
     return ConstType(tensor.data<T>());
   }
 
-  // for pt::BaseTensor
-  static Type From(pt::BaseTensor& tensor) {  // NOLINT
+  // for pt::DenseTensor
+  static Type From(pt::DenseTensor& tensor) {  // NOLINT
     return Type(const_cast<T*>(tensor.data<T>()));
   }
 
-  static ConstType From(const pt::BaseTensor& tensor) {
+  static ConstType From(const pt::DenseTensor& tensor) {
     return ConstType(tensor.data<T>());
   }
 };

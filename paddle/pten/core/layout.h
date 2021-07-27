@@ -25,7 +25,7 @@ namespace pt {
  *
  * Here we also can use the DataLayout in framework, they are all enum classes.
  */
-enum class Layout {
+enum class DataLayout {
   kUndef = 0,
   kAny,
   kNHWC,

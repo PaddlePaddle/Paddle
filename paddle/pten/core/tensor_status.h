@@ -20,8 +20,20 @@ limitations under the License. */
 
 namespace pt {
 
+class TensorInplaceVersion {
+ public:
+  explicit TensorInplaceVersion(uint32_t inplace_version = 0)
+      : inplace_version_(inplace_version) {}
+  bool IsUnique() const { return inplace_version_ == 0; }
+  void Bump() { ++inplace_version_; }
+  uint32_t CurrentVersion() const { return inplace_version_; }
+
+ private:
+  uint32_t inplace_version_;
+};
+
 /**
- * The Status data member of BaseTensor.
+ * The Status data member of DenseTensor.
  *
  * Here the `static` represents information describing the status of Tensor,
  * such as version counter, or other bool status members.
@@ -31,7 +43,7 @@ namespace pt {
  * And we direct access its members, in addition to constructor, destructor
  * and functions for setting data members, can not provide other functions.
  *
- * Note: Impl later
+ * Note: polish impl later
  */
 struct TensorStatus {
   TensorStatus() = default;
@@ -41,7 +53,12 @@ struct TensorStatus {
   TensorStatus(TensorStatus&&) = delete;
   TensorStatus& operator=(TensorStatus&&) = delete;
 
-  // InplaceVersion inplace_version_counter{0};
+  TensorInplaceVersion inplace_version_counter{0};
+
+  /**
+   * For Scalar Tensor design
+   */
+  bool is_scalar{false};
 };
 
 }  // namespace pt

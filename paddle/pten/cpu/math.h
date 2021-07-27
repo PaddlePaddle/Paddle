@@ -14,7 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/module/scale.h"
 #include "paddle/pten/module/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -34,22 +35,53 @@ using EigenVector = paddle::framework::EigenVector<T, MajorType, IndexType>;
 
 using CPUDeviceContext = paddle::platform::CPUDeviceContext;
 
+/**
+ * [ How do we organize the kernel directory ]
+ * Now according to the classification of operators in the Python API,
+ * the same type of operation kernel is placed in a header file.
+ * This is only a temporary approach.
+ *
+ * Considerations:
+ *
+ * 1. In the future, it may be tailored the lib on kernel level.
+ *    This organization will cause difficulty in tailoring;
+ * 2. If there is still one *.h and *.cc file for one kernel,
+ *    and now the kernel is organized by device, the number of files
+ *    will be greatly expanded, but this may be more reasonable;
+ * 3. In the future, the kernel implementation of the function should
+ *    be in the *.cc file. If you want to call the kernel in the tensor
+ *    operation library, you should find the call through the global
+ *    KernelMap instead of including the header file of the corresponding
+ *    calculation. This may reduce the number of header files.
+ */
+
 template <typename T>
 void Sign(const CPUDeviceContext& dev_ctx,
-          const BaseTensor& x,
-          BaseTensor* out) {
+          const DenseTensor& x,
+          DenseTensor* out) {
   module::Sign<CPUDeviceContext, T>(dev_ctx, x, out);
 }
 
 template <typename T>
 void Mean(const CPUDeviceContext& dev_ctx,
-          const BaseTensor& x,
-          BaseTensor* out) {
+          const DenseTensor& x,
+          DenseTensor* out) {
   out->mutable_data<T>();
   auto x_data = EigenVector<T>::Flatten(x);
   auto y_data = EigenScalar<T>::From(*out);
   auto& place = *dev_ctx.eigen_device();
   y_data.device(place) = x_data.mean();
+}
+
+template <typename T>
+void Scale(const CPUDeviceContext& dev_ctx,
+           const DenseTensor& x,
+           float scale,
+           float bias,
+           bool bias_after_scale,
+           DenseTensor* out) {
+  module::Scale<CPUDeviceContext, T>(
+      dev_ctx, x, scale, bias, bias_after_scale, out);
 }
 
 }  // namespace pt

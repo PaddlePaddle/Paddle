@@ -14,9 +14,31 @@ limitations under the License. */
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
+#include "paddle/pten/core/selected_rows.h"
+
+// In fact, it is ugly to use such a complicated include
+// relationship when coding.
+// After the kernel registration module is completed, the calculation
+// function should be reused by calling the kernel in global KernelMap.
 #include "paddle/pten/cpu/math.h"
 #include "paddle/pten/cuda/math.h"
 #include "paddle/pten/npu/math.h"
-#include "paddle/pten/selected_rows/math.h"
 #include "paddle/pten/xpu/math.h"
+
+// See Note [ Why still include the fluid headers? ]
+
+namespace pt {
+
+template <typename T>
+void Scale(const CPUDeviceContext& dev_ctx,
+           const SelectedRowsTensor& x,
+           float scale,
+           float bias,
+           bool bias_after_scale,
+           SelectedRowsTensor* out) {
+  out->set_rows(x.rows());
+  out->set_height(x.height());
+  Scale<T>(dev_ctx, x.value(), scale, bias, bias_after_scale, out->value());
+}
+
+}  // namespace pt

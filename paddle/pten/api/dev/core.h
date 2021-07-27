@@ -14,4 +14,4 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"

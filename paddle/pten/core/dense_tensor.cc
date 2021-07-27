@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
 #include "paddle/pten/core/convert_utils.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -30,66 +30,64 @@ using XPUPlace = paddle::platform::XPUPlace;
 using NPUPlace = paddle::platform::NPUPlace;
 using NPUPinnedPlace = paddle::platform::NPUPinnedPlace;
 
-BaseTensor::BaseTensor(TensorMeta&& meta)
-    : meta_(std::forward<TensorMeta>(meta)) {}
-
-int64_t BaseTensor::numel() const { return product(meta_.dims); }
-
-DDim BaseTensor::dims() const { return meta_.dims; }
-
-void BaseTensor::resize(const DDim& dims) { meta_.dims = dims; }
-
-DataType BaseTensor::type() const { return meta_.type; }
-
-Layout BaseTensor::layout() const { return meta_.layout; }
-
-Place BaseTensor::place() const {
+Place DenseTensor::place() const {
   PADDLE_ENFORCE_NOT_NULL(
-      memory_,
+      allocation_,
       paddle::platform::errors::PreconditionNotMet(
           "Tensor not initialized yet when Tensor::place() is called."));
-  return memory_->place();
+  return allocation_->place();
 }
-
-Backend BaseTensor::backend() const { return meta_.backend; }
-
-bool BaseTensor::initialized() const { return memory_ != nullptr; }
 
 //----------------------------------------------------------------
 // Inner methods
 
-void BaseTensor::ShareAllocation(const std::shared_ptr<Allocation>& memory) {
+void DenseTensor::ShareAllocation(
+    const std::shared_ptr<Allocation>& allocation) {
   // This operation can be very slow!
   // std::shared_ptr reference count is atomic. increasing or decreasing
   // the reference count requires atomic increment or decrement.
   // This is hundred times slower than non-atomic increment/decrement
-  memory_ = memory;
+  allocation_ = allocation;
 }
 
 // TODO(chenweihang): Add other place branchs
-Place BaseTensor::GetPlaceByBackend() const {
-  switch (meta_.backend) {
+Place DenseTensor::GetPlaceByBackend() const {
+  switch (meta_->backend) {
     case Backend::kCPU:
       return CPUPlace();
+#ifdef PADDLE_WITH_CUDA
     case Backend::kCUDA:
       return CUDAPlace();
+    case Backend::kCUDAPinned:
+      return CUDAPinnedPlace();
+#endif
+#ifdef PADDLE_WITH_XPU
+    case Backend::kXPU:
+      return XPUPlace();
+#endif
+#ifdef PADDLE_WITH_NPU
+    case Backend::kNPU:
+      return NPUPlace();
+    case Backend::kNPUPinned:
+      return NPUPinnedPlace();
+#endif
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported Tensor backend."));
   }
 }
 
-size_t BaseTensor::MemorySize() const {
-  return memory_ == nullptr ? 0UL : memory_->size() - meta_.offset;
+size_t DenseTensor::MemorySize() const {
+  return allocation_ == nullptr ? 0UL : allocation_->size() - meta_->offset;
 }
 
-void BaseTensor::CheckMemorySize() const {
-  PADDLE_ENFORCE_NOT_NULL(memory_,
+void DenseTensor::CheckMemorySize() const {
+  PADDLE_ENFORCE_NOT_NULL(allocation_,
                           paddle::platform::errors::PreconditionNotMet(
                               "Tensor holds no memory. "
                               "Call Tensor::mutable_data firstly."));
   size_t size_of_type =
-      paddle::framework::SizeOfType(TransToProtoVarType(meta_.type));
+      paddle::framework::SizeOfType(TransToProtoVarType(meta_->type));
   PADDLE_ENFORCE_LE(
       numel() * size_of_type,
       MemorySize(),
@@ -102,17 +100,17 @@ void BaseTensor::CheckMemorySize() const {
           MemorySize()));
 }
 
-std::shared_ptr<Allocation> BaseTensor::MoveMemory() {
-  return std::move(memory_);
+std::shared_ptr<Allocation> DenseTensor::MoveMemory() {
+  return std::move(allocation_);
 }
 
-const void* BaseTensor::data() const {
+const void* DenseTensor::data() const {
   CheckMemorySize();
   return reinterpret_cast<const void*>(
-      reinterpret_cast<uintptr_t>(memory_->ptr()) + meta_.offset);
+      reinterpret_cast<uintptr_t>(allocation_->ptr()) + meta_->offset);
 }
 
-void* BaseTensor::mutable_data() {
+void* DenseTensor::mutable_data() {
   PADDLE_ENFORCE_GE(
       numel(),
       0,
@@ -122,22 +120,23 @@ void* BaseTensor::mutable_data() {
           dims(),
           "] now"));
   size_t size =
-      numel() * paddle::framework::SizeOfType(TransToProtoVarType(meta_.type));
+      numel() * paddle::framework::SizeOfType(TransToProtoVarType(meta_->type));
   auto place = GetPlaceByBackend();
-  if (memory_ == nullptr) {
-    memory_.reset();
-    memory_ = paddle::memory::AllocShared(place, size);
+  if (allocation_ == nullptr) {
+    allocation_.reset();
+    allocation_ = paddle::memory::AllocShared(place, size);
   } else {
-    LOG(WARNING) << "When call mutable_data, BaseTensor has been initialized.";
-    if (!(memory_->place() == place) || memory_->size() < size + meta_.offset) {
-      memory_.reset();
-      memory_ = paddle::memory::AllocShared(place, size);
+    LOG(WARNING) << "When call mutable_data, DenseTensor has been initialized.";
+    if (!(allocation_->place() == place) ||
+        allocation_->size() < size + meta_->offset) {
+      allocation_.reset();
+      allocation_ = paddle::memory::AllocShared(place, size);
     } else {
       // do nothing
     }
   }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(memory_->ptr()) +
-                                 meta_.offset);
+  return reinterpret_cast<void*>(
+      reinterpret_cast<uintptr_t>(allocation_->ptr()) + meta_->offset);
 }
 
 }  // namespace pt

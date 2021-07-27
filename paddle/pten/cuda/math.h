@@ -16,7 +16,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 
-#include "paddle/pten/core/base_tensor.h"
+#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/pten/module/scale.h"
 #include "paddle/pten/module/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -28,8 +29,8 @@ using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
 void Sign(const CUDADeviceContext& dev_ctx,
-          const BaseTensor& x,
-          BaseTensor* out) {
+          const DenseTensor& x,
+          DenseTensor* out) {
   module::Sign<CUDADeviceContext, T>(dev_ctx, x, out);
 }
 
@@ -39,15 +40,19 @@ void Sign(const CUDADeviceContext& dev_ctx,
 // include header files, there will be many more function declarations and
 // redundant function call
 template <typename T>
-void MeanCUDA(const CUDADeviceContext& dev_ctx,
-              const BaseTensor& x,
-              BaseTensor* out);
+void Mean(const CUDADeviceContext& dev_ctx,
+          const DenseTensor& x,
+          DenseTensor* out);
 
 template <typename T>
-void Mean(const CUDADeviceContext& dev_ctx,
-          const BaseTensor& x,
-          BaseTensor* out) {
-  MeanCUDA<T>(dev_ctx, x, out);
+void Scale(const CUDADeviceContext& dev_ctx,
+           const DenseTensor& x,
+           float scale,
+           float bias,
+           bool bias_after_scale,
+           DenseTensor* out) {
+  module::Scale<CUDADeviceContext, T>(
+      dev_ctx, x, scale, bias, bias_after_scale, out);
 }
 
 }  // namespace pt

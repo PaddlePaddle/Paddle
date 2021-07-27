@@ -34,9 +34,9 @@ class SignKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.device_context<DeviceContext>();
 
     auto pt_x =
-        framework::MakeTensorImpl<pt::BaseTensor>(*x, x->place(), x->type());
+        framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());
     auto pt_out =
-        framework::MakeTensorImpl<pt::BaseTensor>(*out, x->place(), x->type());
+        framework::MakeTensorImpl<pt::DenseTensor>(*out, x->place(), x->type());
 
     // call new kernel
     pt::Sign<T>(dev_ctx, *pt_x.get(), pt_out.get());
