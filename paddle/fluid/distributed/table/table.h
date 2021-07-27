@@ -137,6 +137,7 @@ class Table {
   TableParameter _config;
   float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accesor;
+  AfsClient _afs_client; //TODO: include
 };
 REGISTER_PSCORE_REGISTERER(Table);
 

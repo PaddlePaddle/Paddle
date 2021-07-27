@@ -91,5 +91,27 @@ inline double GetCurrentUS() {
   gettimeofday(&time, NULL);
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
+
+inline int str_to_float(const char* str, float* v) {
+  const char* head = str;
+  char* cursor = NULL;
+  int index = 0;
+  while (*(head += count_spaces(head)) != 0) {
+    v[index++] = std::strtof(head, &cursor);
+    if (head == cursor) {
+      break;
+    }
+    head = cursor;
+  }
+  return index;
+}
+
+inline float* str_to_float(std::string &str) {
+  return (float *)const_cast<char *>(str.c_str());
+}
+inline float* str_to_float(const char* str) {
+  return (float *)const_cast<char *>(str);
+}
+
 }  // namespace distributed
 }  // namespace paddle

@@ -58,6 +58,14 @@ int32_t Table::initialize(const TableParameter &config,
     LOG(WARNING) << "Table accessor initialize failed";
     return -1;
   }
+
+  //TODO: check fs_config exists to compatible with table do not use afs_client
+  //TODO: include
+  if (_afs_client.initialize(fs_config) != 0) {
+    LOG(WARNING) << "Table fs_client initialize failed"; 
+    return -1; 
+  }  
+
   return initialize();
 }
 
