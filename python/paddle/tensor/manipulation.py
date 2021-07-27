@@ -725,6 +725,7 @@ def unique_consecutive(x,
                        name=None):
     r"""
     Eliminates all but the first element from every consecutive group of equivalent elements.
+
     .. note:: This function is different from :func:`paddle.unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to `std::unique`
         in C++.
@@ -732,8 +733,9 @@ def unique_consecutive(x,
     Args:
         x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
         return_inverse(bool, optional): If True, also return the indices for where elements in
-            the original input ended up in the returned unique consecutive tensor.
+            the original input ended up in the returned unique consecutive tensor. Default is False.
         return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
+            Default is False.
         axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
             Default: None.
 
