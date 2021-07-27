@@ -27,7 +27,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static std::string kSep{{static_cast<char>(1), '\0'}};  // NOLINT
+static std::string kSep(1, static_cast<char>(1));  // NOLINT
 
 // NOTE: VariableNameMap is sorted!
 static std::string VarNameMapToString(const VariableNameMap &var_map) {
@@ -60,12 +60,33 @@ static std::string VarHandleListToString(
   return string::join_strings(valid_vars, kSep);
 }
 
+static std::string EagerDeletionOpHandleToString(
+    const details::EagerDeletionOpHandle &op);
+static std::string OpHandleToString(const details::OpHandleBase &op);
+
+static std::string EagerDeletionOpHandleToString(
+    const details::EagerDeletionOpHandle &op) {
+  auto vars_to_delete = op.VarsToDelete();
+  std::unordered_set<details::OpHandleBase *> prev_ops;
+  std::vector<std::string> prev_op_strs;
+  prev_op_strs.reserve(op.Inputs().size());
+  for (auto *var : op.Inputs()) {
+    auto *prev_op = var->GeneratedOp();
+    if (prev_op == nullptr) continue;
+    prev_op_strs.push_back(OpHandleToString(*prev_op));
+  }
+  std::sort(prev_op_strs.begin(), prev_op_strs.end());
+  // NOTE: gc op does not have any valid input/output vars
+  return "OpHandleBase" + kSep + op.Name() + kSep +
+         string::join_strings(vars_to_delete, kSep) + kSep +
+         string::join_strings(prev_op_strs, kSep);
+}
+
 static std::string OpHandleToString(const details::OpHandleBase &op) {
   // NOTE: gc op does not have any valid input/output vars
   auto gc_op = dynamic_cast<const details::EagerDeletionOpHandle *>(&op);
   if (gc_op) {
-    return "OpHandleBase" + kSep + op.Name() + kSep +
-           string::join_strings(gc_op->VarsToDelete(), kSep);
+    return EagerDeletionOpHandleToString(*gc_op);
   }
   return "OpHandleBase" + kSep + op.Name() + kSep +
          VarHandleListToString(op.Inputs()) + kSep +
@@ -113,10 +134,9 @@ class FixOpRunOrderPass : public Pass {
     // a map to record: "Node" -> "Node Index"
     std::unordered_map<Node *, size_t> node_to_idx;
     // a map to record found "Node Index"
-    std::unordered_set<size_t> found_op_indices;
+    std::unordered_set<size_t> found_node_indices;
     // a map to record the new OpDesc created by other Passes. These ops does
-    // not
-    // exist in the origin program
+    // not exist in the origin program
     std::map<std::string, Node *> new_op_desc_nodes;
     // a map to record the new OpHandle created by other Passes. These ops does
     // not have OpDesc and does not exist in the origin program
@@ -142,12 +162,12 @@ class FixOpRunOrderPass : public Pass {
       if (iter != op_to_idx.end()) {
         size_t idx = iter->second;
         PADDLE_ENFORCE_EQ(
-            found_op_indices.count(idx), 0,
+            found_node_indices.count(idx), 0,
             platform::errors::PermissionDenied(
                 "FixOpRunOrderPass cannot handle OpDesc with same "
                 "type, inputs and outputs yet, error repr: %s",
                 node_str));
-        found_op_indices.insert(idx);
+        found_node_indices.insert(idx);
         node_to_idx[node] = idx;
       } else {
         PADDLE_ENFORCE_EQ(
@@ -177,8 +197,7 @@ class FixOpRunOrderPass : public Pass {
     }
 
     // Step 4: sort unchanged OpDesc/new OpDesc/new OpHandle by topological
-    // order
-    // and node index
+    // order and node index
     OpGraphView graph_view(op_handles);
     auto comp = [&node_to_idx](details::OpHandleBase *op1,
                                details::OpHandleBase *op2) {
@@ -246,8 +265,7 @@ class FixOpRunOrderPass : public Pass {
     }
 
     // Step 5: add sequential deps for ops to guarantee there is only one
-    // toposort
-    // order
+    // toposort order
     AddSequentialDepsForSortedOps(graph, sorted_ops);
     PADDLE_ENFORCE_EQ(IsTopologySortOperationsUnique(*graph), true,
                       platform::errors::PermissionDenied(
