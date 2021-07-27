@@ -39,6 +39,12 @@ namespace tensorrt {
   NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
       NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD
 
+#if IS_TRT_VERSION_GE(8000)
+#define TRT_NOEXCEPT noexcept
+#else
+#define TRT_NOEXCEPT
+#endif
+
 namespace dy = paddle::platform::dynload;
 
 // TensorRT data type to size
@@ -72,7 +78,8 @@ static int GetInferLibVersion() {
 // A logger for create TensorRT infer builder.
 class NaiveLogger : public nvinfer1::ILogger {
  public:
-  void log(nvinfer1::ILogger::Severity severity, const char* msg) override {
+  void log(nvinfer1::ILogger::Severity severity,
+           const char* msg) TRT_NOEXCEPT override {
     switch (severity) {
       case Severity::kVERBOSE:
         VLOG(3) << msg;
@@ -105,7 +112,7 @@ class NaiveProfiler : public nvinfer1::IProfiler {
   typedef std::pair<std::string, float> Record;
   std::vector<Record> mProfile;
 
-  virtual void reportLayerTime(const char* layerName, float ms) {
+  virtual void reportLayerTime(const char* layerName, float ms) TRT_NOEXCEPT {
     auto record =
         std::find_if(mProfile.begin(), mProfile.end(),
                      [&](const Record& r) { return r.first == layerName; });

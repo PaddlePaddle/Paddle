@@ -41,14 +41,16 @@ class LauncherInterface(object):
 
     def _terminate_procs(self):
         # try to terminate process by group, this happend in multiprocess senario in user process
-        for p in self.procs:
-            if p.proc.poll() is None:
-                os.killpg(os.getpgid(p.proc.pid), signal.SIGTERM)
-                if p.log_fn:
-                    p.log_fn.close()
-                logger.info("terminate process group gid:{}".format(p.proc.pid))
+        if os.name != 'nt':
+            for p in self.procs:
+                if p.proc.poll() is None:
+                    os.killpg(os.getpgid(p.proc.pid), signal.SIGTERM)
+                    if p.log_fn:
+                        p.log_fn.close()
+                    logger.info("terminate process group gid:{}".format(
+                        p.proc.pid))
 
-        time.sleep(1)
+            time.sleep(1)
         for p in self.procs:
             if p.proc.poll() is None:
                 p.proc.terminate()
