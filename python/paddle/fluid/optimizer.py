@@ -4637,7 +4637,7 @@ class PipelineOptimizer(object):
         elif self._is_weight_decay_op(op) and op.type == 'scale':
             # set AdamW decay_coeff to device:all
             op._set_attr(self._op_device_key, f"{self._device}:all")
-        elif op.type == "alloc_float_status":
+        elif op.type == "alloc_float_status" or op.type == "clear_float_status":
             op._set_attr(self._op_device_key, f"{self._device}:all")
         else:
             other_known_ops = [
