@@ -1,468 +1,54 @@
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+#pragma once
+
 #include <iostream>
 #include <string>
 
+#include <chrono>
 #include <map>
 #include <memory>
-#include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "gperftools/profiler.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/new_exec_util.h"
 #include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 
-#include <chrono>
-#include <gperftools/profiler.h>
+// USE_OP(fill_constant);
+// USE_OP(elementwise_add);
 
-
-//USE_OP(fill_constant);
-//USE_OP(elementwise_add);
-
-using namespace std;
+// using namespace std;
 
 namespace paddle {
 namespace framework {
 
-class RuntimeInferShapeContext : public InferShapeContext {
- public:
-  RuntimeInferShapeContext(const OperatorBase& op, const RuntimeContext& ctx)
-      : op_(op), ctx_(ctx) {}
+using cerr = std::cerr;
+using end = std::endl;
 
-  bool HasInput(const std::string& name) const override {
-    // has only one input
-    const auto& ins = ctx_.inputs;
-    auto it = ins.find(name);
-    if (it == ins.end()) {
-      return false;
-    }
-    const auto& in = it->second;
-    if (in.size() == 0) return false;
-    PADDLE_ENFORCE_EQ(
-        in.size(), 1UL,
-        platform::errors::InvalidArgument(
-            "Input %s should not contain more than one inputs.", name));
-    return in[0] != nullptr;
-  }
-
-  bool HasOutput(const std::string& name) const override {
-    // has only one output
-    const auto& outs = ctx_.outputs;
-    auto it = outs.find(name);
-    if (it == outs.end()) {
-      return false;
-    }
-    const auto& out = it->second;
-    if (out.size() == 0) {
-      return false;
-    }
-    PADDLE_ENFORCE_EQ(
-        out.size(), 1UL,
-        platform::errors::InvalidArgument(
-            "Output %s should not contain more than one outputs.", name));
-    return out[0] != nullptr;
-  }
-
-  bool HasInputs(const std::string& name) const override {
-    const auto& ins = ctx_.inputs;
-    auto it = ins.find(name);
-    if (it == ins.end() || it->second.empty()) {
-      return false;
-    }
-    for (auto& input : it->second) {
-      if (input == nullptr) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool HasOutputs(const std::string& name) const override {
-    const auto& outs = ctx_.outputs;
-    auto it = outs.find(name);
-    if (it == outs.end() || it->second.empty()) {
-      return false;
-    }
-    for (auto& output : it->second) {
-      if (output == nullptr) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
-
-  std::vector<std::string> Inputs(const std::string& name) const override {
-    return op_.Inputs(name);
-  }
-
-  std::vector<std::string> Outputs(const std::string& name) const override {
-    return op_.Outputs(name);
-  }
-
-  std::string GetInputNameByIdx(size_t idx) const override {
-    auto& op_proto =
-        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
-                      platform::errors::OutOfRange(
-                          "The index should be less than the size of inputs of "
-                          "operator %s, but got index is %d and size is %d",
-                          op_.Type(), idx, op_proto->inputs().size()));
-    return op_proto->inputs()[idx].name();
-  }
-
-  std::string GetOutputNameByIdx(size_t idx) const override {
-    auto& op_proto =
-        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-    PADDLE_ENFORCE_LT(
-        idx, op_proto->outputs().size(),
-        platform::errors::OutOfRange(
-            "The index should be less than the size of outputs of "
-            "operator %s, but got index is %d and size is %d",
-            op_.Type(), idx, op_proto->outputs().size()));
-    return op_proto->outputs()[idx].name();
-  }
-
-  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
-                size_t j = 0) override {
-    auto in_it = ctx_.inputs.find(in);
-    auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE_NE(
-        in_it, ctx_.inputs.end(),
-        platform::errors::NotFound("Input %s does not exist.", in));
-    PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
-        platform::errors::NotFound("Output %s does not exist.", out));
-    PADDLE_ENFORCE_LT(i, in_it->second.size(),
-                      platform::errors::InvalidArgument(
-                          "The index of input dimension is out of range, "
-                          "excepted index less than %zu, but received %zu.",
-                          in_it->second.size(), i));
-    PADDLE_ENFORCE_LT(j, out_it->second.size(),
-                      platform::errors::InvalidArgument(
-                          "The index of output dimension is out of range, "
-                          "excepted index less than %zu, but received %zu.",
-                          out_it->second.size(), j));
-
-    Variable* in_var = in_it->second[i];
-    Variable* out_var = out_it->second[j];
-
-    PADDLE_ENFORCE_EQ(
-        in_var->Type(), out_var->Type(),
-        platform::errors::InvalidArgument(
-            "The type of input (%s) and output (%s) are inconsistent.", in,
-            out));
-
-    if (in_var->IsType<framework::SelectedRows>()) {
-      auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
-      auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
-      out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
-      out_sele_rows->set_rows(in_sele_rows.rows());
-      out_sele_rows->set_height(in_sele_rows.height());
-    } else if (in_var->IsType<framework::LoDTensor>()) {
-      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
-      out_lod_tensor->Resize(in_lod_tensor.dims());
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Currently, the input type of ShareDim only can be LoDTensor "
-          "or SelectedRows."));
-    }
-  }
-
-  void ShareAllLoD(const std::string& in,
-                   const std::string& out) const override {
-    auto in_it = ctx_.inputs.find(in);
-    auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
-                      platform::errors::NotFound(
-                          "Input [%s] found error in Op [%s]", in, op_.Type()));
-    PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
-        platform::errors::NotFound("Output [%s] found error in Op [%s]", out,
-                                   op_.Type()));
-
-    auto& in_var_list = in_it->second;
-    auto& out_var_list = out_it->second;
-
-    PADDLE_ENFORCE_EQ(
-        in_var_list.size(), out_var_list.size(),
-        platform::errors::PreconditionNotMet(
-            "Op [%s]: Input var size should be equal with output var size",
-            op_.Type()));
-
-    auto& out_var_names = op_.Outputs(out);
-
-    for (size_t i = 0; i < in_var_list.size(); ++i) {
-      if (out_var_names[i] == framework::kEmptyVarName) {
-        continue;
-      }
-
-      Variable* in_var = in_var_list[i];
-      if (!in_var->IsType<LoDTensor>()) return;
-      Variable* out_var = out_var_list[i];
-      PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
-                        platform::errors::PreconditionNotMet(
-                            "The %d-th output of Output(%s) must be LoDTensor.",
-                            i, out_var_names[i]));
-      auto& in_tensor = in_var->Get<LoDTensor>();
-      auto* out_tensor = out_var->GetMutable<LoDTensor>();
-      out_tensor->set_lod(in_tensor.lod());
-#ifdef PADDLE_WITH_MKLDNN
-      if (in_tensor.layout() != DataLayout::kMKLDNN)
-#endif
-        out_tensor->set_layout(in_tensor.layout());
-    }
-  }
-
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
-                size_t j = 0) const override {
-    auto in_it = ctx_.inputs.find(in);
-    auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE_NE(
-        in_it, ctx_.inputs.end(),
-        platform::errors::NotFound("Input %s does not exist.", in));
-    PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
-        platform::errors::NotFound("Output %s does not exist.", out));
-    PADDLE_ENFORCE_LT(i, in_it->second.size(),
-                      platform::errors::InvalidArgument(
-                          "The index of input dimension is out of range, "
-                          "excepted index less than %zu, but received %zu.",
-                          in_it->second.size(), i));
-    PADDLE_ENFORCE_LT(j, out_it->second.size(),
-                      platform::errors::InvalidArgument(
-                          "The index of output dimension is out of range, "
-                          "excepted index less than %zu, but received %zu.",
-                          out_it->second.size(), j));
-
-    Variable* in_var = in_it->second.at(i);
-    if (!in_var->IsType<LoDTensor>()) return;
-    Variable* out_var = out_it->second.at(j);
-    PADDLE_ENFORCE_EQ(
-        out_var->IsType<LoDTensor>(), true,
-        platform::errors::InvalidArgument(
-            "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
-    auto& in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
-    out_tensor->set_lod(in_tensor.lod());
-
-// TODO(dzhwinter) : reuse ShareLoD in most operators.
-// Need to call ShareLayout explicitly in sequence related ops.
-// Shall we have a better method to shared info between in/out Tensor?
-#ifdef PADDLE_WITH_MKLDNN
-    // Fix me: ugly workaround below
-    // Correct solution:
-    //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
-    //    layout of output tensor should be set "manually" in Compute()
-    //    of each OPKernel. The reason layout should NOT be shared between
-    //    input and output "automatically" (now by InferShape()->ShareLoD())
-    //    is that layout transform may occur after InferShape().
-    // Workaround:
-    //    Skip set_layout() when input layout is kMKLDNN
-    //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
-    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
-    //    in Compute()
-    if (in_tensor.layout() != DataLayout::kMKLDNN)
-#endif
-      out_tensor->set_layout(in_tensor.layout());
-  }
-
-  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "GetLoDLevel is only used in compile time. The calculation of "
-        "output's actual lod is different among operators so that should be "
-        "set in the runtime kernel."));
-  }
-
-  void SetLoDLevel(const std::string& out, int32_t lod_level,
-                   size_t j = 0) const override {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "SetLoDLevel is only used in compile time. The calculation of "
-        "output's actual lod is different among operators so that should be "
-        "set in the runtime kernel."));
-  }
-
-  bool IsRuntime() const override { return true; }
-
-  // TODO(paddle-dev): Can this be template?
-  std::vector<InferShapeVarPtr> GetInputVarPtrs(
-      const std::string& name) override {
-    const std::vector<Variable*>& vars = InputVars(name);
-    std::vector<InferShapeVarPtr> res;
-    res.reserve(vars.size());
-    res.insert(res.begin(), vars.begin(), vars.end());
-    return res;
-  }
-
-  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
-      const std::string& name) override {
-    const std::vector<Variable*>& vars = OutputVars(name);
-    std::vector<InferShapeVarPtr> res;
-    res.reserve(vars.size());
-    res.insert(res.begin(), vars.begin(), vars.end());
-    return res;
-  }
-
-  DDim GetInputDim(const std::string& name) const override {
-    const std::vector<Variable*>& vars = InputVars(name);
-    PADDLE_ENFORCE_EQ(
-        vars.size(), 1UL,
-        platform::errors::InvalidArgument(
-            "Input(%s) should hold one element, but now it holds %zu elements.",
-            name, vars.size()));
-    return this->GetDim(vars[0]);
-  }
-
-  std::vector<DDim> GetInputsDim(const std::string& name) const override {
-    const std::vector<Variable*>& vars = InputVars(name);
-    return GetDims(vars);
-  }
-
-  std::vector<proto::VarType::Type> GetInputsVarType(
-      const std::string& name) const override {
-    return GetVarTypes(InputVars(name));
-  }
-
-  std::vector<proto::VarType::Type> GetOutputsVarType(
-      const std::string& name) const override {
-    return GetVarTypes(OutputVars(name));
-  }
-
-  void SetOutputDim(const std::string& name, const DDim& dim) override {
-    //cerr << "set out dim" << endl;
-    auto& vars = OutputVars(name);
-    PADDLE_ENFORCE_EQ(
-        vars.size(), 1UL,
-        platform::errors::InvalidArgument("Output(%s) should hold one element, "
-                                          "but now it holds %zu elements.",
-                                          name, vars.size()));
-    SetDim(vars[0], dim);
-  }
-
-  void SetOutputsDim(const std::string& name,
-                     const std::vector<DDim>& dims) override {
-    auto& vars = OutputVars(name);
-    SetDims(vars, dims);
-  }
-
- protected:
-  DDim GetDim(Variable* var) const {
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::InvalidArgument("Input variable is nullptr."));
-    if (var->IsType<LoDTensor>()) {
-      return var->Get<LoDTensor>().dims();
-    } else if (var->IsType<SelectedRows>()) {
-      return var->Get<SelectedRows>().GetCompleteDims();
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only LoDTensor or SelectedRows support 'GetDim', but input "
-          "Variable's type is %s.",
-          ToTypeName(var->Type())));
-    }
-  }
-
-  std::vector<DDim> GetDims(const std::vector<Variable*>& vars) const {
-    std::vector<DDim> ret;
-    ret.reserve(vars.size());
-    std::transform(vars.begin(), vars.end(), std::back_inserter(ret),
-                   [this](Variable* var) { return this->GetDim(var); });
-    return ret;
-  }
-
-  std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "GetRepeatedDims method only ban be used in compile time."));
-  }
-
-  void SetDim(Variable* var, const DDim& dim) {
-   
-    if (var->IsType<LoDTensor>()) {
-   
-      var->GetMutable<LoDTensor>()->Resize(dim);
-    } else if (var->IsType<SelectedRows>()) {
-      var->GetMutable<SelectedRows>()->set_height(dim[0]);
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Variable type error, expect LoDTensor or SelectedRows, but received "
-          "(%s).",
-          ToTypeName(var->Type())));
-    }
-  }
-
-  void SetDims(const std::vector<Variable*>& vars,
-               const std::vector<DDim>& dims) {
-    size_t length = vars.size();
-    PADDLE_ENFORCE_EQ(length, dims.size(),
-                      platform::errors::InvalidArgument(
-                          "The number of input variables do not match the "
-                          "number of input dimensions, the number of variables "
-                          "is %zu, the number of dimensions is %zu.",
-                          length, dims.size()));
-    for (size_t i = 0; i < length; ++i) {
-      if (vars[i] == nullptr) {
-        continue;
-      }
-      SetDim(vars[i], dims[i]);
-    }
-  }
-
-  void SetRepeatedDims(const std::string& name,
-                       const std::vector<DDim>& dims) override {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "SetRepeatedDims method only can be used in compile time."));
-  }
-
-  std::vector<proto::VarType::Type> GetVarTypes(
-      const std::vector<Variable*>& vars) const {
-    std::vector<proto::VarType::Type> retv;
-    retv.resize(vars.size());
-    std::transform(vars.begin(), vars.end(), retv.begin(),
-                   std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),
-                             this, std::placeholders::_1));
-    return retv;
-  }
-
-  proto::VarType::Type GetVarType(Variable* var) const {
-    return ToVarType(var->Type());
-  }
-
- private:
-  const std::vector<Variable*>& InputVars(const std::string& name) const {
-    auto it = ctx_.inputs.find(name);
-    PADDLE_ENFORCE_NE(
-        it, ctx_.inputs.end(),
-        platform::errors::NotFound(
-            "Operator (%s) does not have the input (%s).", op_.Type(), name));
-    return it->second;
-  }
-
-  const std::vector<Variable*>& OutputVars(const std::string& name) const {
-    auto it = ctx_.outputs.find(name);
-    PADDLE_ENFORCE_NE(
-        it, ctx_.outputs.end(),
-        platform::errors::NotFound(
-            "Operator (%s) does not have the outputs (%s).", op_.Type(), name));
-    return it->second;
-  }
-
-  const OperatorBase& op_;
-  const RuntimeContext& ctx_;
-};
-
-
-
-framework::ProgramDesc load_from_file( const std::string& file_name )
-{
+framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
@@ -470,452 +56,699 @@ framework::ProgramDesc load_from_file( const std::string& file_name )
   fin.read(&buffer[0], buffer.size());
   fin.close();
 
-  ProgramDesc program_desc( buffer );
+  ProgramDesc program_desc(buffer);
   return program_desc;
 }
 
-
-struct VariableScope
-{
-    std::vector< std::unique_ptr<Variable> > var_list;
-    std::map<std::string, int> name2id;
+struct KernelFunc {
+  using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
+  OpKernelComputeFunc compute_func_;
+  OperatorBase* operator_base_;
 };
 
-
-
-
-struct OpFuncNode{
-
-    //int unsed;
-    std::map< std::string, std::vector<int> > input_index;
-    std::map< std::string, std::vector<int> > output_index;
-    
-    using OpKernelFunc = std::function<void(const ExecutionContext&)>;
-    OpKernelFunc kernel_func_;
+struct VariableMetaInfo {
+  int var_ref_count_;
 };
 
-int convert(const platform::Place& place )
-{
-    if ( is_cpu_place(place )) 
-    {
-        return 0;
-    }
-    if( is_gpu_place( place ))
-    {
-       return 1;
-    }
+struct VariableScope {
+  std::vector<Variable*> var_list;
+  std::map<std::string, int> name2id;
+  std::vector<VariableMetaInfo> vec_meta_info_;
+};
 
-    return -1;
+struct NextInstruction {
+  std::vector<size_t> direct_run_;
+};
+
+struct EventInter {};
+
+struct InstructionInfo {
+  std::vector<size_t> dependecy_count_;
+};
+
+struct EventRun {
+  EventInter event_inter;
+  std::vector<size_t> same_device_run_;
+  std::vector<size_t> synchronized_run;
+};
+
+struct Instruction {
+  KernelFunc kernel_func_;
+  std::map<std::string, std::vector<int>> input_index_;
+  std::map<std::string, std::vector<int>> output_index_;
+
+  std::vector<size_t> gc_check_var_list;
+  NextInstruction next_instruction_;
+  std::vector<EventInter> vec_event_list_;
+};
+
+struct OpFuncNode {
+  // int unsed;
+  std::map<std::string, std::vector<int>> input_index;
+  std::map<std::string, std::vector<int>> output_index;
+
+  using OpKernelFunc = std::function<void(const ExecutionContext&)>;
+  OpKernelFunc kernel_func_;
+};
+
+int convert(const platform::Place& place) {
+  if (is_cpu_place(place)) {
+    return 0;
+  }
+  if (is_gpu_place(place)) {
+    return 1;
+  }
+
+  return -1;
 }
 
-void build_variable_scope( const framework::ProgramDesc& pdesc, VariableScope* var_scope )
-{
-  auto& global_block = pdesc.Block(0);
-  
-  
-  for (auto& var : global_block.AllVars()) {
-      if (var->Name() == framework::kEmptyVarName) {
-        continue;
-      }
-      //cerr << "var name "  << var->Name() << endl;  
+std::vector<size_t> merge_vec(const std::vector<size_t>& first,
+                              const std::vector<size_t>& second) {
+  std::vector<size_t> out(first.size() + second.size());
+  std::merge(first.begin(), first.end(), second.begin(), second.end(),
+             out.begin());
 
-      if ( var_scope->name2id.find( var->Name() ) == var_scope->name2id.end() )
-      {
-          var_scope->name2id[ var->Name() ] = var_scope->var_list.size();
-      }
-      
-      auto v = new Variable();
-      //v->GetMutable<LoDTensor>();
-      InitializeVariable(v,  var->GetType());
-      var_scope->var_list.push_back(std::unique_ptr<Variable>(v));
+  std::vector<size_t>::iterator it;
+  it = std::unique(out.begin(), out.end());
+
+  out.resize(std::distance(out.begin(), it));
+
+  return out;
+}
+
+void build_variable_outer_scope(const framework::ProgramDesc& pdesc,
+                                VariableScope* var_scope, Scope* outer_scope) {
+  auto& global_block = pdesc.Block(0);
+
+  for (auto& var : global_block.AllVars()) {
+    if (var->Name() == framework::kEmptyVarName) {
+      continue;
+    }
+    // cerr << "var name "  << var->Name() << endl;
+    auto v = outer_scope->Var(var->Name());
+
+    if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
+      var_scope->name2id[var->Name()] = var_scope->var_list.size();
+    }
+
+    // auto v = new Variable();
+    // v->GetMutable<LoDTensor>();
+    InitializeVariable(v, var->GetType());
+    var_scope->var_list.push_back(v);
   }
 }
 
-void build_op_func_list( const framework::ProgramDesc& pdesc, std::vector<OperatorBase* >& op_list, 
-                          std::vector<OpFuncNode>& vec_func_list,  VariableScope* var_scope,
-                          const platform::Place& place )
-{
-    auto &global_block = pdesc.Block( 0 );
+void build_variable_scope(const framework::ProgramDesc& pdesc,
+                          VariableScope* var_scope) {
+  auto& global_block = pdesc.Block(0);
 
-    for ( auto& op : global_block.AllOps() )
-    { 
-        //cerr << op->Type() << endl;
-        //bool debug = op->Type() == "softmax_with_cross_entropy_grad";
-        bool debug = false;
-        
-        //cerr << "create op" << endl;
-        //auto op_base_u = OpRegistry::CreateOp(*op);
-        auto& info = OpInfoMap::Instance().Get( op->Type() );
-        
-        VariableNameMap inputs_1 = op->Inputs();
-        VariableNameMap outputs_1 = op->Outputs();
-        AttributeMap attrs_1 = op->GetAttrMap();
-        
-        if (info.Checker() != nullptr) {
-          info.Checker()->Check(&attrs_1);
-        }
-        auto op_base = info.Creator()( op->Type(), inputs_1, outputs_1, attrs_1);
-        
-        auto input_names = op->Inputs();
-        auto output_names = op->Outputs();
-        
-        OpFuncNode op_func_node;
-
-        VariableValueMap ins_map;
-        std::map< std::string, std::vector<int> > ins_name2id;
-        for( auto& var_name_item : input_names)
-        {
-            std::vector<Variable*> input_vars;
-            std::vector<int> vec_ids;
-            input_vars.reserve(var_name_item.second.size());
-            for (auto& var_name : var_name_item.second) {
-                auto it = var_scope->name2id.find( var_name );
-                assert( it != var_scope->name2id.end() );
-                input_vars.push_back( var_scope->var_list[ it->second].get());
-                vec_ids.push_back( it->second );
-            }
-            ins_map[ var_name_item.first ] = input_vars;
-            ins_name2id[ var_name_item.first ] = vec_ids;
-
-        }
-        if (debug  ) cerr << "1" << endl;
-
-        
-        VariableValueMap outs_map;
-        std::map<std::string, std::vector<int> > outs_name2id;
-        for( auto& var_name_item : output_names )
-        {
-            std::vector<Variable*> output_vars;
-            std::vector<int> vec_ids;
-            output_vars.reserve(var_name_item.second.size());
-            for (auto& var_name : var_name_item.second) {
-                auto it = var_scope->name2id.find( var_name );
-                assert( it != var_scope->name2id.end() );
-                //cerr << it->second << "\t" << var_scope.var_list.size() << endl;
-                output_vars.push_back( var_scope->var_list[ it->second].get() );
-                vec_ids.push_back( it->second );
-            } 
-            outs_map[ var_name_item.first ] = output_vars;
-            //cerr << ToTypeName(output_vars[0]->Type() ) << endl;
-            outs_name2id[ var_name_item.first ] = vec_ids;            
-        }
-
-
-        op_func_node.input_index = ins_name2id;
-        op_func_node.output_index = outs_name2id;
-        RuntimeContext runtime_context( {}, {});
-        runtime_context.inputs.swap( ins_map );
-        runtime_context.outputs.swap(  outs_map );
-        //cerr << "create runtime context" << endl;
-        RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
-        static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape( &infer_shape_ctx );
-        //cerr << "fin infer shape" << endl;
-        auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
-        auto kernels_iter = all_op_kernels.find(op->Type() );
-        PADDLE_ENFORCE_NE(
-            kernels_iter, all_op_kernels.end(),
-            platform::errors::Unavailable(
-                "There are no kernels which are registered in the %s operator.",
-                op->Type() ));
-        
-        //cerr << "create kernel" << endl;
-        using OpKernelFunc = std::function<void(const ExecutionContext&)>;
-        using OpKernelMap =
-             std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
-        if (debug  ) cerr << "2" << endl;
-        OpKernelMap& kernels = kernels_iter->second;
-        //auto place = platform::CPUPlace();
-        //auto place = platform::CUDAPlace(0);
-        platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-        auto* dev_ctx = pool.Get(place);
-        Scope scope;
-        auto exec_ctx = ExecutionContext(*op_base, scope, *dev_ctx, runtime_context );
-        if (debug  ) cerr << "21" << endl;
-        auto expected_kernel_key = dynamic_cast<const framework::OperatorWithKernel*>(op_base)->GetExpectedKernelType( exec_ctx );
-        if (debug  ) cerr << "22" << endl;
-        //cerr << "22" << endl;
-        
-        // add transfer log
-        //cerr << "in map size " << ins_map.size() << endl;
-        VariableValueMap&  ins_map_temp = runtime_context.inputs;
-        //cerr << "ins map siz" <<  ins_map_temp.size() << endl;
-        for( auto& var_name_item : ins_map_temp  )
-        {
-          
-          //auto& vec_ids = ins_name2id[ var_name_item.first ];
-          for( size_t i = 0; i < var_name_item.second.size();  ++i )
-          {
-            auto var = var_name_item.second[i];
-            auto tensor_in = static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
-            if( !tensor_in->IsInitialized() )
-            {
-              continue;
-            }
-            //cerr << "i " << i << "\t" << tensor_in->IsInitialized() << endl;
-            auto kernel_type_for_var = static_cast<const framework::OperatorWithKernel*>(op_base)->GetKernelTypeForVar(
-                var_name_item.first, *tensor_in, expected_kernel_key);
-            if( debug) 
-            {
-                cerr << "var name " << var_name_item.first << endl;
-                cerr <<  expected_kernel_key.place_ << "\t" << kernel_type_for_var.place_ << endl;
-            }
-            if ( !platform::is_same_place(kernel_type_for_var.place_,
-                                expected_kernel_key.place_) )
-            {
-              if(debug) cerr << "add data transfer" << endl;
-              // need trans place
-              // add var in scope
-              // add copy op
-              std::string new_var_name = "temp_1" + to_string( var_scope->var_list.size() + 1);
-              auto v = new Variable();
-              v->GetMutable<LoDTensor>();
-              var_scope->name2id[ new_var_name ] = var_scope->var_list.size();
-              var_scope->var_list.push_back(std::unique_ptr<Variable>(v));
-
-              VariableNameMap copy_in_map;
-              //cerr << "ints name is " << input_names[var_name_item.first][i] << endl;
-              copy_in_map["X"] = { input_names[var_name_item.first][i] };
-              VariableNameMap copy_out_map;
-              copy_out_map["Out"] = { new_var_name };
-              AttributeMap attr_map;
-              attr_map["dst_place_type"] = convert( place ); 
-
-              std::map< std::string, std::vector<int> > copy_ins_name2id;
-              copy_ins_name2id["X"] = ins_name2id[ var_name_item.first ];
-              std::map< std::string, std::vector<int> > copy_out_name2id;
-              copy_out_name2id["Out"] = { var_scope->name2id[new_var_name]};
-
-              //vec_ids[i] = var_scope->name2id[new_var_name];
-              // update out runtime_context
-              op_func_node.input_index[ var_name_item.first ][i] = var_scope->name2id[new_var_name];
-
-              VariableValueMap copy_ins_value_map;              
-              copy_ins_value_map["X"] = { var };
-              VariableValueMap copy_outs_value_map;
-              copy_outs_value_map["Out"] = { v };
-
-              
-              
-              auto& copy_info = OpInfoMap::Instance().Get( "memcpy" );
-              auto copy_op = copy_info.Creator()( "memcpy", copy_in_map, copy_out_map, attr_map);
-              if(debug) cerr << "create memcpy" << endl;
-              OpFuncNode copy_op_func_node;
-              copy_op_func_node.input_index = copy_ins_name2id;
-              copy_op_func_node.output_index = copy_out_name2id;
-
-              RuntimeContext copy_runtime_context( {}, {});
-              copy_runtime_context.inputs.swap( copy_ins_value_map );
-              copy_runtime_context.outputs.swap(  copy_outs_value_map );
-              //cerr << "create runtime context" << endl;
-              RuntimeInferShapeContext copy_infer_shape_ctx(*copy_op, copy_runtime_context);
-              if(debug) cerr << "before infer shape" << endl;
-              static_cast<const framework::OperatorWithKernel*>(copy_op)->InferShape( &copy_infer_shape_ctx );
-              if(debug) cerr << "infer shape" << endl;
-              //cerr << "fin infer shape" << endl;
-              auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
-              auto kernels_iter = all_op_kernels.find( "memcpy" );
-              PADDLE_ENFORCE_NE(
-                  kernels_iter, all_op_kernels.end(),
-                  platform::errors::Unavailable("There are no kernels which are registered in the memcpy operator.") );
-               
-              
-              //cerr << "create kernel" << endl;
-              using OpKernelFunc = std::function<void(const ExecutionContext&)>;
-              using OpKernelMap =
-                  std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
-              
-              OpKernelMap& kernels = kernels_iter->second;
-              //auto place = platform::CPUPlace();
-              //auto place = platform::CUDAPlace(0);
-              
-              platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-              auto* dev_ctx = pool.Get(place);
-              Scope scope;
-              auto copy_exec_ctx = ExecutionContext(*copy_op, scope, *dev_ctx, copy_runtime_context );
-              if (debug  ) cerr << "21" << endl;
-              auto expected_kernel_key = dynamic_cast<const framework::OperatorWithKernel*>(copy_op)->GetExpectedKernelType( copy_exec_ctx );
-              if (debug  ) cerr << "22" << endl;
-              //cerr << "22" << endl;
-              auto kernel_iter = kernels.find(expected_kernel_key);
-              copy_op_func_node.kernel_func_ = OpKernelFunc( kernel_iter->second );
-              copy_op_func_node.kernel_func_( copy_exec_ctx );
-              if(debug) cerr << "run exe ctx" << endl;
-
-              op_list.push_back( copy_op );
-              vec_func_list.push_back( copy_op_func_node);
-
-
-              var_name_item.second[i] = v;
-            }
-          }                    
-        }
-        
-        op_list.push_back( op_base );
-        
-        auto kernel_iter = kernels.find(expected_kernel_key);
-
-        if (debug  ) cerr << "3" << endl;
-        op_func_node.kernel_func_ = OpKernelFunc(kernel_iter->second);
-        if (debug  ) cerr << "3-1" << endl;
-        op_func_node.kernel_func_(  exec_ctx );
-        vec_func_list.push_back( op_func_node );
-        if (debug  ) cerr << "5" << endl;
+  for (auto& var : global_block.AllVars()) {
+    if (var->Name() == framework::kEmptyVarName) {
+      continue;
     }
-    
+    // cerr << "var name "  << var->Name() << endl;
+
+    if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
+      var_scope->name2id[var->Name()] = var_scope->var_list.size();
+    }
+
+    auto v = new Variable();
+    // v->GetMutable<LoDTensor>();
+    InitializeVariable(v, var->GetType());
+    var_scope->var_list.push_back(v);
+  }
 }
 
+void build_op_func_list(const framework::ProgramDesc& pdesc,
+                        std::vector<OperatorBase*>* op_list,
+                        std::vector<OpFuncNode>* vec_func_list,
+                        VariableScope* var_scope,
+                        const platform::Place& place) {
+  auto& global_block = pdesc.Block(0);
 
+  for (auto& op : global_block.AllOps()) {
+    // cerr << op->Type() << endl;
+    // bool debug = op->Type() == "softmax_with_cross_entropy_grad";
+    bool debug = false;
 
-void exec_op_func_list( const std::vector<OpFuncNode>& vec_func_list, 
-                        std::vector< OperatorBase* >& op_list, 
-                        const VariableScope& var_scope,
-                        const platform::Place& place)
-{
-    for( size_t i = 0; i < vec_func_list.size(); ++i )    
-    {
-        auto& func_node = vec_func_list[i];
-        auto op_base = op_list[i];
-        // build runtime cost
-        VariableValueMap ins_map;        
-        for( auto& var_name_item : func_node.input_index)
-        {
-            std::vector<Variable*> input_vars;
-            
-            input_vars.reserve(var_name_item.second.size());
-            for (auto& id : var_name_item.second) {    
-                //cerr << var_name_item.first << "\t " << id << endl;            
-                input_vars.emplace_back( var_scope.var_list[ id ].get() );                
-            }
-            ins_map.emplace( var_name_item.first, std::move(input_vars) );            
-        }
+    // cerr << "create op" << endl;
+    // auto op_base_u = OpRegistry::CreateOp(*op);
+    auto& info = OpInfoMap::Instance().Get(op->Type());
 
-        VariableValueMap outs_map;        
-        for( auto& var_name_item : func_node.output_index)
-        {
-            std::vector<Variable*> out_vars;
-            
-            out_vars.reserve(var_name_item.second.size());
-            for (auto& id : var_name_item.second) {       
-                //cerr << var_name_item.first << "\t " << id << endl;         
-                out_vars.emplace_back( var_scope.var_list[ id ].get());                 
-            }            
-            outs_map.emplace( var_name_item.first, std::move( out_vars ) );
-        }
+    VariableNameMap inputs_1 = op->Inputs();
+    VariableNameMap outputs_1 = op->Outputs();
+    AttributeMap attrs_1 = op->GetAttrMap();
 
-        RuntimeContext runtime_context( {}, {});
-        runtime_context.inputs.swap( ins_map );
-        runtime_context.outputs.swap(  outs_map );
-        
-        RuntimeInferShapeContext infer_shape_ctx( *op_base, runtime_context);
-       
-        //dynamic_cast<const framework::OperatorWithKernel*>(op_base)->InferShape( &infer_shape_ctx );
-        //RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
-        static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape( &infer_shape_ctx );
-
-       
-        platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-        //auto place = platform::CPUPlace();
-        //auto place = platform::CUDAPlace(0);
-        auto* dev_ctx = pool.Get(place);
-        Scope scope;
-        
-      
-        auto exec_context = ExecutionContext(*op_base, scope, *dev_ctx, runtime_context );
-        
-        func_node.kernel_func_( exec_context );
-        
+    if (info.Checker() != nullptr) {
+      info.Checker()->Check(&attrs_1);
     }
+    auto op_base = info.Creator()(op->Type(), inputs_1, outputs_1, attrs_1);
+
+    auto input_names = op->Inputs();
+    auto output_names = op->Outputs();
+
+    OpFuncNode op_func_node;
+
+    VariableValueMap ins_map;
+    std::map<std::string, std::vector<int>> ins_name2id;
+    for (auto& var_name_item : input_names) {
+      std::vector<Variable*> input_vars;
+      std::vector<int> vec_ids;
+      input_vars.reserve(var_name_item.second.size());
+      for (auto& var_name : var_name_item.second) {
+        auto it = var_scope->name2id.find(var_name);
+        assert(it != var_scope->name2id.end());
+        input_vars.push_back(var_scope->var_list[it->second]);
+        vec_ids.push_back(it->second);
+      }
+      ins_map[var_name_item.first] = input_vars;
+      ins_name2id[var_name_item.first] = vec_ids;
+    }
+    if (debug) cerr << "1" << endl;
+
+    VariableValueMap outs_map;
+    std::map<std::string, std::vector<int>> outs_name2id;
+    for (auto& var_name_item : output_names) {
+      std::vector<Variable*> output_vars;
+      std::vector<int> vec_ids;
+      output_vars.reserve(var_name_item.second.size());
+      for (auto& var_name : var_name_item.second) {
+        auto it = var_scope->name2id.find(var_name);
+        assert(it != var_scope->name2id.end());
+        // cerr << it->second << "\t" << var_scope.var_list.size() << endl;
+        output_vars.push_back(var_scope->var_list[it->second]);
+        vec_ids.push_back(it->second);
+      }
+      outs_map[var_name_item.first] = output_vars;
+      // cerr << ToTypeName(output_vars[0]->Type() ) << endl;
+      outs_name2id[var_name_item.first] = vec_ids;
+    }
+
+    op_func_node.input_index = ins_name2id;
+    op_func_node.output_index = outs_name2id;
+    RuntimeContext runtime_context({}, {});
+    runtime_context.inputs.swap(ins_map);
+    runtime_context.outputs.swap(outs_map);
+    // cerr << "create runtime context" << endl;
+    RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
+    static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
+        &infer_shape_ctx);
+    // cerr << "fin infer shape" << endl;
+    auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
+    auto kernels_iter = all_op_kernels.find(op->Type());
+    PADDLE_ENFORCE_NE(
+        kernels_iter, all_op_kernels.end(),
+        platform::errors::Unavailable(
+            "There are no kernels which are registered in the %s operator.",
+            op->Type()));
+
+    // cerr << "create kernel" << endl;
+    using OpKernelFunc = std::function<void(const ExecutionContext&)>;
+    using OpKernelMap =
+        std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
+    if (debug) cerr << "2" << endl;
+    OpKernelMap& kernels = kernels_iter->second;
+    // auto place = platform::CPUPlace();
+    // auto place = platform::CUDAPlace(0);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.Get(place);
+    Scope scope;
+    auto exec_ctx =
+        ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
+    if (debug) cerr << "21" << endl;
+    auto expected_kernel_key =
+        dynamic_cast<const framework::OperatorWithKernel*>(op_base)
+            ->GetExpectedKernelType(exec_ctx);
+    if (debug) cerr << "22" << endl;
+    // cerr << "22" << endl;
+
+    // add transfer log
+    // cerr << "in map size " << ins_map.size() << endl;
+    VariableValueMap& ins_map_temp = runtime_context.inputs;
+    // cerr << "ins map siz" <<  ins_map_temp.size() << endl;
+    for (auto& var_name_item : ins_map_temp) {
+      // auto& vec_ids = ins_name2id[ var_name_item.first ];
+      for (size_t i = 0; i < var_name_item.second.size(); ++i) {
+        auto var = var_name_item.second[i];
+        auto tensor_in = static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
+        if (!tensor_in->IsInitialized()) {
+          continue;
+        }
+        // cerr << "i " << i << "\t" << tensor_in->IsInitialized() << endl;
+        auto kernel_type_for_var =
+            static_cast<const framework::OperatorWithKernel*>(op_base)
+                ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
+                                      expected_kernel_key);
+        if (debug) {
+          cerr << "var name " << var_name_item.first << endl;
+          cerr << expected_kernel_key.place_ << "\t"
+               << kernel_type_for_var.place_ << endl;
+        }
+        if (!platform::is_same_place(kernel_type_for_var.place_,
+                                     expected_kernel_key.place_)) {
+          if (debug) cerr << "add data transfer" << endl;
+          // cerr << "add data transfer " << op->Type() << endl;
+          // cerr << " p1 "  << kernel_type_for_var.place_ << "\t" <<
+          // expected_kernel_key.place_ << endl;
+          // cerr << " var  " << var_name_item.first << endl;
+          // need trans place
+          // add var in scope
+          // add copy op
+          std::string new_var_name =
+              "temp_1" + to_string(var_scope->var_list.size() + 1);
+          auto v = new Variable();
+          v->GetMutable<LoDTensor>();
+          var_scope->name2id[new_var_name] = var_scope->var_list.size();
+          var_scope->var_list.push_back(v);
+
+          VariableNameMap copy_in_map;
+          // cerr << "ints name is " << input_names[var_name_item.first][i] <<
+          // endl;
+          copy_in_map["X"] = {input_names[var_name_item.first][i]};
+          VariableNameMap copy_out_map;
+          copy_out_map["Out"] = {new_var_name};
+          AttributeMap attr_map;
+          attr_map["dst_place_type"] = convert(place);
+
+          std::map<std::string, std::vector<int>> copy_ins_name2id;
+          copy_ins_name2id["X"] = ins_name2id[var_name_item.first];
+          std::map<std::string, std::vector<int>> copy_out_name2id;
+          copy_out_name2id["Out"] = {var_scope->name2id[new_var_name]};
+
+          // vec_ids[i] = var_scope->name2id[new_var_name];
+          // update out runtime_context
+          op_func_node.input_index[var_name_item.first][i] =
+              var_scope->name2id[new_var_name];
+
+          VariableValueMap copy_ins_value_map;
+          copy_ins_value_map["X"] = {var};
+          VariableValueMap copy_outs_value_map;
+          copy_outs_value_map["Out"] = {v};
+
+          auto& copy_info = OpInfoMap::Instance().Get("memcpy");
+          auto copy_op = copy_info.Creator()("memcpy", copy_in_map,
+                                             copy_out_map, attr_map);
+          if (debug) cerr << "create memcpy" << endl;
+          OpFuncNode copy_op_func_node;
+          copy_op_func_node.input_index = copy_ins_name2id;
+          copy_op_func_node.output_index = copy_out_name2id;
+
+          RuntimeContext copy_runtime_context({}, {});
+          copy_runtime_context.inputs.swap(copy_ins_value_map);
+          copy_runtime_context.outputs.swap(copy_outs_value_map);
+          // cerr << "create runtime context" << endl;
+          RuntimeInferShapeContext copy_infer_shape_ctx(*copy_op,
+                                                        copy_runtime_context);
+          if (debug) cerr << "before infer shape" << endl;
+          static_cast<const framework::OperatorWithKernel*>(copy_op)
+              ->InferShape(&copy_infer_shape_ctx);
+          if (debug) cerr << "infer shape" << endl;
+          // cerr << "fin infer shape" << endl;
+          auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
+          auto kernels_iter = all_op_kernels.find("memcpy");
+          PADDLE_ENFORCE_NE(kernels_iter, all_op_kernels.end(),
+                            platform::errors::Unavailable(
+                                "There are no kernels which are registered in "
+                                "the memcpy operator."));
+
+          // cerr << "create kernel" << endl;
+          using OpKernelFunc = std::function<void(const ExecutionContext&)>;
+          using OpKernelMap = std::unordered_map<OpKernelType, OpKernelFunc,
+                                                 OpKernelType::Hash>;
+
+          OpKernelMap& kernels = kernels_iter->second;
+          // auto place = platform::CPUPlace();
+          // auto place = platform::CUDAPlace(0);
+
+          platform::DeviceContextPool& pool =
+              platform::DeviceContextPool::Instance();
+          auto* dev_ctx = pool.Get(place);
+          Scope scope;
+          auto copy_exec_ctx =
+              ExecutionContext(*copy_op, scope, *dev_ctx, copy_runtime_context);
+          if (debug) cerr << "21" << endl;
+          auto expected_kernel_key =
+              dynamic_cast<const framework::OperatorWithKernel*>(copy_op)
+                  ->GetExpectedKernelType(copy_exec_ctx);
+          if (debug) cerr << "22" << endl;
+          // cerr << "22" << endl;
+          auto kernel_iter = kernels.find(expected_kernel_key);
+          copy_op_func_node.kernel_func_ = OpKernelFunc(kernel_iter->second);
+          copy_op_func_node.kernel_func_(copy_exec_ctx);
+          if (debug) cerr << "run exe ctx" << endl;
+
+          op_list->push_back(copy_op);
+          vec_func_list->push_back(copy_op_func_node);
+
+          var_name_item.second[i] = v;
+        }
+      }
+    }
+
+    op_list->push_back(op_base);
+
+    auto kernel_iter = kernels.find(expected_kernel_key);
+
+    if (debug) cerr << "3" << endl;
+    op_func_node.kernel_func_ = OpKernelFunc(kernel_iter->second);
+    if (debug) cerr << "3-1" << endl;
+    op_func_node.kernel_func_(exec_ctx);
+    vec_func_list->push_back(op_func_node);
+    if (debug) cerr << "5" << endl;
+  }
 }
 
-class InterpreterCore
-{
-public:
-  InterpreterCore( const platform::Place& place, const ProgramDesc& prog,  const ProgramDesc& startup_prog) : place_(place), prog_(prog) {
+void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
+                       const std::vector<OperatorBase*>& op_list,
+                       const VariableScope& var_scope,
+                       const platform::Place& place) {
+  for (size_t i = 0; i < vec_func_list.size(); ++i) {
+    auto& func_node = vec_func_list[i];
+    auto op_base = op_list[i];
+    // build runtime cost
+    VariableValueMap ins_map;
+    for (auto& var_name_item : func_node.input_index) {
+      std::vector<Variable*> input_vars;
+
+      input_vars.reserve(var_name_item.second.size());
+      for (auto& id : var_name_item.second) {
+        // cerr << var_name_item.first << "\t " << id << endl;
+        input_vars.emplace_back(var_scope.var_list[id]);
+      }
+      ins_map.emplace(var_name_item.first, std::move(input_vars));
+    }
+
+    VariableValueMap outs_map;
+    for (auto& var_name_item : func_node.output_index) {
+      std::vector<Variable*> out_vars;
+
+      out_vars.reserve(var_name_item.second.size());
+      for (auto& id : var_name_item.second) {
+        // cerr << var_name_item.first << "\t " << id << endl;
+        out_vars.emplace_back(var_scope.var_list[id]);
+      }
+      outs_map.emplace(var_name_item.first, std::move(out_vars));
+    }
+
+    RuntimeContext runtime_context({}, {});
+    runtime_context.inputs.swap(ins_map);
+    runtime_context.outputs.swap(outs_map);
+
+    RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
+
+    // dynamic_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
+    // &infer_shape_ctx );
+    // RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
+    static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
+        &infer_shape_ctx);
+
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    // auto place = platform::CPUPlace();
+    // auto place = platform::CUDAPlace(0);
+    auto* dev_ctx = pool.Get(place);
+    Scope scope;
+
+    auto exec_context =
+        ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
+
+    func_node.kernel_func_(exec_context);
+  }
+}
+
+class InterpreterCore {
+ public:
+  InterpreterCore(const platform::Place& place, const ProgramDesc& prog,
+                  const ProgramDesc& startup_prog, Scope* scope)
+      : place_(place), prog_(prog), outer_scope_(scope) {
     paddle::framework::InitDevices();
 
     is_build = false;
 
-    paddle::framework::build_variable_scope( startup_prog, &global_scope );
-
+    paddle::framework::build_variable_outer_scope(startup_prog, &global_scope,
+                                                  outer_scope_);
 
     std::vector<paddle::framework::OpFuncNode> vec_func_list;
-    std::vector< paddle::framework::OperatorBase* > op_list;
-    paddle::framework::build_op_func_list( startup_prog, op_list, vec_func_list, &global_scope, place_);
+    std::vector<paddle::framework::OperatorBase*> op_list;
+    paddle::framework::build_op_func_list(startup_prog, op_list, vec_func_list,
+                                          &global_scope, place_);
+    // add variable to outer_scope
+  }
+  void run(const std::vector<std::string> vec_name,
+           const std::vector<framework::Tensor>& vec_tensor,
+           const vector<std::string>& vec_fetch_name,
+           std::vector<framework::Tensor>* vec_out) {
+    // cerr << "run" << endl;
+    // set static data
+    if (is_build == false) {
+      paddle::framework::build_variable_scope(prog_, &global_scope);
+    }
+    for (size_t i = 0; i < vec_name.size(); ++i) {
+      auto it = global_scope.name2id.find(vec_name[i]);
+      // cerr << "find " << ( it != global_scope.name2id.end() ) <<endl;
+      assert(it != global_scope.name2id.end());
 
-  } 
-  void run( const std::vector<std::string> vec_name, const std::vector<framework::Tensor>& vec_tensor, const vector<std::string>& vec_fetch_name, 
-            std::vector<framework::Tensor>& vec_out)
-  {
-    //cerr << "run" << endl;
-      // set static data
-    if( is_build == false )
-    {
-      paddle::framework::build_variable_scope( prog_, &global_scope );
+      auto feed_tensor =
+          global_scope.var_list[it->second]->GetMutable<framework::LoDTensor>();
+      // cerr << " get tensor" << endl;
+      feed_tensor->ShareDataWith(vec_tensor[i]);
+      // cerr << "share buffer with" << endl;
     }
-    for ( size_t i = 0; i < vec_name.size(); ++i )
-    {
-        auto it = global_scope.name2id.find( vec_name[i] );
-        //cerr << "find " << ( it != global_scope.name2id.end() ) <<endl;
-        assert( it != global_scope.name2id.end() );
-        
-        auto feed_tensor = global_scope.var_list[ it->second]->GetMutable<framework::LoDTensor>();
-        //cerr << " get tensor" << endl;
-        feed_tensor->ShareDataWith( vec_tensor[i] );
-        //cerr << "share buffer with" << endl;
-    }
-    
-    if( is_build == false )
-    {
-      paddle::framework::build_op_func_list( prog_, op_list, vec_func_list, &global_scope, place_);
+
+    if (is_build == false) {
+      paddle::framework::build_op_func_list(prog_, op_list, vec_func_list,
+                                            &global_scope, place_);
       is_build = true;
+      // convert vec func_list to graph
+      convert();
+    } else {
+      // paddle::framework::exec_op_func_list( vec_func_list, op_list,
+      // global_scope, place_ );
+      // cerr <<  "exec instr" << endl;
+      exec_instruction_list(vec_instruction_, global_scope, place_);
     }
-    else
-    {
-      paddle::framework::exec_op_func_list( vec_func_list, op_list, global_scope, place_ );
-    }
-    
-    for( size_t i = 0; i < vec_fetch_name.size(); ++i )
-    {
-       auto it = global_scope.name2id.find( vec_fetch_name[i] );
-        assert( it != global_scope.name2id.end() );
-        
-        auto fetch_tensor = global_scope.var_list[ it->second]->GetMutable<framework::LoDTensor>();
 
+    for (size_t i = 0; i < vec_fetch_name.size(); ++i) {
+      auto it = global_scope.name2id.find(vec_fetch_name[i]);
+      assert(it != global_scope.name2id.end());
 
-        //cerr << "out  "  << fetch_tensor->data<float>()[0] << endl;
-        if ( platform::is_gpu_place(fetch_tensor->place() ) )
-        {
-          //cerr << "fetch gpu" << endl;
-            Tensor out;
-            platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-            auto* dev_ctx = pool.Get(place_);
-            dev_ctx->Wait();
-            TensorCopySync(*fetch_tensor, platform::CPUPlace(), &out);
-            dev_ctx->Wait();
-            //cerr << "out  " << out << endl;
-            //cout << out.data<float>()[0] << endl;
-            vec_out.push_back( out );
-        }
-        else
-        {
+      auto fetch_tensor =
+          global_scope.var_list[it->second]->GetMutable<framework::LoDTensor>();
 
-          cerr << "out  "  << *fetch_tensor << endl;
-        }
+      // cerr << "out  "  << fetch_tensor->data<float>()[0] << endl;
+      if (platform::is_gpu_place(fetch_tensor->place())) {
+        // cerr << "fetch gpu" << endl;
+        Tensor out;
+        platform::DeviceContextPool& pool =
+            platform::DeviceContextPool::Instance();
+        auto* dev_ctx = pool.Get(place_);
+        dev_ctx->Wait();
+        TensorCopySync(*fetch_tensor, platform::CPUPlace(), &out);
+        dev_ctx->Wait();
+        // cerr << "out  " << out << endl;
+        // cout << out.data<float>()[0] << endl;
+        vec_out->push_back(out);
+      } else {
+        cerr << "out  " << *fetch_tensor << endl;
+      }
     }
   }
-private:
+
+ private:
+  void convert() {
+    input_var2op_info_.resize(global_scope.var_list.size());
+
+    vec_instruction_.reserve(vec_func_list.size());
+    dependecy_count_.resize(vec_func_list.size());
+    global_scope.vec_meta_info_.resize(global_scope.var_list.size());
+    // cerr << "in pos 7 is lookup table " <<
+    // vec_instruction_[7].kernel_func_.operator_base_->Type() << endl;
+    for (size_t i = 0; i < vec_func_list.size(); ++i) {
+      Instruction temp_inst;
+      temp_inst.kernel_func_.compute_func_ = vec_func_list[i].kernel_func_;
+      temp_inst.kernel_func_.operator_base_ = op_list[i];
+      temp_inst.input_index_ = vec_func_list[i].input_index;
+      temp_inst.output_index_ = vec_func_list[i].output_index;
+
+      std::vector<size_t> gc_check_input_list;
+      for (auto item : vec_func_list[i].input_index) {
+        for (auto id : item.second) {
+          input_var2op_info_[id].push_back(i);
+          gc_check_input_list.push_back(id);
+        }
+      }
+      std::sort(gc_check_input_list.begin(), gc_check_input_list.end());
+      auto last =
+          std::unique(gc_check_input_list.begin(), gc_check_input_list.end());
+      gc_check_input_list.erase(last, gc_check_input_list.end());
+      for (auto var_id : gc_check_input_list) {
+        global_scope.vec_meta_info_[var_id].var_ref_count_++;
+      }
+
+      temp_inst.gc_check_var_list.swap(gc_check_input_list);
+
+      vec_instruction_.push_back(temp_inst);
+    }
+
+    for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+      std::vector<size_t> vec_temp;
+      for (auto item : vec_instruction_[i].output_index_) {
+        for (auto id : item.second) {
+          vec_temp = merge_vec(vec_temp, input_var2op_info_[id]);
+        }
+      }
+
+      // In Program, op order is a very import information.
+      // Op can noly add op after it as next as next ops.
+      std::vector<size_t> filter_next;
+      filter_next.reserve(vec_temp.size());
+      for (auto item : vec_temp) {
+        if (item > i) {
+          filter_next.push_back(item);
+        }
+      }
+      vec_instruction_[i].next_instruction_.direct_run_ = filter_next;
+
+      for (auto inst_id : filter_next) {
+        dependecy_count_[inst_id]++;
+      }
+    }
+  }
+
+  void run_instr(const Instruction& instr_node, const VariableScope& var_scope,
+                 const platform::Place& place) {
+    auto op_base = instr_node.kernel_func_.operator_base_;
+    // build runtime cost
+    VariableValueMap ins_map;
+    for (auto& var_name_item : instr_node.input_index_) {
+      std::vector<Variable*> input_vars;
+
+      input_vars.reserve(var_name_item.second.size());
+      for (auto& id : var_name_item.second) {
+        // cerr << var_name_item.first << "\t " << id << endl;
+        input_vars.emplace_back(var_scope.var_list[id]);
+      }
+      ins_map.emplace(var_name_item.first, std::move(input_vars));
+    }
+
+    VariableValueMap outs_map;
+    for (auto& var_name_item : instr_node.output_index_) {
+      std::vector<Variable*> out_vars;
+
+      out_vars.reserve(var_name_item.second.size());
+      for (auto& id : var_name_item.second) {
+        // cerr << var_name_item.first << "\t " << id << endl;
+        out_vars.emplace_back(var_scope.var_list[id]);
+      }
+      outs_map.emplace(var_name_item.first, std::move(out_vars));
+    }
+
+    RuntimeContext runtime_context({}, {});
+    runtime_context.inputs.swap(ins_map);
+    runtime_context.outputs.swap(outs_map);
+
+    RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
+
+    // dynamic_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
+    // &infer_shape_ctx );
+    // RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
+    static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
+        &infer_shape_ctx);
+
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    // auto place = platform::CPUPlace();
+    // auto place = platform::CUDAPlace(0);
+    auto* dev_ctx = pool.Get(place);
+    Scope scope;
+
+    auto exec_context =
+        ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
+
+    instr_node.kernel_func_.compute_func_(exec_context);
+  }
+
+  void exec_instruction_list(const std::vector<Instruction>& vec_instr,
+                             const VariableScope& var_scope,
+                             const platform::Place& place) {
+    // for( size_t i = 0; i < vec_instr.size(); ++i )
+    // {
+    //   cerr << vec_instr[i].kernel_func_.operator_base_->Type() <<  " dep " <<
+    //   dependecy_count_[i] << endl;
+    // }
+
+    std::queue<size_t> working_queue;
+    auto working_dependecy_count = dependecy_count_;
+    for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+      if (dependecy_count_[i] == 0) {
+        working_queue.push(i);
+      }
+    }
+
+    auto working_var_ref = global_scope.vec_meta_info_;
+
+    size_t run_op_number = 0;
+    while (!working_queue.empty()) {
+      auto instr_id = working_queue.front();
+      working_queue.pop();
+      // cerr << "run " << instr_id  << "\t" <<
+      // vec_instr[instr_id].kernel_func_.operator_base_->Type()  <<  endl;
+      auto& instr_node = vec_instr[instr_id];
+      run_instr(instr_node, var_scope, place);
+
+      auto& next_instr = instr_node.next_instruction_.direct_run_;
+      ++run_op_number;
+
+      for (auto next_i : next_instr) {
+        --working_dependecy_count[next_i];
+        if (working_dependecy_count[next_i] == 0) {
+          working_queue.push(next_i);
+        }
+      }
+
+      // GC infomation
+
+      auto& gc_check_list = instr_node.gc_check_var_list;
+      for (auto var_id : gc_check_list) {
+        --working_var_ref[var_id].var_ref_count_;
+      }
+    }
+
+    for (size_t i = 0; i < working_var_ref.size(); ++i) {
+      if (working_var_ref[i].var_ref_count_ != 0) {
+        cerr << " var ref is not zero " << i << endl;
+        //  << i << global_scope.var_list[i].Name() << endl;
+      }
+    }
+    // cerr << "run op number " << run_op_number << endl;
+    // cerr << "total op number " << vec_instr.size() << endl;
+    // assert( run_op_number == vec_instr.size() );
+
+    /*
+    for( size_t i = 0; i < vec_instr.size(); ++i )
+    {
+        auto& instr_node = vec_instr[i];
+        run_instr( instr_node, var_scope, place );
+
+    }
+    */
+  }
+
   const platform::Place& place_;
   const ProgramDesc& prog_;
   paddle::framework::VariableScope global_scope;
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
-  std::vector< paddle::framework::OperatorBase* > op_list;
+  std::vector<paddle::framework::OperatorBase*> op_list;
 
   bool is_build;
-  
+
+  std::vector<Instruction> vec_instruction_;
+
+  InstructionInfo instruction_info_;
+
+  std::vector<size_t> dependecy_count_;
+  std::vector<VariableMetaInfo> ref_coun_info;
+  std::vector<std::vector<size_t>> input_var2op_info_;
+
+  Scope* outer_scope_;
 };
-
-}
-}
-
-
-
+}  // namespace framework
+}  // namespace paddle
