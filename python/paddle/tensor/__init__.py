@@ -332,7 +332,7 @@ tensor_method_func  = [ #noqa
            'strided_slice',
            'transpose',
            'unique',
-           'unique_consecutive'
+           'unique_consecutive',
            'unsqueeze',
            'unsqueeze_',
            'unstack',
