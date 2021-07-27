@@ -79,23 +79,6 @@ def create_test_dim1_class(op_type, typename, callback):
     class Cls(op_test.OpTest):
         def setUp(self):
             x = y = np.random.random(size=(1)).astype(typename)
-            z = callback(x, y)
-            self.inputs = {'X': x, 'Y': y}
-            self.outputs = {'Out': z}
-            self.op_type = op_type
-
-        def test_output(self):
-            self.check_output()
-
-    cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
-    Cls.__name__ = cls_name
-    globals()[cls_name] = Cls
-
-
-def create_test_dim1_class(op_type, typename, callback):
-    class Cls(op_test.OpTest):
-        def setUp(self):
-            x = y = np.random.random(size=(1)).astype(typename)
             x = np.array([True, False, True]).astype(typename)
             x = np.array([False, False, True]).astype(typename)
             z = callback(x, y)
