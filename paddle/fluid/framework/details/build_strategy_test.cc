@@ -35,17 +35,6 @@ DECLARE_bool(convert_all_blocks);
 namespace paddle {
 namespace framework {
 
-class NOP : public OperatorBase {
- public:
-  NOP(const std::string &type, const VariableNameMap &inputs,
-      const VariableNameMap &outputs, const AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-
- private:
-  void RunImpl(const Scope &scope,
-               const platform::Place &place) const override {}
-};
-
 class SumOpMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
@@ -55,26 +44,23 @@ class SumOpMaker : public OpProtoAndCheckerMaker {
   }
 };
 
-class SumOpVarTypeInference : public VarTypeInference {
+class SumOpWithKernel : public OperatorWithKernel {
  public:
-  void operator()(InferVarTypeContext *ctx) const override {
-    auto default_var_type = proto::VarType::SELECTED_ROWS;
+  using OperatorWithKernel::OperatorWithKernel;
 
-    if (ctx->InputTypeAnyOf("X", proto::VarType::LOD_TENSOR)) {
-      default_var_type = proto::VarType::LOD_TENSOR;
-    }
-
-    ctx->SetOutputType("Out", default_var_type);
+ protected:
+  void InferShape(framework::InferShapeContext *ctx) const override {}
+  OpKernelType GetExpectedKernelType(
+      const ExecutionContext &ctx) const override {
+    return OpKernelType(proto::VarType::FP32, ctx.Input<Tensor>("X")->place());
   }
 };
 
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OPERATOR(sum, paddle::framework::NOP, paddle::framework::SumOpMaker,
-                  paddle::framework::SumOpVarTypeInference);
-REGISTER_OPERATOR(sum_without_infer_var_type, paddle::framework::NOP,
-                  paddle::framework::SumOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(sum, paddle::framework::SumOpWithKernel,
+                             paddle::framework::SumOpMaker);
 
 namespace paddle {
 namespace framework {
