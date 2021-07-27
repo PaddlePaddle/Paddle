@@ -44,8 +44,8 @@
 namespace paddle {
 namespace framework {
 
-using cerr = std::cerr;
-using end = std::endl;
+using std::cerr;
+using std::endl;
 
 framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
@@ -314,7 +314,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           // add var in scope
           // add copy op
           std::string new_var_name =
-              "temp_1" + to_string(var_scope->var_list.size() + 1);
+              "temp_1" + std::to_string(var_scope->var_list.size() + 1);
           auto v = new Variable();
           v->GetMutable<LoDTensor>();
           var_scope->name2id[new_var_name] = var_scope->var_list.size();
@@ -488,13 +488,13 @@ class InterpreterCore {
 
     std::vector<paddle::framework::OpFuncNode> vec_func_list;
     std::vector<paddle::framework::OperatorBase*> op_list;
-    paddle::framework::build_op_func_list(startup_prog, op_list, vec_func_list,
-                                          &global_scope, place_);
+    paddle::framework::build_op_func_list(
+        startup_prog, &op_list, &vec_func_list, &global_scope, place_);
     // add variable to outer_scope
   }
   void run(const std::vector<std::string> vec_name,
            const std::vector<framework::Tensor>& vec_tensor,
-           const vector<std::string>& vec_fetch_name,
+           const std::vector<std::string>& vec_fetch_name,
            std::vector<framework::Tensor>* vec_out) {
     // cerr << "run" << endl;
     // set static data
@@ -514,7 +514,7 @@ class InterpreterCore {
     }
 
     if (is_build == false) {
-      paddle::framework::build_op_func_list(prog_, op_list, vec_func_list,
+      paddle::framework::build_op_func_list(prog_, &op_list, &vec_func_list,
                                             &global_scope, place_);
       is_build = true;
       // convert vec func_list to graph
