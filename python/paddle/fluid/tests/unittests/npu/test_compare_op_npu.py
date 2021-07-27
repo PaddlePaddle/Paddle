@@ -152,6 +152,5 @@ for _type_name in {'float16', 'float32', 'int32'}:
     create_test_class('greater_than', _type_name, lambda _a, _b: _a > _b)
     create_test_class('greater_equal', _type_name, lambda _a, _b: _a >= _b)
 
-
 if __name__ == '__main__':
     unittest.main()
