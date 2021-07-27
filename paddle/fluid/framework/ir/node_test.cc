@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/node.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -76,24 +77,29 @@ TEST(NodeTest, Basic) {
 }
 
 TEST(NodeTest, ToString) {
+  VarDesc var_desc("n2");
+  OpDesc op_desc;
+  op_desc.SetType("test_op");
+  op_desc.SetInput("X", {"x1", "x2", "x3"});
+  op_desc.SetOutput("Y", {"y1", "y2"});
+
   std::unique_ptr<Node> n1(CreateNodeForTest("n1", Node::Type::kVariable));
+  std::unique_ptr<Node> n2(CreateNodeForTest(&var_desc));
+  std::unique_ptr<Node> n3(CreateNodeForTest("n3", Node::Type::kOperation));
+  std::unique_ptr<Node> n4(CreateNodeForTest(&op_desc));
+
   EXPECT_EQ(n1->ToString(), "n1");
+  EXPECT_EQ(n2->ToString(), "n2");
 
-  std::unique_ptr<Node> op1(CreateNodeForTest("op1", Node::Type::kOperation));
+  EXPECT_EQ(n3->Op(), nullptr);
+  EXPECT_EQ(n3->ToString(), "{} = n3()");
+  EXPECT_NE(n4->Op(), nullptr);
+  EXPECT_EQ(n4->ToString(), "{Y=[y1 ,y2]} = test_op(X=[x1 ,x2 ,x3])");
 
-  std::unique_ptr<Node> n2(CreateNodeForTest("n2", Node::Type::kVariable));
-  std::unique_ptr<Node> n3(CreateNodeForTest("n3", Node::Type::kVariable));
-
-  op1->inputs.emplace_back(n2.get());
-  op1->outputs.emplace_back(n3.get());
-  EXPECT_EQ(op1->ToString(), "op1n2n3");
-
-  OpDesc desc;
-  desc.SetType("op2");
-  desc.SetInput("X", {"arg1"});
-  desc.SetOutput("Out", {"res1"});
-  std::unique_ptr<Node> op2(CreateNodeForTest(&desc));
-  EXPECT_EQ(op2->ToString(), "op2Xarg1Outres1");
+  n3->inputs.push_back(n1.get());
+  n3->outputs.push_back(n2.get());
+  EXPECT_EQ(n3->Op(), nullptr);
+  EXPECT_EQ(n3->ToString(), "{n2} = n3(n1)");
 }
 
 }  // namespace ir

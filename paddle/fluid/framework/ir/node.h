@@ -138,6 +138,13 @@ class Node {
 
   int DescOrder() const { return desc_order_; }
 
+  int GetVarNodeBlockId() const {
+    PADDLE_ENFORCE_EQ(
+        type_ == Type::kVariable && var_desc_, true,
+        platform::errors::InvalidArgument("Node must be type of variable."));
+    return block_id_;
+  }
+
   const std::string ToString() const {
     if (IsOp()) {
       std::string op_str(Name());
@@ -158,27 +165,53 @@ class Node {
                          comparator);
         std::stable_sort(sorted_outputs.begin(), sorted_outputs.end(),
                          comparator);
-        for (const auto& input : sorted_inputs) {
-          op_str.append(input->Name());
-        }
+
+        std::string out_str = "{";
+        std::string pre_str = "";
         for (const auto& output : sorted_outputs) {
-          op_str.append(output->Name());
+          out_str.append(pre_str + output->Name());
+          pre_str = ", ";
         }
+        out_str.append("} = ");
+
+        std::string in_str = "(";
+        pre_str = "";
+        for (const auto& input : sorted_inputs) {
+          in_str.append(pre_str + input->Name());
+          pre_str = ", ";
+        }
+        in_str.append(")");
+        op_str = out_str + op_str + in_str;
       } else {
         // A normal Op, has OpDesc, create from ProgramDesc
-        for (const auto& input : op->InputNames()) {
-          op_str.append(input);
-          for (const auto& arg : op->Input(input)) {
-            op_str.append(arg);
-          }
-        }
-
+        std::string out_str = "{";
+        std::string outer_pre_str = "";
         for (const auto& output : op->OutputNames()) {
-          op_str.append(output);
+          out_str.append(outer_pre_str + output + "=[");
+          std::string inner_pre_str = "";
           for (const auto& arg : op->Output(output)) {
-            op_str.append(arg);
+            out_str.append(inner_pre_str + arg);
+            inner_pre_str = " ,";
           }
+          outer_pre_str = ", ";
+          out_str.append("]");
         }
+        out_str.append("} = ");
+
+        std::string in_str = "(";
+        outer_pre_str = "";
+        for (const auto& input : op->InputNames()) {
+          in_str.append(outer_pre_str + input + "=[");
+          std::string inner_pre_str = "";
+          for (const auto& arg : op->Input(input)) {
+            in_str.append(inner_pre_str + arg);
+            inner_pre_str = " ,";
+          }
+          outer_pre_str = " ,";
+          in_str.append("]");
+        }
+        in_str.append(")");
+        op_str = out_str + op_str + in_str;
       }
 
       return op_str;
@@ -203,6 +236,7 @@ class Node {
   int id_;
 
   int desc_order_;
+  int block_id_{-1};
 
  private:
   // ID can only set by a Graph.
@@ -218,19 +252,21 @@ class Node {
   friend std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
   friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 
-  explicit Node(const std::string& name, Type type)
+  explicit Node(const std::string& name, Type type, int block_id = 0)
       : name_(name),
         var_desc_(nullptr),
         op_desc_(nullptr),
         type_(type),
-        desc_order_(NO_DESC_ORDER) {}
+        desc_order_(NO_DESC_ORDER),
+        block_id_(block_id) {}
 
-  explicit Node(VarDesc* var_desc)
+  explicit Node(VarDesc* var_desc, int block_id)
       : name_(var_desc->Name()),
         var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
         type_(Type::kVariable),
-        desc_order_(NO_DESC_ORDER) {}
+        desc_order_(NO_DESC_ORDER),
+        block_id_(block_id) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),

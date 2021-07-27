@@ -56,10 +56,12 @@ Graph::Graph(const ProgramDesc &program, const int64_t start_op_index,
     // sub_graph.
     std::unique_ptr<Graph> first_sub_graph = std::make_unique<Graph>(
         program_.Block(0), this, start_op_index, end_op_index);
+    first_sub_graph->block_id_ = 0;
     sub_graphs_.push_back(std::move(first_sub_graph));
     for (size_t idx = 1; idx < program_.Size(); ++idx) {
       std::unique_ptr<Graph> sub_graph =
           std::make_unique<Graph>(program_.Block(idx), this);
+      sub_graph->block_id_ = idx;
       sub_graphs_.push_back(std::move(sub_graph));
     }
   } else {
@@ -90,15 +92,32 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
 std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
     const BlockDesc &block, const int64_t start_op_index,
     const int64_t end_op_index) {
-  std::unordered_map<std::string, VarDesc *> all_vars;
+  std::unordered_map<std::string, std::pair<VarDesc *, int>>
+      name_to_desc_block_id;
+
+  const BlockDesc *block_var_visible = &block;
+  while (block_var_visible != nullptr) {
+    for (auto *var : block_var_visible->AllVars()) {
+      name_to_desc_block_id.emplace(
+          var->Name(), std::make_pair(var, block_var_visible->ID()));
+    }
+    const BlockDesc *forward_block = block_var_visible->ForwardBlock();
+    if (forward_block != nullptr) {
+      for (auto *var : forward_block->AllVars()) {
+        name_to_desc_block_id.emplace(var->Name(),
+                                      std::make_pair(var, forward_block->ID()));
+      }
+    }
+    block_var_visible = block_var_visible->ParentBlock();
+  }
   // var nodes for each var name, will have multiple versions in SSA
   std::map<std::string, std::vector<ir::Node *>> var_nodes;
+  std::unordered_map<std::string, VarDesc *> not_visited_vars;
   for (auto *var : block.AllVars()) {
-    all_vars.emplace(var->Name(), var);
+    not_visited_vars.emplace(var->Name(), var);
   }
 
   int desc_order = 0;
-  auto not_visited_vars = all_vars;
   auto all_ops = block.AllOps();
   PADDLE_ENFORCE_LE(
       end_op_index, all_ops.size(),
@@ -119,8 +138,9 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
       ir::Node *var = nullptr;
       if (var_nodes.find(each_var_name) != var_nodes.end()) {
         var = var_nodes.at(each_var_name).back();
-      } else if (all_vars.count(each_var_name) != 0) {
-        var = CreateVarNode(all_vars.at(each_var_name));
+      } else if (name_to_desc_block_id.count(each_var_name) != 0) {
+        auto desc_and_block_id = name_to_desc_block_id.at(each_var_name);
+        var = CreateVarNode(desc_and_block_id.first, desc_and_block_id.second);
         var_nodes[each_var_name].push_back(var);
       } else {
         // Operation input var can be optional (dispensable). Which means
@@ -146,8 +166,9 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
       }
 
       ir::Node *var = nullptr;
-      if (all_vars.count(each_var_name) != 0) {
-        var = CreateVarNode(all_vars.at(each_var_name));
+      if (name_to_desc_block_id.count(each_var_name) != 0) {
+        auto desc_and_block_id = name_to_desc_block_id.at(each_var_name);
+        var = CreateVarNode(desc_and_block_id.first, desc_and_block_id.second);
       } else {
         // Operation output vars can be @EMPTY@. For example, while_grad
         // can have multi @EMPTY@ outputs with no VarDesc.
@@ -273,6 +294,7 @@ std::shared_ptr<Graph> Graph::Clone() {
     auto cloned_graph = std::make_shared<Graph>(this->program_);
     cloned_graph->ReleaseNodes();
     cloned_graph->num_node_created_ = 0;
+    cloned_graph->block_id_ = this->block_id_;
     std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
     for (auto *n : this->node_set_) {
       PADDLE_ENFORCE_NOT_NULL(n, platform::errors::InvalidArgument(
@@ -316,6 +338,7 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
       std::make_unique<Graph>(this->program_.Block(idx), this);
   cloned_sub_graph->ReleaseNodes();
   cloned_sub_graph->num_node_created_ = 0;
+  cloned_sub_graph->block_id_ = idx;
   std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
   for (auto *n : this->sub_graphs_.at(idx)->Nodes()) {
     PADDLE_ENFORCE_NOT_NULL(n, platform::errors::InvalidArgument(
