@@ -119,8 +119,6 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
-    math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
-
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -128,8 +126,12 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling
-        if(NOT WITH_GPU)
+        
+        # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling,
+        # For Visual Studio generators, /MP should be added. 
+        # For other generators like Ninja, it is not need to add /MP.
+        if("${CMAKE_GENERATOR}" STREQUAL "Visual Studio" AND NOT WITH_GPU)
+            math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
             set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
         endif()
     endforeach(flag_var)
@@ -312,6 +314,17 @@ else()
      endif()
 endif()
 
+if(WITH_DISTRIBUTE)
+    if(LINUX)
+        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+    endif()
+    if(WITH_ASCEND_CL)
+        # disable WITH_PSCORE for NPU before include third_party
+        MESSAGE(WARNING "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
+        set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
+    endif()
+endif()
+
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 include(flags)              # set paddle compile flags
@@ -320,12 +333,6 @@ if(WITH_PROFILER)
     find_package(Gperftools REQUIRED)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
     add_definitions(-DWITH_GPERFTOOLS)
-endif()
-
-if(WITH_DISTRIBUTE)
-    if(LINUX)
-        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
-    endif()
 endif()
 
 include(ccache)             # set ccache for compilation
