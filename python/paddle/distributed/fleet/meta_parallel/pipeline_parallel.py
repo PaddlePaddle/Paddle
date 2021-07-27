@@ -29,6 +29,22 @@ from .pp_utils import p2p_communication as p2p
 __all__ = []
 
 
+class SendRecvMeta:
+    def __init__(self):
+        # next meta
+        self.next_shape_message = None
+        self.next_dtype_messgae = None
+
+        self.prev_shape_message = None
+        self.prev_dtype_message = None
+
+    def ready_for_next(self):
+        return self.next_shape_message is not None and self.next_dtype_messgae is not None
+
+    def ready_for_prev(self):
+        return self.next_shape_message is not None and self.next_dtype_messgae is not None
+
+
 class PipelineParallel(MetaParallelBase):
     def __init__(self, layers, hcg, strategy):
         if not isinstance(layers, PipelineLayer):
@@ -41,20 +57,9 @@ class PipelineParallel(MetaParallelBase):
 
         self.is_pipe_partitioned = self.use_model_parallel
 
-        self.num_caches = 0
-        self.caches = {
-            'inputs': [],
-            'labels': [],
-            'outputs': [],
-        }
-
-        self.recv_cache = None
-        self.grad_tensors = None
-
-        self.send_meta = True
-
-        self.current_loss = paddle.to_tensor(0.0)
         self.total_loss = None
+
+        self.send_recv_meta = SendRecvMeta()
 
         self.micro_batch_size = self._strategy.pipeline_configs[
             'micro_batch_size']
@@ -66,6 +71,7 @@ class PipelineParallel(MetaParallelBase):
         self.prev_stage_id = self.stage_id - 1
         self.next_stage_id = self.stage_id + 1
         self.pp_group = self._hcg.get_pipe_parallel_group()
+
         p2p.initialize_p2p_groups(hcg)
 
         self.is_first_stage = self.stage_id == 0
@@ -90,19 +96,22 @@ class PipelineParallel(MetaParallelBase):
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         assert isinstance(optimizer, HybridParallelOptimizer), (
             'optimizer should be HybridParallelOptimizer subclass.')
-        self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
-        self.scaler = scaler
+        assert isinstance(scaler, (None, HybridParallelGradScaler)), (
+            'scaler should be HybridParallelGradScaler subclass or None.')
         assert fluid.framework._dygraph_tracer()._has_grad, (
             'Please enable the generation of gradients.')
 
         if self.is_first_stage or self.is_last_stage:
             assert data is not None, (
-                "For the first and the last stage, the data_iter must be set.")
+                "For the first and the last stage, the data must be set.")
         else:
             data = None
 
+        self.optimizer = optimizer
+        self.lr_scheduler = lr_scheduler
+        self.scaler = scaler
         self.data = data
+
         self._layers.train()
 
         # store total loss of entire batch
@@ -110,13 +119,6 @@ class PipelineParallel(MetaParallelBase):
 
         # store data id for micro_batch
         self.data_id = 0
-
-        self.micro_batch_size = self._strategy.pipeline_configs[
-            'micro_batch_size']
-        self.accumulate_steps = self._strategy.pipeline_configs[
-            'accumulate_steps']
-
-        self.num_stages = self._hcg.get_pipe_parallel_world_size()
 
         # Compute number of warmup microbatches.
         num_microbatches = self.accumulate_steps
@@ -178,10 +180,10 @@ class PipelineParallel(MetaParallelBase):
 
         self._layers.allreduce_shared_weight_gradients()
 
-        # optimizer
         self.train_loss = self._reduce_final_loss()
 
-        self._step()
+        # optimizer
+        self._optimizer_step()
         return self.train_loss
 
     def _forward_step(self, input_tensor):
@@ -273,7 +275,7 @@ class PipelineParallel(MetaParallelBase):
                 group=self.pp_group)
         return loss
 
-    def _step(self):
+    def _optimizer_step(self):
         if self.scaler:
             self.scaler.minimize(self.optimizer, self.train_loss)
         else:

@@ -250,26 +250,28 @@ class HybridCommunicateGroup(object):
         self.send_prev_group = None
         self.recv_next_group = None
         self.recv_prev_group = None
+
         for comm_ranks in comm_lists:
             assert len(comm_ranks) == self._pp_degree
             for idx, rank in enumerate(comm_ranks):
                 curr_rank = rank
                 next_rank = comm_ranks[(idx + 1) % self._pp_degree]
                 prev_rank = comm_ranks[(idx - 1) % self._pp_degree]
+
                 next_group = paddle.distributed.new_group(
                     ranks=[curr_rank, next_rank])
+                if self.global_rank == curr_rank:
+                    self.send_next_group = next_group
+                elif self.global_rank == next_rank:
+                    self.recv_prev_group = next_group
+
                 prev_group = paddle.distributed.new_group(
                     ranks=[prev_rank, curr_rank])
 
                 if self.global_rank == curr_rank:
-                    self.send_next_group = next_group
                     self.send_prev_group = prev_group
-                elif self.global_rank == next_rank:
-                    self.recv_prev_group = next_group
                 elif self.global_rank == prev_rank:
                     self.recv_next_group = prev_group
-                else:
-                    pass
 
         assert self.send_next_group is not None
         assert self.send_prev_group is not None
