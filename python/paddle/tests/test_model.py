@@ -639,7 +639,7 @@ class TestModelFunction(unittest.TestCase):
     def test_summary_input(self):
         rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
         input_data = paddle.rand([4, 23, 16])
-        paddle.summary(rnn, (4, 23, 16), input_data)
+        paddle.summary(rnn, input_size=(4, 23, 16), input=input_data)
 
         lenet_List_input = LeNetListInput()
         input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
