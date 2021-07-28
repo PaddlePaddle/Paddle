@@ -1277,7 +1277,7 @@ void BindImperative(py::module *m_ptr) {
              if (platform::is_cpu_place(self->Place())) {
                return self;
              } else {
-               auto new_var = self->NewVarBase(platform::CPUPlace(), true);
+               auto new_var = self->NewVarBase(platform::CPUPlace(), false);
                new_var->SetOverridedStopGradient(self->OverridedStopGradient());
                return new_var;
              }
@@ -1310,7 +1310,7 @@ void BindImperative(py::module *m_ptr) {
                return self;
              } else {
                auto new_var =
-                   self->NewVarBase(platform::CUDAPinnedPlace(), true);
+                   self->NewVarBase(platform::CUDAPinnedPlace(), false);
                new_var->SetOverridedStopGradient(self->OverridedStopGradient());
                return new_var;
              }
@@ -1363,7 +1363,7 @@ void BindImperative(py::module *m_ptr) {
              if (platform::is_same_place(self->Place(), place)) {
                return self;
              } else {
-               auto new_var = self->NewVarBase(place, blocking);
+               auto new_var = self->NewVarBase(place, false);
                new_var->SetOverridedStopGradient(self->OverridedStopGradient());
                return new_var;
              }
