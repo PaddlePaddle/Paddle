@@ -29,10 +29,13 @@ class LogSoftmaxNPUKernel : public framework::OpKernel<T> {
     const int rank = X->dims().size();
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
 
+    std::vector<int> axes;
+    axes.push_back(axis);
+    framework::NPUAttributeMap attr_input = {{"axes", axes}};
+
     Out->mutable_data<T>(ctx.GetPlace());
 
-    const auto& runner =
-        NpuOpRunner("LogSoftmaxV2", {*X}, {*Out}, {{"axes", {axis}}});
+    const auto& runner = NpuOpRunner("LogSoftmaxV2", {*X}, {*Out}, attr_input);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()

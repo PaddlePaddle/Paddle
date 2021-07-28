@@ -67,9 +67,9 @@ class TestLogSoftmaxShape(TestLogSoftmaxNPUOp):
         self.shape = [12, 10]
 
 
-# class TestLogSoftmaxAxis(TestLogSoftmaxNPUOp):
-#     def set_attrs(self):
-#         self.axis = 1
+class TestLogSoftmaxAxis(TestLogSoftmaxNPUOp):
+    def set_attrs(self):
+        self.axis = 1
 
 
 class TestLogSoftmaxFloat64(TestLogSoftmaxNPUOp):
