@@ -19,9 +19,6 @@ import paddle.fluid.core as core
 __all__ = []
 
 g_process_mesh_map = dict()
-_g_dims_mapping_map = dict()
-
-_NO_PARENET = -1
 
 
 class ProcessMesh(object):
@@ -98,39 +95,6 @@ class ProcessMesh(object):
         return not self.__eq__(other)
 
 
-class _DimsMapping(object):
-    """
-    A class to describe the dims_mapping for op's input/output dims_mapping.
-    """
-
-    def __init__(self, name, attr_type, dims_mapping):
-        self._name = name
-        self._dims_mapping = dims_mapping
-        self._type = attr_type
-
-        self.desc = core.DimsMappingDesc(name, attr_type, dims_mapping)
-        cur_id = self.desc.id
-        self._id = cur_id
-        assert cur_id not in _g_dims_mapping_map, "%d already exists." % cur_id
-        _g_dims_mapping_map[cur_id] = self
-
-    @property
-    def name(self):
-        return self.name
-
-    @property
-    def dims_mapping(self):
-        return self.dims_mapping
-
-    @property
-    def id(self):
-        return self._id
-
-    @property
-    def attr_type(self):
-        return self._type
-
-
 def validate_check():
     pass
 
@@ -146,30 +110,30 @@ def shard_tensor(tensor, mesh, dims_mapping):
         The tensor itself.
     """
     validate_check()
-    tensor._set_attr('mesh_id', mesh)
-    tensor._set_attr('dims_mapping', dims_mapping)
+    tensor._set_attr('MESH_ID', mesh.id)
+    tensor._set_attr('DIMS_MAPPING', dims_mapping)
     return tensor
 
 
-def set_shard_mask(tensor, mask):
+def set_shard_mask(tensor, mask_out):
     """
     Set the mask for a tensor which mask out the tensor from some processes in its mesh.
     Inputs:
         tensor (Variable): tensor to process， it's an instance of Variable (framework.py)
-        mask (Variable): mask out tensor from some processes in mesh.
+        mask (list): mask out tensor from some processes in mesh.
     Returns:
         The tensor itself.
     """
     validate_check()
-    tensor._set_attr('mask', mask)
+    tensor._set_attr('MASK_OUT', mask)
     return tensor
 
 
-def shard_op(op_name, mesh, input_dims_mapping, output_dims_mapping):
+def shard_op(fn_call, mesh, input_dims_mapping, output_dims_mapping):
     """
     Add distributed attributes for ops.
     Inputs:
-        op_name (string): the name of the  op to process
+        fn_call (func_call): a call of an API.
         mesh (ProcessMesh): an instance of ProcessMesh
         input_dims_mapping (dict): a mapping from input name to the input's dims_mapping
         output_dims_mapping(dict): a mapping from output name to the output's dims_mapping
@@ -177,18 +141,15 @@ def shard_op(op_name, mesh, input_dims_mapping, output_dims_mapping):
         Output variables of the op named op_name(tuple).
     """
     validate_check()
-    # op_mapping[op_name](parameter list from input_dims_mapping)
-    op._set_distributed_attr('mesh', mesh)
-    in_list = []
-    out_list = []
+    main_prog = paddle.fluid.default_main_program()
+    main_block = main_prog.global_block()
+    op_size = len(main_block.ops)
+    op = main_block.ops[op_size - 1]
+    op._set_distributed_attr('MESH_ID', mesh.id)
     for name in input_dims_mapping:
-        tmp = _DimsMapping(name, IN, input_dims_mapping[name])
-        in_list.append(tmp)
+        op._set_attr(name, input_dims_mapping[name])
     for name in output_dims_mapping:
-        tmp = _DimsMapping(name, OUT, output_dims_mapping[name])
-        out_list.append(tmp)
-    op._set_distributed_attr('input_dims_mapping', in_list)
-    op._set_distributed_attr('output_dims_mapping', out_list)
+        op._set_attr(name, output_dims_mapping[name])
 
 
 def set_offload_device(tensor, dst_device):
@@ -196,11 +157,11 @@ def set_offload_device(tensor, dst_device):
     Set the device that the tensor on.
     Inputs:
         op (tensor): tensor to process, it's an instance of Variable (framework.py)
-        dst_device: the device that the tensor on, e.g., 'gpu', 'cpu'.
+        dst_device (str): the device that the tensor on, e.g., 'gpu', 'cpu'.
     Returns:
         None.
     """
-    tensor._set_attr('offload_device', dst_device)
+    tensor._set_attr('OFFLOAD_DEVICE', dst_device)
 
 
 def set_pipeline_stage(stage):
