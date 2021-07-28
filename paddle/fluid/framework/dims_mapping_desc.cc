@@ -35,5 +35,10 @@ std::vector<int32_t> DimsMappingDesc::DimsMapping() const {
   }
   return ret;
 }
+
+DimsMappingDescMap& DimsMappingDescMap::GetInstance() {
+  static DimsMappingDescMap g_dims_mapping_desc_map;
+  return g_dims_mapping_desc_map;
+}
 }  // namespace framework
 }  // namespace paddle

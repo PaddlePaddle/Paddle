@@ -19,6 +19,7 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/dims_mapping_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/process_mesh_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -93,6 +94,19 @@ void BindProcessMeshDesc(pybind11::module *m) {
       .def_property_readonly("parent", &pd::ProcessMeshDesc::Parent)
       .def("topology", &pd::ProcessMeshDesc::Topology)
       .def("process_group", &pd::ProcessMeshDesc::ProcessGroup);
+}
+
+void BindDimsMappingDesc(pybind11::module *m) {
+  pybind11::enum_<pd::proto::DimsMappingDesc::Type>(*m, "DimsMappingType", "")
+      .value("INPUT", pd::proto::DimsMappingDesc::Type::INPUT)
+      .value("OUTPUT", pd::proto::DimsMappingDesc::Type::OUTPUT);
+
+  pybind11::class_<pd::DimsMappingDesc>(*m, "DimsMappingDesc", "")
+      .def(pybind11::init<const std::string &, pd::proto::DimsMappingDesc::Type,
+                          const std::vector<int32_t> &>())
+      .def_property_readonly("id", &pd::ProcessMeshDesc::ID)
+      .def_property_readonly("name", &pd::ProcessMeshDesc::Name)
+      .def("dims_mapping", &pd::ProcessMeshDesc::DimsMapping);
 }
 
 void BindBlockDesc(pybind11::module *m) {
