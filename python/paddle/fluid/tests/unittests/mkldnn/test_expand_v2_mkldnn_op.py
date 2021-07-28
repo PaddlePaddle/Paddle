@@ -30,7 +30,7 @@ class TestExpandV2OneDNNOp(OpTest):
         self.x = np.random.random(self.ori_shape).astype("float32")
         self.set_inputs()
         self.attrs = {'shape': self.shape, 'use_mkldnn': True}
-        output = np.tile(self.inputs['X'], self.expand_times)
+        output = np.tile(self.x, self.expand_times)
         self.outputs = {'Out': output}
 
     def set_inputs(self):
@@ -90,7 +90,7 @@ def create_expand_v2_bf16_test_class(parent):
                 core.CPUPlace(), ["X"],
                 "Out",
                 user_defined_grads=[convert_float_to_uint16(self.dx)],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+                user_defined_grad_outputs=[self.dout])
 
     cls_name = "{0}_{1}".format(parent.__name__, "Expand_v2_BF16")
     TestExpandV2BF16OneDNNOp.__name__ = cls_name
