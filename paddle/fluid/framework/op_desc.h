@@ -186,9 +186,6 @@ class OpDesc {
     return ret_val;
   }
 
-  std::vector<DimsMappingDesc *> input_dims_mapping_;
-  std::vector<DimsMappingDesc *> output_dims_mapping_;
-
   proto::OpDesc desc_;
   BlockDesc *block_;  // not_own
   // input arg name => input variable names

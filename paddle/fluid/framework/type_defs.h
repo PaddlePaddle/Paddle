@@ -45,7 +45,7 @@ using Attribute =
                    std::vector<float>, std::vector<std::string>, bool,
                    std::vector<bool>, BlockDesc*, int64_t,
                    std::vector<BlockDesc*>, std::vector<int64_t>,
-                   std::vector<double>, DimsMappingDesc*, ProcessMeshDesc*>;
+                   std::vector<double>, ProcessMeshDesc*>;
 
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 

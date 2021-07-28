@@ -452,13 +452,6 @@ void OpDesc::RemoveOutput(const std::string &name) {
   need_update_ = true;
 }
 
-const std::vector<DimsMappingDesc *> &OpDesc::InputDimsMapping() const {
-  return input_dims_mapping_;
-}
-const std::vector<DimsMappingDesc *> &OpDesc::OutputDimsMapping() const {
-  return output_dims_mapping_;
-}
-
 bool OpDesc::HasProtoAttr(const std::string &name) const {
   auto &op_info = OpInfoMap::Instance();
   if (op_info.Has(desc_.type())) {
@@ -478,8 +471,12 @@ bool OpDesc::HasProtoAttr(const std::string &name) const {
 
 proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
-                                          "Attribute %s is not found.", name));
+  if (it == attrs_.end()) {
+    it = distributed_attrs_.find(name);
+    PADDLE_ENFORCE_NE(
+        it, distributed_attrs_.end(),
+        platform::errors::NotFound("Attribute %s is not found.", name));
+  }
   return static_cast<proto::AttrType>(it->second.which() - 1);
 }
 
