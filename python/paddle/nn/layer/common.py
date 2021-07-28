@@ -30,26 +30,36 @@ def _npairs(x, n):
     return x
 
 
-
 class Identity(Layer):
-    r"""A placeholder identity operator that is argument-insensitive.
+    r"""
 
-    Args:
-        args: any argument (unused)
-        kwargs: any keyword argument (unused)
+    A placeholder identity operator that is argument-insensitive.
 
-    Examples::
+    .. math::
 
-    >>> import numpy
-    >>> layer = Identity(54)
-    >>> input_tensor = paddle.to_tensor(numpy.random.randn(128, 20))
-    >>> input_tensor = input_tensor+1
-    >>> input_tensor.stop_gradient=False
-    >>> input_tensor.register_hook(lambda grad: print('input grad', grad))
-    >>> print('input_tensor.grad', input_tensor.grad)
-    >>> out = m(input_tensor)
-    >>> out.backward()
-    >>> print(out.shape, paddle.sum(input_tensor), paddle.sum(out))
+        Out = X
+
+    Parameters:
+        Any parameters which is not used
+
+    Shape:
+        - input: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
+        - output: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
+
+    Examples:
+        .. code-block:: python
+
+         import numpy
+         import paddle
+         layer = Identity(54)
+         input_tensor = paddle.to_tensor(numpy.random.randn(128, 20))
+         input_tensor = input_tensor+1
+         input_tensor.stop_gradient=False
+         input_tensor.register_hook(lambda grad: print('input grad', grad))
+         print('input_tensor.grad', input_tensor.grad)
+         out = m(input_tensor)
+         out.backward()
+         print(out.shape, paddle.sum(input_tensor), paddle.sum(out))
 
     """
 
@@ -58,7 +68,6 @@ class Identity(Layer):
 
     def forward(self, input):
         return input
-
 
 
 class Linear(Layer):
