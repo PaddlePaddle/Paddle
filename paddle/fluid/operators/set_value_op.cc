@@ -127,6 +127,8 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("decrease_axes",
                                   "(list<int>) The axes to decrease.")
         .SetDefault({});
+    AddAttr<std::vector<int64_t>>("none_axes", "(list<int>) The axes to none.")
+        .SetDefault({});
 
     AddAttr<std::vector<int>>("bool_values", "Store the bool values.")
         .SetDefault({});
