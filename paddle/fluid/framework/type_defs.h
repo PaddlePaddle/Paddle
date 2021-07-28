@@ -30,8 +30,6 @@ class OpDesc;
 class InferShapeContext;
 class InferVarTypeContext;
 class BlockDesc;
-class DimsMappingDesc;
-class ProcessMeshDesc;
 class Variable;
 class InferNoNeedBufferVarsFN;
 
@@ -40,12 +38,10 @@ using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
 // The order should be as same as framework.proto
-using Attribute =
-    boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                   std::vector<float>, std::vector<std::string>, bool,
-                   std::vector<bool>, BlockDesc*, int64_t,
-                   std::vector<BlockDesc*>, std::vector<int64_t>,
-                   std::vector<double>, ProcessMeshDesc*>;
+using Attribute = boost::variant<
+    boost::blank, int, float, std::string, std::vector<int>, std::vector<float>,
+    std::vector<std::string>, bool, std::vector<bool>, BlockDesc*, int64_t,
+    std::vector<BlockDesc*>, std::vector<int64_t>, std::vector<double>>;
 
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
