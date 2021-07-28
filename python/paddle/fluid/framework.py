@@ -1923,9 +1923,10 @@ class Variable(object):
         """
         return self.desc.attr(name)
 
-    def _process_mesh_attr_id(self, name):
+    @property
+    def process_mesh(self):
         """
-        Get the process mesh attribute's id by name.
+        Get the process mesh belonging to this Variable.
 
         Args:
             name(str): the attribute name.
@@ -1933,23 +1934,9 @@ class Variable(object):
         Returns:
             int: the process mesh index.
         """
-        return self.desc._process_mesh_attr_id(name)
-
-    def _process_mesh_attr(self, name):
-        """
-        Get the process_mesh attribute by name.
-
-        Args:
-            name(str): the attribute name.
-
-        Returns:
-            process_mesh: the process mesh attribute.
-        """
-
         from paddle.distributed.auto_parallel.interface import g_process_mesh_map
-        id = self._process_mesh_attr_id(name)
-        assert (id >= 0 and id < len(g_process_mesh_map.keys()))
-        return g_process_mesh_map[id]
+        mesh_id = self.attr("MESH_ID")
+        return g_process_mesh_map[mesh_id]
 
 
 def get_all_op_protos():
@@ -2620,6 +2607,30 @@ class Operator(object):
             return True
 
         return False
+
+    @property
+    def process_mesh(self):
+        """
+        Get the process mesh belonging to this Variable.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            int: the process mesh index.
+        """
+        from paddle.distributed.auto_parallel.interface import g_process_mesh_map
+        mesh_id = self.attr("MESH_ID")
+        return g_process_mesh_map[mesh_id]
+
+    def dims_mapping(self, name):
+        """
+        Get the dims_mapping for the op's var named `name`.
+
+        Args:
+            name(str): the Variable name.
+        """
+        return self.attr(name)
 
 
 class Block(object):
