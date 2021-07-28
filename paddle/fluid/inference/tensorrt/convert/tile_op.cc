@@ -45,12 +45,17 @@ class TileOpConverter : public OpConverter {
     nvinfer1::Dims output_stride;
     // If input_dims.nbDims + 1 < repeat_times.size() means we
     // should expand 1 on batchsize. trt doesn't support this behavior.
-    PADDLE_ENFORCE(input_shape.nbDims + 1 >= repeat_times.size());
+    PADDLE_ENFORCE_GE(input_shape.nbDims + 1, repeat_times.size(),
+                      platform::errors::InvalidArgument(
+                          "Can't change batchsize, please check repeat_times"));
     int diff = input_shape.nbDims + 1 - repeat_times.size();
     if (diff > 0) repeat_times.insert(repeat_times.begin(), diff, 1);
 
     // Can't expand on batchsize
-    PADDLE_ENFORCE(repeat_times[0] == 1);
+    PADDLE_ENFORCE_EQ(
+        repeat_times[0], 1,
+        platform::errors::InvalidArgument(
+            "Can't expand on batchsize, please check repeat_times"));
     output_stride.nbDims = input_shape.nbDims;
     for (int i = 0; i < input_shape.nbDims; i++) {
       output_dim.d[i] = output_dim.d[i] * repeat_times[i + 1];
