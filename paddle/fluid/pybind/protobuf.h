@@ -31,7 +31,6 @@ void BindBlockDesc(pybind11::module* m);
 void BindVarDsec(pybind11::module* m);
 void BindOpDesc(pybind11::module* m);
 void BindProcessMeshDesc(pybind11::module* m);
-void BindDimsMappingDesc(pybind11::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

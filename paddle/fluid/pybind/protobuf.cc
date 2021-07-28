@@ -19,7 +19,6 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/dims_mapping_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/process_mesh_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -94,19 +93,6 @@ void BindProcessMeshDesc(pybind11::module *m) {
       .def_property_readonly("parent", &pd::ProcessMeshDesc::Parent)
       .def("topology", &pd::ProcessMeshDesc::Topology)
       .def("process_group", &pd::ProcessMeshDesc::ProcessGroup);
-}
-
-void BindDimsMappingDesc(pybind11::module *m) {
-  pybind11::enum_<pd::proto::DimsMappingDesc::Type>(*m, "DimsMappingType", "")
-      .value("INPUT", pd::proto::DimsMappingDesc::INPUT)
-      .value("OUTPUT", pd::proto::DimsMappingDesc::OUTPUT);
-
-  pybind11::class_<pd::DimsMappingDesc>(*m, "DimsMappingDesc", "")
-      .def(pybind11::init<const std::string &, pd::proto::DimsMappingDesc::Type,
-                          const std::vector<int32_t> &>())
-      .def_property_readonly("id", &pd::DimsMappingDesc::ID)
-      .def_property_readonly("name", &pd::DimsMappingDesc::Name)
-      .def("dims_mapping", &pd::DimsMappingDesc::DimsMapping);
 }
 
 void BindBlockDesc(pybind11::module *m) {
@@ -210,10 +196,11 @@ void BindVarDsec(pybind11::module *m) {
       .def("has_stop_gradient", &pd::VarDesc::HasStopGradient)
       .def("need_check_feed", &pd::VarDesc::NeedCheckFeed)
       .def("set_need_check_feed", &pd::VarDesc::SetNeedCheckFeed)
-      .def("has_distributed_attr", &pd::VarDesc::HasDistributedAttr)
-      .def("_set_distributed_attr", &pd::VarDesc::SetDistributedAttr)
-      .def("remove_distributed_attr", &pd::VarDesc::RemoveDistributedAttr)
-      .def("distributed_attr", &pd::VarDesc::GetDistributedAttr);
+      .def("has_attr", &pd::VarDesc::HasAttr)
+      .def("attr_names", &pd::VarDesc::AttrNames)
+      .def("_set_attr", &pd::VarDesc::SetAttr)
+      .def("remove_attr", &pd::VarDesc::RemoveAttr)
+      .def("attr", &pd::VarDesc::GetAttr);
 
   pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
   g_vartype_pytype = (PyTypeObject *)vartype.ptr();  // NOLINT
@@ -254,9 +241,7 @@ void BindOpDesc(pybind11::module *m) {
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
       .value("BOOLS", pd::proto::AttrType::BOOLEANS)
       .value("BLOCK", pd::proto::AttrType::BLOCK)
-      .value("BLOCKS", pd::proto::AttrType::BLOCKS)
-      .value("DIMS_MAPPING", pd::proto::AttrType::DIMS_MAPPING)
-      .value("PROCESS_MESH", pd::proto::AttrType::PROCESS_MESH);
+      .value("BLOCKS", pd::proto::AttrType::BLOCKS);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
