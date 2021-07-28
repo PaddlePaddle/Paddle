@@ -104,7 +104,14 @@ class Graph {
     attr_dels_.clear();
   }
 
-  bool IsConstructedByPartialProgram() const { return is_partial_; }
+  bool IsConstructedByPartialProgram() const {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->IsConstructedByPartialProgram();
+      }
+    }
+    return is_partial_;
+  }
 
   bool Has(const std::string &attr_name) const {
     if (FLAGS_convert_all_blocks) {
@@ -210,7 +217,7 @@ class Graph {
   }
 
   // Create a normal variable with non-null VarDesc.
-  ir::Node *CreateVarNode(VarDesc *var_desc) {
+  ir::Node *CreateVarNode(VarDesc *var_desc, int block_id = -1) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
         return GetSubGraph(0)->CreateVarNode(var_desc);
@@ -219,7 +226,8 @@ class Graph {
     PADDLE_ENFORCE_NOT_NULL(
         var_desc, platform::errors::InvalidArgument(
                       "The VarDesc used to create variable node is null."));
-    auto *x = AddNode(new ir::Node(var_desc));
+    auto *x =
+        AddNode(new ir::Node(var_desc, block_id == -1 ? block_id_ : block_id));
     x->SetId(num_node_created_++);
     return x;
   }
@@ -252,7 +260,7 @@ class Graph {
     const std::string name = string::Sprintf(
         "%s@%llu", static_cast<const char *>(ir::Node::kControlDepVarName),
         num_node_created_);
-    auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable));
+    auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable, block_id_));
     x->SetId(num_node_created_++);
     return x;
   }
@@ -265,7 +273,7 @@ class Graph {
         return GetSubGraph(0)->CreateEmptyNode(name, type);
       }
     }
-    auto *x = AddNode(new ir::Node(name, type));
+    auto *x = AddNode(new ir::Node(name, type, block_id_));
     x->SetId(num_node_created_++);
     return x;
   }
@@ -365,6 +373,15 @@ class Graph {
     return sub_graphs_.at(idx).get();
   }
 
+  int GetBlockId() const {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->block_id_;
+      }
+    }
+    return block_id_;
+  }
+
   size_t SubGraphsSize() const {
     PADDLE_ENFORCE_EQ(
         this->IsMainGraph(), true,
@@ -394,6 +411,9 @@ class Graph {
     PADDLE_ENFORCE_EQ(
         this->IsMainGraph(), true,
         platform::errors::InvalidArgument("This graph is not main_graph"));
+    PADDLE_ENFORCE_EQ(sub_graphs_.size(), sub_graph->block_id_,
+                      platform::errors::InvalidArgument(
+                          "sub_graph idx is not equal to block_id_"));
     sub_graphs_.push_back(std::move(sub_graph));
   }
 
@@ -416,6 +436,8 @@ class Graph {
   // parts: forward graph and backward graph, which can be executed
   // independently.
   bool is_partial_{false};
+  // The block this SubGraph belongs to.
+  int block_id_{0};
 };
 
 bool IsControlDepVar(const ir::Node &var);

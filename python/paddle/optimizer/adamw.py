@@ -160,6 +160,7 @@ class AdamW(Adam):
         self._apply_decay_param_fun = apply_decay_param_fun
         self._coeff = coeff
         self._lr_to_coeff = dict()
+
         super(AdamW, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,
@@ -211,7 +212,9 @@ class AdamW(Adam):
             # we do this in _create_optimization_pass
             decay_coeff = self._lr_to_coeff.get(learning_rate, None)
             if decay_coeff is None:
-                decay_coeff = 1.0 - learning_rate * self._coeff
+                # NOTE(wangxi): for pipeline to set device:all
+                with paddle.static.device_guard(None):
+                    decay_coeff = 1.0 - learning_rate * self._coeff
                 self._lr_to_coeff[learning_rate] = decay_coeff
 
             find_master = (self._multi_precision and
