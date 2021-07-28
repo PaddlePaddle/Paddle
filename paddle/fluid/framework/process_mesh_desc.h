@@ -44,7 +44,6 @@ class ProcessMeshDesc {
 
 class ProcessMeshDescMap {
  public:
-  // static std::shared_ptr<ProcessMeshDescMap> GetInstance();
   static ProcessMeshDescMap& GetInstance();
 
   bool Has(int32_t index) const { return map_.find(index) != map_.end(); }

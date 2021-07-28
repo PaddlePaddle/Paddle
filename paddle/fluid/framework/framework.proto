@@ -54,8 +54,9 @@ message DimsMappingDesc {
   }
 
   required string name = 1;
-  required Type type = 2;
-  repeated int32 dims_mapping = 3;
+  required int32 id = 2;
+  required Type type = 3;
+  repeated int32 dims_mapping = 4;
 };
 
 message DistributedAttr {
@@ -64,8 +65,8 @@ message DistributedAttr {
   optional int32 i = 3;
   optional string s = 4;
   repeated int32 ints = 5;
-  repeated DimsMappingDesc dims_mapping = 6;
-  optional ProcessMeshDesc process_mesh = 7;
+  repeated int32 dims_mappings_idx = 6;
+  optional int32 process_mesh_idx = 7;
 };
 
 // OpDesc describes an instance of a C++ framework::OperatorBase

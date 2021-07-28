@@ -1848,6 +1848,84 @@ class Variable(object):
             type='size', inputs={'Input': [self]}, outputs={'Out': [output]})
         return output
 
+    def _set_attr(self, name, val):
+        """
+        Set the value of attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(bool|int|str|float|list): the value of the attribute.
+
+        Raises:
+            ValueError: If the type of value doesn't match with desc.attr_type(name).
+        """
+        self._update_desc_attr(name, val)
+
+    def _remove_attr(self, name):
+        self.desc.remove_attr(name)
+
+    def _update_desc_attr(self, name, val):
+        """
+        Update the value of desc's attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(bool|int|str|float|list): the value of the attribute.
+
+        Raises:
+            ValueError: If the type of value doesn't match with desc.attr_type(name).
+        """
+        import paddle.distributed.ProcessMesh as ProcessMesh
+        if isinstance(val, ProcessMesh):
+            self.desc.set_block_attr(name, val.desc)
+        else:
+            self.desc._set_attr(name, val)
+
+    @property
+    def attr_names(self):
+        return self.desc.attr_names()
+
+    def attr(self, name):
+        """
+        Get the attribute by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            bool|int|str|float|list: The attribute value. The return value
+            can be any valid attribute type.
+        """
+        return self.desc.attr(name)
+
+    def _process_mesh_attr_id(self, name):
+        """
+        Get the process mesh attribute's id by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            int: the process mesh index.
+        """
+        return self.desc._process_mesh_attr_id(name)
+
+    def _process_mesh_attr(self, name):
+        """
+        Get the process_mesh attribute by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            process_mesh: the process mesh attribute.
+        """
+
+        from paddle.distributed.auto_parallel.interface import g_process_mesh_map
+        id = self._process_mesh_attr_id(name)
+        assert (id >= 0 and id < len(g_process_mesh_map.keys()))
+        return g_process_mesh_map[id]
+
 
 def get_all_op_protos():
     """

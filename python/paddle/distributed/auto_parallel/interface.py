@@ -19,6 +19,9 @@ import paddle.fluid.core as core
 __all__ = []
 
 g_process_mesh_map = dict()
+_g_dims_mapping_map = dict()
+
+_NO_PARENET = -1
 
 
 class ProcessMesh(object):
@@ -29,7 +32,7 @@ class ProcessMesh(object):
         topology (list): a list to describe the process topology
         process_group (list): a list of processes belonging to this group
         parent_index (int): the index of the parent ProcessMesh. None means
-            that it has no parent ProcessMesh.
+            no parent ProcessMesh.
 
     Examples:
         .. code-block:: python
@@ -50,46 +53,82 @@ class ProcessMesh(object):
             process_group = list(range(process_num))
         assert len(process_group) == process_num
 
-        if parent_id is None: parent_id = -1
+        if parent_id is None: parent_id = _NO_PARENT
 
         self.desc = core.ProcessMeshDesc(topology, process_group, parent_id)
         cur_id = self.desc.id
+        self._id = cur_id
+        self._parent_id = parent_id
+        self._topology = topology
+        self._process_group = process_group
         assert cur_id not in g_process_mesh_map, "%d already exists." % cur_id
         g_process_mesh_map[cur_id] = self
 
     @property
     def topology(self):
-        return self.desc.topology()
+        return self._topology
 
     @property
     def process_group(self):
-        return self.desc.process_group()
+        return self._process_group
 
     @property
     def rank(self):
-        return len(self.desc.topology())
+        return len(self._topology)
 
     @property
     def id(self):
-        return self.desc.id
+        return self._id
 
     @property
     def parent(self):
-        parent_id = self.desc.parent
-        if parent_id == -1: return None
-        assert parent_id in g_process_mesh_map, \
-            "parent (%d) does not exist."%parent_id
-        return g_process_mesh_map[parent_id]
+        if self._parent_id == -1: return None
+        assert self._parent_id in g_process_mesh_map, \
+            "parent (%d) does not exist."%self._parent_id
+        return g_process_mesh_map[self._parent_id]
 
     def __eq__(self, other):
         assert other and isinstance(other, ProcessMesh)
-        if len(self.topology) != len(other.topology): return False
-        if self.topology != other.topology or self.process_group != other.process_group:
+        if len(self._topology) != len(other._topology): return False
+        if self._topology != other._topology or self._process_group != other._process_group:
             return False
         return True
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+
+class _DimsMapping(object):
+    """
+    A class to describe the dims_mapping for op's input/output dims_mapping.
+    """
+
+    def __init__(self, name, attr_type, dims_mapping):
+        self._name = name
+        self._dims_mapping = dims_mapping
+        self._type = attr_type
+
+        self.desc = core.DimsMappingDesc(name, attr_type, dims_mapping)
+        cur_id = self.desc.id
+        self._id = cur_id
+        assert cur_id not in _g_dims_mapping_map, "%d already exists." % cur_id
+        _g_dims_mapping_map[cur_id] = self
+
+    @property
+    def name(self):
+        return self.name
+
+    @property
+    def dims_mapping(self):
+        return self.dims_mapping
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def attr_type(self):
+        return self._type
 
 
 def validate_check():
@@ -107,8 +146,8 @@ def shard_tensor(tensor, mesh, dims_mapping):
         The tensor itself.
     """
     validate_check()
-    tensor.desc._set_distributed_attr('mesh_id', mesh.id)
-    tensor.desc._set_distributed_attr('dims_mapping', dims_mapping)
+    tensor._set_attr('mesh_id', mesh)
+    tensor._set_attr('dims_mapping', dims_mapping)
     return tensor
 
 
@@ -122,7 +161,7 @@ def set_shard_mask(tensor, mask):
         The tensor itself.
     """
     validate_check()
-    tensor.desc._set_distributed_attr('mask', mask)
+    tensor._set_attr('mask', mask)
     return tensor
 
 
@@ -139,10 +178,17 @@ def shard_op(op_name, mesh, input_dims_mapping, output_dims_mapping):
     """
     validate_check()
     # op_mapping[op_name](parameter list from input_dims_mapping)
-    op.desc._set_distributed_attr('mesh_id', mesh.id)
-    op.desc._set_distributed_attr('input_dims_mapping', input_dims_mapping)
-    op.desc._set_distributed_attr('output_dims_mapping', output_dims_mapping)
-    # input_dims_mapping = {index: {'name': in_name, 'dims_mapping': dims_mapping}}
+    op._set_distributed_attr('mesh', mesh)
+    in_list = []
+    out_list = []
+    for name in input_dims_mapping:
+        tmp = _DimsMapping(name, IN, input_dims_mapping[name])
+        in_list.append(tmp)
+    for name in output_dims_mapping:
+        tmp = _DimsMapping(name, OUT, output_dims_mapping[name])
+        out_list.append(tmp)
+    op._set_distributed_attr('input_dims_mapping', in_list)
+    op._set_distributed_attr('output_dims_mapping', out_list)
 
 
 def set_offload_device(tensor, dst_device):
@@ -154,7 +200,7 @@ def set_offload_device(tensor, dst_device):
     Returns:
         None.
     """
-    tensor.desc._set_distributed_attr('offload_device', dst_device)
+    tensor._set_attr('offload_device', dst_device)
 
 
 def set_pipeline_stage(stage):
@@ -165,4 +211,5 @@ def set_pipeline_stage(stage):
     Returns:
         None.
     """
-    op.desc._set_distributed_attr('pipeline_stage', stage)
+    from paddle.fluid.framework import _current_pipeline_stage
+    _current_pipeline_stage = stage
