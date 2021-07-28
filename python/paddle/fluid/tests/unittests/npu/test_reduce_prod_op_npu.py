@@ -49,6 +49,17 @@ class TestNPUReduceProd(OpTest):
         self.dtype = np.float32
 
 
+class TestNPUReduceProd2(TestNPUReduceProd):
+    def setUp(self):
+        self.op_type = "reduce_prod"
+        self.set_npu()
+        self.init_dtype()
+
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
+        self.attrs = {}  # default 'dim': [0]
+        self.outputs = {'Out': self.inputs['X'].prod(axis=tuple([0]))}
+
+
 class TestNPUReduceProd6D(TestNPUReduceProd):
     def setUp(self):
         self.op_type = "reduce_prod"
@@ -77,6 +88,17 @@ class TestNPUReduceProd8D(TestNPUReduceProd):
         self.outputs = {
             'Out': self.inputs['X'].prod(axis=tuple(self.attrs['dim']))
         }
+
+
+class TestReduceAll(TestNPUReduceProd):
+    def setUp(self):
+        self.op_type = "reduce_prod"
+        self.set_npu()
+        self.init_dtype()
+
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
+        self.attrs = {'reduce_all': True}
+        self.outputs = {'Out': self.inputs['X'].prod()}
 
 
 if __name__ == '__main__':
