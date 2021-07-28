@@ -471,12 +471,8 @@ bool OpDesc::HasProtoAttr(const std::string &name) const {
 
 proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
   auto it = attrs_.find(name);
-  if (it == attrs_.end()) {
-    it = distributed_attrs_.find(name);
-    PADDLE_ENFORCE_NE(
-        it, distributed_attrs_.end(),
-        platform::errors::NotFound("Attribute %s is not found.", name));
-  }
+  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
+                                          "Attribute %s is not found.", name));
   return static_cast<proto::AttrType>(it->second.which() - 1);
 }
 
@@ -489,22 +485,8 @@ std::vector<std::string> OpDesc::AttrNames() const {
   return retv;
 }
 
-std::vector<std::string> OpDesc::DistributedAttrNames() const {
-  std::vector<std::string> retv;
-  retv.reserve(distributed_attrs_.size());
-  for (auto &attr : attrs_) {
-    retv.push_back(attr.first);
-  }
-  return retv;
-}
-
 void OpDesc::RemoveAttr(const std::string &name) {
   attrs_.erase(name);
-  need_update_ = true;
-}
-
-void OpDesc::RemoveDistributedAttr(const std::string &name) {
-  distributed_attrs_.erase(name);
   need_update_ = true;
 }
 
@@ -574,39 +556,8 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   need_update_ = true;
 }
 
-void OpDesc::SetDistributedAttr(const std::string &name, const Attribute &v) {
-  // NOTICE(sandyhouse): pybind11 will take the empty list in python as
-  // the std::vector<int> type in C++; so we have to change the attr's type
-  // here if we meet this issue
-  proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
-  if (attr_type == proto::AttrType::INTS &&
-      BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
-    // Find current attr via attr name and set the correct attribute value
-    const proto::OpProto::Attr &attr = GetProtoAttr(name);
-    switch (attr.type()) {
-      case proto::AttrType::INTS: {
-        VLOG(11) << "SetAttr: " << Type() << ", " << name
-                 << " from INTS to INTS";
-        this->distributed_attrs_[name] = std::vector<int>();
-        break;
-      }
-      default:
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported attribute type (code %d).", attr.type()));
-    }
-    need_update_ = true;
-    return;
-  }
-}
-
 void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
   this->attrs_[name] = block;
-  need_update_ = true;
-}
-
-void OpDesc::SetProcessMeshAttr(const std::string &name,
-                                ProcessMeshDesc *mesh) {
-  this->distributed_attrs_[name] = mesh;
   need_update_ = true;
 }
 
@@ -626,14 +577,6 @@ Attribute OpDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
                                           "Attribute %s is not found.", name));
-  return it->second;
-}
-
-Attribute OpDesc::GetDistributedAttr(const std::string &name) const {
-  auto it = distributed_attrs_.find(name);
-  PADDLE_ENFORCE_NE(
-      it, distributed_attrs_.end(),
-      platform::errors::NotFound("Attribute %s is not found.", name));
   return it->second;
 }
 
@@ -770,12 +713,6 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
 
   void operator()(const std::vector<double> &v) const {
     VectorToRepeated(v, attr_->mutable_float64s());
-  }
-
-  void operator()(ProcessMeshDesc *) const {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupported calling method of SetAttrDescVisitor object for "
-        "`ProcessMeshDesc` type."));
   }
 
   void operator()(boost::blank) const {
