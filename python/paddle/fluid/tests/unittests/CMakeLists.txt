@@ -684,6 +684,7 @@ add_subdirectory(ir)
 
 if (WITH_TESTING)
     set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=all_reduce_deps_pass=10)
+    set_property(TEST test_parallel_executor_fix_op_run_order PROPERTY ENVIRONMENT GLOG_vmodule=fix_op_run_order_pass=10)
 endif()
 
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist

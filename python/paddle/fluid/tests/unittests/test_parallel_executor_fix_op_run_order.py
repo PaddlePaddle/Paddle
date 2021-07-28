@@ -25,7 +25,8 @@ class TestFixOpRunOrder(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
-        fluid.set_flags({'FLAGS_cudnn_deterministic': 1})
+        if paddle.is_compiled_with_cuda():
+            fluid.set_flags({'FLAGS_cudnn_deterministic': 1})
 
     def get_place(self):
         return paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
