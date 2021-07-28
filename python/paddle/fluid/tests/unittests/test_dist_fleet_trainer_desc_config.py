@@ -61,7 +61,7 @@ class TestDistStrategyTrainerDescConfig(unittest.TestCase):
         self.assertEqual(len(program._fleet_opt["dump_fields"]), 2)
         self.assertEqual(len(program._fleet_opt["dump_param"]), 0)
         self.assertEqual(program._fleet_opt["mpi_size"],
-            int(os.environ["PADDLE_TRAINERS_NUM"]))
+                         int(os.environ["PADDLE_TRAINERS_NUM"]))
 
 
 if __name__ == "__main__":
