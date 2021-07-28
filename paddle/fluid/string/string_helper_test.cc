@@ -30,3 +30,26 @@ TEST(StringHelper, EndsWith) {
   EXPECT_FALSE(paddle::string::ends_with(input, test2));
   EXPECT_FALSE(paddle::string::ends_with(input, test3));
 }
+
+TEST(StringHelper, FormatStringAppend) {
+  std::string str("hello");
+  char fmt[] = "hhh";
+
+  paddle::string::format_string_append(str, fmt);
+  EXPECT_EQ(str, "hellohhh");
+}
+
+TEST(StringHelper, JoinStrings) {
+  std::vector<std::string> v;
+  v.push_back("hello");
+  v.push_back("world");
+
+  std::string result = paddle::string::join_strings(v, ' ');
+  EXPECT_EQ(result, "hello world");
+
+  result = paddle::string::join_strings(v, '\n');
+  EXPECT_EQ(result, "hello\nworld");
+
+  result = paddle::string::join_strings(v, ',');
+  EXPECT_EQ(result, "hello,world");
+}
