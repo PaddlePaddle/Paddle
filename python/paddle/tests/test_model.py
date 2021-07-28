@@ -67,6 +67,7 @@ class LeNetDygraph(paddle.nn.Layer):
             x = self.fc(x)
         return x
 
+
 class ModelInner(paddle.nn.Layer):
     def __init__(self):
         super(ModelInner, self).__init__()
@@ -75,6 +76,7 @@ class ModelInner(paddle.nn.Layer):
     def forward(self, x):
         y = self.fc(x)
         return y, 0
+
 
 class ModelOutter(paddle.nn.Layer):
     def __init__(self):
@@ -86,6 +88,7 @@ class ModelOutter(paddle.nn.Layer):
         y, dummpy = self.module1(x)
         y = self.module2(y)
         return y, 3
+
 
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True, sample_num=None):
