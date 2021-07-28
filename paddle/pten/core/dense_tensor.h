@@ -86,6 +86,14 @@ class DenseTensor : public TensorImplInterface {
 
   bool initialized() const override { return allocation_ != nullptr; }
 
+  /* member methods */
+
+  const std::shared_ptr<Allocation>& allocation() const { return allocation_; }
+
+  const TensorMeta& meta() const { return *meta_; }
+
+  TensorMeta* mutable_meta() { return meta_.get(); }
+
   /* Data Access Methods */
 
   const void* data() const;
@@ -109,7 +117,7 @@ class DenseTensor : public TensorImplInterface {
     return reinterpret_cast<T*>(mutable_data());
   }
 
-  // For non-API interfaces, we still follow the C++ code style
+  // For non-API and non-member interfaces, we still follow the C++ code style?
 
   void Resize(const DDim& dims) { meta_->dims = dims; }
 

@@ -19,6 +19,11 @@ endif()
 if(WITH_XPU)
   add_subdirectory(xpu)
 endif()
+# pten kernels for other tensor
+add_subdirectory(selected_rows)
+# pten infershape and dtype
+add_subdirectory(infershape)
+add_subdirectory(inferdtype)
 # pten public functors
 add_subdirectory(module)
 # pten tests

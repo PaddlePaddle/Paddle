@@ -185,3 +185,11 @@ REGISTER_OP_NPU_KERNEL(
     paddle::operators::ScaleKernel<paddle::platform::NPUDeviceContext,
                                    paddle::platform::float16>);
 #endif
+
+#ifdef PADDLE_WITH_MKLDNN
+REGISTER_OP_KERNEL(
+    scale, MKLDNN, paddle::platform::CPUPlace,
+    ops::ScaleKernel<paddle::platform::MKLDNNDeviceContext, float>,
+    ops::ScaleKernel<paddle::platform::MKLDNNDeviceContext,
+                     paddle::platform::bfloat16>);
+#endif

@@ -103,6 +103,8 @@ struct TensorMeta {
     }
   }
 
+  virtual ~TensorMeta() = default;
+
   DDim dims;
 
   Backend backend{Backend::kCPU};
@@ -144,6 +146,18 @@ struct TensorMeta {
 
 #ifdef PADDLE_WITH_MKLDNN
 struct MKLDNNTensorMeta : public TensorMeta {
+  MKLDNNTensorMeta(
+      const DDim& dims,
+      Backend backend,
+      DataType type,
+      DataLayout layout,
+      size_t offset = 0UL,
+      const LoD& lod = {},
+      mkldnn::memory::format_tag format = mkldnn::memory::format_tag::undef)
+      : TensorMeta(dims, backend, type, layout, offset, lod), format(format) {}
+
+  ~MKLDNNTensorMeta() override {}
+
   /**
    * @brief the detail format of memory block which have layout as kMKLDNN
    *

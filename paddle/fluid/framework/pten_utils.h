@@ -29,10 +29,17 @@ std::shared_ptr<TensorImplT> MakeTensorImpl(const Tensor& tensor,
                                             proto::VarType::Type type) {
   auto holder = tensor.Holder();
   auto tensor_impl = std::make_shared<TensorImplT>(
+#ifdef PADDLE_WITH_MKLDNN
+      std::unique_ptr<pt::TensorMeta>(new pt::MKLDNNTensorMeta(
+          tensor.dims(), pt::TransToPtenBackend(place),
+          pt::TransToPtenDataType(type), pt::TransToPtenLayout(tensor.layout()),
+          tensor.offset(), /*lod=*/{}, tensor.format())));
+#else
       std::unique_ptr<pt::TensorMeta>(new pt::TensorMeta(
           tensor.dims(), pt::TransToPtenBackend(place),
           pt::TransToPtenDataType(type), pt::TransToPtenLayout(tensor.layout()),
           tensor.offset())));
+#endif
   if (holder != nullptr) {
     tensor_impl->template ShareAllocation(tensor.Holder());
   } else {
@@ -46,6 +53,11 @@ void ShareTensorImpl(TensorImplT* tensor_impl, Tensor* out) {
   out->ResetHolderWithType(
       tensor_impl->template MoveMemory(),
       pt::TransToProtoVarType(tensor_impl->template type()));
+#ifdef PADDLE_WITH_MKLDNN
+  out->set_format(
+      dynamic_cast<const pt::MKLDNNTensorMeta&>(tensor_impl->template meta())
+          .format);
+#endif
 }
 
 }  // namespace framework

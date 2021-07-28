@@ -17,6 +17,7 @@ limitations under the License. */
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/pten/cpu/math.h"
 #include "paddle/pten/cuda/math.h"
+#include "paddle/pten/mkldnn/math.h"
 #include "paddle/pten/npu/math.h"
 #include "paddle/pten/selected_rows/math.h"
 #include "paddle/pten/xpu/math.h"
