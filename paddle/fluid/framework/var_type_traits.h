@@ -214,10 +214,7 @@ REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<std::string>, proto::VarType::STRINGS);
-<<<<<<< HEAD
-=======
 REG_PROTO_VAR_TYPE_TRAIT(STRING_MAP, proto::VarType::MAP);
->>>>>>> 79623f021f30882e519bebd455be1f9b6741444c
 
 /** End of variable type registration */
 
