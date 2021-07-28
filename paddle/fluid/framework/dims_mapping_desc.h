@@ -50,11 +50,11 @@ class DimsMappingDescMap {
 
   bool Has(int32_t index) const { return map_.find(index) != map_.end(); }
 
-  void Insert(int32_t index, DimsMappingDesc* mesh) {
+  void Insert(int32_t index, DimsMappingDesc* mapping) {
     PADDLE_ENFORCE_NE(
         Has(index), true,
         platform::errors::AlreadyExists("Index (%d) has been used.", index));
-    map_.insert(std::make_pair(index, mesh));
+    map_.insert(std::make_pair(index, mapping));
   }
 
  private:

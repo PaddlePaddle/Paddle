@@ -246,7 +246,10 @@ void BindOpDesc(pybind11::module *m) {
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
       .value("BOOLS", pd::proto::AttrType::BOOLEANS)
       .value("BLOCK", pd::proto::AttrType::BLOCK)
-      .value("BLOCKS", pd::proto::AttrType::BLOCKS);
+      .value("BLOCKS", pd::proto::AttrType::BLOCKS)
+      .value("DIMS_MAPPING", pd::proto::AttrType::DIMS_MAPPING)
+      .value("PROCESS_MESH", pd::proto::AttrType
+             : PROCESS_MESH);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc

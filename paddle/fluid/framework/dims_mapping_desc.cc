@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+int32_t DimsMappingDesc::next_id = -1;
 DimsMappingDesc::DimsMappingDesc(const std::string& name,
                                  const proto::DimsMappingDesc::Type type,
                                  const std::vector<int32_t>& mapping) {
