@@ -257,11 +257,14 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_trainer_desc_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
-        configs = {"dump_fields_path": "dump_data",
-                   "dump_fields": ["xxx", "yyy"],
-                   "dump_param": []}
+        configs = {
+            "dump_fields_path": "dump_data",
+            "dump_fields": ["xxx", "yyy"],
+            "dump_param": []
+            }
         strategy.trainer_desc_configs = configs
-        self.assertEqual(strategy.trainer_desc_configs["dump_fields_path"], "dump_data")
+        self.assertEqual(strategy.trainer_desc_configs["dump_fields_path"], 
+                         "dump_data")
         self.assertEqual(len(strategy.trainer_desc_configs["dump_fields"]), 2)
         self.assertEqual(len(strategy.trainer_desc_configs["dump_param"]), 0)
 

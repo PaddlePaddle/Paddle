@@ -1464,8 +1464,8 @@ class Fleet(object):
         opt_info = {}
         opt_info["mpi_size"] = self.worker_num()
         opt_info["mpi_rank"] = self.worker_index()
-        for key in self._user_defined_strategy.trainer_desc_configs:
-            opt_info[key] = self._user_defined_strategy.trainer_desc_configs[key]
+        for k, v in self._user_defined_strategy.trainer_desc_configs.items():
+            opt_info[k] = v
         program._fleet_opt = opt_info
 
         if self._runtime_handle is None:

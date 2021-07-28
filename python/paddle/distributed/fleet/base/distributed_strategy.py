@@ -360,7 +360,6 @@ class DistributedStrategy(object):
                           "a_sync_configs")
         assign_configs_value(self.strategy.a_sync_configs, configs)
 
-
     @property
     def trainer_desc_configs(self):
         """
