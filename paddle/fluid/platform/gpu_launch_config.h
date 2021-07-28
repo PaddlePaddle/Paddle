@@ -41,7 +41,7 @@ struct GpuLaunchConfig {
 };
 
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
-    const platform::CUDADeviceContext& context, int element_count,
+    const platform::CUDADeviceContext& context, int64_t element_count,
 #ifdef PADDLE_WITH_HIP
     // HIP will throw GPU memory access fault if threads > 256
     int max_threads = 256) {
