@@ -159,8 +159,6 @@ class VarDesc {
     return result;
   }
 
-  Attribute GetNullableAttr(const std::string &name) const;
-
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;

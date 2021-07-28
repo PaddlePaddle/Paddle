@@ -307,7 +307,7 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
     return;
   }
 
-  this->distributed_attrs_[name] = v;
+  this->attrs_[name] = v;
   need_update_ = true;
 }
 
@@ -316,15 +316,6 @@ Attribute VarDesc::GetAttr(const std::string &name) const {
   PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
                                           "Attribute %s is not found.", name));
   return it->second;
-}
-
-Attribute VarDesc::GetNullableAttr(const std::string &name) const {
-  auto it = attrs_.find(name);
-  if (it != attrs_.end()) {
-    return it->second;
-  } else {
-    return Attribute();
-  }
 }
 
 bool operator==(const VarDesc &left, const VarDesc &right) {
