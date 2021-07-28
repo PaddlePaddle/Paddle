@@ -91,7 +91,7 @@ class TestCastOp4(op_test.OpTest):
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
-            self.check_output_with_place(place, atol=1e-6)
+            self.check_output_with_place(place, atol=1e-2)
 
 
 # fp32->bf16
@@ -110,11 +110,8 @@ class TestCastOp5(op_test.OpTest):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
-        # bf16 results are represented as float32 in OpTest
-        # besides, like TestCastOp4, this test is_bfloat16_op, 
-        # therefore set check_dygraph as False.
         for place in places:
-            self.check_output_with_place(place, atol=1e-6, check_dygraph=False)
+            self.check_output_with_place(place, atol=1e-2)
 
 
 class TestCastOpError(unittest.TestCase):

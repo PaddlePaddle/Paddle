@@ -1086,12 +1086,9 @@ class OpTest(unittest.TestCase):
             atol = 0
 
         if self.is_bfloat16_op():
-            check_dygraph = False
-            if hasattr(self, 'force_fp32_output') and getattr(
-                    self, 'force_fp32_output'):
-                atol = 1e-2
-            else:
-                atol = 2
+            if not core.is_compiled_with_cuda():
+                check_dygraph = False
+            atol = 1e-2
 
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:
@@ -1215,6 +1212,11 @@ class OpTest(unittest.TestCase):
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
                     str(actual_t) + " in class " + self.__class__.__name__)
                 if check_dygraph:
+                    if imperative_actual_t.dtype == np.uint16:
+                        imperative_actual_t = convert_uint16_to_float(
+                            imperative_actual_t)
+                    if expect_t.dtype == np.uint16:
+                        expect_t = convert_uint16_to_float(expect_t)
                     if six.moves.reduce(
                             lambda x, y: x * y, imperative_actual_t.shape,
                             1) == 0 and six.moves.reduce(
