@@ -49,12 +49,11 @@ class Identity(Layer):
     Examples:
         .. code-block:: python
 
-         import numpy
          import paddle
-         layer = Identity(54)
-         input_tensor = paddle.to_tensor(numpy.random.randn(128, 20))
-         input_tensor = input_tensor+1
+         layer = paddle.nn.Identity(54)
+         input_tensor = paddle.to_tensor(paddle.randn(shape=[128, 20]))
          input_tensor.stop_gradient=False
+         input_tensor = input_tensor+1
          input_tensor.register_hook(lambda grad: print('input grad', grad))
          print('input_tensor.grad', input_tensor.grad)
          out = m(input_tensor)

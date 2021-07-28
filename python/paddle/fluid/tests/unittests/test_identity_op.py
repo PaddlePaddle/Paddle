@@ -19,7 +19,7 @@ import paddle.fluid.core as core
 import paddle
 
 
-class TestDiagonalAPI(unittest.TestCase):
+class TestIdentityAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [4, 4]
         self.x = np.random.random((4, 4)).astype(np.float32)
