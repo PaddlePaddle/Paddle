@@ -277,6 +277,58 @@ class DatasetBase(object):
                     "Currently, fluid.dataset only supports dtype=float32, dtype=int32 and dtype=int64"
                 )
 
+    def check_use_var_with_data_generator(self, var_list, data_generator_class,
+                                          test_file):
+        f = open(test_file, "r")
+        var_len = len(var_list)
+
+        while True:
+            line = f.readline()
+            if line:
+                line_iter = data_generator_class.generate_sample(line)
+                for user_parsed_line in line_iter():
+                    if user_parsed_line == None:
+                        continue
+
+                    data_gen_len = len(user_parsed_line)
+                    if var_len != data_gen_len:
+                        raise ValueError(
+                            "var length mismatch error: var_list = %s vs data_generator = %s"
+                            % (var_len, data_gen_len))
+
+                    for i, ele in enumerate(user_parsed_line):
+                        # print(ele[0], ele[1])
+
+                        if len(ele[1]) == 0:
+                            raise ValueError(
+                                "var length error: var %s's length in data_genrator is 0"
+                                % ele[0])
+
+                        if var_list[
+                                i].dtype == core.VarDesc.VarType.FP32 and not all(
+                                    isinstance(ele, float) for ele in ele[1]):
+                            raise TypeError(
+                                "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-float value, which is %s \n"
+                                "Please check if order of var_list and data_generator are aligned. \n"
+                                "Please check if var's type in data_generator is correct."
+                                % (ele[0], "float", ele[1]))
+
+                        if (var_list[i].dtype == core.VarDesc.VarType.INT64 or
+                                var_list[i].dtype == core.VarDesc.VarType.INT32
+                            ) and not all(
+                                isinstance(ele, int) or isinstance(ele, long)
+                                for ele in ele[1]):
+                            raise TypeError(
+                                "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-int value, which is %s \n"
+                                "Please check if order of var_list and data_generator are aligned. \n"
+                                "Please check if var's type in data_generator is correct."
+                                % (ele[0], "int", ele[1]))
+
+            else:
+                break
+
+        f.close()
+
     def set_hdfs_config(self, fs_name, fs_ugi):
         """
         Set hdfs config: fs name ad ugi
