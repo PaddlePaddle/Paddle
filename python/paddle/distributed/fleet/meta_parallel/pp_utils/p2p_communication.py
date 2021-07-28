@@ -17,7 +17,6 @@ from .utils import is_float_tensor, get_tensor_dtype, paddle_2_number, number_2_
 
 _groups = None
 _hcg = None
-_tensor_shape = (2, 1024, 768)
 
 
 class SendRecvMeta:
@@ -63,7 +62,7 @@ class SendRecvMeta:
             shapes = []
             dtypes = []
             for i in range(num):
-                shape, dtype = self._recv_shape_dtype()
+                shape, dtype = self._recv_shape_dtype(group)
                 shapes.append(shape)
                 dtypes.append(dtype)
 
@@ -100,14 +99,15 @@ class SendRecvMeta:
 
             for d in tensor:
                 assert isinstance(d, paddle.Tensor)
-                self._send_dims_shape_dtype(d)
+                self._send_dims_shape_dtype(d, group=group)
 
     def set_send_message(self, tensor):
         if isinstance(tensor, paddle.Tensor):
             self.send_shape_message = tensor.shape
             self.send_dtype_message = paddle_2_number(tensor.dtype)
         elif isinstance(tensor, tuple):
-            self.send_shape_message = tuple([d.shape for d in tensor])
+            self.send_shape_message = tuple(
+                [d.shape for d in tensor if not d.stop_gradient])
             self.send_dtype_message = tuple(
                 [paddle_2_number(d.dtype) for d in tensor])
 
@@ -133,22 +133,24 @@ def _communicate(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
 
     if recv_prev:
         if isinstance(recv_shape_msg, tuple):
+            tensor_recv_prev = []
             for idx, shape in enumerate(recv_shape_msg):
-                tensor_recv_prev = tuple([
+                tensor_recv_prev.append(
                     paddle.empty(
-                        shape=shape, dtype=number_2_dtype(recv_dtype_msg[idx]))
-                ])
+                        shape=shape, dtype=number_2_dtype(recv_dtype_msg[idx])))
+            tensor_recv_prev = tuple(tensor_recv_prev)
         else:
             tensor_recv_prev = paddle.empty(
                 shape=recv_shape_msg, dtype=number_2_dtype(recv_dtype_msg))
 
     if recv_next:
         if isinstance(send_shape_msg, tuple):
+            tensor_recv_next = []
             for idx, shape in enumerate(send_shape_msg):
-                tensor_recv_next = tuple([
+                tensor_recv_next.append(
                     paddle.empty(
-                        shape=shape, dtype=number_2_dtype(send_dtype_msg[idx]))
-                ])
+                        shape=shape, dtype=number_2_dtype(send_dtype_msg[idx])))
+            tensor_recv_next = tuple(tensor_recv_next)
         else:
             tensor_recv_next = paddle.empty(
                 shape=send_shape_msg, dtype=number_2_dtype(send_dtype_msg))

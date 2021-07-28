@@ -75,6 +75,18 @@ class PipelineParallel(MetaParallelBase):
             broadcast_dp_parameters(self._layers, self._hcg)
         self.data_id = 0
 
+    def _set_tensor_trainable(self, tensor):
+        if tensor is None:
+            return
+
+        if isinstance(tensor, tuple):
+            for t in tensor:
+                if is_float_tensor(t):
+                    t.stop_gradient = False
+        else:
+            if is_float_tensor(tensor):
+                tensor.stop_gradient = False
+
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         assert isinstance(optimizer, HybridParallelOptimizer), (
             'optimizer should be HybridParallelOptimizer subclass.')
@@ -115,8 +127,8 @@ class PipelineParallel(MetaParallelBase):
 
         for step_id in range(num_warmup_microbatches):
             input_tensor = p2p.recv_forward()
-            if input_tensor is not None:
-                input_tensor.stop_gradient = False
+            self._set_tensor_trainable(input_tensor)
+
             output_tensor = self._forward_step(input_tensor)
             p2p.send_forward(output_tensor)
 
@@ -129,8 +141,7 @@ class PipelineParallel(MetaParallelBase):
         for i in range(num_microbatches_remaining):
             last_iteration = (i == (num_microbatches_remaining - 1))
 
-            if input_tensor is not None:
-                input_tensor.stop_gradient = False
+            self._set_tensor_trainable(input_tensor)
             output_tensor = self._forward_step(input_tensor)
 
             output_tensor_grad = p2p.send_forward_recv_backward(output_tensor)
@@ -193,12 +204,32 @@ class PipelineParallel(MetaParallelBase):
         return output_tensor
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
-        paddle.autograd.backward(
-            tensors=[output_tensor], grad_tensors=[output_tensor_grad])
+        if self.is_last_stage:
+            assert output_tensor_grad is None
+            paddle.autograd.backward(
+                tensors=[output_tensor], grad_tensors=[None])
+        else:
+            if isinstance(output_tensor, tuple):
+                outputs = [t for t in output_tensor if not t.stop_gradient]
+                assert len(outputs) == len(output_tensor_grad)
+                print("outputs: ", type(outputs), len(outputs))
+                print("output_tensor_grad: ", type(output_tensor_grad),
+                      len(output_tensor_grad))
+                print(output_tensor_grad)
+                paddle.autograd.backward(
+                    tensors=outputs,
+                    grad_tensors=[t for t in output_tensor_grad])
+            else:
+                paddle.autograd.backward(
+                    tensors=[output_tensor], grad_tensors=[output_tensor_grad])
+
         input_tensor_grad = None
         if input_tensor is not None:
-            input_tensor_grad = input_tensor.grad
-
+            if isinstance(input_tensor, tuple):
+                input_tensor_grad = tuple(
+                    [t.grad for t in input_tensor if not t.stop_gradient])
+            else:
+                input_tensor_grad = input_tensor.grad
         return input_tensor_grad
 
     def _load_micro_batch(self, cache_id):
