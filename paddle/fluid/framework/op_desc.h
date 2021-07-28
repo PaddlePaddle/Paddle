@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/dims_mapping_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_desc.h"
 
@@ -67,8 +68,15 @@ class OpDesc {
                  const std::vector<std::string> &args);
   void RemoveOutput(const std::string &name);
 
+  const std::vector<DimsMappingDesc *> &InputDimsMapping() const;
+  const std::vector<DimsMappingDesc *> &OutputDimsMapping() const;
+
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
+  }
+
+  bool HasDistributedAttr(const std::string &name) const {
+    return distributed_attrs_.find(name) != distributed_attrs_.end();
   }
 
   bool HasProtoAttr(const std::string &name) const;
@@ -76,21 +84,37 @@ class OpDesc {
   proto::AttrType GetAttrType(const std::string &name) const;
 
   std::vector<std::string> AttrNames() const;
+  std::vector<std::string> DistributedAttrNames() const;
 
   void SetAttr(const std::string &name, const Attribute &v);
+  void SetDistributedAttr(const std::string &name, const Attribute &v);
   void RemoveAttr(const std::string &name);
+  void RemoveDistributedAttr(const std::string &name);
 
   void SetBlockAttr(const std::string &name, BlockDesc *block);
+  void SetDimsMappingAttr(const std::string &name,
+                          proto::DimsMappingDesc::Type type,
+                          DimsMappingDesc *mapping);
 
   void SetBlocksAttr(const std::string &name, std::vector<BlockDesc *> blocks);
 
   Attribute GetAttr(const std::string &name) const;
+  Attribute GetDistributedAttr(const std::string &name) const;
 
   template <typename T>
   T GetAttrIfExists(const std::string &name) const {
     T result{};
     if (HasAttr(name)) {
       result = BOOST_GET_CONST(T, GetAttr(name));
+    }
+    return result;
+  }
+
+  template <typename T>
+  T GetDistributedAttrIfExists(const std::string &name) const {
+    T result{};
+    if (HasDistributedAttr(name)) {
+      result = BOOST_GET_CONST(T, GetDistributedAttr(name));
     }
     return result;
   }
@@ -162,6 +186,9 @@ class OpDesc {
     return ret_val;
   }
 
+  std::vector<DimsMappingDesc *> input_dims_mapping_;
+  std::vector<DimsMappingDesc *> output_dims_mapping_;
+
   proto::OpDesc desc_;
   BlockDesc *block_;  // not_own
   // input arg name => input variable names
@@ -169,6 +196,7 @@ class OpDesc {
   // output arg name => output variable names
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  AttributeMap distributed_attrs_;
 
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.

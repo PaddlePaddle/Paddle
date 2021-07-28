@@ -452,6 +452,13 @@ void OpDesc::RemoveOutput(const std::string &name) {
   need_update_ = true;
 }
 
+const std::vector<DimsMappingDesc *> &OpDesc::InputDimsMapping() const {
+  return input_dims_mapping_;
+}
+const std::vector<DimsMappingDesc *> &OpDesc::OutputDimsMapping() const {
+  return output_dims_mapping_;
+}
+
 bool OpDesc::HasProtoAttr(const std::string &name) const {
   auto &op_info = OpInfoMap::Instance();
   if (op_info.Has(desc_.type())) {
@@ -485,8 +492,22 @@ std::vector<std::string> OpDesc::AttrNames() const {
   return retv;
 }
 
+std::vector<std::string> OpDesc::DistributedAttrNames() const {
+  std::vector<std::string> retv;
+  retv.reserve(distributed_attrs_.size());
+  for (auto &attr : attrs_) {
+    retv.push_back(attr.first);
+  }
+  return retv;
+}
+
 void OpDesc::RemoveAttr(const std::string &name) {
   attrs_.erase(name);
+  need_update_ = true;
+}
+
+void OpDesc::RemoveDistributedAttr(const std::string &name) {
+  distributed_attrs_.erase(name);
   need_update_ = true;
 }
 
@@ -556,8 +577,40 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   need_update_ = true;
 }
 
+void OpDesc::SetDistributedAttr(const std::string &name, const Attribute &v) {
+  // NOTICE(sandyhouse): pybind11 will take the empty list in python as
+  // the std::vector<int> type in C++; so we have to change the attr's type
+  // here if we meet this issue
+  proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
+  if (attr_type == proto::AttrType::INTS &&
+      BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
+    // Find current attr via attr name and set the correct attribute value
+    const proto::OpProto::Attr &attr = GetProtoAttr(name);
+    switch (attr.type()) {
+      case proto::AttrType::INTS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to INTS";
+        this->distributed_attrs_[name] = std::vector<int>();
+        break;
+      }
+      default:
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported attribute type (code %d).", attr.type()));
+    }
+    need_update_ = true;
+    return;
+  }
+}
+
 void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
   this->attrs_[name] = block;
+  need_update_ = true;
+}
+
+void OpDesc::SetDimsMappingAttr(const std::string &name,
+                                proto::DimsMappingDesc::Type type,
+                                DimsMappingDesc *mapping) {
+  this->distributed_attrs_[name] = mapping;
   need_update_ = true;
 }
 
@@ -704,6 +757,8 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   }
 
   void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
+  void operator()(DimsMappingDesc *desc) const {}
+  void operator()(ProcessMeshDesc *desc) const {}
 
   void operator()(int64_t v) const { attr_->set_l(v); }
 
