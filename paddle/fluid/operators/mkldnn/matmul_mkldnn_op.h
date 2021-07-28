@@ -21,21 +21,22 @@ namespace paddle {
 namespace operators {
 
 using platform::MKLDNNDeviceContext;
+using framework::ExecutionContext;
 using Tensor = framework::Tensor;
 
 template <typename T>
 class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
+  void Compute(const ExecutionContext& ctx) const override;
+
  private:
-  void ExecuteMatMulGrad(const framework::ExecutionContext& ctx,
+  void ExecuteMatMulGrad(const ExecutionContext& ctx,
                          const MKLDNNDeviceContext& dev_ctx,
                          const mkldnn::engine& engine, Tensor* x, bool trans_x,
                          bool is_fold_init_dims_x, Tensor* y, bool trans_y,
                          bool is_fold_init_dims_y, Tensor* out,
                          int execution_number) const;
-  void RunKernel(const framework::ExecutionContext& ctx) const;
+  void RunKernel(const ExecutionContext& ctx) const;
 };
 }  // namespace operators
 }  // namespace paddle
-
