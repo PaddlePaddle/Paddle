@@ -2267,6 +2267,11 @@ function main() {
         test_go_inference_api
         check_approvals_of_unittest 3 
         ;;
+      build_inference)
+        PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        gen_fluid_lib ${parallel_number}
+        ;;
       test_train)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib_train
