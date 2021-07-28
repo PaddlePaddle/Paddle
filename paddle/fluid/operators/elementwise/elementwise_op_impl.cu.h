@@ -113,9 +113,9 @@ struct ElementwiseDataWrapper {
   }
 };
 
-template <ElementwiseType ET, int VecSize, typename ElementwiseWarpper,
+template <ElementwiseType ET, int VecSize, typename ElementwiseWrapper,
           typename InT, typename OutT, typename Functor>
-__device__ inline void VectorizedKernelImpl(ElementwiseWarpper data,
+__device__ inline void VectorizedKernelImpl(ElementwiseWrapper data,
                                             Functor func, int tid) {
   using InVecType = platform::CudaAlignedVector<InT, VecSize>;
   using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
@@ -143,9 +143,9 @@ __device__ inline void VectorizedKernelImpl(ElementwiseWarpper data,
   data.StoreVectorizedData(out_vec, tid);
 }
 
-template <ElementwiseType ET, typename ElementwiseWarpper, typename InT,
+template <ElementwiseType ET, typename ElementwiseWrapper, typename InT,
           typename OutT, typename Functor>
-__device__ inline void ScalarKernelImpl(ElementwiseWarpper data, Functor func,
+__device__ inline void ScalarKernelImpl(ElementwiseWrapper data, Functor func,
                                         int tid) {
   InT ins[ET];
   OutT out;
@@ -158,28 +158,28 @@ __device__ inline void ScalarKernelImpl(ElementwiseWarpper data, Functor func,
   data.StoreScalarizedData(out, tid);
 }
 
-template <ElementwiseType ET, typename ElementwiseWarpper, typename InT,
+template <ElementwiseType ET, typename ElementwiseWrapper, typename InT,
           typename OutT, int VecSize, typename Functor>
-__global__ void VectorizedKernel(ElementwiseWarpper data, int main_tid,
+__global__ void VectorizedKernel(ElementwiseWrapper data, int main_tid,
                                  int tail_tid, Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (tid < main_tid) {
-    VectorizedKernelImpl<ET, VecSize, ElementwiseWarpper, InT, OutT, Functor>(
+    VectorizedKernelImpl<ET, VecSize, ElementwiseWrapper, InT, OutT, Functor>(
         data, func, tid);
   }
   if (tid < tail_tid) {
-    ScalarKernelImpl<ET, ElementwiseWarpper, InT, OutT, Functor>(data, func,
+    ScalarKernelImpl<ET, ElementwiseWrapper, InT, OutT, Functor>(data, func,
                                                                  tid);
   }
 }
 
-template <ElementwiseType ET, typename ElementwiseWarpper, typename InT,
+template <ElementwiseType ET, typename ElementwiseWrapper, typename InT,
           typename OutT, typename Functor>
-__global__ void ScalarKernel(ElementwiseWarpper data, int numel, Functor func) {
+__global__ void ScalarKernel(ElementwiseWrapper data, int numel, Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < numel) {
-    ScalarKernelImpl<ET, ElementwiseWarpper, InT, OutT, Functor>(data, func,
+    ScalarKernelImpl<ET, ElementwiseWrapper, InT, OutT, Functor>(data, func,
                                                                  tid);
   }
 }
@@ -204,26 +204,26 @@ void LaunchSameDimsElementwiseCudaKernel(
 
   switch (vec_size) {
     case 4: {
-      auto data_warpper =
+      auto data_wrapper =
           ElementwiseDataWrapper<ET, 4, InT, OutT>(ins, outs, vec_len);
-      VectorizedKernel<ET, decltype(data_warpper), InT, OutT,
+      VectorizedKernel<ET, decltype(data_wrapper), InT, OutT,
                        4><<<grid_size, block_size, 0, stream>>>(
-          data_warpper, main_tid, tail_tid, func);
+          data_wrapper, main_tid, tail_tid, func);
       break;
     }
     case 2: {
-      auto data_warpper =
+      auto data_wrapper =
           ElementwiseDataWrapper<ET, 2, InT, OutT>(ins, outs, vec_len);
-      VectorizedKernel<ET, decltype(data_warpper), InT, OutT,
+      VectorizedKernel<ET, decltype(data_wrapper), InT, OutT,
                        2><<<grid_size, block_size, 0, stream>>>(
-          data_warpper, main_tid, tail_tid, func);
+          data_wrapper, main_tid, tail_tid, func);
       break;
     }
     case 1: {
-      auto data_warpper =
+      auto data_wrapper =
           ElementwiseDataWrapper<ET, 1, InT, OutT>(ins, outs, 0);
-      ScalarKernel<ET, decltype(data_warpper), InT,
-                   OutT><<<grid_size, block_size, 0, stream>>>(data_warpper,
+      ScalarKernel<ET, decltype(data_wrapper), InT,
+                   OutT><<<grid_size, block_size, 0, stream>>>(data_wrapper,
                                                                numel, func);
       break;
     }
