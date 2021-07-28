@@ -109,6 +109,8 @@ class ExecutorInfoCache {
     return cached_value.skip_eager_delete_vars_;
   }
 
+  size_t Size() const { return info_map_.size(); }
+
   void Finalize() {
     // NOTE(Aurelius84): DO NOT perform finalize in destructor
     // to avoid problems caused by destructor order of static

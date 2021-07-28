@@ -145,6 +145,13 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
   auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
 
   if (!cached_exe_info.Has(program_id, is_grad)) {
+    // TODO(Aurelius84): Consider to use LRU algorithm to replace this.
+    if (cached_exe_info.Size() > 4u /* max_cached_size*/) {
+      VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
+                 "all cache!";
+      cached_exe_info.Finalize();
+    }
+
     VLOG(1) << "create exe_info for " << program_id << " is_grad: " << is_grad;
     auto execution_strategy = details::GetExecutionStrategy(place);
     auto &build_strategy = cached_exe_info.GetBuildStrategy(program_id);

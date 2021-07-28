@@ -131,11 +131,15 @@ class PartialProgramLayer:
         Layer: A Layer object that run all ops internally in static mode.
     """
 
-    def __init__(self, main_program, inputs, outputs, parameters=None):
+    def __init__(self, main_program, inputs, outputs, parameters=None,
+                 **kwargs):
         super(PartialProgramLayer, self).__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
+
+        self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
+        assert isinstance(self._build_strategy, BuildStrategy)
 
         self._origin_main_program = self._verify_program(main_program)
         self._tmp_scope_vec = self._create_scope_vec()
@@ -170,7 +174,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _train_program_id(self):
-        return _hash_with_id(self._train_program, self)
+        program_id = _hash_with_id(self._train_program, self)
+        core._set_cached_executor_build_strategy(program_id,
+                                                 self._build_strategy)
+
+        return program_id
 
     def _verify_program(self, main_program):
         """
@@ -451,6 +459,6 @@ def partial_program_from(concrete_program):
     if inputs and isinstance(inputs[0], layers.Layer):
         inputs = inputs[1:]
 
-    return PartialProgramLayer(concrete_program.main_program, inputs,
-                               concrete_program.outputs,
-                               concrete_program.parameters)
+    return PartialProgramLayer(
+        concrete_program.main_program, inputs, concrete_program.outputs,
+        concrete_program.parameters, **concrete_program.kwargs)

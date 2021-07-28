@@ -200,7 +200,9 @@ message VarDesc {
   // True if the variable is an input data and
   // have to check the feed data shape and dtype
   optional bool need_check_feed = 4 [ default = false ];
-  repeated DistributedAttr dist_attrs = 5;
+  optional bool is_parameter = 5 [ default = false ];
+  optional bool stop_gradient = 6 [ default = false ];
+  repeated DistributedAttr dist_attrs = 7;
 }
 
 message BlockDesc {
