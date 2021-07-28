@@ -301,7 +301,7 @@ class DatasetBase(object):
 
                         if len(ele[1]) == 0:
                             raise ValueError(
-                                "var length error: var %s's length in data_genrator is 0"
+                                "var length error: var %s's length in data_generator is 0"
                                 % ele[0])
 
                         if var_list[
