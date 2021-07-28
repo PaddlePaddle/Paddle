@@ -175,7 +175,7 @@ message DistributedStrategy {
   optional bool use_hierarchical_allreduce = 15 [ default = false ];
   optional int32 hierarchical_allreduce_inter_nranks = 16 [ default = 1 ];
   optional bool sync_batch_norm = 17 [ default = false ];
-  optional bool fuse_all_reduce_ops = 18 [ default = true ];
+  optional bool fuse_all_reduce_ops = 18 [ default = false ];
   optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
   optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
   optional bool cudnn_exhaustive_search = 21 [ default = false ];

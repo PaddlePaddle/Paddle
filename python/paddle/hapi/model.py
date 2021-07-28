@@ -218,8 +218,6 @@ def prepare_distributed_context(place=None):
             fluid.disable_dygraph()
             _init_context()
             fluid.enable_dygraph(place)
-        else:
-            _init_context()
 
     else:
         assert ("Only support CUDAPlace for now.")
@@ -1709,7 +1707,8 @@ class Model(object):
 
         steps = self._len_data_loader(train_loader)
         self.num_iters = num_iters
-        if num_iters is not None and isinstance(num_iters, int):
+        if num_iters is not None and isinstance(num_iters, int) and isinstance(
+                steps, int):
             assert num_iters > 0, "num_iters must be greater than 0!"
             epochs = (num_iters // steps) + 1
             steps = min(num_iters, steps)
@@ -1744,8 +1743,8 @@ class Model(object):
                 eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval')
 
                 cbks.on_end('eval', eval_logs)
-                if self.stop_training:
-                    break
+            if self.stop_training:
+                break
 
         cbks.on_end('train', logs)
         self._test_dataloader = None
@@ -1832,7 +1831,8 @@ class Model(object):
 
         eval_steps = self._len_data_loader(eval_loader)
         self.num_iters = num_iters
-        if num_iters is not None and isinstance(num_iters, int):
+        if num_iters is not None and isinstance(num_iters, int) and isinstance(
+                eval_steps, int):
             assert num_iters > 0, "num_iters must be greater than 0!"
             eval_steps = min(num_iters, eval_steps)
             self.num_iters = eval_steps
@@ -2094,7 +2094,9 @@ class Model(object):
             callbacks.on_batch_end(mode, step, logs)
             if hasattr(self, 'num_iters') and self.num_iters is not None:
                 self.num_iters -= 1
-                if self.num_iters == 0:
+                if self.num_iters <= 0:
+                    self.stop_training = True
+                    del self.num_iters
                     break
         self._reset_metrics()
 
