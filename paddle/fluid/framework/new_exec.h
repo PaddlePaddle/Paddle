@@ -143,15 +143,12 @@ void build_variable_outer_scope(const framework::ProgramDesc& pdesc,
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
-    // cerr << "var name "  << var->Name() << endl;
     auto v = outer_scope->Var(var->Name());
 
     if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
       var_scope->name2id[var->Name()] = var_scope->var_list.size();
     }
 
-    // auto v = new Variable();
-    // v->GetMutable<LoDTensor>();
     InitializeVariable(v, var->GetType());
     var_scope->var_list.push_back(v);
   }
@@ -165,14 +162,12 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
-    // cerr << "var name "  << var->Name() << endl;
 
     if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
       var_scope->name2id[var->Name()] = var_scope->var_list.size();
     }
 
     auto v = new Variable();
-    // v->GetMutable<LoDTensor>();
     InitializeVariable(v, var->GetType());
     var_scope->var_list.push_back(v);
   }
@@ -186,12 +181,8 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
   auto& global_block = pdesc.Block(0);
 
   for (auto& op : global_block.AllOps()) {
-    // cerr << op->Type() << endl;
-    // bool debug = op->Type() == "softmax_with_cross_entropy_grad";
-    bool debug = false;
+    VLOG(3) << op->Type();
 
-    // cerr << "create op" << endl;
-    // auto op_base_u = OpRegistry::CreateOp(*op);
     auto& info = OpInfoMap::Instance().Get(op->Type());
 
     VariableNameMap inputs_1 = op->Inputs();
@@ -223,7 +214,6 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
       ins_map[var_name_item.first] = input_vars;
       ins_name2id[var_name_item.first] = vec_ids;
     }
-    if (debug) cerr << "1" << endl;
 
     VariableValueMap outs_map;
     std::map<std::string, std::vector<int>> outs_name2id;
@@ -234,12 +224,10 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
       for (auto& var_name : var_name_item.second) {
         auto it = var_scope->name2id.find(var_name);
         assert(it != var_scope->name2id.end());
-        // cerr << it->second << "\t" << var_scope.var_list.size() << endl;
         output_vars.push_back(var_scope->var_list[it->second]);
         vec_ids.push_back(it->second);
       }
       outs_map[var_name_item.first] = output_vars;
-      // cerr << ToTypeName(output_vars[0]->Type() ) << endl;
       outs_name2id[var_name_item.first] = vec_ids;
     }
 
@@ -248,11 +236,9 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     RuntimeContext runtime_context({}, {});
     runtime_context.inputs.swap(ins_map);
     runtime_context.outputs.swap(outs_map);
-    // cerr << "create runtime context" << endl;
     RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
     static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
         &infer_shape_ctx);
-    // cerr << "fin infer shape" << endl;
     auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
     auto kernels_iter = all_op_kernels.find(op->Type());
     PADDLE_ENFORCE_NE(
@@ -261,11 +247,9 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
             "There are no kernels which are registered in the %s operator.",
             op->Type()));
 
-    // cerr << "create kernel" << endl;
     using OpKernelFunc = std::function<void(const ExecutionContext&)>;
     using OpKernelMap =
         std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
-    if (debug) cerr << "2" << endl;
     OpKernelMap& kernels = kernels_iter->second;
     // auto place = platform::CPUPlace();
     // auto place = platform::CUDAPlace(0);
@@ -274,45 +258,28 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     Scope scope;
     auto exec_ctx =
         ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
-    if (debug) cerr << "21" << endl;
     auto expected_kernel_key =
         dynamic_cast<const framework::OperatorWithKernel*>(op_base)
             ->GetExpectedKernelType(exec_ctx);
-    if (debug) cerr << "22" << endl;
-    // cerr << "22" << endl;
 
-    // add transfer log
-    // cerr << "in map size " << ins_map.size() << endl;
     VariableValueMap& ins_map_temp = runtime_context.inputs;
-    // cerr << "ins map siz" <<  ins_map_temp.size() << endl;
+
     for (auto& var_name_item : ins_map_temp) {
-      // auto& vec_ids = ins_name2id[ var_name_item.first ];
       for (size_t i = 0; i < var_name_item.second.size(); ++i) {
         auto var = var_name_item.second[i];
         auto tensor_in = static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
         if (!tensor_in->IsInitialized()) {
           continue;
         }
-        // cerr << "i " << i << "\t" << tensor_in->IsInitialized() << endl;
         auto kernel_type_for_var =
             static_cast<const framework::OperatorWithKernel*>(op_base)
                 ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                       expected_kernel_key);
-        if (debug) {
-          cerr << "var name " << var_name_item.first << endl;
-          cerr << expected_kernel_key.place_ << "\t"
-               << kernel_type_for_var.place_ << endl;
-        }
         if (!platform::is_same_place(kernel_type_for_var.place_,
                                      expected_kernel_key.place_)) {
-          if (debug) cerr << "add data transfer" << endl;
-          // cerr << "add data transfer " << op->Type() << endl;
-          // cerr << " p1 "  << kernel_type_for_var.place_ << "\t" <<
-          // expected_kernel_key.place_ << endl;
-          // cerr << " var  " << var_name_item.first << endl;
           // need trans place
-          // add var in scope
-          // add copy op
+          // 1. add var in scope
+          // 2. add copy op
           std::string new_var_name =
               "temp_1" + std::to_string(var_scope->var_list.size() + 1);
           auto v = new Variable();
@@ -321,8 +288,6 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           var_scope->var_list.push_back(v);
 
           VariableNameMap copy_in_map;
-          // cerr << "ints name is " << input_names[var_name_item.first][i] <<
-          // endl;
           copy_in_map["X"] = {input_names[var_name_item.first][i]};
           VariableNameMap copy_out_map;
           copy_out_map["Out"] = {new_var_name};
@@ -334,8 +299,6 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           std::map<std::string, std::vector<int>> copy_out_name2id;
           copy_out_name2id["Out"] = {var_scope->name2id[new_var_name]};
 
-          // vec_ids[i] = var_scope->name2id[new_var_name];
-          // update out runtime_context
           op_func_node.input_index[var_name_item.first][i] =
               var_scope->name2id[new_var_name];
 
@@ -347,7 +310,6 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           auto& copy_info = OpInfoMap::Instance().Get("memcpy");
           auto copy_op = copy_info.Creator()("memcpy", copy_in_map,
                                              copy_out_map, attr_map);
-          if (debug) cerr << "create memcpy" << endl;
           OpFuncNode copy_op_func_node;
           copy_op_func_node.input_index = copy_ins_name2id;
           copy_op_func_node.output_index = copy_out_name2id;
@@ -355,14 +317,10 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           RuntimeContext copy_runtime_context({}, {});
           copy_runtime_context.inputs.swap(copy_ins_value_map);
           copy_runtime_context.outputs.swap(copy_outs_value_map);
-          // cerr << "create runtime context" << endl;
           RuntimeInferShapeContext copy_infer_shape_ctx(*copy_op,
                                                         copy_runtime_context);
-          if (debug) cerr << "before infer shape" << endl;
           static_cast<const framework::OperatorWithKernel*>(copy_op)
               ->InferShape(&copy_infer_shape_ctx);
-          if (debug) cerr << "infer shape" << endl;
-          // cerr << "fin infer shape" << endl;
           auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
           auto kernels_iter = all_op_kernels.find("memcpy");
           PADDLE_ENFORCE_NE(kernels_iter, all_op_kernels.end(),
@@ -370,32 +328,23 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
                                 "There are no kernels which are registered in "
                                 "the memcpy operator."));
 
-          // cerr << "create kernel" << endl;
           using OpKernelFunc = std::function<void(const ExecutionContext&)>;
           using OpKernelMap = std::unordered_map<OpKernelType, OpKernelFunc,
                                                  OpKernelType::Hash>;
 
           OpKernelMap& kernels = kernels_iter->second;
-          // auto place = platform::CPUPlace();
-          // auto place = platform::CUDAPlace(0);
-
           platform::DeviceContextPool& pool =
               platform::DeviceContextPool::Instance();
           auto* dev_ctx = pool.Get(place);
           Scope scope;
           auto copy_exec_ctx =
               ExecutionContext(*copy_op, scope, *dev_ctx, copy_runtime_context);
-          if (debug) cerr << "21" << endl;
           auto expected_kernel_key =
               dynamic_cast<const framework::OperatorWithKernel*>(copy_op)
                   ->GetExpectedKernelType(copy_exec_ctx);
-          if (debug) cerr << "22" << endl;
-          // cerr << "22" << endl;
           auto kernel_iter = kernels.find(expected_kernel_key);
           copy_op_func_node.kernel_func_ = OpKernelFunc(kernel_iter->second);
           copy_op_func_node.kernel_func_(copy_exec_ctx);
-          if (debug) cerr << "run exe ctx" << endl;
-
           op_list->push_back(copy_op);
           vec_func_list->push_back(copy_op_func_node);
 
@@ -407,13 +356,11 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     op_list->push_back(op_base);
 
     auto kernel_iter = kernels.find(expected_kernel_key);
+    assert(kernel_iter != kernels.end());
 
-    if (debug) cerr << "3" << endl;
     op_func_node.kernel_func_ = OpKernelFunc(kernel_iter->second);
-    if (debug) cerr << "3-1" << endl;
     op_func_node.kernel_func_(exec_ctx);
     vec_func_list->push_back(op_func_node);
-    if (debug) cerr << "5" << endl;
   }
 }
 
@@ -431,7 +378,6 @@ void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
 
       input_vars.reserve(var_name_item.second.size());
       for (auto& id : var_name_item.second) {
-        // cerr << var_name_item.first << "\t " << id << endl;
         input_vars.emplace_back(var_scope.var_list[id]);
       }
       ins_map.emplace(var_name_item.first, std::move(input_vars));
@@ -443,7 +389,6 @@ void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
 
       out_vars.reserve(var_name_item.second.size());
       for (auto& id : var_name_item.second) {
-        // cerr << var_name_item.first << "\t " << id << endl;
         out_vars.emplace_back(var_scope.var_list[id]);
       }
       outs_map.emplace(var_name_item.first, std::move(out_vars));
@@ -455,15 +400,10 @@ void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
 
     RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
 
-    // dynamic_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
-    // &infer_shape_ctx );
-    // RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
     static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
         &infer_shape_ctx);
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    // auto place = platform::CPUPlace();
-    // auto place = platform::CUDAPlace(0);
     auto* dev_ctx = pool.Get(place);
     Scope scope;
 
@@ -496,21 +436,16 @@ class InterpreterCore {
            const std::vector<framework::Tensor>& vec_tensor,
            const std::vector<std::string>& vec_fetch_name,
            std::vector<framework::Tensor>* vec_out) {
-    // cerr << "run" << endl;
-    // set static data
     if (is_build == false) {
       paddle::framework::build_variable_scope(prog_, &global_scope);
     }
     for (size_t i = 0; i < vec_name.size(); ++i) {
       auto it = global_scope.name2id.find(vec_name[i]);
-      // cerr << "find " << ( it != global_scope.name2id.end() ) <<endl;
       assert(it != global_scope.name2id.end());
 
       auto feed_tensor =
           global_scope.var_list[it->second]->GetMutable<framework::LoDTensor>();
-      // cerr << " get tensor" << endl;
       feed_tensor->ShareDataWith(vec_tensor[i]);
-      // cerr << "share buffer with" << endl;
     }
 
     if (is_build == false) {
@@ -520,9 +455,6 @@ class InterpreterCore {
       // convert vec func_list to graph
       convert();
     } else {
-      // paddle::framework::exec_op_func_list( vec_func_list, op_list,
-      // global_scope, place_ );
-      // cerr <<  "exec instr" << endl;
       exec_instruction_list(vec_instruction_, global_scope, place_);
     }
 
@@ -533,9 +465,7 @@ class InterpreterCore {
       auto fetch_tensor =
           global_scope.var_list[it->second]->GetMutable<framework::LoDTensor>();
 
-      // cerr << "out  "  << fetch_tensor->data<float>()[0] << endl;
       if (platform::is_gpu_place(fetch_tensor->place())) {
-        // cerr << "fetch gpu" << endl;
         Tensor out;
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
@@ -543,11 +473,11 @@ class InterpreterCore {
         dev_ctx->Wait();
         TensorCopySync(*fetch_tensor, platform::CPUPlace(), &out);
         dev_ctx->Wait();
-        // cerr << "out  " << out << endl;
-        // cout << out.data<float>()[0] << endl;
         vec_out->push_back(out);
       } else {
-        cerr << "out  " << *fetch_tensor << endl;
+        Tensor out;
+        TensorCopySync(*fetch_tensor, platform::CPUPlace(), &out);
+        vec_out->push_back(out);
       }
     }
   }
@@ -559,8 +489,6 @@ class InterpreterCore {
     vec_instruction_.reserve(vec_func_list.size());
     dependecy_count_.resize(vec_func_list.size());
     global_scope.vec_meta_info_.resize(global_scope.var_list.size());
-    // cerr << "in pos 7 is lookup table " <<
-    // vec_instruction_[7].kernel_func_.operator_base_->Type() << endl;
     for (size_t i = 0; i < vec_func_list.size(); ++i) {
       Instruction temp_inst;
       temp_inst.kernel_func_.compute_func_ = vec_func_list[i].kernel_func_;
@@ -623,7 +551,6 @@ class InterpreterCore {
 
       input_vars.reserve(var_name_item.second.size());
       for (auto& id : var_name_item.second) {
-        // cerr << var_name_item.first << "\t " << id << endl;
         input_vars.emplace_back(var_scope.var_list[id]);
       }
       ins_map.emplace(var_name_item.first, std::move(input_vars));
@@ -635,7 +562,6 @@ class InterpreterCore {
 
       out_vars.reserve(var_name_item.second.size());
       for (auto& id : var_name_item.second) {
-        // cerr << var_name_item.first << "\t " << id << endl;
         out_vars.emplace_back(var_scope.var_list[id]);
       }
       outs_map.emplace(var_name_item.first, std::move(out_vars));
@@ -647,15 +573,10 @@ class InterpreterCore {
 
     RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
 
-    // dynamic_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
-    // &infer_shape_ctx );
-    // RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
     static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
         &infer_shape_ctx);
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    // auto place = platform::CPUPlace();
-    // auto place = platform::CUDAPlace(0);
     auto* dev_ctx = pool.Get(place);
     Scope scope;
 
@@ -668,12 +589,6 @@ class InterpreterCore {
   void exec_instruction_list(const std::vector<Instruction>& vec_instr,
                              const VariableScope& var_scope,
                              const platform::Place& place) {
-    // for( size_t i = 0; i < vec_instr.size(); ++i )
-    // {
-    //   cerr << vec_instr[i].kernel_func_.operator_base_->Type() <<  " dep " <<
-    //   dependecy_count_[i] << endl;
-    // }
-
     std::queue<size_t> working_queue;
     auto working_dependecy_count = dependecy_count_;
     for (size_t i = 0; i < dependecy_count_.size(); ++i) {
@@ -688,8 +603,6 @@ class InterpreterCore {
     while (!working_queue.empty()) {
       auto instr_id = working_queue.front();
       working_queue.pop();
-      // cerr << "run " << instr_id  << "\t" <<
-      // vec_instr[instr_id].kernel_func_.operator_base_->Type()  <<  endl;
       auto& instr_node = vec_instr[instr_id];
       run_instr(instr_node, var_scope, place);
 
@@ -714,21 +627,8 @@ class InterpreterCore {
     for (size_t i = 0; i < working_var_ref.size(); ++i) {
       if (working_var_ref[i].var_ref_count_ != 0) {
         cerr << " var ref is not zero " << i << endl;
-        //  << i << global_scope.var_list[i].Name() << endl;
       }
     }
-    // cerr << "run op number " << run_op_number << endl;
-    // cerr << "total op number " << vec_instr.size() << endl;
-    // assert( run_op_number == vec_instr.size() );
-
-    /*
-    for( size_t i = 0; i < vec_instr.size(); ++i )
-    {
-        auto& instr_node = vec_instr[i];
-        run_instr( instr_node, var_scope, place );
-
-    }
-    */
   }
 
   const platform::Place& place_;

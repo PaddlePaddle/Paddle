@@ -352,7 +352,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   void SetOutputDim(const std::string& name, const DDim& dim) override {
-    // cerr << "set out dim" << endl;
     auto& vars = OutputVars(name);
     PADDLE_ENFORCE_EQ(
         vars.size(), 1UL,
