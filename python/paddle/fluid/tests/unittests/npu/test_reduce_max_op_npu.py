@@ -72,5 +72,21 @@ class TestReduceMaxOpMultiAxises(TestNPUReduceMaxOp):
         }
 
 
+@skip_check_grad_ci(
+    reason="reduce_max is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework.")
+class TestReduceAll(TestNPUReduceMaxOp):
+    """Remove Max with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_max"
+        self.set_npu()
+        self.init_dtype()
+
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
+        self.attrs = {'reduce_all': True}
+        self.outputs = {'Out': self.inputs['X'].max()}
+
+
 if __name__ == '__main__':
     unittest.main()

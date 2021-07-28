@@ -27,11 +27,32 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
     auto dims = ctx.Attr<std::vector<int>>("dim");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
+    bool reduce_all = ctx.Attr<bool>("reduce_all");
+    int in_dtype = ctx.Attr<int>("in_dtype");
+    int out_dtype = ctx.Attr<int>("out_dtype");
+
+    PADDLE_ENFORCE_EQ(
+        in_dtype, -1,
+        platform::errors::InvalidArgument(
+            "attr in_dtype must be default %d, but got %d", -1, in_dtype));
+    PADDLE_ENFORCE_EQ(
+        out_dtype, -1,
+        platform::errors::InvalidArgument(
+            "attr out_dtype must be default %d, but got %d", -1, out_dtype));
 
     out->mutable_data<T>(ctx.GetPlace());
 
     framework::NPUAttributeMap attr_input = {{"axes", dims},
                                              {"keep_dims", keep_dim}};
+
+    if (reduce_all) {
+      std::vector<int> dim_vec;
+      for (int i = 0; i < x->dims().size(); i++) {
+        dim_vec.push_back(i);
+      }
+
+      attr_input = {{"axes", dim_vec}, {"keep_dims", keep_dim}};
+    }
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
