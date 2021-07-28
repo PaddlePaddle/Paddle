@@ -1925,30 +1925,17 @@ All parameter, weight, gradient are variables in Paddle.
              pybind11::gil_scoped_release release;
              std::vector<framework::Tensor> vec_tensor;
              std::vector<std::string> vec_name;
-             // vec_tensor.reserve( feed.size() );
-             // vec_tensor.reserve( feed.size ()) ;
-
-             // auto new_res = input_dict.cast<py::array>();
 
              for (auto &item : input_dict) {
-               // cerr << "test flag  " << test_flag << endl;
-               // cerr << item.first << endl;
                framework::LoDTensor t;
                SetTensorFromPyArray<platform::CPUPlace>(
                    &t, item.second, platform::CPUPlace(), false);
-
-               // cerr << t.dims() << endl;
-               // cerr << t.data<float>()[0] << endl;
-
                vec_name.push_back(item.first);
                vec_tensor.push_back(t);
              }
 
-             // std::cerr << "11" << std::endl;
              std::vector<framework::Tensor> vec_out;
              self.run(vec_name, vec_tensor, vec_fetch_name, &vec_out);
-             // self.Run(prog, scope, block_id, create_local_scope, create_vars,
-             //         fetch_vars);
              std::vector<py::array> vec_ret;
              for (size_t i = 0; i < vec_out.size(); ++i) {
                vec_ret.push_back(TensorToPyArray(vec_out[i], true));

@@ -15,7 +15,6 @@
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
 #include <string>
-#include <iostream>
 
 namespace paddle {
 namespace framework {
@@ -52,7 +51,6 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    std::cerr << "get exec" << std::endl;
     int in_dtype = ctx.Attr<int>("in_dtype");
     if (in_dtype >= 0) {
       return framework::OpKernelType(
