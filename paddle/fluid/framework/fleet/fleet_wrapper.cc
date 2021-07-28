@@ -551,16 +551,36 @@ void FleetWrapper::PullSparseVarsSync(
   for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
-  auto status = pslib_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
-  pull_sparse_status.push_back(std::move(status));
-  for (auto& t : pull_sparse_status) {
-    t.wait();
-    auto status = t.get();
-    if (status != 0) {
-      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
-      sleep(sleep_seconds_before_fail_exit_);
-      exit(-1);
+
+  int32_t cnt = 0;
+  while (true) {
+    pull_sparse_status.clear();
+    auto status = pslib_ptr_->_worker_ptr->pull_sparse(
+        pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+    pull_sparse_status.push_back(std::move(status));
+    bool flag = true;
+    for (auto& t : pull_sparse_status) {
+      t.wait();
+      int32_t status = -1;
+      try {
+        status = t.get();
+      } catch (const std::future_error& e) {
+        VLOG(0) << "Caught a future_error with code" << e.code()
+                << ", Message:" << e.what();
+      }
+      if (status != 0) {
+        VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(sleep_seconds_before_fail_exit_);
+        flag = false;
+        cnt++;
+      }
+      if (cnt > 3) {
+        VLOG(0) << "fleet pull sparse failed, retry 3 times";
+        exit(-1);
+      }
+    }
+    if (flag) {
+      break;
     }
   }
 #endif
@@ -894,7 +914,14 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
-      slot = boost::lexical_cast<int>(sparse_key_names[i]);
+      try {
+        slot = boost::lexical_cast<int>(sparse_key_names[i]);
+      } catch (boost::bad_lexical_cast const& e) {
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "sparse var's name: %s, doesn't support non-integer type name when "
+            "dump_slot=True",
+            sparse_key_names[i]));
+      }
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     if (g_var == nullptr) {

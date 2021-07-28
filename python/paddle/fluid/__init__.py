@@ -93,7 +93,7 @@ from .dygraph.varbase_patch_methods import monkey_patch_varbase
 from . import generator
 from .core import _cuda_synchronize
 from .generator import Generator
-from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, MultiTrainer, HeterXpuTrainer, HeterBoxTrainer
+from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, MultiTrainer, HeterXpuTrainer
 from .transpiler import HashName, RoundRobin
 from .backward import append_backward
 
@@ -247,7 +247,13 @@ def __bootstrap__():
         ]
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
-    core.init_glog(sys.argv[0])
+    # Note(zhouwei25): sys may not have argv in some cases, 
+    # Such as: use Python/C API to call Python from C++
+    try:
+        core.init_glog(sys.argv[0])
+    except Exception:
+        sys.argv = [""]
+        core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices()
 
@@ -262,3 +268,5 @@ monkey_patch_varbase()
 # do some clean up manually.
 if core.is_compiled_with_npu():
     atexit.register(core.npu_finalize)
+# NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
+atexit.register(core.clear_executor_cache)

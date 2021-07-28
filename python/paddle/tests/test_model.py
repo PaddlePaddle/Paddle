@@ -184,6 +184,12 @@ class TestModel(unittest.TestCase):
     def test_fit_static_with_rank(self):
         self.fit(False, 2, 0)
 
+    def test_fit_dynamic_with_num_iters(self):
+        self.fit(True, num_iters=1)
+
+    def test_fit_static_with_num_iters(self):
+        self.fit(False, num_iters=1)
+
     def test_evaluate_dygraph(self):
         self.evaluate(True)
 
@@ -199,7 +205,7 @@ class TestModel(unittest.TestCase):
     def test_prepare_context(self):
         prepare_distributed_context()
 
-    def fit(self, dynamic, num_replicas=None, rank=None):
+    def fit(self, dynamic, num_replicas=None, rank=None, num_iters=None):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
         paddle.seed(seed)
@@ -217,6 +223,14 @@ class TestModel(unittest.TestCase):
 
         result = model.evaluate(self.val_dataset, batch_size=64)
         np.testing.assert_allclose(result['acc'], self.acc1)
+
+        model.fit(self.train_dataset,
+                  batch_size=64,
+                  shuffle=False,
+                  num_iters=num_iters)
+
+        result = model.evaluate(
+            self.val_dataset, batch_size=64, num_iters=num_iters)
 
         train_sampler = DistributedBatchSampler(
             self.train_dataset,
@@ -717,6 +731,36 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(save_dir, training=False)
         shutil.rmtree(save_dir)
+
+    def test_accumulate(self, ):
+        dim = 20
+        data = np.random.random(size=(4, dim)).astype(np.float32)
+        label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
+        net = MyModel()
+        optim = fluid.optimizer.SGD(learning_rate=0.001,
+                                    parameter_list=net.parameters())
+        inputs = [InputSpec([None, dim], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+
+        for amp_cfg in [None, 'O1']:
+            model = Model(net, inputs, labels)
+            model.prepare(
+                optim,
+                loss=CrossEntropyLoss(reduction="sum"),
+                amp_configs=amp_cfg)
+            losses, grads = [], []
+            for stat in [False, False, True]:
+                loss, = model.train_batch([data], [label], update=stat)
+                losses.append(loss)
+                grads.append([p.grad.numpy() for p in net.parameters()])
+
+            for grad1, grad2, grad3 in zip(*grads):
+                np.testing.assert_almost_equal(grad1 * 2, grad2, decimal=4)
+                np.testing.assert_almost_equal(
+                    grad3, np.zeros_like(grad3), decimal=4)
+
+            np.testing.assert_almost_equal(losses[0], losses[1], decimal=4)
+            np.testing.assert_almost_equal(losses[0], losses[2], decimal=4)
 
 
 class TestModelWithLRScheduler(unittest.TestCase):
