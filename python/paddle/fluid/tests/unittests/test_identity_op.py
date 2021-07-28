@@ -19,39 +19,34 @@ import paddle.fluid.core as core
 import paddle
 
 
-class TestInverseAPI(unittest.TestCase):
+class TestDiagonalAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+        self.shape = [4, 4]
+        self.x = np.random.random((4, 4)).astype(np.float32)
+        self.place = paddle.CPUPlace()
 
-    def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+    def test_api_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.fluid.data('X', self.shape)
             id_layer = paddle.nn.Identity()
-            result = id_layer(input=input)
+            out = id_layer(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x}, fetch_list=[out])
 
-            input_np = np.random.random([4, 4]).astype("float64")
+        out_ref = self.x
+        for out in res:
+            self.assertEqual(np.allclose(out, out_ref, rtol=1e-08), True)
 
-            exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"input": input_np},
-                              fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], input_np))
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place)
+        x_tensor = paddle.to_tensor(self.x)
+        id_layer = paddle.nn.Identity()
+        out = id_layer(x_tensor)
 
-    def test_static(self):
-        for place in self.places:
-            self.check_static_result(place=place)
-
-    def test_dygraph(self):
-        for place in self.places:
-            with fluid.dygraph.guard(place):
-                input_np = np.random.random([4, 4]).astype("float64")
-                id_layer = paddle.nn.Identity()
-                input = fluid.dygraph.to_variable(input_np)
-                result = id_layer(input)
-                self.assertTrue(np.allclose(result.numpy(), input_np))
+        out_ref = self.x
+        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
