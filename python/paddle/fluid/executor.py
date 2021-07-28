@@ -1664,6 +1664,16 @@ class Executor(object):
                                        print_period, fetch_handler,
                                        use_program_cache)
 
+        from paddle.optimizer.lr import LRScheduler
+        if hasattr(program, 'lr_sheduler'):
+            lr_sheduler = program.lr_sheduler
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_sheduler()
+            lr_var = program.global_block().vars[lr_sheduler._var_name]
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+            tensor.set(data, self.place)
+
         self._default_executor.run_from_dataset(trainer_instance)
 
         if not use_program_cache:
