@@ -12,12 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
-#include "paddle/fluid/framework/fleet/ascend_wrapper.h"
-#include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
-
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {

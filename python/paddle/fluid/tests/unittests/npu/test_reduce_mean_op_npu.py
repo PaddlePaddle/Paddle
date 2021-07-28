@@ -25,8 +25,6 @@ import paddle.fluid as fluid
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMeanOp(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
@@ -44,8 +42,6 @@ class TestMeanOp(OpTest):
         self.check_grad_with_place(paddle.NPUPlace(0), ['X'], 'Out')
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMeanOp5D(TestMeanOp):
     def setUp(self):
         self.set_npu()
@@ -56,8 +52,6 @@ class TestMeanOp5D(TestMeanOp):
         self.outputs = {'Out': self.inputs['X'].mean(axis=0)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMeanOp6D(TestMeanOp):
     def setUp(self):
         self.set_npu()
@@ -68,8 +62,6 @@ class TestMeanOp6D(TestMeanOp):
         self.outputs = {'Out': self.inputs['X'].mean(axis=0)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMeanOp8D(TestMeanOp):
     def setUp(self):
         self.set_npu()
@@ -81,8 +73,6 @@ class TestMeanOp8D(TestMeanOp):
         self.outputs = {'Out': self.inputs['X'].mean(axis=(0, 3))}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class Test1DReduce(TestMeanOp):
     def setUp(self):
         self.set_npu()
@@ -91,8 +81,6 @@ class Test1DReduce(TestMeanOp):
         self.outputs = {'Out': self.inputs['X'].mean(axis=0)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class Test2DReduce0(Test1DReduce):
     def setUp(self):
         self.set_npu()
@@ -102,8 +90,6 @@ class Test2DReduce0(Test1DReduce):
         self.outputs = {'Out': self.inputs['X'].mean(axis=0)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class Test2DReduce1(Test1DReduce):
     def setUp(self):
         self.set_npu()
@@ -115,8 +101,6 @@ class Test2DReduce1(Test1DReduce):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class Test3DReduce0(Test1DReduce):
     def setUp(self):
         self.set_npu()
@@ -128,8 +112,6 @@ class Test3DReduce0(Test1DReduce):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class Test3DReduce1(Test1DReduce):
     def setUp(self):
         self.set_npu()
@@ -141,8 +123,6 @@ class Test3DReduce1(Test1DReduce):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class Test3DReduce2(Test1DReduce):
     def setUp(self):
         self.set_npu()
@@ -154,8 +134,6 @@ class Test3DReduce2(Test1DReduce):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class Test3DReduce3(Test1DReduce):
     def setUp(self):
         self.set_npu()
@@ -167,8 +145,6 @@ class Test3DReduce3(Test1DReduce):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestKeepDimReduce(Test1DReduce):
     def setUp(self):
         self.set_npu()
@@ -181,8 +157,6 @@ class TestKeepDimReduce(Test1DReduce):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestKeepDim8DReduce(Test1DReduce):
     def setUp(self):
         self.set_npu()
@@ -197,8 +171,6 @@ class TestKeepDim8DReduce(Test1DReduce):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestReduceAll(Test1DReduce):
     def setUp(self):
         self.set_npu()
