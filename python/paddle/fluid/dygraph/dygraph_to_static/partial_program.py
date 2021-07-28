@@ -24,7 +24,10 @@ from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
+from paddle.fluid.layers.utils import _hash_with_id
+from paddle.fluid.compiler import BuildStrategy
 import paddle.compat as cpt
+from paddle import _C_ops
 
 
 class NestSequence(object):
@@ -35,6 +38,7 @@ class NestSequence(object):
 
     def __init__(self, raw_input, need_check=False):
         self.__raw_input = raw_input
+        self.__input_list = self.tolist()
         self.__var_ids = self._get_var_ids()
         self._check_non_variable(need_check)
 
@@ -48,12 +52,12 @@ class NestSequence(object):
         """
         Restores the nested sequence from value list.
         """
-        assert len(self.tolist()) == len(value_list)
+        assert len(self.__input_list) == len(value_list)
         return pack_sequence_as(self.__raw_input, value_list)
 
     def _get_var_ids(self):
         var_ids = []
-        for idx, var in enumerate(self.tolist()):
+        for idx, var in enumerate(self.__input_list):
             if isinstance(var, (framework.Variable, core.VarBase)):
                 var_ids.append(idx)
 
@@ -65,7 +69,7 @@ class NestSequence(object):
         """
         if need_check:
             warning_types = set()
-            for var in self.tolist():
+            for var in self.__input_list:
                 if not isinstance(var, (framework.Variable, core.VarBase)):
                     warning_types.add(type(var))
             if warning_types:
@@ -80,7 +84,7 @@ class NestSequence(object):
         return self.__var_ids
 
     def __getitem__(self, item):
-        return self.tolist()[item]
+        return self.__input_list[item]
 
 
 class LazyInitialized(object):
@@ -106,7 +110,7 @@ def _change_is_test_status(program, is_test):
     return program
 
 
-class PartialProgramLayer(layers.Layer):
+class PartialProgramLayer:
     """
     PartialProgramLayer wraps all the ops from layers decorated by `@declarative`
     and execute them as a static subgraph.
@@ -134,7 +138,9 @@ class PartialProgramLayer(layers.Layer):
         self._params = parameters if parameters is not None else []
 
         self._origin_main_program = self._verify_program(main_program)
-        self._inner_scope = core.Scope()
+        self._tmp_scope_vec = self._create_scope_vec()
+        # A fake_var to handle empty input or output
+        self.__fake_vars = _create_fake_var()
         # Set default mode to train
         self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
@@ -157,6 +163,14 @@ class PartialProgramLayer(layers.Layer):
         self._set_grad_type(self._params, train_program)
 
         return train_program
+
+    @LazyInitialized
+    def _infer_program_id(self):
+        return _hash_with_id(self._infer_program, self)
+
+    @LazyInitialized
+    def _train_program_id(self):
+        return _hash_with_id(self._train_program, self)
 
     def _verify_program(self, main_program):
         """
@@ -217,19 +231,19 @@ class PartialProgramLayer(layers.Layer):
                                             var_desc.name(),
                                             var_desc.type(), False)
                     double_grads.append(var_base)
-        return double_grads
+        return self._valid_vars(double_grads)
 
-    def forward(self, inputs):
-        in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
+    def __call__(self, inputs):
+        in_vars, out_vars = self._prepare(inputs)
 
         attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
                  0, 'end_op_index', self._infer_program.desc.block(0).op_size(),
-                 'is_test', not self.training)
-        core.ops.run_program(
-            valid_vars(in_vars),
-            valid_vars(self._params),
-            valid_vars(out_vars), tmp_scope_vec,
-            valid_vars(self._double_grads), *attrs)
+                 'is_test', not self.training, 'program_id', self.program_id)
+        _C_ops.run_program(
+            self._valid_vars(in_vars),
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars), self._tmp_scope_vec, self._double_grads,
+            *attrs)
 
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
@@ -237,6 +251,10 @@ class PartialProgramLayer(layers.Layer):
     @property
     def program(self):
         return self._train_program if self.training else self._infer_program
+
+    @property
+    def program_id(self):
+        return self._train_program_id if self.training else self._infer_program_id
 
     def _prepare(self, inputs):
         """
@@ -264,7 +282,6 @@ class PartialProgramLayer(layers.Layer):
                         expected_place):
                     var = value._copy_to(expected_place, False)
                     var.stop_gradient = True
-                    var.name = value.name
                 else:
                     var = value
                 var.name = self._inputs[i].desc.name()
@@ -272,25 +289,29 @@ class PartialProgramLayer(layers.Layer):
                 continue
             input_vars.append(var)
 
-        # Create VarBase to receive output data.
-        out_vars = []
-        for idx in self._outputs.var_ids:
-            var = self._outputs[idx]
+        def create_out(var_id):
+            var = self._outputs[var_id]
             assert isinstance(var, framework.Variable)
             var_desc = var.desc
             var_base = core.VarBase(var_desc.dtype(),
                                     var_desc.shape(),
                                     var_desc.name(), var_desc.type(), False)
-            out_vars.append(var_base)
+            return var_base
 
+        # Create VarBase to receive output data.
+        out_vars = list(map(create_out, self._outputs.var_ids))
+
+        return input_vars, out_vars
+
+    def _create_scope_vec(self):
         # Hold forward variables
         tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                      "program_out_scope",
                                      core.VarDesc.VarType.STEP_SCOPES, True)
 
-        tmp_scope_vec.value().set_scope(self._inner_scope)
-
-        return input_vars, out_vars, tmp_scope_vec
+        inner_scope = core.Scope()
+        tmp_scope_vec.value().set_scope(inner_scope)
+        return tmp_scope_vec
 
     def _restore_out(self, out_vars):
         """
@@ -311,8 +332,9 @@ class PartialProgramLayer(layers.Layer):
         return main_program.clone(for_test=True)
 
     def _is_no_value(self, var):
-        if isinstance(var, core.VarBase):
-            if var.shape == [1] and var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
+        if isinstance(var, core.VarBase) and var.shape == [1]:
+            # NOTE: .numpy() will insert MemcpySync operation, it hits performance.
+            if var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
                 return True
         return False
 
@@ -405,20 +427,22 @@ class PartialProgramLayer(layers.Layer):
                             "Please define the layer with parameters in `__init__` function."
                             % name)
 
+    def _valid_vars(self, vars):
+        """
+        Note: run_program_op.InferShape requires `X`/'Out' not be null.
+        But it's common in dy2static, fake varBase is created to handle the
+        problem.
+        """
+        return vars if vars else self.__fake_vars
 
-def valid_vars(vars):
+
+def _create_fake_var():
     """
-    Note: run_program_op.InferShape requires `X`/'Out' not be null.
-    But it's common in dy2static, fake varBase is created to handle the
-    problem.
+    Create a fake_var (force on CPU) to handle empty input or output
     """
-    if vars:
-        return vars
     return [
-        core.VarBase(
-            value=[1],
-            name='Fake_var',
-            place=framework._current_expected_place())
+        core.VarBase(core.VarDesc.VarType.FP32, [], "Fake_var",
+                     core.VarDesc.VarType.RAW, False)
     ]
 
 

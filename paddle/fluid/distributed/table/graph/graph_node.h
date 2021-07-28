@@ -15,6 +15,7 @@
 #pragma once
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <vector>
 #include "paddle/fluid/distributed/table/graph/graph_weighted_sampler.h"
@@ -33,7 +34,10 @@ class Node {
   virtual void build_edges(bool is_weighted) {}
   virtual void build_sampler(std::string sample_type) {}
   virtual void add_edge(uint64_t id, float weight) {}
-  virtual std::vector<int> sample_k(int k) { return std::vector<int>(); }
+  virtual std::vector<int> sample_k(
+      int k, const std::shared_ptr<std::mt19937_64> rng) {
+    return std::vector<int>();
+  }
   virtual uint64_t get_neighbor_id(int idx) { return 0; }
   virtual float get_neighbor_weight(int idx) { return 1.; }
 
@@ -59,7 +63,10 @@ class GraphNode : public Node {
   virtual void add_edge(uint64_t id, float weight) {
     edges->add_edge(id, weight);
   }
-  virtual std::vector<int> sample_k(int k) { return sampler->sample_k(k); }
+  virtual std::vector<int> sample_k(
+      int k, const std::shared_ptr<std::mt19937_64> rng) {
+    return sampler->sample_k(k, rng);
+  }
   virtual uint64_t get_neighbor_id(int idx) { return edges->get_id(idx); }
   virtual float get_neighbor_weight(int idx) { return edges->get_weight(idx); }
 
@@ -123,5 +130,5 @@ class FeatureNode : public Node {
  protected:
   std::vector<std::string> feature;
 };
-}
-}
+}  // namespace distributed
+}  // namespace paddle

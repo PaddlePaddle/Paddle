@@ -20,6 +20,7 @@ from ..fluid.framework import in_dygraph_mode, _varbase_creator
 from ..fluid.layers import transpose  # noqa: F401
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
+from paddle import _C_ops
 
 __all__ = []
 
@@ -131,7 +132,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
     op_type = 'matmul_v2'
     if in_dygraph_mode():
-        op = getattr(core.ops, op_type)
+        op = getattr(_C_ops, op_type)
         return op(x, y, 'trans_x', transpose_x, 'trans_y', transpose_y)
 
     attrs = {
@@ -244,10 +245,10 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         if in_dygraph_mode():
             if dim is None:
-                return core.ops.frobenius_norm(input, 'keep_dim', keepdim,
-                                               'reduce_all', True)
-            return core.ops.frobenius_norm(input, 'dim', dim, 'keep_dim',
-                                           keepdim, 'reduce_all', False)
+                return _C_ops.frobenius_norm(input, 'keep_dim', keepdim,
+                                             'reduce_all', True)
+            return _C_ops.frobenius_norm(input, 'dim', dim, 'keep_dim', keepdim,
+                                         'reduce_all', False)
         attrs = {'dim': dim, 'keep_dim': keepdim, 'reduce_all': False}
         if dim is None:
             attrs['reduce_all'] = True
@@ -281,8 +282,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         """
         if in_dygraph_mode():
             if axis is None: axis = -1
-            return core.ops.p_norm(input, 'porder', porder, 'axis', axis,
-                                   'keepdim', keepdim, 'asvector', asvector)
+            return _C_ops.p_norm(input, 'porder', porder, 'axis', axis,
+                                 'keepdim', keepdim, 'asvector', asvector)
         if porder is not None:
             check_type(porder, 'porder', (float, int), 'p_norm')
         if axis is not None:
@@ -576,7 +577,7 @@ def dot(x, y, name=None):
     op_type = 'dot'
     # skip var type check in dygraph mode to improve efficiency
     if in_dygraph_mode():
-        op = getattr(core.ops, op_type)
+        op = getattr(_C_ops, op_type)
         return op(x, y)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
@@ -651,7 +652,7 @@ def t(input, name=None):
             return input
         # 2-D tensor
         perm = [1, 0]
-        out, _ = core.ops.transpose2(input, 'axis', perm)
+        out, _ = _C_ops.transpose2(input, 'axis', perm)
         return out
 
     check_variable_and_dtype(
@@ -713,9 +714,9 @@ def cross(x, y, axis=None, name=None):
     """
     if in_dygraph_mode():
         if axis is not None:
-            return core.ops.cross(x, y, 'dim', axis)
+            return _C_ops.cross(x, y, 'dim', axis)
         else:
-            return core.ops.cross(x, y)
+            return _C_ops.cross(x, y)
 
     helper = LayerHelper("cross", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -771,7 +772,7 @@ def cholesky(x, upper=False, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.cholesky(x, "upper", upper)
+        return _C_ops.cholesky(x, "upper", upper)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
     helper = LayerHelper('cholesky', **locals())
@@ -832,9 +833,11 @@ def bmm(x, y, name=None):
         raise ValueError(
             "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".
             format(x_shape, y_shape))
-    helper = LayerHelper('bmm', **locals())
+
     if in_dygraph_mode():
-        return core.ops.bmm(x, y)
+        return _C_ops.bmm(x, y)
+
+    helper = LayerHelper('bmm', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
     return out
@@ -865,7 +868,7 @@ def histogram(input, bins=100, min=0, max=0):
             print(result) # [0, 2, 1, 0]
     """
     if in_dygraph_mode():
-        return core.ops.histogram(input, "bins", bins, "min", min, "max", max)
+        return _C_ops.histogram(input, "bins", bins, "min", min, "max", max)
 
     helper = LayerHelper('histogram', **locals())
     check_variable_and_dtype(
@@ -912,7 +915,7 @@ def mv(x, vec, name=None):
             out = paddle.mv(x, vec)
     """
     if in_dygraph_mode():
-        out = core.ops.mv(x, vec)
+        out = _C_ops.mv(x, vec)
         return out
 
     def __check_input(x, vec):

@@ -45,7 +45,19 @@ void TestCopyTensor() {
   auto t1_gpu_cp_cp = t1_gpu_cp.template copy_to<T>(paddle::PlaceType::kGPU);
   CHECK((paddle::PlaceType::kGPU == t1_gpu_cp_cp.place()));
   auto t1_gpu_cp_cp_cpu =
-      t1_gpu_cp.template copy_to<T>(paddle::PlaceType::kCPU);
+      t1_gpu_cp_cp.template copy_to<T>(paddle::PlaceType::kCPU);
+  CHECK((paddle::PlaceType::kCPU == t1_gpu_cp_cp_cpu.place()));
+  for (int64_t i = 0; i < t1.size(); i++) {
+    CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], T(5));
+  }
+#elif defined(PADDLE_WITH_HIP)
+  VLOG(2) << "Do HIP copy test";
+  auto t1_gpu_cp = t1_cpu_cp.template copy_to<T>(paddle::PlaceType::kHIP);
+  CHECK((paddle::PlaceType::kHIP == t1_gpu_cp.place()));
+  auto t1_gpu_cp_cp = t1_gpu_cp.template copy_to<T>(paddle::PlaceType::kHIP);
+  CHECK((paddle::PlaceType::kHIP == t1_gpu_cp_cp.place()));
+  auto t1_gpu_cp_cp_cpu =
+      t1_gpu_cp_cp.template copy_to<T>(paddle::PlaceType::kCPU);
   CHECK((paddle::PlaceType::kCPU == t1_gpu_cp_cp_cpu.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
     CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], T(5));
@@ -60,6 +72,11 @@ void TestAPIPlace() {
   t1.reshape(tensor_shape);
   t1.mutable_data<float>();
   CHECK((paddle::PlaceType::kGPU == t1.place()));
+#elif defined(PADDLE_WITH_HIP)
+  auto t1 = paddle::Tensor(paddle::PlaceType::kHIP);
+  t1.reshape(tensor_shape);
+  t1.mutable_data<float>();
+  CHECK((paddle::PlaceType::kHIP == t1.place()));
 #endif
   auto t2 = paddle::Tensor(paddle::PlaceType::kCPU);
   t2.reshape(tensor_shape);
