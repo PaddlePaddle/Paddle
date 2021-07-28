@@ -74,6 +74,18 @@ else
     wget -q http://paddle-inference-dist.bj.bcebos.com/word2vec.inference.model.tar.gz
     tar xzf *.tar.gz
 fi
+cd -
+
+# download resnet50 data
+mkdir -p resnet50
+cd resnet50
+if [[ -e "resnet50.tgz" ]]; then
+  echo "resnet50.tgz has been downloaded."
+else
+    wget -q https://paddle-inference-dist.bj.bcebos.com/Paddle-Inference-Demo/resnet50.tgz
+    tar xzf *.tgz
+fi
+cd -
 
 # compile and test the demo
 cd $current_dir
@@ -187,6 +199,26 @@ for WITH_STATIC_LIB in ON OFF; do
         --refer=$DATA_DIR/mobilenet/result.txt 
       if [ $? -ne 0 ]; then
         echo "trt demo trt_mobilenet_demo runs fail."
+        exit 1
+      fi
+    fi
+    # ---------tensorrt resnet50 on linux---------
+    if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
+      rm -rf *
+      cmake .. -DPADDLE_LIB=${inference_install_dir} \
+        -DWITH_MKL=$TURN_ON_MKL \
+        -DDEMO_NAME=test_resnet50 \
+        -DWITH_GPU=$TEST_GPU_CPU \
+        -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+        -DUSE_TENSORRT=$USE_TENSORRT \
+        -DTENSORRT_INCLUDE_DIR=$TENSORRT_INCLUDE_DIR \
+        -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR \
+        -DWITH_GTEST=ON
+      make -j$(nproc)
+      ./test_resnet50 \
+        --modeldir=$DATA_DIR/resnet50/resnet50
+      if [ $? -ne 0 ]; then
+        echo "trt demo test_resnet50 runs fail."
         exit 1
       fi
     fi
