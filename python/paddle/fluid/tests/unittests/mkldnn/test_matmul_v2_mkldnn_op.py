@@ -17,11 +17,13 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
+
+paddle.enable_static()
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -236,6 +238,7 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
+    @OpTestTool.skip_if_not_cpu_bf16()
     class TestMatMulV2Bf16OneDNNOp(parent):
         def set_inputs(self, x, y):
             self.inputs = {
@@ -247,15 +250,7 @@ def create_bf16_test_class(parent):
             self.attrs['mkldnn_data_type'] = "bfloat16"
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                self.skipTest(
-                    "OneDNN doesn't support bf16 with CUDA, skipping UT" +
-                    self.__class__.__name__)
-            elif not core.supports_bfloat16():
-                self.skipTest("Core doesn't support bf16, skipping UT" +
-                              self.__class__.__name__)
-            else:
-                self.check_output_with_place(core.CPUPlace())
+            self.check_output_with_place(core.CPUPlace())
 
         def test_check_grad(self):
             pass

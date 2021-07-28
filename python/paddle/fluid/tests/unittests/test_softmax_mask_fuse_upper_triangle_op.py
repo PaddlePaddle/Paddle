@@ -42,7 +42,7 @@ def _get_softmax_upper(x, fp16=True):
                  "core is not compiled with CUDA")
 class TestSoftmaxMaskFuseOp(OpTest):
     def setUp(self):
-        self.op_type = "softmax_mask_fuse_upper_triangle"
+        self.op_type = "fused_softmax_mask_upper_triangle"
         x = np.random.random((1, 1, 32, 32)).astype("float16")
         self.inputs = {'X': x}
         rst = _get_softmax_upper(x)
@@ -59,7 +59,7 @@ class TestSoftmaxMaskFuseOp(OpTest):
                  "core is not compiled with CUDA")
 class TestSoftmaxMaskFuseOp1(OpTest):
     def setUp(self):
-        self.op_type = "softmax_mask_fuse_upper_triangle"
+        self.op_type = "fused_softmax_mask_upper_triangle"
         x = np.random.random((1, 1, 32, 32))
         self.inputs = {'X': x}
         rst = _get_softmax_upper(x)
