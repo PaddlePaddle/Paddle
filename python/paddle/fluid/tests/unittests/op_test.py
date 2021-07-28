@@ -1088,9 +1088,9 @@ class OpTest(unittest.TestCase):
             atol = 0
 
         if self.is_bfloat16_op():
-            if not core.is_compiled_with_cuda():
+            if hasattr(self, 'mkldnn_data_type'):
                 check_dygraph = False
-            atol = 1e-2
+            atol = 5e-1
 
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:
