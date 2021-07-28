@@ -157,7 +157,6 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
-    const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
     auto place = ctx.GetPlace();
     HcclDataType dtype = platform::ToHCCLDataType(in->type());
     int64_t numel = in->numel();
@@ -215,29 +214,22 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     framework::Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
 
-    bool nan_or_inf = false;
     bool check_numerics = false;
-    if (float_status) {
-      VLOG(4) << "prepare to FoundNanInf";
-      nan_or_inf = FoundNanOrInf(
-          ctx.template device_context<paddle::platform::NPUDeviceContext>(),
-          dev_ctx->stream(), float_status, &tmp);
-    } else {
-      auto d_type = in->type();
-      switch (d_type) {
-        case framework::proto::VarType::FP16:
-        case framework::proto::VarType::FP32: {
-          VLOG(4) << "prepare to FoundNanInf";
-          check_numerics = CheckNumerics<T>(ctx, dev_ctx->stream(), in);
-          VLOG(4) << "check_numerics:" << check_numerics;
-          break;
-        }
-        default:
-          break;
+
+    auto d_type = in->type();
+    switch (d_type) {
+      case framework::proto::VarType::FP16:
+      case framework::proto::VarType::FP32: {
+        VLOG(4) << "prepare to FoundNanInf";
+        check_numerics = CheckNumerics<T>(ctx, dev_ctx->stream(), in);
+        VLOG(4) << "check_numerics:" << check_numerics;
+        break;
       }
+      default:
+        break;
     }
 
-    if (nan_or_inf || check_numerics) {
+    if (check_numerics) {
       T inf = static_cast<T>(std::numeric_limits<float>::infinity());
       VLOG(4) << "fill input data constant inf";
       auto dims = in->dims();
@@ -405,12 +397,6 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "parallel mode, the backward is c_identity which returns itself for "
         "c_allreduce_sum.")
         .SetDefault(false);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddInput("FloatStatus",
-             "(Tensor) 1-dim tensor of shape [8], allocated by "
-             "alloc_float_status op")
-        .AsDispensable();
-#endif
     AddComment(string::Sprintf(R"DOC(
 CAllReduce %s Operator
 
