@@ -279,6 +279,24 @@ class DatasetBase(object):
 
     def check_use_var_with_data_generator(self, var_list, data_generator_class,
                                           test_file):
+        """
+         Var consistency insepection of use_var_list and data_generator data.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              from dataset_generator_old import CTRDataset
+              dataset = fluid.DatasetFactory().create_dataset()
+              generator_class = CTRDataset()
+              dataset.check_use_var_with_data_generator([data, label], generator_class, "data/part-00000")
+
+        Args:
+            var_list(list): variable list
+            data_generator_class(class): data_generator class
+            test_file(str): local test file path
+        """
+
         f = open(test_file, "r")
         var_len = len(var_list)
 
