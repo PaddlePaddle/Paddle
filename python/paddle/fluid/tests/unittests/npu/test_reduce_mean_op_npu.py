@@ -38,7 +38,7 @@ class TestMeanOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(paddle.NPUPlace(0))
 
-    def check_grad_(self):
+    def test_check_grad(self):
         self.check_grad_with_place(paddle.NPUPlace(0), ['X'], 'Out')
 
 

@@ -57,19 +57,20 @@ class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
     input_grad->mutable_data<T>(ctx.GetPlace());
 
     bool reduce_all = ctx.Attr<bool>("reduce_all");
-    auto dims = ctx.Attr<std::vector<int>>("dim");
-
+    auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
     auto input_dims_vec = framework::vectorize(input->dims());
 
     int reduce_numel = 1;
-    auto reduce_dims = dims;
     if (reduce_all) {
       reduce_dims.clear();
       for (size_t d = 0; d < input_dims_vec.size(); ++d) {
         reduce_dims.push_back(static_cast<int>(d));
       }
     }
-    for (auto d : dims) {
+    for (auto& d : reduce_dims) {
+      if (d < 0) {
+        d = d + input_dims_vec.size();
+      }
       reduce_numel *= input_dims_vec[d];
     }
 
@@ -105,5 +106,7 @@ class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+
 REGISTER_OP_NPU_KERNEL(reduce_mean, ops::NPUReduceMeanOpKernel<float>);
 REGISTER_OP_NPU_KERNEL(reduce_mean_grad, ops::NPUReduceMeanGradOpKernel<float>);
