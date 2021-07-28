@@ -413,7 +413,6 @@ list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable test_cumsum_op temporaily
 # list(REMOVE_ITEM TEST_OPS test_cumsum_op)
-list(REMOVE_ITEM TEST_OPS test_dataloader_dataset)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -669,6 +668,10 @@ endif()
 if (WITH_XPU_BKCL)
     py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
     py_test(test_collective_allreduce_api_xpu SRCS "test_collective_allreduce_api.py")
+endif()
+
+if(WIN32)
+    cc_test(cc_imp_py_test SRCS cc_imp_py_test.cc DEPS python)
 endif()
 
 if (WITH_ASCEND_CL)
