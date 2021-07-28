@@ -639,24 +639,18 @@ class TestModelFunction(unittest.TestCase):
     def test_summary_input(self):
         rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
         input_data = paddle.rand([4, 23, 16])
-        paddle.summary(rnn, input_size=(4, 23, 16), input=input_data)
+        paddle.summary(rnn, input=input_data)
 
         lenet_List_input = LeNetListInput()
         input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
-        paddle.summary(
-            lenet_List_input,
-            input_size=[(1, 1, 28, 28), (1, 400)],
-            input=input_data)
+        paddle.summary(lenet_List_input, input=input_data)
 
         lenet_dict_input = LeNetDictInput()
         input_data = {
             'x1': paddle.rand([1, 1, 28, 28]),
             'x2': paddle.rand([1, 400])
         }
-        paddle.summary(
-            lenet_dict_input,
-            input_size=[(1, 1, 28, 28), (1, 400)],
-            input=input_data)
+        paddle.summary(lenet_dict_input, input=input_data)
 
     def test_summary_dtype(self):
         input_shape = (3, 1)
