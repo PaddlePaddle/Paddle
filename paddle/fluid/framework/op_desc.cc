@@ -604,10 +604,9 @@ void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
   need_update_ = true;
 }
 
-void OpDesc::SetDimsMappingAttr(const std::string &name,
-                                proto::DimsMappingDesc::Type type,
-                                DimsMappingDesc *mapping) {
-  this->distributed_attrs_[name] = mapping;
+void OpDesc::SetProcessMeshAttr(const std::string &name,
+                                ProcessMeshDesc *mesh) {
+  this->distributed_attrs_[name] = mesh;
   need_update_ = true;
 }
 
@@ -627,6 +626,14 @@ Attribute OpDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
                                           "Attribute %s is not found.", name));
+  return it->second;
+}
+
+Attribute OpDesc::GetDistributedAttr(const std::string &name) const {
+  auto it = distributed_attrs_.find(name);
+  PADDLE_ENFORCE_NE(
+      it, distributed_attrs_.end(),
+      platform::errors::NotFound("Attribute %s is not found.", name));
   return it->second;
 }
 
@@ -754,8 +761,6 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   }
 
   void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
-  void operator()(DimsMappingDesc *desc) const {}
-  void operator()(ProcessMeshDesc *desc) const {}
 
   void operator()(int64_t v) const { attr_->set_l(v); }
 
@@ -765,6 +770,12 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
 
   void operator()(const std::vector<double> &v) const {
     VectorToRepeated(v, attr_->mutable_float64s());
+  }
+
+  void operator()(ProcessMeshDesc *) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method of SetAttrDescVisitor object for "
+        "`ProcessMeshDesc` type."));
   }
 
   void operator()(boost::blank) const {

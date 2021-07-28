@@ -20,7 +20,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/dims_mapping_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_desc.h"
 
@@ -92,9 +91,8 @@ class OpDesc {
   void RemoveDistributedAttr(const std::string &name);
 
   void SetBlockAttr(const std::string &name, BlockDesc *block);
-  void SetDimsMappingAttr(const std::string &name,
-                          proto::DimsMappingDesc::Type type,
-                          DimsMappingDesc *mapping);
+
+  void SetProcessMeshAttr(const std::string &name, ProcessMeshDesc *mapping);
 
   void SetBlocksAttr(const std::string &name, std::vector<BlockDesc *> blocks);
 
