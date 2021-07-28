@@ -45,7 +45,7 @@ namespace pt {
 
 /**
  * Tensor is the API description of the basic data structure in the
- * [ PaddlePaddle Tensor Operation Library ].
+ * [ Paddle Tensor Operation Library ].
  *
  * It is not limited to a simple n-dimensional array.
  * It contains a smart pointer to `TensorImpl`. The data description contained

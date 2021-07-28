@@ -24,20 +24,19 @@ limitations under the License. */
 
 namespace pt {
 
-using NPUDeviceContext = paddle::platfrom::NPUDeviceContext;
+using NPUDeviceContext = paddle::platform::NPUDeviceContext;
 
 template <typename T>
 void Mean(const NPUDeviceContext& dev_ctx,
           const DenseTensor& x,
           DenseTensor* out) {
   std::vector<int> axes;
-  framework::NPUAttributeMap attr_input = {{"keep_dims", false},
-                                           {"axes", axes}};
+  paddle::framework::NPUAttributeMap attr_input = {{"keep_dims", false},
+                                                   {"axes", axes}};
   out->mutable_data<T>();
-  const auto& runner = NpuOpRunner("ReduceMeanD", {x}, {*out}, attr_input);
-  auto stream =
-      ctx.template device_context<paddle::platform::NPUDeviceContext>()
-          .stream();
+  const auto& runner =
+      paddle::operators::NpuOpRunner("ReduceMeanD", {x}, {*out}, attr_input);
+  auto stream = dev_ctx.stream();
   runner.Run(stream);
 }
 
@@ -52,11 +51,11 @@ void Scale(const NPUDeviceContext& dev_ctx,
   auto stream = dev_ctx.stream();
   float _power = 1.0;
   if (bias_after_scale) {
-    auto runner =
-        NpuOpRunner("Power",
-                    {x},
-                    {*out},
-                    {{"power", _power}, {"scale", scale}, {"shift", bias}});
+    auto runner = paddle::operators::NpuOpRunner(
+        "Power",
+        {x},
+        {*out},
+        {{"power", _power}, {"scale", scale}, {"shift", bias}});
 
     runner.Run(stream);
   } else {
@@ -64,16 +63,17 @@ void Scale(const NPUDeviceContext& dev_ctx,
         new TensorMeta(x.dims(), x.backend(), x.type(), x.layout())));
     tmp_x.mutable_data<T>();
 
-    auto runner_tmp = NpuOpRunner("Adds", {x}, {tmp_x}, {{"value", bias}});
+    auto runner_tmp =
+        paddle::operators::NpuOpRunner("Adds", {x}, {tmp_x}, {{"value", bias}});
     runner_tmp.Run(stream);
 
     out->mutable_data<T>(x.place());
     float _bias = 0.0;
-    auto runner =
-        NpuOpRunner("Power",
-                    {tmp_x},
-                    {*out},
-                    {{"power", _power}, {"scale", scale}, {"shift", _bias}});
+    auto runner = paddle::operators::NpuOpRunner(
+        "Power",
+        {tmp_x},
+        {*out},
+        {{"power", _power}, {"scale", scale}, {"shift", _bias}});
     runner.Run(stream);
   }
 }

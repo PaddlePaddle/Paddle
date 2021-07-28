@@ -108,8 +108,8 @@ REGISTER_OP_XPU_KERNEL(
 
 #ifdef PADDLE_WITH_ASCEND_CL
 REGISTER_OP_NPU_KERNEL(
-    mean, ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
+    mean, ops::MeanKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::MeanKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::MeanKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::MeanKernel<paddle::platform::NPUDeviceContext, plat::float16>)
 #endif
