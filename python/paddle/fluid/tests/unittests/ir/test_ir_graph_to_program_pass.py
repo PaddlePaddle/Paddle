@@ -136,8 +136,6 @@ class SingleGraphToProgramPass(GraphToProgramPassTest):
             self.check_op_attrs_equal(o_op, c_op)
 
 
-'''
-#TODO(jiangcheng): Open after PR33949 and PR33949 merged
 class MultiBlockGraphToProgramPass(GraphToProgramPassTest):
     def setUp(self):
         self.origin_program = self.build_program()
@@ -198,7 +196,38 @@ class MultiBlockGraphToProgramPass(GraphToProgramPassTest):
 
             self.assertEqual(o_block.idx, c_block.idx)
             self.check_block_equal(o_block, c_block)
-'''
+
+
+class WhileBlockGraphToProgramPass(MultiBlockGraphToProgramPass):
+    @staticmethod
+    def build_program():
+        program = static.Program()
+        with static.program_guard(program):
+            img = static.data(name='img', shape=[None, 784], dtype='float32')
+            label = static.data(name='label', shape=[None, 1], dtype='int64')
+
+            def cond(i, times, pred):
+                return i < times
+
+            def body(i, times, pred):
+                pred = paddle.static.nn.fc(x=pred,
+                                           size=10,
+                                           activation='softmax')
+                i = i + 1
+                return [i, times, pred]
+
+            i = paddle.zeros(shape=[1], dtype='int64')
+            times = paddle.full(shape=[1], dtype='int64', fill_value=5)
+            pred = paddle.static.nn.fc(x=img, size=10, activation='softmax')
+            i, times, pred = paddle.static.nn.while_loop(
+                cond=cond, body=body, loop_vars=[i, times, pred])
+
+            loss = paddle.nn.functional.cross_entropy(input=pred, label=label)
+            avg_loss = paddle.mean(loss)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            optimizer.minimize(avg_loss)
+        return program
+
 
 if __name__ == "__main__":
     unittest.main()
