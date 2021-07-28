@@ -33,7 +33,8 @@ def _npairs(x, n):
 class Identity(Layer):
     r"""
 
-    A placeholder identity operator that is argument-insensitive.
+    A placeholder identity operator that is argument-insensitive. For each input :math:`X` ,
+    the output :math:`Out` is:
 
     .. math::
 
@@ -49,16 +50,22 @@ class Identity(Layer):
     Examples:
         .. code-block:: python
 
-         import paddle
-         layer = paddle.nn.Identity(54)
-         input_tensor = paddle.to_tensor(paddle.randn(shape=[128, 20]))
-         input_tensor.stop_gradient=False
-         input_tensor = input_tensor+1
-         input_tensor.register_hook(lambda grad: print('input grad', grad))
-         print('input_tensor.grad', input_tensor.grad)
-         out = m(input_tensor)
-         out.backward()
-         print(out.shape, paddle.sum(input_tensor), paddle.sum(out))
+          import paddle
+          layer = paddle.nn.Identity(54)
+          input_tensor = paddle.to_tensor(paddle.randn(shape=[3, 2]))
+          input_tensor.stop_gradient=False
+          input_tensor = input_tensor+1
+          input_tensor.register_hook(lambda grad: print('input grad', grad))
+          print('input_tensor.grad', input_tensor.grad)
+          out = m(input_tensor)
+          # input_tensor: [[-0.32342386 -1.200079  ]
+          #                [ 0.7979031  -0.90978354]
+          #                [ 0.40597573  1.8095392 ]]
+          # out: [[-0.32342386 -1.200079  ]
+          #      [ 0.7979031  -0.90978354]
+          #      [ 0.40597573  1.8095392 ]]
+          out.backward()
+          print(out.shape, paddle.sum(input_tensor), paddle.sum(out))
 
     """
 
