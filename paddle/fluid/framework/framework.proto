@@ -36,7 +36,6 @@ enum AttrType {
   BLOCKS = 10;
   LONGS = 11;
   FLOAT64S = 12;
-  PROCESS_MESH = 13;
 }
 
 message ProcessMeshDesc {
@@ -68,14 +67,6 @@ message OpDesc {
     repeated double float64s = 16;
   };
 
-  message DistributedAttr {
-    required string name = 1;
-    required AttrType type = 2;
-    optional int32 i = 3;
-    repeated int32 ints = 4;
-    optional int32 process_mesh_idx = 5;
-  };
-
   message Var {
     required string parameter = 1;
     repeated string arguments = 2;
@@ -86,7 +77,6 @@ message OpDesc {
   repeated Var outputs = 2;
   repeated Attr attrs = 4;
   optional bool is_target = 5 [ default = false ];
-  repeated DistributedAttr dist_attrs = 6;
 };
 
 // OpProto describes a C++ framework::OperatorBase derived class.
@@ -185,13 +175,12 @@ message VarType {
 
 message VarDesc {
 
-  message DistributedAttr {
+  message Attr {
     required string name = 1;
     required AttrType type = 2;
     optional int32 i = 3;
     optional string s = 4;
     repeated int32 ints = 5;
-    optional int32 process_mesh_idx = 6;
   };
 
   required string name = 1;
@@ -202,7 +191,7 @@ message VarDesc {
   optional bool need_check_feed = 4 [ default = false ];
   optional bool is_parameter = 5 [ default = false ];
   optional bool stop_gradient = 6 [ default = false ];
-  repeated DistributedAttr dist_attrs = 7;
+  repeated Attr attrs = 7;
 }
 
 message BlockDesc {
