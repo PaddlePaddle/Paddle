@@ -21,6 +21,8 @@ from paddle.fluid import compiler, Program, program_guard, core
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 
 
+@OpTestTool.skip_if(core.is_compiled_with_cuda(),
+                    "CUDA required dygraph so oneDNN UT must be skipped")
 class TestExpandV2OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
