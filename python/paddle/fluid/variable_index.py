@@ -327,8 +327,6 @@ def _setitem_impl_(var, item, value):
 
             if end is None:
                 end = MAX_INTEGER if step > 0 else (0 - MAX_INTEGER)
-        elif slice_item is None:
-            continue
         else:
             raise IndexError(
                 "Valid index accept int, slice, ellipsis or None, but received {}.".
