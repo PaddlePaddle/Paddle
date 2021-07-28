@@ -78,7 +78,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
-#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
@@ -240,6 +239,7 @@ OpSupportedInfos(const std::string &place,
       {"GPU", &platform::is_gpu_place},
       {"CPU", &platform::is_cpu_place},
       {"XPU", &platform::is_xpu_place},
+      {"NPU", &platform::is_npu_place},
   };
   PADDLE_ENFORCE_NE(
       is_target_place.count(query_place), 0,
@@ -3018,6 +3018,12 @@ All parameter, weight, gradient are variables in Paddle.
            R"DOC(Allow user to customized passes. Normally model-specific
                 optimization passes should be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
+
+  m.def("_set_cached_executor_build_strategy",
+        [](int64_t program_id, const BuildStrategy &build_strategy) {
+          auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
+          cached_exe_info.SetBuildStrategy(program_id, build_strategy);
+        });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::vector<std::string> &, const std::string &,

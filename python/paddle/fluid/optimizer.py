@@ -4634,6 +4634,9 @@ class PipelineOptimizer(object):
                     op.type == 'elementwise_div'):
                 device = f"{self._device}:all"
             op._set_attr(self._op_device_key, device)
+        elif self._is_weight_decay_op(op) and op.type == 'scale':
+            # set AdamW decay_coeff to device:all
+            op._set_attr(self._op_device_key, f"{self._device}:all")
         elif op.type == "alloc_float_status":
             op._set_attr(self._op_device_key, f"{self._device}:all")
         else:
@@ -5266,6 +5269,11 @@ class PipelineOptimizer(object):
     def _is_regularization_op(self, op):
         return op.desc.has_attr("op_namescope") \
             and op.desc.attr("op_namescope").startswith("/regularization")
+
+    def _is_weight_decay_op(self, op):
+        # in AdamW namescope is /optimizer_*/weight decay/
+        return op.desc.has_attr("op_namescope") \
+            and 'weight decay' in op.desc.attr("op_namescope")
 
     def _get_input_output_info(self, block):
         '''
