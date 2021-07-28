@@ -1091,6 +1091,8 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_reader_alloc"
         if self._save_model:
             tr_cmd += " --save_model"
+        if self._fix_op_run_order:
+            tr_cmd += " --fix_op_run_order"
         if self.__use_cuda:
             tr_cmd += " --use_cuda"
             env.update({
@@ -1101,8 +1103,6 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": ep,
             })
-        if self._fix_op_run_order:
-            tr_cmd += " --fix_op_run_order"
         # TODO(liuyuhui):XPU_VISIBLE_DEVICES is not working right now,
         # will update it after Badiu Kunlun partners' support.
         elif self.__use_xpu:
