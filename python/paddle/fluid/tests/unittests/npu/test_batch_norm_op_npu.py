@@ -31,8 +31,6 @@ _set_use_system_allocator(False)
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestBatchNormOpInference(unittest.TestCase):
     def setUp(self):
         self.dtype = np.float32
@@ -124,8 +122,6 @@ class TestBatchNormOpInference(unittest.TestCase):
         pass
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
         self.dtype = np.float16
@@ -133,8 +129,6 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
         self.data_formats = ["NCHW", "NHWC"]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestBatchNormOpTraining(unittest.TestCase):
     def set_npu(self):
         self.__class__.use_npu = True
@@ -307,8 +301,6 @@ class TestBatchNormOpTraining(unittest.TestCase):
         pass
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = False
@@ -316,8 +308,6 @@ class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_momentum_variable = True
@@ -329,8 +319,6 @@ class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
         ]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = True
@@ -384,8 +372,6 @@ class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
         return y, mean_out, variance_out, mean, saved_variance, x_grad, scale_grad, bias_grad
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
         TestBatchNormOpFreezeStatsTraining):
     def init_test_case(self):
@@ -394,8 +380,6 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestDygraphBatchNormTrainableStats(unittest.TestCase):
     def test_dygraph(self):
         places = [fluid.NPUPlace(0)]
