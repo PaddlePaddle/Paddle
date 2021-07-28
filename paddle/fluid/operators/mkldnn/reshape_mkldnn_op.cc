@@ -36,9 +36,18 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto* x = ctx.Input<LoDTensor>("X");
+    auto* xshape = ctx.Output<LoDTensor>("XShape");
     auto* out = ctx.Output<LoDTensor>("Out");
 
-    auto x_dims = x->dims();
+    framework::DDim x_dims;
+    // if reshape or squeeze
+    if (ctx.Type().find("2") == std::string::npos) {
+      x_dims = x->dims();
+    } else {
+      auto xshape_dims = xshape->dims();
+      x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    }
+
     auto x_vec_dims = framework::vectorize(x_dims);
 
     framework::DDim out_dims;
@@ -210,9 +219,10 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T> {
     auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
 
     framework::DDim x_dims;
-    if (ctx.Type() != "squeeze2_grad") {
+    // if reshape or squeeze
+    if (ctx.Type().find("2") == std::string::npos) {
       x_dims = dx->dims();
-    } else if (ctx.Type() == "squeeze2_grad") {
+    } else {
       auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
       x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     }
