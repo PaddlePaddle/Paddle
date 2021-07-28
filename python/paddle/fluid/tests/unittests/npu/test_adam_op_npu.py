@@ -25,8 +25,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAdam(OpTest):
     def setUp(self):
         self.set_npu()
@@ -75,11 +73,9 @@ class TestAdam(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAdamWithEpsilonTensor(OpTest):
     def setUp(self):
         self.set_npu()
@@ -131,11 +127,61 @@ class TestAdamWithEpsilonTensor(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+class TestAdamOpWithSkipUpdate(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "adam"
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        # The second moment is positive
+        moment2 = np.random.random((102, 105)).astype("float32")
+
+        learning_rate = 0.004
+        beta1 = 0.78
+        beta2 = 0.836
+        epsilon = 1e-4
+        beta1_pow = beta1**10
+        beta2_pow = beta2**10
+
+        self.inputs = {
+            'Param': param,
+            'Grad': grad,
+            'Moment1': moment1,
+            'Moment2': moment2,
+            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
+            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
+            'Beta1Tensor': np.array([beta1]).astype("float32"),
+            'Beta2Tensor': np.array([beta2]).astype("float32"),
+            'EpsilonTensor': np.array([epsilon]).astype("float32"),
+            "SkipUpdate": np.array([True]).astype("bool"),
+        }
+
+        self.attrs = {'epsilon': epsilon}
+
+        self.outputs = {
+            'Moment1Out': moment1,
+            'Moment2Out': moment2,
+            'ParamOut': param,
+            'Beta1PowOut': self.inputs['Beta1Pow'],
+            'Beta2PowOut': self.inputs['Beta2Pow'],
+        }
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, atol=1e-5)
+
+
 class TestAdamOpWithGlobalBetaPow(OpTest):
     def setUp(self):
         self.set_npu()
@@ -190,11 +236,9 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -255,8 +299,6 @@ class TestNet(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-3))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNetWithEpsilonTensor(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

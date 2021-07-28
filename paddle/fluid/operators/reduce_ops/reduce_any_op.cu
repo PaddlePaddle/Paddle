@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_any_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
+// reduce_prod
 REGISTER_OP_CUDA_KERNEL(
-    reduce_any, ops::BoolReduceKernel<paddle::platform::CUDADeviceContext, bool,
-                                      ops::AnyFunctor>);
+    reduce_any,
+    ops::ReduceCudaKernel<bool, paddle::operators::CustomLogicalOr>);

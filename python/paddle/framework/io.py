@@ -17,14 +17,10 @@ from __future__ import print_function
 import os
 import collections
 import pickle
-import six
 import warnings
 import sys
 import numpy as np
-
-if not six.PY2:
-    import copyreg
-
+import copyreg
 import paddle
 
 # deprecated module import
@@ -233,13 +229,9 @@ def _pickle_save(obj, f, protocol):
         raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
                          format(protocol))
 
-    list_params = set()
-
     def reduce_varbase(self):
         data = self.numpy()
         name = self.name
-        if name in list_params:
-            return self.__reduce__()
 
         return (tuple, ((name, data), ))
 
@@ -249,19 +241,8 @@ def _pickle_save(obj, f, protocol):
         return (eval, ('data', {'data': data}))
 
     def reduce_Layer(self):
-        is_param_or_layer = lambda v: isinstance(v, ParamBase) or isinstance(v, core.Layer)
-
-        def collect_params(param_or_layer):
-            if isinstance(param_or_layer, ParamBase):
-                list_params.add(param_or_layer.name)
-            else:
-                # param_or_layer is layer
-                _parse_every_object(param_or_layer.__dict__, is_param_or_layer,
-                                    collect_params)
-            return param_or_layer
-
-        _parse_every_object(self.__dict__, is_param_or_layer, collect_params)
-        return self.__reduce_ex__(protocol)
+        raise ValueError(
+            "paddle do not support saving `paddle.nn.Layer` object.")
 
     dispatch_table_layer = dict()
 
@@ -296,19 +277,14 @@ def _pickle_save(obj, f, protocol):
         for i in range(0, len(pickle_bytes), max_bytes):
             f.write(pickle_bytes[i:i + max_bytes])
     else:
-        if six.PY2:
-            add_dispatch_table()
-            pickle_bytes = pickle.dump(obj, f, protocol)
-            pop_dispatch_table()
-        else:
-            pickler = pickle.Pickler(f, protocol)
-            pickler.dispatch_table = copyreg.dispatch_table.copy()
+        pickler = pickle.Pickler(f, protocol)
+        pickler.dispatch_table = copyreg.dispatch_table.copy()
 
-            pickler.dispatch_table[core.VarBase] = reduce_varbase
-            pickler.dispatch_table[core.LoDTensor] = reduce_LoDTensor
-            pickler.dispatch_table[ParamBase] = reduce_varbase
-            pickler.dispatch_table.update(dispatch_table_layer)
-            pickler.dump(obj)
+        pickler.dispatch_table[core.VarBase] = reduce_varbase
+        pickler.dispatch_table[core.LoDTensor] = reduce_LoDTensor
+        pickler.dispatch_table[ParamBase] = reduce_varbase
+        pickler.dispatch_table.update(dispatch_table_layer)
+        pickler.dump(obj)
 
 
 def _contain_x(obj, condition_func):
@@ -359,10 +335,7 @@ def _transformed_from_varbase(obj):
     # In paddle2.1 version, VarBase is saved as tuple(tensor.name, tensor.numpy()).
     # When executing paddle.load, use this function to determine whether to restore to VarBase/LoDTensor.
     if isinstance(obj, tuple) and len(obj) == 2:
-        if six.PY2:
-            name_types = (str, unicode)
-        else:
-            name_types = str
+        name_types = str
         if isinstance(obj[0], name_types) and isinstance(obj[1], np.ndarray):
             return True
     return False
@@ -579,7 +552,7 @@ def save(obj, path, protocol=4, **configs):
     Save an object to the specified path.
     
     .. note::
-        Now supports saving ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor, Program.
+        Now supports saving ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
     .. note::
         Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file, 
@@ -795,7 +768,7 @@ def load(path, **configs):
     Load an object can be used in paddle from specified path.
 
     .. note::
-        Now supports loading ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor, Program.
+        Now supports loading ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
     .. note::
         In order to use the model parameters saved by paddle more efficiently, 
@@ -947,10 +920,7 @@ def load(path, **configs):
 
     if _is_memory_buffer(path) or os.path.isfile(path):
         config = _parse_load_config(configs)
-        if six.PY2:
-            exception_type = KeyError
-        else:
-            exception_type = pickle.UnpicklingError
+        exception_type = pickle.UnpicklingError
         try:
             with _open_file_buffer(path, 'rb') as f:
                 # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
@@ -959,8 +929,7 @@ def load(path, **configs):
                 ) and sys.platform == 'darwin' and sys.version_info.major == 3:
                     load_result = _pickle_loads_mac(path, f)
                 else:
-                    load_result = pickle.load(f) if six.PY2 else pickle.load(
-                        f, encoding='latin1')
+                    load_result = pickle.load(f, encoding='latin1')
 
                 # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
                 if isinstance(load_result, dict):
@@ -1021,8 +990,7 @@ def _legacy_load(path, **configs):
     if os.path.isfile(path) or _is_memory_buffer(path):
         # we think path is file means this file is created by paddle.save
         with _open_file_buffer(path, 'rb') as f:
-            load_result = pickle.load(f) if six.PY2 else pickle.load(
-                f, encoding='latin1')
+            load_result = pickle.load(f, encoding='latin1')
         load_result = _pack_loaded_dict(load_result)
         if not config.keep_name_table and "StructuredToParameterName@@" in load_result:
             del load_result["StructuredToParameterName@@"]

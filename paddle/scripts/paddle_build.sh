@@ -79,37 +79,12 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
-    # Support build for all python versions, currently
-    # including cp27-cp27m and cp27-cp27mu.
+    # Support build for all python3 versions
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
-        if [[ "$1" == "cp27-cp27m" ]] || [[ "$1" == "" ]]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
-                export PATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/:${PATH}
-                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7
-            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
-            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib"
-                pip install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp35-cp35m" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.5" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/:${PATH}
-                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/python3
-            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
-            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
-                pip3.5 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp36-cp36m" ]; then
+        if [ "$1" == "cp36-cp36m" ] || [ "$1" == "" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
                 export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
@@ -161,42 +136,7 @@ function cmake_base() {
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
-            if [ "$1" == "cp27-cp27m" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs4/lib:}
-                export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
-                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
-            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
-            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.15-ucs2/lib/libpython2.7.so"
-                pip install -r ${PADDLE_ROOT}/python/requirements.txt
-            elif [ "$1" == "cp27-cp27mu" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs2/lib:}
-                export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
-                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
-            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
-            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.15-ucs4/lib/libpython2.7.so"
-                pip install -r ${PADDLE_ROOT}/python/requirements.txt
-            elif [ "$1" == "cp27-cp27m-gcc82" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs4/lib:}
-                export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
-                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
-            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
-            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.15-ucs2/lib/libpython2.7.so"
-                pip install -r ${PADDLE_ROOT}/python/requirements.txt
-            elif [ "$1" == "cp27-cp27mu-gcc82" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs2/lib:}
-                export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
-                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
-            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
-            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.15-ucs4/lib/libpython2.7.so"
-                pip install -r ${PADDLE_ROOT}/python/requirements.txt
-            elif [ "$1" == "cp35-cp35m" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
-                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
-            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.5.1/include/python3.5m
-            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.5.1/lib/libpython3.so"
-                pip3.5 install -r ${PADDLE_ROOT}/python/requirements.txt
-            elif [ "$1" == "cp36-cp36m" ]; then
+            if [ "$1" == "cp36-cp36m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.6.0/bin/python3
@@ -285,7 +225,11 @@ function cmake_base() {
         -DLITE_GIT_TAG=release/v2.8
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+        -DWITH_ARM=${WITH_ARM:-OFF}
+        -DWITH_ASCEND=${WITH_ASCEND:-OFF}
+        -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
+        -DON_INFER=${ON_INFER:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -322,7 +266,11 @@ EOF
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
+        -DWITH_ARM=${WITH_ARM:-OFF} \
+        -DWITH_ASCEND=${WITH_ASCEND:-OFF} \
+        -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
+        -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -403,7 +351,11 @@ function build_base() {
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
 
-    make install -j ${parallel_number};build_error=$?
+    if [ "$WITH_ARM" == "ON" ];then
+        make TARGET=ARMV8 -j ${parallel_number};build_error=$?
+    else
+        make install -j ${parallel_number};build_error=$?
+    fi
 
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -424,8 +376,11 @@ EOF
         cp -r paddle_inference_install_dir paddle_inference
         tar -czf paddle_inference.tgz paddle_inference
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
+        soLibSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
         echo "Paddle_Inference Size: $buildSize"
+        echo "Paddle_Inference Dynamic Library Size: $soLibSize"
         echo "ipipe_log_param_Paddle_Inference_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
+        echo "ipipe_log_param_Paddle_Inference_So_Size: $soLibSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     elif [ "$1" == "paddle_inference_c" ]; then
         cd ${PADDLE_ROOT}/build
         cp -r paddle_inference_c_install_dir paddle_inference_c
@@ -604,11 +559,7 @@ EOF
         set -x
 
         set +ex
-        if [ "$1" == "cp27-cp27m" ]; then
-            pip uninstall -y paddlepaddle
-        elif [ "$1" == "cp35-cp35m" ]; then
-            pip3.5 uninstall -y paddlepaddle
-        elif [ "$1" == "cp36-cp36m" ]; then
+        if [ "$1" == "cp36-cp36m" ]; then
             pip3.6 uninstall -y paddlepaddle
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 uninstall -y paddlepaddle
@@ -619,13 +570,7 @@ EOF
         fi
         set -ex
 
-        if [ "$1" == "cp27-cp27m" ]; then
-            set -e
-            pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
-            python ${PADDLE_ROOT}/paddle/scripts/installation_validate.py
-        elif [ "$1" == "cp35-cp35m" ]; then
-            pip3.5 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
-        elif [ "$1" == "cp36-cp36m" ]; then
+        if [ "$1" == "cp36-cp36m" ]; then
             pip3.6 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
@@ -675,8 +620,10 @@ EOF
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] )
                     do
+                        set +e
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}"`
+                        set -e
                         if [[ "${exec_times}" == "1" ]];then
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
@@ -831,11 +778,6 @@ function generate_api_spec() {
 
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
-    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ] || [ "$1" == "cp38-cp38" ] || [ "$1" == "cp39-cp39" ]; then
-        # Use sed to make python2 and python3 sepc keeps the same
-        sed -i 's/arg0: str/arg0: unicode/g' $spec_path
-        sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
-    fi   
     
     python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
@@ -876,6 +818,36 @@ function check_approvals_of_unittest() {
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
+                exit 6
+            fi
+        fi
+    elif [ $check_times == 3 ]; then
+        rm -f fluidInference_so_size
+        curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
+        oriBuildSize=`cat fluidInference_so_size`
+        curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
+        apt-get install -y bc
+        diffSize=$(printf "%.2f" `echo "$curBuildSize - $oriBuildSize" | bc`)
+        AllDiffSize=$(printf "%.2f" `echo "$diffSize * 4" | bc`)
+        cat <<EOF
+        ========================================
+        Original libpaddle_inference.so Size is ${oriBuildSize}M.
+        Current libpaddle_inference.so Size is ${curBuildSize}M.
+        In single gpu architecture, Growing size of libpaddle_inference.so is ${diffSize}M.
+        In release version, The gpu architecture parameter is "All", The library size is four times to single gpu architecture.
+        It means the release version library size growth is about ${AllDiffSize}M.
+        ========================================
+EOF
+        if [ `echo "20 < $AllDiffSize"|bc` -eq 1 ] ; then
+            
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 328693`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "=========================================================================================="
+                echo "This PR make the release inference library size growth exceeds 20 M."
+                echo "Then you must have one RD (Shixiaowei02 (Recommend) or Superjomn) approval for this PR\n"
+                echo "=========================================================================================="
                 exit 6
             fi
         fi
@@ -1067,6 +1039,8 @@ function card_test() {
 
     # get the CUDA device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
+        CUDA_DEVICE_COUNT=1
+    elif [ "${WITH_ASCEND_CL}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ROCM}" == "ON" ];then
         CUDA_DEVICE_COUNT=4
@@ -1297,8 +1271,10 @@ set +x
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] )
                     do
+                        set +e
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        set -e
                         if [[ "${exec_times}" == "1" ]];then
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
@@ -1427,7 +1403,6 @@ EOF
 function insert_pile_to_h_cu_diff {
     # TODO get develop h/cu md5
     cd ${PADDLE_ROOT}
-    find ${PADDLE_ROOT} -name '*.h'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
     find ${PADDLE_ROOT} -name '*.cu'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'get_h_file_md5' ${PADDLE_ROOT}
     
@@ -1447,11 +1422,10 @@ function precise_card_test_single {
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
         # c++ 
-        if [ -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
-            rm -rf ${PADDLE_ROOT}/build/ut_map/$case
+        if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
+            mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
         set -x
-        mkdir ${PADDLE_ROOT}/build/ut_map/$case
         find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
@@ -1460,7 +1434,9 @@ function precise_card_test_single {
         ls python-coverage.data.*
         if [[ $? == 0 ]]
         then
-            mkdir -p ${PADDLE_ROOT}/build/pytest/$case
+            if [ ! -d "${PADDLE_ROOT}/build/pytest/$case" ];then
+                mkdir -p ${PADDLE_ROOT}/build/pytest/$case
+            fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
         find paddle/fluid -name *.gcda | xargs rm -f #delete gcda
@@ -1571,26 +1547,38 @@ set -x
     precise_card_test_single "$single_card_tests_1" 1
     precise_card_test_single "$multiple_card_tests" 2
     precise_card_test_single "$exclusive_tests"
-
+    wait;
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
     
-    if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
-        rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
-        precise_card_test_single "$rerun_tests"
-    fi
+    #analy h/cu to Map file
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
+
     wait;
+    get_failedUts_precise_map_file
 
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
+    wait;
 
-    #analy h/cu to Map file
-    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
     #generate ut map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
-    wait;
 }
 
-
+function get_failedUts_precise_map_file {
+    if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
+        rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
+        #remove pile to full h/cu file
+        python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'remove_pile_from_h_file' ${PADDLE_ROOT}
+        cd ${PADDLE_ROOT}/build
+        cmake_base ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        pip uninstall -y paddlepaddle-gpu
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+        precise_card_test_single "$rerun_tests"
+        wait;
+        
+    fi
+}
 
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -1598,7 +1586,7 @@ function parallel_test_base_xpu() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
-    Running unit cpu tests ...
+    Running unit xpu tests ...
     ========================================
 EOF
 
@@ -1628,6 +1616,42 @@ set -x
     fi   
 }
 
+function parallel_test_base_npu() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/npu
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit npu tests ...
+    ========================================
+EOF
+
+set +x
+        ut_startTime_s=`date +%s`
+        test_cases=$(ctest -N -V) # get all test cases
+        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            if [[ "$single_card_tests" == "" ]]; then
+                single_card_tests="^$testcase$"
+            else
+                single_card_tests="$single_card_tests|^$testcase$"
+            fi
+        done <<< "$test_cases";
+        card_test "$single_card_tests" 1
+        collect_failed_tests
+set -x
+        ut_endTime_s=`date +%s`
+        echo "NPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi   
+}
+
 function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -1636,12 +1660,12 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
+    elif [ "$WITH_XPU" == "ON" ];then
+        parallel_test_base_xpu
+    elif [ "$WITH_ASCEND_CL" == "ON" ];then
+        parallel_test_base_npu
     else
-        if [ "$WITH_XPU" == "ON" ];then
-            parallel_test_base_xpu
-        else
-            parallel_test_base_cpu ${PROC_RUN:-1}
-        fi
+        parallel_test_base_cpu ${PROC_RUN:-1}
     fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
@@ -1734,70 +1758,38 @@ EOF
 
     ref_web=https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}
 
-    ref_paddle2=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp27-cp27mu-linux_x86_64.whl
-    ref_paddle35=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp35-cp35m-linux_x86_64.whl
     ref_paddle36=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp38-cp38-linux_x86_64.whl
     ref_paddle39=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp39-cp39-linux_x86_64.whl
 
-    ref_paddle2_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp27-cp27mu-linux_x86_64.whl
-    ref_paddle35_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp35-cp35m-linux_x86_64.whl
     ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp38-cp38-linux_x86_64.whl
     ref_paddle39_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp39-cp39-linux_x86_64.whl
 
     if [[ ${PADDLE_BRANCH} != "0.0.0" && ${WITH_MKL} == "ON" && ${WITH_GPU} == "ON" ]]; then
-        ref_paddle2=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp27-cp27mu-linux_x86_64.whl
-        ref_paddle35=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp35-cp35m-linux_x86_64.whl
         ref_paddle36=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp36-cp36m-linux_x86_64.whl
         ref_paddle37=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp37-cp37m-linux_x86_64.whl
         ref_paddle38=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp38-cp38-linux_x86_64.whl
         ref_paddle39=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp39-cp39-linux_x86_64.whl
-        ref_paddle2_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp27-cp27mu-linux_x86_64.whl
-        ref_paddle35_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp35-cp35m-linux_x86_64.whl
         ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp36-cp36m-linux_x86_64.whl
         ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp37-cp37m-linux_x86_64.whl
         ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp38-cp38-linux_x86_64.whl
         ref_paddle39_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp39-cp39-linux_x86_64.whl
     fi
 
-    #ref_paddle2_mv1=""
-    #ref_paddle2_mv2=""
-    ref_paddle35_mv1=""
-    ref_paddle35_mv2=""
     ref_paddle36_mv1=""
     ref_paddle36_mv2=""
-    #ref_paddle37_mv1=""
-    #ref_paddle37_mv2=""
     if [[ ${PADDLE_BRANCH} == "0.0.0" && ${WITH_GPU} == "ON" ]]; then
-        #ref_paddle2_whl=paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl
-        ref_paddle35_whl=paddlepaddle_gpu-1.5.1-cp35-cp35m-linux_x86_64.whl
         ref_paddle36_whl=paddlepaddle_gpu-1.5.1-cp36-cp36m-linux_x86_64.whl
-        #ref_paddle37_whl=paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl
-        #ref_paddle2_mv1="mv ref_paddle2 paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl &&"
-        #ref_paddle2_mv2="&& mv paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl ref_paddle2"
-        ref_paddle35_mv1="mv ${ref_paddle35} ${ref_paddle35_whl} &&"
-        ref_paddle35_mv2="&& mv ${ref_paddle35_whl} ${ref_paddle35}"
         ref_paddle36_mv1="mv ${ref_paddle36} ${ref_paddle36_whl} &&"
         ref_paddle36_mv2="&& mv ${ref_paddle36_whl} ${ref_paddle36}"
-        #ref_paddle37_mv1="mv ref_paddle37 paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl &&"
-        #ref_paddle37_mv2="&& mv paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl ref_paddle37"
     fi
     if [[ ${PADDLE_BRANCH} == "0.0.0" && ${WITH_GPU} != "ON" ]]; then
-        #ref_paddle2_whl=paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl
-        ref_paddle35_whl=paddlepaddle-1.5.1-cp35-cp35m-linux_x86_64.whl
         ref_paddle36_whl=paddlepaddle-1.5.1-cp36-cp36m-linux_x86_64.whl
-        #ref_paddle37_whl=paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl
-        #ref_paddle2_mv1="mv ref_paddle2 paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl &&"
-        #ref_paddle2_mv2="&& mv paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl ref_paddle2"
-        ref_paddle35_mv1="mv ${ref_paddle35} ${ref_paddle35_whl} &&"
-        ref_paddle35_mv2="&& mv ${ref_paddle35_whl} ${ref_paddle35}"
         ref_paddle36_mv1="mv ${ref_paddle36} ${ref_paddle36_whl} &&"
         ref_paddle36_mv2="&& mv ${ref_paddle36_whl} ${ref_paddle36}"
-        #ref_paddle37_mv1="mv ref_paddle37 paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl &&"
-        #ref_paddle37_mv2="&& mv paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl ref_paddle37"
     fi
     
     cat > ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -1822,10 +1814,9 @@ EOF
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
-    RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
-        pip3 install py-cpuinfo==5.0.0 && wget ${ref_web}/${ref_paddle35} && ${ref_paddle35_mv1} pip3 install ${ref_paddle35_whl} ${ref_paddle35_mv2}; apt-get install -f -y && \
+    RUN apt-get install -y wget libgtk2.0-dev dmidecode && \
+        apt-get install -f -y && \
         apt-get clean -y && \
-        rm -f ${ref_paddle35} && \
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
@@ -2037,7 +2028,7 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
-        python sampcd_processor.py --threads=16 --full-test gpu; example_error=$?
+        python sampcd_processor.py --threads=16 gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
@@ -2134,6 +2125,23 @@ function reuse_so_cache() {
     fi
 }
 
+function find_temporary_files() {
+    set +x
+    jsonData=`curl \
+            -H "Authorization: token ${GITHUB_API_TOKEN}"\
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/files`
+    
+    result=`echo ${jsonData}|python ${PADDLE_ROOT}/tools/check_file_suffix.py`
+    
+    if [ ${#result} -gt 0 ]
+    then
+	echo ${result}
+	exit 65
+    fi
+}
+
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2146,14 +2154,21 @@ function main() {
         set +e
         check_style_info=$(check_style)
         check_style_code=$?
+        find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         set +e
+        example_info_gpu=""
+        example_code_gpu=0
+        if [ "${WITH_GPU}" == "ON" ] ; then
+            example_info_gpu=$(exec_samplecode_test gpu)
+            example_code_gpu=$?
+        fi
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
-        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
+        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
         ;;
       build)
@@ -2193,6 +2208,7 @@ function main() {
         test_fluid_lib
         ;;
       build_inference_lib)
+        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_lib ${parallel_number}
         ;;
@@ -2221,6 +2237,7 @@ function main() {
         enable_unused_var_check
         ;;
       gpu_cicheck_coverage)
+        check_approvals_of_unittest 1
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
@@ -2248,6 +2265,7 @@ function main() {
         #test_fluid_lib_train
         #go inference test
         test_go_inference_api
+        check_approvals_of_unittest 3 
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
@@ -2276,6 +2294,12 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         ;;
+      cpu_cicheck_py35)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        ;;
+      gpu_cicheck_py35)
+        parallel_test
+        ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
@@ -2286,6 +2310,11 @@ function main() {
         check_coverage
         ;;
       check_rocm_coverage)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        check_coverage
+        ;;
+      check_npu_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage

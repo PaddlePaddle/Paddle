@@ -44,19 +44,13 @@ DIST_UT_PORT = 0
 
 
 def print_to_out(out_losses):
-    if six.PY2:
-        print(pickle.dumps(out_losses))
-    else:
-        sys.stdout.buffer.write(pickle.dumps(out_losses))
+    sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 def print_to_err(class_name, log_str):
     localtime = time.asctime(time.localtime(time.time()))
     print_str = localtime + "\t" + class_name + "\t" + log_str
-    if six.PY2:
-        sys.stderr.write(pickle.dumps(print_str))
-    else:
-        sys.stderr.buffer.write(pickle.dumps(print_str))
+    sys.stderr.buffer.write(pickle.dumps(print_str))
 
 
 def eprint(*args, **kwargs):
@@ -68,7 +62,8 @@ class TestDistRunnerBase(object):
                   batch_size=DEFAULT_BATCH_SIZE,
                   lr=0.1,
                   single_device=False,
-                  use_dgc=False):
+                  use_dgc=False,
+                  dist_strategy=None):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
@@ -100,6 +95,15 @@ class TestDistRunnerBase(object):
             sync_mode=sync_mode,
             current_endpoint=current_endpoint)
         return t
+
+    @staticmethod
+    def get_lr_scheduler(program):
+        lr_sheduler = None
+        if hasattr(program, 'lr_sheduler'):
+            from paddle.optimizer.lr import LRScheduler
+            lr_sheduler = program.lr_sheduler
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
+        return lr_sheduler
 
     def run_pserver(self, args):
         self.lr = args.lr
@@ -144,17 +148,21 @@ class TestDistRunnerBase(object):
         data_loader.start()
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
+
+        main_program = fluid.default_main_program()
+        lr_sheduler = self.get_lr_scheduler(main_program)
         for i in six.moves.xrange(RUN_STEP):
-            loss = exe.run(fluid.default_main_program(), fetch_list=[avg_cost])
+            loss = exe.run(main_program, fetch_list=[avg_cost])
             loss = loss[0] if loss else None
             out_losses.append(loss)
             print_to_err(type(self).__name__, "run step %d finished" % i)
+            if lr_sheduler is not None:
+                lr_sheduler.step()
+
+        data_loader.reset()
         print_to_err(type(self).__name__, "trainer run finished")
 
-        if six.PY2:
-            print(pickle.dumps(out_losses))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
+        sys.stdout.buffer.write(pickle.dumps(out_losses))
 
         if args.save_model:
             model_save_dir = "/tmp"
@@ -251,10 +259,7 @@ class TestDistRunnerBase(object):
         print_to_err(type(self).__name__, "trainer run finished")
         print_to_err(type(self).__name__, "dist losses: {}".format(out_losses))
 
-        if six.PY2:
-            print(pickle.dumps(out_losses))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
+        sys.stdout.buffer.write(pickle.dumps(out_losses))
 
     def run_use_fleet_api_trainer(self, args):
         assert args.update_method == "nccl2" or "bkcl"
@@ -338,10 +343,7 @@ class TestDistRunnerBase(object):
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
 
-        if six.PY2:
-            print(pickle.dumps(out_losses))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
+        sys.stdout.buffer.write(pickle.dumps(out_losses))
 
         if args.save_model:
             model_save_dir = "/tmp"
@@ -507,6 +509,7 @@ class TestDistRunnerBase(object):
             else:
                 return origin_batch
 
+        lr_scheduler = self.get_lr_scheduler(trainer_prog)
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
         for i in six.moves.xrange(RUN_STEP):
@@ -515,6 +518,9 @@ class TestDistRunnerBase(object):
                             feed=feeder.feed(get_data()))
             out_losses.append(loss[0])
             print_to_err(type(self).__name__, "run step %d finished" % i)
+            if lr_scheduler is not None:
+                lr_scheduler.step()
+
         print_to_err(type(self).__name__, "trainer run finished")
 
         print_to_out(out_losses)
@@ -1271,7 +1277,7 @@ class TestDistBase(unittest.TestCase):
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
                 "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10," \
-                "grpc_server=10,request_handler_impl=10"
+                "grpc_server=10,request_handler_impl=10,section_worker=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         required_envs.update(need_envs)

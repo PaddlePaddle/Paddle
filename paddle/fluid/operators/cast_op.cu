@@ -40,7 +40,8 @@ __global__ void VecCastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   using LoadT = AlignedVector<InT, VecSize>;
   using StoreT = AlignedVector<OutT, VecSize>;
-  for (int i = idx * VecSize; i < N; i += blockDim.x * gridDim.x * VecSize) {
+  for (int64_t i = idx * VecSize; i < N;
+       i += blockDim.x * gridDim.x * VecSize) {
     InT in_vec[VecSize];
     LoadT* in_value = reinterpret_cast<LoadT*>(&in_vec);
     *in_value = *reinterpret_cast<const LoadT*>(&in[i]);

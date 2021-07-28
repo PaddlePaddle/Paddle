@@ -22,56 +22,60 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-void run(const AnalysisConfig& config, std::vector<float>* out_data) {
+void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
 
-  int run_batch = 1;
+  int run_batch = bs;
   const int run_seq_len = 128;
+  size_t len = run_batch * run_seq_len;
 
-  std::vector<int64_t> tmp_input;
-  std::vector<float> tmp_four_input;
-  tmp_input.reserve(run_batch * run_seq_len);
-  tmp_four_input.reserve(run_batch * run_seq_len);
-
-  int64_t i0[run_seq_len] = {
+  int64_t i0_bs1[run_seq_len] = {
       1,    3558, 4,   75,  491, 89, 340, 313, 93,   4,   255,   10, 75,    321,
       4095, 1902, 4,   134, 49,  75, 311, 14,  44,   178, 543,   15, 12043, 2,
       75,   201,  340, 9,   14,  44, 486, 218, 1140, 279, 12043, 2};
-  int64_t i1[run_seq_len] = {
+  int64_t i1_bs1[run_seq_len] = {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  int64_t i2[run_seq_len] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                             10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-                             20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-                             30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
-  float i3[run_seq_len] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                           1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                           1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                           1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+  int64_t i2_bs1[run_seq_len] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                                 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                                 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+                                 30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
+  float i3_bs1[run_seq_len] = {
+      1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+      1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+      1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+  std::vector<int64_t> i0_data(len), i1_data(len), i2_data(len);
+  std::vector<float> i3_data(len);
 
+  for (size_t i = 0; i < len; i++) {
+    i0_data[i] = i0_bs1[i % run_seq_len];
+    i1_data[i] = i1_bs1[i % run_seq_len];
+    i2_data[i] = i2_bs1[i % run_seq_len];
+    i3_data[i] = i3_bs1[i % run_seq_len];
+  }
   // first input
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({run_batch, run_seq_len, 1});
-  input_t->copy_from_cpu(i0);
+  input_t->copy_from_cpu(i0_data.data());
 
   // second input
   auto input_t2 = predictor->GetInputTensor(input_names[1]);
   input_t2->Reshape({run_batch, run_seq_len, 1});
-  input_t2->copy_from_cpu(i1);
+  input_t2->copy_from_cpu(i1_data.data());
 
   // third input.
   auto input_t3 = predictor->GetInputTensor(input_names[2]);
   input_t3->Reshape({run_batch, run_seq_len, 1});
-  input_t3->copy_from_cpu(i2);
+  input_t3->copy_from_cpu(i2_data.data());
 
   auto input_t4 = predictor->GetInputTensor(input_names[3]);
   input_t4->Reshape({run_batch, run_seq_len, 1});
-  input_t4->copy_from_cpu(i3);
+  input_t4->copy_from_cpu(i3_data.data());
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 
@@ -84,8 +88,8 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   output_t->copy_to_cpu(out_data->data());
 }
 
-void trt_ernie(bool with_fp16, std::vector<float> result,
-               float near_tolerance) {
+void trt_ernie(bool with_fp16, std::vector<float> result, float near_tolerance,
+               int batch_size = 1) {
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
   SetConfig(&config, model_dir, true);
@@ -125,7 +129,7 @@ void trt_ernie(bool with_fp16, std::vector<float> result,
   config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                 opt_input_shape);
   std::vector<float> out_data;
-  run(config, &out_data);
+  run(config, &out_data, batch_size);
 
   for (size_t i = 0; i < out_data.size(); i++) {
     EXPECT_NEAR(result[i], out_data[i], near_tolerance);
@@ -141,6 +145,19 @@ TEST(AnalysisPredictor, fp16) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
   std::vector<float> result = {0.598, 0.219, 0.182};
   trt_ernie(true, result, 4e-3);
+#endif
+}
+
+TEST(AnalysisPredictor, no_fp16_bs2) {
+  std::vector<float> result = {0.597841, 0.219972, 0.182187,
+                               0.597841, 0.219972, 0.182187};
+  trt_ernie(false, result, 1e-5, 2);
+}
+
+TEST(AnalysisPredictor, fp16_bs2) {
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+  std::vector<float> result = {0.598, 0.219, 0.182, 0.598, 0.219, 0.182};
+  trt_ernie(true, result, 4e-3, 2);
 #endif
 }
 

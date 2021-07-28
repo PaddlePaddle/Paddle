@@ -195,23 +195,28 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree > 1:
             pp_optimizer = fluid.optimizer.PipelineOptimizer(
                 self.inner_opt, self._gradient_merge_acc_step)
-            main_program = loss.block.program
-            main_program._pipeline_opt = dict()
-            self.schedule_mode = self.user_defined_strategy.pipeline_configs[
-                'schedule_mode']
-            main_program._pipeline_opt['schedule_mode'] = self.schedule_mode
-            main_program._pipeline_opt[
-                'micro_batch_size'] = self.user_defined_strategy.pipeline_configs[
-                    'micro_batch_size']
+
+            strategy = self.user_defined_strategy
+            self.schedule_mode = strategy.pipeline_configs['schedule_mode']
             self.pp_rank_ = self.role_maker._worker_index() // (
                 self.sharding_degree * self.mp_degree) % self.pp_degree
-            main_program._pipeline_opt['local_rank'] = self.pp_rank_
-            main_program._pipeline_opt[
-                'global_rank'] = self.role_maker._worker_index()
-            main_program._pipeline_opt['use_sharding'] = True
+
+            pipeline_opt = dict()
+            pipeline_opt['schedule_mode'] = self.schedule_mode
+            pipeline_opt['micro_batch_size'] = strategy.pipeline_configs[
+                'micro_batch_size']
+            pipeline_opt['local_rank'] = self.pp_rank_
+            pipeline_opt['global_rank'] = self.role_maker._worker_index()
+            pipeline_opt['use_sharding'] = True
             # TODO (JZ-LIANG) should revise here for support mix parallelism with pipeline
-            main_program._pipeline_opt['ring_id'] = 20
-            main_program._pipeline_opt['global_ring_id'] = 3
+            pipeline_opt['ring_id'] = 20
+            pipeline_opt['global_ring_id'] = 3
+            pipeline_opt['mp_degree'] = self.mp_degree
+            pipeline_opt['mp_rank'] = self.role_maker._worker_index(
+            ) % self.mp_degree
+
+            main_program = loss.block.program
+            main_program._pipeline_opt = pipeline_opt
 
             optimize_ops, params_grads, program_list, self.pipeline_pair, self.pp_ring_map = pp_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set)
@@ -369,8 +374,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                   'w') as f:
             f.writelines(str(main_block.program))
 
-        if core.is_compiled_with_cuda():
-            self._wait()
+        # GPU and NPU need to wait server ready
+        self._wait()
         return optimize_ops, params_grads
 
     def _init_comm(self):
@@ -429,35 +434,31 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # pp ring
         if self.pp_degree > 1:
+            # TODO (JZ-LIANG) to unify this shit
+            assert self.pp_rank_ == self.pp_rank, "pp rank for pp opt [{}], pp rank for sharding opt [{}]".format(
+                self.pp_rank_, self.pp_rank)
+
             for pair in self.pipeline_pair:
                 pair_key = pair[0] * 1000 + pair[1]
                 ring_id = self.pp_ring_map[pair_key]
                 print("pp pair:{}, ring_id: {}".format(pair, ring_id))
-                if self.pp_rank not in pair: continue
-                pp_group_endpoints = [
-                    self.pp_group_endpoints[pair[0]],
-                    self.pp_group_endpoints[pair[1]],
-                ]
-                if pair[0] < pair[1]:
-                    start_ring_id = self.pp_ring_id + pair[1] - pair[0] - 1
-                else:
-                    start_ring_id = self.pp_ring_id + 2 + pair[0] - pair[1] - 1
-                pp_rank = 0 if self.pp_rank == pair[0] else 1
-                self._collective_helper._init_communicator(
-                    self._startup_program,
-                    self.current_endpoint,
-                    pp_group_endpoints,
-                    pp_rank,
-                    ring_id,
-                    False,
-                    global_ring_id=self.global_ring_id,
-                    sync=False)
-                # append_naive_sync(startup_block, self.startup_prog_sync_var,
-                #                   self.global_ring_id)
-
-            # TODO (JZ-LIANG) to unify this shit 
-            assert self.pp_rank_ == self.pp_rank, "pp rank for pp opt [{}], pp rank for sharding opt [{}]".format(
-                self.pp_rank_, self.pp_rank)
+                if self.pp_rank in pair:
+                    pp_group_endpoints = [
+                        self.pp_group_endpoints[pair[0]],
+                        self.pp_group_endpoints[pair[1]],
+                    ]
+                    pp_rank = 0 if self.pp_rank == pair[0] else 1
+                    self._collective_helper._init_communicator(
+                        self._startup_program,
+                        self.current_endpoint,
+                        pp_group_endpoints,
+                        pp_rank,
+                        ring_id,
+                        False,
+                        global_ring_id=self.global_ring_id,
+                        sync=False)
+                append_naive_sync(startup_block, self.startup_prog_sync_var,
+                                  self.global_ring_id)
 
         # pure dp ring
         if self.dp_degree > 1:

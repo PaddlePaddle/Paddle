@@ -25,6 +25,7 @@ import subprocess
 from contextlib import closing
 import socket
 from paddle.fluid import core
+from distutils.util import strtobool
 
 __all__ = [     #noqa
            'get_host_name_ip',
@@ -384,7 +385,7 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
         add_argument("name", str, "Jonh", "User name.", parser)
         args = parser.parse_args()
     """
-    type = distutils.util.strtobool if type == bool else type
+    type = strtobool if type == bool else type
     argparser.add_argument(
         "--" + argname,
         default=default,

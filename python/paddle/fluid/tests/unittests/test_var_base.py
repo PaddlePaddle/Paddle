@@ -192,7 +192,7 @@ class TestVarBase(unittest.TestCase):
 
                 x = paddle.to_tensor(1, dtype='int64')
                 self.assertEqual(x.item(), 1)
-                self.assertTrue(isinstance(x.item(), long if six.PY2 else int))
+                self.assertTrue(isinstance(x.item(), int))
 
                 x = paddle.to_tensor(True)
                 self.assertEqual(x.item(), True)
@@ -246,6 +246,9 @@ class TestVarBase(unittest.TestCase):
             _test_place("gpu_pinned")
             _test_place(core.CUDAPlace(0))
             _test_place("gpu:0")
+        if core.is_compiled_with_npu():
+            _test_place(core.NPUPlace(0))
+            _test_place("npu:0")
 
     def test_to_tensor_not_change_input_stop_gradient(self):
         with paddle.fluid.dygraph.guard(core.CPUPlace()):
@@ -649,6 +652,77 @@ class TestVarBase(unittest.TestCase):
             np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
         self.assertTrue(np.array_equal(local_out[16], tensor_array[-4:4]))
 
+    def _test_for_getitem_ellipsis_index(self):
+        shape = (64, 3, 5, 256)
+        np_fp32_value = np.random.random(shape).astype('float32')
+        np_int_value = np.random.randint(1, 100, shape)
+
+        var_fp32 = paddle.to_tensor(np_fp32_value)
+        var_int = paddle.to_tensor(np_int_value)
+
+        def assert_getitem_ellipsis_index(var_tensor, var_np):
+            var = [
+                var_tensor[..., 0].numpy(),
+                var_tensor[..., 1, 0].numpy(),
+                var_tensor[0, ..., 1, 0].numpy(),
+                var_tensor[1, ..., 1].numpy(),
+                var_tensor[2, ...].numpy(),
+                var_tensor[2, 0, ...].numpy(),
+                var_tensor[2, 0, 1, ...].numpy(),
+                var_tensor[...].numpy(),
+                var_tensor[:, ..., 100].numpy(),
+            ]
+
+            self.assertTrue(np.array_equal(var[0], var_np[..., 0]))
+            self.assertTrue(np.array_equal(var[1], var_np[..., 1, 0]))
+            self.assertTrue(np.array_equal(var[2], var_np[0, ..., 1, 0]))
+            self.assertTrue(np.array_equal(var[3], var_np[1, ..., 1]))
+            self.assertTrue(np.array_equal(var[4], var_np[2, ...]))
+            self.assertTrue(np.array_equal(var[5], var_np[2, 0, ...]))
+            self.assertTrue(np.array_equal(var[6], var_np[2, 0, 1, ...]))
+            self.assertTrue(np.array_equal(var[7], var_np[...]))
+            self.assertTrue(np.array_equal(var[8], var_np[:, ..., 100]))
+
+        var_fp32 = paddle.to_tensor(np_fp32_value)
+        var_int = paddle.to_tensor(np_int_value)
+
+        assert_getitem_ellipsis_index(var_fp32, np_fp32_value)
+        assert_getitem_ellipsis_index(var_int, np_int_value)
+
+    def _test_none_index(self):
+        shape = (8, 64, 5, 256)
+        np_value = np.random.random(shape).astype('float32')
+        var_tensor = paddle.to_tensor(np_value)
+
+        var = [
+            var_tensor[1, 0, None].numpy(),
+            var_tensor[None, ..., 1, 0].numpy(),
+            var_tensor[:, :, :, None].numpy(),
+            var_tensor[1, ..., 1, None].numpy(),
+            var_tensor[2, ..., None, None].numpy(),
+            var_tensor[None, 2, 0, ...].numpy(),
+            var_tensor[None, 2, None, 1].numpy(),
+            var_tensor[None].numpy(),
+            var_tensor[0, 0, None, 0, 0, None].numpy(),
+            var_tensor[0, 1:10:2, None, None, ...].numpy(),
+        ]
+
+        self.assertTrue(np.array_equal(var[0], np_value[1, 0, None]))
+        self.assertTrue(np.array_equal(var[1], np_value[None, ..., 1, 0]))
+        self.assertTrue(np.array_equal(var[2], np_value[:, :, :, None]))
+        self.assertTrue(np.array_equal(var[3], np_value[1, ..., 1, None]))
+        self.assertTrue(np.array_equal(var[4], np_value[2, ..., None, None]))
+        self.assertTrue(np.array_equal(var[5], np_value[None, 2, 0, ...]))
+        self.assertTrue(np.array_equal(var[6], np_value[None, 2, None, 1]))
+        self.assertTrue(np.array_equal(var[7], np_value[None]))
+        self.assertTrue(
+            np.array_equal(var[8], np_value[0, 0, None, 0, 0, None]))
+
+        # TODO(zyfncg) there is a bug of dimensions when slice step > 1 and 
+        #              indexs has int type 
+        # self.assertTrue(
+        #     np.array_equal(var[9], np_value[0, 1:10:2, None, None, ...]))
+
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')
         w = fluid.dygraph.to_variable(np_value)
@@ -661,6 +735,8 @@ class TestVarBase(unittest.TestCase):
             self._test_slice()
             self._test_slice_for_tensor_attr()
             self._test_for_var()
+            self._test_for_getitem_ellipsis_index()
+            self._test_none_index()
 
             var = fluid.dygraph.to_variable(self.array)
             self.assertTrue(np.array_equal(var[1, :].numpy(), self.array[1, :]))

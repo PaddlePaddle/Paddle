@@ -93,7 +93,7 @@ from .dygraph.varbase_patch_methods import monkey_patch_varbase
 from . import generator
 from .core import _cuda_synchronize
 from .generator import Generator
-from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, MultiTrainer, HeterXpuTrainer, HeterBoxTrainer
+from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, MultiTrainer, HeterXpuTrainer
 from .transpiler import HashName, RoundRobin
 from .backward import append_backward
 
@@ -262,3 +262,5 @@ monkey_patch_varbase()
 # do some clean up manually.
 if core.is_compiled_with_npu():
     atexit.register(core.npu_finalize)
+# NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
+atexit.register(core.clear_executor_cache)

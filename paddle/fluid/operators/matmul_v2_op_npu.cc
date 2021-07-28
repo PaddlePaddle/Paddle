@@ -138,10 +138,32 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
         }
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
-          const auto& runner_dy =
-              NpuOpRunner("BatchMatMul", {*x, *dout}, {*dy},
-                          {{"adj_x1", true}, {"adj_x2", false}});
-          runner_dy.Run(stream);
+          if ((x->dims().size() == 3) && (dout->dims().size() == 3) &&
+              (dy->dims().size() == 2)) {
+            framework::Tensor dout_tmp;
+            dout_tmp.ShareDataWith(*dout);
+            std::vector<int> vec_dim =
+                framework::vectorize<int>(dout_tmp.dims());
+            std::vector<int> vec_dim_v{vec_dim[0] * vec_dim[1], vec_dim[2]};
+            dout_tmp.Resize(framework::make_ddim(vec_dim_v));
+
+            framework::Tensor x_tmp;
+            x_tmp.ShareDataWith(*x);
+            std::vector<int> vec_dim_x =
+                framework::vectorize<int>(x_tmp.dims());
+            std::vector<int> vec_dim_x_v{vec_dim_x[0] * vec_dim_x[1],
+                                         vec_dim_x[2]};
+            x_tmp.Resize(framework::make_ddim(vec_dim_x_v));
+            const auto& runner_dy =
+                NpuOpRunner("MatMul", {x_tmp, dout_tmp}, {*dy},
+                            {{"transpose_x1", true}, {"transpose_x2", false}});
+            runner_dy.Run(stream);
+          } else {
+            const auto& runner_dy =
+                NpuOpRunner("BatchMatMul", {*x, *dout}, {*dy},
+                            {{"adj_x1", true}, {"adj_x2", false}});
+            runner_dy.Run(stream);
+          }
         }
       }
     }

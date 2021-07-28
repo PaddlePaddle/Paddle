@@ -141,18 +141,14 @@ class Cifar10(Dataset):
                      if self.flag in each_item.name)
 
             for name in names:
-                if six.PY2:
-                    batch = pickle.load(f.extractfile(name))
-                else:
-                    batch = pickle.load(f.extractfile(name), encoding='bytes')
+                batch = pickle.load(f.extractfile(name), encoding='bytes')
 
                 data = batch[six.b('data')]
                 labels = batch.get(
                     six.b('labels'), batch.get(six.b('fine_labels'), None))
                 assert labels is not None
                 for sample, label in six.moves.zip(data, labels):
-                    self.data.append((sample,
-                                      np.array([label]).astype('int64')))
+                    self.data.append((sample, label))
 
     def __getitem__(self, idx):
         image, label = self.data[idx]
@@ -165,9 +161,9 @@ class Cifar10(Dataset):
             image = self.transform(image)
 
         if self.backend == 'pil':
-            return image, label.astype('int64')
+            return image, np.array(label).astype('int64')
 
-        return image.astype(self.dtype), label.astype('int64')
+        return image.astype(self.dtype), np.array(label).astype('int64')
 
     def __len__(self):
         return len(self.data)

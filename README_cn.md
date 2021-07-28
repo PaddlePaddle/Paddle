@@ -19,7 +19,7 @@
 
 ## 安装
 
-### PaddlePaddle最新版本: [v2.0](https://github.com/PaddlePaddle/Paddle/tree/release/2.0)
+### PaddlePaddle最新版本: [v2.1](https://github.com/PaddlePaddle/Paddle/tree/release/2.1)
 
 跟进PaddlePaddle最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
@@ -32,7 +32,7 @@ pip install paddlepaddle-gpu
 ```
 更多安装信息详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)
 
-PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型更高效。**每日登陆即送10小时**，[前往使用免费算力](https://aistudio.baidu.com/aistudio/index)。
+PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型更高效。**每日登陆即送8小时**，[前往使用免费算力](https://aistudio.baidu.com/aistudio/index)。
 
 ## 四大领先技术
 
@@ -84,6 +84,11 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 - 欢迎您通过[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)来提交问题、报告与建议
 - QQ群: 793866180 (PaddlePaddle)
 - [论坛](https://ai.baidu.com/forum/topic/list/168): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验, 营造良好的论坛氛围
+    
+## 课程
+
+- [服务器部署](https://aistudio.baidu.com/aistudio/course/introduce/19084): 详细介绍高性能服务器端部署实操，包含本地端及服务化Serving部署等
+- [端侧部署](https://aistudio.baidu.com/aistudio/course/introduce/22690): 详细介绍端侧多场景部署实操，从移端端设备、IoT、网页到小程序部署
 
 ## 版权和许可证
 PaddlePaddle由[Apache-2.0 license](LICENSE)提供

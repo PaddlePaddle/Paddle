@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 import os
 import sys
-import six
 from io import BytesIO
 
 import paddle
@@ -38,10 +37,7 @@ SEED = 10
 IMAGE_SIZE = 784
 CLASS_NUM = 10
 
-if six.PY2:
-    LARGE_PARAM = 2**2
-else:
-    LARGE_PARAM = 2**26
+LARGE_PARAM = 2**26
 
 
 def random_batch_reader():
@@ -99,22 +95,19 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
     def test_large_parameters_paddle_save(self):
         # enable dygraph mode
         paddle.disable_static()
+        paddle.set_device("cpu")
         # create network
         layer = LayerWithLargeParameters()
         save_dict = layer.state_dict()
 
         path = os.path.join("test_paddle_save_load_large_param_save",
                             "layer.pdparams")
-        if six.PY2:
-            protocol = 2
-        else:
-            protocol = 4
+        protocol = 4
         paddle.save(save_dict, path, protocol=protocol)
-        dict_load = paddle.load(path)
+        dict_load = paddle.load(path, return_numpy=True)
         # compare results before and after saving
         for key, value in save_dict.items():
-            self.assertTrue(
-                np.array_equal(dict_load[key].numpy(), value.numpy()))
+            self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
 
 
 class TestSaveLoadPickle(unittest.TestCase):
@@ -926,9 +919,6 @@ class TestSaveLoadProgram(unittest.TestCase):
 
 class TestSaveLoadLayer(unittest.TestCase):
     def test_save_load_layer(self):
-        if six.PY2:
-            return
-
         paddle.disable_static()
         inps = paddle.randn([1, IMAGE_SIZE], dtype='float32')
         layer1 = LinearNet()
@@ -938,14 +928,8 @@ class TestSaveLoadLayer(unittest.TestCase):
         origin_layer = (layer1, layer2)
         origin = (layer1(inps), layer2(inps))
         path = "test_save_load_layer_/layer.pdmodel"
-        paddle.save(origin_layer, path)
-
-        loaded_layer = paddle.load(path)
-        loaded_result = [l(inps) for l in loaded_layer]
-        for i in range(len(origin)):
-            self.assertTrue((origin[i] - loaded_result[i]).abs().max() < 1e-10)
-            for k, v in origin_layer[i]._linear.weight.__dict__.items():
-                self.assertTrue(v == loaded_layer[i]._linear.weight.__dict__[k])
+        with self.assertRaises(ValueError):
+            paddle.save(origin_layer, path)
 
 
 if __name__ == '__main__':
