@@ -469,6 +469,8 @@ class TestDistRunnerBase(object):
         else:
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
 
+        build_stra.fix_op_run_order = args.fix_op_run_order
+
         pass_builder = None
         if args.batch_merge_repeat > 1:
             pass_builder = build_stra._finalize_strategy_and_create_passes()
@@ -735,6 +737,7 @@ def runtime_main(test_class):
         type=bool,
         default=False)
     parser.add_argument('--sync_batch_norm', action='store_true')
+    parser.add_argument('--fix_op_run_order', action='store_true')
     parser.add_argument(
         '--fuse_all_reduce',
         required=False,
@@ -812,6 +815,7 @@ class TestDistBase(unittest.TestCase):
         self._dygraph = False
         self._nccl_comm_num = 1
         self._enable_backward_deps = False
+        self._fix_op_run_order = False
         self._use_fleet_api = False
         self._use_fleet_api_20 = False
         self._use_local_sgd = False
@@ -1097,6 +1101,8 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": ep,
             })
+        if self._fix_op_run_order:
+            tr_cmd += " --fix_op_run_order"
         # TODO(liuyuhui):XPU_VISIBLE_DEVICES is not working right now,
         # will update it after Badiu Kunlun partners' support.
         elif self.__use_xpu:

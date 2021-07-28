@@ -20,6 +20,21 @@ import os
 flag_name = os.path.splitext(__file__)[0]
 
 
+class TestDistMnistNCCL2WithFixOpRunOrder(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+        self._fix_op_run_order = True
+        self._nccl2_mode = True
+
+    def test_dist_train(self):
+        self.check_with_place(
+            "dist_mnist.py",
+            delta=1e-5,
+            check_error_log=True,
+            log_name=flag_name)
+
+
 class TestDistMnist2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
