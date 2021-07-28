@@ -31,7 +31,6 @@ static std::string kSep(1, static_cast<char>(1));  // NOLINT
 
 // NOTE: VariableNameMap is sorted!
 static std::string VarNameMapToString(const VariableNameMap &var_map) {
-  std::stringstream ss;
   std::vector<std::string> tmp_strs;
   tmp_strs.reserve(var_map.size());
   for (auto &pair : var_map) {
@@ -104,14 +103,6 @@ static void AddSequentialDepsForSortedOps(
     prev_op->AddOutput(dep_var);
     cur_op->AddInput(dep_var);
   }
-}
-
-static std::vector<Node *> GetAllOpNodes(const Graph &graph) {
-  std::vector<Node *> nodes;
-  for (auto &op : FilterByNodeWrapper<details::OpHandleBase>(graph)) {
-    nodes.push_back(op->Node());
-  }
-  return nodes;
 }
 
 class FixOpRunOrderPass : public Pass {
