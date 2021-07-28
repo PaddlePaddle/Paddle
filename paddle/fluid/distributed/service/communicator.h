@@ -152,9 +152,8 @@ template <typename T>
 inline void MergeVars(const std::string &var_name,
                       const std::vector<std::shared_ptr<Variable>> &vars,
                       Scope *scope, bool merge_add = true) {
-  PADDLE_ENFORCE_NE(
-      vars.empty(), true,
-      platform::errors::InvalidArgument("vector vars are empty."));
+  PADDLE_ENFORCE_NE(vars.empty(), true, platform::errors::InvalidArgument(
+                                              "vector vars are empty."));
   auto cpu_place = platform::CPUPlace();
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
