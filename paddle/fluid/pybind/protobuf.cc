@@ -98,15 +98,15 @@ void BindProcessMeshDesc(pybind11::module *m) {
 
 void BindDimsMappingDesc(pybind11::module *m) {
   pybind11::enum_<pd::proto::DimsMappingDesc::Type>(*m, "DimsMappingType", "")
-      .value("INPUT", pd::proto::DimsMappingDesc::Type::INPUT)
-      .value("OUTPUT", pd::proto::DimsMappingDesc::Type::OUTPUT);
+      .value("INPUT", pd::proto::DimsMappingDesc::INPUT)
+      .value("OUTPUT", pd::proto::DimsMappingDesc::OUTPUT);
 
   pybind11::class_<pd::DimsMappingDesc>(*m, "DimsMappingDesc", "")
       .def(pybind11::init<const std::string &, pd::proto::DimsMappingDesc::Type,
                           const std::vector<int32_t> &>())
-      .def_property_readonly("id", &pd::ProcessMeshDesc::ID)
-      .def_property_readonly("name", &pd::ProcessMeshDesc::Name)
-      .def("dims_mapping", &pd::ProcessMeshDesc::DimsMapping);
+      .def_property_readonly("id", &pd::DimsMappingDesc::ID)
+      .def_property_readonly("name", &pd::DimsMappingDesc::Name)
+      .def("dims_mapping", &pd::DimsMappingDesc::DimsMapping);
 }
 
 void BindBlockDesc(pybind11::module *m) {
@@ -248,8 +248,7 @@ void BindOpDesc(pybind11::module *m) {
       .value("BLOCK", pd::proto::AttrType::BLOCK)
       .value("BLOCKS", pd::proto::AttrType::BLOCKS)
       .value("DIMS_MAPPING", pd::proto::AttrType::DIMS_MAPPING)
-      .value("PROCESS_MESH", pd::proto::AttrType
-             : PROCESS_MESH);
+      .value("PROCESS_MESH", pd::proto::AttrType::PROCESS_MESH);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
