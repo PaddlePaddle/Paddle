@@ -280,21 +280,21 @@ std::vector<proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
   }
 }
 
-std::vector<std::string> VarDesc::DistributedAttrNames() const {
+std::vector<std::string> VarDesc::AttrNames() const {
   std::vector<std::string> retv;
-  retv.reserve(distributed_attrs_.size());
-  for (auto &attr : distributed_attrs_) {
+  retv.reserve(attrs_.size());
+  for (auto &attr : attrs_) {
     retv.push_back(attr.first);
   }
   return retv;
 }
 
-void VarDesc::RemoveDistributedAttr(const std::string &name) {
-  distributed_attrs_.erase(name);
+void VarDesc::RemoveAttr(const std::string &name) {
+  attrs_.erase(name);
   need_update_ = true;
 }
 
-void VarDesc::SetDistributedAttr(const std::string &name, const Attribute &v) {
+void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
   // NOTICE(sandyhouse): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
   // here if we meet this issue
@@ -302,7 +302,7 @@ void VarDesc::SetDistributedAttr(const std::string &name, const Attribute &v) {
   if (attr_type == proto::AttrType::INTS &&
       BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
-    this->distributed_attrs_[name] = std::vector<int>();
+    this->attrs_[name] = std::vector<int>();
     need_update_ = true;
     return;
   }
@@ -311,12 +311,20 @@ void VarDesc::SetDistributedAttr(const std::string &name, const Attribute &v) {
   need_update_ = true;
 }
 
-Attribute VarDesc::GetDistributedAttr(const std::string &name) const {
-  auto it = distributed_attrs_.find(name);
-  PADDLE_ENFORCE_NE(
-      it, distributed_attrs_.end(),
-      platform::errors::NotFound("Attribute %s is not found.", name));
+Attribute VarDesc::GetAttr(const std::string &name) const {
+  auto it = attrs_.find(name);
+  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
+                                          "Attribute %s is not found.", name));
   return it->second;
+}
+
+Attribute VarDesc::GetNullableAttr(const std::string &name) const {
+  auto it = attrs_.find(name);
+  if (it != attrs_.end()) {
+    return it->second;
+  } else {
+    return Attribute();
+  }
 }
 
 bool operator==(const VarDesc &left, const VarDesc &right) {

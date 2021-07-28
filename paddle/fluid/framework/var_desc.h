@@ -21,6 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -138,25 +139,27 @@ class VarDesc {
     desc_.set_need_check_feed(need_check_feed);
   }
 
-  bool HasDistributedAttr(const std::string &name) const {
-    return distributed_attrs_.find(name) != distributed_attrs_.end();
+  bool HasAttr(const std::string &name) const {
+    return attrs_.find(name) != attrs_.end();
   }
 
-  std::vector<std::string> DistributedAttrNames() const;
+  std::vector<std::string> AttrNames() const;
 
-  void SetDistributedAttr(const std::string &name, const Attribute &v);
-  void RemoveDistributedAttr(const std::string &name);
+  void SetAttr(const std::string &name, const Attribute &v);
+  void RemoveAttr(const std::string &name);
 
-  Attribute GetDistributedAttr(const std::string &name) const;
+  Attribute GetAttr(const std::string &name) const;
 
   template <typename T>
-  T GetDistributedAttrIfExists(const std::string &name) const {
+  T GetAttrIfExists(const std::string &name) const {
     T result{};
-    if (HasDistributedAttr(name)) {
-      result = BOOST_GET_CONST(T, GetDistributedAttr(name));
+    if (HasAttr(name)) {
+      result = BOOST_GET_CONST(T, GetAttr(name));
     }
     return result;
   }
+
+  Attribute GetNullableAttr(const std::string &name) const;
 
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
@@ -165,7 +168,7 @@ class VarDesc {
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
   proto::VarDesc desc_;
-  AttributeMap distributed_attrs_;
+  AttributeMap attrs_;
   bool need_update_{false};
 };
 
