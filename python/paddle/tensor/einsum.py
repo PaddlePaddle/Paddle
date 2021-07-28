@@ -732,7 +732,7 @@ def einsum(equation, *operands):
     r"""
     einsum(equation, *operands)
 
-    This API should be used in dygraph only mode in the current version.
+    The current version of this API should be used in dygraph only mode.
 
     Einsum offers a tensor operation API which allows using the Einstein summation
     convention or Einstain notation. It takes as input one or multiple tensors and
