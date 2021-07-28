@@ -112,40 +112,51 @@ __device__ void elementwise_unary(const T* in, T* out) {
  *
  */
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void read_data(const T* in, T* out, int strid_in) {
+__device__ void read_data(const T* in, T* out, int stride_nx, int stride_ny) {
+  // out[NY][NX];
+  int base_offset = threadIdx.x * NX;
 #pragma unroll
-  for (int idx = 0; idx < NX; idx++) {
+  for (int idy = 0; idy < NY; idy++) {
 #pragma unroll
-    for (int idy = 0; idy < NY; idy++) {
-      out[idx + idy * NX] = in[idy + strid_in * idx];
+    for (int idx = 0; idx < NX; idx++) {
+      out[idy * NX + idx] = in[idy * stride_ny + stride_nx * idx + base_offset];
     }
   }
 }
 // broadcastLoad
-template <typename T, int Shape_Size, int VecSize>
-__device__ __forceinline__ void broadcast_read(const T* __restrict__ in, T* out,
-                                               uint32_t fix,
-                                               FastDivMod* divmoders,
-                                               uint32_t* strides) {
+template <typename T, int NX, int NY, int BS, int Shape_Size>
+__device__ __forceinline__ void broadcast_read(
+    const T* __restrict__ in, T* out, uint32_t fix, FastDivMod* divmoders,
+    uint32_t* strides, uint32_t stride_nx, uint32_t stride_ny) {
+  // NX -> VecSize
+  // out[NY][NX] ->
+  uint32_t base_offset = fix + threadIdx.x * NX;
+  uint32_t offset = 0;
 #pragma unroll
-  for (uint32_t j = 0; j < VecSize; ++j) {
-    uint32_t idx = fix + j;
-    uint32_t offset = 0;
+  for (int ny = 0; ny < NY; ++ny) {
 #pragma unroll
-    for (int i = 0; i < Shape_Size; ++i) {
-      auto fast_divmoder = divmoders[i].Divmod(idx);
-      idx = fast_divmoder.val[0];
-      offset += fast_divmoder.val[1] * strides[i];
+    for (uint32_t nx = 0; nx < NX; ++nx) {
+      uint32_t idx = base_offset + ny * stride_ny + nx * stride_nx;
+      offset = 0;
+#pragma unroll
+      for (int i = 0; i < Shape_Size; ++i) {
+        auto fast_divmoder = divmoders[i].Divmod(idx);
+        idx = fast_divmoder.val[0];
+        offset += fast_divmoder.val[1] * strides[i];
+      }
+      out[nx + ny * NX] = in[offset];
     }
-    out[j] = in[offset];
   }
 }
 
-template <typename VecType, typename T, int VecSize>
-__device__ void vectype_2_type(const VecType in, T* out) {
+template <typename VecType, typename T, int NX, int NY>
+__device__ void vectype_2_type(const VecType* in, T* out) {
 #pragma unroll
-  for (int i = 0; i < VecSize; ++i) {
-    out[i] = in.val[i];
+  for (int ny = 0; ny < NY; ++ny) {
+#pragma unroll
+    for (int nx = 0; nx < NX; ++nx) {
+      out[nx + ny * NX] = in[ny].val[nx];
+    }
   }
 }
 
@@ -153,12 +164,13 @@ __device__ void vectype_2_type(const VecType in, T* out) {
  *
  */
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void write_data(const T* in, T* out, int strid_out) {
+__device__ void write_data(const T* in, T* out, int stride_nx, int stride_ny) {
+  uint32_t base_offset = threadIdx.x * NX;
 #pragma unroll
-  for (int idx = 0; idx < NX; idx++) {
+  for (int idy = 0; idy < NY; idy++) {
 #pragma unroll
-    for (int idy = 0; idy < NY; idy++) {
-      out[idy + strid_out * idx] = in[idx + idy * NX];
+    for (int idx = 0; idx < NX; idx++) {
+      out[idy * stride_ny + idx * stride_nx + base_offset] = in[idx + idy * NX];
     }
   }
 }

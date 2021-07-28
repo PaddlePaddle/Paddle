@@ -214,7 +214,8 @@ struct BroadcastArgsWarpper {
 };
 
 template <typename InT, typename OutT, typename Functor, int Shape_Size,
-          int VecSize, ElementwiseType ET, typename BroadcastArgsWarpper>
+          int VecSize, int DATA_PER_THREAD, ElementwiseType ET,
+          typename BroadcastArgsWarpper>
 __device__ void compute(framework::Array<const InT *__restrict__, ET> in_data,
                         OutT *out, framework::Array<bool, ET> use_broadcast,
                         uint32_t out_num, BroadcastArgsWarpper config,
@@ -222,12 +223,12 @@ __device__ void compute(framework::Array<const InT *__restrict__, ET> in_data,
   using InVecType = CudaAlignedVector<InT, VecSize>;
   using OutVecType = CudaAlignedVector<OutT, VecSize>;
   OutVecType *dst = reinterpret_cast<OutVecType *>(out);
-  InVecType data[ET];
-  OutVecType result;
-  InT arg[ET][VecSize];
-  InT args[ET];
-  const InVecType *in[ET];
 
+  InVecType data[ET][DATA_PER_THREAD];
+  OutVecType result[DATA_PER_THREAD];
+  InT arg[ET][VecSize * DATA_PER_THREAD];
+  const InVecType *in[ET];
+  InT temp_in[ET];
 #pragma unroll
   for (int i = 0; i < ET; i++) {
     in[i] = reinterpret_cast<const InVecType *>(in_data[i]);
@@ -237,45 +238,61 @@ __device__ void compute(framework::Array<const InT *__restrict__, ET> in_data,
   for (int i = 0; i < ET; i++) {
     // broadcast load
     if (use_broadcast[i]) {
-      modules::broadcast_read<InT, Shape_Size, VecSize>(
+      modules::broadcast_read<InT, VecSize, DATA_PER_THREAD, 1, Shape_Size>(
           in_data[i], &arg[i][0], fix * VecSize, &config.divmoders[0],
-          &config.strides[i][0]);
+          &config.strides[i][0], 1, blockDim.x * VecSize);
     } else {
-      modules::read_data<InVecType, 1, 1, 1>(in[i] + fix, &data[i], 0);
-      modules::vectype_2_type<InVecType, InT, VecSize>(data[i], &arg[i][0]);
+      modules::read_data<InVecType, 1, DATA_PER_THREAD, 1>(in[i] + fix, data[i],
+                                                           1, blockDim.x);
+      modules::vectype_2_type<InVecType, InT, VecSize, DATA_PER_THREAD>(
+          data[i], &arg[i][0]);
     }
   }
 
 #pragma unroll
-  for (int i = 0; i < VecSize; i++) {
+  for (int i = 0; i < DATA_PER_THREAD; i++) {
 #pragma unroll
-    for (int j = 0; j < ET; ++j) {
-      args[j] = arg[j][i];
+    for (int j = 0; j < VecSize; j++) {
+      result[i].val[j] = arg[0][i * VecSize + j] + arg[1][i * VecSize + j];
     }
-    result.val[i] = static_cast<OutT>(func(args));
+  }
+
+  for (int i = 0; i < DATA_PER_THREAD; ++i) {
+#pragma unroll
+    for (int j = 0; j < VecSize; j++) {
+      for (int e = 0; e < ET; e++) {
+        temp_in[e] = arg[e][i * VecSize + j];
+      }
+      result[i].val[j] = static_cast<OutT>(func(temp_in));
+    }
   }
 
   // store
-  modules::write_data<OutVecType, 1, 1, 1>(&result, dst + fix, 0);
+  modules::write_data<OutVecType, 1, DATA_PER_THREAD, 1>(result, dst + fix, 1,
+                                                         blockDim.x);
 }
 
 template <typename InT, typename OutT, typename Functor, int Shape_Size,
-          int VecSize, ElementwiseType ET, typename BroadcastArgsWarpper>
+          int VecSize, int DATA_PER_THREAD, ElementwiseType ET,
+          typename BroadcastArgsWarpper>
 __global__ void BroadcastKernel(
     framework::Array<const InT *__restrict__, ET> in_data, OutT *out,
     framework::Array<bool, ET> use_broadcast, uint32_t out_num,
     BroadcastArgsWarpper broadcastconfig, int main_tid, int tail_tid,
     Functor func) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  if (tid < main_tid) {
-    compute<InT, OutT, Functor, Shape_Size, VecSize, ET, BroadcastArgsWarpper>(
-        in_data, out, use_broadcast, out_num, broadcastconfig, func, tid);
-  }
+  if (blockIdx.x < main_tid) {
+    int tid = blockIdx.x * blockDim.x;
+    compute<InT, OutT, Functor, Shape_Size, VecSize, DATA_PER_THREAD, ET,
+            BroadcastArgsWarpper>(in_data, out, use_broadcast, out_num,
+                                  broadcastconfig, func, tid * DATA_PER_THREAD);
 
-  if (tid < tail_tid) {
-    compute<InT, OutT, Functor, Shape_Size, 1, ET, BroadcastArgsWarpper>(
-        in_data, out, use_broadcast, out_num, broadcastconfig, func,
-        tid + main_tid * VecSize);
+  } else {
+    int loop = tail_tid - threadIdx.x;
+    for (int fix = 0; fix < loop; fix += blockDim.x) {
+      compute<InT, OutT, Functor, Shape_Size, 1, 1, ET, BroadcastArgsWarpper>(
+          in_data, out, use_broadcast, out_num, broadcastconfig, func,
+          fix + main_tid * VecSize * DATA_PER_THREAD * blockDim.x);
+    }
   }
 }
 
@@ -287,9 +304,14 @@ void LaunchBroadcastKernelForDifferentDimSize(
     int axis, Functor func) {
   int numel = out->numel();
   const int threads = 256;
-  int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
-  int main_tid = numel / VecSize;
-  int tail_tid = numel % VecSize;
+  int data_per_thread = 4;
+  int blocks =
+      ((numel + VecSize * data_per_thread - 1) / (VecSize * data_per_thread) +
+       threads - 1) /
+      threads;
+
+  int main_tid = numel / (data_per_thread * VecSize * threads);
+  int tail_tid = numel % (data_per_thread * VecSize * threads);
   auto stream = ctx.stream();
 
   const auto merge_dims = DimensionsTransform(ins, out->dims(), axis);
@@ -303,12 +325,14 @@ void LaunchBroadcastKernelForDifferentDimSize(
     in_data[i] = ins[i]->data<InT>();
     use_broadcast[i] = (ins[i]->numel() != numel);
   }
+  printf("\n@@@@@@@@@ %d %d t, b %d %d m t\n", threads, blocks, main_tid,
+         tail_tid);
 
 #define DIM_SIZE(size)                                                        \
   case size: {                                                                \
     auto broadcast_warpper =                                                  \
         BroadcastArgsWarpper<ET, size>(offset_calculator);                    \
-    BroadcastKernel<InT, OutT, Functor, size, VecSize, ET,                    \
+    BroadcastKernel<InT, OutT, Functor, size, VecSize, 4, ET,                 \
                     decltype(                                                 \
                         broadcast_warpper)><<<blocks, threads, 0, stream>>>(  \
         in_data, out_data, use_broadcast, numel, broadcast_warpper, main_tid, \

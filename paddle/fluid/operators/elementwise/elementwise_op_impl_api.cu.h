@@ -115,10 +115,10 @@ __device__ inline void Compute(const InT *__restrict__ in0,
   InVecType arg1;
   InVecType arg2;
   InT args[ET][VecSize];
-  modules::read_data<InVecType, 1, 1, 1>(src1, &arg1, 0);
-  modules::read_data<InVecType, 1, 1, 1>(src2, &arg2, 0);
-  modules::vectype_2_type<InVecType, InT, VecSize>(arg1, &args[0][0]);
-  modules::vectype_2_type<InVecType, InT, VecSize>(arg2, &args[1][0]);
+  modules::read_data<InVecType, 1, 1, 1>(src1, &arg1, 0, 0);
+  modules::read_data<InVecType, 1, 1, 1>(src2, &arg2, 0, 0);
+  modules::vectype_2_type<InVecType, InT, VecSize, 1>(&arg1, &args[0][0]);
+  modules::vectype_2_type<InVecType, InT, VecSize, 1>(&arg2, &args[1][0]);
   InT data[ET];
   OutVecType result;
 #pragma unroll
@@ -129,7 +129,7 @@ __device__ inline void Compute(const InT *__restrict__ in0,
     }
     result.val[i] = static_cast<OutT>(func(data));
   }
-  modules::write_data<OutVecType, 1, 1, 1>(&result, dst, 0);
+  modules::write_data<OutVecType, 1, 1, 1>(&result, dst, 0, 0);
 }
 
 template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
@@ -137,18 +137,18 @@ template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
 __global__ void ElementVectorized(const InT *__restrict__ in0,
                                   const InT *__restrict__ in1, OutT *out,
                                   int size, Functor func) {
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int tid = blockIdx.x * blockDim.x;
   int fix = VecSize * tid;
-  int remain = size - fix;
+  int remain = size - fix - (blockDim.x - 1) * VecSize;
   remain = remain > 0 ? remain : 0;
   if (remain >= VecSize) {
     // VectorizedKernelImpl(data, func, tid);
     Compute<ET, VecSize, InT, OutT, Functor>(in0 + fix, in1 + fix, out + fix,
                                              func);
   } else {
-    for (int i = 0; i < remain; i++) {
-      Compute<ET, 1, InT, OutT, Functor>(in0 + fix + i, in1 + fix + i,
-                                         out + fix + i, func);
+    int loop = size - fix - threadIdx.x;
+    for (int i = 0; i < loop; i += blockDim.x) {
+      Compute<ET, 1, InT, OutT, Functor>(in0 + fix, in1 + fix, out + fix, func);
     }
   }
 }
@@ -157,8 +157,8 @@ template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 __global__ void ElementScalar(const InT *__restrict__ in0,
                               const InT *__restrict__ in1, OutT *out, int size,
                               Functor func) {
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (tid < size) {
+  int tid = blockIdx.x * blockDim.x;
+  if (tid + threadIdx.x < size) {
     Compute<ET, 1, InT, OutT, Functor>(in0 + tid, in1 + tid, out + tid, func);
   }
 }
@@ -180,6 +180,7 @@ void LaunchSameDimsElementwiseCudaKernel(
   OutT *out = (*outs)[0]->data<OutT>();
   // cuda kernel
   auto stream = ctx.stream();
+  printf("\n ***** grid_size block_size %d %d\n", grid_size, block_size);
 
   switch (vec_size) {
     case 4:
