@@ -16,6 +16,7 @@ import math
 import numpy
 import warnings
 from paddle import Tensor
+from paddle.fluid.dygraph import base as imperative_base
 
 __all__ = [ #noqa
     'LRScheduler',
@@ -104,6 +105,7 @@ class LRScheduler(object):
         """
         return self.last_lr
 
+    @imperative_base.no_grad
     def step(self, epoch=None):
         """
 
@@ -284,6 +286,7 @@ class NoamDecay(LRScheduler):
         self.warmup_steps = warmup_steps
         super(NoamDecay, self).__init__(learning_rate, last_epoch, verbose)
 
+    @imperative_base.no_grad
     def get_lr(self):
         if self.last_epoch == 0:
             a = 1
@@ -377,6 +380,7 @@ class PiecewiseDecay(LRScheduler):
         super(PiecewiseDecay, self).__init__(
             last_epoch=last_epoch, verbose=verbose)
 
+    @imperative_base.no_grad
     def get_lr(self):
         for i in range(len(self.boundaries)):
             if self.last_epoch < self.boundaries[i]:
@@ -459,6 +463,7 @@ class NaturalExpDecay(LRScheduler):
         super(NaturalExpDecay, self).__init__(learning_rate, last_epoch,
                                               verbose)
 
+    @imperative_base.no_grad
     def get_lr(self):
         return self.base_lr * math.exp(-1 * self.gamma * self.last_epoch)
 
@@ -540,6 +545,7 @@ class InverseTimeDecay(LRScheduler):
         super(InverseTimeDecay, self).__init__(learning_rate, last_epoch,
                                                verbose)
 
+    @imperative_base.no_grad
     def get_lr(self):
         return self.base_lr / (1 + self.gamma * self.last_epoch)
 
@@ -648,6 +654,7 @@ class PolynomialDecay(LRScheduler):
         super(PolynomialDecay, self).__init__(learning_rate, last_epoch,
                                               verbose)
 
+    @imperative_base.no_grad
     def get_lr(self):
         tmp_epoch_num = self.last_epoch
         tmp_decay_steps = self.decay_steps
@@ -793,6 +800,7 @@ class LinearWarmup(LRScheduler):
         if isinstance(self.learning_rate, LRScheduler):
             self.learning_rate.set_state_dict(state_dict["LinearWarmup_LR"])
 
+    @imperative_base.no_grad
     def get_lr(self):
         if self.last_epoch < self.warmup_steps:
             return (self.end_lr - self.start_lr) * float(
@@ -881,6 +889,7 @@ class ExponentialDecay(LRScheduler):
         super(ExponentialDecay, self).__init__(learning_rate, last_epoch,
                                                verbose)
 
+    @imperative_base.no_grad
     def get_lr(self):
         return self.base_lr * (self.gamma**self.last_epoch)
 
@@ -988,6 +997,7 @@ class MultiStepDecay(LRScheduler):
         self.gamma = gamma
         super(MultiStepDecay, self).__init__(learning_rate, last_epoch, verbose)
 
+    @imperative_base.no_grad
     def get_lr(self):
         for i in range(len(self.milestones)):
             if self.last_epoch < self.milestones[i]:
@@ -1093,6 +1103,7 @@ class StepDecay(LRScheduler):
         self.gamma = gamma
         super(StepDecay, self).__init__(learning_rate, last_epoch, verbose)
 
+    @imperative_base.no_grad
     def get_lr(self):
         i = self.last_epoch // self.step_size
         return self.base_lr * (self.gamma**i)
@@ -1182,6 +1193,7 @@ class LambdaDecay(LRScheduler):
         self.lr_lambda = lr_lambda
         super(LambdaDecay, self).__init__(learning_rate, last_epoch, verbose)
 
+    @imperative_base.no_grad
     def get_lr(self):
         return self.base_lr * self.lr_lambda(self.last_epoch)
 
@@ -1329,6 +1341,7 @@ class ReduceOnPlateau(LRScheduler):
             'last_lr'
         ]
 
+    @imperative_base.no_grad
     def step(self, metrics, epoch=None):
         """
         step should be called after `optimizer.step()` . It will update the learning rate in optimizer according to ``metrics`` .  
@@ -1500,6 +1513,7 @@ class CosineAnnealingDecay(LRScheduler):
         super(CosineAnnealingDecay, self).__init__(learning_rate, last_epoch,
                                                    verbose)
 
+    @imperative_base.no_grad
     def get_lr(self):
         if self.last_epoch == 0:
             return self.base_lr

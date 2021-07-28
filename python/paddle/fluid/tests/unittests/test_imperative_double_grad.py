@@ -375,7 +375,7 @@ class TestDoubleGradResNetBase(TestCase):
         data = paddle.to_tensor(data)
         data.stop_gradient = False
         out = self.model(data)
-        preds = paddle.argmax(out, axis=1)
+        preds = paddle.argmax(out.detach(), axis=1)
         label_onehot = paddle.nn.functional.one_hot(
             paddle.to_tensor(preds), num_classes=out.shape[1])
         target = paddle.sum(out * label_onehot, axis=1)

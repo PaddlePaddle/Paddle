@@ -455,6 +455,10 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const std::map<std::string, std::string>& inplace_map) {
   const auto& info = op.Info();
   if (!info.dygraph_grad_op_maker_) {
+    PADDLE_THROW(platform::errors::NotFound(
+        "No grad op registered for Op: %s, please check your 'stop_gradient' "
+        "setting or your network arrangement",
+        op.Type()));
     return nullptr;
   }
 
@@ -468,7 +472,10 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     }
     return grad_node;
   } else {
-    return nullptr;
+    PADDLE_THROW(platform::errors::NotFound(
+        "No grad op registered for Op: %s, please check your 'stop_gradient' "
+        "setting or your network arrangement",
+        op.Type()));
   }
 }
 

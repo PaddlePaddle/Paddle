@@ -14,6 +14,7 @@
 
 import unittest
 import paddle.fluid as fluid
+import paddle
 import numpy as np
 
 
@@ -395,10 +396,14 @@ class TestImperativeAutoPrune(unittest.TestCase):
             label = linear(label)
             label = fluid.layers.cast(label, dtype="float32")
             label = fluid.layers.cast(label, dtype='int64')
-            out = fluid.layers.one_hot(input=label, depth=100)
-            loss = fluid.layers.mean(out)
-            loss.backward()
-            self.assertTrue(linear.weight._grad_ivar() is None)
+            try:
+                out = fluid.layers.one_hot(input=label, depth=100)
+                loss = fluid.layers.mean(out)
+                loss.backward()
+            except RuntimeError as e:
+                print("Runtime error catched: {}".format(e))
+            else:
+                raise ValueError("Has to have exception here！！")
 
     def test_case4_with_no_grad_op_maker(self):
         with fluid.dygraph.guard():
@@ -406,6 +411,19 @@ class TestImperativeAutoPrune(unittest.TestCase):
             loss = fluid.layers.mean(out)
             loss.backward()
             self.assertTrue(out._grad_ivar() is None)
+
+    def test_case4_with_empty_grad_op_maker(self):
+        with fluid.dygraph.guard():
+            try:
+                a = paddle.ones([3, 3])
+                a.stop_gradient = False
+                b = paddle.diag(a)
+                h = b.sum()
+                h.backward()
+            except RuntimeError as e:
+                print("Runtime error catched: {}".format(e))
+            else:
+                raise ValueError("Has to have exception here！！")
 
 
 if __name__ == '__main__':

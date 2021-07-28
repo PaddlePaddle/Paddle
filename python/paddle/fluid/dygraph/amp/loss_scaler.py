@@ -15,6 +15,7 @@
 from __future__ import print_function
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
+from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import _varbase_creator, _dygraph_tracer, dygraph_only
 from paddle.fluid.data_feeder import check_type
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
@@ -155,6 +156,7 @@ class AmpScaler(object):
 
         return var * self._scale
 
+    @imperative_base.no_grad
     def minimize(self, optimizer, *args, **kwargs):
         """
         This function is similar as `Optimizer.minimize()`, which performs parameters updating.
