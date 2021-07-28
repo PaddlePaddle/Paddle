@@ -46,15 +46,6 @@ message ProcessMeshDesc {
   repeated int32 process_group = 4;
 };
 
-message DistributedAttr {
-  required string name = 1;
-  required AttrType type = 2;
-  optional int32 i = 3;
-  optional string s = 4;
-  repeated int32 ints = 5;
-  optional int32 process_mesh_idx = 6;
-};
-
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
 message OpDesc {
@@ -75,6 +66,14 @@ message OpDesc {
     repeated int32 blocks_idx = 14;
     repeated int64 longs = 15;
     repeated double float64s = 16;
+  };
+
+  message DistributedAttr {
+    required string name = 1;
+    required AttrType type = 2;
+    optional int32 i = 3;
+    repeated int32 ints = 4;
+    optional int32 process_mesh_idx = 5;
   };
 
   message Var {
@@ -185,6 +184,15 @@ message VarType {
 }
 
 message VarDesc {
+
+  message DistributedAttr {
+    required string name = 1;
+    required AttrType type = 2;
+    optional int32 i = 3;
+    optional string s = 4;
+    repeated int32 ints = 5;
+    optional int32 process_mesh_idx = 6;
+  };
 
   required string name = 1;
   required VarType type = 2;
