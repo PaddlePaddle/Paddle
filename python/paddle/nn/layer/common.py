@@ -41,7 +41,8 @@ class Identity(Layer):
         Out = X
 
     Parameters:
-        Any parameters which is not used
+        args: any argument (unused)
+        kwargs: any keyword argument (unused)
 
     Shape:
         - input: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
@@ -51,21 +52,17 @@ class Identity(Layer):
         .. code-block:: python
 
           import paddle
-          layer = paddle.nn.Identity(54)
+
           input_tensor = paddle.to_tensor(paddle.randn(shape=[3, 2]))
-          input_tensor.stop_gradient=False
-          input_tensor = input_tensor+1
-          input_tensor.register_hook(lambda grad: print('input grad', grad))
-          print('input_tensor.grad', input_tensor.grad)
-          out = m(input_tensor)
+          layer = paddle.nn.Identity(54)
+          out = layer(input_tensor)
           # input_tensor: [[-0.32342386 -1.200079  ]
           #                [ 0.7979031  -0.90978354]
           #                [ 0.40597573  1.8095392 ]]
           # out: [[-0.32342386 -1.200079  ]
           #      [ 0.7979031  -0.90978354]
           #      [ 0.40597573  1.8095392 ]]
-          out.backward()
-          print(out.shape, paddle.sum(input_tensor), paddle.sum(out))
+
 
     """
 
