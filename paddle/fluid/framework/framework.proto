@@ -36,8 +36,8 @@ enum AttrType {
   BLOCKS = 10;
   LONGS = 11;
   FLOAT64S = 12;
-  IN_DIM_MAPPING = 13;
-  OUT_DIM_MAPPING = 14;
+  DIMS_MAPPING = 13;
+  PROCESS_MESH = 14;
 }
 
 message ProcessMeshDesc {
@@ -47,12 +47,25 @@ message ProcessMeshDesc {
   repeated int32 process_group = 4;
 };
 
+message DimsMappingDesc {
+  enum Type {
+    INPUT = 0;
+    OUTPUT = 1;
+  }
+
+  required string name = 1;
+  required Type type = 2;
+  repeated int32 dims_mapping = 3;
+};
+
 message DistributedAttr {
   required string name = 1;
   required AttrType type = 2;
   optional int32 i = 3;
   optional string s = 4;
   repeated int32 ints = 5;
+  repeated DimsMappingDesc dims_mapping = 6;
+  optional ProcessMeshDesc process_mesh = 7;
 };
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
