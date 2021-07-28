@@ -180,7 +180,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
 
     fw_step += 1;
     bw_step += 1;
-    VLog(2) << "micro steps fw_step:" << fw_step << ", bw_step:" << bw_step;
+    VLOG(2) << "micro steps fw_step:" << fw_step << ", bw_step:" << bw_step;
   }
 
   int reserve_bw_send_step = bw_step - 2;
@@ -188,10 +188,10 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
   while (bw_step < num_microbatches_) {
     RunBackward(bw_step, gc, unused_vars_);
     bw_step += 1;
-    VLog(2) << "micro steps  bw_step:" << bw_step;
+    VLOG(2) << "micro steps  bw_step:" << bw_step;
   }
 
-  VLog(2) << "run update";
+  VLOG(2) << "run update";
   RunUpdate(gc, unused_vars_);
 
   if (gc) {
