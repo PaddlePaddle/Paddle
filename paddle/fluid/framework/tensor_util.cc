@@ -118,7 +118,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     npu_pinned_tensor.Resize(src.dims());
     auto npu_pinned_ptr =
         npu_pinned_tensor.mutable_data(npu_pinned_place, src.type());
-    memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
+    memory::Copy(npu_pinned_place, npu_pinned_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
 
     //  2. async copy npu pinned tensor -> npu tensor
     memory::Copy(
