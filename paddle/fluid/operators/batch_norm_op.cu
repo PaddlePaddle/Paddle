@@ -27,9 +27,12 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/norm_utils.cu.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/platform/float16.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+static inline int64_t AlignUp(int64_t a, int64_t b) { return (a + b - 1) / b; }
 
 namespace paddle {
 namespace operators {
@@ -115,6 +118,684 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
           static_cast<BatchNormParamType<T>>(x[index]) - mean_val;
       y[index] = scale[i] * x_sub_mean * inv_var_val + bias[i];
     }
+  }
+}
+
+// The computation pattern is similar to column reduce of matrix.
+// Task distribution strategy:
+//    1) each thread is respondable for computation of one resultant element
+//    (ensure coalesced gloabl mem access)
+//    2) when lack paralleism degree and workload of each thread is too much,
+//    use 2D grid partition.
+void SetBNConfigForCLast(const int reduce_num, const int left_num,
+                         int *blocking_size, bool *should_reduce_again,
+                         dim3 *block_dim, dim3 *grid_dim) {
+  block_dim->z = 1;
+  grid_dim->z = 1;
+  *should_reduce_again = false;
+
+  int device_id = platform::GetCurrentDeviceId();
+  int max_mp = platform::GetCUDAMultiProcessors(device_id);
+  int max_threads_per_mp =
+      platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
+  int max_threads = max_threads_per_mp * max_mp;
+
+  int num_block = (max_threads / left_num);
+
+  if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
+    *blocking_size = detail::GetLastPow2(reduce_num / num_block);
+
+    if (*blocking_size <= 1) {
+      *blocking_size = detail::GetLastPow2(sqrt(reduce_num));
+    } else if (*blocking_size * 2 < reduce_num) {
+      *blocking_size *= 2;
+    }
+
+    *should_reduce_again = true;
+
+    block_dim->x = 32;
+    block_dim->y = 1;
+    grid_dim->x = (left_num + block_dim->x - 1) / block_dim->x;
+    grid_dim->y = (reduce_num + *blocking_size - 1) / *blocking_size;
+
+  } else {
+    block_dim->x = 32;
+    *blocking_size = reduce_num;
+    grid_dim->x = (left_num + block_dim->x - 1) / block_dim->x;
+    grid_dim->y = 1;
+  }
+}
+
+template <typename T>
+__global__ void BnFwCLastSinglePass(
+    const T *x, int reduce_num, int left_num,
+    const BatchNormParamType<T> *scale, const BatchNormParamType<T> *bias,
+    const double epsilon, double exponentialAverageFactor,
+    BatchNormParamType<T> *mean, BatchNormParamType<T> *variance,
+    BatchNormParamType<T> *saved_mean,
+    BatchNormParamType<T> *saved_inv_variance, T *y) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+  BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
+  BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
+  BatchNormParamType<T> mean_val = static_cast<BatchNormParamType<T>>(0);
+  BatchNormParamType<T> var_val = static_cast<BatchNormParamType<T>>(0);
+  BatchNormParamType<T> inv_var_val = static_cast<BatchNormParamType<T>>(0);
+
+  if (idx < left_num) {
+    for (int iy = 0; iy < reduce_num; iy++) {
+      int id = iy * left_num + idx;
+      BatchNormParamType<T> x_val = static_cast<BatchNormParamType<T>>(x[id]);
+      x_sum += x_val;
+      x_square_sum += x_val * x_val;
+    }
+
+    mean_val = x_sum / reduce_num;
+    var_val = x_square_sum / reduce_num - mean_val * mean_val;
+    inv_var_val = 1 / sqrt(var_val + epsilon);
+
+    if (saved_mean && saved_inv_variance) {
+      saved_mean[idx] = mean_val;
+      saved_inv_variance[idx] = inv_var_val;
+    }
+    mean[idx] = (1 - exponentialAverageFactor) * mean_val +
+                exponentialAverageFactor * mean[idx];
+    variance[idx] = (1 - exponentialAverageFactor) * var_val +
+                    exponentialAverageFactor * variance[idx];
+
+    for (int iy = 0; iy < reduce_num; iy++) {
+      int id = iy * left_num + idx;
+      BatchNormParamType<T> x_sub_mean =
+          static_cast<BatchNormParamType<T>>(x[id]) - mean_val;
+      y[id] = scale[idx] * x_sub_mean * inv_var_val + bias[idx];
+    }
+  }
+}
+
+template <typename T>
+__global__ void BnFwCLast2DReduce(const T *x, int reduce_num, int left_num,
+                                  int workload_per_thread, const double epsilon,
+                                  double exponentialAverageFactor,
+                                  BatchNormParamType<T> *temp_x_sum,
+                                  BatchNormParamType<T> *temp_square_sum) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idy = blockIdx.y * workload_per_thread;
+
+  T x_val;
+  BatchNormParamType<T> x_sum = 0;
+  BatchNormParamType<T> x_square_sum = 0;
+
+  if (idx < left_num) {
+    // The workload of the last bid.y may be less than workload_per_thread.
+    int loop = reduce_num - idy;
+    loop = loop > workload_per_thread ? workload_per_thread : loop;
+
+    for (int iy = 0; iy < loop; iy++) {
+      int id = (idy + iy) * left_num + idx;
+      BatchNormParamType<T> x_val = static_cast<BatchNormParamType<T>>(x[id]);
+      x_sum += x_val;
+      x_square_sum += x_val * x_val;
+    }
+    temp_x_sum[idx + blockIdx.y * left_num] = x_sum;
+    temp_square_sum[idx + blockIdx.y * left_num] = x_square_sum;
+  }
+}
+
+template <typename T>
+__global__ void BnFwCLast1DReduce(const BatchNormParamType<T> *temp_mean,
+                                  const BatchNormParamType<T> *temp_var,
+                                  int workload_per_thread, int left_num,
+                                  int global_reduce_num, const double epsilon,
+                                  double exponentialAverageFactor,
+                                  BatchNormParamType<T> *mean,
+                                  BatchNormParamType<T> *variance,
+                                  BatchNormParamType<T> *saved_mean,
+                                  BatchNormParamType<T> *saved_inv_variance) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+  BatchNormParamType<T> x_sum = 0;
+  BatchNormParamType<T> x_square_sum = 0;
+  BatchNormParamType<T> mean_val = 0;
+  BatchNormParamType<T> var_val = 0;
+  BatchNormParamType<T> inv_var_val = 0;
+
+  if (idx < left_num) {
+    for (int iy = 0; iy < workload_per_thread; iy++) {
+      int id = iy * left_num + idx;
+      x_sum += static_cast<BatchNormParamType<T>>(temp_mean[id]);
+      x_square_sum += static_cast<BatchNormParamType<T>>(temp_var[id]);
+    }
+
+    mean_val = x_sum / global_reduce_num;
+    var_val = x_square_sum / global_reduce_num - mean_val * mean_val;
+    inv_var_val = 1 / sqrt(var_val + epsilon);
+
+    if (saved_mean && saved_inv_variance) {
+      saved_mean[idx] = mean_val;
+      saved_inv_variance[idx] = inv_var_val;
+    }
+    mean[idx] = (1 - exponentialAverageFactor) * mean_val +
+                exponentialAverageFactor * mean[idx];
+    variance[idx] = (1 - exponentialAverageFactor) * var_val +
+                    exponentialAverageFactor * variance[idx];
+  }
+}
+
+template <typename T, framework::DataLayout layout>
+static __global__ void BNFwElementwiselyUpdateY(
+    const T *x, const BatchNormParamType<T> *mean,
+    const BatchNormParamType<T> *variance, const BatchNormParamType<T> *scale,
+    const BatchNormParamType<T> *bias, const int C, const int N, const int HxW,
+    const double epsilon, T *y) {
+  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  int num = N * C * HxW;
+  for (int i = gid; i < num; i += stride) {
+    const int c = layout == framework::DataLayout::kNCHW ? i / HxW % C : i % C;
+    BatchNormParamType<T> x_sub_mean =
+        static_cast<BatchNormParamType<T>>(x[i]) - mean[c];
+    y[i] = static_cast<T>(scale[c] * x_sub_mean * variance[c] + bias[c]);
+  }
+}
+
+template <typename T>
+void BNForwardTrainingCLastFastInterface(
+    gpuStream_t stream, framework::DataLayout compute_format, Tensor tensor_x,
+    const int x_numel, const int max_threads, const T *x,
+    const BatchNormParamType<T> *scale, const BatchNormParamType<T> *bias,
+    const int C, const int N, const int HxW, const double epsilon,
+    double this_factor, T *y, BatchNormParamType<T> *mean_out,
+    BatchNormParamType<T> *variance_out, BatchNormParamType<T> *saved_mean,
+    BatchNormParamType<T> *saved_inv_variance) {
+  // set configs.
+  dim3 block;
+  dim3 grid;
+  bool should_reduce_again = false;
+  int blocking_size = 1;
+  int reduce_num = N * HxW;
+  int left_num = C;
+  SetBNConfigForCLast(reduce_num, left_num, &blocking_size,
+                      &should_reduce_again, &block, &grid);
+
+  if (!should_reduce_again) {
+    BnFwCLastSinglePass<T><<<grid, block, 0, stream>>>(
+        x, reduce_num, left_num, scale, bias, epsilon, this_factor, mean_out,
+        variance_out, saved_mean, saved_inv_variance, y);
+  } else {
+    // malloc for temp memory.
+    framework::Tensor tmp_mean;
+    framework::Tensor tmp_var;
+    tmp_mean.mutable_data<BatchNormParamType<T>>(
+        framework::make_ddim({static_cast<int64_t>(
+            left_num * grid.y * sizeof(BatchNormParamType<T>))}),
+        tensor_x.place());
+
+    tmp_var.mutable_data<BatchNormParamType<T>>(
+        framework::make_ddim({static_cast<int64_t>(
+            left_num * grid.y * sizeof(BatchNormParamType<T>))}),
+        tensor_x.place());
+
+    // step-1: column reduce with 2D task distribution.
+    BnFwCLast2DReduce<T><<<grid, block, 0, stream>>>(
+        x, reduce_num, left_num, blocking_size, epsilon, this_factor,
+        tmp_mean.template data<BatchNormParamType<T>>(),
+        tmp_var.template data<BatchNormParamType<T>>());
+
+    // step-2: column reduce with 1D task distribution.
+    BnFwCLast1DReduce<T><<<grid.x, block.x, 0, stream>>>(
+        tmp_mean.template data<BatchNormParamType<T>>(),
+        tmp_var.template data<BatchNormParamType<T>>(), grid.y, left_num,
+        reduce_num, epsilon, this_factor, mean_out, variance_out, saved_mean,
+        saved_inv_variance);
+
+    // step-3: elementwisely update y:
+    // y = scale * (x - mean) / sqrt(var) + bias
+    const int block_size = 256;
+    const int grid_size = (N * C * HxW + block_size - 1) / block_size;
+    BNFwElementwiselyUpdateY<
+        T, DataLayout::kNHWC><<<grid_size, block_size, 0, stream>>>(
+        x, saved_mean, saved_inv_variance, scale, bias, C, N, HxW, epsilon, y);
+  }
+}
+
+// todo: need to rethink and refine.
+void SetBNConfigForNCHW(const int reduce_num, const int left_num,
+                        bool *should_reduce_again, dim3 *block_dim,
+                        dim3 *grid_dim) {
+  constexpr int min_reduce_num_per_thread = 16;
+  constexpr int max_reduce_num_per_thread = 256;
+  constexpr int max_num_threads = detail::kMaxThread;
+
+  int grid_num, reduce_num_per_thread;
+  block_dim->x = detail::GetBlockDim(reduce_num);
+  block_dim->y = 1;
+  grid_num = left_num;
+  reduce_num_per_thread = AlignUp(reduce_num, block_dim->x * block_dim->y);
+  int device_id = platform::GetCurrentDeviceId();
+  int max_mp = platform::GetCUDAMultiProcessors(device_id);
+  int max_threads_per_mp =
+      platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
+  int max_threads = max_threads_per_mp * max_mp;
+  int num_threads = block_dim->x * block_dim->y;
+  int max_num_blocks = max_threads / num_threads;
+
+  // set grid size.
+  // Whether to set grid.y larger than 1, there are 3 following rules:
+  // 1. The number that each thread process should no less than
+  //    min_reduce_num_per_thread but no more than max_reduce_num_per_thread;
+  // 2. It should maximize the utilization of SM.
+  // So we choose the minimum between input_split_num_1 and input_split_num_3
+  // to make each thread process as mush data as possible. Meanwhile,
+  // the number cannot be larger than max_reduce_num_per_thread, so we
+  // choose the maximum between the result above and input_split_num_2.
+  int input_split_num_1 =
+      AlignUp(reduce_num_per_thread, min_reduce_num_per_thread);
+  int input_split_num_2 =
+      AlignUp(reduce_num_per_thread, max_reduce_num_per_thread);
+  int input_split_num_3 = AlignUp(max_num_blocks, grid_num);
+
+  grid_dim->x = grid_num;
+  grid_dim->y = std::max(std::min(input_split_num_1, input_split_num_3),
+                         input_split_num_2);
+  // if grid.y > 1, we need launch another kernel again due to block sync.
+  if (grid_dim->y > 1) {
+    *should_reduce_again = true;
+  }
+}
+
+template <typename T>
+static __device__ T WarpReduce(T val) {
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, true);
+  for (int stride = detail::kWarpSize / 2; stride > 0; stride >>= 1) {
+    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+    val = (val + temp);
+  }
+  return val;
+}
+
+template <typename T>
+static __device__ T BlockXReduce(T val) {
+  using detail::kWarpSize;
+  __shared__ T shared[kWarpSize];
+  int block_dim_x = blockDim.x;
+  if (blockDim.x > kWarpSize) {
+    block_dim_x = blockDim.x / kWarpSize;
+    int lane = threadIdx.x % kWarpSize;
+    int wid = threadIdx.x / kWarpSize;
+    val = WarpReduce(val);
+    if (lane == 0) {
+      shared[wid] = val;
+    }
+    __syncthreads();
+    val = shared[lane];
+  }
+
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, true);
+  for (int stride = 1; stride < block_dim_x; stride <<= 1) {
+    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+    val = val + temp;
+  }
+  return val;
+}
+
+template <typename T>
+static __device__ T BlockYReduce(T val) {
+  __shared__ T shared_memory[detail::kMaxThread];
+  shared_memory[SharedMemoryIndex(0)] = val;
+  for (int stride = blockDim.y / 2; stride > 0; stride >>= 1) {
+    __syncthreads();
+    if (threadIdx.y < stride && threadIdx.y + stride < blockDim.y) {
+      T temp = shared_memory[SharedMemoryIndex(stride)];
+      val = val + temp;
+    }
+    shared_memory[SharedMemoryIndex(0)] = val;
+  }
+  return val;
+}
+
+struct BnNCHWIndexCalculator {
+  BnNCHWIndexCalculator(int N, int C, int HxW) {
+    CxHxW = C * HxW;
+    divmoder = FastDivMod(HxW);
+  }
+
+  __device__ inline int Get(int offset) const {
+    int index = 0;
+    auto divmod = divmoder.Divmod(offset);
+    index = divmod.val[0] * CxHxW + divmod.val[1];
+    return index;
+  }
+  int CxHxW;
+  FastDivMod divmoder;
+};
+
+template <typename Tx>
+__global__ void BnFwNCHWSinglePass(
+    const Tx *x, int reduce_num, int left_num, int C, int HxW,
+    const BatchNormParamType<Tx> *scale, const BatchNormParamType<Tx> *bias,
+    const double epsilon, double exponentialAverageFactor,
+    BatchNormParamType<Tx> *mean, BatchNormParamType<Tx> *variance,
+    BatchNormParamType<Tx> *saved_mean,
+    BatchNormParamType<Tx> *saved_inv_variance, Tx *y,
+    BnNCHWIndexCalculator bn_index_calculator) {
+  int input_idx, left_idx, stride;
+  input_idx = threadIdx.x;
+  left_idx = blockIdx.x;
+  stride = blockDim.x;
+
+  // calculate the offset, the addr where each thread really start.
+  int input_offset = left_idx * HxW;
+  const Tx *input = x + input_offset;
+
+  int CxHxW = C * HxW;
+
+  Tx x_val;
+  BatchNormParamType<Tx> mean_sum = 0;
+  BatchNormParamType<Tx> square_sum = 0;
+  BatchNormParamType<Tx> mean_val = 0;
+  BatchNormParamType<Tx> var_val = 0;
+  BatchNormParamType<Tx> inv_var_val = 0;
+  __shared__ BatchNormParamType<Tx> share_inv_var_val;
+  __shared__ BatchNormParamType<Tx> share_mean_val;
+
+  // 1. reduce for each thread
+  if (left_idx < left_num) {
+    // 1.1. load REDUCE_VEC_SIZE data once, and then compute
+    BatchNormParamType<Tx> input_reg[REDUCE_VEC_SIZE];
+    int bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
+    while (input_idx < bound) {
+#pragma unroll
+      for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
+        int reduce_idx = input_idx + i * stride;
+// int idx_x = bn_index_calculator.Get(reduce_idx);
+#if 1
+        int div = reduce_idx / (HxW);  // get batch id
+        int mod = reduce_idx % (HxW);  // get offset in HW orientation
+        int idx_x = div * CxHxW + mod;
+#endif
+        input_reg[i] = static_cast<BatchNormParamType<Tx>>(input[idx_x]);
+      }
+#pragma unroll
+      for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
+        mean_sum += input_reg[i];
+        square_sum += input_reg[i] * input_reg[i];
+      }
+      input_idx += REDUCE_VEC_SIZE * stride;
+    }
+
+    // 1.2. deal with the remain part
+    int input_idx_tmp = input_idx;
+#pragma unroll
+    for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
+      if (input_idx >= reduce_num) {
+        break;
+      }
+      int reduce_idx = input_idx;
+// int idx_x = bn_index_calculator.Get(reduce_idx);
+#if 1
+      int div = reduce_idx / (HxW);
+      int mod = reduce_idx % (HxW);
+      int idx_x = div * CxHxW + mod;
+#endif
+      input_reg[i] = static_cast<BatchNormParamType<Tx>>(input[idx_x]);
+      input_idx += stride;
+    }
+    input_idx = input_idx_tmp;
+#pragma unroll
+    for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
+      if (input_idx >= reduce_num) {
+        break;
+      }
+      mean_sum += input_reg[i];
+      square_sum += input_reg[i] * input_reg[i];
+      input_idx += stride;
+    }
+  }
+
+  // 2. reduce in block x
+  mean_sum = BlockXReduce(mean_sum);
+  square_sum = BlockXReduce(square_sum);
+
+  if (left_idx < left_num) {
+    if (threadIdx.x == 0) {
+      mean_val = mean_sum / reduce_num;
+      var_val = square_sum / reduce_num - mean_val * mean_val;
+      inv_var_val = 1 / sqrt(var_val + epsilon);
+      share_mean_val = mean_val;
+      share_inv_var_val = inv_var_val;
+
+      if (saved_mean && saved_inv_variance) {
+        saved_mean[left_idx] = mean_val;
+        saved_inv_variance[left_idx] = inv_var_val;
+      }
+      mean[left_idx] = (1 - exponentialAverageFactor) * mean_val +
+                       exponentialAverageFactor * mean[left_idx];
+      variance[left_idx] = (1 - exponentialAverageFactor) * var_val +
+                           exponentialAverageFactor * variance[left_idx];
+    }
+    __syncthreads();
+  }
+
+  // 3. loops every elements and update y.
+  input_idx = threadIdx.x;
+  Tx *output = y + input_offset;
+
+  if (left_idx < left_num) {
+    while (input_idx < reduce_num) {
+// int idx_x = bn_index_calculator.Get(input_idx);
+#if 1
+      int div = input_idx / (HxW);
+      int mod = input_idx % (HxW);
+      int idx_x = div * CxHxW + mod;
+#endif
+      BatchNormParamType<Tx> x_sub_mean =
+          static_cast<BatchNormParamType<Tx>>(input[idx_x]) - share_mean_val;
+      output[idx_x] =
+          scale[left_idx] * x_sub_mean * share_inv_var_val + bias[left_idx];
+
+      input_idx += stride;
+    }
+  }
+}
+
+template <typename Tx>
+__global__ void BnFwNCHW2DReduce(const Tx *x, int reduce_num, int left_num,
+                                 int C, int HxW, const double epsilon,
+                                 double exponentialAverageFactor,
+                                 BatchNormParamType<Tx> *temp_x_sum,
+                                 BatchNormParamType<Tx> *temp_square_sum,
+                                 BnNCHWIndexCalculator bn_index_calculator) {
+  int input_idx = blockIdx.y * blockDim.x + threadIdx.x;
+  int left_idx = blockIdx.x;
+  int stride = gridDim.y * blockDim.x;
+
+  // calculate the offset, the addr where each thread really start.
+  int input_offset = left_idx * HxW;
+  const Tx *input = x + input_offset;
+  int CxHxW = C * HxW;
+
+  Tx x_val;
+  BatchNormParamType<Tx> x_sum = 0;
+  BatchNormParamType<Tx> x_square_sum = 0;
+
+  // 1. reduce for each thread
+  if (left_idx < left_num) {
+    // 1.1. load REDUCE_VEC_SIZE data once, and then compute
+    BatchNormParamType<Tx> input_reg[REDUCE_VEC_SIZE];
+    int bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
+    while (input_idx < bound) {
+#pragma unroll
+      for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
+        int reduce_idx = input_idx + i * stride;
+// int idx_x = bn_index_calculator.Get(reduce_idx);
+#if 1
+        int div = reduce_idx / (HxW);
+        int mod = reduce_idx % (HxW);
+        int idx_x = div * CxHxW + mod;
+#endif
+        input_reg[i] = static_cast<BatchNormParamType<Tx>>(input[idx_x]);
+      }
+#pragma unroll
+      for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
+        x_sum = x_sum + input_reg[i];
+        x_square_sum = x_square_sum + input_reg[i] * input_reg[i];
+      }
+      input_idx += REDUCE_VEC_SIZE * stride;
+    }
+
+    // 1.2. deal with the remain part
+    int input_idx_tmp = input_idx;
+#pragma unroll
+    for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
+      if (input_idx >= reduce_num) {
+        break;
+      }
+      int reduce_idx = input_idx;
+// int idx_x = bn_index_calculator.Get(reduce_idx);
+#if 1
+      int div = reduce_idx / (HxW);
+      int mod = reduce_idx % (HxW);
+      int idx_x = div * CxHxW + mod;
+#endif
+      input_reg[i] = static_cast<BatchNormParamType<Tx>>(input[idx_x]);
+      input_idx += stride;
+    }
+    input_idx = input_idx_tmp;
+#pragma unroll
+    for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
+      if (input_idx >= reduce_num) {
+        break;
+      }
+      x_sum = x_sum + input_reg[i];
+      x_square_sum = x_square_sum + input_reg[i] * input_reg[i];
+      input_idx += stride;
+    }
+  }
+
+  // 2. reduce in block y
+  if (blockDim.y > 1) {
+    x_sum = BlockYReduce(x_sum);
+    x_square_sum = BlockYReduce(x_square_sum);
+  }
+  __syncthreads();
+
+  // 3. reduce in block x
+  x_sum = BlockXReduce(x_sum);
+  x_square_sum = BlockXReduce(x_square_sum);
+  if (threadIdx.x == 0) {
+    temp_x_sum[blockIdx.x + blockIdx.y * gridDim.x] = x_sum;
+    temp_square_sum[blockIdx.x + blockIdx.y * gridDim.x] = x_square_sum;
+  }
+}
+
+template <typename T>
+void BNForwardTrainingNCHWFastInterface(
+    gpuStream_t stream, framework::DataLayout compute_format, Tensor tensor_x,
+    const int x_numel, const int max_threads, const T *x,
+    const BatchNormParamType<T> *scale, const BatchNormParamType<T> *bias,
+    const int C, const int N, const int HxW, const double epsilon,
+    double this_factor, T *y, BatchNormParamType<T> *mean_out,
+    BatchNormParamType<T> *variance_out, BatchNormParamType<T> *saved_mean,
+    BatchNormParamType<T> *saved_inv_variance) {
+  // set configs.
+  dim3 block;
+  dim3 grid;
+  bool should_reduce_again = false;
+  int reduce_num = N * HxW;
+  int left_num = C;
+  SetBNConfigForNCHW(reduce_num, left_num, &should_reduce_again, &block, &grid);
+
+  auto bn_index_calculator = BnNCHWIndexCalculator(N, C, HxW);
+
+  if (!should_reduce_again) {
+    BnFwNCHWSinglePass<T><<<grid, block, 0, stream>>>(
+        x, reduce_num, left_num, C, HxW, scale, bias, epsilon, this_factor,
+        mean_out, variance_out, saved_mean, saved_inv_variance, y,
+        bn_index_calculator);
+  } else {
+    framework::Tensor tmp_mean;
+    framework::Tensor tmp_var;
+
+    tmp_mean.mutable_data<BatchNormParamType<T>>(
+        framework::make_ddim({static_cast<int64_t>(
+            left_num * grid.y * sizeof(BatchNormParamType<T>))}),
+        tensor_x.place());
+    tmp_var.mutable_data<BatchNormParamType<T>>(
+        framework::make_ddim({static_cast<int64_t>(
+            left_num * grid.y * sizeof(BatchNormParamType<T>))}),
+        tensor_x.place());
+
+    // step-1: row reduce pattern (strided row).
+    BnFwNCHW2DReduce<T><<<grid, block, 0, stream>>>(
+        x, reduce_num, left_num, C, HxW, epsilon, this_factor,
+        tmp_mean.template data<BatchNormParamType<T>>(),
+        tmp_var.template data<BatchNormParamType<T>>(), bn_index_calculator);
+
+    // step-2: column reduce.
+    int new_block = 32;
+    int new_grid = detail::AlignUp(left_num, 32);
+    BnFwCLast1DReduce<T><<<new_grid, new_block, 0, stream>>>(
+        tmp_mean.template data<BatchNormParamType<T>>(),
+        tmp_var.template data<BatchNormParamType<T>>(), grid.y, left_num,
+        reduce_num, epsilon, this_factor, mean_out, variance_out, saved_mean,
+        saved_inv_variance);
+
+    // step-3: elementwisely update y:
+    // y = scale * (x - mean) / sqrt(var) + bias
+    const int block_size = 256;
+    const int grid_size = (N * C * HxW + block_size - 1) / block_size;
+    BNFwElementwiselyUpdateY<
+        T, DataLayout::kNCHW><<<grid_size, block_size, 0, stream>>>(
+        x, saved_mean, saved_inv_variance, scale, bias, C, N, HxW, epsilon, y);
+  }
+}
+
+template <typename T>
+void BNForwardTrainingDriver(
+    gpuStream_t stream, framework::DataLayout compute_format, Tensor tensor_x,
+    const int x_numel, const int max_threads, const T *x,
+    const BatchNormParamType<T> *scale, const BatchNormParamType<T> *bias,
+    const int C, const int N, const int HxW, const double epsilon,
+    double this_factor, T *y, BatchNormParamType<T> *mean_out,
+    BatchNormParamType<T> *variance_out, BatchNormParamType<T> *saved_mean,
+    BatchNormParamType<T> *saved_variance) {
+  int reduce_num = N * HxW;
+  int left_num = C;
+  bool is_clast = (compute_format == DataLayout::kNCHW && HxW == 1) ||
+                  (compute_format == DataLayout::kNHWC);
+  bool is_large_enough = (reduce_num > REDUCE_SPLIT_BOUNDARY / 2) ||
+                         (left_num > REDUCE_SPLIT_BOUNDARY);
+
+  if (!is_large_enough) {
+    int num = x_numel;
+    const int block = 256;
+    const int max_blocks = std::max(max_threads / block, 1);
+    const int grid = std::min(C, max_blocks);
+    if (compute_format == DataLayout::kNCHW) {
+      BNForwardTraining<T, block,
+                        DataLayout::kNCHW><<<grid, block, 0, stream>>>(
+          x, scale, bias, C, N, HxW, epsilon, this_factor, y, mean_out,
+          variance_out, saved_mean, saved_variance);
+    } else {
+      BNForwardTraining<T, block,
+                        DataLayout::kNHWC><<<grid, block, 0, stream>>>(
+          x, scale, bias, C, N, HxW, epsilon, this_factor, y, mean_out,
+          variance_out, saved_mean, saved_variance);
+    }
+  } else if (is_clast) {
+    // fast impl for nhwc format.
+    BNForwardTrainingCLastFastInterface<T>(
+        stream, compute_format, tensor_x, x_numel, max_threads, x, scale, bias,
+        C, N, HxW, epsilon, this_factor, y, mean_out, variance_out, saved_mean,
+        saved_variance);
+  } else {
+    // fast impl for nchw format.
+    BNForwardTrainingNCHWFastInterface<T>(
+        stream, compute_format, tensor_x, x_numel, max_threads, x, scale, bias,
+        C, N, HxW, epsilon, this_factor, y, mean_out, variance_out, saved_mean,
+        saved_variance);
   }
 }
 
@@ -477,35 +1158,17 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         if (!called) {
 #ifdef PADDLE_WITH_HIP
           const int num = transformed_x.numel();
-          const int block = 256;
           const int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-          const int max_blocks = std::max(max_threads / block, 1);
-          const int grid = std::min(C, max_blocks);
-          if (compute_format == DataLayout::kNCHW) {
-            BNForwardTraining<
-                T, block,
-                DataLayout::kNCHW><<<grid, block, 0, dev_ctx.stream()>>>(
-                transformed_x.template data<T>(),
-                scale->template data<BatchNormParamType<T>>(),
-                bias->template data<BatchNormParamType<T>>(), C, N, H * W * D,
-                epsilon, this_factor, transformed_y.template data<T>(),
-                mean_out->template data<BatchNormParamType<T>>(),
-                variance_out->template data<BatchNormParamType<T>>(),
-                saved_mean->template data<BatchNormParamType<T>>(),
-                saved_variance->template data<BatchNormParamType<T>>());
-          } else {
-            BNForwardTraining<
-                T, block,
-                DataLayout::kNHWC><<<grid, block, 0, dev_ctx.stream()>>>(
-                transformed_x.template data<T>(),
-                scale->template data<BatchNormParamType<T>>(),
-                bias->template data<BatchNormParamType<T>>(), C, N, H * W * D,
-                epsilon, this_factor, transformed_y.template data<T>(),
-                mean_out->template data<BatchNormParamType<T>>(),
-                variance_out->template data<BatchNormParamType<T>>(),
-                saved_mean->template data<BatchNormParamType<T>>(),
-                saved_variance->template data<BatchNormParamType<T>>());
-          }
+          BNForwardTrainingDriver<T>(
+              dev_ctx.stream(), compute_format, transformed_x, num, max_threads,
+              transformed_x.template data<T>(),
+              scale->template data<BatchNormParamType<T>>(),
+              bias->template data<BatchNormParamType<T>>(), C, N, H * W * D,
+              epsilon, this_factor, transformed_y.template data<T>(),
+              mean_out->template data<BatchNormParamType<T>>(),
+              variance_out->template data<BatchNormParamType<T>>(),
+              saved_mean->template data<BatchNormParamType<T>>(),
+              saved_variance->template data<BatchNormParamType<T>>());
 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // PADDLE_ENFORCE_CUDA_SUCCESS(
