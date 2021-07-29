@@ -54,33 +54,26 @@ function compile_install_paddle {
     export WITH_TESTING=OFF
     export WITH_UNITY_BUILD=ON
     check_whl
+    cd ${cache_dir}
+    mkdir benchmark_data && cd benchmark_data
+    git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/paddlepaddle/benchmark.git
 }
 
 function prepare_data {
-    cd ${cache_dir}
-    if [ -d "benchmark_data" ];then 
-        echo -e "benchmark_data exist!"
-    else
-        mkdir benchmark_data
-        cd benchmark_data
-        mkdir dataset
-        cd dataset
-        wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/Bert.zip 
-        unzip Bert.zip
-        wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/imagenet100_data.zip
-        unzip imagenet100_data.zip
-    fi
+    cd ${cache_dir}/benchmark_data
+    mkdir dataset && cd dataset
+    wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/Bert.zip 
+    unzisetp Bert.zip
+    wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/imagenet100_data.zip
+    unzip imagenet100_data.zip
 }
 
 function run_model_benchmark {
     cd ${cache_dir}/benchmark_data
-    if [ -d "benchmark" ];then rm -rf benchmark
-    fi
-    git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/paddlepaddle/benchmark.git
     export data_path=${cache_dir}/benchmark_data/dataset
     export BENCHMARK_ROOT=${cache_dir}/benchmark_data/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
-    bash model_ci.sh
+    bash -x model_ci.sh
 }
 
 case $1 in
