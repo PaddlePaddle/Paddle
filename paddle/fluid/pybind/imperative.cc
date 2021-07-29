@@ -1858,6 +1858,32 @@ void BindImperative(py::module *m_ptr) {
            const py::args args, const py::kwargs kwargs) {
           return imperative::PyLayerApply(place, cls, args, kwargs);
         });
+#if defined(PADDLE_WITH_CUDA)
+  m.def("aync_write", [](imperative::VarBase &src, imperative::VarBase &dst,
+                         imperative::VarBase &offset,
+                         imperative::VarBase &count) {
+    auto &src_tensor = src.Var().Get<framework::LoDTensor>();
+    auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
+    auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
+    auto &count_tensor = count.Var().Get<framework::LoDTensor>();
+    const auto &deviceId = paddle::platform::GetCurrentDeviceId();
+    auto stream =
+        paddle::platform::stream::get_current_stream(deviceId)->raw_stream();
+    int64_t size = src_tensor.numel() / src_tensor.dims()[0];
+    auto *src_data = src_tensor.data<float>();
+    auto *dst_data = dst_tensor->data<float>();
+    const int64_t *offset_data = offset_tensor.data<int64_t>();
+    const int64_t *count_data = count_tensor.data<int64_t>();
+    int64_t src_offset = 0, dst_offset, c;
+    for (int64_t i = 0; i < offset_tensor.numel(); i++) {
+      dst_offset = offset_data[i], c = count_data[i];
+      cudaMemcpyAsync(
+          dst_data + (dst_offset * size), src_data + (src_offset * size),
+          c * size * sizeof(int64_t), cudaMemcpyDeviceToHost, stream);
+      src_offset += c;
+    }
+  });
+#endif
 }
 
 }  // namespace pybind
