@@ -209,7 +209,9 @@ void BindVarDsec(pybind11::module *m) {
       .value("LOD_TENSOR_ARRAY", pd::proto::VarType::LOD_TENSOR_ARRAY)
       .value("PLACE_LIST", pd::proto::VarType::PLACE_LIST)
       .value("READER", pd::proto::VarType::READER)
-      .value("RAW", pd::proto::VarType::RAW);
+      .value("RAW", pd::proto::VarType::RAW)
+      .value("STRINGS", pd::proto::VarType::STRINGS)
+      .value("MAP", pd::proto::VarType::MAP);
 }
 
 void BindOpDesc(pybind11::module *m) {

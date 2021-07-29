@@ -18,6 +18,7 @@
 #include <string>
 #include <tuple>
 #include <typeindex>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -177,8 +178,8 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId, platform::BKCLCommunicator,
 #endif
-    int, float>;
-
+    int, float, std::vector<std::string>,
+    std::unordered_map<std::wstring, int>>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -201,6 +202,8 @@ struct VarTypeTrait {
 
 // Users should set some of variable type ids to be what is defined in
 // framework.proto below
+
+using STRING_MAP = std::unordered_map<std::wstring, int>;
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
@@ -211,6 +214,8 @@ REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
 REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
+REG_PROTO_VAR_TYPE_TRAIT(std::vector<std::string>, proto::VarType::STRINGS);
+REG_PROTO_VAR_TYPE_TRAIT(STRING_MAP, proto::VarType::MAP);
 
 /** End of variable type registration */
 
