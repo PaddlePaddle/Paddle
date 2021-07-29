@@ -183,7 +183,6 @@ endif()
 
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 target_link_libraries(${DEMO_NAME} ${DEPS})
-
 if(WIN32)
   if(USE_TENSORRT)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD

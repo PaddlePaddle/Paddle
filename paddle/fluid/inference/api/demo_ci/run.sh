@@ -74,18 +74,6 @@ else
     wget -q http://paddle-inference-dist.bj.bcebos.com/word2vec.inference.model.tar.gz
     tar xzf *.tar.gz
 fi
-cd -
-
-# download resnet50 data
-mkdir -p resnet50
-cd resnet50
-if [[ -e "resnet50.tgz" ]]; then
-  echo "resnet50.tgz has been downloaded."
-else
-    wget -q https://paddle-inference-dist.bj.bcebos.com/Paddle-Inference-Demo/resnet50.tgz
-    tar xzf *.tgz
-fi
-cd -
 
 # compile and test the demo
 cd $current_dir

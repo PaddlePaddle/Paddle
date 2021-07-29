@@ -27,7 +27,6 @@ namespace demo {
 struct Record {
   std::vector<float> data;
   std::vector<int32_t> shape;
-  paddle::PaddleDType type;
 };
 
 static void split(const std::string& str, char sep,
