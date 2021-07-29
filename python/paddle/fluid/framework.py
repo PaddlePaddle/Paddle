@@ -240,6 +240,11 @@ def _static_only_(func):
     return __impl__
 
 
+def _set_pipeline_stage(stage):
+    global _current_pipeline_stage
+    _current_pipeline_stage = stage
+
+
 # NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
 # used to make Variable and VarBase has same interfaces, like numpy. Since VarBase is not exposed in our
 # official docments, logically, we want to keep VarBase and logically consistent. While, actually,
@@ -1901,11 +1906,7 @@ class Variable(object):
         Raises:
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
-        import paddle.distributed.ProcessMesh as ProcessMesh
-        if isinstance(val, ProcessMesh):
-            self.desc.set_block_attr(name, val.desc)
-        else:
-            self.desc._set_attr(name, val)
+        self.desc._set_attr(name, val)
 
     @property
     def attr_names(self):
@@ -1930,14 +1931,44 @@ class Variable(object):
         Get the process mesh belonging to this Variable.
 
         Args:
-            name(str): the attribute name.
+            None.
 
         Returns:
-            int: the process mesh index.
+            ProcessMesh: the process mesh associated with the var.
         """
         from paddle.distributed.auto_parallel.interface import g_process_mesh_map
-        mesh_id = self.attr("MESH_ID")
+        from paddle.distributed.auto_parallel.interface import ProcessMesh
+        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
+        mesh_id = self.desc.attr(mesh_attr_name)
         return g_process_mesh_map[mesh_id]
+
+    @property
+    def shard_mask(self):
+        """
+        Get shard_mask belonging to this Variable.
+
+        Args:
+            None.
+
+        Returns:
+            list(int): the shard mask associated with the var.
+        """
+        mask_attr_name = 'mask_out' + core.kAutoParallelSuffix()
+        return self.desc.attr(mask_attr_name)
+
+    @property
+    def offload_device(self):
+        """
+        Get the offload device belonging to this Variable.
+
+        Args:
+            None.
+
+        Returns:
+            string: the offload devce associated with the var.
+        """
+        offload_attr_name = 'offload_device' + core.kAutoParallelSuffix()
+        return self.desc.attr(offload_attr_name)
 
 
 def get_all_op_protos():
@@ -2138,8 +2169,8 @@ class Operator(object):
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
                             "used at the same time." % type)
-            pipeline_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix
-            op_attrs[pipeline_attr_name] = _current_pipeline_stage
+            pipeline_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix()
+            self._update_desc_attr(pipeline_attr_name, _current_pipeline_stage)
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -2623,7 +2654,8 @@ class Operator(object):
             int: the process mesh index.
         """
         from paddle.distributed.auto_parallel.interface import g_process_mesh_map
-        mesh_id = self.attr("MESH_ID")
+        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
+        mesh_id = self.attr(mesh_attr_name)
         return g_process_mesh_map[mesh_id]
 
     def dims_mapping(self, name):
@@ -2633,7 +2665,22 @@ class Operator(object):
         Args:
             name(str): the Variable name.
         """
-        return self.attr(name)
+        dims_mapping_attr_name = name + core.kAutoParallelSuffix()
+        return self.attr(dims_mapping_attr_name)
+
+    @property
+    def pipeline_stage(self):
+        """
+        Get shard_mask belonging to this Variable.
+
+        Args:
+            None.
+
+        Returns:
+            list(int): the shard mask associated with the var.
+        """
+        pipeline_stage_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix()
+        return self.desc.attr(pipeline_stage_attr_name)
 
 
 class Block(object):

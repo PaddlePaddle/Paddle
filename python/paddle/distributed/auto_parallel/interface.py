@@ -15,6 +15,7 @@
 import numpy as np
 
 import paddle.fluid.core as core
+import paddle
 
 __all__ = []
 
@@ -25,14 +26,14 @@ def _append_attr_suffix(name):
     """
     Append Auto Parallel Suffix for distributed attribute.
     """
-    return name + core.kAutoParallelSuffix
+    return name + core.kAutoParallelSuffix()
 
 
 def _remove_attr_suffix(name):
     """
     Remove Auto Parallel Suffix for distributed attribute.
     """
-    return name.strip(core.kAutoParallelSuffix)
+    return name.strip(core.kAutoParallelSuffix())
 
 
 class ProcessMesh(object):
@@ -142,11 +143,11 @@ def set_shard_mask(tensor, mask_out):
     """
     validate_check()
     attr_name = _append_attr_suffix('mask_out')
-    tensor._set_attr(attr_name, mask)
+    tensor._set_attr(attr_name, mask_out)
     return tensor
 
 
-def shard_op(fn_call, mesh, input_dims_mapping, output_dims_mapping):
+def shard_op(fn_call, mesh, input_dims_mapping=None, output_dims_mapping=None):
     """
     Add distributed attributes for ops.
     Inputs:
@@ -164,10 +165,14 @@ def shard_op(fn_call, mesh, input_dims_mapping, output_dims_mapping):
     op = main_block.ops[op_size - 1]
     attr_name = _append_attr_suffix('mesh_id')
     op._set_attr(attr_name, mesh.id)
+    if input_dims_mapping is None: input_dims_mapping = []
+    if output_dims_mapping is None: output_dims_mapping = []
     for name in input_dims_mapping:
-        op._set_attr(name, input_dims_mapping[name])
+        attr_name = _append_attr_suffix(name)
+        op._set_attr(attr_name, input_dims_mapping[name])
     for name in output_dims_mapping:
-        op._set_attr(name, output_dims_mapping[name])
+        attr_name = _append_attr_suffix(name)
+        op._set_attr(attr_name, output_dims_mapping[name])
 
 
 def set_offload_device(tensor, dst_device):
@@ -181,6 +186,7 @@ def set_offload_device(tensor, dst_device):
     """
     attr_name = _append_attr_suffix("offload_device")
     tensor._set_attr(attr_name, dst_device)
+    return tensor
 
 
 def set_pipeline_stage(stage):
@@ -191,5 +197,5 @@ def set_pipeline_stage(stage):
     Returns:
         None.
     """
-    from paddle.fluid.framework import _current_pipeline_stage
-    _current_pipeline_stage = stage
+    from paddle.fluid.framework import _set_pipeline_stage
+    _set_pipeline_stage(stage)
