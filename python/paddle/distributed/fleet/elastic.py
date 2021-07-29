@@ -80,8 +80,10 @@ class LauncherInterface(object):
             if ret is None:
                 alive = True
             elif ret != 0:
-                logger.error("ERROR rank {} error with code {}".format(p.rank,
-                                                                       ret))
+                logger.error("ABORT!!! ABORT!!! ABORT!!!")
+                logger.error(
+                    "ERROR rank {} error with exit code {}, check log for detail.".
+                    format(p.rank, ret))
                 result = ret
         if not alive and result is None:
             return 0
