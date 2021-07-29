@@ -741,7 +741,7 @@ void BNForwardTrainingNCHWFastInterface(
         reduce_num, epsilon, this_factor, mean_out, variance_out, saved_mean,
         saved_inv_variance);
 
-    // step-3: elementwisely update y:
+    // step-3: elementwisely update y.
     // y = scale * (x - mean) / sqrt(var) + bias
     const int block_size = 256;
     const int grid_size = (N * C * HxW + block_size - 1) / block_size;
