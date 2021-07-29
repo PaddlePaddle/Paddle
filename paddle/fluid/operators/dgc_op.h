@@ -27,14 +27,38 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, typename Enable = void>
+template <typename T>
+struct CudaMulAfterTwiceAddFunctor {
+ public:
+  explicit CudaAddBeforeMulFunctor(float m) : _m(m) {}
+  inline HOSTDEVICE T operator()(const T* args) const {
+    return _m * (args[0] + args[1]);
+  }
+
+ private:
+  float _m;
+};
+
+template <typename T>
+struct CudaMulBeforeAddFunctor {
+ public:
+  explicit CudaMulBeforeAddFunctor(float m) : _m(m) {}
+  inline HOSTDEVICE T operator()(const T* args) const {
+    return _m * args[0] + args[1];
+  }
+
+ private:
+  float _m;
+};
+
+template <typename T>
 struct CudaTwiceAddFunctor {
   inline HOSTDEVICE T operator()(const T* args) const {
     return args[0] + args[1] + args[2];
   }
 };
 
-template <typename T, typename Enable = void>
+template <typename T>
 struct CudaAddFunctor {
   inline HOSTDEVICE T operator()(const T* args) const {
     return args[0] + args[1];
@@ -166,25 +190,39 @@ class DGCOpKernel : public framework::OpKernel<T> {
     //     static_cast<int>(rampup_begin_step)) {
     //   u_out_e.device(eigen_ctx) = (1.0 / nranks) * u_e;
     // }
+
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-      std::vector<const framework::Tensor*> ins = {u, v};
-      std::vector<framework::Tensor*> outs = {v_out};
+      std::vector<const framework::Tensor*> ins = {u, grad_out};
+      std::vector<framework::Tensor*> outs = {u_out};
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
+
       if (use_nesterov) {
         // u = m * (u + g)
-        u_out_e.device(eigen_ctx) = m * (u_e + grad_out_e);
+        // u_out_e.device(eigen_ctx) = m * (u_e + grad_out_e);
+        auto add_before_mul_func = CudaAddBeforeMulFunctor<T>(m);
+        LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+            cuda_ctx, ins, &outs, -1, add_before_mul_func);
 
         // v = u + v + g
-        ins.emplace_back(g);
+        outs.pop_back();
+        outs.emplace_back(v_out);
+        ins.pop_back();
+        ins.insert(ins.end(), {v, g});
         LaunchElementwiseCudaKernel<ElementwiseType::kTernary, T, T>(
             cuda_ctx, ins, &outs, 0, CudaTwiceAddFunctor<T>());
       } else {
         // u = m * u + g
-        u_out_e.device(eigen_ctx) = m * u_e + grad_out_e;
+        // u_out_e.device(eigen_ctx) = m * u_e + grad_out_e;
+        auto mul_before_add_func = CudaMulBeforeAddFunctor<T>(m);
+        LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+            cuda_ctx, ins, &outs, 0, mul_before_add_func);
 
-        // v = u + v
+        outs.pop_back();
+        outs.emplace_back(v_out);
+        ins.pop_back();
+        ins.emplace_back(v);
         LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
             cuda_ctx, ins, &outs, 0, CudaAddFunctor<T>());
       }
