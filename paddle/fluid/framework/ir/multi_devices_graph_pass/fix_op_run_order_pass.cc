@@ -170,8 +170,8 @@ class FixOpRunOrderPass : public Pass {
       }
     }
 
-    VLOG(10) << "Found unchanged OpDesc " << op_to_idx.size() << ", new OpDesc "
-             << new_op_desc_nodes.size() << ", new OpHandle "
+    VLOG(10) << "Found unchanged OpDesc " << node_to_idx.size()
+             << ", new OpDesc " << new_op_desc_nodes.size() << ", new OpHandle "
              << new_op_handle_nodes.size();
 
     // Step 2: assign node index to new OpDesc
@@ -192,6 +192,11 @@ class FixOpRunOrderPass : public Pass {
     OpGraphView graph_view(op_handles);
     auto comp = [&node_to_idx](details::OpHandleBase *op1,
                                details::OpHandleBase *op2) {
+      auto priority1 = static_cast<int>(op1->GetPriority());
+      auto priority2 = static_cast<int>(op2->GetPriority());
+      if (priority1 != priority2) {
+        return priority1 < priority2;
+      }
       return node_to_idx.at(op1->Node()) < node_to_idx.at(op2->Node());
     };
 
@@ -199,7 +204,6 @@ class FixOpRunOrderPass : public Pass {
     sorted_ops.reserve(op_handles.size());
     std::queue<details::OpHandleBase *> q;
     std::vector<details::OpHandleBase *> tmp_ops;
-    std::unordered_set<details::OpHandleBase *> visited_ops;
     auto op_deps = graph_view.GetPrecedingDepNum();
     // Get ready ops first
     for (auto iter = op_deps.begin(); iter != op_deps.end();) {
@@ -208,7 +212,6 @@ class FixOpRunOrderPass : public Pass {
         continue;
       }
       tmp_ops.push_back(iter->first);
-      visited_ops.insert(iter->first);
       op_deps.erase(iter++);
     }
     // Sort ready ops by node index
@@ -224,12 +227,7 @@ class FixOpRunOrderPass : public Pass {
       auto &pending_ops = graph_view.PendingOps(cur_op);
       tmp_ops.clear();
       for (auto *pending_op : pending_ops) {
-        if (visited_ops.count(pending_op) > 0) {
-          continue;
-        }
-
         if (--op_deps.at(pending_op) == 0) {
-          visited_ops.insert(pending_op);
           op_deps.erase(pending_op);
           tmp_ops.push_back(pending_op);
         }
