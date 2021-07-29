@@ -1195,7 +1195,8 @@ class Variable(object):
             var_str = "persist " + var_str
 
         dist_config = get_default_distributed_config()
-        var_dist_attr = dist_config.get_tensor_distributed_attr_program(self.desc)
+        var_dist_attr = dist_config.get_tensor_distributed_attr_program(
+            self.desc)
         if var_dist_attr is not None:
             var_str += ", {name} = {value}".format(
                 name="dist_attr", value=var_dist_attr)

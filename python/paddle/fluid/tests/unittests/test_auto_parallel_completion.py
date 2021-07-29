@@ -97,7 +97,8 @@ class TestMLPAutoCompletion(unittest.TestCase):
 
         self.train_prog = static.Program()
         self.start_prog = static.Program()
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             intermediate_size = 4 * self.hidden_size
             d_model = self.hidden_size
             dim_feedforward = intermediate_size
@@ -117,7 +118,8 @@ class TestMLPAutoCompletion(unittest.TestCase):
         proc_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             input = static.data(
                 name="input",
                 shape=[self.batch_size, self.sequence_len, self.hidden_size],
@@ -136,7 +138,8 @@ class TestMLPAutoCompletion(unittest.TestCase):
         proc_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             input = static.data(
                 name="input",
                 shape=[self.batch_size, self.sequence_len, self.hidden_size],
@@ -159,7 +162,8 @@ class TestMLPAutoCompletion(unittest.TestCase):
             shape=[2, 4], process_group=[0, 1, 2, 3, 4, 5, 6, 7])
         assert proc_mesh.get_ndim(
         ) == 2, "The number dimension of process mesh must to be 2"
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             input = static.data(
                 name="input",
                 shape=[self.batch_size, self.sequence_len, self.hidden_size],
@@ -199,7 +203,8 @@ class TestAttentionAutoCompletion(unittest.TestCase):
 
         self.train_prog = static.Program()
         self.start_prog = static.Program()
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             self.input = static.data(
                 name="query",
                 shape=[self.batch_size, self.sequence_len, self.hidden_size],
@@ -227,7 +232,8 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
 
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
             q = self.q_proj(self.input)
             q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
@@ -275,7 +281,8 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
 
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             q = self.q_proj(self.input)
             auto.shard_tensor(
                 self.q_proj.weight, proc_mesh, dims_mapping=[-1, 0])
@@ -331,7 +338,8 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 2, "The number dimension of process mesh must to be 2"
 
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
             q = self.q_proj(self.input)
             auto.shard_tensor(
@@ -386,7 +394,7 @@ class TestAttentionAutoCompletion(unittest.TestCase):
 class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
     def setUp(self):
         self.batch_size = 4
-        self.vocab_size = 32768 
+        self.vocab_size = 32768
         self.hidden_size = 1024
         self.max_position_embeddings = 1024
         self.sequence_len = 128
@@ -405,7 +413,8 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
 
         self.train_prog = static.Program()
         self.start_prog = static.Program()
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             self.input_ids = static.data(
                 name="input_ids",
                 shape=[self.batch_size, self.sequence_len],
@@ -421,7 +430,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
                 weight_attr=paddle.ParamAttr(
                     name="word_embeddings",
                     initializer=nn.initializer.Normal(
-                    mean=0.0, std=self.initializer_range)))
+                        mean=0.0, std=self.initializer_range)))
             self.position_embeddings = nn.Embedding(
                 self.max_position_embeddings,
                 self.hidden_size,
@@ -469,8 +478,7 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
                 bias_attr=bias_attrs[2])
             self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
-            self.dropout1 = nn.Dropout(
-                self.dropout_ratio)
+            self.dropout1 = nn.Dropout(self.dropout_ratio)
             self.dropout2 = nn.Dropout(
                 self.dropout_ratio, mode="upscale_in_train")
             self.dropout3 = nn.Dropout(
@@ -481,7 +489,8 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
 
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             auto.shard_tensor(self.input_ids, proc_mesh, dims_mapping=[0, -1])
             input_embedings = self.word_embeddings(self.input_ids)
             position_embeddings = self.position_embeddings(self.position_ids)
@@ -552,9 +561,11 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 1, "The number dimension of process mesh must to be 1"
 
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             input_embedings = self.word_embeddings(self.input_ids)
-            auto.shard_tensor(self.word_embeddings.weight, proc_mesh, dims_mapping=[0, -1])
+            auto.shard_tensor(
+                self.word_embeddings.weight, proc_mesh, dims_mapping=[0, -1])
             position_embeddings = self.position_embeddings(self.position_ids)
             embeddings = input_embedings + position_embeddings
             embeddings = self.dropout1(embeddings)
@@ -635,10 +646,12 @@ class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
         assert proc_mesh.get_ndim(
         ) == 2, "The number dimension of process mesh must to be 2"
 
-        with static.program_guard(self.train_prog, self.start_prog), utils.unique_name.guard():
+        with static.program_guard(self.train_prog,
+                                  self.start_prog), utils.unique_name.guard():
             auto.shard_tensor(self.input_ids, proc_mesh, dims_mapping=[0, -1])
             input_embedings = self.word_embeddings(self.input_ids)
-            auto.shard_tensor(self.word_embeddings.weight, proc_mesh, dims_mapping=[1, -1])
+            auto.shard_tensor(
+                self.word_embeddings.weight, proc_mesh, dims_mapping=[1, -1])
             position_embeddings = self.position_embeddings(self.position_ids)
             embeddings = input_embedings + position_embeddings
             embeddings = self.dropout1(embeddings)

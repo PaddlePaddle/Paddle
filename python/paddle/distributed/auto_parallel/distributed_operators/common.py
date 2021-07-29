@@ -45,7 +45,7 @@ class DistributedOperatorImpl:
 
     def get_name(self):
         return self._name
-    
+
     def is_process_mesh_compatible(self, op_dist_attr):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
@@ -59,7 +59,7 @@ class DistributedOperatorImpl:
         return self.is_process_mesh_compatible(op_dist_attr) \
             and self.is_input_compatible(op_dist_attr) \
             and self.is_output_compatible(op_dist_attr)
-    
+
     def update_dims_mapping(self, op_dist_attr):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
@@ -104,7 +104,6 @@ def find_best_compatible_distributed_operator_impl(name, op_dist_attr,
             if impl.is_process_mesh_compatible(op_dist_attr) \
                 and impl.is_output_compatible(op_dist_attr):
                 compatible_impls.append((impl, idx))
-
 
     if compatible_impls:
         best_compatible_impl, idx = compatible_impls[0]

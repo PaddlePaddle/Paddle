@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+
 def is_valid_list_index(list, index):
     if index >= -len(list) and index < len(list):
         return True
@@ -89,7 +90,7 @@ def compute_compatible_and_update_dim_mapping(dims_mapping_list, index_list):
     for i in range(len(dims_mapping_list)):
         assert is_valid_list_index(dims_mapping_list[i], index_list[i])
         dim_mappings.append(dims_mapping_list[i][index_list[i]])
-    compatible_dim_mapping = compute_compatible_dim_mapping(dim_mappings) 
+    compatible_dim_mapping = compute_compatible_dim_mapping(dim_mappings)
     if compatible_dim_mapping is None:
         return False
     for i in range(len(dims_mapping_list)):
@@ -97,4 +98,3 @@ def compute_compatible_and_update_dim_mapping(dims_mapping_list, index_list):
             dims_mapping_list[i][index_list[i]] = compatible_dim_mapping
             changed = True
     return changed
-    

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.distributed_attribute import TensorDistributedAttribute
-from paddle.fluid.distributed_attribute import get_default_distributed_config 
+from paddle.fluid.distributed_attribute import get_default_distributed_config
 
 
 def validate_check():
@@ -33,10 +33,12 @@ def shard_tensor(tensor, mesh, dims_mapping):
     validate_check()
     assert len(tensor.shape) == len(dims_mapping)
     dist_config = get_default_distributed_config()
-    tensor_dist_attr = dist_config.get_tensor_distributed_attr_program(tensor.desc)
+    tensor_dist_attr = dist_config.get_tensor_distributed_attr_program(
+        tensor.desc)
     if tensor_dist_attr is None:
         tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
-        dist_config.set_tensor_distributed_attr_program(tensor.desc, tensor_dist_attr)
+        dist_config.set_tensor_distributed_attr_program(tensor.desc,
+                                                        tensor_dist_attr)
     tensor_dist_attr.set_process_mesh(mesh, is_annotated=True)
     tensor_dist_attr.set_dims_mapping(dims_mapping, is_annotated=True)
     return tensor
@@ -53,10 +55,12 @@ def set_shard_mask(tensor, mask):
     """
     validate_check()
     dist_config = get_default_distributed_config()
-    tensor_dist_attr = dist_config.get_tensor_distributed_attr_program(tensor.desc)
+    tensor_dist_attr = dist_config.get_tensor_distributed_attr_program(
+        tensor.desc)
     if tensor_dist_attr is None:
         tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
-        dist_config.set_tensor_distributed_attr_program(tensor.desc, tensor_dist_attr)
+        dist_config.set_tensor_distributed_attr_program(tensor.desc,
+                                                        tensor_dist_attr)
     tensor_dist_attr.set_shard_mask(mask, is_annotated=True)
     return tensor
 
@@ -87,10 +91,12 @@ def set_offload_device(tensor, offload_device):
     """
     validate_check()
     dist_config = get_default_distributed_config()
-    tensor_dist_attr = dist_config.get_tensor_distributed_attr_program(tensor.desc)
+    tensor_dist_attr = dist_config.get_tensor_distributed_attr_program(
+        tensor.desc)
     if tensor_dist_attr is None:
         tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
-        dist_config.set_tensor_distributed_attr_program(tensor.desc, tensor_dist_attr)
+        dist_config.set_tensor_distributed_attr_program(tensor.desc,
+                                                        tensor_dist_attr)
     tensor_dist_attr.set_offload_device(offload_device, is_annotated=True)
     return tensor
 

@@ -30,7 +30,8 @@ class DistributedEmbedding(DistributedOperator):
         self._name = name
 
 
-register_distributed_operator("lookup_table_v2", DistributedEmbedding("embedding"))
+register_distributed_operator("lookup_table_v2",
+                              DistributedEmbedding("embedding"))
 
 
 # RowParallel
@@ -73,7 +74,6 @@ class DistributedEmbeddingImpl0(DistributedOperatorImpl):
         return True
 
     def update_dims_mapping(self, op_dist_attr):
-        print("in embedding")
         changed = False
         op_desc = op_dist_attr.get_desc()
         ids_name = op_desc.input('Ids')[0]
@@ -82,13 +82,13 @@ class DistributedEmbeddingImpl0(DistributedOperatorImpl):
         ids_dims_mapping = op_dist_attr.get_input_dims_mapping(ids_name)
         w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        
+
         for i in range(len(ids_dims_mapping)):
             dim_changed = compute_compatible_and_update_dim_mapping(
                 [ids_dims_mapping, out_dims_mapping], [i, i])
             if dim_changed:
                 changed = True
-        
+
         dim_changed = compute_compatible_and_update_dim_mapping(
             [w_dims_mapping, out_dims_mapping], [-1, -1])
         if dim_changed:
