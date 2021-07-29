@@ -1088,7 +1088,8 @@ class OpTest(unittest.TestCase):
             atol = 0
 
         if self.is_bfloat16_op():
-            if hasattr(self, 'mkldnn_data_type'):
+            if hasattr(self,
+                       'use_mkldnn') and getattr(self, 'use_mkldnn') is True:
                 check_dygraph = False
             atol = 5e-1
 
