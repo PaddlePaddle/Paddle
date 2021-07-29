@@ -28,7 +28,7 @@ ProcessMeshDesc::ProcessMeshDesc(const std::vector<int32_t> &topo,
   for (size_t i = 0; i != topo.size(); ++i) {
     desc_.add_topology(topo[i]);
   }
-  for (size_t i = 0; i != topo.size(); ++i) {
+  for (size_t i = 0; i != process_group.size(); ++i) {
     desc_.add_process_group(process_group[i]);
   }
   ProcessMeshDescMap::GetInstance().Insert(cur_id, this);

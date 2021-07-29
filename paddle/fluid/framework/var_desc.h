@@ -167,7 +167,6 @@ class VarDesc {
 
   proto::VarDesc desc_;
   AttributeMap attrs_;
-  bool need_update_{false};
 };
 
 bool operator==(const VarDesc &left, const VarDesc &right);

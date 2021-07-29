@@ -59,11 +59,21 @@ class TestAutoParallelAPI(unittest.TestCase):
         mesh3 = paddle.distributed.ProcessMesh(
             [2, 3], process_group=[2, 3, 4, 5, 6, 7])
         mesh4 = paddle.distributed.ProcessMesh([2, 2], parent_id=mesh1.id)
+        mesh5 = paddle.distributed.ProcessMesh(
+            [2, 2], process_group=[4, 5, 6, 7], parent_id=mesh1.id)
 
         self.assertEqual(mesh1.parent, None)
         self.assertEqual(mesh4.parent, mesh1)
-        self.assertEqual(mesh1 == mesh2, True)
-        self.assertEqual(mesh1 == mesh3, False)
+        self.assertEqual(mesh5.parent, mesh1)
+        self.assertEqual(mesh1, mesh2)
+        self.assertNotEqual(mesh1, mesh3)
+        self.assertNotEqual(mesh4, mesh5)
+        self.assertEqual(mesh2.id, mesh2.desc.id)
+        self.assertEqual(mesh3.topology, mesh3.desc.topology)
+        self.assertEqual(mesh3.topology, [2, 3])
+        self.assertEqual(mesh3.process_group, [2, 3, 4, 5, 6, 7])
+        self.assertEqual(mesh5.process_group, mesh5.desc.process_group)
+        self.assertEqual(mesh1.rank, 2)
 
 
 if __name__ == '__main__':

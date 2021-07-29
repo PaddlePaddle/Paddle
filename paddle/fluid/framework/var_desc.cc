@@ -289,10 +289,7 @@ std::vector<std::string> VarDesc::AttrNames() const {
   return retv;
 }
 
-void VarDesc::RemoveAttr(const std::string &name) {
-  attrs_.erase(name);
-  need_update_ = true;
-}
+void VarDesc::RemoveAttr(const std::string &name) { attrs_.erase(name); }
 
 void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
   // NOTICE(sandyhouse): pybind11 will take the empty list in python as
@@ -303,12 +300,10 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
       BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
     this->attrs_[name] = std::vector<int>();
-    need_update_ = true;
     return;
   }
 
   this->attrs_[name] = v;
-  need_update_ = true;
 }
 
 Attribute VarDesc::GetAttr(const std::string &name) const {
