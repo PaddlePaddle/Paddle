@@ -3078,6 +3078,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
   BindGraph(&m);
   BindNode(&m);
+  BindPass(&m);
   BindInferenceApi(&m);
   BindCompatible(&m);
   BindDataset(&m);

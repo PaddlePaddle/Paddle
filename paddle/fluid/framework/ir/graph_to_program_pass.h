@@ -22,10 +22,6 @@ namespace ir {
 
 class Graph;
 
-const char kGraphToProgramVarsToRemove[] =
-    "__graph_to_program_vars_to_remove__";
-const char kGraphToProgramSortKind[] = "__graph_to_program_sort_kind__";
-
 class GraphToProgramPass : public Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

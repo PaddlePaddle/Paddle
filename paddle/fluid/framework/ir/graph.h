@@ -47,6 +47,10 @@ constexpr char kStaleProgramOpDescs[] = "stale_program_op_descs";
 
 namespace ir {
 
+const char kGraphToProgramVarsToRemove[] =
+    "__graph_to_program_vars_to_remove__";
+const char kGraphToProgramSortKind[] = "__graph_to_program_sort_kind__";
+
 /*
  * The graph is a Directed Acyclic Single Static Assignment Graph.
  *

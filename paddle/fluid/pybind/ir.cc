@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -183,5 +184,22 @@ void BindNode(py::module *m) {
       .value("Variable", Node::Type::kVariable)
       .export_values();
 }
+
+// TODO(zjl): complete this function to set Pass attributes
+static void AddAttrsToPass(framework::ir::Pass *pass, const py::dict &attrs) {}
+
+void BindPass(py::module *m) {
+  m->def("apply_pass",
+         [](framework::ProgramDesc *main_program,
+            framework::ProgramDesc *startup_program,
+            const std::string &pass_name, const py::dict &pass_attrs) {
+           auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
+           AddAttrsToPass(pass.get(), pass_attrs);
+           pass->Apply(main_program, startup_program);
+           // NOTE: some passes may change attributes, so we return here.
+           return pass_attrs;
+         });
+}
+
 }  // namespace pybind
 }  // namespace paddle
