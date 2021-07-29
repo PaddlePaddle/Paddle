@@ -25,19 +25,21 @@ class TestTokenizerDemo(unittest.TestCase):
         paddle.set_device('cpu')
 
         tokens = ['今天天气不错', '大暴雨']
-        tokens_tensor = paddle.Tensor(core.VarDesc.VarType.STRINGS, [], "demo_tokens",
-                          core.VarDesc.VarType.STRINGS, False)
+        tokens_tensor = paddle.Tensor(core.VarDesc.VarType.STRINGS, [],
+                                      "demo_tokens",
+                                      core.VarDesc.VarType.STRINGS, False)
         tokens_tensor.value().set_string_list(tokens)
 
         t = BertTokenizer.from_pretrained('bert-base-chinese')
         vocab = t.vocab.token_to_idx
 
         vocab_tensor = paddle.Tensor(core.VarDesc.VarType.MAP, [], "demo_vocab",
-                          core.VarDesc.VarType.MAP, False)
+                                     core.VarDesc.VarType.MAP, False)
         vocab_tensor.value().set_string_map(vocab)
 
-        output = core.ops.tokenizer(text=tokens_tensor, vocab=vocab_tensor)
-        print(output)
+        input_ids, seg_ids = core.ops.tokenizer(tokens_tensor, vocab_tensor)
+        print(input_ids)
+        print(seg_ids)
 
 
 if __name__ == '__main__':

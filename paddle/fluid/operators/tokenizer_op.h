@@ -36,6 +36,7 @@ using std::unordered_map;
 using std::unordered_set;
 using std::vector;
 using std::wstring;
+using std::wcout;
 
 using Vocab = unordered_map<wstring, int>;
 using InvVocab = unordered_map<int, wstring>;
@@ -58,37 +59,21 @@ class BasicTokenizer {
 class WordPieceTokenizer {
  public:
   explicit WordPieceTokenizer(
-    const Vocab& vocab,
+    const framework::STRING_MAP vocab,
     const wstring& unk_token = L"[UNK]",
     const size_t max_input_chars_per_word = 100);
   vector<wstring> Tokenize(const wstring& text) const;
 
  private:
-  Vocab vocab_;
+  framework::STRING_MAP vocab_;
   wstring unk_token_{L"[UNK]"};
   size_t max_input_chars_per_word_;
 };
 
-// class FullTokenizer {
-//  public:
-//   explicit FullTokenizer(const string& vocab_file, bool do_lower_case = true);
-//   vector<wstring> Tokenize(const string& text) const;
-//   vector<int64_t> ConvertTokensToIds(const vector<wstring>& text) const;
-
-//  private:
-//   Vocab vocab_;
-//   InvVocab inv_vocab_;
-//   string vocab_file_;
-//   bool do_lower_case_{true};
-//   BasicTokenizer basic_tokenizer_;
-//   WordPieceTokenizer word_piece_tokenizer_;
-// };
-
-
 class BertTokenizer {
  public:
     explicit BertTokenizer(
-      const framework::STRING_MAP& vocab,
+      const framework::STRING_MAP vocab,
       bool do_lower_case = true,
       const wstring& unk_token = L"[UNK]",
       const wstring& pad_token = L"[PAD]",
@@ -143,7 +128,7 @@ class BertTokenizer {
     bool do_lower_case_;
     wstring unk_token_, pad_token_, cls_token_, mask_token_, sep_token_;
     string padding_site_;
-    Vocab vocab_;
+    framework::STRING_MAP vocab_;
     BasicTokenizer basic_tokenizer_;
     WordPieceTokenizer word_piece_tokenizer_;
     int64_t unk_token_id_, cls_token_id_,
@@ -162,7 +147,8 @@ class TokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* text = ctx.Input<std::vector<std::string>>("Text");
-    auto* vocab= ctx.Input<std::unordered_map<std::wstring, int>>("Vocab");
+    auto* vocab = ctx.Input<std::unordered_map<std::wstring, int>>("Vocab");
+
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
 
@@ -185,27 +171,30 @@ class TokenizerKernel : public framework::OpKernel<T> {
       size_t seq_len = res["input_ids"].size();
       batch_input_ids[i] = res["input_ids"];
       batch_seg_ids[i] = res["token_type_ids"];
-      if(seq_len > batch_max_seq_len) {
+      if (seq_len > batch_max_seq_len) {
         batch_max_seq_len = seq_len;
       }
     }
 
     input_ids->Resize(framework::make_ddim(
-      {static_cast<int64_t>(batch_size), static_cast<int64_t>(batch_max_seq_len)}));
+      {static_cast<int64_t>(batch_size),
+      static_cast<int64_t>(batch_max_seq_len)}));
     auto* input_ids_data = input_ids->mutable_data<T>(ctx.GetPlace());
     seg_ids->Resize(framework::make_ddim(
-      {static_cast<int64_t>(batch_size), static_cast<int64_t>(batch_max_seq_len)}));
-    auto* seg_ids_data = input_ids->mutable_data<T>(ctx.GetPlace());
-    for(size_t i = 0; i < batch_size; i++) {
+      {static_cast<int64_t>(batch_size),
+      static_cast<int64_t>(batch_max_seq_len)}));
+    auto* seg_ids_data = seg_ids->mutable_data<T>(ctx.GetPlace());
+
+    auto pad_token_id = tokenizer_ptr->GetPadTokenID();;
+    for (size_t i = 0; i < batch_size; i++) {
       size_t seq_len = batch_input_ids[i].size();
       for (size_t j = 0; j < batch_max_seq_len; j++) {
         if (j < seq_len) {
           input_ids_data[i * batch_max_seq_len + j] = batch_input_ids[i][j];
           seg_ids_data[i * batch_max_seq_len + j] = batch_seg_ids[i][j];
-        }
-        else {
-          input_ids_data[i * batch_max_seq_len + j] = tokenizer_ptr->GetPadTokenID();
-          seg_ids_data[i * batch_max_seq_len + j] = tokenizer_ptr->GetPadTokenID();
+        } else {
+          input_ids_data[i * batch_max_seq_len + j] = pad_token_id;
+          seg_ids_data[i * batch_max_seq_len + j] = pad_token_id;
         }
       }
     }

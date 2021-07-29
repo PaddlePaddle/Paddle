@@ -293,7 +293,7 @@ vector<wstring> BasicTokenizer::Tokenize(
 
 
 WordPieceTokenizer::WordPieceTokenizer(
-  const Vocab& vocab,
+  const framework::STRING_MAP vocab,
   const wstring& unk_token /* = L"[UNK]"*/,
   const size_t max_input_chars_per_word /* = 100 */) :
   vocab_(vocab),
@@ -365,7 +365,7 @@ vector<wstring> WordPieceTokenizer::Tokenize(
 // }
 
 BertTokenizer::BertTokenizer(
-  const framework::STRING_MAP& vocab,
+  const framework::STRING_MAP vocab,
   bool do_lower_case /* = true */,
   const wstring& unk_token /* = L"[UNK]" */,
   const wstring& pad_token /* = L"[PAD]" */,
@@ -408,8 +408,8 @@ vector<int64_t> BertTokenizer::ConvertTokensToIds(
   const vector<wstring>& tokens) const {
     vector<int64_t> token_ids(tokens.size());
     for (size_t i = 0; i < token_ids.size(); ++i) {
-      auto iter = (vocab_).find(tokens[i]);
-      if (iter != (vocab_).end()) {
+      auto iter = vocab_.find(tokens[i]);
+      if (iter != vocab_.end()) {
         token_ids[i] = iter->second;
       } else {
         token_ids[i] = unk_token_id_;
@@ -659,7 +659,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
   bool return_special_tokens_mask /* = false */) const {
     vector<int64_t> ids = get_input_ids(text);
     vector<int64_t> pair_ids;
-    if (text_pair != "") {
+    if ( text_pair != "" ) {
       vector<int64_t> res = get_input_ids(text_pair);
       pair_ids.swap(res);
     }
@@ -809,17 +809,10 @@ class TokenizerOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Text"), "Input", "Text", "Tokenizer");
     OP_INOUT_CHECK(ctx->HasInput("Vocab"), "Input", "Vocab", "Tokenizer");
-    OP_INOUT_CHECK(ctx->HasOutput("InputIds"), "Output", "InputIds", "Tokenizer");
-    OP_INOUT_CHECK(ctx->HasOutput("SegmentIds"), "Output", "SegmentIds", "Tokenizer");
-
-    // auto input_dim = ctx->GetInputDim("Text");
-    // auto N = input_dim.size();
-    // PADDLE_ENFORCE_GT(
-    //     N, 0, platform::errors::InvalidArgument(
-    //       "The input tensor Text's dimensions of TokenizerOp "
-    //       "should be larger than 0. But received Text's dimensions %d, "
-    //       "Text's shape = [%s].",
-    //       N, &input_dim));
+    OP_INOUT_CHECK(ctx->HasOutput("InputIds"),
+      "Output", "InputIds", "Tokenizer");
+    OP_INOUT_CHECK(ctx->HasOutput("SegmentIds"),
+      "Output", "SegmentIds", "Tokenizer");
 
     ctx->SetOutputDim("InputIds", {-1, -1});
     ctx->SetOutputDim("SegmentIds", {-1, -1});
@@ -849,47 +842,50 @@ class TokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
       "(std::vector<std::string>), The sequence to be processed. "
       "One sequence is a string, a list of strings, "
       "or a list of integers depending on whether it "
-      "has been pretokenized and converted to ids. "
-    );
+      "has been pretokenized and converted to ids. ");
     AddInput(
       "Vocab",
-      "(std::map<std::wstring, std::int64_t>), The vocab to map "
-      "token string to token id."
-    );
+      "(std::map<std::wstring, std::int>), The vocab to map "
+      "token string to token id.");
     AddOutput(
       "InputIds",
       "(Tensor), The token ids of the input text.");
     AddOutput(
       "SegmentIds",
-      "(Tensor), The segments ids of the input text."); 
+      "(Tensor), The segments ids of the input text.");
     AddInput(
       "TextPair",
-      "(std::vector<std::string>), Same as `text` argument, while it represents "
-      "for the latter sequence of the sequence pair.")
+      "(std::vector<std::string>), Same as `text` argument, "
+      "while it represents for the latter sequence of the "
+      "sequence pair.")
       .AsDispensable();
     AddAttr<int>("max_seq_len",
-      "(int), If set to a positive number, will limit the total sequence returned "
-      "so that it has a maximum length. If there are overflowing tokens, "
-      "those overflowing tokens will be added to the returned dictionary "
-      " when `return_overflowing_tokens` is `True`. Defaults to `None`.")
+      "(int), If set to a positive number, will limit the "
+      "total sequence returned so that it has a maximum length."
+      " If there are overflowing tokens, those overflowing "
+      "tokens will be added to the returned dictionary  when "
+      "`return_overflowing_tokens` is `True`. Defaults to `None`.")
       .SetDefault(-1);
     AddAttr<bool>("pad_to_max_seq_len",
-      "(bool), If set to `True`, the returned sequences would be padded up to "
-      "`max_seq_len` specified length according to padding side "
-      "and padding token id.")
+      "(bool), If set to `True`, the returned sequences would be"
+      " padded up to `max_seq_len` specified length according to"
+      " padding side and padding token id.")
       .SetDefault(false);
     AddAttr<bool>("return_length",
-      "(bool), Whether to include the length of each encoded inputs in the "
-      "returned dictionary.")
+      "(bool), Whether to include the length of each encoded "
+      "inputs in the returned dictionary.")
       .SetDefault(false);
     AddAttr<bool>("return_token_type_ids",
-      "(bool),  Whether to include token type ids in the returned dictionary.")
+      "(bool),  Whether to include token type ids in the returned "
+      "dictionary.")
       .SetDefault(true);
     AddAttr<bool>("return_position_ids",
-      "(bool),  Whether to include tokens position ids in the returned dictionary.")
+      "(bool),  Whether to include tokens position ids in the returned "
+      "dictionary.")
       .SetDefault(false);
     AddAttr<bool>("return_attention_mask",
-      "(bool), Whether to include the attention mask in the returned dictionary.")
+      "(bool), Whether to include the attention mask in the returned "
+      "dictionary.")
       .SetDefault(false);
     AddAttr<bool>("truncation_strategy",
       "(std::string), String selected in the following options: \n"
@@ -898,8 +894,8 @@ class TokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
       "at each token (when there is a pair of input sequences)."
       "2) only_first: Only truncate the first sequence. "
       "3) only_second': Only truncate the second sequence. "
-      "4) do_not_truncate: Do not truncate (raise an error if the input sequence "
-      "is longer than `max_seq_len`.")
+      "4) do_not_truncate: Do not truncate (raise an error if the input "
+      "sequence is longer than `max_seq_len`.")
       .SetDefault("longest_first");
     AddAttr<bool>("return_overflowing_tokens",
       "(bool), Whether to include overflowing token information in the "
