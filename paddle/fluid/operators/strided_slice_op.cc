@@ -163,6 +163,19 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     auto *in_var = ctx.InputVar("Input");
     auto is_in_var_array = in_var->IsType<framework::LoDTensorArray>();
     if (is_in_var_array) {
+      auto &tensor_array = in_var->Get<framework::LoDTensorArray>();
+      for (auto &tensor : tensor_array) {
+        if (!platform::is_cuda_pinned_place(tensor.place())) {
+          PADDLE_ENFORCE_EQ(
+              platform::is_same_place(tensor.place(),
+                                      ctx.device_context().GetPlace()),
+              true, platform::errors::InvalidArgument(
+                        "Place of context is %s. Place of context is %s. They "
+                        "are should be same, but reveived different place.",
+                        string::to_string(ctx.device_context().GetPlace()),
+                        string::to_string(tensor.place())));
+        }
+      }
       return framework::OpKernelType(
           OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
           ctx.device_context());

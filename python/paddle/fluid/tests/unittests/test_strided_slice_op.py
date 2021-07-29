@@ -701,6 +701,49 @@ class TestStridedSliceTensorArray(unittest.TestCase):
             msg="dygraph graph result:\n{} \nstatic dygraph result:\n{}".format(
                 l1.numpy(), l2.numpy()))
 
+    def test_strided_slice_tensor_array_cuda_pinned_place(self):
+        if paddle.device.is_compiled_with_cuda():
+            with paddle.fluid.dygraph.guard():
+
+                class Simple(paddle.nn.Layer):
+                    def __init__(self):
+                        super(Simple, self).__init__()
+
+                    def forward(self, inps):
+                        tensor_array = None
+                        for i, tensor in enumerate(inps):
+                            index = paddle.full(
+                                shape=[1], dtype='int64', fill_value=i)
+                            if tensor_array is None:
+                                tensor_array = paddle.tensor.array_write(
+                                    tensor, i=index)
+                            else:
+                                paddle.tensor.array_write(
+                                    tensor, i=index, array=tensor_array)
+
+                        array1 = paddle.concat(tensor_array)
+                        array2 = paddle.concat(tensor_array[::-1])
+                        return array1 + array2 * array2
+
+                net = Simple()
+                func = paddle.jit.to_static(net.forward)
+
+                inps1 = paddle.to_tensor(
+                    np.random.randn(2, 10),
+                    place=paddle.CUDAPinnedPlace(),
+                    stop_gradient=False)
+                inps2 = paddle.to_tensor(
+                    np.random.randn(2, 10),
+                    place=paddle.CUDAPinnedPlace(),
+                    stop_gradient=False)
+
+                self.assertTrue(inps1.place.is_cuda_pinned_place())
+                self.assertTrue(inps2.place.is_cuda_pinned_place())
+
+                result = func([inps1, inps2])
+
+                self.assertFalse(result.place.is_cuda_pinned_place())
+
     def test_strided_slice_tensor_array(self):
         class Net(ArrayLayer):
             def array_slice(self, tensors):
@@ -854,28 +897,21 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
         self.create_case(Net(input_size=112, array_size=13))
 
-        # TODO(weixin):Currently, the case that the start index is 
-        # less than `-array_size` is not supported.
-        # The index parsed from the slice of the VarBase/Variable 
-        # is processed before being passed to `strided_slice_op`. 
-        # The slice may be processed uniformly, instead of 
-        # processing separately for TensorArray\VarBase\Variable.
-        #
-        # class Net(ArrayLayer):
-        #
-        #     def array_slice(self,tensors):
-        #         return tensors[-60:20:3]
-        # self.create_case(Net(input_size=112,array_size=13))
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-60:20:3]
 
-        # class Net(ArrayLayer):
-        #     def array_slice(self, tensors):
-        #         return tensors[-3:-60:-3]
+        self.create_case(Net(input_size=112, array_size=13))
 
-        # self.create_case(Net(input_size=112, array_size=13))
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-3:-60:-3]
 
-        # class Net(ArrayLayer):
-        #     def array_slice(self, tensors):
-        #         return tensors[-1:-60:-3]
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-1:-60:-3]
 
 
 if __name__ == "__main__":

@@ -127,6 +127,9 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
       if (!(ends[axis_index] == -1 &&
             strides[axis_index] < 0)) {  // skip None stop condition
         ends[axis_index] = ends[axis_index] + axis_size;
+        if (ends[axis_index] < 0) {
+          ends[axis_index] = 0;
+        }
       }
     }
     if (decrease_axis_affect) {
@@ -147,9 +150,8 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
       strides[axis_index] = -strides[axis_index];
       if (starts[axis_index] > ends[axis_index]) {
         // swap the reverse
-        auto end_dim = dims[axis_index] - 1 < starts[axis_index]
-                           ? dims[axis_index] - 1
-                           : starts[axis_index];
+        auto end_dim = axis_size - 1 < starts[axis_index] ? axis_size - 1
+                                                          : starts[axis_index];
         auto offset = (end_dim - ends[axis_index]) % strides[axis_index];
         offset = offset == 0 ? strides[axis_index] : offset;
 
@@ -378,33 +380,32 @@ class StridedSliceKernel : public framework::OpKernel<T> {
         TensorCopy(in_tensor, context.GetPlace(), out_tensor);
       }
 
-      return;
-    }
-    auto in = context.Input<framework::Tensor>("Input");
-    auto out = context.Output<framework::Tensor>("Out");
-    out->Resize(out_dims);
-    out->mutable_data<T>(context.GetPlace());
-    auto in_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *in);
-    auto out_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *out, out_dims);
-    if (need_reverse) {
-      framework::Tensor tmp;
-      tmp.mutable_data<T>(out_dims, context.GetPlace());
-      auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
-                                          Eigen::DenseIndex>::From(tmp);
-      tmp_t.device(place) =
-          in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
-      out_t.device(place) = tmp_t.reverse(reverse_axis);
     } else {
-      out_t.device(place) =
-          in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
-    }
+      auto in = context.Input<framework::Tensor>("Input");
+      auto out = context.Output<framework::Tensor>("Out");
+      out->Resize(out_dims);
+      out->mutable_data<T>(context.GetPlace());
+      auto in_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                         Eigen::DenseIndex>::From(*in);
+      auto out_t =
+          framework::EigenTensor<T, D, Eigen::RowMajor,
+                                 Eigen::DenseIndex>::From(*out, out_dims);
+      if (need_reverse) {
+        framework::Tensor tmp;
+        tmp.mutable_data<T>(out_dims, context.GetPlace());
+        auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                            Eigen::DenseIndex>::From(tmp);
+        tmp_t.device(place) =
+            in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
+        out_t.device(place) = tmp_t.reverse(reverse_axis);
+      } else {
+        out_t.device(place) =
+            in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
+      }
 
-    if (decrease_axis.size() > 0) {
-      out->Resize(out_dims_origin);
+      if (decrease_axis.size() > 0) {
+        out->Resize(out_dims_origin);
+      }
     }
   }
 };
@@ -453,11 +454,11 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
     auto* out_var = context.OutputVar(framework::GradVarName("Input"));
     bool is_out_var_array = out_var->IsType<LoDTensorArray>();
     if (is_out_var_array) {
-      // Since the shape of `framework::GradVarName("Input")` of
-      // StridedSliceGrad
-      // cannot be calculated by `framework::GradVarName("Output")`,
-      // the dim of "Input" is used to calculate the output shape.
-      // when set it to inplace OP, there may be some problems.
+      // Note(weixin):Since the shape of `framework::GradVarName("Input")` of
+      // StridedSliceGrad cannot be calculated by
+      // `framework::GradVarName("Output")`, the dim of "Input" is used to
+      // calculate the output shape. when set it to inplace OP, there may be
+      // some problems.
       const int64_t size =
           context.Input<framework::LoDTensorArray>("Input")->size();
 
@@ -621,40 +622,39 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
           set_zero(dev_ctx, d_out_tensor, static_cast<T>(0));
         }
       }
-      return;
-    }
 
-    auto* d_input =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* d_out =
-        context.Output<framework::Tensor>(framework::GradVarName("Input"));
-
-    d_out->mutable_data<T>(context.GetPlace());
-
-    math::SetConstant<DeviceContext, T> set_zero;
-    set_zero(dev_ctx, d_out, static_cast<T>(0));
-
-    auto in_dims = d_input->dims();
-
-    auto in_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *d_input);
-    auto out_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *d_out, out_dims);
-    if (need_reverse) {
-      framework::Tensor reverse_input;
-      reverse_input.mutable_data<T>(in_dims, context.GetPlace());
-      auto reverse_in_t =
-          framework::EigenTensor<T, D, Eigen::RowMajor,
-                                 Eigen::DenseIndex>::From(reverse_input);
-
-      reverse_in_t.device(place) = in_t.reverse(reverse_axis);
-      out_t.stridedSlice(starts_indices, ends_indices, strides_indices)
-          .device(place) = reverse_in_t;
     } else {
-      out_t.stridedSlice(starts_indices, ends_indices, strides_indices)
-          .device(place) = in_t;
+      auto* d_input =
+          context.Input<framework::Tensor>(framework::GradVarName("Out"));
+      auto* d_out =
+          context.Output<framework::Tensor>(framework::GradVarName("Input"));
+
+      d_out->mutable_data<T>(context.GetPlace());
+
+      math::SetConstant<DeviceContext, T> set_zero;
+      set_zero(dev_ctx, d_out, static_cast<T>(0));
+
+      auto in_dims = d_input->dims();
+
+      auto in_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                         Eigen::DenseIndex>::From(*d_input);
+      auto out_t =
+          framework::EigenTensor<T, D, Eigen::RowMajor,
+                                 Eigen::DenseIndex>::From(*d_out, out_dims);
+      if (need_reverse) {
+        framework::Tensor reverse_input;
+        reverse_input.mutable_data<T>(in_dims, context.GetPlace());
+        auto reverse_in_t =
+            framework::EigenTensor<T, D, Eigen::RowMajor,
+                                   Eigen::DenseIndex>::From(reverse_input);
+
+        reverse_in_t.device(place) = in_t.reverse(reverse_axis);
+        out_t.stridedSlice(starts_indices, ends_indices, strides_indices)
+            .device(place) = reverse_in_t;
+      } else {
+        out_t.stridedSlice(starts_indices, ends_indices, strides_indices)
+            .device(place) = in_t;
+      }
     }
   }
 };

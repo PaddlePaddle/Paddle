@@ -177,7 +177,8 @@ class TestSetValueWithLayerAndSave(unittest.TestCase):
             output_spec=None)
 
 
-class TestSliceSupplementCase(unittest.TestCase):
+class TestSliceSupplementSpecialCase(unittest.TestCase):
+    # unittest for slice index which abs(step)>0. eg: x[::2]
     def test_static_slice_step(self):
         paddle.enable_static()
         array = np.arange(4**3).reshape((4, 4, 4)).astype('int64')
@@ -241,6 +242,20 @@ class TestPaddleStridedSlice(unittest.TestCase):
         self.assertTrue(
             np.array_equal(sl.numpy(), array[s2[0]:e2[0]:stride2[0], s2[1]:e2[
                 1]:stride2[1]]))
+
+        array = np.arange(6 * 7 * 8).reshape((6, 7, 8))
+        pt = paddle.to_tensor(array)
+        s2 = [7, -1]
+        e2 = [2, -5]
+        stride2 = [-2, -3]
+        sl = paddle.strided_slice(
+            pt, axes=[0, 2], starts=s2, ends=e2, strides=stride2)
+
+        array_slice = array[s2[0]:e2[0]:stride2[0], ::, s2[1]:e2[1]:stride2[1]]
+        self.assertTrue(
+            np.array_equal(sl.numpy(), array_slice),
+            msg="paddle.strided_slice:\n {} \n numpy slice:\n{}".format(
+                sl.numpy(), array_slice))
 
 
 if __name__ == '__main__':
