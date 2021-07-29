@@ -1909,8 +1909,7 @@ EOF
     fluid_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-             ${TENSORRT_INCLUDE_DIR:-/usr/include} \
-             ${TENSORRT_LIB_DIR:-/usr/lib}
+             ${TENSORRT_ROOT_DIR:-/usr}
     DEMO_EXIT_CODE=$?
     ./clean.sh
     cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut

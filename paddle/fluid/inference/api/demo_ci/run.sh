@@ -19,9 +19,8 @@ PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
 TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
-TENSORRT_INCLUDE_DIR=$5 # TensorRT header file dir, default to /usr/local/TensorRT/include
-TENSORRT_LIB_DIR=$6 # TensorRT lib file dir, default to /usr/local/TensorRT/lib
-MSVC_STATIC_CRT=$7
+TENSORRT_ROOT_DIR=$5 # TensorRT header file dir, default to /usr/local/TensorRT
+MSVC_STATIC_CRT=$6
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 
 cd `dirname $0`
@@ -38,7 +37,7 @@ else
 fi
 
 USE_TENSORRT=OFF
-if [ -d "$TENSORRT_INCLUDE_DIR" -a -d "$TENSORRT_LIB_DIR" ]; then
+if [ -d "$TENSORRT_ROOT_DIR" ]; then
   USE_TENSORRT=ON
 fi
 
@@ -178,8 +177,7 @@ for WITH_STATIC_LIB in ON OFF; do
         -DWITH_GPU=$TEST_GPU_CPU \
         -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
         -DUSE_TENSORRT=$USE_TENSORRT \
-        -DTENSORRT_INCLUDE_DIR=$TENSORRT_INCLUDE_DIR \
-        -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR
       make -j$(nproc)
       ./trt_mobilenet_demo \
         --modeldir=$DATA_DIR/mobilenet/model \
