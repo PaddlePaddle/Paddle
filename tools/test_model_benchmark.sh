@@ -54,8 +54,7 @@ function compile_install_paddle {
     export WITH_TESTING=OFF
     export WITH_UNITY_BUILD=ON
     check_whl
-    cd ${cache_dir}
-    mkdir benchmark_data && cd benchmark_data
+    cd ${cache_dir} && mkdir benchmark_data && cd benchmark_data
     git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/paddlepaddle/benchmark.git
 }
 
