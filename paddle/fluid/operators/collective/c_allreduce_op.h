@@ -120,6 +120,7 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
   }
 };
 
+#if defined(PADDLE_WITH_ASCEND_CL)
 // return true if found_inf_or_nan or return false;
 template <typename T>
 bool CheckNumerics(const framework::ExecutionContext& exe_ctx,
@@ -149,6 +150,7 @@ bool CheckNumerics(const framework::ExecutionContext& exe_ctx,
 
   return found_inf_data;
 }
+#endif
 
 template <ReduceType red_type, typename T>
 class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
