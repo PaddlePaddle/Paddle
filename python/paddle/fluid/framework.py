@@ -72,6 +72,7 @@ _dygraph_tracer_ = None
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
+_current_pipeline_stage = 0
 _global_flags_ = core.globals()
 
 
@@ -2137,6 +2138,8 @@ class Operator(object):
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
                             "used at the same time." % type)
+            pipeline_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix
+            op_attrs[pipeline_attr_name] = _current_pipeline_stage
 
             def find_name(var_list, name):
                 for var_name in var_list:

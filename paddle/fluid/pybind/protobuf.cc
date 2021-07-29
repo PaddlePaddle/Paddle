@@ -91,8 +91,9 @@ void BindProcessMeshDesc(pybind11::module *m) {
                           const std::vector<int32_t> &, int32_t>())
       .def_property_readonly("id", &pd::ProcessMeshDesc::ID)
       .def_property_readonly("parent", &pd::ProcessMeshDesc::Parent)
-      .def("topology", &pd::ProcessMeshDesc::Topology)
-      .def("process_group", &pd::ProcessMeshDesc::ProcessGroup);
+      .def_property_readonly("topology", &pd::ProcessMeshDesc::Topology)
+      .def_property_readonly("process_group",
+                             &pd::ProcessMeshDesc::ProcessGroup);
 }
 
 void BindBlockDesc(pybind11::module *m) {

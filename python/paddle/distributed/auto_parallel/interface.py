@@ -21,6 +21,20 @@ __all__ = []
 g_process_mesh_map = dict()
 
 
+def _append_attr_suffix(name):
+    """
+    Append Auto Parallel Suffix for distributed attribute.
+    """
+    return name + core.kAutoParallelSuffix
+
+
+def _remove_attr_suffix(name):
+    """
+    Remove Auto Parallel Suffix for distributed attribute.
+    """
+    return name.strip(core.kAutoParallelSuffix)
+
+
 class ProcessMesh(object):
     """
     A class to describe the logical topology of processes.
@@ -110,8 +124,10 @@ def shard_tensor(tensor, mesh, dims_mapping):
         The tensor itself.
     """
     validate_check()
-    tensor._set_attr('MESH_ID', mesh.id)
-    tensor._set_attr('DIMS_MAPPING', dims_mapping)
+    attr_name = _append_attr_suffix('mesh_id')
+    tensor._set_attr(attr_name, mesh.id)
+    attr_name = _append_attr_suffix('dims_mapping')
+    tensor._set_attr(attr_name, dims_mapping)
     return tensor
 
 
@@ -125,7 +141,8 @@ def set_shard_mask(tensor, mask_out):
         The tensor itself.
     """
     validate_check()
-    tensor._set_attr('MASK_OUT', mask)
+    attr_name = _append_attr_suffix('mask_out')
+    tensor._set_attr(attr_name, mask)
     return tensor
 
 
@@ -145,7 +162,8 @@ def shard_op(fn_call, mesh, input_dims_mapping, output_dims_mapping):
     main_block = main_prog.global_block()
     op_size = len(main_block.ops)
     op = main_block.ops[op_size - 1]
-    op._set_distributed_attr('MESH_ID', mesh.id)
+    attr_name = _append_attr_suffix('mesh_id')
+    op._set_attr(attr_name, mesh.id)
     for name in input_dims_mapping:
         op._set_attr(name, input_dims_mapping[name])
     for name in output_dims_mapping:
@@ -161,7 +179,8 @@ def set_offload_device(tensor, dst_device):
     Returns:
         None.
     """
-    tensor._set_attr('OFFLOAD_DEVICE', dst_device)
+    attr_name = _append_attr_suffix("offload_device")
+    tensor._set_attr(attr_name, dst_device)
 
 
 def set_pipeline_stage(stage):
