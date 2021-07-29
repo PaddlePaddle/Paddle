@@ -50,7 +50,7 @@ class ProcessMesh(object):
             process_group = list(range(process_num))
         assert len(process_group) == process_num
 
-        if parent_id is None: parent_id = _NO_PARENT
+        if parent_id is None: parent_id = core.kNoneProcessMeshIndex()
 
         self.desc = core.ProcessMeshDesc(topology, process_group, parent_id)
         cur_id = self.desc.id
