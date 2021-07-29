@@ -661,6 +661,22 @@ class TestModelFunction(unittest.TestCase):
         gt_params = _get_param_from_state_dict(rnn.state_dict())
         np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
 
+    def test_summary_input(self):
+        rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
+        input_data = paddle.rand([4, 23, 16])
+        paddle.summary(rnn, input=input_data)
+
+        lenet_List_input = LeNetListInput()
+        input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
+        paddle.summary(lenet_List_input, input=input_data)
+
+        lenet_dict_input = LeNetDictInput()
+        input_data = {
+            'x1': paddle.rand([1, 1, 28, 28]),
+            'x2': paddle.rand([1, 400])
+        }
+        paddle.summary(lenet_dict_input, input=input_data)
+
     def test_summary_dtype(self):
         input_shape = (3, 1)
         net = paddle.nn.Embedding(10, 3, sparse=True)
