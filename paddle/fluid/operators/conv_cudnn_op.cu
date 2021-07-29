@@ -47,6 +47,10 @@ static inline bool IsVoltaOrLater(const platform::CUDADeviceContext& dev_ctx) {
   return dev_ctx.GetComputeCapability() >= 70;
 }
 
+static inline bool IsAmpereOrLater(const platform::CUDADeviceContext& dev_ctx) {
+  return dev_ctx.GetComputeCapability() >= 80;
+}
+
 template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:
@@ -80,7 +84,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 #if CUDNN_VERSION_MIN(8, 1, 0)
     std::string yaml_format = data_format;
     if (dtype == CUDNN_DATA_BFLOAT16) {
-      data_format = "NHWC";
+      data_format = DataLayout::kNHWC;
     }
 #endif  // CUDNN_VERSION_MIN(8, 1, 0)
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -94,9 +98,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     const bool compute_in_nhwc =
         dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
 #if CUDNN_VERSION_MIN(8, 1, 0)
-    if (dtype == CUDNN_DATA_BFLOAT16) {
-      compute_in_nhwc = true;
-    }
+    compute_in_nhwc = dtype == CUDNN_DATA_BFLOAT16 && IsAmpereOrLater(dev_ctx);
 #endif  // CUDNN_VERSION_MIN(8, 1, 0)
     // We will only do data format conversion from NHWC to NCHW.
     // cudnn will convert NCHW to NHWC automatically on Tensor Core.
@@ -425,7 +427,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 #if CUDNN_VERSION_MIN(8, 1, 0)
     std::string yaml_format = data_format;
     if (dtype == CUDNN_DATA_BFLOAT16) {
-      data_format = "NHWC";
+      data_format = DataLayout::kNHWC;
     }
 #endif  // CUDNN_VERSION_MIN(8, 1, 0)
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -437,9 +439,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     const bool compute_in_nhwc =
         dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
 #if CUDNN_VERSION_MIN(8, 1, 0)
-    if (dtype == CUDNN_DATA_BFLOAT16) {
-      compute_in_nhwc = true;
-    }
+    compute_in_nhwc = dtype == CUDNN_DATA_BFLOAT16 && IsAmpereOrLater(dev_ctx);
 #endif  // CUDNN_VERSION_MIN(8, 1, 0)
     auto compute_format =
         compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
