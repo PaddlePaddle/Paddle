@@ -104,23 +104,19 @@ void SetXPUDeviceId(int id) {
 }
 
 XPUVersion get_xpu_version(int dev_id) {
-  // uint64_t v = 0;
-  /*
+  uint64_t v = 0;
   int ret = xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                  platform::errors::External(
-                      "xpu_device_get_attr return wrong value[%d]",
-                      ret));
+                    platform::errors::External(
+                        "xpu_device_get_attr return wrong value[%d]", ret));
 
   if (v == K100 || v == K200) {
-      VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";
-      return XPU1;
+    VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";
+    return XPU1;
   } else {
-      VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
-      return XPU2;
+    VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
+    return XPU2;
   }
-  */
-  return XPU1;
 }
 
 }  // namespace platform
