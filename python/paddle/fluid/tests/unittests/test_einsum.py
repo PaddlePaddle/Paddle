@@ -254,12 +254,12 @@ class TestEinsumTestEinsumBilinear(TestEinsum):
         self.sample = {"paradigm": "bn,anm,bm->ba", "data": ["B", "E", "I"]}
 
 
-class TestEinsumTestEinsumOthers(TestEinsum):
+class TestEinsumTestEinsumOthers1(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "ijkl, lmn->kmn", "data": ["F", "H"]}
 
 
-class TestEinsumTestEinsumOthers(TestEinsum):
+class TestEinsumTestEinsumOthers2(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "ijkl, lmn->ijn", "data": ["F", "H"]}
 
