@@ -89,6 +89,27 @@ class ModelOutter(paddle.nn.Layer):
         y = self.module2(y)
         return y, 3
 
+    
+class LeNetListInput(LeNetDygraph):
+    def forward(self, inputs):
+        x = inputs[0]
+        x = self.features(x)
+
+        if self.num_classes > 0:
+            x = paddle.flatten(x, 1)
+            x = self.fc(x + inputs[1])
+        return x
+
+
+class LeNetDictInput(LeNetDygraph):
+    def forward(self, inputs):
+        x = self.features(inputs['x1'])
+
+        if self.num_classes > 0:
+            x = paddle.flatten(x, 1)
+            x = self.fc(x + inputs['x2'])
+        return x
+
 
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True, sample_num=None):
