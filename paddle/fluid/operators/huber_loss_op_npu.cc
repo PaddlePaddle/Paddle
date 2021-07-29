@@ -21,27 +21,56 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-void DiffCheck(const platform::Place& place, const aclrtStream& stream,
-               const Tensor* x, T delta, Tensor* y) {
-  //  Calculate y = abs(x) <= delta
-  y->mutable_data<bool>(x->dims(), place);
-  Tensor x_abs;
-  x_abs.mutable_data<bool>(x->dims(), place);
-  const auto& runner_abs = NpuOpRunner("Abs", {*x}, {x_abs}, {});
-  runner_abs.Run(stream);
-
-  Tensor delta_t(framework::proto::VarType::FP32);
-  // delta_t.mutable_data<T>({1}, place);
-  delta_t.mutable_data<T>(x->dims(), place);
-  FillNpuTensorWithConstant<T>(&delta_t, delta);
-
-  const auto& runner_le = NpuOpRunner("LessEqual", {x_abs, delta_t}, {*y}, {});
-  runner_le.Run(stream);
+void HuberLossAbs(const platform::Place& place, const aclrtStream& stream,
+                  const Tensor* x, Tensor* y) {
+  //  Calculate y = abs(x)
+  y->mutable_data<T>(x->dims(), place);
+  const auto& runner = NpuOpRunner("Abs", {*x}, {*y}, {});
+  runner.Run(stream);
 }
 
 template <typename T>
-void SubFun(const platform::Place& place, const aclrtStream& stream,
-            const Tensor* x, const Tensor* y, Tensor* z) {
+framework::proto::VarType::Type HuberLossGetType();
+
+template <>
+framework::proto::VarType::Type HuberLossGetType<float>() {
+  return framework::proto::VarType::FP32;
+}
+
+template <>
+framework::proto::VarType::Type HuberLossGetType<double>() {
+  return framework::proto::VarType::FP64;
+}
+
+template <>
+framework::proto::VarType::Type HuberLossGetType<platform::float16>() {
+  return framework::proto::VarType::FP16;
+}
+
+template <typename T>
+Tensor HuberLossVal2Tsr(const platform::Place& place, T value) {
+  auto vartype = HuberLossGetType<T>();
+  Tensor val_t(vartype);
+  val_t.mutable_data<T>({1}, place);
+  FillNpuTensorWithConstant<T>(&val_t, value);
+  return val_t;
+}
+
+template <typename T>
+void HuberLossLessEqualValue(const platform::Place& place,
+                             const aclrtStream& stream, const Tensor* x,
+                             float val, Tensor* y) {
+  //  Calculate y = x <= val, where y, x are tensors and val is scalar
+  Tensor val_t = HuberLossVal2Tsr(place, static_cast<T>(val));
+
+  y->mutable_data<bool>(x->dims(), place);
+  const auto& runner = NpuOpRunner("LessEqual", {*x, val_t}, {*y}, {});
+  runner.Run(stream);
+}
+
+template <typename T>
+void HuberLossSub(const platform::Place& place, const aclrtStream& stream,
+                  const Tensor* x, const Tensor* y, Tensor* z) {
   //  Calculate z = x - y
   z->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
@@ -49,26 +78,26 @@ void SubFun(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void AddsFun(const platform::Place& place, const aclrtStream& stream,
-             const Tensor* x, float scale, Tensor* y) {
+void HuberLossAdds(const platform::Place& place, const aclrtStream& stream,
+                   const Tensor* x, float scalar, Tensor* y) {
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
-  const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scale}});
+  const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
   runner.Run(stream);
 }
 
 template <typename T>
-void MulsFun(const platform::Place& place, const aclrtStream& stream,
-             const Tensor* x, float scale, Tensor* y) {
+void HuberLossMuls(const platform::Place& place, const aclrtStream& stream,
+                   const Tensor* x, float scalar, Tensor* y) {
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
-  const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scale}});
+  const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scalar}});
   runner.Run(stream);
 }
 
 template <typename T>
-void MulFun(const platform::Place& place, const aclrtStream& stream,
-            const Tensor* x, const Tensor* y, Tensor* z) {
+void HuberLossMul(const platform::Place& place, const aclrtStream& stream,
+                  const Tensor* x, const Tensor* y, Tensor* z) {
   //  Calculate z = x * y
   z->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*z}, {});
@@ -76,8 +105,9 @@ void MulFun(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void SelFun(const platform::Place& place, const aclrtStream& stream,
-            const Tensor* cond, const Tensor* x1, const Tensor* x2, Tensor* y) {
+void HuberLossSel(const platform::Place& place, const aclrtStream& stream,
+                  const Tensor* cond, const Tensor* x1, const Tensor* x2,
+                  Tensor* y) {
   //  Calculate y = cond ? x1 : x2;
   y->mutable_data<T>(x1->dims(), place);
   const auto& runner = NpuOpRunner("Select", {*cond, *x1, *x2}, {*y}, {});
@@ -85,8 +115,8 @@ void SelFun(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void SquareFun(const platform::Place& place, const aclrtStream& stream,
-               const Tensor* x, Tensor* y) {
+void HuberLossSquare(const platform::Place& place, const aclrtStream& stream,
+                     const Tensor* x, Tensor* y) {
   //  Calculate y = x ^ 2
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Square", {*x}, {*y}, {});
@@ -94,8 +124,8 @@ void SquareFun(const platform::Place& place, const aclrtStream& stream,
 }
 
 template <typename T>
-void SignFun(const platform::Place& place, const aclrtStream& stream,
-             const Tensor* x, Tensor* y) {
+void HuberLossSign(const platform::Place& place, const aclrtStream& stream,
+                   const Tensor* x, Tensor* y) {
   //  Calculate y = sign of x
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Sign", {*x}, {*y}, {});
@@ -110,24 +140,28 @@ class HuberLossNPUKernel : public framework::OpKernel<T> {
     auto* in1 = ctx.Input<Tensor>("Y");
     auto* residual = ctx.Output<Tensor>("Residual");
     auto* out = ctx.Output<Tensor>("Out");
-    auto delta = static_cast<T>(ctx.Attr<float>("delta"));
+    auto delta = ctx.Attr<float>("delta");
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     auto place = ctx.GetPlace();
-    SubFun<T>(place, stream, in1, in0, residual);
+    HuberLossSub<T>(place, stream, in1, in0, residual);
 
     Tensor t_cond;
-    DiffCheck<T>(place, stream, residual, delta, &t_cond);
+    Tensor t_abs_rd;
+    HuberLossAbs<T>(place, stream, residual, &t_abs_rd);
+    HuberLossLessEqualValue<T>(place, stream, &t_abs_rd, delta, &t_cond);
     Tensor t_b0;
     Tensor t_mul_delta_residual;
-    MulsFun<T>(place, stream, residual, delta, &t_mul_delta_residual);
-    AddsFun<T>(place, stream, &t_mul_delta_residual, -0.5 * delta * delta,
-               &t_b0);
+    HuberLossMuls<T>(place, stream, &t_abs_rd, delta, &t_mul_delta_residual);
+    HuberLossAdds<T>(place, stream, &t_mul_delta_residual, -0.5 * delta * delta,
+                     &t_b0);
+    Tensor t_sqr;
     Tensor t_b1;
-    SquareFun<T>(place, stream, residual, &t_b1);
-    SelFun<T>(place, stream, &t_cond, &t_b1, &t_b0, out);
+    HuberLossSquare<T>(place, stream, residual, &t_sqr);
+    HuberLossMuls<T>(place, stream, &t_sqr, 0.5, &t_b1);
+    HuberLossSel<T>(place, stream, &t_cond, &t_b1, &t_b0, out);
   }
 };
 
@@ -139,32 +173,34 @@ class HuberLossGradNPUKernel : public framework::OpKernel<T> {
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    auto delta = static_cast<T>(ctx.Attr<float>("delta"));
+    auto delta = ctx.Attr<float>("delta");
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     auto place = ctx.GetPlace();
 
-    Tensor t_grad;
+    Tensor t_grad_rd;
     if (dx || dy) {
       Tensor t_cond;
-      DiffCheck<T>(place, stream, residual, delta, &t_cond);
+      Tensor t_abs_rd;
+      HuberLossAbs<T>(place, stream, residual, &t_abs_rd);
+      HuberLossLessEqualValue<T>(place, stream, &t_abs_rd, delta, &t_cond);
       Tensor t_b0;
       Tensor t_sign_residual;
-      SignFun<T>(place, stream, residual, &t_sign_residual);
-      MulsFun<T>(place, stream, &t_sign_residual, delta, &t_b0);
-      SelFun<T>(place, stream, &t_cond, &t_sign_residual, residual, &t_grad);
+      HuberLossSign<T>(place, stream, residual, &t_sign_residual);
+      HuberLossMuls<T>(place, stream, &t_sign_residual, delta, &t_b0);
+      HuberLossSel<T>(place, stream, &t_cond, residual, &t_b0, &t_grad_rd);
     }
     if (dx) {
       Tensor t_grad_x;
-      MulsFun<T>(place, stream, &t_grad, -1, &t_grad_x);
-      MulFun<T>(place, stream, &t_grad_x, dout, dx);
+      HuberLossMuls<T>(place, stream, &t_grad_rd, -1, &t_grad_x);
+      HuberLossMul<T>(place, stream, &t_grad_x, dout, dx);
     }
     if (dy) {
       Tensor t_grad_y;
-      MulsFun<T>(place, stream, &t_grad, 1, &t_grad_y);
-      MulFun<T>(place, stream, &t_grad_y, dout, dy);
+      HuberLossMuls<T>(place, stream, &t_grad_rd, 1, &t_grad_y);
+      HuberLossMul<T>(place, stream, &t_grad_y, dout, dy);
     }
   }
 };
@@ -173,6 +209,11 @@ class HuberLossGradNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(huber_loss, ops::HuberLossNPUKernel<float>);
-REGISTER_OP_NPU_KERNEL(huber_loss_grad, ops::HuberLossGradNPUKernel<float>);
+REGISTER_OP_NPU_KERNEL(huber_loss, ops::HuberLossNPUKernel<float>,
+                       ops::HuberLossNPUKernel<double>,
+                       ops::HuberLossNPUKernel<plat::float16>);
+REGISTER_OP_NPU_KERNEL(huber_loss_grad, ops::HuberLossGradNPUKernel<float>,
+                       ops::HuberLossGradNPUKernel<double>,
+                       ops::HuberLossGradNPUKernel<plat::float16>);
