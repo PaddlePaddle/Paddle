@@ -202,26 +202,6 @@ for WITH_STATIC_LIB in ON OFF; do
         exit 1
       fi
     fi
-    # ---------tensorrt resnet50 on linux---------
-    if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
-      rm -rf *
-      cmake .. -DPADDLE_LIB=${inference_install_dir} \
-        -DWITH_MKL=$TURN_ON_MKL \
-        -DDEMO_NAME=test_resnet50 \
-        -DWITH_GPU=$TEST_GPU_CPU \
-        -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
-        -DUSE_TENSORRT=$USE_TENSORRT \
-        -DTENSORRT_INCLUDE_DIR=$TENSORRT_INCLUDE_DIR \
-        -DTENSORRT_LIB_DIR=$TENSORRT_LIB_DIR \
-        -DWITH_GTEST=ON
-      make -j$(nproc)
-      ./test_resnet50 \
-        --modeldir=$DATA_DIR/resnet50/resnet50
-      if [ $? -ne 0 ]; then
-        echo "trt demo test_resnet50 runs fail."
-        exit 1
-      fi
-    fi
   fi
 done
 set +x

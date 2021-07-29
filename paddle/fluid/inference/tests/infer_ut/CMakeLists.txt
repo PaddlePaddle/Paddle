@@ -4,6 +4,7 @@ option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL.
 option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
 option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
 option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
+option(WITH_GTEST "Compile demo with GTEST"   OFF)
 
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
@@ -181,9 +182,19 @@ if(WITH_GPU)
   endif()
 endif()
 
+if(WITH_GTEST)
+  include(ExternalProject)
+  include(external-cmake/gtest-cpp.cmake)
+endif()
+
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 target_link_libraries(${DEMO_NAME} ${DEPS})
-
+if(WITH_GTEST)
+  include(GNUInstallDirs)
+  include_directories(${GTEST_INSTALL_DIR}/include)
+  add_dependencies(${DEMO_NAME} thirdparty_gtest)
+  target_link_libraries(${DEMO_NAME} ${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest${CMAKE_STATIC_LIBRARY_SUFFIX})
+endif()
 if(WIN32)
   if(USE_TENSORRT)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD

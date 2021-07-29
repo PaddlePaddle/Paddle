@@ -1,7 +1,5 @@
 find_package(Git REQUIRED)
-#include (ExternalProject)
 message("${CMAKE_BUILD_TYPE}")
-# add_custom_target(thirdparty_gtest)
 SET(GTEST_PREFIX_DIR    ${CMAKE_CURRENT_BINARY_DIR}/gtest)
 SET(GTEST_SOURCE_DIR    ${CMAKE_CURRENT_BINARY_DIR}/gtest/src/extern_gtest)
 SET(GTEST_INSTALL_DIR   ${CMAKE_CURRENT_BINARY_DIR}/install/gtest)
@@ -33,7 +31,6 @@ ExternalProject_Add(
     BUILD_BYPRODUCTS ${GTEST_LIBRARIES}
     BUILD_BYPRODUCTS ${GTEST_MAIN_LIBRARIES}
 )
-# add_dependencies(thirdparty_gtest extern_gtest)
 
 ADD_LIBRARY(thirdparty_gtest STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET thirdparty_gtest PROPERTY IMPORTED_LOCATION ${GTEST_LIBRARIES})

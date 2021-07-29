@@ -1911,12 +1911,16 @@ EOF
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
-    EXIT_CODE=$?
+    DEMO_EXIT_CODE=$?
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_ROOT_DIR:-/usr/local/TensorRT}
+    TEST_EXIT_CODE=$?
     fluid_endTime_s=`date +%s`
     echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
     echo "ipipe_log_param_Test_Fluid_Lib_Total_Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt     
     ./clean.sh
-    if [[ "$EXIT_CODE" != "0" ]]; then
+    if [[ "$DEMO_EXIT_CODE" != "0" || "$TEST_EXIT_CODE" != "0" ]]; then
         exit 8;
     fi
 }

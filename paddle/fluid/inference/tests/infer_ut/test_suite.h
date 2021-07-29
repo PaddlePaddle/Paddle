@@ -12,24 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include <math.h>
+#include <algorithm>
+#include <fstream>
+#include <iostream>
 #include <numeric>
+#include <string>
+#include <vector>
 
-#include "glog/logging.h"
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
-#include "utils.h"  // NOLINT
+#include "paddle/include/paddle_inference_api.h"
 
 namespace paddle {
-namespace demo {
+namespace test {
+
+class Record {
+ public:
+  std::vector<float> data;
+  std::vector<int32_t> shape;
+  paddle::PaddleDType type;
+};
 
 void SingleThreadPrediction(paddle_infer::Predictor *predictor,
-  std::map<std::string, paddle::demo::Record> *input_data_map,
-  std::map<std::string, paddle::demo::Record> *output_data_map,
-  int repeat_times = 2) {
+                            std::map<std::string, Record> *input_data_map,
+                            std::map<std::string, Record> *output_data_map,
+                            int repeat_times = 2) {
   // prepare input tensor
   auto input_names = predictor->GetInputNames();
-  for (const auto& [key, value] : *input_data_map) {
+  for (const auto & [ key, value ] : *input_data_map) {
     auto input_tensor = predictor->GetInputHandle(key);
     input_tensor->Reshape(value.shape);
     input_tensor->CopyFromCpu(value.data.data());
@@ -42,12 +55,12 @@ void SingleThreadPrediction(paddle_infer::Predictor *predictor,
 
   // get output data to Record
   auto output_names = predictor->GetOutputNames();
-  for (auto& output_name : output_names) {
-    paddle::demo::Record output_Record;
+  for (auto &output_name : output_names) {
+    Record output_Record;
     auto output_tensor = predictor->GetOutputHandle(output_name);
     std::vector<int> output_shape = output_tensor->shape();
-    int out_num = std::accumulate(output_shape.begin(),
-      output_shape.end(), 1, std::multiplies<int>());
+    int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
+                                  std::multiplies<int>());
 
     switch (output_tensor->type()) {
       case paddle::PaddleDType::INT64: {
@@ -89,16 +102,17 @@ void SingleThreadPrediction(paddle_infer::Predictor *predictor,
   }
 }
 
-void CompareRecord(std::map<std::string, paddle::demo::Record> *truth_output_data,
-                   std::map<std::string, paddle::demo::Record> *infer_output_data,
+void CompareRecord(std::map<std::string, Record> *truth_output_data,
+                   std::map<std::string, Record> *infer_output_data,
                    float epislon = 1e-5) {
-  for (const auto& [key, value] : *infer_output_data) {
+  for (const auto & [ key, value ] : *infer_output_data) {
     auto truth_record = (*truth_output_data)[key];
     LOG(INFO) << "output name: " << key;
     size_t numel = value.data.size() / sizeof(float);
     EXPECT_EQ(value.data.size(), truth_record.data.size());
     for (size_t i = 0; i < numel; ++i) {
-      CHECK_LT(fabs(value.data.data()[i] - truth_record.data.data()[i]), epislon);
+      CHECK_LT(fabs(value.data.data()[i] - truth_record.data.data()[i]),
+               epislon);
     }
   }
 }
