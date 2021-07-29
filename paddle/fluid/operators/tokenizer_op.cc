@@ -46,6 +46,7 @@ using std::runtime_error;
 using std::unordered_map;
 using std::unordered_set;
 using std::shared_ptr;
+using std::size_t;
 using std::int64_t;
 using std::string;
 using std::vector;
@@ -104,7 +105,7 @@ bool IsStripChar(const wchar_t& ch) {
 wstring Strip(const wstring& text) {
   wstring ret = text;
   if (ret.empty()) return ret;
-  int64_t pos = 0;
+  size_t pos = 0;
   while (pos < ret.size() && IsStripChar(ret[pos])) pos++;
   if (pos != 0) ret = ret.substr(pos, ret.size() - pos);
   pos = ret.size() - 1;
@@ -136,7 +137,7 @@ string ConvertWstrToStr(const wstring& src) {
 
 wstring ToLower(const wstring& s) {
   wstring ret(s.size(), L' ');
-  for (int64_t i = 0; i < s.size(); i++) {
+  for (size_t i = 0; i < s.size(); i++) {
     ret[i] = utf8proc_tolower(s[i]);
   }
   return ret;
@@ -151,7 +152,7 @@ shared_ptr<Vocab> LoadVocab(const string& vocab_file) {
   }
 
   string line;
-  int64_t index = 0;
+  int index = 0;
   while (getline(ifs, line)) {
     wstring token = ConvertStrToWstr(line);
     // The input line cann't be converted to unicode.
@@ -252,7 +253,7 @@ wstring BasicTokenizer::run_strip_accents(
 
 vector<wstring> BasicTokenizer::run_split_on_punc(
   const wstring& text) const {
-  int64_t i = 0;
+  size_t i = 0;
   bool start_new_word = true;
   vector<wstring> output;
   while (i < text.size()) {
@@ -292,9 +293,9 @@ vector<wstring> BasicTokenizer::Tokenize(
 
 
 WordPieceTokenizer::WordPieceTokenizer(
-  const shared_ptr<Vocab>& vocab,
+  const Vocab& vocab,
   const wstring& unk_token /* = L"[UNK]"*/,
-  const int64_t max_input_chars_per_word /* = 100 */) :
+  const size_t max_input_chars_per_word /* = 100 */) :
   vocab_(vocab),
   unk_token_(unk_token),
   max_input_chars_per_word_(max_input_chars_per_word) {}
@@ -307,16 +308,16 @@ vector<wstring> WordPieceTokenizer::Tokenize(
       output_tokens.push_back(unk_token_);
     }
     bool is_bad = false;
-    int64_t start = 0;
+    size_t start = 0;
     vector<wstring> sub_tokens;
     while (start < token.size()) {
-      int64_t end = token.size();
+      size_t end = token.size();
       wstring cur_sub_str;
       bool has_cur_sub_str = false;
       while (start < end) {
         wstring substr = token.substr(start, end - start);
         if (start > 0) substr = L"##" + substr;
-        if (vocab_->find(substr) != vocab_->end()) {
+        if (vocab_.find(substr) != vocab_.end()) {
           cur_sub_str = substr;
           has_cur_sub_str = true;
           break;
@@ -339,32 +340,32 @@ vector<wstring> WordPieceTokenizer::Tokenize(
   return output_tokens;
 }
 
-FullTokenizer::FullTokenizer(const string& vocab_file, bool do_lower_case):
-  vocab_(LoadVocab(vocab_file)),
-  basic_tokenizer_(BasicTokenizer(do_lower_case)),
-  word_piece_tokenizer_(WordPieceTokenizer(vocab_)) {
-    for (auto& v : *vocab_) inv_vocab_[v.second] = v.first;
-}
+// FullTokenizer::FullTokenizer(const string& vocab_file, bool do_lower_case):
+//   vocab_(LoadVocab(vocab_file)),
+//   basic_tokenizer_(BasicTokenizer(do_lower_case)),
+//   word_piece_tokenizer_(WordPieceTokenizer(vocab_)) {
+//     for (auto& v : vocab_) inv_vocab_[v.second] = v.first;
+// }
 
-vector<wstring> FullTokenizer::Tokenize(const string& text) const {
-  vector<wstring> split_tokens;
-  for (auto& token : basic_tokenizer_.Tokenize(text))
-    for (auto& sub_token : word_piece_tokenizer_.Tokenize(token))
-      split_tokens.push_back(sub_token);
-  return split_tokens;
-}
+// vector<wstring> FullTokenizer::Tokenize(const string& text) const {
+//   vector<wstring> split_tokens;
+//   for (auto& token : basic_tokenizer_.Tokenize(text))
+//     for (auto& sub_token : word_piece_tokenizer_.Tokenize(token))
+//       split_tokens.push_back(sub_token);
+//   return split_tokens;
+// }
 
-vector<int64_t> FullTokenizer::ConvertTokensToIds(
-    const vector<wstring>& text) const {
-  vector<int64_t> ret(text.size());
-  for (int64_t i = 0; i < text.size(); i++) {
-    ret[i] = (*vocab_)[text[i]];
-  }
-  return ret;
-}
+// vector<int64_t> FullTokenizer::ConvertTokensToIds(
+//     const vector<wstring>& text) const {
+//   vector<int64_t> ret(text.size());
+//   for (size_t i = 0; i < text.size(); i++) {
+//     ret[i] = (vocab_)[text[i]];
+//   }
+//   return ret;
+// }
 
 BertTokenizer::BertTokenizer(
-  const string& vocab_file,
+  const framework::STRING_MAP& vocab,
   bool do_lower_case /* = true */,
   const wstring& unk_token /* = L"[UNK]" */,
   const wstring& pad_token /* = L"[PAD]" */,
@@ -372,7 +373,6 @@ BertTokenizer::BertTokenizer(
   const wstring& mask_token /* = L"[MASK]" */,
   const wstring& sep_token /* = L"[SEP]" */,
   const string& padding_site /* = "right" */) :
-  vocab_file_(vocab_file),
   do_lower_case_(do_lower_case),
   unk_token_(unk_token),
   pad_token_(pad_token),
@@ -380,15 +380,16 @@ BertTokenizer::BertTokenizer(
   mask_token_(mask_token),
   sep_token_(sep_token),
   padding_site_(padding_site),
-  // vocab_: the map token_str to token_id
-  vocab_(LoadVocab(vocab_file)),
+  vocab_(vocab),
+  // // vocab_: the map token_str to token_id
+  // vocab_(LoadVocab(vocab_file)),
   basic_tokenizer_(BasicTokenizer(do_lower_case_)),
   word_piece_tokenizer_(vocab_, unk_token) {
-    unk_token_id_ = (*vocab_)[unk_token_];
-    pad_token_id_ = (*vocab_)[pad_token_];
-    cls_token_id_ = (*vocab_)[cls_token_];
-    mask_token_id_ = (*vocab_)[mask_token_];
-    sep_token_id_ = (*vocab_)[sep_token_];
+    unk_token_id_ = (vocab_)[unk_token_];
+    pad_token_id_ = (vocab_)[pad_token_];
+    cls_token_id_ = (vocab_)[cls_token_];
+    mask_token_id_ = (vocab_)[mask_token_];
+    sep_token_id_ = (vocab_)[sep_token_];
 
     all_special_tokens_ = vector<wstring>(
       {unk_token_, pad_token_, cls_token_, mask_token_, sep_token_});
@@ -400,15 +401,15 @@ BertTokenizer::BertTokenizer(
       sep_token_id_});
 
     // inv_vocab_: the map token_id to token_str
-    for (auto& v : *vocab_) inv_vocab_[v.second] = v.first;
+    for (auto& v : vocab_) inv_vocab_[v.second] = v.first;
   }
 
 vector<int64_t> BertTokenizer::ConvertTokensToIds(
   const vector<wstring>& tokens) const {
     vector<int64_t> token_ids(tokens.size());
-    for (int64_t i = 0; i < token_ids.size(); ++i) {
-      auto iter = (*vocab_).find(tokens[i]);
-      if (iter != (*vocab_).end()) {
+    for (size_t i = 0; i < token_ids.size(); ++i) {
+      auto iter = (vocab_).find(tokens[i]);
+      if (iter != (vocab_).end()) {
         token_ids[i] = iter->second;
       } else {
         token_ids[i] = unk_token_id_;
@@ -420,7 +421,7 @@ vector<int64_t> BertTokenizer::ConvertTokensToIds(
 vector<wstring> BertTokenizer::ConvertIdsToTokens(
   const vector<int64_t>& token_ids) {
     vector<wstring> text(token_ids.size());
-    for (int64_t i = 0; i < token_ids.size(); ++i) {
+    for (size_t i = 0; i < token_ids.size(); ++i) {
       const int64_t id = token_ids[i];
       text[i] = inv_vocab_[id];
     }
@@ -486,7 +487,7 @@ vector<int64_t> BertTokenizer::CreateTokenTypeIdsFromSequences(
     } else {
       vector<int64_t> token_type_ids(
         token_ids_0.size()+ token_ids_1.size()+3, 0);
-      for (int64_t i = token_ids_0.size() + 2 ; i < token_type_ids.size(); i++) {
+      for (size_t i = token_ids_0.size() + 2 ; i < token_type_ids.size(); i++) {
         token_type_ids[i] = 1;
       }
       return token_type_ids;
@@ -496,15 +497,15 @@ vector<int64_t> BertTokenizer::CreateTokenTypeIdsFromSequences(
 unordered_map<string, vector<int64_t>> BertTokenizer::TruncateSequence(
   vector<int64_t>* ids,
   vector<int64_t>* pair_ids,
-  const int64_t num_tokens_to_remove /* = 0 */,
+  const size_t num_tokens_to_remove /* = 0 */,
   const string&  truncation_strategy /* = "longest_first" */,
-  const int64_t stride /* = 0 */) const {
+  const size_t stride /* = 0 */) const {
     unordered_map<string, vector<int64_t>> res;
     vector<int64_t> overflowing_token_ids = vector<int64_t>();
 
-    int64_t window_len;
+    size_t window_len;
     if (truncation_strategy == "longest_first") {
-      for (int64_t i = 0; i < num_tokens_to_remove; i++) {
+      for (size_t i = 0; i < num_tokens_to_remove; i++) {
         if ((pair_ids->size() == 0) || (ids->size() > pair_ids->size())) {
           if (overflowing_token_ids.size() == 0) {
             window_len = min(ids->size(), stride + 1);
@@ -512,7 +513,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::TruncateSequence(
             window_len = 1;
           }
 
-          for (int64_t j = ids->size()-1;
+          for (size_t j = ids->size()-1;
             j > ids->size() - window_len - 1;
             j--) {
             overflowing_token_ids.push_back((*ids)[j]);
@@ -524,7 +525,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::TruncateSequence(
           } else {
             window_len = 1;
           }
-          for (int64_t j = pair_ids->size()-1;
+          for (size_t j = pair_ids->size()-1;
           j > pair_ids->size() - window_len - 1;
           j--) {
             overflowing_token_ids.push_back((*pair_ids)[j]);
@@ -536,10 +537,10 @@ unordered_map<string, vector<int64_t>> BertTokenizer::TruncateSequence(
     } else if (truncation_strategy == "only_first") {
       if (ids->size() > num_tokens_to_remove) {
         window_len = min(ids->size(), stride + num_tokens_to_remove);
-        for (int64_t i = ids->size()-1; i > ids->size() - window_len - 1; i--) {
+        for (size_t i = ids->size()-1; i > ids->size() - window_len - 1; i--) {
           overflowing_token_ids.push_back((*ids)[i]);
         }
-        for (int64_t i = 0; i < num_tokens_to_remove; i++) {
+        for (size_t i = 0; i < num_tokens_to_remove; i++) {
           ids->pop_back();
         }
       } else {
@@ -555,12 +556,12 @@ unordered_map<string, vector<int64_t>> BertTokenizer::TruncateSequence(
       truncation_strategy == "only_second" && pair_ids->size()== 0) {
         if (pair_ids->size() > num_tokens_to_remove) {
           window_len = min(pair_ids->size(), stride + num_tokens_to_remove);
-          for (int64_t i = pair_ids->size()-1;
+          for (size_t i = pair_ids->size()-1;
           i > pair_ids->size() - window_len - 1;
           i--) {
             overflowing_token_ids.push_back((*pair_ids)[i]);
           }
-          for (int64_t i = 0; i < num_tokens_to_remove; i++) {
+          for (size_t i = 0; i < num_tokens_to_remove; i++) {
             pair_ids->pop_back();
           }
         } else {
@@ -590,7 +591,7 @@ vector<int64_t> BertTokenizer::GetSpecialTokensMask(
           "ids is already formatted with special tokens for the model.");
       }
       vector<int64_t> res(token_ids_0.size());
-      for (int64_t i = 0; i < res.size(); i++) {
+      for (size_t i = 0; i < res.size(); i++) {
         auto&& iter = std::find(all_special_token_ids_.begin(),
                         all_special_token_ids_.end(),
                         token_ids_0[i]);
@@ -624,10 +625,30 @@ vector<int64_t> BertTokenizer::get_input_ids(const string& text) const {
   return token_ids;
 }
 
+int64_t BertTokenizer::GetClsTokenID() const {
+  return cls_token_id_;
+}
+
+int64_t BertTokenizer::GetSepTokenID() const {
+  return sep_token_id_;
+}
+
+int64_t BertTokenizer::GetUnkTokenID() const {
+  return unk_token_id_;
+}
+
+int64_t BertTokenizer::GetMaskTokenID() const {
+  return mask_token_id_;
+}
+
+int64_t BertTokenizer::GetPadTokenID() const {
+  return pad_token_id_;
+}
+
 unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
   const string& text,
   const string& text_pair /* = "" */,
-  const int64_t max_seq_len /* = 0 */,
+  const size_t max_seq_len /* = 0 */,
   bool pad_to_max_seq_len /* = false */,
   bool return_length /* = false */,
   bool return_token_type_ids /* = true */,
@@ -648,8 +669,8 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
       pair = true;
     }
 
-    int64_t len_ids = ids.size();
-    int64_t len_pair_ids = pair_ids.size();
+    size_t len_ids = ids.size();
+    size_t len_pair_ids = pair_ids.size();
     unordered_map<string, vector<int64_t>> encoded_inputs;
 
     // Truncation: Handle max sequence length
@@ -657,7 +678,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
     // If max_seq_len > 0 and
     // all the input sequence len is over the max_seq_len,
     // then we truncate it.
-    int64_t total_len = len_ids + len_pair_ids + GetNumSpecialTokensToAdd(pair);
+    size_t total_len = len_ids + len_pair_ids + GetNumSpecialTokensToAdd(pair);
     if (max_seq_len > 0  && total_len > max_seq_len) {
       auto&& res = TruncateSequence(
         &ids, &pair_ids, total_len - max_seq_len, truncation_strategy);
@@ -706,7 +727,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
       if (padding_site_ == "right") {
         if (return_attention_mask) {
           vector<int64_t> attention_mask(max_seq_len, 0);
-          for (int64_t i = 0; i < encoded_inputs["input_ids"].size(); i++) {
+          for (size_t i = 0; i < encoded_inputs["input_ids"].size(); i++) {
             attention_mask[i] = 1;
           }
           encoded_inputs["attention_mask"] = attention_mask;
@@ -714,7 +735,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
 
         if (return_token_type_ids) {
           encoded_inputs["token_type_ids"].resize(max_seq_len);
-          for (int64_t i =max_seq_len-1;
+          for (size_t i =max_seq_len-1;
           i > (max_seq_len - 1 - difference); i--) {
             encoded_inputs["token_type_ids"][i] = pad_token_id_;
           }
@@ -722,28 +743,28 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
 
         if (return_special_tokens_mask) {
           encoded_inputs["special_tokens_mask"].resize(max_seq_len);
-          for (int64_t i = max_seq_len-1;
+          for (size_t i = max_seq_len-1;
           i > (max_seq_len-1-difference); i--) {
             encoded_inputs["special_tokens_mask"][i] = 1;
           }
         }
 
         encoded_inputs["input_ids"].resize(max_seq_len);
-        for (int64_t i = max_seq_len-1;
+        for (size_t i = max_seq_len-1;
         i> (max_seq_len-1-difference); i--) {
           encoded_inputs["input_ids"][i] = pad_token_id_;
         }
       } else if (padding_site_ == "left") {
         if (return_attention_mask) {
           vector<int64_t> attention_mask = vector<int64_t>(max_seq_len, 0);
-          for (int64_t i = difference; i < max_seq_len; i++) {
+          for (size_t i = difference; i < max_seq_len; i++) {
             attention_mask[i] = 1;
           }
         }
 
         if (return_token_type_ids) {
           vector<int64_t> tmp(max_seq_len, pad_token_id_);
-          for (int64_t i = difference; i< max_seq_len; i++) {
+          for (size_t i = difference; i< max_seq_len; i++) {
             tmp[i] = encoded_inputs["token_type_ids"][i-difference];
           }
           encoded_inputs["token_type_ids"] = tmp;
@@ -751,14 +772,14 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
 
         if (return_special_tokens_mask) {
           vector<int64_t> tmp(max_seq_len, 1);
-          for (int64_t i = difference; i < max_seq_len; i++) {
+          for (size_t i = difference; i < max_seq_len; i++) {
             tmp[i] = encoded_inputs["special_tokens_mask"][i-difference];
           }
           encoded_inputs["special_tokens_mask"] = tmp;
         }
 
         vector<int64_t> tmp(max_seq_len, pad_token_id_);
-        for (int64_t i = difference; i < max_seq_len; i++) {
+        for (size_t i = difference; i < max_seq_len; i++) {
           tmp[i] = encoded_inputs["input_ids"][i-difference];
         }
         encoded_inputs["input_ids"] = tmp;
@@ -772,7 +793,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
 
     if (return_position_ids) {
       vector<int64_t> position_ids(encoded_inputs["input_ids"].size(), 0);
-      for (int64_t i = 0; i < encoded_inputs["input_ids"].size() ; i++) {
+      for (size_t i = 0; i < encoded_inputs["input_ids"].size() ; i++) {
         position_ids[i] = i;
       }
       encoded_inputs["position_ids"] = position_ids;
@@ -787,6 +808,7 @@ class TokenizerOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Text"), "Input", "Text", "Tokenizer");
+    OP_INOUT_CHECK(ctx->HasInput("Vocab"), "Input", "Vocab", "Tokenizer");
     OP_INOUT_CHECK(ctx->HasOutput("InputIds"), "Output", "InputIds", "Tokenizer");
     OP_INOUT_CHECK(ctx->HasOutput("SegmentIds"), "Output", "SegmentIds", "Tokenizer");
 
@@ -828,6 +850,11 @@ class TokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
       "One sequence is a string, a list of strings, "
       "or a list of integers depending on whether it "
       "has been pretokenized and converted to ids. "
+    );
+    AddInput(
+      "Vocab",
+      "(std::map<std::wstring, std::int64_t>), The vocab to map "
+      "token string to token id."
     );
     AddOutput(
       "InputIds",

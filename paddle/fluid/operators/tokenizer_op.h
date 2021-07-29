@@ -26,21 +26,24 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using std::wstring;
+using std::endl;
+using std::int64_t;
+using std::size_t;
 using std::string;
 using std::shared_ptr;
 using std::vector;
 using std::unordered_map;
 using std::unordered_set;
-using std::int64_t;
+using std::vector;
+using std::wstring;
 
-using Vocab = unordered_map<std::wstring, int64_t>;
-using InvVocab = unordered_map<int64_t, wstring>;
+using Vocab = unordered_map<wstring, int>;
+using InvVocab = unordered_map<int, wstring>;
 
 class BasicTokenizer {
  public:
   explicit BasicTokenizer(bool do_lower_case = true);
-  vector<std::wstring> Tokenize(const string& text) const;
+  vector<wstring> Tokenize(const string& text) const;
 
  private:
   wstring clean_text(const wstring& text) const;
@@ -55,37 +58,37 @@ class BasicTokenizer {
 class WordPieceTokenizer {
  public:
   explicit WordPieceTokenizer(
-    const shared_ptr<Vocab>& vocab,
+    const Vocab& vocab,
     const wstring& unk_token = L"[UNK]",
-    const int64_t max_input_chars_per_word = 100);
+    const size_t max_input_chars_per_word = 100);
   vector<wstring> Tokenize(const wstring& text) const;
 
  private:
-  shared_ptr<Vocab> vocab_;
+  Vocab vocab_;
   wstring unk_token_{L"[UNK]"};
-  int64_t max_input_chars_per_word_;
+  size_t max_input_chars_per_word_;
 };
 
-class FullTokenizer {
- public:
-  explicit FullTokenizer(const string& vocab_file, bool do_lower_case = true);
-  vector<wstring> Tokenize(const string& text) const;
-  vector<int64_t> ConvertTokensToIds(const vector<wstring>& text) const;
+// class FullTokenizer {
+//  public:
+//   explicit FullTokenizer(const string& vocab_file, bool do_lower_case = true);
+//   vector<wstring> Tokenize(const string& text) const;
+//   vector<int64_t> ConvertTokensToIds(const vector<wstring>& text) const;
 
- private:
-  shared_ptr<Vocab> vocab_;
-  InvVocab inv_vocab_;
-  string vocab_file_;
-  bool do_lower_case_{true};
-  BasicTokenizer basic_tokenizer_;
-  WordPieceTokenizer word_piece_tokenizer_;
-};
+//  private:
+//   Vocab vocab_;
+//   InvVocab inv_vocab_;
+//   string vocab_file_;
+//   bool do_lower_case_{true};
+//   BasicTokenizer basic_tokenizer_;
+//   WordPieceTokenizer word_piece_tokenizer_;
+// };
 
 
 class BertTokenizer {
  public:
     explicit BertTokenizer(
-      const string& vocab_file,
+      const framework::STRING_MAP& vocab,
       bool do_lower_case = true,
       const wstring& unk_token = L"[UNK]",
       const wstring& pad_token = L"[PAD]",
@@ -110,9 +113,9 @@ class BertTokenizer {
     unordered_map<string, vector<int64_t>> TruncateSequence(
       vector<int64_t>* ids,
       vector<int64_t>* pair_ids,
-      const int64_t num_tokens_to_remove = 0,
+      const size_t num_tokens_to_remove = 0,
       const string&  truncation_strategy = "longest_first",
-      const int64_t stride = 0) const;
+      const size_t stride = 0) const;
     vector<int64_t> GetSpecialTokensMask(
       const vector<int64_t>& token_ids_0,
       const vector<int64_t>& token_ids_1 = vector<int64_t>(),
@@ -121,7 +124,7 @@ class BertTokenizer {
     unordered_map<string, vector<int64_t>> Encode(
       const string& text,
       const string& text_pair = "",
-      const int64_t max_seq_len = -1,
+      const size_t max_seq_len = 0,
       bool pad_to_max_seq_len = false,
       bool return_length = false,
       bool return_token_type_ids = true,
@@ -130,14 +133,17 @@ class BertTokenizer {
       const string&  truncation_strategy = "longest_first",
       bool return_overflowing_tokens = false,
       bool return_special_tokens_mask = false) const;
-
+    int64_t GetUnkTokenID() const;
+    int64_t GetPadTokenID() const;
+    int64_t GetClsTokenID() const;
+    int64_t GetMaskTokenID() const;
+    int64_t GetSepTokenID() const;
 
  private:
-    string vocab_file_;
     bool do_lower_case_;
     wstring unk_token_, pad_token_, cls_token_, mask_token_, sep_token_;
     string padding_site_;
-    shared_ptr<Vocab> vocab_;
+    Vocab vocab_;
     BasicTokenizer basic_tokenizer_;
     WordPieceTokenizer word_piece_tokenizer_;
     int64_t unk_token_id_, cls_token_id_,
@@ -156,17 +162,52 @@ class TokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* text = ctx.Input<std::vector<std::string>>("Text");
+    auto* vocab= ctx.Input<std::unordered_map<std::wstring, int>>("Vocab");
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
-    // auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
+    auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
 
-    input_ids->Resize(framework::make_ddim({static_cast<int64_t>(text->size())}));
-    auto* input_ids_data = input_ids->mutable_data<T>(ctx.GetPlace());
+    BertTokenizer* tokenizer_ptr = nullptr;
+    try {
+      tokenizer_ptr = new BertTokenizer(*vocab);
+    }
+    catch (std::exception& e) {
+      VLOG(0) << e.what() << endl;
+      return;
+    }
+
     // only support cpu now
-    VLOG(0) << "text size: " << text->size();
-    for (int64_t i = 0; i < text->size(); ++i) {
-      VLOG(0) << "text[" << i << "] = " << text->at(i)
-              << ", size: " << text->at(i).size();
-      input_ids_data[i] = text->at(i).size();
+    size_t batch_max_seq_len = 0;
+    size_t batch_size = text->size();
+    unordered_map<size_t, vector<T>> batch_input_ids;
+    unordered_map<size_t, vector<T>> batch_seg_ids;
+    for (size_t i = 0; i < batch_size; ++i) {
+      auto res = tokenizer_ptr->Encode(text->at(i));
+      size_t seq_len = res["input_ids"].size();
+      batch_input_ids[i] = res["input_ids"];
+      batch_seg_ids[i] = res["token_type_ids"];
+      if(seq_len > batch_max_seq_len) {
+        batch_max_seq_len = seq_len;
+      }
+    }
+
+    input_ids->Resize(framework::make_ddim(
+      {static_cast<int64_t>(batch_size), static_cast<int64_t>(batch_max_seq_len)}));
+    auto* input_ids_data = input_ids->mutable_data<T>(ctx.GetPlace());
+    seg_ids->Resize(framework::make_ddim(
+      {static_cast<int64_t>(batch_size), static_cast<int64_t>(batch_max_seq_len)}));
+    auto* seg_ids_data = input_ids->mutable_data<T>(ctx.GetPlace());
+    for(size_t i = 0; i < batch_size; i++) {
+      size_t seq_len = batch_input_ids[i].size();
+      for (size_t j = 0; j < batch_max_seq_len; j++) {
+        if (j < seq_len) {
+          input_ids_data[i * batch_max_seq_len + j] = batch_input_ids[i][j];
+          seg_ids_data[i * batch_max_seq_len + j] = batch_seg_ids[i][j];
+        }
+        else {
+          input_ids_data[i * batch_max_seq_len + j] = tokenizer_ptr->GetPadTokenID();
+          seg_ids_data[i * batch_max_seq_len + j] = tokenizer_ptr->GetPadTokenID();
+        }
+      }
     }
   }
 };

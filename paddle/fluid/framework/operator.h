@@ -328,9 +328,7 @@ class ExecutionContext {
 
   template <typename T>
   const T* Input(const std::string& name) const {
-    VLOG(0) << "%%%%%%%%%%%%%%%%%%%%%%%% name: " << name ;
     auto* var = InputVar(name);
-    VLOG(0) << "%%%%%%%%%%%%%%%%%%%%%%%%%%% *var" << var->Type() ;
     return var == nullptr ? nullptr : &var->Get<T>();
   }
 

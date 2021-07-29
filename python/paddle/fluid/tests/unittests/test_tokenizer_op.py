@@ -17,18 +17,26 @@ import unittest
 import paddle
 import paddle.fluid.core as core
 
+from paddlenlp.transformers import BertTokenizer
+
 
 class TestTokenizerDemo(unittest.TestCase):
     def test_string_input(self):
         paddle.set_device('cpu')
 
-        tokens = ['I Love China', 'I Love shenzhen']
-        x = paddle.Tensor(core.VarDesc.VarType.STRINGS, [], "demo_tokens",
+        tokens = ['今天天气不错', '大暴雨']
+        tokens_tensor = paddle.Tensor(core.VarDesc.VarType.STRINGS, [], "demo_tokens",
                           core.VarDesc.VarType.STRINGS, False)
-        x.value().set_string_list(tokens)
+        tokens_tensor.value().set_string_list(tokens)
 
-        output = core.ops.tokenizer(x)
+        t = BertTokenizer.from_pretrained('bert-base-chinese')
+        vocab = t.vocab.token_to_idx
 
+        vocab_tensor = paddle.Tensor(core.VarDesc.VarType.MAP, [], "demo_vocab",
+                          core.VarDesc.VarType.MAP, False)
+        vocab_tensor.value().set_string_map(vocab)
+
+        output = core.ops.tokenizer(text=tokens_tensor, vocab=vocab_tensor)
         print(output)
 
 
