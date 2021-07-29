@@ -285,6 +285,7 @@ class DatasetBase(object):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               from dataset_generator_old import CTRDataset
               dataset = fluid.DatasetFactory().create_dataset()
