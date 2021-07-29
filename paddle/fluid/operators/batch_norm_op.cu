@@ -358,7 +358,6 @@ void BNForwardTrainingCLastFastInterface(
   }
 }
 
-// todo: need to rethink and refine.
 void SetBNConfigForNCHW(const int reduce_num, const int left_num,
                         bool *should_reduce_again, dim3 *block_dim,
                         dim3 *grid_dim) {
