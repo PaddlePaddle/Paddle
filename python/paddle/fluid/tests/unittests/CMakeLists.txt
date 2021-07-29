@@ -914,10 +914,24 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_sendrecv_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
     if(WITH_DISTRIBUTE)
+        set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
         set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
         set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
+        set_tests_properties(test_collective_split_embedding
+            test_collective_split_embedding_none_divisible
+            test_collective_split_row_linear
+            test_collective_split_col_linear
+            test_collective_scatter_api
+            test_collective_barrier_api
+            test_collective_reduce_api
+            test_pipeline_parallel
+            test_collective_allreduce_api
+            test_new_group_api
+            test_collective_broadcast_api
+            test_collective_allgather_api
+            test_collective_alltoall_api
+            PROPERTIES LABELS "RUN_TYPE=DIST")
     endif()
     set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_broadcast PROPERTIES TIMEOUT 120)
@@ -934,20 +948,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_collective_split_embedding
-        test_collective_split_embedding_none_divisible
-        test_collective_split_row_linear
-        test_collective_split_col_linear
-        test_collective_scatter_api
-        test_collective_barrier_api
-        test_collective_reduce_api
-        test_pipeline_parallel
-        test_collective_allreduce_api
-        test_new_group_api
-        test_collective_broadcast_api
-        test_collective_allgather_api
-        test_collective_alltoall_api
-        PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_GPU OR WITH_ROCM)
     set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT 120)
