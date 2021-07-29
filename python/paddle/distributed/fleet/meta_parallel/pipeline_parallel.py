@@ -50,8 +50,6 @@ class PipelineParallel(MetaParallelBase):
 
         self.num_stages = self._hcg.get_pipe_parallel_world_size()
         self.stage_id = self._hcg.get_stage_id()
-        self.prev_stage_id = self.stage_id - 1
-        self.next_stage_id = self.stage_id + 1
         self.pp_group = self._hcg.get_pipe_parallel_group()
 
         p2p.initialize_p2p_groups(hcg)
@@ -73,7 +71,8 @@ class PipelineParallel(MetaParallelBase):
         if self.use_data_parallel:
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
-        self.data_id = 0
+
+        self.micro_batch_id = 0
 
     def _set_tensor_trainable(self, tensor):
         if tensor is None:
@@ -113,7 +112,7 @@ class PipelineParallel(MetaParallelBase):
         self.total_loss = None
 
         # store data id for micro_batch
-        self.data_id = 0
+        self.micro_batch_id = 0
 
         # Compute number of warmup microbatches.
         num_microbatches = self.accumulate_steps
@@ -182,12 +181,12 @@ class PipelineParallel(MetaParallelBase):
 
     def _forward_step(self, input_tensor):
         if self.stage_id == 0:
-            input_tensor = self._load_micro_batch(self.data_id)
+            input_tensor = self._load_micro_batch(self.micro_batch_id)
 
         output_tensor = self._layers.forward(input_tensor)
 
         if self.is_last_stage:
-            labels = self._load_micro_batch(self.data_id)
+            labels = self._load_micro_batch(self.micro_batch_id)
             output_tensor = self._layers._loss_fn(output_tensor, labels)
             assert isinstance(
                 output_tensor, paddle.
@@ -200,7 +199,7 @@ class PipelineParallel(MetaParallelBase):
                 self.total_loss = paddle.zeros_like(output_tensor)
             self.total_loss += output_tensor.detach()
 
-        self.data_id += 1
+        self.micro_batch_id += 1
         return output_tensor
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
@@ -212,10 +211,6 @@ class PipelineParallel(MetaParallelBase):
             if isinstance(output_tensor, tuple):
                 outputs = [t for t in output_tensor if not t.stop_gradient]
                 assert len(outputs) == len(output_tensor_grad)
-                print("outputs: ", type(outputs), len(outputs))
-                print("output_tensor_grad: ", type(output_tensor_grad),
-                      len(output_tensor_grad))
-                print(output_tensor_grad)
                 paddle.autograd.backward(
                     tensors=outputs,
                     grad_tensors=[t for t in output_tensor_grad])

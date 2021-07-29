@@ -19,25 +19,13 @@ import unittest
 import paddle
 import numpy as np
 import random
-import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from hybrid_parallel_pp_layer import AlexNetPipeDesc, AlexNet
-from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid import layers
 import paddle.nn.functional as F
-
-import paddle
-import numpy as np
-import random
-import paddle
-import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
-from paddle.fluid.dygraph.container import Sequential
 from paddle.distributed.fleet.meta_parallel import PipelineLayer, LayerDesc
 from paddle.fluid.dygraph.layers import Layer
 import paddle.nn as nn
-import paddle.fluid as fluid
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -47,11 +35,11 @@ def set_random_seed(seed, dp_id, rank_id):
     paddle.seed(seed + dp_id)
 
 
-batch_size = 4
+batch_size = 8
 length = 8
 micro_batch_size = 2
 vocab_size = 128
-hidden_size = 3
+hidden_size = 16
 d_model = hidden_size
 dim_feedforward = 4 * d_model
 
@@ -69,8 +57,10 @@ class EmbeddingNet(Layer):
         attention_mask.stop_gradient = True
         w_emb = self.word_embeddings(x)
         p_emb = self.position_embeddings(x)
+        w_emb = w_emb + p_emb
 
-        return w_emb, attention_mask, p_emb.detach()
+        # need to fix bug of backward()
+        return w_emb, attention_mask
 
 
 class TransformerNet(Layer):
@@ -109,12 +99,12 @@ class EmbeddingPipe(EmbeddingNet):
 
 class TransformerNetPipe(TransformerNet):
     def forward(self, args):
-        x, mask, p_emb = args[0], args[1], args[2]
+        x, mask = args[0], args[1]
 
         output = super().forward(x, mask)
-        output = output + p_emb
+        output = output
         mask.stop_gradient = True
-        return output, mask, p_emb
+        return output, mask
 
 
 class CriterionPipe(Layer):
@@ -131,7 +121,7 @@ class ModelPipe(PipelineLayer):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
 
-        for x in range(4):
+        for x in range(5):
             self.descs.append(LayerDesc(TransformerNetPipe))
 
         self.descs.append(lambda x: x[0])
@@ -180,7 +170,7 @@ class TestDistPPTraning(unittest.TestCase):
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
             loss = model.train_batch([x, x], optimizer, scheduler)
-            print("loss: ", loss.numpy())
+            # TODO(shenliang03) add utest for loss
 
 
 if __name__ == "__main__":

@@ -15,7 +15,6 @@
 import paddle
 from .utils import is_float_tensor, get_tensor_dtype, paddle_2_number, number_2_dtype
 
-_groups = None
 _hcg = None
 
 
@@ -115,21 +114,77 @@ class SendRecvMeta:
 _send_recv_meta = SendRecvMeta()
 
 
+def send_partial(tensor,
+                 dst=0,
+                 nranks=1,
+                 rank_id=0,
+                 group=None,
+                 use_calc_stream=True):
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+    return paddle.fluid.core.ops.partial_send(
+        tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id, 'peer',
+        dst, 'num', nranks, 'id', rank_id)
+
+
+def recv_partial(tensor,
+                 src=0,
+                 nranks=1,
+                 rank_id=0,
+                 group=None,
+                 use_calc_stream=True):
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    paddle.fluid.core.ops.partial_recv(
+        tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id, 'peer',
+        src, 'num', nranks, 'id', rank_id, 'dtype', tensor.dtype, 'out_shape',
+        tensor.shape)
+
+    if nranks > 1:
+        pass
+
+
+def allgather_partial(tensor,
+                      nranks=1,
+                      rank_id=0,
+                      group=None,
+                      use_calc_stream=True):
+    if nranks == 1:
+        return
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    return paddle.fluid.core.ops.partial_allgather_(
+        tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
+        'nranks', nranks, 'rank', rank_id)
+
+
 def initialize_p2p_groups(hcg):
-    global _groups, _hcg
+    global _hcg
     _hcg = hcg
 
 
-def _communicate(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
-    global _groups, _hcg
+def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
+    global _hcg
 
     tensor_recv_prev = None
     tensor_recv_next = None
 
+    # send / recv message
     recv_shape_msg = _send_recv_meta.recv_shape_message
     recv_dtype_msg = _send_recv_meta.recv_dtype_message
     send_shape_msg = _send_recv_meta.send_shape_message
     send_dtype_msg = _send_recv_meta.send_dtype_message
+
+    # model parallel message
+
+    mp_group = _hcg.get_model_parallel_group()
+    mp_degree = self._hcg.get_model_parallel_world_size()
+    mp_rank = self._hcg.get_model_parallel_rank()
 
     if recv_prev:
         if isinstance(recv_shape_msg, tuple):
@@ -155,25 +210,54 @@ def _communicate(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
             tensor_recv_next = paddle.empty(
                 shape=send_shape_msg, dtype=number_2_dtype(send_dtype_msg))
 
+    # start to p2p communicate
     if tensor_send_prev is not None:
         if isinstance(tensor_send_prev, tuple):
             for d in tensor_send_prev:
                 paddle.distributed.wait(d, use_calc_stream=True)
-                paddle.distributed.send(
-                    d, dst=0, group=_hcg.send_prev_group, use_calc_stream=False)
+                send_partial(
+                    d,
+                    dst=0,
+                    nranks=mp_degree,
+                    rank_id=mp_rank,
+                    group=_hcg.send_prev_group,
+                    use_calc_stream=False)
+
+                # paddle.distributed.send(
+            # d, dst=0, group=_hcg.send_prev_group, use_calc_stream=False)
         else:
             paddle.distributed.wait(tensor_send_prev, use_calc_stream=True)
-            paddle.distributed.send(
+            # paddle.distributed.send(
+            #     tensor_send_prev,
+            #     dst=0,
+            #     group=_hcg.send_prev_group,
+            #     use_calc_stream=False)
+            send_partial(
                 tensor_send_prev,
                 dst=0,
+                nranks=mp_degree,
+                rank_id=mp_rank,
                 group=_hcg.send_prev_group,
                 use_calc_stream=False)
 
     if tensor_recv_prev is not None:
         if isinstance(tensor_recv_prev, tuple):
             for d in tensor_recv_prev:
-                paddle.distributed.recv(
-                    d, src=0, group=_hcg.recv_prev_group, use_calc_stream=True)
+                # paddle.distributed.recv(
+                # d, src=0, group=_hcg.recv_prev_group, use_calc_stream=True)
+                recv_partial(
+                    d,
+                    src=0,
+                    nranks=mp_degree,
+                    rank_id=mp_rank,
+                    group=_hcg.recv_prev_group,
+                    use_calc_stream=True)
+                allgather_partial(
+                    d,
+                    nranks=mp_degree,
+                    rank_id=mp_rank,
+                    group=mp_group,
+                    use_calc_stream=True)
         else:
             paddle.distributed.recv(
                 tensor_recv_prev,
@@ -185,6 +269,7 @@ def _communicate(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
         if isinstance(tensor_send_next, tuple):
             for d in tensor_send_next:
                 paddle.distributed.wait(d, use_calc_stream=True)
+
                 paddle.distributed.send(
                     d, dst=1, group=_hcg.send_next_group, use_calc_stream=False)
         else:
@@ -218,7 +303,7 @@ def recv_forward():
             _send_recv_meta.recv_meta(_hcg.recv_prev_group)
             _send_recv_meta.has_recv_meta = True
 
-        input_tensor, _ = _communicate(
+        input_tensor, _ = _p2p_helper(
             tensor_send_next=None,
             tensor_send_prev=None,
             recv_prev=True,
@@ -230,7 +315,7 @@ def recv_backward():
     if _hcg.is_last_stage:
         output_tensor_grad = None
     else:
-        _, output_tensor_grad = _communicate(
+        _, output_tensor_grad = _p2p_helper(
             tensor_send_next=None,
             tensor_send_prev=None,
             recv_prev=False,
@@ -245,7 +330,7 @@ def send_forward(output_tensor):
             _send_recv_meta.send_meta(output_tensor, _hcg.send_next_group)
             _send_recv_meta.has_send_meta = True
 
-        _communicate(
+        _p2p_helper(
             tensor_send_next=output_tensor,
             tensor_send_prev=None,
             recv_prev=False,
@@ -254,7 +339,7 @@ def send_forward(output_tensor):
 
 def send_backward(input_tensor_grad):
     if not _hcg.is_first_stage:
-        _communicate(
+        _p2p_helper(
             tensor_send_next=None,
             tensor_send_prev=input_tensor_grad,
             recv_prev=False,
@@ -265,7 +350,7 @@ def send_forward_recv_backward(output_tensor):
     if _hcg.is_last_stage:
         output_tensor_grad = None
     else:
-        _, output_tensor_grad = _communicate(
+        _, output_tensor_grad = _p2p_helper(
             tensor_send_next=output_tensor,
             tensor_send_prev=None,
             recv_prev=False,
@@ -277,7 +362,7 @@ def send_backward_recv_forward(input_tensor_grad):
     if _hcg.is_first_stage:
         input_tensor = None
     else:
-        input_tensor, _ = _communicate(
+        input_tensor, _ = _p2p_helper(
             tensor_send_next=None,
             tensor_send_prev=input_tensor_grad,
             recv_prev=True,

@@ -157,7 +157,6 @@ class HybridCommunicateGroup(object):
         self.is_last_stage = (self.stage_id == (self._pp_degree - 1))
 
         # create p2p_groups
-        self._p2p_groups = self._build_p2p_lists()
         if self._pp_degree > 1:
             self._set_p2p_group()
             print("send_next_group: ", self.send_next_group)
@@ -176,21 +175,6 @@ class HybridCommunicateGroup(object):
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
-
-    def _build_p2p_lists(self):
-        comm_lists = self._topo.get_comm_list('pipe')
-        p2p_lists = []
-        for rank in range(self.nranks):
-            for comm_ranks in comm_lists:
-                assert len(comm_ranks) == self._pp_degree
-                if rank in comm_ranks:
-                    idx = comm_ranks.index(rank)
-                    next_rank = comm_ranks[(idx + 1) % self._pp_degree]
-                    p2p_lists.append([rank, next_rank])
-                    break
-        assert len(
-            p2p_lists) == self.nranks, "len(p2p_lists) should be equal nranks"
-        return p2p_lists
 
     def get_parallel_mode(self):
         # there are four modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel
@@ -345,9 +329,6 @@ class HybridCommunicateGroup(object):
     def get_sharding_parallel_group_src_rank(self):
         # TODO should the src rank related to the shard rank for each parameter ?
         return self._sharding_comm_group.ranks[0]
-
-    def get_p2p_groups(self):
-        return self._p2p_groups
 
     # check parallel group
     def get_check_parallel_group(self):
