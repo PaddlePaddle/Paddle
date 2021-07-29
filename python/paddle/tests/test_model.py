@@ -89,7 +89,7 @@ class ModelOutter(paddle.nn.Layer):
         y = self.module2(y)
         return y, 3
 
-    
+
 class LeNetListInput(LeNetDygraph):
     def forward(self, inputs):
         x = inputs[0]
