@@ -107,9 +107,15 @@ class DenseTensor : public TensorImplInterface {
     return reinterpret_cast<const T*>(data());
   }
 
-  // mutable_data does not hold arguments.
-  // Before calling mutable_data, please make sure that Tensor has maintained
+  // NOTE: mutable_data does not hold arguments. Before calling mutable_data,
+  // please make sure that Tensor has maintained
   // the correct meta and status.
+  //
+  // TODO(chenweihang): We need to be able to specify the allocator when
+  // mutable_data, or directly remove the mutable_data method.
+  // DenseTensor cannot actively apply for memory. Its memory application is
+  // handled by the DeviceContext->AllocateTensorData interface.
+  // I prefer the latter
   template <typename T>
   T* mutable_data() {
     static_assert(std::is_pod<T>::value,
