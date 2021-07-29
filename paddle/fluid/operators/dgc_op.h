@@ -31,8 +31,7 @@ namespace operators {
 template <typename T>
 struct CudaAddBeforeMulFunctor {
  public:
-  CudaAddBeforeMulFunctor() {}
-  explicit CudaAddBeforeMulFunctor(float m) : _m(m) {}
+  explicit HOSTDEVICE CudaAddBeforeMulFunctor(float m) : _m(m) {}
   inline HOSTDEVICE T operator()(const T* args) const {
     return _m * (args[0] + args[1]);
   }
@@ -44,8 +43,7 @@ struct CudaAddBeforeMulFunctor {
 template <typename T>
 struct CudaMulBeforeAddFunctor {
  public:
-  CudaMulBeforeAddFunctor() {}
-  explicit CudaMulBeforeAddFunctor(float m) : _m(m) {}
+  explicit HOSTDEVICE CudaMulBeforeAddFunctor(float m) : _m(m) {}
   inline HOSTDEVICE T operator()(const T* args) const {
     return _m * args[0] + args[1];
   }
@@ -204,10 +202,9 @@ class DGCOpKernel : public framework::OpKernel<T> {
 
       if (use_nesterov) {
         // u = m * (u + g)
-        // u_out_e.device(eigen_ctx) = m * (u_e + grad_out_e);
-        auto add_before_mul_func = CudaAddBeforeMulFunctor<T>(m);
+        CudaAddBeforeMulFunctor<T> add_before_mul_func(m);
         LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-            cuda_ctx, ins, &outs, -1, add_before_mul_func());
+            cuda_ctx, ins, &outs, add_before_mul_func);
 
         // v = u + v + g
         outs.pop_back();
@@ -218,10 +215,9 @@ class DGCOpKernel : public framework::OpKernel<T> {
             cuda_ctx, ins, &outs, 0, CudaTwiceAddFunctor<T>());
       } else {
         // u = m * u + g
-        // u_out_e.device(eigen_ctx) = m * u_e + grad_out_e;
-        auto mul_before_add_func = CudaMulBeforeAddFunctor<T>(m);
+        CudaMulBeforeAddFunctor<T> mul_before_add_func(m);
         LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-            cuda_ctx, ins, &outs, 0, mul_before_add_func());
+            cuda_ctx, ins, &outs, mul_before_add_func);
 
         outs.pop_back();
         outs.emplace_back(v_out);
