@@ -143,9 +143,6 @@ def recv_partial(tensor,
         src, 'num', nranks, 'id', rank_id, 'dtype', tensor.dtype, 'out_shape',
         tensor.shape)
 
-    if nranks > 1:
-        pass
-
 
 def allgather_partial(tensor,
                       nranks=1,
@@ -153,7 +150,7 @@ def allgather_partial(tensor,
                       group=None,
                       use_calc_stream=True):
     if nranks == 1:
-        return
+        return tensor
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
@@ -181,10 +178,9 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
     send_dtype_msg = _send_recv_meta.send_dtype_message
 
     # model parallel message
-
     mp_group = _hcg.get_model_parallel_group()
-    mp_degree = self._hcg.get_model_parallel_world_size()
-    mp_rank = self._hcg.get_model_parallel_rank()
+    mp_degree = _hcg.get_model_parallel_world_size()
+    mp_rank = _hcg.get_model_parallel_rank()
 
     if recv_prev:
         if isinstance(recv_shape_msg, tuple):
@@ -222,16 +218,8 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
                     rank_id=mp_rank,
                     group=_hcg.send_prev_group,
                     use_calc_stream=False)
-
-                # paddle.distributed.send(
-            # d, dst=0, group=_hcg.send_prev_group, use_calc_stream=False)
         else:
             paddle.distributed.wait(tensor_send_prev, use_calc_stream=True)
-            # paddle.distributed.send(
-            #     tensor_send_prev,
-            #     dst=0,
-            #     group=_hcg.send_prev_group,
-            #     use_calc_stream=False)
             send_partial(
                 tensor_send_prev,
                 dst=0,
@@ -243,8 +231,6 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
     if tensor_recv_prev is not None:
         if isinstance(tensor_recv_prev, tuple):
             for d in tensor_recv_prev:
-                # paddle.distributed.recv(
-                # d, src=0, group=_hcg.recv_prev_group, use_calc_stream=True)
                 recv_partial(
                     d,
                     src=0,
@@ -259,10 +245,18 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
                     group=mp_group,
                     use_calc_stream=True)
         else:
-            paddle.distributed.recv(
+            recv_partial(
                 tensor_recv_prev,
                 src=0,
+                nranks=mp_degree,
+                rank_id=mp_rank,
                 group=_hcg.recv_prev_group,
+                use_calc_stream=True)
+            allgather_partial(
+                tensor_recv_prev,
+                nranks=mp_degree,
+                rank_id=mp_rank,
+                group=mp_group,
                 use_calc_stream=True)
 
     if tensor_send_next is not None:
@@ -270,28 +264,55 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
             for d in tensor_send_next:
                 paddle.distributed.wait(d, use_calc_stream=True)
 
-                paddle.distributed.send(
-                    d, dst=1, group=_hcg.send_next_group, use_calc_stream=False)
+                send_partial(
+                    d,
+                    dst=1,
+                    nranks=mp_degree,
+                    rank_id=mp_rank,
+                    group=_hcg.send_next_group,
+                    use_calc_stream=False)
         else:
             paddle.distributed.wait(tensor_send_next, use_calc_stream=True)
-            paddle.distributed.send(
+            send_partial(
                 tensor_send_next,
                 dst=1,
+                nranks=mp_degree,
+                rank_id=mp_rank,
                 group=_hcg.send_next_group,
                 use_calc_stream=False)
 
     if tensor_recv_next is not None:
         if isinstance(tensor_recv_next, tuple):
             for d in tensor_recv_next:
-                paddle.distributed.recv(
-                    d, src=1, group=_hcg.recv_next_group, use_calc_stream=True)
+                recv_partial(
+                    d,
+                    src=1,
+                    nranks=mp_degree,
+                    rank_id=mp_rank,
+                    group=_hcg.recv_next_group,
+                    use_calc_stream=True)
+                allgather_partial(
+                    d,
+                    nranks=mp_degree,
+                    rank_id=mp_rank,
+                    group=mp_group,
+                    use_calc_stream=True)
+
         else:
-            paddle.distributed.recv(
+            recv_partial(
                 tensor_recv_next,
                 src=1,
+                nranks=mp_degree,
+                rank_id=mp_rank,
                 group=_hcg.recv_next_group,
                 use_calc_stream=True)
 
+            allgather_partial(
+                tensor_recv_next,
+                nranks=mp_degree,
+                rank_id=mp_rank,
+                group=mp_group,
+                use_calc_stream=True)
     return tensor_recv_prev, tensor_recv_next
 
 
