@@ -828,7 +828,7 @@ class ActivationMKLDNNHandler
         auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
         alpha = (scale_tensor == nullptr)
                     ? ctx.Attr<float>("scale")
-                    : (float)*(scale_tensor->data<T>());  // NOLINT
+                    : (float)*(scale_tensor->data<T>());
         beta = ctx.Attr<float>("bias");
         // if bias_after_scale == true
         //   out = scale*X + bias

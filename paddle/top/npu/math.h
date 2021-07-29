@@ -49,13 +49,13 @@ void Scale(const NPUDeviceContext& dev_ctx,
            DenseTensor* out) {
   out->mutable_data<T>();
   auto stream = dev_ctx.stream();
-  float _power = 1.0;
+  float power = 1.0;
   if (bias_after_scale) {
     auto runner = paddle::operators::NpuOpRunner(
         "Power",
         {x},
         {*out},
-        {{"power", _power}, {"scale", scale}, {"shift", bias}});
+        {{"power", power}, {"scale", scale}, {"shift", bias}});
 
     runner.Run(stream);
   } else {
@@ -68,12 +68,12 @@ void Scale(const NPUDeviceContext& dev_ctx,
     runner_tmp.Run(stream);
 
     out->mutable_data<T>(x.place());
-    float _bias = 0.0;
+    float bias = 0.0;
     auto runner = paddle::operators::NpuOpRunner(
         "Power",
         {tmp_x},
         {*out},
-        {{"power", _power}, {"scale", scale}, {"shift", _bias}});
+        {{"power", power}, {"scale", scale}, {"shift", bias}});
     runner.Run(stream);
   }
 }
