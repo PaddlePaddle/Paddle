@@ -207,7 +207,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
         // u_out_e.device(eigen_ctx) = m * (u_e + grad_out_e);
         auto add_before_mul_func = CudaAddBeforeMulFunctor<T>(m);
         LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-            cuda_ctx, ins, &outs, -1, add_before_mul_func);
+            cuda_ctx, ins, &outs, -1, add_before_mul_func());
 
         // v = u + v + g
         outs.pop_back();
@@ -221,7 +221,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
         // u_out_e.device(eigen_ctx) = m * u_e + grad_out_e;
         auto mul_before_add_func = CudaMulBeforeAddFunctor<T>(m);
         LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-            cuda_ctx, ins, &outs, 0, mul_before_add_func);
+            cuda_ctx, ins, &outs, 0, mul_before_add_func());
 
         outs.pop_back();
         outs.emplace_back(v_out);
