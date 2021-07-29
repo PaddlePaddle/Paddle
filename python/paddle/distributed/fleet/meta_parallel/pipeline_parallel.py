@@ -11,13 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import numpy as np
-
 import paddle
 import paddle.fluid as fluid
 from .meta_parallel_base import MetaParallelBase
-from .pp_utils.utils import is_float_tensor, get_tensor_dtype, paddle_2_number, number_2_dtype
-from .pp_utils import utils
+from .pp_utils.utils import is_float_tensor
 from .parallel_layers.pp_layers import PipelineLayer
 
 from ..utils.hybrid_parallel_util import broadcast_mp_parameters
@@ -35,11 +32,8 @@ class PipelineParallel(MetaParallelBase):
             raise TypeError(
                 "The Layer should be a derived class of PipelineLayer.")
         super(PipelineParallel, self).__init__(layers, hcg, strategy)
-        self.use_pipe_parallel = self._hcg.get_pipe_parallel_world_size() > 1
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
-
-        self.is_pipe_partitioned = self.use_model_parallel
 
         self.total_loss = None
 
@@ -57,9 +51,7 @@ class PipelineParallel(MetaParallelBase):
         self.is_first_stage = self.stage_id == 0
         self.is_last_stage = (self.stage_id == (self.num_stages - 1))
         self.global_rank = self._hcg.get_global_rank()
-
-        self.mp_degree = self._hcg.get_model_parallel_world_size()
-        self.mp_rank = self._hcg.get_model_parallel_rank()
+        self.micro_batch_id = 0
 
         logger.info("Pipeline Info -- num_stages: {}, stage_id: {}".format(
             self.num_stages, self.stage_id))
@@ -71,8 +63,6 @@ class PipelineParallel(MetaParallelBase):
         if self.use_data_parallel:
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
-
-        self.micro_batch_id = 0
 
     def _set_tensor_trainable(self, tensor):
         if tensor is None:
@@ -114,14 +104,16 @@ class PipelineParallel(MetaParallelBase):
         # store data id for micro_batch
         self.micro_batch_id = 0
 
-        # Compute number of warmup microbatches.
-        # self.accumulate_steps = self.accumulate_steps
+        # Next, use the 1f1b scheduling strategy.
+        # this strategy is inspired by:
+        # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
+
         startup_steps = (self.num_stages - self.stage_id - 1)
         startup_steps = min(startup_steps, self.accumulate_steps)
         steady_steps = self.accumulate_steps - startup_steps
 
-        input_tensors = []
-        output_tensors = []
+        input_buffers = []
+        output_buffers = []
 
         for step_id in range(startup_steps):
             input_tensor = p2p.recv_forward()
@@ -130,38 +122,38 @@ class PipelineParallel(MetaParallelBase):
             output_tensor = self._forward_step(input_tensor)
             p2p.send_forward(output_tensor)
 
-            input_tensors.append(input_tensor)
-            output_tensors.append(output_tensor)
+            input_buffers.append(input_tensor)
+            output_buffers.append(output_tensor)
 
         if steady_steps > 0:
             input_tensor = p2p.recv_forward()
 
         for i in range(steady_steps):
-            last_iteration = (i == (steady_steps - 1))
+            last_iter = (i == (steady_steps - 1))
 
             self._set_tensor_trainable(input_tensor)
             output_tensor = self._forward_step(input_tensor)
 
             output_tensor_grad = p2p.send_forward_recv_backward(output_tensor)
 
-            input_tensors.append(input_tensor)
-            output_tensors.append(output_tensor)
+            input_buffers.append(input_tensor)
+            output_buffers.append(output_tensor)
 
-            input_tensor, output_tensor = input_tensors.pop(
-                0), output_tensors.pop(0)
+            input_tensor, output_tensor = input_buffers.pop(
+                0), output_buffers.pop(0)
 
             input_tensor_grad = self._backward_step(input_tensor, output_tensor,
                                                     output_tensor_grad)
 
-            if last_iteration:
+            if last_iter:
                 input_tensor = None
                 p2p.send_backward(input_tensor_grad)
             else:
                 input_tensor = p2p.send_backward_recv_forward(input_tensor_grad)
 
         for i in range(startup_steps):
-            input_tensor = input_tensors.pop(0)
-            output_tensor = output_tensors.pop(0)
+            input_tensor = input_buffers.pop(0)
+            output_tensor = output_buffers.pop(0)
 
             output_tensor_grad = p2p.recv_backward()
 

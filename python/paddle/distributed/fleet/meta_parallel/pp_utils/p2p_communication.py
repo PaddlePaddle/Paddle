@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import paddle
-from .utils import is_float_tensor, get_tensor_dtype, paddle_2_number, number_2_dtype
+from .utils import paddle_2_number, number_2_dtype
 
 _hcg = None
 
 
 class SendRecvMeta:
+    """Mainly used to help p2p communication context information"""
+
     def __init__(self):
         self.send_shape_message = None
         self.send_dtype_message = None
@@ -263,7 +265,6 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
         if isinstance(tensor_send_next, tuple):
             for d in tensor_send_next:
                 paddle.distributed.wait(d, use_calc_stream=True)
-
                 send_partial(
                     d,
                     dst=1,
