@@ -63,7 +63,6 @@ class BlockingQueue {
  public:
   explicit BlockingQueue(size_t capacity) : capacity_(capacity) {
     PADDLE_ENFORCE_GT(capacity_, 0,
-
                       platform::errors::InvalidArgument(
                           "The capacity must be greater than 0."));
   }

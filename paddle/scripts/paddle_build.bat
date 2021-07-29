@@ -154,8 +154,10 @@ dir %cache_dir%
 dir paddle\fluid\pybind\Release
 rem -------Caching strategy 1: End --------------------------------
 
+
 rem -------Caching strategy 2: sccache decorate compiler-----------
 if "%WITH_SCCACHE%"=="ON" (
+    del D:\sccache\sccache_log.txt
     cmd /C sccache -V || call :install_sccache
     sccache --stop-server 2> NUL
     if not exist D:\sccache mkdir D:\sccache
@@ -324,17 +326,14 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     if %day_now% EQU 21 (
-        del D:\sccache\sccache_log.txt
         rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 11 (
-        del D:\sccache\sccache_log.txt
         rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 01 (
-        del D:\sccache\sccache_log.txt
         rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )

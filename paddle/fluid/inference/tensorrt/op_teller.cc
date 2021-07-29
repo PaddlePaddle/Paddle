@@ -51,6 +51,9 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
 #endif
+#if IS_TRT_VERSION_GE(7000)
+    teller_set.insert("tile");
+#endif
 #if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
@@ -716,12 +719,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "the " << op_type
                 << " does not have attr (keep_dim or dim or "
                    "reduce_all)";
+        std::cout << "attr " << desc.HasAttr("keep_dim") << " "
+                  << desc.HasAttr("dim") << " " << desc.HasAttr("reduce_all");
         return false;
       }
 
       // The batch size dimension cannot be reduced if it's not dynamic shape.
       if (!with_dynamic_shape) {
-        if (desc.HasAttr("reduce_all")) return false;
+        if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all"))) return false;
         std::vector<int32_t> dim =
             BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
         for (auto x : dim) {
@@ -729,6 +734,21 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
     }
+#if IS_TRT_VERSION_GE(7000)
+    if (op_type == "tile") {
+      // Paddle-TRT does not support the input tensors.
+      auto inputs = desc.InputArgumentNames();
+      for (auto& input : inputs) {
+        if (input == "repeat_times_tensor" &&
+            desc.Input("repeat_times_tensor").size() > 0)
+          return false;
+        if (input == "RepeatTimes" && desc.Input("RepeatTimes").size() > 0)
+          return false;
+      }
+      if (with_dynamic_shape) return false;
+      if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
+    }
+#endif
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
