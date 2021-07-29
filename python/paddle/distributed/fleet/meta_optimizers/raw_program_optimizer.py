@@ -217,9 +217,10 @@ class RawProgramOptimizer(MetaOptimizerBase):
         block = self.main_program.global_block()
         ring_id = self.global_ring_id
         param_grads = []
+        grads_to_idx = {}
 
         # find all grad params
-        for op in reversed(block.ops):
+        for idx, op in enumerate(block.ops):
             if is_backward_op(op) and \
                     OP_ROLE_VAR_KEY in op.attr_names:
                 op_role_var = op.attr(OP_ROLE_VAR_KEY)
@@ -235,6 +236,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     if param.is_distributed:
                         continue
                     param_grads.append(grad)
+                    grads_to_idx[grad] = idx
 
         segments = []
         last_dtype = None
@@ -248,56 +250,49 @@ class RawProgramOptimizer(MetaOptimizerBase):
             else:
                 segments[-1].append(var)
 
-        fused_vars = []
-        for idx, op in enumerate(block.ops):
-            if is_optimizer_op(op):
-                for segment in segments:
-                    # insert coalesce tensor
-                    tmp_var = block.create_var(
-                        name=unique_name.generate('FusedOutput_{}'.format(
-                            segment[0].name)),
-                        dtype=segment[0].dtype,
-                        persistable=True,
-                        stop_gradient=True)
-                    fused_vars.append(tmp_var)
-                    block._insert_op_without_sync(
-                        idx,
-                        type="coalesce_tensor",
-                        inputs={"Input": segment},
-                        outputs={"Output": segment,
-                                 "FusedOutput": tmp_var},
-                        attrs={
-                            "copy_data": True,
-                            "use_align": True,
-                            "dtype": segment[0].dtype,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
-                break
+        if len(segments) == 0:
+            return
 
-        # insert the allreduce_sum op
-        for idx, op in enumerate(block.ops):
-            if is_optimizer_op(op):
-                for fused_var in fused_vars:
-                    block._insert_op_without_sync(
-                        idx,
-                        type='c_allreduce_sum',
-                        inputs={'X': fused_var},
-                        outputs={'Out': fused_var},
-                        attrs={
-                            'ring_id': ring_id,
-                            'use_calc_stream': self.calc_comm_same_stream,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
-                    if not self.calc_comm_same_stream:
-                        block._insert_op_without_sync(
-                            idx,
-                            type='c_sync_calc_stream',
-                            inputs={'X': fused_var},
-                            outputs={'Out': fused_var},
-                            attrs={OP_ROLE_KEY: OpRole.Backward})
-                break
+        for segment in reversed(segments):
+            # insert coalesce tensor
+            fused_var = block.create_var(
+                name=unique_name.generate('FusedOutput_{}'.format(segment[0]
+                                                                  .name)),
+                dtype=segment[0].dtype,
+                persistable=True,
+                stop_gradient=True)
+            idx = grads_to_idx[segment[-1]]
+            block._insert_op_without_sync(
+                idx + 1,
+                type='c_allreduce_sum',
+                inputs={'X': fused_var},
+                outputs={'Out': fused_var},
+                attrs={
+                    'ring_id': ring_id,
+                    'use_calc_stream': self.calc_comm_same_stream,
+                    OP_ROLE_KEY: OpRole.Backward
+                })
+            if not self.calc_comm_same_stream:
+                block._insert_op_without_sync(
+                    idx + 1,
+                    type='c_sync_calc_stream',
+                    inputs={'X': fused_var},
+                    outputs={'Out': fused_var},
+                    attrs={OP_ROLE_KEY: OpRole.Backward})
+            block._insert_op_without_sync(
+                idx + 1,
+                type="coalesce_tensor",
+                inputs={"Input": segment},
+                outputs={"Output": segment,
+                         "FusedOutput": fused_var},
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "dtype": segment[0].dtype,
+                    OP_ROLE_KEY: OpRole.Backward
+                })
 
-        if len(fused_vars) == 0:
+        if self.calc_comm_same_stream:
             block._sync_with_cpp()
             return
 
@@ -307,8 +302,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 block._insert_op_without_sync(
                     idx,
                     type='c_sync_comm_stream',
-                    inputs={'X': fused_vars[0]},
-                    outputs={'Out': fused_vars[0]},
+                    inputs={'X': segment[0]},
+                    outputs={'Out': segment[0]},
                     attrs={'ring_id': ring_id,
                            OP_ROLE_KEY: OpRole.Backward})
                 break
