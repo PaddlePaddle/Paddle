@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/top_utils.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 // only can include the headers in paddle/top/api dirs
