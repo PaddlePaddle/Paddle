@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/core/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/top/core/convert_utils.h"
+#include "paddle/top/core/dense_tensor.h"
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"

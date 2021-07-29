@@ -17,9 +17,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 
-// only can include the headers in paddle/pten/api dirs
-#include "paddle/pten/api/dev/core.h"
-#include "paddle/pten/api/dev/math.h"
+// only can include the headers in paddle/top/api dirs
+#include "paddle/top/api/dev/core.h"
+#include "paddle/top/api/dev/math.h"
 
 namespace paddle {
 namespace operators {
