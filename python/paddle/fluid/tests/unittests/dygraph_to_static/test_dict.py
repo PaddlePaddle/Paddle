@@ -219,7 +219,7 @@ class NetWithDictPop(paddle.nn.Layer):
         return x
 
 
-class TestDictPop(TestNetWithDict):
+class TestDictPop3(TestNetWithDict):
     def setUp(self):
         self.x = np.array([2, 2]).astype('float32')
 
