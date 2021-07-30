@@ -45,7 +45,6 @@ from .flat import _flatten_batch, _restore_batch
 
 __all__ = ['get_worker_info']
 
-
 # NOTE: fix `terminate called without an active exception`
 # if for loop break and program exit immediately(with no model
 # layers processing) after iterate **the first few data** in
@@ -62,6 +61,7 @@ __all__ = ['get_worker_info']
 # global, and will precludes GC to auto collect DataLoader
 # instance and will cause memory leak
 _loader = None
+
 
 def _clear_loader():
     global _loader
