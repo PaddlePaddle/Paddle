@@ -76,7 +76,7 @@ def default_collate_fn(batch):
                 "fileds number not same among samples in a batch")
         return [default_collate_fn(fields) for fields in zip(*batch)]
 
-    raise TypeError("batch data con only contains: tensor, numpy.ndarray, "
+    raise TypeError("batch data can only contains: tensor, numpy.ndarray, "
                     "dict, list, number, but got {}".format(type(sample)))
 
 
