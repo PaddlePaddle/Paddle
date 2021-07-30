@@ -26,6 +26,7 @@ class UniqueConsecutiveOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "unique_consecutive");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
                    "unique_consecutive");
+
     auto in_dims = ctx->GetInputDim("X");
     bool return_inverse = ctx->Attrs().Get<bool>("return_inverse");
     bool return_counts = ctx->Attrs().Get<bool>("return_counts");
