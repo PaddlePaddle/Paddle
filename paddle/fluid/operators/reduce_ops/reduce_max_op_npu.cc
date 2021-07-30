@@ -18,21 +18,6 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-std::string outputVector(const std::vector<T> vec) {
-  std::ostringstream oss;
-  for (auto ele : vec) oss << ele << ' ';
-  return oss.str();
-}
-
-template <typename T>
-void PrintTensor(const framework::Tensor& src,
-                 const framework::ExecutionContext& ctx) {
-  std::vector<T> vec(src.numel());
-  TensorToVector(src, ctx.device_context(), &vec);
-  LOG(WARNING) << "vec: " << outputVector<T>(vec);
-}
-
 using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class ReduceMaxNPUKernel : public framework::OpKernel<T> {
@@ -45,11 +30,6 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     int out_dtype = ctx.Attr<int>("out_dtype");
 
-    LOG(WARNING) << "x dims: " << x->dims();
-    LOG(WARNING) << "out dims: " << out->dims();
-
-    LOG(WARNING) << "out_dtype: " << out_dtype;
-
     auto place = ctx.GetPlace();
 
     framework::Tensor cast_out(x->type());
@@ -57,18 +37,14 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
     cast_out.mutable_data<T>(place);
 
     auto cast_out_dtype = x->type();
-    LOG(WARNING) << "cast_out_dtype: " << cast_out_dtype;
     if (out_dtype != -1) {
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
-      LOG(WARNING) << "cast_out_dtype: " << cast_out_dtype;
     }
 
     if (x->type() != cast_out_dtype) {
       if (cast_out_dtype == framework::proto::VarType::FP32) {
-        LOG(WARNING) << "here";
         out->mutable_data<float>(place);
       } else if (cast_out_dtype == framework::proto::VarType::FP16) {
-        LOG(WARNING) << "here";
         out->mutable_data<paddle::platform::float16>(place);
       } else if (cast_out_dtype == framework::proto::VarType::INT16) {
         out->mutable_data<int16_t>(place);
@@ -106,24 +82,11 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
     runner.Run(stream);
 
     if (x->type() != cast_out_dtype) {
-      LOG(WARNING) << "here";
-      PrintTensor<T>(cast_out, ctx);
-    }
-
-    if (x->type() != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
           NpuOpRunner("Cast", {cast_out}, {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(stream);
-
-      if (cast_out_dtype == framework::proto::VarType::FP32) {
-        LOG(WARNING) << "here";
-        PrintTensor<float>(*out, ctx);
-      } else if (cast_out_dtype == framework::proto::VarType::FP16) {
-        LOG(WARNING) << "here";
-        PrintTensor<paddle::platform::float16>(*out, ctx);
-      }
     }
   }
 };

@@ -108,7 +108,6 @@ class TestReduceMaxOpWithOutDtype_bool(TestNPUReduceMaxOp):
             'Out':
             self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(np.bool)
         }
-        print('Out: ', self.outputs['Out'])
 
 
 @skip_check_grad_ci(
@@ -129,13 +128,11 @@ class TestReduceMaxOpWithOutDtype_int16(TestNPUReduceMaxOp):
         }
 
         self.out = self.inputs['X'].max(axis=tuple(self.attrs['dim']))
-        print('out: ', self.out)
 
         self.outputs = {
             'Out':
             self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(np.int16)
         }
-        print('Out: ', self.outputs['Out'])
 
 
 @skip_check_grad_ci(
@@ -200,13 +197,11 @@ class TestReduceMaxOpWithOutDtype_fp16(TestNPUReduceMaxOp):
         }
 
         self.out = self.inputs['X'].max(axis=tuple(self.attrs['dim']))
-        print('out: ', self.out)
 
         self.outputs = {
             'Out': self.inputs['X'].max(
                 axis=tuple(self.attrs['dim'])).astype(np.float16)
         }
-        print('Out: ', self.outputs['Out'])
 
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
