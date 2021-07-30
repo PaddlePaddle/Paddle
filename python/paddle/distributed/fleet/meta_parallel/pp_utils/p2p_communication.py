@@ -17,7 +17,6 @@ from .utils import paddle_2_number, number_2_dtype
 from ...utils import log_util as logger
 
 _hcg = None
-_send_recv_meta = SendRecvMeta()
 
 
 def initialize_p2p_groups(hcg):
@@ -125,6 +124,9 @@ class SendRecvMeta:
                 [d.shape for d in tensor if not d.stop_gradient])
             self.send_dtype_message = tuple(
                 [paddle_2_number(d.dtype) for d in tensor])
+
+
+_send_recv_meta = SendRecvMeta()
 
 
 def send_partial(tensor,
