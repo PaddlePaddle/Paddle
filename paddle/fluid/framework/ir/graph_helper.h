@@ -57,6 +57,9 @@ size_t GraphNum(const Graph &graph);
 // `graph` cannot contain circle.
 std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
 
+// Check whether the topological order of graph ops is unique
+bool IsTopologySortOperationsUnique(const Graph &graph);
+
 // Topological sort, but try to DFS.
 std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph);
 
@@ -86,6 +89,8 @@ std::vector<T *> FilterByNodeWrapper(const Graph &graph) {
   }
   return ret;
 }
+
+std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph);
 
 }  // namespace ir
 }  // namespace framework
