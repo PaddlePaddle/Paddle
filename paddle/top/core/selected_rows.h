@@ -21,7 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/top/core/dense_tensor.h"
+#include "paddle/top/core/tensor_interface.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/mixed_vector.h"
@@ -44,7 +44,7 @@ using RWLock = paddle::framework::RWLock;
 
 // TODO(chenweihang): add other methods later
 
-class SelectedRowsTensor : public TensorImplInterface {
+class SelectedRowsTensor : public TensorInterface {
  public:
   SelectedRowsTensor() = delete;
 

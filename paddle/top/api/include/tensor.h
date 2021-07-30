@@ -18,15 +18,15 @@ limitations under the License. */
 #include <memory>
 #include <utility>
 
-#include "paddle/top/core/autograd_meta_if.h"
-#include "paddle/top/core/tensor_impl_if.h"
+#include "paddle/top/core/tensor_interface.h"
 
 /**
  * [ Why still include the fluid headers? ]
  *
  * We hope to organize the basic implementation of Tensor and the logic related
  * to Tensor operation into an independent library, which we call
- * [Tensor Operation Library], so we extract or rewrite the original OpKernels.
+ * [Tensor Operation Library, top], so we extract or rewrite the original
+ * OpKernels.
  *
  * In the future, the training library, inference library and custom operators
  * will link to this Tensor operation library.
@@ -42,6 +42,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 namespace pt {
+
+class Tensor;
+
+class AutogradMetaInterface {
+ public:
+  virtual const Tensor& grad() const = 0;
+  virtual ~AutogradMetaInterface() = 0;
+  // TODO(yangjiabin): design other methods
+};
 
 /**
  * Tensor is the API description of the basic data structure in the
@@ -64,7 +73,7 @@ namespace pt {
  * letters and underscores.
  *
  * Note: Tensor cannot be inherited. The heterogeneous Tensor implementation
- * can be achieved by inheriting the underlying TensorImplInterface.
+ * can be achieved by inheriting the underlying TensorInterface.
  *
  * Note: This Tensor API is suitable for training and custom operators,
  * another simple Tensor design may be required for inference.
@@ -79,10 +88,10 @@ class Tensor final {
 
   /**
    * @description: Use a TensorImpl pointer to construct a Tensor
-   * @param {shared_ptr<TensorImplInterface>} tensor_impl
+   * @param {shared_ptr<TensorInterface>} tensor_impl
    * @return {Tensor}
    */
-  explicit Tensor(std::shared_ptr<TensorImplInterface> tensor_impl)
+  explicit Tensor(std::shared_ptr<TensorInterface> tensor_impl)
       : impl_(std::move(tensor_impl)) {
     if (impl_.get() == nullptr) {
       throw std::runtime_error("TensorImpl with nullptr is not supported");
@@ -166,9 +175,9 @@ class Tensor final {
   /**
    * @description: Return the implemention of current Tensor.
    * @param None
-   * @return {std::shared_ptr<TensorImplInterface>}
+   * @return {std::shared_ptr<TensorInterface>}
    */
-  std::shared_ptr<TensorImplInterface> impl() const { return impl_; }
+  std::shared_ptr<TensorInterface> impl() const { return impl_; }
 
   // Whether API Tensor need `data` and `mutable_data`?
 
@@ -234,7 +243,7 @@ class Tensor final {
    * heterogeneous Tensor implementation, so that the API level can be unified
    * to one `Tensor`.
    */
-  std::shared_ptr<TensorImplInterface> impl_;
+  std::shared_ptr<TensorInterface> impl_;
 
   /**
    * [ Why need abstract AutogradMetaInterface here? ]

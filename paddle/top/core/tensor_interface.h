@@ -41,25 +41,25 @@ using Place = paddle::platform::Place;
  * The abstract class of Tensor implemention, it needs to define its basic
  * behavior through inherited classes.
  *
- * TensorImplInterface allows Tensor to uniformly access various different
+ * TensorInterface allows Tensor to uniformly access various different
  * TensorImpls within the framework. It will not be used as a kernel argument,
  * but only contains the interfaces supported by various TensorImpls.
  * In extreme cases, it can be an empty base class.
  *
- * If we don't use TensorImplInterface, we may need to use shared_ptr<void>
+ * If we don't use TensorInterface, we may need to use shared_ptr<void>
  * to unify Tensor's API.
  */
-class TensorImplInterface {
+class TensorInterface {
  public:
   // Not allowed to initialize a tensor without descriptive metadata
-  TensorImplInterface() = default;
+  TensorInterface() = default;
 
-  TensorImplInterface(const TensorImplInterface&) = delete;
-  TensorImplInterface& operator=(const TensorImplInterface&) = delete;
-  TensorImplInterface(TensorImplInterface&&) = delete;
-  TensorImplInterface& operator=(TensorImplInterface&&) = delete;
+  TensorInterface(const TensorInterface&) = delete;
+  TensorInterface& operator=(const TensorInterface&) = delete;
+  TensorInterface(TensorInterface&&) = delete;
+  TensorInterface& operator=(TensorInterface&&) = delete;
 
-  virtual ~TensorImplInterface() {}
+  virtual ~TensorInterface() {}
 
   virtual int64_t numel() const = 0;
 

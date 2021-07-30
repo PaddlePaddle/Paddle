@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/top/core/tensor_impl_if.h"
+#include "paddle/top/core/tensor_interface.h"
 #include "paddle/top/core/tensor_meta.h"
 #include "paddle/top/core/tensor_status.h"
 
@@ -47,9 +47,9 @@ using Allocation = paddle::memory::allocation::Allocation;
  *
  * If the memory layout is different, it cannot be described based on the
  * general Allocation, and it needs to be directly inherited from
- * TensorImplInterface.
+ * TensorInterface.
  */
-class DenseTensor : public TensorImplInterface {
+class DenseTensor : public TensorInterface {
  public:
   // Not allowed to initialize a tensor without descriptive metadata
   DenseTensor() = delete;
