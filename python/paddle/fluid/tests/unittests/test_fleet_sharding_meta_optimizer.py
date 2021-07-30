@@ -292,7 +292,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         ])
 
 
-class TestFleetMetaOptimizer(TestFleetMetaOptimizer):
+class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ[

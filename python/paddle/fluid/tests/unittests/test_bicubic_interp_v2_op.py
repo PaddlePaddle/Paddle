@@ -484,7 +484,7 @@ class TestBicubicOpError(unittest.TestCase):
                     align_corners=False,
                     scale_factor=[1, 2, 2])
 
-            def test_scale_value():
+            def test_scale_value_1():
                 x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
                 out = interpolate(
                     x,
@@ -535,7 +535,7 @@ class TestBicubicOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_outshape_and_scale)
             self.assertRaises(ValueError, test_align_corners_and_nearest)
             self.assertRaises(ValueError, test_scale_shape)
-            self.assertRaises(ValueError, test_scale_value)
+            self.assertRaises(ValueError, test_scale_value_1)
             self.assertRaises(ValueError, test_size_and_scale)
             self.assertRaises(ValueError, test_size_and_scale2)
             self.assertRaises(TypeError, test_size_type)
