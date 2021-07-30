@@ -404,7 +404,6 @@ __all__ = [  # noqa
            'logical_xor',
            'exp',
            'bernoulli',
-           'summary',
            'sinh',
            'round',
            'DataParallel',
