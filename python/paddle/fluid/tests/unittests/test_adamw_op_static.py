@@ -22,6 +22,80 @@ import paddle
 
 
 class testAdamWOpStatic(unittest.TestCase):
+    def mlp(self, x, y):
+        y_0 = fluid.layers.fc(input=x, size=10, act=None)
+        y_0 = fluid.layers.dropout(y_0, dropout_prob=0.5)
+        y_0 = fluid.layers.relu(y_0)
+        y_1 = fluid.layers.fc(input=y_0, size=10, act=None)
+        y_1 = fluid.layers.relu(y_1)
+        y_2 = fluid.layers.fc(input=y_1, size=10, act=None)
+        y_2 = fluid.layers.relu(y_2)
+        y_pred = fluid.layers.fc(input=y_2, size=1, act=None)
+
+        cost = fluid.layers.square_error_cost(input=y_pred, label=y)
+        avg_cost = fluid.layers.mean(cost)
+
+        return avg_cost
+
+    def example_train_adamw(self, train_data, opt_type):
+        paddle.seed(1234)
+        paddle.enable_static()
+        place = fluid.CUDAPlace(0)
+
+        train_prog = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(train_prog, startup):
+            x = fluid.data(name='x', shape=[None, 10], dtype='float32')
+            y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+
+            avg_cost = self.mlp(x, y)
+
+            if opt_type == "static":
+                adam = fluid.optimizer.AdamWOptimizer(
+                    learning_rate=0.01, weight_decay=0.01)
+                adam.minimize(avg_cost)
+            else:
+                adam = paddle.optimizer.AdamW(
+                    learning_rate=0.01, weight_decay=0.01)
+                adam.minimize(avg_cost)
+
+        exe = fluid.Executor(place)
+        exe.run(startup)
+
+        loss_list = []
+        for data in train_data:
+            loss_val = exe.run(train_prog,
+                               feed={'x': data[0],
+                                     'y': data[1]},
+                               fetch_list=[avg_cost])
+            loss_list.append(loss_val[0])
+
+        paddle.disable_static()
+        return loss_list
+
+    def sample_train_data(self):
+        np.random.seed(123)
+        dataset = []
+        for _ in range(30):
+            train_data = []
+            for _ in range(8):
+                inputs = np.random.random(size=[10]).astype('float32')
+                outputs = np.random.random(size=[1]).astype('float32')
+                train_data.append([inputs, outputs])
+
+            batch_size = len(train_data)
+            x = np.array([d[0] for d in train_data]).reshape(batch_size, 10)
+            y = np.array([d[1] for d in train_data]).reshape(batch_size, 1)
+            dataset.append([x, y])
+
+        return dataset
+
+    def test_adamw_accuracy(self):
+        train_data = self.sample_train_data()
+        cost_static = self.example_train_adamw(train_data, "static")
+        cost_dygraph = self.example_train_adamw(train_data, "dygraph")
+        self.assertEqual((cost_static == cost_dygraph), True)
+
     def test_adamw_op_static(self):
         paddle.enable_static()
         place = fluid.CPUPlace()
