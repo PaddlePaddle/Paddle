@@ -286,10 +286,10 @@ class SetValueKernel : public framework::OpKernel<T> {
         LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
             cuda_ctx, ins, &outs, -1, CudaSubstractFunctor<T>());
       } else {
-        CheckIsDimsMatch(slice_dims_for_assign, value_dims);
-        
         Tensor value_t(dtype);
         auto value_dims = framework::make_ddim(shape);
+
+        CheckIsDimsMatch(slice_dims_for_assign, value_dims);
         value_t.mutable_data<T>(value_dims, place);
         auto value_name = GetValueName(dtype);
         CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
@@ -305,7 +305,8 @@ class SetValueKernel : public framework::OpKernel<T> {
         CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
         // ElementwiseComputeEx can do broadcasting
         ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-            ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
+            ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(),
+            &slice_tensor);
       } else {
         Tensor value_t(dtype);
         auto value_dims = framework::make_ddim(shape);
@@ -324,7 +325,7 @@ class SetValueKernel : public framework::OpKernel<T> {
     // - Step 2.2 Pad slice tensor with 0
     pad_e.device(eigen_place) = pad_e.constant(T(0));
     pad_e.stridedSlice(starts_indices, ends_indices, strides_indices)
-          .device(eigen_place) = slice_e;
+        .device(eigen_place) = slice_e;
 
     // Step 3: Set out tensor with value_tensor
     out_e.device(eigen_place) = out_e - pad_e;
