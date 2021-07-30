@@ -484,7 +484,7 @@ class TestBicubicOpError(unittest.TestCase):
                     align_corners=False,
                     scale_factor=[1, 2, 2])
 
-            def test_scale_value():
+            def test_scale_value_1():
                 x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
                 out = interpolate(
                     x,
