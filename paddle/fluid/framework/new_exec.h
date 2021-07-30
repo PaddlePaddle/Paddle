@@ -182,6 +182,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
 
   for (auto& op : global_block.AllOps()) {
     VLOG(3) << op->Type();
+    // << op->Type() << endl;
 
     auto& info = OpInfoMap::Instance().Get(op->Type());
 
@@ -422,6 +423,18 @@ class InterpreterCore {
     paddle::framework::InitDevices();
 
     is_build = false;
+
+    if (outer_scope_ != nullptr) {
+      auto name_list = outer_scope_->LocalVarNames();
+      for (auto name : name_list) {
+        auto v = outer_scope_->Var(name);
+        if (global_scope.name2id.find(name) == global_scope.name2id.end()) {
+          global_scope.name2id[name] = global_scope.var_list.size();
+        }
+
+        global_scope.var_list.push_back(v);
+      }
+    }
 
     paddle::framework::build_variable_outer_scope(startup_prog, &global_scope,
                                                   outer_scope_);
