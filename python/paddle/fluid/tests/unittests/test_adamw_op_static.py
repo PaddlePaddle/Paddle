@@ -40,7 +40,7 @@ class testAdamWOpStatic(unittest.TestCase):
     def example_train_adamw(self, train_data, opt_type):
         paddle.seed(1234)
         paddle.enable_static()
-        place = fluid.CUDAPlace(0)
+        place = fluid.CPUPlace()
 
         train_prog = fluid.Program()
         startup = fluid.Program()
