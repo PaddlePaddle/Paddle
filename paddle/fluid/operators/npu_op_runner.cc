@@ -25,6 +25,7 @@ limitations under the License. */
 #include "acl/acl_op_compiler.h"
 
 #include "paddle/fluid/framework/framework.pb.h"
+DECLARE_uint32(npu_op_timeout);
 
 namespace paddle {
 namespace operators {
@@ -376,6 +377,10 @@ void NpuOpRunner::Run(aclrtStream stream) const {
       input_buffers_.data(), output_descs_.size(), output_descs_.data(),
       output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL,
       stream);
+  if (FLAGS_npu_op_timeout != 0) {
+    VLOG(4) << "Call aclrtSetOpWaitTimeout(" << FLAGS_npu_op_timeout << ") ";
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetOpWaitTimeout(FLAGS_npu_op_timeout));
+  }
   VLOG(4) << "after aclopCompileAndExecute: " << ret;
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }
