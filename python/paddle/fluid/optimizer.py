@@ -2635,7 +2635,36 @@ class AdamWOptimizer(Optimizer):
         flatten_param_grads (bool, optional): Whether to flatten all parameters and gradients. Default is false.
         align_size (int, optional): The alignment size when flatten parameters and gradients. Default is -1, which means
             use same align_size as allocator.
-    
+
+        Example:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+
+            paddle.enable_static()
+            place = fluid.CPUPlace()
+            train_prog = fluid.Program()
+            startup = fluid.Program()
+            with fluid.program_guard(train_prog, startup):
+                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                adam = fluid.optimizer.AdamWOptimizer(learning_rate=0.01, weight_decay=0.01)
+                adam.minimize(avg_cost)
+
+            fetch_list = [avg_cost]
+            train_reader = paddle.batch(paddle.dataset.uci_housing.train(), batch_size=1)
+            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+
+            exe = fluid.Executor(place)
+            exe.run(startup)
+            for data in train_reader():
+                cost_val = exe.run(train_prog, feed=feeder.feed(data), fetch_list=fetch_list)
+                print("cost=", cost_val[0])
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
@@ -2672,6 +2701,10 @@ class AdamWOptimizer(Optimizer):
         if not isinstance(weight_decay, float) and \
                 not isinstance(weight_decay, framework.Variable):
             raise TypeError("weight_decay should be float or Tensor.")
+        if framework.in_dygraph_mode():
+            raise NotImplementedError(
+                "This optimizer does not support DyGraph."
+                "'paddle.optimizer.AdamW()' should be used in DyGraph mode.")
 
         super(AdamWOptimizer, self).__init__(
             learning_rate=learning_rate,
@@ -2783,7 +2816,7 @@ class AdamWOptimizer(Optimizer):
         if isinstance(self._weight_decay, Variable):
             inputs['WeightDecayTensor'] = self._weight_decay
         else:
-            attrs['weightdecay'] = self._weight_decay
+            attrs['weight_decay'] = self._weight_decay
 
         adamw_op = block.append_op(
             type=self.type,
