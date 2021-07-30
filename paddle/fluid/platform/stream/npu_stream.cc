@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/npu_info.h"
 
+DECLARE_uint32(npu_op_timeout);
+
 namespace paddle {
 namespace platform {
 namespace stream {
@@ -44,6 +46,10 @@ void NPUStream::Destroy() {
 
 void NPUStream::Wait() const {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_));
+  if (FLAGS_npu_op_timeout != 0) {
+    VLOG(4) << "Call aclrtSetOpWaitTimeout(" << FLAGS_npu_op_timeout << ") ";
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetOpWaitTimeout(FLAGS_npu_op_timeout));
+  }
 }
 
 }  // namespace stream
