@@ -33,59 +33,6 @@ def set_default_distributed_config(dist_config):
     DEFAULT_DISTRIBUTED_CONFIGURATION = dist_config
 
 
-# TENSOR_DISTRIBUTED_ATTR_ACC_NUM = -1
-# OP_DISTRIBUTED_ATTR_ACC_NUM = -1
-# TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM = {}
-# OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM = {}
-# 
-# 
-# def generate_tensor_distributed_attr_uid():
-#     global TENSOR_DISTRIBUTED_ATTR_ACC_NUM
-#     TENSOR_DISTRIBUTED_ATTR_ACC_NUM = TENSOR_DISTRIBUTED_ATTR_ACC_NUM + 1
-#     return TENSOR_DISTRIBUTED_ATTR_ACC_NUM
-# 
-# 
-# def generate_op_distributed_attr_uid():
-#     global OP_DISTRIBUTED_ATTR_ACC_NUM
-#     OP_DISTRIBUTED_ATTR_ACC_NUM = OP_DISTRIBUTED_ATTR_ACC_NUM + 1
-#     return OP_DISTRIBUTED_ATTR_ACC_NUM
-# 
-# 
-# def get_tensor_distributed_attr_program(tensor):
-#     distributed_attr_uid = tensor.get_distributed_attr_uid()
-#     global TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
-#     tensor_dist_attr = TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM.get(
-#         distributed_attr_uid, None)
-#     return tensor_dist_attr
-# 
-# 
-# def set_tensor_distributed_attr_program(tensor, tensor_dist_attr):
-#     distributed_attr_uid = tensor.get_distributed_attr_uid()
-#     if distributed_attr_uid == -1:
-#         distributed_attr_uid = generate_tensor_distributed_attr_uid()
-#         tensor.set_distributed_attr_uid(distributed_attr_uid)
-#     global TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
-#     TENSOR_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM[
-#         distributed_attr_uid] = tensor_dist_attr
-# 
-# 
-# def get_op_distributed_attr_program(op):
-#     distributed_attr_uid = op.get_distributed_attr_uid()
-#     global OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
-#     op_dist_attr = OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM.get(distributed_attr_uid,
-#                                                            None)
-#     return op_dist_attr
-# 
-# 
-# def set_op_distributed_attr_program(op, op_dist_attr):
-#     distributed_attr_uid = op.get_distributed_attr_uid()
-#     if distributed_attr_uid == -1:
-#         distributed_attr_uid = generate_op_distributed_attr_uid()
-#         op.set_distributed_attr_uid(distributed_attr_uid)
-#     global OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM
-#     OP_DISTRIBUTED_ATTR_MAP_FOR_PROGRAM[distributed_attr_uid] = op_dist_attr
-
-
 class TensorDistributedAttribute:
     def __init__(self, desc):
         self._desc = desc
@@ -137,6 +84,19 @@ class TensorDistributedAttribute:
 
     def is_parameter(self):
         return self._is_parameter
+
+    def is_valid(self):
+        tensor_shape = self._desc.shape()
+        if len(tensor_shape) != len(self._dims_mapping):
+            return False
+        for i in range(len(self._dims_mapping)):
+            if self._dims_mapping[i] < -1 or self._dims_mapping[
+                    i] >= self._process_mesh.get_ndim():
+                return False
+        for i in range(self._process_mesh.get_ndim()):
+            if self._dims_mapping.count(i) > 1:
+                return False
+        return True
 
     def __str__(self):
         str = "{{name: {}, distributed_attr_uid: {}".format(
@@ -191,6 +151,8 @@ class OperatorDistributedAttribute:
         self._process_mesh = None
         self._inputs_dims_mapping = {}
         self._outputs_dims_mapping = {}
+        self._inputs_shape = {}
+        self._outputs_shape = {}
         self._is_annotated = {}
         self._is_annotated_inputs_dims_mapping = {}
         self._is_annotated_outputs_dims_mapping = {}
@@ -253,6 +215,18 @@ class OperatorDistributedAttribute:
     def set_impl_idx(self, impl_idx):
         self._impl_idx = impl_idx
 
+    def get_input_shape(self, name):
+        return self._inputs_shape.get(name, None)
+
+    def set_input_shape(self, name, shape):
+        self._inputs_shape[name] = shape
+
+    def get_output_shape(self, name):
+        return self._outputs_shape.get(name, None)
+
+    def set_output_shape(self, name, shape):
+        self._outputs_shape[name] = shape
+
     def is_annotated(self, dist_attr_name):
         return self._is_annotated.get(dist_attr_name, False)
 
@@ -267,6 +241,31 @@ class OperatorDistributedAttribute:
 
     def is_parameter(self, arg_name):
         return self._parameters.get(arg_name, False)
+
+    def is_valid(self):
+        for name, dims_mapping in self._inputs_dims_mapping.items():
+            shape = self._inputs_shape[name]
+            if len(shape) != len(dims_mapping):
+                return False
+            for i in range(len(dims_mapping)):
+                if dims_mapping[i] < -1 or dims_mapping[
+                        i] >= self._process_mesh.get_ndim():
+                    return False
+            for i in range(self._process_mesh.get_ndim()):
+                if dims_mapping.count(i) > 1:
+                    return False
+        for name, dims_mapping in self._outputs_dims_mapping.items():
+            shape = self._outputs_shape[name]
+            if len(shape) != len(dims_mapping):
+                return False
+            for i in range(len(dims_mapping)):
+                if dims_mapping[i] < -1 or dims_mapping[
+                        i] >= self._process_mesh.get_ndim():
+                    return False
+            for i in range(self._process_mesh.get_ndim()):
+                if dims_mapping.count(i) > 1:
+                    return False
+        return True
 
     def __str__(self):
         str = "{{type: {}, distributed_attr_uid: {}".format(
@@ -432,6 +431,8 @@ class DistributedConfiguration:
                         ]
                         op_dist_attr.set_input_dims_mapping(tensor_name,
                                                             tensor_dims_mapping)
+                        op_dist_attr.set_input_shape(tensor_name,
+                                                     tensor.desc.shape())
                     if isinstance(tensor, framework.Parameter):
                         op_dist_attr.mark_as_parameter(tensor_name)
                 for tensor_name in op.output_arg_names:
@@ -443,6 +444,8 @@ class DistributedConfiguration:
                         ]
                         op_dist_attr.set_output_dims_mapping(
                             tensor_name, tensor_dims_mapping)
+                        op_dist_attr.set_output_shape(tensor_name,
+                                                      tensor.desc.shape())
                     if isinstance(tensor, framework.Parameter):
                         op_dist_attr.mark_as_parameter(tensor_name)
 
@@ -496,6 +499,42 @@ class DistributedConfiguration:
                 op_dist_attr = self.get_op_distributed_attr_graph(node)
                 new_op_dist_attr = copy.deepcopy(op_dist_attr)
                 self.set_op_distributed_attr_program(op_desc, new_op_dist_attr)
+
+    def validate_distributed_attr_for_program(self):
+        for attr in self._tensor_distributed_attr_map_for_program.values():
+            assert attr.is_valid(
+            ), "Tensor's distributed attribute {} is not valid".format(attr)
+            tensor_shape = attr.get_desc().shape()
+            dims_mapping = attr.get_dims_mapping()
+            process_mesh_shape = attr.get_process_mesh().get_shape()
+            # If the dimension of tensor is less than the sharding dimension of process mesh,
+            # we just amend the dimension mapping to -1. (Is this really OK?)
+            for i in range(len(tensor_shape)):
+                if process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
+                    dims_mapping[i] = -1
+
+        for attr in self._op_distributed_attr_map_for_program.values():
+            assert attr.is_valid(
+            ), "Operator's distributed attribute {} is not valid".format(attr)
+            for arg_name in attr.get_desc().input_arg_names():
+                tensor_shape = attr.get_input_shape(arg_name)
+                dims_mapping = attr.get_input_dims_mapping(arg_name)
+                process_mesh_shape = attr.get_process_mesh().get_shape()
+                # If the dimension of tensor is less than the sharding dimension of process mesh,
+                # we just amend the dimension mapping to -1. (Is this really OK?)
+                for i in range(len(tensor_shape)):
+                    if process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
+                        dims_mapping[i] = -1
+
+            for arg_name in attr.get_desc().output_arg_names():
+                tensor_shape = attr.get_output_shape(arg_name)
+                dims_mapping = attr.get_output_dims_mapping(arg_name)
+                process_mesh_shape = attr.get_process_mesh().get_shape()
+                # If the dimension of tensor is less than the sharding dimension of process mesh,
+                # we just amend the dimension mapping to -1. (Is this really OK?)
+                for i in range(len(tensor_shape)):
+                    if process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
+                        dims_mapping[i] = -1
 
     def set_communication_info(self, rank, comm_op, process_group):
         pass

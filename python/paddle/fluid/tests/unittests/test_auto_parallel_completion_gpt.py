@@ -657,20 +657,15 @@ class GPTModel(nn.Layer):
             input_ids=input_ids, position_ids=position_ids)
 
         # TODO, use registered buffer
-        # tmp_ones = paddle.ones((paddle.shape(input_ids)[-1], paddle.shape(input_ids)[-1]))
-        # if _global_parallel_stratergy is not None:
-        #     auto.shard_tensor(tmp_ones, _global_process_mesh, dims_mapping=[-1, -1])
-        # causal_mask = paddle.tensor.triu(tmp_ones * -1e9, diagonal=1)
+        causal_mask = paddle.tensor.triu(
+            paddle.ones((paddle.shape(input_ids)[-1],
+                         paddle.shape(input_ids)[-1])) * -1e9,
+            diagonal=1)
 
-        # causal_mask = paddle.tensor.triu(
-        #     paddle.ones((paddle.shape(input_ids)[-1],
-        #                  paddle.shape(input_ids)[-1])) * -1e9,
-        #     diagonal=1)
-
-        # if attention_mask is not None:
-        #     attention_mask = attention_mask + causal_mask
-        # else:
-        #     attention_mask = causal_mask
+        if attention_mask is not None:
+            attention_mask = attention_mask + causal_mask
+        else:
+            attention_mask = causal_mask
 
         # The tensor returned by triu not in static graph.
         attention_mask.stop_gradient = True

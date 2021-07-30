@@ -24,7 +24,6 @@ from .utils import compute_compatible_dim_mapping
 from .utils import compute_compatible_dims_mapping
 
 ELEMENTWISE_LIKIE_OP_LIST = ["elementwise_add", "gelu", "dropout", "cast"]
-SKIP_OP_LIST = ["shape", "slice"]
 
 
 def is_elementwise_like_op(op_type):
@@ -109,6 +108,9 @@ def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
     """Each operator has a default distributed operator, only allowed to be sharded in batch dimension. """
     changed = False
     op_desc = op_dist_attr.get_desc()
+    # The following statement will be replaced by a more elegent way
+    if op_desc.type() == "shape" or op_desc.type() == "slice":
+        return False
     output_names = op_desc.output_names()
     xshape_arg_names = []
     if "XShape" in output_names:
@@ -139,7 +141,6 @@ def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
             batch_dim_mappings.append(
                 op_dist_attr.get_output_dim_mapping(arg_name, 0))
         else:
-            print("haha", op_desc.type())
             assert dims_mapping[0] == -1, \
                 "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension 0 is sharded by {} part."\
                     .format(op_desc.type(), mapping)
@@ -478,5 +479,8 @@ def complete_annotation(program, dist_config=None):
     # Copy the corresponding distributed attribute from graph to program
     dist_config.copy_distribute_attr_from_graph_to_program(graph, program)
     dist_config.clear_distributed_attr_for_graph()
+
+    # Do the validation check and amend some completion
+    dist_config.validate_distributed_attr_for_program()
 
     return program
