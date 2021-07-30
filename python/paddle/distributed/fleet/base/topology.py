@@ -159,11 +159,6 @@ class HybridCommunicateGroup(object):
         # create p2p_groups
         if self._pp_degree > 1:
             self._set_p2p_group()
-            print("send_next_group: ", self.send_next_group)
-            print("send_prev_group: ", self.send_prev_group)
-            print("recv_next_group: ", self.recv_next_group)
-            print("recv_prev_group: ", self.recv_prev_group)
-
 
         debug_str = "HybridParallelInfo: rank_id: %d, mp_degree: %d, " \
                     "sharding_degree: %d, pp_degree: %d, dp_degree: %d" % (self.global_rank, self._mp_degree,
@@ -312,6 +307,9 @@ class HybridCommunicateGroup(object):
 
     def get_pipe_parallel_group(self):
         return self._pp_comm_group
+
+    def get_p2p_groups(self):
+        return self.send_next_group, self.send_prev_group, self.recv_next_group, self.recv_prev_group
 
     # sharding parallel message:
     def _get_sharding_parallel_id(self):

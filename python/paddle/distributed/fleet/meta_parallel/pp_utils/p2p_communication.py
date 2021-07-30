@@ -14,8 +14,22 @@
 
 import paddle
 from .utils import paddle_2_number, number_2_dtype
+from ...utils import log_util as logger
 
 _hcg = None
+_send_recv_meta = SendRecvMeta()
+
+
+def initialize_p2p_groups(hcg):
+    global _hcg
+    _hcg = hcg
+    send_next_group, send_prev_group, recv_next_group, recv_prev_group = _hcg.get_p2p_groups(
+    )
+
+    debug_str = "P2pInfo: send_next_group: %s, send_prev_group: %s, " \
+                    "recv_next_group: %s, recv_prev_group: %s" % (repr(send_next_group),
+                    repr(send_prev_group),repr(recv_next_group), repr(recv_prev_group))
+    logger.info(debug_str)
 
 
 class SendRecvMeta:
@@ -113,9 +127,6 @@ class SendRecvMeta:
                 [paddle_2_number(d.dtype) for d in tensor])
 
 
-_send_recv_meta = SendRecvMeta()
-
-
 def send_partial(tensor,
                  dst=0,
                  nranks=1,
@@ -160,11 +171,6 @@ def allgather_partial(tensor,
     return paddle.fluid.core.ops.partial_allgather_(
         tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
         'nranks', nranks, 'rank', rank_id)
-
-
-def initialize_p2p_groups(hcg):
-    global _hcg
-    _hcg = hcg
 
 
 def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
