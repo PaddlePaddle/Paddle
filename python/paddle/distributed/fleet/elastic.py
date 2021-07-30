@@ -133,6 +133,7 @@ class ElasticManager(object):
         self.stopped = False
 
         self.sigint = 0
+        self.need_sync = False
 
         if not server or ':' not in server or not name or not np:
             logger.info(
@@ -171,8 +172,6 @@ class ElasticManager(object):
         # register self host to etcd
         # register watch to reset host after host been deleted
         self.etcd.delete_prefix(self.node_prefix)
-
-        self.need_sync = False
 
         def host_call_back(event):
             if self.etcd.get(self.host_path)[0] == None:
