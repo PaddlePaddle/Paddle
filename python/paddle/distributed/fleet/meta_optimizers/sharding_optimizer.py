@@ -322,7 +322,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                         self.dp_ring_id,
                         accumulated_grad_names,
                         core.op_proto_and_checker_maker.OpRole.Optimize,
-                        use_calc_stream=True)
+                        use_calc_stream=True,
+                        user_defined_strategy=self.user_defined_strategy)
 
         # if not use sharding, adapt amp/clip, for remain parallelism.
         # cast --> amp --> clip --> opt
@@ -778,8 +779,12 @@ class ShardingOptimizer(MetaOptimizerBase):
                         shard_allredue_vars) >= 1:
                     insert_sync_comm_ops(block, self._segments[-1]._end_idx,
                                          self.dp_ring_id, shard_allredue_vars)
-                    insert_allreduce_ops(block, self._segments[-1]._end_idx,
-                                         self.dp_ring_id, shard_allredue_vars)
+                    insert_allreduce_ops(
+                        block,
+                        self._segments[-1]._end_idx,
+                        self.dp_ring_id,
+                        shard_allredue_vars,
+                        user_defined_strategy=self.user_defined_strategy)
             # gradient merge 
             elif self.gradient_merge_mode == "sharding_gm" and self._gradient_merge_acc_step > 1:
                 self.create_persistable_gradients_and_insert_merge_ops(
@@ -896,8 +901,12 @@ class ShardingOptimizer(MetaOptimizerBase):
             if self.gradient_merge_mode != "sharding_gm" or self._gradient_merge_acc_step <= 1:
                 if self.hybrid_dp and self.hybrid_dp_mode == "sharding_hybrid_dp" and len(
                         shard_allredue_vars) >= 1:
-                    insert_allreduce_ops(block, segment._start_idx,
-                                         self.dp_ring_id, shard_allredue_vars)
+                    insert_allreduce_ops(
+                        block,
+                        segment._start_idx,
+                        self.dp_ring_id,
+                        shard_allredue_vars,
+                        user_defined_strategy=self.user_defined_strategy)
                     insert_sync_comm_ops(block, segment._start_idx,
                                          self.sharding_ring_id, allreduce_vars)
             # gradient merge

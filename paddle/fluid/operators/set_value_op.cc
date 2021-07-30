@@ -127,6 +127,8 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("decrease_axes",
                                   "(list<int>) The axes to decrease.")
         .SetDefault({});
+    AddAttr<std::vector<int64_t>>("none_axes", "(list<int>) The axes to none.")
+        .SetDefault({});
 
     AddAttr<std::vector<int>>("bool_values", "Store the bool values.")
         .SetDefault({});
@@ -247,4 +249,10 @@ Upgrade set_value, add 3 inputs [StartsTensorList, EndsTensorList, StepsTensorLi
 Upgrade set_value, add 1 attribute [decrease_axes].
               )ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "decrease_axes", "The axes to decrease.", std::vector<int64_t>{}));
+            "decrease_axes", "The axes to decrease.", std::vector<int64_t>{}))
+    .AddCheckpoint(
+        R"ROC(
+Upgrade set_value, add 1 attribute [none_axes].
+              )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "none_axes", "The axes with none index.", std::vector<int64_t>{}));

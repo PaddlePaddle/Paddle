@@ -185,10 +185,9 @@ class AdamW(Adam):
         Raises:
             Exception: The type of coeff and parameter is not consistent.
         """
-        if not isinstance(param_and_grad, dict):
-            param, grad = param_and_grad
-        else:
-            param, grad = self._update_param_group(param_and_grad)
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
+        param, grad = param_and_grad
 
         if self._apply_decay_param_fun is not None \
                 and not self._apply_decay_param_fun(param.name):

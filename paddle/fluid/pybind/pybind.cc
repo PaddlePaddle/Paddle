@@ -468,6 +468,19 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
                         string::join_strings(ops, ',')));
 }
 
+#ifdef PADDLE_WITH_NCCL
+static int GetNCCLVersion() {
+#if NCCL_VERSION_CODE >= 2304
+  int ver;
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGetVersion(&ver));
+  return ver;
+#else
+  PADDLE_THROW(platform::errors::External(
+      "Cannot get NCCL version successfully when nccl version < 2.3.4"));
+#endif
+}
+#endif
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -496,6 +509,14 @@ PYBIND11_MODULE(core_noavx, m) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);
 #endif
+
+#ifdef PADDLE_WITH_NCCL
+  m.def("nccl_version", &GetNCCLVersion);
+#endif
+
+  m.def("wait_device", [](const platform::Place &place) {
+    platform::DeviceContextPool::Instance().Get(place)->Wait();
+  });
 
   m.def("from_dlpack", [](py::capsule *dltensor) {
     DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
@@ -1797,20 +1818,20 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::Place &>);
 
   py::class_<OperatorBase>(m, "Operator")
-      .def_static(
-          "create",
-          [](py::bytes protobin) {
-            proto::OpDesc desc;
-            PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin), true,
-                              platform::errors::InvalidArgument(
-                                  "Cannot parse user input to OpDesc"));
-            PADDLE_ENFORCE_EQ(
-                desc.IsInitialized(), true,
-                platform::errors::InvalidArgument(
-                    "The provided OpDesc is not initialized, the reason is: %s",
-                    desc.InitializationErrorString()));
-            return OpRegistry::CreateOp(desc);
-          })
+      .def_static("create",
+                  [](py::bytes protobin) {
+                    proto::OpDesc desc;
+                    PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin),
+                                      true,
+                                      platform::errors::InvalidArgument(
+                                          "Cannot parse user input to OpDesc"));
+                    PADDLE_ENFORCE_EQ(desc.IsInitialized(), true,
+                                      platform::errors::InvalidArgument(
+                                          "The provided OpDesc is not "
+                                          "initialized, the reason is: %s",
+                                          desc.InitializationErrorString()));
+                    return OpRegistry::CreateOp(desc);
+                  })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CPUPlace &place) { self.Run(scope, place); })
@@ -2957,8 +2978,8 @@ All parameter, weight, gradient are variables in Paddle.
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
-                  "BuildStrategy.memory_optimize must be set to None, False or "
-                  "True"));
+                  "BuildStrategy.memory_optimize must be set to None, False "
+                  "or True"));
             }
           },
           R"DOC((bool, optional): memory opitimize aims to save total memory
@@ -3031,6 +3052,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self,
              const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
             self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
+          })
+      .def_property(
+          "fix_op_run_order",
+          [](const BuildStrategy &self) { return self.fix_op_run_order_; },
+          [](BuildStrategy &self, bool fix_op_run_order) {
+            self.fix_op_run_order_ = fix_op_run_order;
           })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
