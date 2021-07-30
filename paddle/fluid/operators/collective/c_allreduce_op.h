@@ -128,27 +128,32 @@ bool CheckNumerics(const framework::ExecutionContext& exe_ctx,
   auto& dev_ctx =
       exe_ctx.template device_context<paddle::platform::NPUDeviceContext>();
   using Tensor = paddle::framework::Tensor;
+  int num = in->numel();
+
   Tensor out(in->type());
   out.Resize(in->dims());
   out.mutable_data<T>(dev_ctx.GetPlace());
+  const auto& div_runner = NpuOpRunner("DIV", {*in}, {out}, {});
+  div_runner.Run(stream);
 
-  bool found_inf_data = false;
+  Tensor out2(in->type());
+  out2.Resize({1});
+  out.mutable_data<T>(dev_ctx.GetPlace());
+  const auto& reduce_sum_runner = NpuOpRunner("ReduceSumD", {out}, {out2}, {});
+  reduce_sum_runner.Run(stream);
 
-  try {
-    const auto& runner =
-        NpuOpRunner("CheckNumerics", {*in}, {out},
-                    {{"message", std::string("check_numberics")}});
-    runner.Run(stream);
-    dev_ctx.Wait();
-  } catch (platform::EnforceNotMet& exception) {
-    LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
-    found_inf_data = true;
-  } catch (...) {
-    LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
-    found_inf_data = true;
+  std::vector<T> vec;
+  TensorToVector(out2, dev_ctx, vec);
+  float value = static_cast<float>(vec[0]);
+  if (std::isinf(value)) {
+    LOG(WARNING) << "detected Inf";
+    return true;
+  } else if (std::isnan(value)) {
+    LOG(WARNING) << "detected Nan";
+    return true;
   }
 
-  return found_inf_data;
+  return false;
 }
 #endif
 
