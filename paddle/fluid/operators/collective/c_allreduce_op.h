@@ -141,7 +141,7 @@ bool ContainsNan(const framework::ExecutionContext& exe_ctx, aclrtStream stream,
                                         {{"axes", axes}, {"keep_dims", false}});
 
   std::vector<T> vec;
-  TensorToVector(mean, ctx, &vec);
+  TensorToVector(mean, exe_ctx.device_context(), &vec);
 
   if (std::isnan(static_cast<float>(vec[0]))) {
     return true;
@@ -221,8 +221,8 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       case framework::proto::VarType::FP16:
       case framework::proto::VarType::FP32: {
         VLOG(4) << "prepare to check nan";
-        check_numerics = ContainsNan<T>(ctx, dev_ctx->stream(), in);
-        VLOG(4) << "ContainsNan:" << check_numerics;
+        has_nan = ContainsNan<T>(ctx, dev_ctx->stream(), in);
+        VLOG(4) << "ContainsNan:" << has_nan;
         break;
       }
       default:
