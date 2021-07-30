@@ -46,6 +46,36 @@ from .flat import _flatten_batch, _restore_batch
 __all__ = ['get_worker_info']
 
 
+# NOTE: fix `terminate called without an active exception`
+# if for loop break and program exit immediately(with no model
+# layers processing) after iterate **the first few data** in
+# distributed lauch mode, distributed launch will call
+# terminate() to kill main process on each devices, but thread
+# is still iterating to fullfill blocking queue caches, which
+# may cause thread error `terminate called without an active
+# exception` for terminate is a strong singal and `__del__`
+# of DataLoader may not be called, so we add a global link to
+# the last DataLoader instance to call `__del__` to clean up
+# resources
+# NOTE: cannot simply as `__del__` to CleanupFuncRegistrar,
+# for this will remain a link to each DataLoader instance in
+# global, and will precludes GC to auto collect DataLoader
+# instance and will cause memory leak
+_loader = None
+
+def _clear_loader():
+    global _loader
+    try:
+        if _loader:
+            _loader.__del__()
+    except:
+        pass
+    _loader = None
+
+
+CleanupFuncRegistrar.register(_clear_loader)
+
+
 class _DataLoaderIterBase(object):
     """
     Iterator implement of DataLoader, will load and feed mini-batch
@@ -89,6 +119,20 @@ class _DataLoaderIterBase(object):
         self._blocking_queue = None
         self._thread = None
         self._thread_done_event = threading.Event()
+
+        # record the last DataLoader instance for resource cleaning
+        global _loader
+        _loader = self
+
+    @property
+    def _index_sampler(self):
+        if self._auto_collate_batch:
+            return self._batch_sampler
+        else:
+            if self._dataset_kind == _DatasetKind.MAP:
+                return list(range(len(self._dataset)))
+            else:
+                return _InfiniteIterableSampler(self._dataset, 1)
 
     def __iter__(self):
         return self
