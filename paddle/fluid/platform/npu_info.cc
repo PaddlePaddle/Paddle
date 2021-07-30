@@ -31,6 +31,7 @@ DECLARE_bool(enable_cublas_tensor_op_math);
 DECLARE_uint64(gpu_memory_limit_mb);
 DECLARE_string(selected_npus);
 DECLARE_string(npu_config_path);
+DECLARE_uint32(npu_op_timeout);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
@@ -409,7 +410,7 @@ AclInstance::AclInstance() {
   }
 
   if (FLAGS_npu_op_timeout != 0) {
-    VLOG(4) << "Call aclInit(" << FLAGS_npu_config_path << ") ";
+    VLOG(4) << "Call aclrtSetOpWaitTimeout(" << FLAGS_npu_op_timeout << ") ";
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetOpWaitTimeout(FLAGS_npu_op_timeout));
   }
 }
