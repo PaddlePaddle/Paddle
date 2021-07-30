@@ -126,6 +126,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"accuracy", {"Correct", "Total"}},
     {"fill_constant", {"Out"}},
     {"recv_v2", {"Out"}},
+    {"partial_recv", {"Out"}},
     {"matmul", {"Out"}},
     {"c_broadcast", {"Out"}},
     {"c_sync_calc_stream", {"Out"}},

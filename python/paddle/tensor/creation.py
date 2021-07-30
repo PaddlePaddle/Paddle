@@ -30,6 +30,7 @@ from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varb
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
+from paddle import _C_ops
 
 __all__ = []
 
@@ -207,7 +208,7 @@ def full_like(x, fill_value, dtype=None, name=None):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return core.ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
+        return _C_ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
 
     helper = LayerHelper("full_like", **locals())
     check_variable_and_dtype(
@@ -639,7 +640,7 @@ def tril(x, diagonal=0, name=None):
 
     """
     if in_dygraph_mode():
-        op = getattr(core.ops, 'tril_triu')
+        op = getattr(_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", True)
 
     return _tril_triu_op(LayerHelper('tril', **locals()))
@@ -706,7 +707,7 @@ def triu(x, diagonal=0, name=None):
 
     """
     if in_dygraph_mode():
-        op = getattr(core.ops, 'tril_triu')
+        op = getattr(_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", False)
 
     return _tril_triu_op(LayerHelper('triu', **locals()))
@@ -749,7 +750,7 @@ def meshgrid(*args, **kwargs):
         args = args[0]
     if in_dygraph_mode():
         num = len(args)
-        out = core.ops.meshgrid(list(args), num)
+        out = _C_ops.meshgrid(list(args), num)
         return out
 
     name = kwargs.get("name", None)
@@ -854,13 +855,13 @@ def diagflat(x, offset=0, name=None):
     padding_value = 0
     if in_dygraph_mode():
         if len(x.shape) == 1:
-            return core.ops.diag_v2(x, "offset", offset, "padding_value",
-                                    padding_value)
+            return _C_ops.diag_v2(x, "offset", offset, "padding_value",
+                                  padding_value)
         else:
-            y, _ = core.ops.flatten_contiguous_range(x, "start_axis", 0,
-                                                     "stop_axis", -1)
-            return core.ops.diag_v2(y, "offset", offset, "padding_value",
-                                    padding_value)
+            y, _ = _C_ops.flatten_contiguous_range(x, "start_axis", 0,
+                                                   "stop_axis", -1)
+            return _C_ops.diag_v2(y, "offset", offset, "padding_value",
+                                  padding_value)
 
     check_type(x, 'x', (Variable), 'diagflat')
     check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -967,8 +968,8 @@ def diag(x, offset=0, padding_value=0, name=None):
           # [4]
     """
     if in_dygraph_mode():
-        return core.ops.diag_v2(x, "offset", offset, "padding_value",
-                                padding_value)
+        return _C_ops.diag_v2(x, "offset", offset, "padding_value",
+                              padding_value)
 
     check_type(x, 'x', (Variable), 'diag_v2')
     check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -1049,8 +1050,8 @@ def empty(shape, dtype=None, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        out = core.ops.empty('shape', shape, 'dtype',
-                             convert_np_dtype_to_dtype_(dtype))
+        out = _C_ops.empty('shape', shape, 'dtype',
+                           convert_np_dtype_to_dtype_(dtype))
         out.stop_gradient = True
         return out
 
@@ -1116,8 +1117,8 @@ def empty_like(x, dtype=None, name=None):
     dtype = convert_dtype(dtype)
 
     if in_dygraph_mode():
-        out = core.ops.empty('shape', x.shape, 'dtype',
-                             convert_np_dtype_to_dtype_(dtype))
+        out = _C_ops.empty('shape', x.shape, 'dtype',
+                           convert_np_dtype_to_dtype_(dtype))
         out.stop_gradient = True
         return out
 

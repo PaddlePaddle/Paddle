@@ -26,8 +26,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseDiv(OpTest):
     def setUp(self):
         self.set_npu()
@@ -54,30 +52,28 @@ class TestElementwiseDiv(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X', 'Y'],
+            self.place,
+            ['X', 'Y'],
             'Out',
-            max_relative_error=0.007,
-            check_dygraph=False)
+            max_relative_error=0.007, )
 
     def test_check_grad_ingore_x(self):
         self.check_grad_with_place(
-            self.place, ['Y'],
+            self.place,
+            ['Y'],
             'Out',
             max_relative_error=0.007,
-            no_grad_set=set("X"),
-            check_dygraph=False)
+            no_grad_set=set("X"), )
 
     def test_check_grad_ingore_y(self):
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', no_grad_set=set("Y"), check_dygraph=False)
+            self.place, ['X'], 'Out', no_grad_set=set("Y"))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseDivFp16(OpTest):
     def setUp(self):
         self.set_npu()
@@ -105,11 +101,9 @@ class TestElementwiseDivFp16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseDivNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

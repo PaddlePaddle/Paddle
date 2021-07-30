@@ -35,6 +35,13 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+template <typename T, typename Enable = void>
+struct CudaSubstractFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    return args[0] - args[1];
+  }
+};
+
 inline std::string GetValueName(framework::proto::VarType::Type data_type) {
   std::string value_name;
   switch (data_type) {
@@ -63,12 +70,46 @@ inline std::string GetValueName(framework::proto::VarType::Type data_type) {
   return value_name;
 }
 
-template <typename T, typename Enable = void>
-struct CudaSubstractFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] - args[1];
+// check whether the tensor with dimension of second can assign to the
+// tensor with dimension of first
+inline void CheckIsDimsMatch(const framework::DDim first,
+                             const framework::DDim second) {
+  int ignore_axis1 = 0, ignore_axis2 = 0;
+  for (; ignore_axis1 < first.size(); ++ignore_axis1) {
+    if (first[ignore_axis1] != 1) {
+      break;
+    }
   }
-};
+  for (; ignore_axis2 < second.size(); ++ignore_axis2) {
+    if (second[ignore_axis2] != 1) {
+      break;
+    }
+  }
+
+  if (second.size() == ignore_axis2) {
+    // second tensor has only one value
+    return;
+  }
+
+  if (first.size() - ignore_axis1 >= second.size() - ignore_axis2) {
+    auto idx1 = first.size() - 1;
+    auto idx2 = second.size() - 1;
+    bool is_match = true;
+    for (; idx2 >= ignore_axis2; idx2--) {
+      if (first[idx1--] != second[idx2] && second[idx2] != 1) {
+        is_match = false;
+        break;
+      }
+    }
+    if (is_match) {
+      return;
+    }
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "The shape of tensor assigned value must match the shape "
+      "of target shape: %d, but now shape is %d.",
+      second.to_str(), first.to_str()));
+}
 
 template <typename DeviceContext, typename T>
 class SetValueKernel : public framework::OpKernel<T> {
@@ -123,6 +164,7 @@ class SetValueKernel : public framework::OpKernel<T> {
     auto steps = ctx.Attr<std::vector<int64_t>>("steps");
     auto shape = ctx.Attr<std::vector<int64_t>>("shape");
     auto decrease_axes = ctx.Attr<std::vector<int64_t>>("decrease_axes");
+    auto none_axes = ctx.Attr<std::vector<int64_t>>("none_axes");
 
     auto dtype = in->type();
     if (!starts_tensor_list.empty()) {
@@ -139,6 +181,32 @@ class SetValueKernel : public framework::OpKernel<T> {
     CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &steps);
     auto slice_dims = GetSliceDims(in_dims, axes, starts, ends, &steps);
     auto decrease_slice_dims = GetDecreasedDims(slice_dims, decrease_axes);
+
+    auto slice_dims_for_assign = decrease_slice_dims;
+    if (!none_axes.empty()) {
+      std::vector<int64_t> slice_dims_with_none;
+
+      size_t none_axes_cur = 0, decrease_axes_cur = 0;
+      for (int i = 0; i < slice_dims.size(); ++i) {
+        while (none_axes_cur < none_axes.size() &&
+               none_axes[none_axes_cur] <= i) {
+          slice_dims_with_none.push_back(1);
+          none_axes_cur++;
+        }
+        if (decrease_axes_cur < decrease_axes.size() &&
+            decrease_axes[decrease_axes_cur] == i) {
+          decrease_axes_cur++;
+        } else {
+          slice_dims_with_none.push_back(slice_dims[i]);
+        }
+      }
+      while (none_axes_cur < none_axes.size()) {
+        slice_dims_with_none.push_back(1);
+        none_axes_cur++;
+      }
+
+      slice_dims_for_assign = framework::make_ddim(slice_dims_with_none);
+    }
 
     auto place = ctx.GetPlace();
     auto& eigen_place =
@@ -203,7 +271,8 @@ class SetValueKernel : public framework::OpKernel<T> {
     // shape is [3, 3], which cross the border;
     // If do broadcasting on Tensor with shape [3] and [3], the result's shape
     // is [3], which is right.
-    slice_tensor.Resize(decrease_slice_dims);
+
+    slice_tensor.Resize(slice_dims_for_assign);
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       std::vector<const framework::Tensor*> ins = {&slice_tensor};
@@ -211,11 +280,14 @@ class SetValueKernel : public framework::OpKernel<T> {
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
 
-      if (value_tensor) {
+      if (value_tensor != nullptr) {
+        CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
         ins.emplace_back(value_tensor);
         LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
             cuda_ctx, ins, &outs, -1, CudaSubstractFunctor<T>());
       } else {
+        CheckIsDimsMatch(slice_dims_for_assign, value_dims);
+        
         Tensor value_t(dtype);
         auto value_dims = framework::make_ddim(shape);
         value_t.mutable_data<T>(value_dims, place);
@@ -230,13 +302,15 @@ class SetValueKernel : public framework::OpKernel<T> {
 #endif
     } else {
       if (value_tensor != nullptr) {
+        CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
         // ElementwiseComputeEx can do broadcasting
         ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-            ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(),
-            &slice_tensor);
+            ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
       } else {
         Tensor value_t(dtype);
         auto value_dims = framework::make_ddim(shape);
+        CheckIsDimsMatch(slice_dims_for_assign, value_dims);
+
         value_t.mutable_data<T>(value_dims, place);
         auto value_name = GetValueName(dtype);
         CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
@@ -250,7 +324,7 @@ class SetValueKernel : public framework::OpKernel<T> {
     // - Step 2.2 Pad slice tensor with 0
     pad_e.device(eigen_place) = pad_e.constant(T(0));
     pad_e.stridedSlice(starts_indices, ends_indices, strides_indices)
-        .device(eigen_place) = slice_e;
+          .device(eigen_place) = slice_e;
 
     // Step 3: Set out tensor with value_tensor
     out_e.device(eigen_place) = out_e - pad_e;

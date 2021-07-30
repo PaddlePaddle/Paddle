@@ -225,7 +225,11 @@ function cmake_base() {
         -DLITE_GIT_TAG=release/v2.8
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+        -DWITH_ARM=${WITH_ARM:-OFF}
+        -DWITH_ASCEND=${WITH_ASCEND:-OFF}
+        -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
+        -DON_INFER=${ON_INFER:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -262,7 +266,11 @@ EOF
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
+        -DWITH_ARM=${WITH_ARM:-OFF} \
+        -DWITH_ASCEND=${WITH_ASCEND:-OFF} \
+        -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
+        -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -343,7 +351,11 @@ function build_base() {
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
 
-    make install -j ${parallel_number};build_error=$?
+    if [ "$WITH_ARM" == "ON" ];then
+        make TARGET=ARMV8 -j ${parallel_number};build_error=$?
+    else
+        make install -j ${parallel_number};build_error=$?
+    fi
 
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -809,6 +821,36 @@ function check_approvals_of_unittest() {
                 exit 6
             fi
         fi
+    elif [ $check_times == 3 ]; then
+        rm -f fluidInference_so_size
+        curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
+        oriBuildSize=`cat fluidInference_so_size`
+        curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
+        apt-get install -y bc
+        diffSize=$(printf "%.2f" `echo "$curBuildSize - $oriBuildSize" | bc`)
+        AllDiffSize=$(printf "%.2f" `echo "$diffSize * 4" | bc`)
+        cat <<EOF
+        ========================================
+        Original libpaddle_inference.so Size is ${oriBuildSize}M.
+        Current libpaddle_inference.so Size is ${curBuildSize}M.
+        In single gpu architecture, Growing size of libpaddle_inference.so is ${diffSize}M.
+        In release version, The gpu architecture parameter is "All", The library size is four times to single gpu architecture.
+        It means the release version library size growth is about ${AllDiffSize}M.
+        ========================================
+EOF
+        if [ `echo "20 < $AllDiffSize"|bc` -eq 1 ] ; then
+            
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 328693`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "=========================================================================================="
+                echo "This PR make the release inference library size growth exceeds 20 M."
+                echo "Then you must have one RD (Shixiaowei02 (Recommend) or Superjomn) approval for this PR\n"
+                echo "=========================================================================================="
+                exit 6
+            fi
+        fi
     fi
     set -x
 }
@@ -997,6 +1039,8 @@ function card_test() {
 
     # get the CUDA device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
+        CUDA_DEVICE_COUNT=1
+    elif [ "${WITH_ASCEND_CL}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ROCM}" == "ON" ];then
         CUDA_DEVICE_COUNT=4
@@ -1542,7 +1586,7 @@ function parallel_test_base_xpu() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
-    Running unit cpu tests ...
+    Running unit xpu tests ...
     ========================================
 EOF
 
@@ -1572,6 +1616,102 @@ set -x
     fi   
 }
 
+function parallel_test_base_npu() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/npu
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit npu tests ...
+    ========================================
+EOF
+
+set +x
+        test_cases=$(ctest -N -V) # get all test cases
+        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            if [[ "$single_card_tests" == "" ]]; then
+                single_card_tests="^$testcase$"
+            else
+                single_card_tests="$single_card_tests|^$testcase$"
+            fi
+        done <<< "$test_cases";
+        card_test "$single_card_tests" 1
+        collect_failed_tests
+        # add unit test retry for NPU
+        rm -f $tmp_dir/*
+        exec_times=0
+        retry_unittests_record=''
+        retry_time=3
+        exec_time_array=('first' 'second' 'third')
+        exec_retry_threshold=10
+        is_retry_execuate=0
+        if [ -n "$failed_test_lists" ];then
+            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
+                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
+            fi
+            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                while ( [ $exec_times -lt $retry_time ] )
+                    do
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"
+                            
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
+                                if [[ "$tmp_one_tmp" != ""  ]]; then
+                                    if [[ "$one_card_retry" == "" ]]; then
+                                        one_card_retry="^$line$"
+                                    else
+                                        one_card_retry="$one_card_retry|^$line$"
+                                    fi
+                                fi
+                            done
+
+                        if [[ "$one_card_retry" != "" ]]; then
+                            card_test "$one_card_retry" 1
+                        fi
+
+                        exec_times=$[$exec_times+1]
+                        failed_test_lists=''
+                        collect_failed_tests
+                        rm -f $tmp_dir/*
+                        one_card_retry=''
+                    done
+            else 
+                # There are more than 10 failed unit tests, so no unit test retry
+                is_retry_execuate=1
+            fi
+        fi
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            show_ut_retry_result
+        fi
+set -ex
+    fi   
+}
+
 function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -1580,12 +1720,12 @@ function parallel_test() {
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
+    elif [ "$WITH_XPU" == "ON" ];then
+        parallel_test_base_xpu
+    elif [ "$WITH_ASCEND_CL" == "ON" ];then
+        parallel_test_base_npu
     else
-        if [ "$WITH_XPU" == "ON" ];then
-            parallel_test_base_xpu
-        else
-            parallel_test_base_cpu ${PROC_RUN:-1}
-        fi
+        parallel_test_base_cpu ${PROC_RUN:-1}
     fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
@@ -2185,6 +2325,12 @@ function main() {
         #test_fluid_lib_train
         #go inference test
         test_go_inference_api
+        check_approvals_of_unittest 3 
+        ;;
+      build_inference)
+        PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        gen_fluid_lib ${parallel_number}
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
@@ -2229,6 +2375,11 @@ function main() {
         check_coverage
         ;;
       check_rocm_coverage)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        check_coverage
+        ;;
+      check_npu_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage

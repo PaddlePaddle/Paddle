@@ -40,6 +40,17 @@ class LauncherInterface(object):
         self.procs = []
 
     def _terminate_procs(self):
+        # try to terminate process by group, this happend in multiprocess senario in user process
+        if os.name != 'nt':
+            for p in self.procs:
+                if p.proc.poll() is None:
+                    os.killpg(os.getpgid(p.proc.pid), signal.SIGTERM)
+                    if p.log_fn:
+                        p.log_fn.close()
+                    logger.info("terminate process group gid:{}".format(
+                        p.proc.pid))
+
+            time.sleep(1)
         for p in self.procs:
             if p.proc.poll() is None:
                 p.proc.terminate()
@@ -55,7 +66,7 @@ class LauncherInterface(object):
                     alive = True
 
             if not alive:
-                logger.info("terminate all the procs")
+                logger.info("terminated all the procs")
                 return True
 
             time.sleep(1)
@@ -69,8 +80,10 @@ class LauncherInterface(object):
             if ret is None:
                 alive = True
             elif ret != 0:
-                logger.error("ERROR rank {} error with code {}".format(p.rank,
-                                                                       ret))
+                logger.error("ABORT!!! ABORT!!! ABORT!!!")
+                logger.error(
+                    "ERROR rank {} error with exit code {}, check log for detail.".
+                    format(p.rank, ret))
                 result = ret
         if not alive and result is None:
             return 0
@@ -104,6 +117,14 @@ class ElasticManager(object):
         self.elastic_level = int(
             os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL', 1))
 
+        # compatible with kuberntes service discovery
+        if not server and os.getenv(
+                'PADDLE_ELASTIC_ETCD_SERVICE_HOST') and os.getenv(
+                    'PADDLE_ELASTIC_ETCD_SERVICE_PORT'):
+            server = '{}:{}'.format(
+                os.getenv('PADDLE_ELASTIC_ETCD_SERVICE_HOST'),
+                os.getenv('PADDLE_ELASTIC_ETCD_SERVICE_PORT'))
+
         #elastic_timeout = os.getenv('PADDLE_ELASTIC_TIMEOUT',1)
 
         logger.debug('init with server {} host {}'.format(server, host))
@@ -112,6 +133,7 @@ class ElasticManager(object):
         self.stopped = False
 
         self.sigint = 0
+        self.need_sync = False
 
         if not server or ':' not in server or not name or not np:
             logger.info(
@@ -153,11 +175,10 @@ class ElasticManager(object):
 
         def host_call_back(event):
             if self.etcd.get(self.host_path)[0] == None:
-                # ensure unmatch trigger
                 logger.info('register host again {}'.format(self.host))
-                time.sleep(5)
 
                 self.etcd.put(self.host_path, six.b(self.host))
+                self.need_sync = True
 
         host_watch = self.etcd.add_watch_callback(self.host_path,
                                                   host_call_back)
@@ -235,6 +256,7 @@ class ElasticManager(object):
         return int(self.etcd.get(self.prefix)[0]) == 1
 
     def _match(self):
+
         self.hosts = [
             six.ensure_str(i[0]) for i in self.etcd.get_prefix(self.node_prefix)
         ]
@@ -288,7 +310,8 @@ class ElasticManager(object):
                                                                self.hosts))
 
             idx += 1
-            time.sleep(3)
+            time.sleep(2)
+
         return
 
     def run(self, launcher):
@@ -299,6 +322,9 @@ class ElasticManager(object):
         self.launcher.launch()
 
     def watch(self):
+
+        if self.need_sync:
+            self.need_sync = False
 
         while not self.stopped:
             ret = self.launcher.watch()
@@ -315,11 +341,11 @@ class ElasticManager(object):
                 else:
                     return ElasticStatus.ERROR
 
-            if not self._completed() and not self._match():
+            if not self._completed() and (not self._match() or self.need_sync):
                 self.launcher.stop()
                 return ElasticStatus.HOLD
 
-            time.sleep(3)
+            time.sleep(2)
 
         if self.launcher:
             self.launcher.stop()

@@ -52,30 +52,30 @@ class TestMul(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
+        self.check_output_with_place(self.place, atol=1e-5)
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X', 'Y'],
+            self.place,
+            ['X', 'Y'],
             'Out',
-            max_relative_error=0.0065,
-            check_dygraph=False)
+            max_relative_error=0.0065, )
 
     def test_check_grad_ingore_x(self):
         self.check_grad_with_place(
-            self.place, ['Y'],
+            self.place,
+            ['Y'],
             'Out',
             no_grad_set=set("X"),
-            max_relative_error=0.0065,
-            check_dygraph=False)
+            max_relative_error=0.0065, )
 
     def test_check_grad_ingore_y(self):
         self.check_grad_with_place(
-            self.place, ['X'],
+            self.place,
+            ['X'],
             'Out',
             no_grad_set=set("Y"),
-            max_relative_error=0.0065,
-            check_dygraph=False)
+            max_relative_error=0.0065, )
 
 
 @skip_check_grad_ci(
@@ -170,8 +170,6 @@ class TestMul3FP16(TestMul3):
         pass
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMulNet(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32
@@ -243,8 +241,6 @@ class TestMulNet(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMulNet3_2(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32
@@ -317,8 +313,6 @@ class TestMulNet3_2(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-5))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMulNet3_2_xc2(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32
