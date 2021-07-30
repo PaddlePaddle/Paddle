@@ -516,6 +516,11 @@ void RegisterOperatorWithMetaInfo(
   auto& base_op_meta = op_meta_infos.front();
 
   auto op_name = OpMetaInfoHelper::GetOpName(base_op_meta);
+
+  if (OpInfoMap::Instance().Has(op_name)) {
+    return;
+  }
+
   auto& op_inputs = OpMetaInfoHelper::GetInputs(base_op_meta);
   auto& op_outputs = OpMetaInfoHelper::GetOutputs(base_op_meta);
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(base_op_meta);
@@ -866,7 +871,7 @@ void RegisterOperatorWithMetaInfoMap(
 // load op api
 void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
-
+  VLOG(1) << "load op lib name: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");
