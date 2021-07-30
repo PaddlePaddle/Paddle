@@ -143,6 +143,32 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   return ret;
 }
 
+bool IsTopologySortOperationsUnique(const Graph &graph) {
+  auto nodes = TopologySortOperations(graph);
+  size_t n = nodes.size();
+  for (size_t i = 1; i < n; ++i) {
+    auto *prev_op = nodes[i - 1];
+    auto *cur_op = nodes[i];
+
+    std::unordered_set<Node *> prev_op_outputs;
+    for (auto *output : prev_op->outputs) {
+      prev_op_outputs.insert(output);
+    }
+
+    bool found = false;
+    for (auto *input : cur_op->inputs) {
+      if (prev_op_outputs.count(input) > 0) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Build operator inlink edge table.
 std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
 BuildOperationAdjList(const Graph &graph) {
