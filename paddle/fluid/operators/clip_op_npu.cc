@@ -28,12 +28,12 @@ class ClipNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    Tensor* min_tensor = ctx.HasInput("Min")
-                             ? const_cast<Tensor*>(ctx.Input<Tensor>("Min"))
-                             : nullptr;
-    Tensor* max_tensor = ctx.HasInput("Max")
-                             ? const_cast<Tensor*>(ctx.Input<Tensor>("Max"))
-                             : nullptr;
+    auto min_tensor = ctx.HasInput("Min")
+                          ? const_cast<Tensor*>(ctx.Input<Tensor>("Min"))
+                          : nullptr;
+    auto max_tensor = ctx.HasInput("Max")
+                          ? const_cast<Tensor*>(ctx.Input<Tensor>("Max"))
+                          : nullptr;
 
     Tensor min_tensor_temp(x->type());
     Tensor max_tensor_temp(x->type());
