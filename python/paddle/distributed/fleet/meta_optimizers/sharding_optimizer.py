@@ -15,7 +15,7 @@
 import paddle
 from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
-from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper, OP_ROLE_KEY
 from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op, is_update_op
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOptimizerBase
 from paddle.distributed.fleet.meta_optimizers.sharding.shard import Shard, ProgramSegment
@@ -343,6 +343,47 @@ class ShardingOptimizer(MetaOptimizerBase):
             insert_scale_loss_grad_ops(main_block, scale=1.0 / global_dp_degree)
 
         main_block._sync_with_cpp()
+
+        with open("before_shard_optim_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(main_block.program))
+        # TODO(Yuang) add this flag to strategy
+        self.shard_optimizer = True
+        # split grads by dp degree
+        if self.dp_degree > 1 and self.shard_optimizer:
+            # get all grads that used for optimizer
+            raw_grads = [x[1].name for x in params_grads]
+            grads_to_param = {x[1].name: x[0].name for x in params_grads}
+            grads = []
+            for op in main_block.ops:
+                if not is_backward_op(op) or len(op.output_arg_names) != 1:
+                    continue
+                tmp_name = op.output_arg_names[0]
+                if '@MERGED' not in tmp_name:
+                    continue
+                raw_grad = tmp_name[:tmp_name.find('@MERGED')]
+                if raw_grad in raw_grads and tmp_name not in grads:
+                    grads.append(tmp_name)
+                    grads_to_param[tmp_name] = grads_to_param[raw_grad]
+            grads_to_dp_rank = {x: [] for x in range(self.dp_degree)}
+            each_dp_grads = len(grads) // self.dp_degree + 1
+            cur_dp = 0
+            for grad in grads:
+                if len(grads_to_dp_rank[cur_dp]) >= each_dp_grads:
+                    cur_dp += 1
+                grads_to_dp_rank[cur_dp].append(grad)
+
+            # add reduce / broadcast op
+            self._add_reduce_broadcast_op(main_block, grads_to_dp_rank,
+                                          grads_to_param)
+            main_block._sync_with_cpp()
+
+            # prune the program
+            self._prune_shard_optimizer_program(main_block, grads_to_dp_rank)
+            main_block._sync_with_cpp()
+        with open("after_shard_optim_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(main_block.program))
 
         # TODO(wangxi): add optimize offload
         # opt offload should be enable while gradient merge is enable && acc_step is quite large (e.g. >> 100) 
@@ -833,6 +874,44 @@ class ShardingOptimizer(MetaOptimizerBase):
         block._sync_with_cpp()
         return
 
+    def _add_reduce_broadcast_op(self, block, grads_to_dp_rank, grads_to_param):
+        # add reduce and broadcast op for sharding the optimizer
+        reduce_grads = grads_to_dp_rank[self.dp_rank]
+        optimizer_start_idx = 0
+        for idx, op in enumerate(block.ops):
+            if is_optimizer_op(op):
+                optimizer_start_idx = idx
+                break
+
+        for grad in reduce_grads:
+            # insert reduce op
+            block._insert_op_without_sync(
+                optimizer_start_idx,
+                type='c_reduce_sum',
+                inputs={'X': grad},
+                outputs={'Out': grad},
+                attrs={
+                    'ring_id': self.dp_ring_id,
+                    'root_id': self.dp_rank,
+                    'use_calc_stream': False,
+                    OP_ROLE_KEY: OpRole.Optimize
+                })
+
+        for root in range(self.dp_degree):
+            for grad in grads_to_dp_rank[root]:
+                # insert broadcast op
+                block._insert_op_without_sync(
+                    len(block.ops),
+                    type='c_broadcast',
+                    inputs={'X': grads_to_param[grad]},
+                    outputs={'Out': grads_to_param[grad]},
+                    attrs={
+                        'ring_id': self.dp_ring_id,
+                        'root': root,
+                        'use_calc_stream': False,
+                        OP_ROLE_KEY: OpRole.Optimize
+                    })
+
     def _add_broadcast_allreduce(self, block):
         """
         add broadcast allreduce op
@@ -1063,6 +1142,43 @@ class ShardingOptimizer(MetaOptimizerBase):
                 continue
             block._remove_var(var_name, sync=False)
         block._sync_with_cpp()
+
+    def _prune_shard_optimizer_program(self, block, grads_to_dp_rank):
+        cur_to_remove = []
+        for i in range(self.dp_degree):
+            if i == self.dp_rank:
+                continue
+            cur_to_remove.extend(grads_to_dp_rank[i])
+        if len(cur_to_remove) == 0:
+            return
+        skip_ops = [
+            'check_finite_and_unscale', 'update_loss_scaling', 'c_reduce_sum',
+            'c_broadcast'
+        ]
+        removed_ops = ['c_allreduce_sum']
+        idx_to_remove = []
+        for idx, op in enumerate(block.ops):
+            if not is_optimizer_op(op) \
+                    or op.type in skip_ops:
+                continue
+            if op.type in removed_ops:
+                idx_to_remove.append(idx)
+                continue
+            need_removed = False
+            for name in op.output_arg_names:
+                if name in cur_to_remove:
+                    need_removed = True
+                    break
+            for name in op.input_arg_names:
+                if name in cur_to_remove:
+                    cur_to_remove.extend([x for x in op.output_arg_names])
+                    need_removed = True
+                    break
+            if need_removed:
+                idx_to_remove.append(idx)
+        idx_to_remove = sorted(idx_to_remove, reverse=True)
+        for idx in idx_to_remove:
+            block._remove_op(idx, False)
 
     def _build_groups(self):
         """
