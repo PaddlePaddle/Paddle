@@ -97,6 +97,8 @@ DEFINE_string(
     npu_config_path, "",
     "The absolute path of configuration json file, like: /tmp/config.json. "
     "If proveided, it will be passed to aclInit().");
+
+DEFINE_uint32(npu_op_timeout, 0, "The timeout setting for npu op.");
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

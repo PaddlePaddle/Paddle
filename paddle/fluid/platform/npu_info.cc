@@ -407,6 +407,11 @@ AclInstance::AclInstance() {
     SetNPUDeviceId(*it);
     VLOG(4) << "Call aclrtSetDevice " << *it;
   }
+
+  if (FLAGS_npu_op_timeout != 0) {
+    VLOG(4) << "Call aclInit(" << FLAGS_npu_config_path << ") ";
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetOpWaitTimeout(FLAGS_npu_op_timeout));
+  }
 }
 
 void AclInstance::Finalize() {
