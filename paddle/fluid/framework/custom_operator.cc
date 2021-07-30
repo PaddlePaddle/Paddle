@@ -871,7 +871,7 @@ void RegisterOperatorWithMetaInfoMap(
 // load op api
 void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
-  VLOG(1) << "load op lib name: " << dso_name;
+  VLOG(1) << "load custom_op lib: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");
