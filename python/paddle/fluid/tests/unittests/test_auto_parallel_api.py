@@ -83,7 +83,6 @@ class TestAutoParallelAPI(unittest.TestCase):
         first_op = ops[0]
         last_op = ops[-1]
 
-        self.assertEqual(first_op.pipeline_stage, 0)
         self.assertEqual(last_op.pipeline_stage, LAST_PP_STAGE)
 
         DIMS_MAPPING1 = [0, 1, -1]
