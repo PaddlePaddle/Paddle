@@ -169,11 +169,12 @@ class StridedSliceOp : public framework::OperatorWithKernel {
           PADDLE_ENFORCE_EQ(
               platform::is_same_place(tensor.place(),
                                       ctx.device_context().GetPlace()),
-              true, platform::errors::InvalidArgument(
-                        "Place of context is %s. Place of context is %s. They "
-                        "are should be same, but reveived different place.",
-                        string::to_string(ctx.device_context().GetPlace()),
-                        string::to_string(tensor.place())));
+              true,
+              platform::errors::InvalidArgument(
+                  "Place of context is %s. Place of input tensor is %s. They "
+                  "are should be same, but reveived different place.",
+                  string::to_string(ctx.device_context().GetPlace()),
+                  string::to_string(tensor.place())));
         }
       }
       return framework::OpKernelType(
