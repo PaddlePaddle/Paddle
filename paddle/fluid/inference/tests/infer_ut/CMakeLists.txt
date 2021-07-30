@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 project(cpp_inference_demo CXX C)
 option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL."       ON)
 option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
-option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
+option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   OFF)
 option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
 option(WITH_GTEST "Compile demo with GTEST"   OFF)
 

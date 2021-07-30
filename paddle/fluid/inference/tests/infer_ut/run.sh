@@ -22,6 +22,7 @@ DATA_DIR=$4 # dataset
 TENSORRT_ROOT_DIR=$5 # TensorRT ROOT dir, default to /usr/local/TensorRT
 MSVC_STATIC_CRT=$6
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
+EXIT_CODE=0 # init default exit code
 
 cd `dirname $0`
 current_dir=`pwd`
@@ -77,7 +78,7 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         -DWITH_MKL=$TURN_ON_MKL \
         -DDEMO_NAME=test_resnet50 \
         -DWITH_GPU=$TEST_GPU_CPU \
-        -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+        -DWITH_STATIC_LIB=OFF \
         -DUSE_TENSORRT=$USE_TENSORRT \
         -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
         -DWITH_GTEST=ON
@@ -86,7 +87,15 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         --modeldir=$DATA_DIR/resnet50/resnet50 \
         --gtest_output=xml:test_resnet50.xml
     if [ $? -ne 0 ]; then
-        echo "trt demo test_resnet50 runs fail."
-        exit 1
+        echo "test_resnet50 runs failed" >> ${current_dir}/build/test_summary.txt
+        EXIT_CODE=1
     fi
 fi
+
+if [[ -f ${current_dir}/build/test_summary.txt ]];then
+  echo "=====================test summary======================"
+  cat ${current_dir}/build/test_summary.txt
+  echo "========================================================"
+fi
+echo "infer_ut script finished"
+exit ${EXIT_CODE}
