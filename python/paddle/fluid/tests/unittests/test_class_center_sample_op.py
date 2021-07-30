@@ -60,8 +60,8 @@ class TestClassCenterSampleOp(OpTest):
     def initParams(self):
         self.op_type = "class_center_sample"
         self.batch_size = 20
-        self.num_samples = 100000
-        self.num_classes = 1000000
+        self.num_samples = 6
+        self.num_classes = 10
         self.seed = 2021
 
     def init_dtype(self):
@@ -117,9 +117,9 @@ class TestClassCenterSampleV2(unittest.TestCase):
             self.places.append(paddle.fluid.CUDAPlace(0))
 
     def initParams(self):
-        self.batch_size = 20
-        self.num_samples = 1000
-        self.num_classes = 10000
+        self.batch_size = 10
+        self.num_samples = 6
+        self.num_classes = 20
         self.seed = 0
         self.init_dtype()
 
