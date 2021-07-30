@@ -158,8 +158,8 @@ class AdamWOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput("WeightDecayTensor",
              "(Tensor<float32>, optional) If provided, AdamW will use this "
-             "as weightdecay, this has a higher priority than "
-             "attr(weightdecay), the "
+             "as weight_decay, this has a higher priority than "
+             "attr(weight_decay), the "
              "shape of this tensor MUST BE [1].")
         .AsDispensable();
     AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
@@ -188,7 +188,7 @@ class AdamWOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1.0e-8) "
                    "Constant for numerical stability")
         .SetDefault(1.0e-8f);
-    AddAttr<float>("weightdecay",
+    AddAttr<float>("weight_decay",
                    "(float, default 0.01) "
                    "Constant for numerical stability")
         .SetDefault(0.01);
@@ -272,8 +272,8 @@ REGISTER_OP_VERSION(adamw)
     )ROC",
         paddle::framework::compatible::OpVersionDesc().NewInput(
             "WeightDecayTensor",
-            "If provided, Adamw will use this as weightdecay, "
-            "this has a higher priority than attr(weightdecay). "
+            "If provided, Adamw will use this as weight_decay, "
+            "this has a higher priority than attr(weight_decay). "
             "For better performance in npu kernel. "))
     .AddCheckpoint(
         R"ROC(

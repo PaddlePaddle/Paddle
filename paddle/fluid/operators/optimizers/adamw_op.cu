@@ -208,7 +208,8 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
                             epsilon_tensor->numel()));
       epsilon = static_cast<MPDType>(GetAttriFromTensor(epsilon_tensor));
     }
-    MPDType weight_decay = static_cast<MPDType>(ctx.Attr<float>("weightdecay"));
+    MPDType weight_decay =
+        static_cast<MPDType>(ctx.Attr<float>("weight_decay"));
     if (ctx.HasInput("WeightDecayTensor")) {
       auto* weight_decay_tensor =
           ctx.Input<framework::Tensor>("WeightDecayTensor");

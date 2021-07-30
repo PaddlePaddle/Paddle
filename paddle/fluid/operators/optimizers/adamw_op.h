@@ -469,7 +469,7 @@ class AdamWOpKernel : public framework::OpKernel<T> {
                             epsilon_tensor->numel()));
       epsilon = static_cast<T>(GetAttriFromTensor(epsilon_tensor));
     }
-    T weight_decay = static_cast<T>(ctx.Attr<float>("weightdecay"));
+    T weight_decay = static_cast<T>(ctx.Attr<float>("weight_decay"));
     if (ctx.HasInput("WeightDecayTensor")) {
       auto* weight_decay_tensor =
           ctx.Input<framework::Tensor>("WeightDecayTensor");
