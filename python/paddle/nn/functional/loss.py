@@ -1302,7 +1302,7 @@ def margin_softmax_with_cross_entropy(logits,
         softmax, loss = core.ops.margin_softmax_with_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
             'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',
-            scale)
+            scale, 'return_softmax', return_softmax)
         if reduction == 'mean':
             loss = paddle.mean(loss)
         elif reduction == 'sum':
@@ -1330,6 +1330,7 @@ def margin_softmax_with_cross_entropy(logits,
         outputs={'Softmax': softmax,
                  'Loss': loss},
         attrs={
+            'return_softmax': return_softmax,
             'ring_id': ring_id,
             'rank': rank,
             'nranks': nranks,

@@ -100,6 +100,10 @@ class MarginSoftmaxWithCrossEntropyOpMaker
               "Input(Logits) "
               "except the shape in dimension :attr:`axis` as 1. The cross "
               "entropy loss.");
+    AddAttr<bool>("return_softmax",
+                  "(bool default false) A flag to indicate "
+                  "whether to return softmax.")
+        .SetDefault(false);
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("rank",
@@ -184,9 +188,6 @@ class MarginSoftmaxWithCrossEntropyOpGradMaker
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(MarginSoftmaxWithCrossEntropyGradInplaceInferer,
-                           {"Softmax", framework::GradVarName("Logits")});
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -200,8 +201,7 @@ REGISTER_OPERATOR(
     ops::MarginSoftmaxWithCrossEntropyOpGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(margin_softmax_with_cross_entropy_grad,
-                  ops::MarginSoftmaxWithCrossEntropyOpGrad,
-                  ops::MarginSoftmaxWithCrossEntropyGradInplaceInferer);
+                  ops::MarginSoftmaxWithCrossEntropyOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     margin_softmax_with_cross_entropy,

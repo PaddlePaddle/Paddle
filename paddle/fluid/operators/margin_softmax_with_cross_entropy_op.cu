@@ -24,6 +24,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/margin_softmax_with_cross_entropy_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -87,7 +89,7 @@ void GetClassInterval(const gpuStream_t& stream, const platform::Place& place,
 }
 
 template <typename T, typename IndexT>
-__global__ void AddMarginToPositiveLogits(
+__global__ void AddMarginToPositiveLogitsKernel(
     T* logit, const IndexT* label, const float margin1, const float margin2,
     const float margin3, const int rank, const int nranks, const int64_t N,
     const int64_t D, const int* class_interval_ptr) {
@@ -135,6 +137,60 @@ static __device__ __forceinline__ float exp_on_device(float x) {
 }
 static __device__ __forceinline__ double exp_on_device(double x) {
   return exp(x);
+}
+static __device__ __forceinline__ platform::float16 log_on_device(
+    platform::float16 x) {
+  return ::Eigen::numext::log(x);
+}
+static __device__ __forceinline__ float log_on_device(float x) {
+  return logf(x);
+}
+static __device__ __forceinline__ double log_on_device(double x) {
+  return log(x);
+}
+
+template <typename Tx, typename Ty = Tx>
+struct ExpLogitTransformer {
+  HOSTDEVICE explicit inline ExpLogitTransformer(int n) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(exp_on_device(x));
+  }
+};
+
+template <typename Tx, typename Ty = Tx>
+struct ExpAndSum {
+  using Transformer = ExpLogitTransformer<Tx>;
+
+  inline Ty initial() { return static_cast<Ty>(0.0f); }
+
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return b + a;
+  }
+};
+
+template <typename T>
+__global__ void ScaleLogitKernel(T* logits, const float scale, const int64_t N,
+                                 const int64_t D) {
+  CUDA_KERNEL_LOOP(i, N * D) { logits[i] *= static_cast<T>(scale); }
+}
+
+template <typename T>
+__global__ void LogitsMinusMaxKernel(T* logits, const T* logits_max_per_row,
+                                     const int64_t N, const int64_t D) {
+  CUDA_KERNEL_LOOP(i, N * D) {
+    auto row = i / D;
+    logits[i] -= logits_max_per_row[row];
+  }
+}
+
+template <typename T>
+__global__ void LogitsMinusLogSumKernel(T* logits, const T* logits_sum_per_row,
+                                        const int64_t N, const int64_t D) {
+  CUDA_KERNEL_LOOP(i, N * D) {
+    auto row = i / D;
+    logits[i] -= log_on_device(logits_sum_per_row[row]);
+  }
 }
 
 template <typename T, typename IndexT>
@@ -224,8 +280,8 @@ class MarginSoftmaxWithCrossEntropyOpCUDAKernel
 #endif
 
     // allocate memory on device.
-    softmax->mutable_data<T>(place);
-    loss->mutable_data<T>(place);
+    T* softmax_ptr = softmax->mutable_data<T>(place);
+    T* loss_ptr = loss->mutable_data<T>(place);
 
     const auto& logits_dims = logits->dims();
     const auto& labels_dims = labels->dims();
@@ -234,63 +290,54 @@ class MarginSoftmaxWithCrossEntropyOpCUDAKernel
     const int N = SizeToAxis(axis, logits_dims);
     const int D = SizeFromAxis(axis, logits_dims);
 
-    Eigen::DSizes<int, 2> batch_by_one(N, 1);
-    Eigen::DSizes<int, 2> one_by_class(1, D);
-
     int blocks = NumBlocks(N);
     int threads = kNumCUDAThreads;
     const auto& label_type = labels->type();
+
+    // copy logits to softmax variable since we can't modify logits,
+    // and it also be used when calculate grad
+    framework::TensorCopy(*logits, ctx.GetPlace(), ctx.device_context(),
+                          softmax);
+
+    Tensor softmax_2d;
+    softmax_2d.ShareDataWith(*softmax).Resize({N, D});
+    T* logits_ptr = softmax_2d.data<T>();
 
     Tensor class_interval;
     GetClassInterval(dev_ctx.stream(), place, ctx.cuda_device_context(), rid,
                      rank, nranks, D, &class_interval);
 
-    // step 0, copy logits to softmax variable since we need logits
-    // when calculate grad
-    framework::TensorCopy(*logits, ctx.GetPlace(), ctx.device_context(),
-                          softmax);
-
-    Tensor softmax_2d, loss_2d;
-    softmax_2d.ShareDataWith(*softmax).Resize({N, D});
-    loss_2d.ShareDataWith(*loss).Resize({N, 1});
-
-    auto eigen_softmax = math::EigenMatrix<T>::From(softmax_2d);
-
-    // step 1, add margin for positive elements
+    // step 1, preprocess logits
+    // add margin for positive elements
     // theta = acos(x_i)
-    // s * (cos(m1 * theta + m2) - m3)
+    // (cos(m1 * theta + m2) - m3)
+    // save match_logits, used for gradient computation.
     if (label_type == framework::proto::VarType::INT32) {
-      AddMarginToPositiveLogits<
-          T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          softmax_2d.data<T>(), labels->data<int32_t>(), margin1, margin2,
-          margin3, rank, nranks, N, D, class_interval.data<int>());
+      typedef int32_t LabelT;
+      AddMarginToPositiveLogitsKernel<
+          T><<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
+          logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3, rank,
+          nranks, N, D, class_interval.data<int>());
     } else if (label_type == framework::proto::VarType::INT64) {
-      AddMarginToPositiveLogits<
-          T, int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          softmax_2d.data<T>(), labels->data<int64_t>(), margin1, margin2,
-          margin3, rank, nranks, N, D, class_interval.data<int>());
+      typedef int64_t LabelT;
+      AddMarginToPositiveLogitsKernel<
+          T><<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
+          logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3, rank,
+          nranks, N, D, class_interval.data<int>());
     }
-    if (fabs(scale - 1.0) > 1e-8) {
-      Tensor scale_t;
-      scale_t.mutable_data<T>({N, D}, ctx.GetPlace());
-      math::SetConstant<platform::CUDADeviceContext, T>()(
-          dev_ctx, &scale_t, static_cast<T>(scale));
-      auto eigen_scale = math::EigenMatrix<T>::From(scale_t);
 
-      eigen_softmax.device(*dev_ctx.eigen_device()) =
-          eigen_softmax * eigen_scale;
-    }
+    // scale by s
+    ScaleLogitKernel<T><<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
+        logits_ptr, scale, N, D);
 
     // step 2, obtain logit_max
     Tensor logits_max;
     logits_max =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
-    void* logits_max_buff = logits_max.mutable_data<T>(place);
+    T* logits_max_buff = logits_max.mutable_data<T>(place);
+    TensorReduceFunctorImpl<T, T, CustomMax>(softmax_2d, &logits_max, {1},
+                                             dev_ctx.stream());
 
-    auto eigen_logits_max = math::EigenMatrix<T>::From(logits_max);
-    Eigen::DSizes<int, 1> along_axis(1);
-    eigen_logits_max.device(*dev_ctx.eigen_device()) =
-        eigen_softmax.maximum(along_axis);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
@@ -301,19 +348,16 @@ class MarginSoftmaxWithCrossEntropyOpCUDAKernel
 #endif
 
     // step 3, logit - logit_max
-    eigen_softmax.device(*dev_ctx.eigen_device()) =
-        (eigen_softmax -
-         eigen_logits_max.reshape(batch_by_one).broadcast(one_by_class));
+    LogitsMinusMaxKernel<T><<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
+        logits_ptr, logits_max_buff, N, D);
 
     // step 4, sum(exp(logit - logit_max))
     Tensor sum_exp_logits;
     sum_exp_logits =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
-    void* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
-
-    auto eigen_sum_exp_logits = math::EigenMatrix<T>::From(sum_exp_logits);
-    eigen_sum_exp_logits.device(*dev_ctx.eigen_device()) =
-        eigen_softmax.exp().sum(along_axis);
+    T* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
+    TensorReduceFunctorImpl<T, T, ExpAndSum>(softmax_2d, &sum_exp_logits, {1},
+                                             dev_ctx.stream());
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
@@ -325,34 +369,34 @@ class MarginSoftmaxWithCrossEntropyOpCUDAKernel
 #endif
 
     // step 5, (logit - logit_max) - log(sum(exp(logit - logit_max)))
-    eigen_softmax.device(*dev_ctx.eigen_device()) =
-        (eigen_softmax -
-         eigen_sum_exp_logits.log()
-             .reshape(batch_by_one)
-             .broadcast(one_by_class));
+    LogitsMinusLogSumKernel<
+        T><<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
+        logits_ptr, sum_exp_logits_buff, N, D);
 
     // step 6, prob = exp((logit - logit_max) - log(sum(exp(logit -
     // logit_max))))
     // loss = -((logit_i - logit_max) - log(sum(exp(logit - logit_max))))
-    void* loss_buff = loss_2d.mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<platform::CUDADeviceContext, T>()(dev_ctx, &loss_2d,
+    math::SetConstant<platform::CUDADeviceContext, T>()(dev_ctx, loss,
                                                         static_cast<T>(0.0));
     if (label_type == framework::proto::VarType::INT32) {
+      typedef int32_t LabelT;
       HardLabelSoftmaxWithCrossEntropyKernel<
-          T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          loss_2d.data<T>(), softmax_2d.data<T>(), labels->data<int32_t>(),
-          rank, N, D, class_interval.data<int>());
+          T, LabelT><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          loss_ptr, logits_ptr, labels->data<LabelT>(), rank, N, D,
+          class_interval.data<int>());
     } else if (label_type == framework::proto::VarType::INT64) {
+      typedef int64_t LabelT;
       HardLabelSoftmaxWithCrossEntropyKernel<
-          T, int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          loss_2d.data<T>(), softmax_2d.data<T>(), labels->data<int64_t>(),
-          rank, N, D, class_interval.data<int>());
+          T, LabelT><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          loss_ptr, logits_ptr, labels->data<LabelT>(), rank, N, D,
+          class_interval.data<int>());
     }
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
-          loss_buff, loss_buff, loss_2d.numel(),
-          platform::ToNCCLDataType(loss_2d.type()), ncclSum, comm->comm(),
+          loss_ptr, loss_ptr, loss->numel(),
+          platform::ToNCCLDataType(loss->type()), ncclSum, comm->comm(),
           stream));
     }
 #endif
@@ -373,6 +417,8 @@ class MarginSoftmaxWithCrossEntropyGradCUDAKernel
     Tensor* logit_grad =
         context.Output<Tensor>(framework::GradVarName("Logits"));
 
+    const bool return_softmax = context.Attr<bool>("return_softmax");
+
     const int rid = context.Attr<int>("ring_id");
     const int nranks = context.Attr<int>("nranks");
     const int rank = context.Attr<int>("rank");
@@ -385,17 +431,17 @@ class MarginSoftmaxWithCrossEntropyGradCUDAKernel
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
-    if (logit_grad != softmax) {
-      framework::TensorCopy(*softmax, context.GetPlace(),
-                            context.device_context(), logit_grad);
-    }
     const auto sofrmax_dims = softmax->dims();
     const int axis = sofrmax_dims.size() - 1;
     const int N = SizeToAxis(axis, sofrmax_dims);
     const int D = SizeFromAxis(axis, sofrmax_dims);
 
-    Tensor logit_grad_2d;
-    logit_grad_2d.ShareDataWith(*logit_grad).Resize({N, D});
+    if (return_softmax) {
+      framework::TensorCopy(*softmax, context.GetPlace(),
+                            context.device_context(), logit_grad);
+    } else {
+      logit_grad->ShareDataWith(*softmax);
+    }
 
     int blocks = NumBlocks(N * D);
     int threads = kNumCUDAThreads;
@@ -407,14 +453,16 @@ class MarginSoftmaxWithCrossEntropyGradCUDAKernel
                      &class_interval);
 
     if (label_type == framework::proto::VarType::INT32) {
-      CalculateGrad<T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          logit_grad_2d.data<T>(), loss_grad->data<T>(), logits->data<T>(),
-          labels->data<int32_t>(), margin1, margin2, scale, rank, N, D,
+      typedef int32_t LabelT;
+      CalculateGrad<T, LabelT><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          logit_grad->data<T>(), loss_grad->data<T>(), logits->data<T>(),
+          labels->data<LabelT>(), margin1, margin2, scale, rank, N, D,
           class_interval.data<int>());
     } else if (label_type == framework::proto::VarType::INT64) {
-      CalculateGrad<T, int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          logit_grad_2d.data<T>(), loss_grad->data<T>(), logits->data<T>(),
-          labels->data<int64_t>(), margin1, margin2, scale, rank, N, D,
+      typedef int64_t LabelT;
+      CalculateGrad<T, LabelT><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          logit_grad->data<T>(), loss_grad->data<T>(), logits->data<T>(),
+          labels->data<LabelT>(), margin1, margin2, scale, rank, N, D,
           class_interval.data<int>());
     }
   }
