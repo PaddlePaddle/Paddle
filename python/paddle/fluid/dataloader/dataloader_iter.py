@@ -124,16 +124,6 @@ class _DataLoaderIterBase(object):
         global _loader
         _loader = self
 
-    @property
-    def _index_sampler(self):
-        if self._auto_collate_batch:
-            return self._batch_sampler
-        else:
-            if self._dataset_kind == _DatasetKind.MAP:
-                return list(range(len(self._dataset)))
-            else:
-                return _InfiniteIterableSampler(self._dataset, 1)
-
     def __iter__(self):
         return self
 
