@@ -195,8 +195,10 @@ class PipelineParallel(MetaParallelBase):
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
         if self.is_last_stage:
             assert output_tensor_grad is None
-            paddle.autograd.backward(
-                tensors=[output_tensor], grad_tensors=[None])
+            if self.scaler:
+                paddle.autograd.backward(self.scaler.scale(output_tensor))
+            else:
+                paddle.autograd.backward(output_tensor)
         else:
             if isinstance(output_tensor, tuple):
                 outputs = [t for t in output_tensor if not t.stop_gradient]
