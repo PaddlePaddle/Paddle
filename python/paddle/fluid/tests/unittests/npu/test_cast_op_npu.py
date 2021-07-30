@@ -27,8 +27,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCast1(OpTest):
     def setUp(self):
         self.set_npu()
@@ -48,7 +46,7 @@ class TestCast1(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
 class TestCast2(OpTest):
@@ -70,7 +68,7 @@ class TestCast2(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+        self.check_output_with_place(self.place, atol=1e-3)
 
 
 class TestCast3(OpTest):
@@ -92,7 +90,7 @@ class TestCast3(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+        self.check_output_with_place(self.place, atol=1e-3)
 
 
 if __name__ == '__main__':

@@ -622,6 +622,11 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableGpuMultiStream();
   void PartiallyRelease();
 
+  ///
+  /// \brief Print the summary of config.
+  ///
+  std::string Summary();
+
  protected:
   // Update the config.
   void Update();

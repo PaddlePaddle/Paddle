@@ -19,14 +19,13 @@ sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from test_adam_op import adam_step
 
 paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAdam(OpTest):
     def setUp(self):
         self.set_npu()
@@ -75,11 +74,9 @@ class TestAdam(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAdamWithEpsilonTensor(OpTest):
     def setUp(self):
         self.set_npu()
@@ -131,11 +128,9 @@ class TestAdamWithEpsilonTensor(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAdamOpWithSkipUpdate(OpTest):
     def setUp(self):
         self.set_npu()
@@ -185,11 +180,9 @@ class TestAdamOpWithSkipUpdate(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAdamOpWithGlobalBetaPow(OpTest):
     def setUp(self):
         self.set_npu()
@@ -244,11 +237,9 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -309,88 +300,152 @@ class TestNet(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-3))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestNetWithEpsilonTensor(unittest.TestCase):
-    def _test(self, run_npu=True):
+    def _test(self,
+              place,
+              use_tensor=True,
+              use_fluid_api=True,
+              use_global_beta_pow=False,
+              flatten_param_grads=False):
+        paddle.enable_static()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        SEED = 2021
+        paddle.seed(SEED)
         np.random.seed(SEED)
 
-        a_np = np.random.random(size=(32, 32)).astype('float32')
-        b_np = np.random.random(size=(32, 32)).astype('float32')
-        label_np = np.random.randint(2, size=(32, 1)).astype('int64')
+        a_np = np.random.random(size=(2, 2)).astype('float32')
+        b_np = np.random.random(size=(2, 2)).astype('float32')
+        label_np = np.random.randint(2, size=(2, 1)).astype('int64')
+        weight_attr1 = paddle.ParamAttr(
+            name="weight1",
+            initializer=fluid.initializer.Constant(value=1.0),
+            trainable=True)
+        weight_attr2 = paddle.ParamAttr(
+            name="weight2",
+            initializer=fluid.initializer.Constant(value=2.0),
+            trainable=True)
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
 
         with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
-            b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+            with paddle.utils.unique_name.guard():
+                a = paddle.static.data(name="a", shape=[2, 2], dtype='float32')
+                b = paddle.static.data(name="b", shape=[2, 2], dtype='float32')
+                label = paddle.static.data(
+                    name="label", shape=[2, 1], dtype='int64')
 
-            sum = paddle.add(a, b)
-            z = paddle.pow(sum, 2.0)
+                sum = paddle.add(a, b)
+                z = paddle.pow(sum, 2.0)
 
-            fc_1 = fluid.layers.fc(input=z, size=128)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+                fc_1 = fluid.layers.fc(input=z, size=2, param_attr=weight_attr1)
+                prediction = fluid.layers.fc(input=fc_1,
+                                             size=2,
+                                             param_attr=weight_attr2,
+                                             act='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
-            beta1_init = 0.9
-            beta2_init = 0.999
-            epsilon_init = 1e-8
-            beta1 = fluid.layers.create_global_var(
-                shape=[1],
-                value=float(beta1_init),
-                dtype='float32',
-                persistable=True,
-                name="beta1")
-            beta2 = fluid.layers.create_global_var(
-                shape=[1],
-                value=float(beta2_init),
-                dtype='float32',
-                persistable=True,
-                name="beta2")
-            epsilon = fluid.layers.create_global_var(
-                shape=[1],
-                value=float(epsilon_init),
-                dtype='float32',
-                persistable=True,
-                name="epsilon")
-            adam = fluid.optimizer.Adam(
-                learning_rate=0.01, beta1=beta1, beta2=beta2, epsilon=epsilon)
-            adam.minimize(loss)
+                cost = fluid.layers.cross_entropy(input=prediction, label=label)
+                loss = fluid.layers.reduce_mean(cost)
+                beta1_init = 0.9
+                beta2_init = 0.999
+                epsilon_init = 1e-8
+                if use_tensor:
+                    beta1 = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=float(beta1_init),
+                        dtype='float32',
+                        persistable=True,
+                        name="beta1")
+                    beta2 = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=float(beta2_init),
+                        dtype='float32',
+                        persistable=True,
+                        name="beta2")
+                    epsilon = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=float(epsilon_init),
+                        dtype='float32',
+                        persistable=True,
+                        name="epsilon")
+                    if use_fluid_api:
+                        adam = fluid.optimizer.Adam(
+                            learning_rate=0.01,
+                            beta1=beta1,
+                            beta2=beta2,
+                            epsilon=epsilon,
+                            use_global_beta_pow=use_global_beta_pow,
+                            flatten_param_grads=flatten_param_grads,
+                            align_size=256,
+                            grad_clip=clip)
+                    else:
+                        adam = paddle.optimizer.Adam(
+                            learning_rate=0.01,
+                            beta1=beta1,
+                            beta2=beta2,
+                            epsilon=epsilon,
+                            grad_clip=clip)
+                else:
+                    if use_fluid_api:
+                        adam = fluid.optimizer.Adam(
+                            learning_rate=0.01,
+                            beta1=beta1_init,
+                            beta2=beta2_init,
+                            epsilon=epsilon_init,
+                            use_global_beta_pow=use_global_beta_pow,
+                            flatten_param_grads=flatten_param_grads,
+                            align_size=256,
+                            grad_clip=clip)
+                    else:
+                        adam = fluid.optimizer.Adam(
+                            learning_rate=0.01,
+                            beta1=beta1_init,
+                            beta2=beta2_init,
+                            epsilon=epsilon_init,
+                            grad_clip=clip)
 
-        if run_npu:
-            place = paddle.NPUPlace(0)
-        else:
-            place = paddle.CPUPlace()
+                adam.minimize(loss)
 
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
 
-        print("Start run on {}".format(place))
-        for epoch in range(100):
-
-            pred_res, loss_res = exe.run(
-                main_prog,
-                feed={"a": a_np,
-                      "b": b_np,
-                      "label": label_np},
-                fetch_list=[prediction, loss])
-            if epoch % 10 == 0:
+            print("Start run on {}".format(place))
+            for epoch in range(10):
+                pred_res, loss_res = exe.run(
+                    main_prog,
+                    feed={"a": a_np,
+                          "b": b_np,
+                          "label": label_np},
+                    fetch_list=[prediction, loss])
                 print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
                     epoch, pred_res[0], loss_res))
+            paddle.disable_static()
+            return pred_res, loss_res
 
-        return pred_res, loss_res
+    def _test_with_place(self, place):
+        preds = []
+        losses = []
 
-    def test_npu(self):
-        cpu_pred, cpu_loss = self._test(False)
-        npu_pred, npu_loss = self._test(True)
+        for use_tensor in [True, False]:
+            for use_fluid_api in [True, False]:
+                for use_global_beta_pow in [True, False]:
+                    for flatten_param_grads in [True, False]:
+                        pred, loss = self._test(
+                            place, use_tensor, use_fluid_api,
+                            use_global_beta_pow, flatten_param_grads)
+                        preds.append(pred)
+                        losses.append(loss)
+        for pred in preds:
+            self.assertTrue(np.allclose(pred, preds[0]))
+        for loss in losses:
+            self.assertTrue(np.allclose(loss, losses[0]))
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-3))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-3))
+    def test_adam_api(self):
+        # NOTE(zhiqiu): cpu and gpu has different seed, so should compare separatly.
+        self._test_with_place(paddle.CPUPlace())
+        if core.is_compiled_with_npu():
+            self._test_with_place(paddle.NPUPlace(0))
 
 
 if __name__ == '__main__':

@@ -27,8 +27,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestFillConstant(OpTest):
     def setUp(self):
         self.set_npu()
@@ -47,7 +45,7 @@ class TestFillConstant(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
 class TestFillConstantInt(OpTest):
@@ -71,7 +69,7 @@ class TestFillConstantInt(OpTest):
         self.dtype = np.int32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
 class TestFillConstantFP16(OpTest):
@@ -95,7 +93,7 @@ class TestFillConstantFP16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+        self.check_output_with_place(self.place, atol=1e-3)
 
 
 if __name__ == '__main__':
