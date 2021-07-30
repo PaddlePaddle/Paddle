@@ -14,7 +14,7 @@
 
 import paddle
 from .utils import paddle_2_number, number_2_dtype
-from ...utils import log_util as logger
+from ...utils.log_util import logger
 
 _hcg = None
 
