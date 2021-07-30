@@ -25,11 +25,11 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 
 
-def reference_matmul(X, Y, trans_x=False, trans_y=False):
+def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
     """Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
     # transpose X and Y appropriately.
-    if trans_x:
+    if transpose_x:
         if X.ndim == 1:
             X = X.reshape((X.size, ))
         elif X.ndim == 2:
@@ -38,7 +38,7 @@ def reference_matmul(X, Y, trans_x=False, trans_y=False):
             dim = [i for i in range(len(X.shape))]
             dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
             X = np.transpose(X, tuple(dim))
-    if trans_y:
+    if transpose_y:
         if Y.ndim == 1:
             Y = Y.reshape((Y.size, ))
         else:
