@@ -97,7 +97,7 @@ DEFINE_string(
     npu_config_path, "",
     "The absolute path of configuration json file, like: /tmp/config.json. "
     "If proveided, it will be passed to aclInit().");
-DEFINE_uint32(npu_comm_retry_times, "",
+DEFINE_uint32(npu_comm_retry_times, 0,
               "The retry times for npu communication between cards, especially "
               "used in pipeline parallelism.");
 #endif
