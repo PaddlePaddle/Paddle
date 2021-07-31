@@ -20,6 +20,7 @@ function check_whl {
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
     pip uninstall -y paddlepaddle_gpu
     pip install build/python/dist/*.whl
+    mkdir build/pr_whl && cp build/python/dist/*.whl build/pr_whl
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
 
     mkdir -p /tmp/pr && mkdir -p /tmp/develop
@@ -32,6 +33,7 @@ function check_whl {
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
     cd build
     unzip -q python/dist/*.whl -d /tmp/develop
+    mkdir build/dev_whl && cp build/python/dist/*.whl build/dev_whl
 
     sed -i '/version.py/d' /tmp/pr/*/RECORD
     sed -i '/version.py/d' /tmp/develop/*/RECORD
@@ -73,6 +75,7 @@ function prepare_data {
 }
 
 function run_model_benchmark {
+    pip install build/pr_whl/*.whl
     cd ${cache_dir}/benchmark_data
     export data_path=${cache_dir}/benchmark_data/dataset
     export BENCHMARK_ROOT=/workspace/Paddle/benchmark
