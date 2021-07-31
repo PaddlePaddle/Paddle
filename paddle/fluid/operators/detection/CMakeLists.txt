@@ -16,7 +16,7 @@ function(detection_library TARGET_NAME)
 endfunction()
 
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
-detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op.cu)
+detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op.cu box_coder_op_npu.cc)
 detection_library(iou_similarity_op SRCS iou_similarity_op.cc
 iou_similarity_op.cu)
 detection_library(mine_hard_examples_op SRCS mine_hard_examples_op.cc)
