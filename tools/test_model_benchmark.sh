@@ -59,12 +59,17 @@ function compile_install_paddle {
 }
 
 function prepare_data {
-    cd ${cache_dir}/benchmark_data
-    mkdir dataset && cd dataset
-    wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/Bert.zip 
-    unzisetp Bert.zip
-    wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/imagenet100_data.zip
-    unzip imagenet100_data.zip
+    cd ${cache_dir}
+    if [ -d "benchmark_data" ];then 
+        echo -e "benchmark_data exist!"
+    else
+        mkdir benchmark_data && cd benchmark_data
+        mkdir dataset && cd dataset
+        wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/Bert.zip 
+        unzip Bert.zip
+        wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/imagenet100_data.zip
+        unzip imagenet100_data.zip
+    fi
 }
 
 function run_model_benchmark {
