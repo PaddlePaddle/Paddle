@@ -3232,12 +3232,17 @@ class Block(object):
         return ret_var
 
 
-def _apply_pass(main_program, startup_program, pass_name, pass_attrs={}):
+def _apply_pass(main_program,
+                startup_program,
+                pass_name,
+                pass_attrs={},
+                pass_attr_types={}):
     assert isinstance(pass_attrs, dict), "pass_attrs must be dict"
+    assert isinstance(pass_attr_types, dict), "pass_attr_types must be dict"
     tmp_main_program = core.ProgramDesc(main_program.desc)
     tmp_startup_program = core.ProgramDesc(startup_program.desc)
     attrs = core.apply_pass(tmp_main_program, tmp_startup_program, pass_name,
-                            pass_attrs)
+                            pass_attrs, pass_attr_types)
     main_program._rebuild_from_desc(tmp_main_program)
     startup_program._rebuild_from_desc(tmp_startup_program)
     return attrs

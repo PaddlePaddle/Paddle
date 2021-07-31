@@ -186,19 +186,29 @@ void BindNode(py::module *m) {
 }
 
 // TODO(zjl): complete this function to set Pass attributes
-static void AddAttrsToPass(framework::ir::Pass *pass, const py::dict &attrs) {}
+static void AddAttrsToPass(framework::ir::Pass *pass, const py::dict &attrs,
+                           const py::dict &attr_types) {}
 
 void BindPass(py::module *m) {
-  m->def("apply_pass",
-         [](framework::ProgramDesc *main_program,
-            framework::ProgramDesc *startup_program,
-            const std::string &pass_name, const py::dict &pass_attrs) {
-           auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
-           AddAttrsToPass(pass.get(), pass_attrs);
-           pass->Apply(main_program, startup_program);
-           // NOTE: some passes may change attributes, so we return here.
-           return pass_attrs;
-         });
+  // NOTE: pass_attr_types is a dict to indicate the type of each attribute.
+  // Python has only one integral type "int", but C++ has many integral types.
+  // If pass_attrs = {"nranks": 1} in Python, we cannot know whether the type
+  // of "nranks" is size_t or int in C++. Therefore, users can set
+  // pass_attr_types to indicate the type of "nranks" explicitly,
+  // i.e. pass_attr_types = {"nranks": "size_t"} means that the type of
+  // "nranks" is size_t in C++.
+  // TODO(zjl): add the codes to process pass_attrs and pass_attr_types.
+  m->def(
+      "apply_pass",
+      [](framework::ProgramDesc *main_program,
+         framework::ProgramDesc *startup_program, const std::string &pass_name,
+         const py::dict &pass_attrs, const py::dict &pass_attr_types) {
+        auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
+        AddAttrsToPass(pass.get(), pass_attrs, pass_attr_types);
+        pass->Apply(main_program, startup_program);
+        // NOTE: some passes may change attributes, so we return here.
+        return pass_attrs;
+      });
 }
 
 }  // namespace pybind
