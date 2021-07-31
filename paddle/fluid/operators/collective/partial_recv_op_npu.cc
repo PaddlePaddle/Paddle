@@ -66,8 +66,8 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
             << ", comm: " << comm->comm() << ", stream: " << stream;
 
     try {
-      VLOG(4) << "try HcclBroadcast" << retry_time << " times, ptr: " << ptr
-              << ", id:" << id << ", stream:" << stream;
+      VLOG(4) << "try HcclBroadcast, ptr: " << ptr << ", id:" << id
+              << ", stream:" << stream;
       PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
           ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
       ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
