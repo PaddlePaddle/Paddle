@@ -68,12 +68,15 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
             << ", comm: " << comm->comm() << ", stream: " << stream;
 
     size_t retry_time = 0;
+    VLOG(4) << "FLAGS_npu_comm_retry_times:" << FLAGS_npu_comm_retry_times;
     if (FLAGS_npu_comm_retry_times > 0) {
       while (retry_time < FLAGS_npu_comm_retry_times) {
         ++retry_time;
         try {
           PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
               ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .Wait();
           return;
         } catch (...) {
           VLOG(4) << "HcclBroadcast retry" << retry_time
