@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
 
+DECLARE_uint32(npu_comm_retry_times);
+
 namespace paddle {
 namespace operators {
 
@@ -65,6 +67,23 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
             << ", dtype:" << dtype << ", root:" << root
             << ", comm: " << comm->comm() << ", stream: " << stream;
 
+    size_t retry_time = 0;
+    if (FLAGS_npu_comm_retry_times > 0) {
+      while (retry_time < FLAGS_npu_comm_retry_times) {
+        ++retry_time;
+        try {
+          PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
+              ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
+          return;
+        } catch (...) {
+          VLOG(4) << "HcclBroadcast retry" << retry_time
+                  << " times, ptr: " << ptr << ", id:" << id
+                  << ", stream:" << stream;
+        }
+      }
+    }
+
+    // finally, try once
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
 
