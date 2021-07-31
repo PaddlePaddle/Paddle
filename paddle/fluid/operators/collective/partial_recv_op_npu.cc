@@ -68,6 +68,19 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
 
+    try {
+      VLOG(4) << "try HcclBroadcast" << retry_time << " times, ptr: " << ptr
+              << ", id:" << id << ", stream:" << stream;
+      PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
+          ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
+      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
+    } catch (...) {
+      platform::NPUMemsetAsync(static_cast<void*>(ptr), 0,
+                               out->numel() * sizeof(T), stream);
+      VLOG(4) << "HcclBroadcast failed"
+              << ", ptr: " << ptr << ", id:" << id << ", stream:" << stream;
+      VLOG(4) << "fill data with 0";
+    }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));
