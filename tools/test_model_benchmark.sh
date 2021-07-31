@@ -54,7 +54,7 @@ function compile_install_paddle {
     export WITH_TESTING=OFF
     export WITH_UNITY_BUILD=ON
     check_whl
-    cd ${cache_dir} && mkdir benchmark_data && cd benchmark_data
+    cd /workspace/Paddle
     git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/paddlepaddle/benchmark.git
 }
 
@@ -75,7 +75,7 @@ function prepare_data {
 function run_model_benchmark {
     cd ${cache_dir}/benchmark_data
     export data_path=${cache_dir}/benchmark_data/dataset
-    export BENCHMARK_ROOT=${cache_dir}/benchmark_data/benchmark
+    export BENCHMARK_ROOT=/workspace/Paddle/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
     bash -x model_ci.sh
 }
