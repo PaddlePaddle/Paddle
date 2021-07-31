@@ -75,6 +75,7 @@ function prepare_data {
 }
 
 function run_model_benchmark {
+    cd /workspace/Paddle
     pip install build/pr_whl/*.whl
     cd ${cache_dir}/benchmark_data
     export data_path=${cache_dir}/benchmark_data/dataset
