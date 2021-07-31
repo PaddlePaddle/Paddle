@@ -92,7 +92,8 @@ case $1 in
     run_model_benchmark
   ;;
   *)
-    echo "Error: Incorrect or no parameters"
-    exit 1
+    compile_install_paddle
+    prepare_data
+    run_model_benchmark
   ;;
 esac
