@@ -33,7 +33,6 @@ function check_whl {
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
     cd build
     unzip -q python/dist/*.whl -d /tmp/develop
-    mkdir build/dev_whl && cp build/python/dist/*.whl build/dev_whl
 
     sed -i '/version.py/d' /tmp/pr/*/RECORD
     sed -i '/version.py/d' /tmp/develop/*/RECORD
