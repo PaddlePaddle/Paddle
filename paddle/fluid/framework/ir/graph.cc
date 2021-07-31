@@ -12,12 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <iostream>
+#include <map>
 #include <memory>
+#include <set>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/operator.h"
 
-DEFINE_bool(convert_all_blocks, false,
+DEFINE_bool(convert_all_blocks, true,
             "Convert all blocks in program into SSAgraphs");
 
 namespace paddle {
@@ -373,6 +376,55 @@ std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
 bool IsControlDepVar(const ir::Node &var) {
   return var.Name().find(ir::Node::kControlDepVarName) != std::string::npos;
 }
+
+std::string Graph::ToString(int level) const {
+  std::stringstream ss;
+  ss << "Current graph block id is " << GetBlockId() << std::endl;
+  const std::unordered_set<Node *> &nodes = Nodes();
+
+  auto cmp = [](Node *const &n1, Node *const &n2) {
+    return n1->id() < n2->id();
+  };
+  std::set<Node *, decltype(cmp)> sort_id_nodes(nodes.begin(), nodes.end(),
+                                                cmp);
+
+  for (Node *n : sort_id_nodes) {
+    if (!n->IsOp()) {
+      continue;
+    }
+    std::map<Node *, std::set<Node *>, decltype(cmp)> out_op_to_vars(cmp);
+    for (Node *var : n->outputs) {
+      for (Node *out_op : var->outputs) {
+        if (out_op_to_vars.find(out_op) == out_op_to_vars.end()) {
+          out_op_to_vars[out_op] = std::set<Node *>({var});
+        } else {
+          out_op_to_vars[out_op].insert(var);
+        }
+      }
+    }
+    ss << "OpNode ID: " << n->id() << ", name: " << n->Name();
+    if (level >= 1) {
+      ss << ", ToString: " << n->ToString();
+    }
+    ss << ", link to:" << std::endl;
+    for (auto op_vars : out_op_to_vars) {
+      Node *out_op = op_vars.first;
+      ss << "\tOpNode ID: " << out_op->id() << ", name: " << out_op->Name();
+      if (level >= 1) {
+        ss << ", ToString: " << out_op->ToString();
+      }
+      ss << std::endl << "\t\tThrough VarNodes: ";
+      std::set<Node *, decltype(cmp)> sort_id_vars(op_vars.second.begin(),
+                                                   op_vars.second.end(), cmp);
+      for (Node *var : sort_id_vars) {
+        ss << "ID: " << var->id() << ", name: " << var->Name() << "; ";
+      }
+      ss << std::endl;
+    }
+  }
+  return ss.str();
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

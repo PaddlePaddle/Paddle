@@ -389,6 +389,8 @@ class Graph {
     return sub_graphs_.size();
   }
 
+  std::string ToString(int level = 0) const;
+
  private:
   // TODO(levi): delete this interface after when we can convert all
   // blocks into sub_graphs.
