@@ -81,7 +81,7 @@ function run_model_benchmark {
     export data_path=${cache_dir}/benchmark_data/dataset
     export BENCHMARK_ROOT=/workspace/Paddle/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
-    bash -x model_ci.sh
+    bash model_ci.sh
 }
 
 case $1 in
