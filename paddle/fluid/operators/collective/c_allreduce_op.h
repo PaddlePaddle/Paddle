@@ -121,7 +121,7 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
 };
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-// return true if found_inf_or_nan or return false;
+// return true if found_nan or return false;
 template <typename T>
 bool CheckNumerics(const framework::ExecutionContext& exe_ctx,
                    aclrtStream stream, const paddle::framework::Tensor* in) {
@@ -147,7 +147,6 @@ bool CheckNumerics(const framework::ExecutionContext& exe_ctx,
   float value = static_cast<float>(vec[0]);
   if (std::isinf(value)) {
     LOG(WARNING) << "detected Inf";
-    return true;
   } else if (std::isnan(value)) {
     LOG(WARNING) << "detected Nan";
     return true;
