@@ -295,12 +295,14 @@ static void SendCommID(int conn, CommUniqueId* nccl_id) {
 
 template <typename CommUniqueId>
 void SendBroadCastCommID(std::vector<std::string> servers,
-                         std::vector<CommUniqueId>* nccl_ids) {
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
+  std::string head_name = COMM_HEAD + std::to_string(ring_id);
+
   // connect with server
   std::vector<int> connects;
   for (auto server : servers) {
     VLOG(3) << "connecting endpoint: " << server;
-    int conn = ConnectAddr(server, COMM_HEAD);
+    int conn = ConnectAddr(server, head_name.c_str());
     connects.push_back(conn);
   }
   VLOG(3) << "connecting completed...";
@@ -322,16 +324,17 @@ void SendBroadCastCommID(std::vector<std::string> servers,
 
 template <typename CommUniqueId>
 void RecvBroadCastCommID(std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids) {
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
   int server = CreateListenSocket(endpoint);
-  RecvBroadCastCommID(server, endpoint, nccl_ids);
+  RecvBroadCastCommID(server, endpoint, nccl_ids, ring_id);
   CloseSocket(server);
 }
 
 template <typename CommUniqueId>
 void RecvBroadCastCommID(int server_fd, std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids) {
-  int client = SocketAccept(server_fd, COMM_HEAD);
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
+  std::string head_name = COMM_HEAD + std::to_string(ring_id);
+  int client = SocketAccept(server_fd, head_name.c_str());
 
   for (size_t i = 0; i < nccl_ids->size(); ++i) {
     VLOG(3) << "trainer: " << endpoint
@@ -362,9 +365,10 @@ SocketServer& SocketServer::GetInstance(const std::string& end_point) {
 /// template instantiation
 #define INSTANT_TEMPLATE(Type)                                              \
   template void SendBroadCastCommID<Type>(std::vector<std::string> servers, \
-                                          std::vector<Type> * nccl_ids);    \
-  template void RecvBroadCastCommID<Type>(std::string endpoint,             \
-                                          std::vector<Type> * nccl_ids);
+                                          std::vector<Type> * nccl_ids,     \
+                                          int ring_id);                     \
+  template void RecvBroadCastCommID<Type>(                                  \
+      std::string endpoint, std::vector<Type> * nccl_ids, int ring_id);
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 INSTANT_TEMPLATE(ncclUniqueId)
