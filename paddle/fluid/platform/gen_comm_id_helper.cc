@@ -208,7 +208,7 @@ static int SocketAccept(int server_fd, const CommHead head) {
         "accept", conn);
 
     int ret_val = SocketRecv(conn, buffer, sizeof(head));
-    if (ret_val > 0 && strncmp(buffer, phead, sizeof(head)) == 0) {
+    if (ret_val > 0 && memcmp(buffer, phead, sizeof(head)) == 0) {
       // send a message to the sender, indicating that the link is correct
       CHECK_SYS_CALL(SocketSend(conn, phead, sizeof(head)), "send");
       break;  // accept client
@@ -228,9 +228,6 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
-
-  int sock = -1;
-  CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
 
   struct sockaddr_in server_addr;
   memset(&server_addr, 0, sizeof(server_addr));
@@ -263,6 +260,9 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
   int timeout = 900 * 1000;
   int try_times = 0;
   int total_time = 0;
+
+  int sock = -1;
+  CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
   while (true) {
     int ret_val = -1;
     RETRY_SYS_CALL_VAL(
@@ -276,13 +276,17 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
 
     CHECK_SYS_CALL(SocketSend(sock, phead, sizeof(head)), "send");
     ret_val = SocketRecv(sock, buffer, sizeof(head));
-    if (ret_val > 0 && strncmp(buffer, phead, sizeof(head)) == 0) {
+    if (ret_val > 0 && memcmp(buffer, phead, sizeof(head)) == 0) {
       // recv same message from recver, indicating that the link is correct
       break;  // accept client
     } else {
       VLOG(3) << "socket read failed with ret_val=" << ret_val;
       CloseSocket(sock);
     }
+    sock = -1;
+    CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
+    // unmatched link, retry after 80ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(80));
   }
   return sock;
 }
@@ -386,12 +390,15 @@ SocketServer& SocketServer::GetInstance(const std::string& end_point) {
 }
 
 /// template instantiation
-#define INSTANT_TEMPLATE(Type)                                              \
-  template void SendBroadCastCommID<Type>(std::vector<std::string> servers, \
-                                          std::vector<Type> * nccl_ids,     \
-                                          int ring_id);                     \
-  template void RecvBroadCastCommID<Type>(                                  \
-      std::string endpoint, std::vector<Type> * nccl_ids, int ring_id);
+#define INSTANT_TEMPLATE(Type)                                                 \
+  template void SendBroadCastCommID<Type>(std::vector<std::string> servers,    \
+                                          std::vector<Type> * nccl_ids,        \
+                                          int ring_id = 0);                    \
+  template void RecvBroadCastCommID<Type>(                                     \
+      std::string endpoint, std::vector<Type> * nccl_ids, int ring_id = 0);    \
+  template void RecvBroadCastCommID<Type>(int server_fd, std::string endpoint, \
+                                          std::vector<Type>* nccl_ids,         \
+                                          int ring_id = 0);
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 INSTANT_TEMPLATE(ncclUniqueId)
