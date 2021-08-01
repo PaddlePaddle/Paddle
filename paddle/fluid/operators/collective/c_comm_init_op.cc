@@ -51,11 +51,11 @@ class CCommInitOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     using UniqueId = ncclUniqueId;
     using Place = platform::CUDAPlace;
-    auto CreateCommFunc = platform::NCCLCommContext::Instance().CreateNCCLComm;
+    using CommContext = platform::NCCLCommContext;
 #elif defined(PADDLE_WITH_XPU_BKCL)
     using UniqueId = BKCLUniqueId;
     using Place = platform::XPUPlace;
-    auto CreateCommFunc = platform::BKCLCommContext::Instance().CreateBKCLComm;
+    using CommContext = platform::BKCLCommContext;
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with GPU or XPU."));
@@ -89,7 +89,8 @@ class CCommInitOp : public framework::OperatorBase {
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
-    CreateCommFunc(comm_id, nranks, rank_id, device_id, rid);
+    CommContext::Instance().CreateComm(comm_id, nranks, rank_id, device_id,
+                                       rid);
 #endif
   }
 };
