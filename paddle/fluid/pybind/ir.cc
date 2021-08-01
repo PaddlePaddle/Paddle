@@ -266,8 +266,9 @@ class PYBIND11_HIDDEN PassAttrGetterSetterRegistry {
         const auto &cpp_attr_value = py::cast<cpp_type>(attr_value);           \
         pass->Set(attr_name, new cpp_type(cpp_attr_value));                    \
       } catch (py::cast_error &) {                                             \
-        PADDLE_THROW("type error of attribute %s, expected to be %s",          \
-                     attr_name, attr_type_name);                               \
+        PADDLE_THROW(platform::errors::InvalidArgument(                        \
+            "type error of attribute %s, expected to be %s", attr_name,        \
+            attr_type_name));                                                  \
       }                                                                        \
     };                                                                         \
     PassAttrGetterSetterRegistry::Instance().Register(attr_type_name, getter,  \
