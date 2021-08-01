@@ -189,7 +189,7 @@ void BindNode(py::module *m) {
 static void AddAttrsToPass(
     framework::ir::Pass *pass,
     const std::unordered_map<std::string, py::object> &attrs,
-    const std::unordered_map<std::string, py::object> &attr_types) {}
+    const std::unordered_map<std::string, std::string> &attr_types) {}
 
 void BindPass(py::module *m) {
   // NOTE: pass_attr_types is a dict to indicate the type of each attribute.
@@ -205,7 +205,7 @@ void BindPass(py::module *m) {
       [](framework::ProgramDesc *main_program,
          framework::ProgramDesc *startup_program, const std::string &pass_name,
          const std::unordered_map<std::string, py::object> &pass_attrs,
-         const std::unordered_map<std::string, py::object> &pass_attr_types) {
+         const std::unordered_map<std::string, std::string> &pass_attr_types) {
         auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
         AddAttrsToPass(pass.get(), pass_attrs, pass_attr_types);
         pass->Apply(main_program, startup_program);
