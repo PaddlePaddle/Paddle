@@ -690,6 +690,7 @@ def get_grad_device(grad_name, shard):
 
 
 def append_naive_sync(block, sync_var, ring_id):
+    if core.is_compiled_with_cuda(): return
     # NOTE (JZ-LIANG) update this to use barrier sync for more elegent logic
     # sync within global 
     block.append_op(

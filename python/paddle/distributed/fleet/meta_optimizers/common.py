@@ -139,6 +139,7 @@ class CollectiveHelper(object):
                     'rank': rank,
                     'endpoint': current_endpoint,
                     'other_endpoints': other_endpoints,
+                    'ring_id': ring_id,
                     OP_ROLE_KEY: OpRole.Forward
                 })
             block.append_op(
