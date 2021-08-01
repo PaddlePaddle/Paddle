@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid.core as core
 from paddle.vision.models import resnet50
 from paddle.nn import CrossEntropyLoss
 from paddle.fluid.framework import _apply_pass
-import numpy as np
 import unittest
 
 

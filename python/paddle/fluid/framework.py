@@ -4164,7 +4164,7 @@ class Program(object):
         # compiled program, i.e. Graph
         self._graph = None
 
-    def _find_var_ctor_kwargs(self, new_desc):
+    def _find_var_class_kwargs(self, new_desc):
         old_desc = self.desc
         all_new_vars = []
         block_num = new_desc.num_blocks()
@@ -4219,19 +4219,19 @@ class Program(object):
         return all_new_vars
 
     def _rebuild_from_desc(self, desc):
-        all_new_vars = self._find_var_ctor_kwargs(desc)
+        all_new_vars = self._find_var_class_kwargs(desc)
         block_num = desc.num_blocks()
         assert block_num == len(all_new_vars)
 
-        # clear old desc
+        # clear old blocks and desc
         self.blocks = []
         self.desc = None
 
-        # create new blocks
+        # create new blocks and set desc
         self.desc = desc
         self.blocks = [Block(self, idx) for idx in range(block_num)]
 
-        # all new vars first
+        # add new vars first
         for idx in range(block_num):
             block = self.blocks[idx]
             for new_var in all_new_vars[idx]:

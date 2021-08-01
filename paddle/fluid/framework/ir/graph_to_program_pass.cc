@@ -17,7 +17,6 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <algorithm>
 
-#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
