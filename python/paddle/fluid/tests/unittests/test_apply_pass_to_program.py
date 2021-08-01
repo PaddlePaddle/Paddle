@@ -45,7 +45,20 @@ class TestApplyPassToProgram(unittest.TestCase):
 
         fused_op = "fused_elemwise_add_activation"
         self.assertFalse(self.global_block_contains_op(main, fused_op))
-        _apply_pass(main, startup, "fuse_elewise_add_act_pass")
+        attrs = {
+            "int_attr": -3,
+            "size_t_attr": 10,
+            "float_attr": 3.25,
+            "float32_attr": -4.5,
+            "str_attr": "any string attr value",
+        }
+        attr_types = {
+            "size_t_attr": "size_t",
+            "float32_attr": "float32",
+        }
+        ret_attrs = _apply_pass(main, startup, "fuse_elewise_add_act_pass",
+                                attrs, attr_types)
+        self.assertEqual(attrs, ret_attrs)
         self.assertTrue(self.global_block_contains_op(main, fused_op))
 
 
