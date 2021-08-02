@@ -70,10 +70,12 @@ class ProcessMesh(object):
             import paddle
             import paddle.distributed as dist
             
+            paddle.enable_static()
+            
             mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
             assert mesh.parent is None
             assert mesh.topology == [2, 3]
-            assert mesh.process_group = [2, 4, 5, 0, 1, 3]
+            assert mesh.process_group == [2, 4, 5, 0, 1, 3]
     """
 
     def __init__(self, mesh, parent=None):
@@ -174,6 +176,8 @@ def shard_tensor(x, mesh, dims_mapping):
             import paddle
             import paddle.distributed as dist
             
+            paddle.enable_static()
+
             mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
             x = paddle.ones([4, 6])
             dist.shard_tensor(x, mesh, [0, -1])
@@ -220,11 +224,13 @@ def set_shard_mask(x, mask):
             import numpy as np
             import paddle
             import paddle.distributed as dist
+
+            paddle.enable_static()
             
             mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
             mask = np.array([[1, 0, 1], [0, 1, 0]])
             x = paddle.ones([4, 6])
-            dist.shard_tensor(x, mask)
+            dist.set_shard_mask(x, mask)
     """
     assert isinstance(mask, np.ndarray)
     attr_name = _append_attr_suffix('mask')
@@ -251,6 +257,8 @@ def shard_op(op_fn, mesh, dims_mapping_dict, **kwargs):
             import numpy as np
             import paddle
             import paddle.distributed as dist
+
+            paddle.enable_static()
             
             mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
             x = paddle.ones([4, 6])
@@ -296,6 +304,8 @@ def set_offload_device(x, device):
             import numpy as np
             import paddle
             import paddle.distributed as dist
+
+            paddle.enable_static()
             
             x = paddle.ones([4, 6])
             dist.set_offload_device(x, 'cpu')
@@ -321,8 +331,10 @@ def set_pipeline_stage(stage):
             import numpy as np
             import paddle
             import paddle.distributed as dist
+
+            paddle.enable_static()
             
-            dist.set_pipeline_stage(x, 0)
+            dist.set_pipeline_stage(0)
     """
     from paddle.fluid.framework import _set_pipeline_stage
     _set_pipeline_stage(stage)
