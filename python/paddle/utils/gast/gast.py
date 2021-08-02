@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE(paddle-dev): We introduce third-party library Gast as unified AST
+# representation. See https://github.com/serge-sans-paille/gast for details.
+
+# Copyright (c) 2016, Serge Guelton
+# All rights reserved.
+
 import sys as _sys
 import ast as _ast
 from ast import boolop, cmpop, excepthandler, expr, expr_context, operator
@@ -494,10 +500,13 @@ _nodes = (
 for name, descr in _nodes:
     _make_node(name, *descr)
 
-if _sys.version_info.major == 2:
-    from .ast2 import ast_to_gast, gast_to_ast
-if _sys.version_info.major == 3:
-    from .ast3 import ast_to_gast, gast_to_ast
+py_version = _sys.version_info.major
+if py_version != 3:
+    raise RuntimeError(
+        'Required Python version >= 3, but received Python version == {}'.
+        format(py_version))
+
+from .ast3 import ast_to_gast, gast_to_ast
 
 
 def parse(*args, **kwargs):

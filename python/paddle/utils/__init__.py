@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import gast
 from .profiler import ProfilerOptions  # noqa: F401
 from .profiler import Profiler  # noqa: F401
 from .profiler import get_profiler  # noqa: F401
@@ -27,5 +28,5 @@ from . import image_util  # noqa: F401
 from . import cpp_extension  # noqa: F401
 
 __all__ = [  #noqa
-    'deprecated', 'run_check', 'require_version', 'try_import'
+    'deprecated', 'run_check', 'require_version', 'try_import', 'gast'
 ]

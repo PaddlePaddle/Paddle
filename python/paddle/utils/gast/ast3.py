@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gast.astn import AstToGAst, GAstToAst
-import gast
+from .astn import AstToGAst, GAstToAst
+from . import gast
 import ast
 import sys
 

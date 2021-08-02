@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import ast
-import gast
+from . import gast
 
 
 def _generate_translators(to):

@@ -139,6 +139,7 @@ write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/f
 packages=['paddle',
           'paddle.libs',
           'paddle.utils',
+          'paddle.utils.gast',
           'paddle.utils.cpp_extension',
           'paddle.dataset',
           'paddle.reader',
