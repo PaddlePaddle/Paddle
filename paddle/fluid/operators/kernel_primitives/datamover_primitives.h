@@ -117,6 +117,35 @@ __device__ __forceinline__ void ReadDataBase(T* dst, const T* __restrict__ src,
   }
 }
 
+// dst[NY][NX];
+template <typename Tx, typename Ty, int NX, int NY, int BlockSize>
+__device__ __forceinline__ void ReadDataStride(Ty* dst,
+                                               const Tx* __restrict__ src,
+                                               int size_nx, int size_ny,
+                                               int stride_nx, int stride_ny) {
+  int dx = threadIdx.x * NX;
+#pragma unroll
+  for (int idy = 0; idy < NY; ++idy) {
+    if (idy >= size_ny) {
+      break;
+    }
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if (dx + idx >= size_nx) {
+        break;
+      }
+      dst[idy * NX + idx] =
+          static_cast<Ty>(src[idx * stride_nx + dx + idy * stride_ny]);
+    }
+  }
+}
+template <typename T, int NX>
+__device__ __forceinline__ void init(T* dst, T init_data) {
+#pragma unroll
+  for (int i = 0; i < NX; i++) {
+    dst[i] = init_data;
+  }
+}
 template <typename T, int NX, int NY, int BlockSize>
 __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
                                          int size) {

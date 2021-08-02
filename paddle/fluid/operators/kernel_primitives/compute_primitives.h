@@ -22,12 +22,21 @@
 #endif
 
 #include <algorithm>
+#include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {
 namespace details {
+
+#ifdef __HIPCC__
+constexpr int kMaxThread = 256;
+constexpr int kWarpSize = 64;
+#else
+constexpr int kMaxThread = 128;
+constexpr int kWarpSize = 32;
+#endif
 
 template <typename T>
 class MPTypeTrait {
@@ -43,6 +52,8 @@ class MPTypeTrait<platform::float16> {
 
 }  // namespace details
 
+enum ReduceMode { GlobalMode, LocalMode };
+
 /*************************** Compute Functor****************************/
 template <typename T, typename Enable = void>
 struct DivFunctor {
@@ -55,9 +66,8 @@ template <typename T>
 struct DivFunctor<T, typename std::enable_if_t<std::is_integral<T>::value>> {
   inline HOSTDEVICE T operator()(const T* args) const {
     PADDLE_ENFORCE(args[1] != 0,
-                   platform::errors::InvalidArgument(
-                       "Invalid Argument Error: Integer division by zero "
-                       "encountered in divide. Please check the input value."));
+                   "Invalid Argument Error: Integer division by zero "
+                   "encountered in divide. Please check the input value.");
     return args[0] / args[1];
   }
 };
@@ -146,6 +156,105 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out, const T* in,
   for (int idx = 0; idx < NX * NY; idx++) {
     out[idx] = static_cast<OutT>(compute(in + idx));
   }
+}
+
+__device__ __forceinline__ int SharedMemoryIndex(int index) {
+  return (threadIdx.y + index) * blockDim.x + threadIdx.x;
+}
+
+template <typename T, typename ReduceOp>
+__device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, true);
+  for (int stride = details::kWarpSize / 2; stride > 0; stride >>= 1) {
+    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+    val = reducer(val, temp);
+  }
+  return val;
+}
+
+/* e.g.
+ * |---------block---------|
+ * |warp0|warp1|warp2|warp3|
+ * |0~31|32~63|64~95|96~127|  ---->blockDim.x = 128
+ *  \|/  \|/   \|/    \|/     ---->1. First WarpReduce in each warp
+ * res0  res1  res2  res3     ---->2. Store result of each warp to shared memory
+ *   \    \    /     /        ---->3. Load the result above from shared memory
+ *        res                         to warp0 and process the second WarpReduce
+ */
+template <typename T, typename ReduceOp>
+__device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
+  using details::kWarpSize;
+  __shared__ T shared[2 * kWarpSize];
+  int block_dim_x = blockDim.x;
+  if (blockDim.x > kWarpSize) {
+    block_dim_x = blockDim.x / kWarpSize;
+    int lane = threadIdx.x % kWarpSize;
+    int tid = threadIdx.y * blockDim.x + threadIdx.x;
+    int wid = tid / kWarpSize;
+    int bid = threadIdx.y;
+    val = WarpReduce(val, reducer);
+    if (lane == 0) {
+      shared[wid] = val;
+    }
+    __syncthreads();
+    val = shared[bid * block_dim_x + lane];
+  }
+
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, true);
+  for (int stride = 1; stride < block_dim_x; stride <<= 1) {
+    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+    val = reducer(val, temp);
+  }
+  return val;
+}
+
+template <typename T, typename ReduceOp>
+__device__ __forceinline__ T BlockYReduce(T val, ReduceOp reducer) {
+  __shared__ T shared_memory[details::kMaxThread];
+  shared_memory[SharedMemoryIndex(0)] = val;
+  for (int stride = blockDim.y / 2; stride > 0; stride >>= 1) {
+    __syncthreads();
+    if (threadIdx.y < stride && threadIdx.y + stride < blockDim.y) {
+      T temp = shared_memory[SharedMemoryIndex(stride)];
+      val = reducer(val, temp);
+    }
+    shared_memory[SharedMemoryIndex(0)] = val;
+  }
+  return val;
+}
+
+// in[NY][NX] -> in[NY]
+template <typename T, int NX, int NY, int BlockSize, class OpFunc,
+          int ReduceMode>
+__device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
+                                       bool reduce_lastDim) {
+  // blockReduceY
+  bool block_reduce_y = (!reduce_lastDim && blockDim.y > 1);
+
+  // thread Reduce
+  for (int i = 0; i < NY; ++i) {
+    for (int j = 0; j < NX; ++j) {
+      out[i] = reducer(out[i], in[i * NX + j]);
+    }
+  }
+
+  if (ReduceMode == ReduceMode::GlobalMode) {
+    // blockYReduce
+    if (block_reduce_y) {
+      for (int i = 0; i < NY; i++) {
+        out[i] = BlockYReduce<T, OpFunc>(out[i], reducer);
+      }
+    }
+
+    // blockXReduce
+    if (reduce_lastDim) {
+      for (int i = 0; i < NY; i++) {
+        out[i] = BlockXReduce<T, OpFunc>(out[i], reducer);
+      }
+    }
+  }  // else  LocalMode
 }
 
 }  // namespace kernel_primitives
