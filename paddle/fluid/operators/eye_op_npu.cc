@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <iostream>
 #include "paddle/fluid/operators/crop_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
@@ -30,12 +29,11 @@ class EyeNPUKernel : public framework::OpKernel<T> {
         num_rows >= 0, true,
         platform::errors::InvalidArgument(
             "The value of Input(num_rows) should be non-negative int."));
-    // auto dtype = ctx.Attr<int>("dtype");
-    // auto dtype = framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
+    
     auto d_nums = ctx.Attr<int>("dtype");
-
     auto dtype =
         ConvertToNpuDtype(static_cast<framework::proto::VarType::Type>(d_nums));
+      
     auto num_columns = num_rows;
     PADDLE_ENFORCE_EQ(
         num_columns >= 0, true,
@@ -48,10 +46,11 @@ class EyeNPUKernel : public framework::OpKernel<T> {
 
     framework::NPUAttributeMap attr_input = {
         {"num_rows", num_rows}, {"num_columns", num_columns}, {"dtype", dtype}};
-    auto* Out = ctx.Output<framework::Tensor>("Out");
-    Out->mutable_data<T>(ctx.GetPlace());
+      
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
 
-    const auto& runner = NpuOpRunner("Eye", {}, {*Out}, attr_input);
+    const auto& runner = NpuOpRunner("Eye", {}, {*out}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
