@@ -28,19 +28,38 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
     auto dims = ctx.Attr<std::vector<int>>("dim");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
-    int in_dtype = ctx.Attr<int>("in_dtype");
     int out_dtype = ctx.Attr<int>("out_dtype");
 
-    PADDLE_ENFORCE_EQ(
-        in_dtype, -1,
-        platform::errors::InvalidArgument(
-            "attr in_dtype must be default %d, but got %d", -1, in_dtype));
-    PADDLE_ENFORCE_EQ(
-        out_dtype, -1,
-        platform::errors::InvalidArgument(
-            "attr out_dtype must be default %d, but got %d", -1, out_dtype));
+    auto place = ctx.GetPlace();
 
-    out->mutable_data<T>(ctx.GetPlace());
+    framework::Tensor cast_out(x->type());
+    cast_out.Resize(out->dims());
+    cast_out.mutable_data<T>(place);
+
+    auto cast_out_dtype = x->type();
+    if (out_dtype != -1) {
+      cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
+    }
+
+    if (x->type() != cast_out_dtype) {
+      if (cast_out_dtype == framework::proto::VarType::FP32) {
+        out->mutable_data<float>(place);
+      } else if (cast_out_dtype == framework::proto::VarType::FP16) {
+        out->mutable_data<paddle::platform::float16>(place);
+      } else if (cast_out_dtype == framework::proto::VarType::INT16) {
+        out->mutable_data<int16_t>(place);
+      } else if (cast_out_dtype == framework::proto::VarType::INT32) {
+        out->mutable_data<int32_t>(place);
+      } else if (cast_out_dtype == framework::proto::VarType::INT64) {
+        out->mutable_data<int64_t>(place);
+      } else if (cast_out_dtype == framework::proto::VarType::FP64) {
+        out->mutable_data<double>(place);
+      } else if (cast_out_dtype == framework::proto::VarType::BOOL) {
+        out->mutable_data<bool>(place);
+      }
+    } else {
+      out->ShareDataWith(cast_out);
+    }
 
     framework::NPUAttributeMap attr_input = {{"axes", dims},
                                              {"keep_dims", keep_dim}};
@@ -58,8 +77,17 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    const auto& runner = NpuOpRunner("ReduceProdD", {*x}, {*out}, attr_input);
+    const auto& runner =
+        NpuOpRunner("ReduceProdD", {*x}, {cast_out}, attr_input);
     runner.Run(stream);
+
+    if (x->type() != cast_out_dtype) {
+      auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
+      const auto& runner_cast =
+          NpuOpRunner("Cast", {cast_out}, {*out},
+                      {{"dst_type", static_cast<int>(dst_dtype)}});
+      runner_cast.Run(stream);
+    }
   }
 };
 
