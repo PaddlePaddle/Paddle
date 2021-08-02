@@ -17,6 +17,7 @@ import numpy as np
 import paddle.fluid.core as core
 import paddle
 from paddle.fluid.framework import Variable
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
 
@@ -35,6 +36,12 @@ def _remove_attr_suffix(name):
     Remove Auto Parallel Suffix for distributed attribute.
     """
     return name.strip(core.kAutoParallelSuffix())
+
+
+def _static_mode_check():
+    if in_dygraph_mode():
+        raise RuntimeError("Now auto-parallel only supports static mode, please"
+                           " use paddle.enable_static().")
 
 
 class ProcessMesh(object):
@@ -79,6 +86,7 @@ class ProcessMesh(object):
     """
 
     def __init__(self, mesh, parent=None):
+        _static_mode_check()
         if mesh is None or not isinstance(mesh, np.ndarray):
             raise ValueError("mesh must be an instance of numpy.ndarray.")
 
@@ -182,6 +190,7 @@ def shard_tensor(x, mesh, dims_mapping):
             x = paddle.ones([4, 6])
             dist.shard_tensor(x, mesh, [0, -1])
     """
+    _static_mode_check()
     attr_name = _append_attr_suffix('mesh_id')
     x._set_attr(attr_name, mesh._id)
     attr_name = _append_attr_suffix('dims_mapping')
@@ -232,6 +241,7 @@ def set_shard_mask(x, mask):
             x = paddle.ones([4, 6])
             dist.set_shard_mask(x, mask)
     """
+    _static_mode_check()
     assert isinstance(mask, np.ndarray)
     attr_name = _append_attr_suffix('mask')
     x._set_attr(attr_name, mask.flatten().tolist())
@@ -266,6 +276,7 @@ def shard_op(op_fn, mesh, dims_mapping_dict, **kwargs):
             kwargs = {'x': x, 'y': y}
             dist.shard_op(paddle.add, mesh, None, **kwargs)
     """
+    _static_mode_check()
     main_prog = paddle.fluid.default_main_program()
     main_block = main_prog.global_block()
     op_size = len(main_block.ops)
@@ -309,6 +320,7 @@ def set_offload_device(x, device):
             x = paddle.ones([4, 6])
             dist.set_offload_device(x, 'cpu')
     """
+    _static_mode_check()
     attr_name = _append_attr_suffix("offload_device")
     x._set_attr(attr_name, device)
     return x
@@ -336,4 +348,5 @@ def set_pipeline_stage(stage):
             dist.set_pipeline_stage(0)
     """
     from paddle.fluid.framework import _set_pipeline_stage
+    _static_mode_check()
     _set_pipeline_stage(stage)
