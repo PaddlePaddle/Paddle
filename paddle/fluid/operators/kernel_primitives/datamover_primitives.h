@@ -13,9 +13,135 @@
 // limitations under the License.
 
 #pragma once
+#include <cuda.h>
+#include <cuda_fp16.h>
+#include <math.h>
+#include <iostream>
+#include <vector>
+#include "paddle/fluid/platform/fast_divmod.h"
 
 namespace paddle {
 namespace operators {
-namespace kernel_primitives {}
+namespace kernel_primitives {
+
+template <typename T, int VecSize>
+struct alignas(sizeof(T) * VecSize) VectorType {
+  T val[VecSize];
+};
+
+template <typename T, int NX, int NY, int BlockSize>
+__device__ void read_data_base(T* dst, const T* __restrict__ src, int size) {
+  int dx = threadIdx.x * NX;
+#pragma unroll
+  for (int idx = 0; idx < NX; ++idx) {
+    if ((idx + dx) >= size) {
+      break;
+    }
+    dst[idx] = src[idx + dx];
+  }
 }
+
+template <typename T, int NX, int NY, int BlockSize>
+__device__ void read_data(T* dst, const T* __restrict__ src, int size) {
+  enum {
+    VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1,
+    VECTORS_PER_THREAD = NX / VECTOR_SIZE,
+  };
+
+  // Vector per thread
+  if (blockDim.x * NX > size) {
+    read_data_base<T, NX, NY, BlockSize>(dst, src, size);
+  } else {
+    // Vector type
+    using VecType = VectorType<T, VECTOR_SIZE>;
+    VecType vec_temp[VECTORS_PER_THREAD];
+    const VecType* vec_input = reinterpret_cast<const VecType*>(src);
+    read_data_base<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
+        vec_temp, vec_input, VECTORS_PER_THREAD * blockDim.x);
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      dst[idx] = *(reinterpret_cast<T*>(vec_temp) + idx);
+    }
+  }
 }
+
+/** @brief: read_data
+ * read data from src ptr
+ * @param：
+ * src: the source pointer
+ * dst: the dst pointer
+ * stride_nx: the stride of src
+ * stride_ny: the stride of src
+ * the shape of dst is [NY, NX];
+ */
+template <typename T, int NX, int NY, int BlockSize>
+__device__ void read_data(const T* __restrict__ src, T* dst, int stride_nx,
+                          int stride_ny) {
+  // out[NY][NX];
+  int base_offset = threadIdx.x * NX;
+#pragma unroll
+  for (int idy = 0; idy < NY; idy++) {
+#pragma unroll
+    for (int idx = 0; idx < NX; idx++) {
+      dst[idy * NX + idx] =
+          src[idy * stride_ny + stride_nx * idx + base_offset];
+    }
+  }
+}
+
+/** @brief: read_data_bc
+ * read data from src ptr when the shape of src and dst are different
+ * @param：
+ * src: the source pointer
+ * dst: the dst pointer
+ * stride_nx: the stride of src
+ * stride_ny: the stride of src
+ * the shape of dst is [NY, NX]
+ */
+template <typename T, int NX, int NY, int BS, int Shape_Size>
+__device__ __forceinline__ void read_data_bc(
+    const T* __restrict__ src, T* dst, uint32_t fix, FastDivMod* divmoders,
+    uint32_t* strides, uint32_t stride_nx, uint32_t stride_ny) {
+  uint32_t base_offset = fix + threadIdx.x * NX;
+  uint32_t offset = 0;
+#pragma unroll
+  for (int ny = 0; ny < NY; ++ny) {
+#pragma unroll
+    for (uint32_t nx = 0; nx < NX; ++nx) {
+      uint32_t idx = base_offset + ny * stride_ny + nx * stride_nx;
+      offset = 0;
+#pragma unroll
+      for (int i = 0; i < Shape_Size; ++i) {
+        auto fast_divmoder = divmoders[i].Divmod(idx);
+        idx = fast_divmoder.val[0];
+        offset += fast_divmoder.val[1] * strides[i];
+      }
+      dst[nx + ny * NX] = src[offset];
+    }
+  }
+}
+
+/** @brief: write_data
+ * @param：
+ * src: the source pointer
+ * dst: the dst pointer
+ * stride_nx: the stride of dst
+ * stride_ny: the stride of dst
+ * the shape of src is [NY, NX];
+ */
+template <typename T, int NX, int NY, int BlockSize>
+__device__ void write_data(T* dst, const T* src, int stride_nx, int stride_ny) {
+  uint32_t base_offset = threadIdx.x * NX;
+#pragma unroll
+  for (int idy = 0; idy < NY; idy++) {
+#pragma unroll
+    for (int idx = 0; idx < NX; idx++) {
+      dst[idy * stride_ny + idx * stride_nx + base_offset] =
+          src[idx + idy * NX];
+    }
+  }
+}
+
+}  // namespace kernel_primitives
+}  // namespace operators
+}  // namespace paddle

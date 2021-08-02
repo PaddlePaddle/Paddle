@@ -465,43 +465,47 @@ void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {
-  PADDLE_ENFORCE_EQ(ET, ElementwiseType::kBinary,
-                    platform::errors::InvalidArgument(
-                        "Currently, only Support binary calculation, "
-                        "but received %d input tensors.\n",
-                        static_cast<int>(ET)));
-  int in_vec_size = 4;
-  framework::Tensor *out = (*outs)[0];
-  for (auto *in : ins) {
-    auto temp_size = GetVectorizedSizeImpl<InT>(in->data<InT>());
-    in_vec_size = in->dims() == out->dims() ? std::min(temp_size, in_vec_size)
-                                            : in_vec_size;
-  }
-  int out_vec_size = GetVectorizedSizeImpl<OutT>(out->data<OutT>());
-  int vec_size = std::min(out_vec_size, in_vec_size);
+  /*
+PADDLE_ENFORCE_EQ(ET, ElementwiseType::kBinary,
+              platform::errors::InvalidArgument(
+                  "Currently, only Support binary calculation, "
+                  "but received %d input tensors.\n",
+                  static_cast<int>(ET)));
+int in_vec_size = 4;
+framework::Tensor *out = (*outs)[0];
+for (auto *in : ins) {
+auto temp_size = GetVectorizedSizeImpl<InT>(in->data<InT>());
+in_vec_size = in->dims() == out->dims() ? std::min(temp_size, in_vec_size)
+                                      : in_vec_size;
+}
+int out_vec_size = GetVectorizedSizeImpl<OutT>(out->data<OutT>());
+int vec_size = std::min(out_vec_size, in_vec_size);
+LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 4>(ctx, ins, out,
+                                                           axis, func);
 
-  switch (vec_size) {
-    case 4: {
-      LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 4>(ctx, ins, out,
-                                                                 axis, func);
-      break;
-    }
-    case 2: {
-      LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 2>(ctx, ins, out,
-                                                                 axis, func);
-      break;
-    }
-    case 1: {
-      LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 1>(ctx, ins, out,
-                                                                 axis, func);
-      break;
-    }
-    default: {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported vectorized size: %d !", vec_size));
-      break;
-    }
-  }
+switch (vec_size) {
+case 4: {
+LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 4>(ctx, ins, out,
+                                                           axis, func);
+break;
+}
+case 2: {
+LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 2>(ctx, ins, out,
+                                                           axis, func);
+break;
+}
+case 1: {
+LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 1>(ctx, ins, out,
+                                                           axis, func);
+break;
+}
+default: {
+PADDLE_THROW(platform::errors::Unimplemented(
+    "Unsupported vectorized size: %d !", vec_size));
+break;
+}
+}
+*/
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
