@@ -84,7 +84,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 #if CUDNN_VERSION_MIN(8, 1, 0)
     std::string yaml_format = data_format;
     if (dtype == CUDNN_DATA_BFLOAT16) {
-      data_format = DataLayout::kNHWC;
+      data_format = framework::DataLayoutToString(framework::DataLayout::kNHWC);
     }
 #endif  // CUDNN_VERSION_MIN(8, 1, 0)
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -95,11 +95,14 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 #else
     // Tensor Core introduced from Volta GPUs supports more faster conv op
     // with FP16 in NHWC data format.
-    const bool compute_in_nhwc =
-        dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
+    bool compute_in_nhwc = false;
+    if (dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx)) {
+      compute_in_nhwc = true;
 #if CUDNN_VERSION_MIN(8, 1, 0)
-    compute_in_nhwc = dtype == CUDNN_DATA_BFLOAT16 && IsAmpereOrLater(dev_ctx);
-#endif  // CUDNN_VERSION_MIN(8, 1, 0)
+    } else if (dtype == CUDNN_DATA_BFLOAT16 && IsAmpereOrLater(dev_ctx)) {
+      compute_in_nhwc = true;
+#endif
+    }
     // We will only do data format conversion from NHWC to NCHW.
     // cudnn will convert NCHW to NHWC automatically on Tensor Core.
     auto compute_format =
@@ -427,7 +430,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 #if CUDNN_VERSION_MIN(8, 1, 0)
     std::string yaml_format = data_format;
     if (dtype == CUDNN_DATA_BFLOAT16) {
-      data_format = DataLayout::kNHWC;
+      data_format = framework::DataLayoutToString(framework::DataLayout::kNHWC);
     }
 #endif  // CUDNN_VERSION_MIN(8, 1, 0)
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -436,11 +439,14 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     // HIP MIOPEN ONLY SUPPORT NCHW format
     auto compute_format = DataLayout::kNCHW;
 #else
-    const bool compute_in_nhwc =
-        dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
+    bool compute_in_nhwc = false;
+    if (dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx)) {
+      compute_in_nhwc = true;
 #if CUDNN_VERSION_MIN(8, 1, 0)
-    compute_in_nhwc = dtype == CUDNN_DATA_BFLOAT16 && IsAmpereOrLater(dev_ctx);
-#endif  // CUDNN_VERSION_MIN(8, 1, 0)
+    } else if (dtype == CUDNN_DATA_BFLOAT16 && IsAmpereOrLater(dev_ctx)) {
+      compute_in_nhwc = true;
+#endif
+    }
     auto compute_format =
         compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
 #endif
