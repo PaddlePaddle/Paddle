@@ -65,6 +65,7 @@ int main(int argc, char** argv) {
 
 #if defined(PADDLE_WITH_ASCEND_CL)
   envs.push_back("selected_npus");
+  envs.push_back("npu_config_path");
 #endif
 
   char* env_str = nullptr;

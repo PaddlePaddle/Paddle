@@ -100,6 +100,9 @@ struct BuildStrategy {
   // while running.
   bool cache_runtime_context_{false};
 
+  // Fix the op run order.
+  bool fix_op_run_order_{false};
+
   // Operator fusion
   // TODO(dev-paddle): fuse_elewise_add_act_ops may cause some models have
   // cycle.

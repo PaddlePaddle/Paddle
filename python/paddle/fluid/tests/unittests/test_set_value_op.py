@@ -333,6 +333,79 @@ class TestSetValueItemTensor6(TestSetValueApi):
         self.data[2:0:-1, 0:2, ::-1] = self.value
 
 
+# 1.5 item is None
+class TestSetValueItemNone1(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[None] = self.value
+
+    def _get_answer(self):
+        self.data[None] = self.value
+
+
+class TestSetValueItemNone2(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0, None, 1] = self.value
+
+    def _get_answer(self):
+        self.data[0, None, 1] = self.value
+
+
+class TestSetValueItemNone3(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[:, None, None, 1] = self.value
+
+    def _get_answer(self):
+        self.data[:, None, None, 1] = self.value
+
+
+class TestSetValueItemNone4(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0, 0, None, 1] = self.value
+
+    def _get_answer(self):
+        self.data[0, 0, None, 1] = self.value
+
+
+class TestSetValueItemNone5(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0, None, 0, None, 1] = self.value
+
+    def _get_answer(self):
+        self.data[0, None, 0, None, 1] = self.value
+
+
+class TestSetValueItemNone6(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[None, 0, 0, None, 0] = self.value
+
+    def _get_answer(self):
+        self.data[None, 0, 0, None, 0] = self.value
+
+
+class TestSetValueItemNone7(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[:, None, 1] = np.zeros(self.shape)[:, None, 0]
+
+    def _get_answer(self):
+        self.data[:, None, 1] = np.zeros(self.shape)[:, None, 0]
+
+
+class TestSetValueItemNone8(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[:, 1, None] = np.zeros(self.shape)[:, 0, None]
+
+    def _get_answer(self):
+        self.data[:, 1, None] = np.zeros(self.shape)[:, 0, None]
+
+
+class TestSetValueItemNone9(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
+
+    def _get_answer(self):
+        self.data[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
+
+
 # 2. Test different type of value: int, float, numpy.ndarray, Tensor
 # 2.1 value is int32, int64, float32, float64, bool
 
@@ -762,8 +835,7 @@ class TestError(TestSetValueBase):
             value = np.array([3, 4, 5, 6, 7])
             x[0] = value
         exe = paddle.static.Executor(paddle.CPUPlace())
-        with self.assertRaisesRegexp(ValueError,
-                                     "Broadcast dimension mismatch."):
+        with self.assertRaises(ValueError):
             exe.run(program)
 
     def test_error(self):
