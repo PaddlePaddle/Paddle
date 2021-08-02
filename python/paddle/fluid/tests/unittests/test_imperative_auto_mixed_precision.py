@@ -279,6 +279,114 @@ def reader_decorator(reader):
     return __reader__
 
 
+class TestGradScalerStateDict(unittest.TestCase):
+    def train_resnet(self,
+                     enable_amp=True,
+                     use_data_loader=True,
+                     use_save_load=True):
+        seed = 90
+
+        EPOCH_NUM = 4  # 设置外层循环次数
+
+        batch_size = train_parameters["batch_size"]
+        batch_num = 1
+
+        paddle.seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
+
+        resnet = ResNet(use_cudnn=True)
+        optimizer = optimizer_setting(
+            train_parameters, parameter_list=resnet.parameters())
+        np.random.seed(seed)
+        train_reader = paddle.batch(
+            paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size)
+
+        dy_param_init_value = {}
+        for param in resnet.parameters():
+            dy_param_init_value[param.name] = param.numpy()
+
+        program = None
+        scaler = paddle.amp.GradScaler(
+            enable=enable_amp, init_loss_scaling=2.**10)
+
+        if use_data_loader:
+            train_reader = paddle.batch(
+                reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
+                batch_size=batch_size,
+                drop_last=True)
+            train_loader = fluid.io.DataLoader.from_generator(
+                capacity=4,
+                use_double_buffer=True,
+                iterable=True,
+                return_list=True)
+            train_loader.set_sample_list_generator(train_reader)
+            train_reader = train_loader
+
+        for epoch_id in range(EPOCH_NUM):
+            for batch_id, data in enumerate(train_reader()):
+                if batch_id >= batch_num:
+                    break
+                if use_data_loader:
+                    img, label = data
+                else:
+                    dy_x_data = np.array(
+                        [x[0].reshape(3, 224, 224)
+                         for x in data]).astype('float32')
+                    if len(np.array([x[1] for x in data]).astype(
+                            'int64')) != batch_size:
+                        continue
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape(-1, 1)
+
+                    img = paddle.to_tensor(dy_x_data)
+                    label = paddle.to_tensor(y_data)
+                label.stop_gradient = True
+
+                with paddle.amp.auto_cast(enable=enable_amp):
+                    out = resnet(img)
+
+                loss = paddle.nn.functional.cross_entropy(
+                    input=out, label=label)
+                avg_loss = paddle.mean(x=loss)
+
+                dy_out = avg_loss.numpy()
+
+                scaled_loss = scaler.scale(avg_loss)
+                scaled_loss.backward()
+
+                scaler.minimize(optimizer, scaled_loss)
+
+                dy_grad_value = {}
+                for param in resnet.parameters():
+                    if param.trainable:
+                        np_array = np.array(param._grad_ivar().value()
+                                            .get_tensor())
+                        dy_grad_value[param.name + fluid.core.grad_var_suffix(
+                        )] = np_array
+
+                resnet.clear_gradients()
+
+                dy_param_value = {}
+                for param in resnet.parameters():
+                    dy_param_value[param.name] = param.numpy()
+            if use_save_load and epoch_id == 2:
+                paddle.save(scaler.state_dict(), 'ResNet_model.pdparams')
+                dict_load = paddle.load('ResNet_model.pdparams')
+                scaler.load_state_dict(dict_load)
+        return dy_out, dy_param_value, dy_grad_value
+
+    def test_with_state_dict(self):
+        with fluid.dygraph.guard():
+            out_use_state_dict = self.train_resnet(
+                enable_amp=True, use_data_loader=True, use_save_load=True)
+            out_no_state_dict = self.train_resnet(
+                enable_amp=True, use_data_loader=True, use_save_load=False)
+        print('save_load:', out_use_state_dict[0], out_no_state_dict[0])
+        self.assertTrue(
+            np.allclose(
+                out_use_state_dict[0], out_no_state_dict[0], atol=1.e-2))
+
+
 class TestResnet2(unittest.TestCase):
     """
     Use paddle-2.0 API

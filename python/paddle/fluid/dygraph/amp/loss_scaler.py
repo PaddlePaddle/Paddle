@@ -364,18 +364,24 @@ class AmpScaler(object):
 
         Reurns:
             A dict of scaler includes:
-            init_loss_scaling (float, optional): The initial loss scaling factor.
-            incr_ratio(float, optional): The multiplier to use when increasing the loss scaling.
-            decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing the loss scaling.
-            incr_every_n_steps(int, optional): Increases loss scaling every n consecutive steps with finite gradients.
-            decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n accumulated steps with nan or inf gradients.
+            scale (tensor): The loss scaling factor.
+            incr_ratio(float): The multiplier to use when increasing the loss scaling.
+            decr_ratio(float): The less-than-one-multiplier to use when decreasing the loss scaling.
+            incr_every_n_steps(int): Increases loss scaling every n consecutive steps with finite gradients.
+            decr_every_n_nan_or_inf(int): Decreases loss scaling every n accumulated steps with nan or inf gradients.
+            incr_count(int): The number of recent consecutive unskipped steps.
+            decr_count(int): The number of recent consecutive skipped steps.
+            use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
         """
         return {
-            "init_loss_scaling": self._init_loss_scaling,
+            "scale": self._scale.numpy(),
             "incr_ratio": self._incr_ratio,
             "decr_ratio": self._decr_ratio,
             "incr_every_n_steps": self._incr_every_n_steps,
-            "decr_every_n_nan_or_inf": self._decr_every_n_nan_or_inf
+            "decr_every_n_nan_or_inf": self._decr_every_n_nan_or_inf,
+            "incr_count": self._incr_count,
+            "decr_count": self._decr_count,
+            "use_dynamic_loss_scaling": self._use_dynamic_loss_scaling
         } if self._enable else {}
 
     def load_state_dict(self, state_dict):
@@ -393,8 +399,13 @@ class AmpScaler(object):
                 "The input state dict is empty, possibly because it was saved "
                 "from a disabled instance of GradScaler.")
 
-        self._init_loss_scaling = state_dict["init_loss_scaling"]
+        self._init_loss_scaling = state_dict["scale"][0]
+        self._scale = to_variable(
+            np.array([self._init_loss_scaling]).astype(np.float32))
         self._incr_ratio = state_dict["incr_ratio"]
         self._decr_ratio = state_dict["decr_ratio"]
         self._incr_every_n_steps = state_dict["incr_every_n_steps"]
         self._decr_every_n_nan_or_inf = state_dict["decr_every_n_nan_or_inf"]
+        self._incr_count = state_dict["incr_count"]
+        self._decr_count = state_dict["decr_count"]
+        self._use_dynamic_loss_scaling = state_dict["use_dynamic_loss_scaling"]
