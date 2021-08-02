@@ -46,7 +46,7 @@ class TestFlattenOp(OpTest):
         self.attrs = {"axis": self.axis}
 
 
-class TestFlattenOp(TestFlattenOp):
+class TestFlattenOp1(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.axis = 0

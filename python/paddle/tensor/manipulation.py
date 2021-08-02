@@ -223,7 +223,7 @@ def flip(x, axis, name=None):
     Args:
         x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
-        axis (list|tuple): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
+        axis (list|tuple|int): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -240,10 +240,17 @@ def flip(x, axis, name=None):
           x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           x = x.astype('float32')
           img = paddle.to_tensor(x)
-          out = paddle.flip(img, [0,1])
+          tmp = paddle.flip(img, [0,1])
+          print(tmp) # [[[10,11],[8, 9]], [[6, 7],[4, 5]], [[2, 3],[0, 1]]]
 
-          print(out) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
+          out = paddle.flip(tmp,-1)
+          print(out) # [[[11,10],[9, 8]], [[7, 6],[5, 4]], [[3, 2],[1, 0]]]
     """
+    if isinstance(axis, int):
+        axis = [axis]
+    if in_dygraph_mode():
+        return core.ops.flip(x, "axis", axis)
+
     helper = LayerHelper("flip", **locals())
     check_type(x, 'X', (Variable), 'flip')
     dtype = helper.input_dtype('x')

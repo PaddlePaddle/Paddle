@@ -134,11 +134,14 @@ set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
     modify_op_lock_and_record_event_pass
     coalesce_grad_tensor_pass fuse_all_reduce_op_pass backward_optimizer_op_deps_pass
     fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass
-    sync_batch_norm_pass runtime_context_cache_pass)
+    sync_batch_norm_pass runtime_context_cache_pass graph_to_program_pass
+    fix_op_run_order_pass)
 if(NOT APPLE AND NOT WIN32 AND (WITH_GPU OR WITH_ROCM))
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fusion_group_pass)
 endif()
 cc_library(build_strategy SRCS build_strategy.cc DEPS pass_builder ${IR_PASS_DEPS})
+cc_test(build_strategy_test SRCS build_strategy_test.cc
+        DEPS build_strategy op_registry op_proto_maker graph)
 
 if (WITH_MKLDNN)
   target_link_libraries(build_strategy mkldnn_placement_pass)

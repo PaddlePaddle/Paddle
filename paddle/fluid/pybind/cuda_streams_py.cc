@@ -164,8 +164,7 @@ void BindCudaStream(py::module *m_ptr) {
            [](paddle::platform::stream::CUDAStream &self,
               paddle::platform::CudaEvent *event) {
              if (event == nullptr) {
-               auto event_tmp = paddle::platform::CudaEvent();
-               event = &event_tmp;
+               event = new paddle::platform::CudaEvent();
              }
              event->Record(self);
              return event;

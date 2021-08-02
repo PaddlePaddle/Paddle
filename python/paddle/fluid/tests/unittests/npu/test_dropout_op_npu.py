@@ -28,8 +28,6 @@ SEED = 2021
 EPOCH = 100
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestDropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
@@ -55,17 +53,14 @@ class TestDropoutOp(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
             return
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestDropoutOpInput1d(TestDropoutOp):
     # change input shape
     def setUp(self):
@@ -85,15 +80,13 @@ class TestDropoutOpInput1d(TestDropoutOp):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestDropoutOpInput1d(TestDropoutOp):
+class TestDropoutOpInput1d_1(TestDropoutOp):
     # the input is 1-D
     def setUp(self):
         self.op_type = "dropout"
         self.set_npu()
         self.init_dtype()
-        self.inputs = {'X': np.random.random((2000, )).astype(self.dtype)}
+        self.inputs = {'X': np.random.random((2000)).astype(self.dtype)}
         self.attrs = {
             'dropout_prob': 0.0,
             'fix_seed': True,
@@ -106,8 +99,6 @@ class TestDropoutOpInput1d(TestDropoutOp):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestDropoutOp2(TestDropoutOp):
     # the dropout_prob is 1.0
     def setUp(self):
@@ -127,8 +118,6 @@ class TestDropoutOp2(TestDropoutOp):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestDropoutOp3(TestDropoutOp):
     # the input dim is 3
     def setUp(self):
@@ -148,8 +137,6 @@ class TestDropoutOp3(TestDropoutOp):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
 class TestDropoutOpInference(OpTest):
     # is_test = True
@@ -174,11 +161,9 @@ class TestDropoutOpInference(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
 class TestDropoutOpInference2(TestDropoutOpInference):
     def setUp(self):
@@ -194,8 +179,6 @@ class TestDropoutOpInference2(TestDropoutOpInference):
         self.outputs = {'Out': self.inputs['X']}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestDropoutOpWithSeed(TestDropoutOp):
     # the seed is a Tensor
     def setUp(self):
@@ -218,8 +201,6 @@ class TestDropoutOpWithSeed(TestDropoutOp):
         }
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestDropoutOpFp16(TestDropoutOp):
     # float16
     def init_dtype(self):
@@ -231,8 +212,6 @@ class TestDropoutOpFp16(TestDropoutOp):
         self.place = paddle.NPUPlace(0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestDropoutAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
