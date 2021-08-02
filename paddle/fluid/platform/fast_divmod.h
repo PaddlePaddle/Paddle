@@ -54,7 +54,7 @@ struct FastDivMod {
     return (t + n) >> shift_val;
   }
 
-  __device__ __forceinline__ DivModT Divmod(uint32_t n) {
+  __device__ __forceinline__ DivModT Divmod(uint32_t n) const {
     uint32_t q = Div(n);
     DivModT result = {q, n - q * divisor};
     return result;

@@ -1,4 +1,5 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -255,6 +256,28 @@ class DistributedStrategy(object):
                         f.name).extend(getattr(strategy, f.name))
 
     @property
+    def gradient_scale_configs(self):
+        """
+        Set the strategy of gradient scale
+        Examples:
+
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.gradient_scale_configs = {'scale_strategy': 'avg'}
+
+        Note that, strategy must be in 'avg', 'sum' or 'customized'
+        """
+        return get_msg_dict(self.strategy.gradient_scale_configs)
+
+    @gradient_scale_configs.setter
+    @is_strict_auto
+    def gradient_scale_configs(self, config):
+        check_configs_key(self.strategy.gradient_scale_configs, config,
+                          'gradient_scale_configs')
+        assign_configs_value(self.strategy.gradient_scale_configs, config)
+
+    @property
     def a_sync(self):
         """
         Indicating whether we are using asynchronous stocastic gradient descent updates
@@ -336,6 +359,45 @@ class DistributedStrategy(object):
         check_configs_key(self.strategy.a_sync_configs, configs,
                           "a_sync_configs")
         assign_configs_value(self.strategy.a_sync_configs, configs)
+
+    @property
+    def trainer_desc_configs(self):
+        """
+        Set trainer desc configurations. 
+
+        **Notes**:
+            dump_fields_path(str): the path of dump fields
+
+            dump_fields(list(str)): the fields that you want to dump
+
+            dump_param(list(str)): the param that you want to dump
+
+            stat_var_names(list(str)): 
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+
+            strategy = fleet.DistributedStrategy()
+            configs = {"dump_fields_path": "./dump_data", "dump_fields": ["xxx", "yyy"]}
+            strategy.trainer_desc_configs = configs
+
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+
+        """
+        return get_msg_dict(self.strategy.trainer_desc_configs)
+
+    @trainer_desc_configs.setter
+    @is_strict_auto
+    def trainer_desc_configs(self, configs):
+        check_configs_key(self.strategy.trainer_desc_configs, configs,
+                          "trainer_desc_configs")
+        assign_configs_value(self.strategy.trainer_desc_configs, configs)
 
     @property
     def amp(self):
@@ -423,6 +485,31 @@ class DistributedStrategy(object):
     def amp_configs(self, configs):
         check_configs_key(self.strategy.amp_configs, configs, "amp_configs")
         assign_configs_value(self.strategy.amp_configs, configs)
+
+    @property
+    def asp(self):
+        """
+        Indicating whether we are using automatic sparsity training
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.asp = True # by default this is false
+
+        """
+        return self.strategy.asp
+
+    @asp.setter
+    @is_strict_auto
+    def asp(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.asp = flag
+        else:
+            print("WARNING: asp should have value of bool type")
 
     @property
     def recompute(self):

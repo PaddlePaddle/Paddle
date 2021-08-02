@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/inference/utils/table_printer.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -36,6 +38,8 @@ PassStrategy *AnalysisConfig::pass_builder() const {
       pass_builder_.reset(new GpuPassStrategy);
     } else if (use_xpu_) {
       pass_builder_.reset(new XpuPassStrategy);
+    } else if (use_npu_) {
+      pass_builder_.reset(new NpuPassStrategy);
     } else {
       LOG(INFO) << "Create CPU IR passes";
       pass_builder_.reset(new CpuPassStrategy);
@@ -110,6 +114,18 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
   Update();
 }
 
+void AnalysisConfig::EnableNpu(int device_id) {
+#ifdef PADDLE_WITH_ASCEND_CL
+  use_npu_ = true;
+  npu_device_id_ = device_id;
+#else
+  LOG(ERROR) << "Please compile with npu to EnableNpu()";
+  use_npu_ = false;
+#endif
+
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
@@ -127,7 +143,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_gpu_);
   CP_MEMBER(use_cudnn_);
   CP_MEMBER(gpu_device_id_);
-  CP_MEMBER(xpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
   CP_MEMBER(enable_memory_optim_);
@@ -167,13 +182,19 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(lite_ops_filter_);
   CP_MEMBER(lite_zero_copy_);
 
+  // XPU related.
   CP_MEMBER(use_xpu_);
+  CP_MEMBER(xpu_device_id_);
   CP_MEMBER(xpu_l3_workspace_size_);
   CP_MEMBER(xpu_locked_);
   CP_MEMBER(xpu_autotune_);
   CP_MEMBER(xpu_autotune_file_);
   CP_MEMBER(xpu_precision_);
   CP_MEMBER(xpu_adaptive_seqlen_);
+
+  // NPU related.
+  CP_MEMBER(use_npu_);
+  CP_MEMBER(npu_device_id_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -202,6 +223,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   } else if (use_xpu_) {
     pass_builder_.reset(new XpuPassStrategy(
         *static_cast<XpuPassStrategy *>(other.pass_builder())));
+  } else if (use_npu_) {
+    pass_builder_.reset(new NpuPassStrategy(
+        *static_cast<NpuPassStrategy *>(other.pass_builder())));
   } else {
     pass_builder_.reset(new CpuPassStrategy(
         *static_cast<CpuPassStrategy *>(other.pass_builder())));
@@ -376,7 +400,9 @@ void AnalysisConfig::Update() {
   if (info == serialized_info_cache_) return;
 
   // Transfer pass_builder and copy the existing compatible passes.
-  if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu()))) {
+  if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
+      ((use_xpu() ^ pass_builder_->use_xpu())) ||
+      ((use_npu() ^ pass_builder_->use_npu()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
 
@@ -390,6 +416,12 @@ void AnalysisConfig::Update() {
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
       pass_builder_.reset(new XpuPassStrategy);
+    } else if (use_npu()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and NPU."));
+      pass_builder_.reset(new NpuPassStrategy);
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
@@ -405,6 +437,13 @@ void AnalysisConfig::Update() {
               "Only one choice can be made between CPU and XPU."));
       pass_builder_.reset(new XpuPassStrategy(
           *static_cast<XpuPassStrategy *>(pass_builder_.get())));
+    } else if (use_npu()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and NPU."));
+      pass_builder_.reset(new NpuPassStrategy(
+          *static_cast<NpuPassStrategy *>(pass_builder_.get())));
     } else {
       pass_builder_.reset(new CpuPassStrategy(
           *static_cast<CpuPassStrategy *>(pass_builder_.get())));
@@ -502,6 +541,19 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (use_npu_) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    PADDLE_ENFORCE_EQ(use_gpu_, false,
+                      platform::errors::Unavailable(
+                          "Currently, NPU and GPU cannot be enabled in the "
+                          "same analysis configuration."));
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use an NPU device, but Paddle was not compiled "
+        "with NPU-runtime."));
+#endif
+  }
+
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
@@ -565,6 +617,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_autotune_file_;
   ss << xpu_precision_;
   ss << xpu_adaptive_seqlen_;
+
+  ss << use_npu_;
+  ss << npu_device_id_;
 
   ss << thread_local_stream_;
 
@@ -665,5 +720,100 @@ void AnalysisConfig::PartiallyRelease() {
 }
 
 void AnalysisConfig::EnableGpuMultiStream() { thread_local_stream_ = true; }
+
+std::string AnalysisConfig::Summary() {
+  const std::vector<std::string> header{"Option", "Value"};
+  paddle::inference::TablePrinter os(header);
+
+  if (!model_dir_.empty()) {
+    os.InsertRow({"model_dir", model_dir_});
+  }
+  if (!(prog_file_.empty() && params_file_.empty())) {
+    os.InsertRow({"model_file", prog_file_});
+    os.InsertRow({"params_file", params_file_});
+  }
+  if (model_from_memory_) {
+    os.InsertRow({"model_from_memory", params_file_});
+  }
+  os.InsetDivider();
+
+  // cpu info
+  os.InsertRow(
+      {"cpu_math_thread", std::to_string(cpu_math_library_num_threads_)});
+  os.InsertRow({"enable_mkdlnn", use_mkldnn_ ? "true" : "false"});
+  os.InsertRow(
+      {"mkldnn_cache_capacity", std::to_string(mkldnn_cache_capacity_)});
+  os.InsetDivider();
+
+  auto Precision2String =
+      [](paddle::AnalysisConfig::Precision prec) -> std::string {
+    if (prec == Precision::kFloat32)
+      return "fp32";
+    else if (prec == Precision::kHalf)
+      return "fp16";
+    else if (prec == Precision::kInt8)
+      return "int8";
+    else
+      return "None";
+  };
+  // gpu info
+  os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
+  if (use_gpu_) {
+    os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
+    os.InsertRow({"memory_pool_init_size",
+                  std::to_string(memory_pool_init_size_mb_) + "MB"});
+    os.InsertRow(
+        {"thread_local_stream", thread_local_stream_ ? "true" : "false"});
+
+    os.InsertRow({"use_tensorrt", use_tensorrt_ ? "true" : "false"});
+    if (use_tensorrt_) {
+      os.InsertRow({"tensorrt_precision_mode",
+                    Precision2String(tensorrt_precision_mode_)});
+      os.InsertRow({"tensorrt_workspace_size",
+                    std::to_string(tensorrt_workspace_size_)});
+      os.InsertRow(
+          {"tensorrt_max_batch_size", std::to_string(tensorrt_max_batchsize_)});
+      os.InsertRow({"tensorrt_min_subgraph_size",
+                    std::to_string(tensorrt_min_subgraph_size_)});
+      os.InsertRow({"tensorrt_use_static_engine",
+                    trt_use_static_engine_ ? "true" : "false"});
+      os.InsertRow(
+          {"tensorrt_use_calib_mode", trt_use_calib_mode_ ? "true" : "false"});
+
+      // dynamic_shape
+      os.InsertRow({"tensorrt_enable_dynamic_shape",
+                    min_input_shape_.empty() ? "false" : "true"});
+
+      os.InsertRow({"tensorrt_use_oss", trt_use_oss_ ? "true" : "false"});
+      os.InsertRow({"tensorrt_use_dla", trt_use_dla_ ? "true" : "false"});
+      if (trt_use_dla_) {
+        os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
+      }
+    }
+  }
+  os.InsetDivider();
+
+  // xpu info
+  os.InsertRow({"use_xpu", use_xpu_ ? "true" : "false"});
+  if (use_xpu_) {
+    os.InsertRow({"xpu_device_id", std::to_string(xpu_device_id_)});
+    os.InsertRow(
+        {"xpu_l3_workspace_size", std::to_string(xpu_l3_workspace_size_)});
+  }
+  os.InsetDivider();
+
+  if (use_lite_) {
+    os.InsertRow({"use_lite", use_lite_ ? "true" : "false"});
+  }
+
+  // ir info
+  os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
+  os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
+  os.InsertRow({"memory_optim", enable_memory_optim_ ? "true" : "false"});
+  os.InsertRow({"enable_profile", with_profile_ ? "true" : "false"});
+  os.InsertRow({"enable_log", with_glog_info_ ? "true" : "false"});
+
+  return os.PrintTable();
+}
 
 }  // namespace paddle

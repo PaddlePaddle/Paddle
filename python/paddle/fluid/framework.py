@@ -489,7 +489,8 @@ def xpu_places(device_ids=None):
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
-        
+            # required: xpu
+
             import paddle
             import paddle.static as static
             
@@ -944,7 +945,7 @@ class Variable(object):
 
         self.block.vars[name] = self
         self.op = None
-        self._stop_gradient = stop_gradient
+        self.stop_gradient = stop_gradient
         self.is_data = is_data
 
     def detach(self):
@@ -1181,7 +1182,7 @@ class Variable(object):
             var_str = "{name} : {type})".\
                 format(name=self.name, type=type_str)
 
-        if type(self) == Parameter:
+        if self.is_parameter:
             if self.trainable:
                 var_str = "trainable param " + var_str
             else:
@@ -1229,7 +1230,7 @@ class Variable(object):
         proto = framework_pb2.VarDesc.FromString(six.binary_type(protostr))
         res_str = _debug_string_(proto, throw_on_error)
         if with_details:
-            additional_attr = ("error_clip", "stop_gradient")
+            additional_attr = ("error_clip", )
             for attr_name in additional_attr:
                 res_str += "%s: %s\n" % (attr_name,
                                          cpt.to_text(getattr(self, attr_name)))
@@ -1269,11 +1270,11 @@ class Variable(object):
                 assert linear.weight.gradient() is None
                 assert (out1.gradient() == 0).all()
         """
-        return self._stop_gradient
+        return self.desc.stop_gradient()
 
     @stop_gradient.setter
     def stop_gradient(self, s):
-        self._stop_gradient = s
+        self.desc.set_stop_gradient(s)
 
     @property
     def persistable(self):
@@ -1303,6 +1304,31 @@ class Variable(object):
     @persistable.setter
     def persistable(self, p):
         self.desc.set_persistable(p)
+
+    @property
+    def is_parameter(self):
+        """
+        Indicating if current Variable is a Parameter
+
+        Examples:
+          .. code-block:: python
+
+            import paddle
+            new_parameter = paddle.static.create_parameter(name="X",
+                                                shape=[10, 23, 48],
+                                                dtype='float32')
+            if new_parameter.is_parameter:
+                print("Current var is a Parameter")
+            else:
+                print("Current var is not a Parameter")
+
+            # Current var is a Parameter
+        """
+        return self.desc.is_parameter()
+
+    @is_parameter.setter
+    def is_parameter(self, p):
+        self.desc.set_is_parameter(p)
 
     @property
     def name(self):
@@ -2862,12 +2888,7 @@ class Block(object):
             param = ParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
-            # NOTE: Why only set stop_gradient=False in static mode
-            # Because in dygraph mode, the `stop_gradient` and `trainable`
-            # are related, and `trainable` default vallue is `True` or
-            # it is specified by users, there is no need to set
-            # `stop_gradient` for ParamBase here.
-            param.stop_gradient = False
+
         if 'initializer' in kwargs:
 
             def _is_inited_by(block, var):
@@ -3040,7 +3061,23 @@ class Block(object):
         # sync variables from cpp
         for var in self.desc.all_vars():
             if not self.has_var(var.name()):
-                self.create_var(name=var.name(), desc=var, type=var.type())
+                is_stop_gradient = False
+                if var.has_stop_gradient():
+                    is_stop_gradient = var.stop_gradient()
+                if var.has_is_parameter() and var.is_parameter():
+                    self.create_parameter(
+                        name=var.name(),
+                        desc=var,
+                        type=var.type(),
+                        shape=var.shape(),
+                        dtype=var.dtype(),
+                        stop_gradient=is_stop_gradient)
+                else:
+                    self.create_var(
+                        name=var.name(),
+                        desc=var,
+                        type=var.type(),
+                        stop_gradient=is_stop_gradient)
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
@@ -4751,6 +4788,33 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
+    def _remove_training_info(self):
+        """
+        This method will create a new program and do following adjustments on it:
+        1. Remove all variable's `is_parameter` attribute if exist.
+
+        2. Remove all variable's `stop_gradient` attribute if exist.
+
+        Notes: This API is a very low level API.
+
+        Returns:
+            Program: The new program.
+        """
+        res = Program()
+        res.desc = core.ProgramDesc(self.desc)
+
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
+        res._sync_with_cpp()
+
+        for i in six.moves.range(res.desc.num_blocks()):
+            block = res.desc.block(i)
+            for var in block.all_vars():
+                var.clear_is_parameter()
+                var.clear_stop_gradient()
+        return res
+
     @staticmethod
     def parse_from_string(binary_str):
         """
@@ -5398,6 +5462,8 @@ class Parameter(Variable):
 
         self.is_distributed = False
 
+        self.is_parameter = True
+
     def __str__(self):
         return self._to_readable_code()
 
@@ -5576,18 +5642,6 @@ class ParamBase(core.VarBase):
         new_param = ParamBase(self.shape, self.dtype, **state)
         core.varbase_copy(self, new_param, device, blocking)
         return new_param
-
-    def __reduce__(self):
-        value = self.numpy()
-        state = (self.name, self.persistable, self.stop_gradient)
-        return ParamBase, (self.shape, self.dtype), (self.__dict__, value,
-                                                     state)
-
-    def __setstate__(self, state):
-        self.__dict__.update(state[0])
-        t = self.value().get_tensor()
-        t.set(state[1], _current_expected_place())
-        self.name, self.persistable, self.stop_gradient = state[2]
 
     __repr__ = __str__
 

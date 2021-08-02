@@ -314,6 +314,13 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
 #endif
+#if defined(PADDLE_WITH_XPU)
+  else if (platform::is_xpu_place(src.place())) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr,
+                 BOOST_GET_CONST(platform::XPUPlace, src.place()), src_ptr,
+                 size);
+  }
+#endif
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(src.place())) {  // NOLINT
     memory::Copy(dst_place, dst_ptr,
@@ -341,12 +348,19 @@ inline void TensorToVector(const Tensor& src,
                  BOOST_GET_CONST(platform::CPUPlace, src.place()), src_ptr,
                  size);
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
     memory::Copy(
         dst_place, dst_ptr, BOOST_GET_CONST(platform::CUDAPlace, src.place()),
         src_ptr, size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+  }
+#endif
+#if defined(PADDLE_WITH_XPU)
+  else if (platform::is_xpu_place(src.place())) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr,
+                 BOOST_GET_CONST(platform::XPUPlace, src.place()), src_ptr,
+                 size);
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL

@@ -182,15 +182,16 @@ static bool PathExists(const std::string &path) {
 }
 
 static std::string GetDirRoot(const std::string &path) {
-  char sep = '/';
+  char sep_1 = '/', sep_2 = '\\';
 
-#ifdef _WIN32
-  sep = '\\';
-#endif
-
-  size_t i = path.rfind(sep, path.length());
-  if (i != std::string::npos) {
-    return (path.substr(0, i));
+  size_t i_1 = path.rfind(sep_1, path.length());
+  size_t i_2 = path.rfind(sep_2, path.length());
+  if (i_1 != std::string::npos && i_2 != std::string::npos) {
+    return path.substr(0, std::max(i_1, i_2));
+  } else if (i_1 != std::string::npos) {
+    return path.substr(0, i_1);
+  } else if (i_2 != std::string::npos) {
+    return path.substr(0, i_2);
   }
   return path;
 }

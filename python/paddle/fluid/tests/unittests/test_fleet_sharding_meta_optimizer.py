@@ -292,7 +292,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         ])
 
 
-class TestFleetMetaOptimizer(TestFleetMetaOptimizer):
+class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ[
@@ -525,6 +525,7 @@ class TestFleetMetaOptimizer(TestFleetMetaOptimizer):
         startup_prog_op_types = [op.type for op in startup_prog_ops]
         main_prog_op_types = [op.type for op in main_prog_ops]
         print(startup_prog_op_types)
+        # global, sharding, pp_send, pp_recv
         self.assertEqual(startup_prog_op_types, [
             'fill_constant', 'uniform_random', 'fill_constant',
             'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
@@ -532,7 +533,9 @@ class TestFleetMetaOptimizer(TestFleetMetaOptimizer):
             'c_gen_nccl_id', 'c_comm_init', 'fill_constant', 'c_allreduce_sum',
             'c_sync_calc_stream', 'c_gen_nccl_id', 'c_comm_init',
             'fill_constant', 'c_allreduce_sum', 'c_sync_calc_stream',
-            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init'
+            'c_gen_nccl_id', 'c_comm_init', 'fill_constant', 'c_allreduce_sum',
+            'c_sync_calc_stream', 'c_gen_nccl_id', 'c_comm_init',
+            'fill_constant', 'c_allreduce_sum', 'c_sync_calc_stream'
         ])
 
         self.assertEqual(main_prog_op_types, [
@@ -582,6 +585,36 @@ class TestFleetMetaOptimizer(TestFleetMetaOptimizer):
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
+
+    def test_sharding_dp_with_allreduce_fuse(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, _ = self.net(train_prog, startup_prog)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_segment_strategy": "segment_broadcast_MB",
+            "segment_broadcast_MB": 0.1,
+            "segment_anchors": None,
+            "sharding_degree": 2,
+            "dp_degree": 2,
+            "hybrid_dp": True,
+            "gradient_merge_acc_step": 1,
+            "mp_degree": 1
+        }
+        strategy.fuse_all_reduce_ops = True
+        strategy.fuse_grad_size_in_MB = 2
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+
+        main_prog_ops = train_prog.global_block().ops
+        main_prog_op_types = [op.type for op in main_prog_ops]
+
+        assert 'c_allreduce_sum' in main_prog_op_types
+        assert 'coalesce_tensor' in main_prog_op_types
+
+        for op in main_prog_ops:
+            if op.type == 'c_allreduce_sum':
+                assert 'FusedOutput' in op.input_arg_names[0]
 
 
 if __name__ == "__main__":

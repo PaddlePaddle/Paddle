@@ -33,8 +33,9 @@ enum class Priority : uint8_t {
   kHigh = 0x1,
   kNormal = 0x2,
 };
-
+#endif
 class CUDAStream final {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
  public:
   CUDAStream() = default;
   explicit CUDAStream(const Place& place,
@@ -93,6 +94,37 @@ class CUDAStream final {
 #endif
   void Destroy();
 
+  bool Query() const {
+#ifdef PADDLE_WITH_HIP
+    hipError_t err = hipStreamQuery(stream_);
+    if (err == hipSuccess) {
+      return true;
+    }
+    if (err == hipErrorNotReady) {
+      return false;
+    }
+#else
+    cudaError_t err = cudaStreamQuery(stream_);
+    if (err == cudaSuccess) {
+      return true;
+    }
+    if (err == cudaErrorNotReady) {
+      return false;
+    }
+#endif
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(err);
+    return false;
+  }
+
+  void Synchronize() const {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
+#endif
+  }
+
  private:
   Place place_;
 #ifdef PADDLE_WITH_HIP
@@ -102,11 +134,11 @@ class CUDAStream final {
 #endif
   Priority priority_{Priority::kNormal};
   std::unique_ptr<StreamCallbackManager<gpuStream_t>> callback_manager_;
-
+#endif
   DISABLE_COPY_AND_ASSIGN(CUDAStream);
 };
 
-#endif
+CUDAStream* get_current_stream(int deviceId);
 
 }  // namespace stream
 }  // namespace platform

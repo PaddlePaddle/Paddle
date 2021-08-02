@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include <queue>
 #include <stack>
 
 DEFINE_string(print_sub_graph_dir, "",
@@ -23,15 +24,17 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace {
-void SortHelper(const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>,
-                               ir::NodeComp> &adj_list,
+
+template <class NodeComparator = ir::NodeComp>
+void SortHelper(const std::map<ir::Node *, std::set<ir::Node *, NodeComparator>,
+                               NodeComparator> &adj_list,
                 ir::Node *node, std::unordered_set<ir::Node *> *visited,
                 std::vector<ir::Node *> *ret) {
   visited->insert(node);
 
   for (auto adj : adj_list.at(node)) {
     if (visited->find(adj) == visited->end()) {
-      SortHelper(adj_list, adj, visited, ret);
+      SortHelper<NodeComparator>(adj_list, adj, visited, ret);
     }
   }
 
@@ -40,10 +43,11 @@ void SortHelper(const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>,
   ret->push_back(node);
 }
 
+template <class NodeComparator = ir::NodeComp>
 bool HasCircleHelper(
     ir::Node *node,
-    const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
-        &adj_list,
+    const std::map<ir::Node *, std::set<ir::Node *, NodeComparator>,
+                   NodeComparator> &adj_list,
     std::unordered_set<ir::Node *> *visited,
     std::unordered_set<ir::Node *> *in_trace,
     std::vector<std::vector<ir::Node *>> *circles) {
@@ -53,7 +57,8 @@ bool HasCircleHelper(
 
     for (ir::Node *in : adj_list.at(node)) {
       if (visited->find(in) == visited->end() &&
-          HasCircleHelper(in, adj_list, visited, in_trace, circles)) {
+          HasCircleHelper<NodeComparator>(in, adj_list, visited, in_trace,
+                                          circles)) {
         return true;
       } else if (in_trace->find(in) != in_trace->end()) {
         if (circles != nullptr) {
@@ -76,14 +81,16 @@ bool HasCircleHelper(
   return false;
 }
 
+template <class NodeComparator = ir::NodeComp>
 bool HasCircleInternal(
-    const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
-        &adj_list,
+    const std::map<ir::Node *, std::set<ir::Node *, NodeComparator>,
+                   NodeComparator> &adj_list,
     std::vector<std::vector<ir::Node *>> *circles) {
   std::unordered_set<ir::Node *> visited;
   std::unordered_set<ir::Node *> in_trace;
   for (auto &adj : adj_list) {
-    if (HasCircleHelper(adj.first, adj_list, &visited, &in_trace, circles)) {
+    if (HasCircleHelper<NodeComparator>(adj.first, adj_list, &visited,
+                                        &in_trace, circles)) {
       return true;
     }
   }
@@ -135,39 +142,37 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   std::vector<ir::Node *> ret;
   for (auto adj : adj_list) {
     if (visited.find(adj.first) == visited.end()) {
-      SortHelper(adj_list, adj.first, &visited, &ret);
+      SortHelper<ir::NodeComp>(adj_list, adj.first, &visited, &ret);
     }
   }
 
   return ret;
 }
 
-// Build operator inlink edge table.
-std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
-BuildOperationAdjList(const Graph &graph) {
-  std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
-      adj_list;
+bool IsTopologySortOperationsUnique(const Graph &graph) {
+  auto nodes = TopologySortOperations(graph);
+  size_t n = nodes.size();
+  for (size_t i = 1; i < n; ++i) {
+    auto *prev_op = nodes[i - 1];
+    auto *cur_op = nodes[i];
 
-  for (auto &n : graph.Nodes()) {
-    if (!n->IsOp()) continue;
-    if (adj_list.find(n) == adj_list.end()) {
-      adj_list[n] = std::set<ir::Node *, ir::NodeComp>();
+    std::unordered_set<Node *> prev_op_outputs;
+    for (auto *output : prev_op->outputs) {
+      prev_op_outputs.insert(output);
     }
-    for (auto &var : n->inputs) {
-      for (auto &adj_n : var->inputs) {
-        PADDLE_ENFORCE_EQ(
-            adj_n->NodeType(), ir::Node::Type::kOperation,
-            platform::errors::InvalidArgument(
-                "Node(%s)'s type(%d) must be kOperation type.", adj_n->Name(),
-                static_cast<int>(adj_n->NodeType())));
-        VLOG(4) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
-                << " -> " << n->Name() << reinterpret_cast<void *>(n)
-                << "  via " << var->Name() << reinterpret_cast<void *>(var);
-        adj_list[n].insert(adj_n);
+
+    bool found = false;
+    for (auto *input : cur_op->inputs) {
+      if (prev_op_outputs.count(input) > 0) {
+        found = true;
+        break;
       }
     }
+    if (!found) {
+      return false;
+    }
   }
-  return adj_list;
+  return true;
 }
 
 // Build operator outlink edge table.
@@ -393,6 +398,37 @@ std::vector<Node *> TopologyVarientSort(const Graph &graph,
     default:
       return framework::ir::TopologyDfsSortOperations(graph);
   }
+}
+
+class DescOrderComparator {
+ public:
+  bool operator()(Node *const &n1, Node *const &n2) const {
+    if (n1->DescOrder() < n2->DescOrder()) {
+      return true;
+    } else if (n1->DescOrder() == n2->DescOrder()) {
+      return n1->id() < n2->id() ||
+             (n1->id() == n2->id() && n1->ToString() < n2->ToString());
+    }
+    return false;
+  }
+};
+
+std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
+  std::map<ir::Node *, std::set<ir::Node *, DescOrderComparator>,
+           DescOrderComparator>
+      adj_list = BuildOperationAdjList<DescOrderComparator>(graph);
+  PADDLE_ENFORCE_EQ(HasCircleInternal<DescOrderComparator>(adj_list, nullptr),
+                    false, platform::errors::InvalidArgument(
+                               "Generated graph shouldn't contain cycle."));
+  std::unordered_set<ir::Node *> visited;
+  std::vector<ir::Node *> ret;
+  for (auto adj : adj_list) {
+    if (visited.find(adj.first) == visited.end()) {
+      SortHelper<DescOrderComparator>(adj_list, adj.first, &visited, &ret);
+    }
+  }
+
+  return ret;
 }
 
 }  // namespace ir

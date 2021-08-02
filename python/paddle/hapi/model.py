@@ -25,23 +25,18 @@ import warnings
 import time
 import socket
 import contextlib
-from collections import Iterable
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Variable
-from paddle.fluid.framework import ParamBase
-from paddle.fluid.framework import _current_expected_place
 from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import FunctionSpec
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX
 from paddle.fluid.dygraph.io import INFER_PARAMS_SUFFIX
 from paddle.fluid.layers.utils import flatten
@@ -50,9 +45,6 @@ from paddle.fluid.layers import collective
 from paddle.io import DataLoader
 from paddle.io import Dataset
 from paddle.io import DistributedBatchSampler
-from paddle.fluid.executor import scope_guard
-from paddle.fluid.executor import Executor
-from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
 import paddle.distributed as dist
@@ -226,8 +218,6 @@ def prepare_distributed_context(place=None):
             fluid.disable_dygraph()
             _init_context()
             fluid.enable_dygraph(place)
-        else:
-            _init_context()
 
     else:
         assert ("Only support CUDAPlace for now.")
@@ -298,10 +288,11 @@ class StaticGraphAdapter(object):
     def mode(self, value):
         self.model.mode = value
 
-    def train_batch(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None, update=True):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.mode = 'train'
+        assert update is True, "Does not support `update == False` in static mode by now."
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
@@ -701,7 +692,7 @@ class DynamicGraphAdapter(object):
         self.model.mode = value
 
     # TODO multi device in dygraph mode not implemented at present time
-    def train_batch(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None, update=True):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.model.network.train()
@@ -729,12 +720,14 @@ class DynamicGraphAdapter(object):
         if self._amp_level != "O0":
             scaled = scaler.scale(final_loss)
             scaled.backward()
-            scaler.minimize(self.model._optimizer, scaled)
-            self.model.network.clear_gradients()
+            if update:
+                scaler.minimize(self.model._optimizer, scaled)
+                self.model.network.clear_gradients()
         else:
             final_loss.backward()
-            self.model._optimizer.minimize(final_loss)
-            self.model.network.clear_gradients()
+            if update:
+                self.model._optimizer.minimize(final_loss)
+                self.model.network.clear_gradients()
 
         metrics = []
         for metric in self.model._metrics:
@@ -1017,9 +1010,10 @@ class Model(object):
         else:
             self._adapter = StaticGraphAdapter(self)
 
-    def train_batch(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None, update=True):
         """
-        Run one training step on a batch of data.
+        Run one training step on one batch of data. And using `update` indicates
+        whether optimizer update gradients computing by this batch.
 
         Args:
             inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
@@ -1029,6 +1023,8 @@ class Model(object):
                 a numpy array or paddle.Tensor, or a list of arrays or tensors 
                 (in case the model has multiple labels). If has no labels, 
                 set None. Default is None.
+            update (bool): Whether update parameters after loss.backward() computing.
+                Using it to accumulate gradients. Default is True.
 
         Returns:
             A list of scalar training loss if the model has no metrics,
@@ -1062,7 +1058,7 @@ class Model(object):
               loss = model.train_batch([data], [label])
               print(loss)
         """
-        loss = self._adapter.train_batch(inputs, labels)
+        loss = self._adapter.train_batch(inputs, labels, update)
         if fluid.in_dygraph_mode() and self._input_info is None:
             self._update_inputs()
         return loss
@@ -1522,8 +1518,7 @@ class Model(object):
         if not in_dygraph_mode():
             self._adapter.prepare()
 
-    def fit(
-            self,
+    def fit(self,
             train_data=None,
             eval_data=None,
             batch_size=1,
@@ -1536,7 +1531,9 @@ class Model(object):
             drop_last=False,
             shuffle=True,
             num_workers=0,
-            callbacks=None, ):
+            callbacks=None,
+            accumulate_grad_batches=1,
+            num_iters=None):
         """
         Trains the model for a fixed number of epochs. If `eval_data` is set,
         evaluation will be done at the end of each epoch.
@@ -1579,7 +1576,13 @@ class Model(object):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
-
+            accumulate_grad_batches (int): The number of batches to accumulate gradident 
+                during training process before optimizer updates. It can mimic large batch
+                size. Default: 1.
+            num_iters (int|None): Integer number. The number of iterations to train
+                the model. If None, follow `epochs` to train the model, otherwise, train
+                the model `num_iters` times. Default: None.
+            
         Returns:
             None
 
@@ -1700,7 +1703,15 @@ class Model(object):
         do_eval = eval_loader is not None
         self._test_dataloader = eval_loader
 
+        self._accumulate = accumulate_grad_batches
+
         steps = self._len_data_loader(train_loader)
+        self.num_iters = num_iters
+        if num_iters is not None and isinstance(num_iters, int) and isinstance(
+                steps, int):
+            assert num_iters > 0, "num_iters must be greater than 0!"
+            epochs = (num_iters // steps) + 1
+            steps = min(num_iters, steps)
         cbks = config_callbacks(
             callbacks,
             model=self,
@@ -1732,20 +1743,20 @@ class Model(object):
                 eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval')
 
                 cbks.on_end('eval', eval_logs)
-                if self.stop_training:
-                    break
+            if self.stop_training:
+                break
 
         cbks.on_end('train', logs)
         self._test_dataloader = None
 
-    def evaluate(
-            self,
-            eval_data,
-            batch_size=1,
-            log_freq=10,
-            verbose=2,
-            num_workers=0,
-            callbacks=None, ):
+    def evaluate(self,
+                 eval_data,
+                 batch_size=1,
+                 log_freq=10,
+                 verbose=2,
+                 num_workers=0,
+                 callbacks=None,
+                 num_iters=None):
         """
         Evaluate the loss and metrics of the model on input dataset.
 
@@ -1767,6 +1778,9 @@ class Model(object):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
+            num_iters (int|None): Integer number. The number of iterations to
+                evaluate the model. If None, evaluate on whole input dataset,
+                otherwise, evaluate `num_iters` times. Default: None.
         Returns:
             dict: Result of metric. The key is the names of Metric,
                 value is a scalar or numpy.array.
@@ -1816,6 +1830,12 @@ class Model(object):
             metrics=self._metrics_name(), )
 
         eval_steps = self._len_data_loader(eval_loader)
+        self.num_iters = num_iters
+        if num_iters is not None and isinstance(num_iters, int) and isinstance(
+                eval_steps, int):
+            assert num_iters > 0, "num_iters must be greater than 0!"
+            eval_steps = min(num_iters, eval_steps)
+            self.num_iters = eval_steps
         cbks.on_begin('eval',
                       {'steps': eval_steps,
                        'metrics': self._metrics_name()})
@@ -2004,7 +2024,12 @@ class Model(object):
                 model_filename=model_filename,
                 params_filename=params_filename)
 
-    def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
+    def _run_one_epoch(
+            self,
+            data_loader,
+            callbacks,
+            mode,
+            logs={}, ):
         outputs = []
         for step, data in enumerate(data_loader):
             # data might come from different types of data_loader and have
@@ -2028,8 +2053,14 @@ class Model(object):
             callbacks.on_batch_begin(mode, step, logs)
 
             if mode != 'predict':
-                outs = getattr(self, mode + '_batch')(data[:len(self._inputs)],
-                                                      data[len(self._inputs):])
+
+                _inputs = [data[:len(self._inputs)], data[len(self._inputs):]]
+                if mode == 'train':
+                    _inputs.append((step + 1) % self._accumulate == 0 or
+                                   step + 1 == len(data_loader))
+
+                outs = getattr(self, mode + '_batch')(*_inputs)
+
                 if self._metrics and self._loss:
                     metrics = [[l[0] for l in outs[0]]]
                 elif self._loss:
@@ -2061,6 +2092,12 @@ class Model(object):
                 logs['batch_size'] = self._adapter._merge_count[mode + '_batch']
 
             callbacks.on_batch_end(mode, step, logs)
+            if hasattr(self, 'num_iters') and self.num_iters is not None:
+                self.num_iters -= 1
+                if self.num_iters <= 0:
+                    self.stop_training = True
+                    del self.num_iters
+                    break
         self._reset_metrics()
 
         if mode == 'predict':
@@ -2076,7 +2113,7 @@ class Model(object):
                     one input, input_size can be tuple or InputSpec. if model have multiple 
                     input, input_size must be a list which contain every input's shape. 
                     Default: None.
-            dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
+            dtype (str, optional): if dtype is None, 'float32' will be used, Default: None.
 
         Returns:
             Dict: a summary of the network including total params and total trainable params.
@@ -2108,7 +2145,7 @@ class Model(object):
             _input_size = input_size
         else:
             _input_size = self._inputs
-        return summary(self.network, _input_size, dtype)
+        return summary(self.network, _input_size, dtypes=dtype)
 
     def _verify_spec(self, specs, shapes=None, dtypes=None, is_input=False):
         out_specs = []

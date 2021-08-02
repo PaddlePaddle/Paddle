@@ -30,7 +30,7 @@ from paddle.fluid.dygraph import parallel_helper
 from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
-from ..meta_parallel import PipelineParallel
+from ..meta_parallel import PipelineParallel, ShardingParallel
 from ..meta_optimizers import HybridParallelOptimizer
 from ..meta_optimizers import HybridParallelGradScaler
 
@@ -253,6 +253,56 @@ class Fleet(object):
                 warnings.warn(
                     "The dygraph hybrid parallel environment has been initialized."
                 )
+        elif self._is_collective:
+            use_sharding = self._user_defined_strategy.sharding
+
+            # global group
+            global_rank = self.worker_index()
+            global_world_size = self.worker_num()
+            # NOTE(wangxi): see sharding_optimizer
+            global_ring_id = 3 if use_sharding else 0
+            global_ranks = list(range(global_world_size))
+
+            if tp._HYBRID_PARALLEL_GROUP is None: tp._CommunicateGroup()
+            cg = tp._HYBRID_PARALLEL_GROUP
+            self._hcg = cg
+            cg.set_comm_group('global', global_rank, global_world_size,
+                              global_ring_id, global_ranks)
+
+            use_tensor_parallel = self._user_defined_strategy.tensor_parallel
+            use_mp = use_sharding or use_tensor_parallel
+
+            # hybrid group
+            if use_mp is False: return
+
+            mp_degree_sharding = 1
+            mp_degree_tensor_parallel = 1
+            if use_sharding:
+                sharding_configs = self._user_defined_strategy.sharding_configs
+                mp_degree_sharding = int(sharding_configs['mp_degree'])
+
+            if use_tensor_parallel:
+                tensor_parallel_configs = self._user_defined_strategy.tensor_parallel_configs
+                mp_degree_tensor_parallel = int(tensor_parallel_configs[
+                    'tensor_parallel_degree'])
+
+            if use_sharding and use_tensor_parallel:
+                assert mp_degree_sharding == mp_degree_tensor_parallel
+
+            mp_degree = mp_degree_sharding if use_sharding else mp_degree_tensor_parallel
+
+            if mp_degree > 1:
+                assert global_world_size % mp_degree == 0
+                # NOTE(wangxi): mp_ring_id sync with sharding_optimizer.py _build_groups
+                mp_ring_id = 0
+                mp_rank = global_rank % mp_degree
+                mp_group_id = global_rank // mp_degree
+                mp_group_ranks = [
+                    idx for idx in global_ranks
+                    if idx // mp_degree == mp_group_id
+                ]
+                cg.set_comm_group('model', mp_rank, mp_degree, mp_ring_id,
+                                  mp_group_ranks)
 
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment
@@ -261,9 +311,11 @@ class Fleet(object):
         self.dp_degree = self.hybrid_configs["dp_degree"]
         self.mp_degree = self.hybrid_configs["mp_degree"]
         self.pp_degree = self.hybrid_configs["pp_degree"]
+        self.sharding_degree = self.hybrid_configs["sharding_degree"]
 
         assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
         assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
+        assert self.sharding_degree >= 0, "sharding_degree should be greater or equal to 0"
 
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
@@ -275,8 +327,11 @@ class Fleet(object):
         self.dp_degree = max(self.dp_degree, 1)
 
         self._topology = tp.CommunicateTopology(
-            hybrid_group_names=["data", "pipe", "model"],
-            dims=[self.dp_degree, self.pp_degree, self.mp_degree])
+            hybrid_group_names=["data", "pipe", "sharding", "model"],
+            dims=[
+                self.dp_degree, self.pp_degree, self.sharding_degree,
+                self.mp_degree
+            ])
 
         self._hcg = tp.HybridCommunicateGroup(self._topology)
 
@@ -852,7 +907,11 @@ class Fleet(object):
         assert model is not None, "model should not be None"
         if self.worker_num() <= 1:
             return model
-        if self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
+
+        if self._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
+            distributed_model = ShardingParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        elif self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
             distributed_model = paddle.DataParallel(
                 model,
                 comm_buffer_size=self._user_defined_strategy.
@@ -867,6 +926,7 @@ class Fleet(object):
         elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
             distributed_model = PipelineParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
+
         return distributed_model
 
     @dygraph_only
@@ -1415,6 +1475,14 @@ class Fleet(object):
             # i.e. users can not modify current computation graph anymore
             context["graph_optimize_ops"] = optimize_ops
             context["graph_optimize_grads"] = params_grads
+
+        program = paddle.static.default_main_program()
+        opt_info = {}
+        opt_info["mpi_size"] = self.worker_num()
+        opt_info["mpi_rank"] = self.worker_index()
+        for k, v in self._user_defined_strategy.trainer_desc_configs.items():
+            opt_info[k] = v
+        program._fleet_opt = opt_info
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
