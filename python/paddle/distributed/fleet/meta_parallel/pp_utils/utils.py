@@ -18,6 +18,7 @@ from paddle.autograd import PyLayer
 from paddle.fluid import framework
 import contextlib
 from paddle.distributed.fleet.utils.recompute import check_recompute_necessary, detach_variable, swith_rng_state
+import paddle.distributed as dist
 
 import logging
 logger = logging.getLogger(__name__)
@@ -92,6 +93,9 @@ def get_tensor_bytes(tensor):
     return tensor.numel() * elem_size
 
 
+recompute_offload = False
+
+
 class _HPRecomputeFunction(PyLayer):
     @staticmethod
     def forward(ctx, run_function, all_outputs, *args):
@@ -106,6 +110,7 @@ class _HPRecomputeFunction(PyLayer):
         tensor_inputs = []
         for i, arg in enumerate(args):
             if paddle.is_tensor(arg):
+                arg = arg.cpu() if recompute_offload else arg
                 tensor_inputs.append(arg)
                 ctx.tensor_indices.append(i)
                 ctx.inputs.append(None)
@@ -142,8 +147,11 @@ class _HPRecomputeFunction(PyLayer):
             inputs = list(ctx.inputs)
             tensor_indices = ctx.tensor_indices
             tensors = ctx.saved_tensor()
+
+            device_id = dist.ParallelEnv().device_id
             for i, idx in enumerate(tensor_indices):
-                inputs[idx] = tensors[i]
+                inputs[idx] = tensors[i].cuda(
+                    device_id) if recompute_offload else tensors[i]
 
             tracer = framework._dygraph_tracer()
             tracer._has_grad = True
