@@ -302,6 +302,13 @@ void VarDesc::SetAttr(const std::string &name, const Attribute &v) {
     this->attrs_[name] = std::vector<int>();
     return;
   }
+  bool valid = attr_type == proto::AttrType::INT ||
+               attr_type == proto::AttrType::STRING ||
+               attr_type == proto::AttrType::INTS;
+  PADDLE_ENFORCE_EQ(valid, true, platform::errors::InvalidArgument(
+                                     "The value for attr (%s) must be "
+                                     "one of list or int or string.",
+                                     name));
 
   this->attrs_[name] = v;
 }

@@ -1936,11 +1936,11 @@ class Variable(object):
         Returns:
             ProcessMesh: the process mesh associated with the var.
         """
-        from paddle.distributed.auto_parallel.interface import g_process_mesh_map
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
         from paddle.distributed.auto_parallel.interface import ProcessMesh
         mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
         mesh_id = self.desc.attr(mesh_attr_name)
-        return g_process_mesh_map[mesh_id]
+        return _g_process_mesh_map[mesh_id]
 
     @property
     def shard_mask(self):
@@ -1953,7 +1953,7 @@ class Variable(object):
         Returns:
             list(int): the shard mask associated with the var.
         """
-        mask_attr_name = 'mask_out' + core.kAutoParallelSuffix()
+        mask_attr_name = 'mask' + core.kAutoParallelSuffix()
         return self.desc.attr(mask_attr_name)
 
     @property
@@ -2656,10 +2656,10 @@ class Operator(object):
         Returns:
             int: the process mesh index.
         """
-        from paddle.distributed.auto_parallel.interface import g_process_mesh_map
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
         mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
         mesh_id = self.attr(mesh_attr_name)
-        return g_process_mesh_map[mesh_id]
+        return _g_process_mesh_map[mesh_id]
 
     def dims_mapping(self, name):
         """

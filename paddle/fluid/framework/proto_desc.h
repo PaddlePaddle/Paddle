@@ -27,7 +27,7 @@ constexpr int kNoneProcessMeshIndex = -1;
 
 // If a attribute name has a certain suffix, it means that the
 // atrribute is a distributed-related attribute for auto parallel.
-// Variable "mesh_id@PARALLEL".
+// e.g., "mesh_id@PARALLEL".
 constexpr char kAutoParallelSuffix[] = "@PARALLEL";
 
 }  // namespace framework
