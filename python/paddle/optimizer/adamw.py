@@ -32,14 +32,14 @@ class AdamW(Adam):
 
         t & = t + 1
 
-        moment\_1\_out & = {\\beta}_1 * moment\_1 + (1 - {\\beta}_1) * grad
+        moment\_1\_out & = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad
 
-        moemnt\_2\_out & = {\\beta}_2 * moment\_2 + (1 - {\\beta}_2) * grad * grad
+        moemnt\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
 
-        learning\_rate & = learning\_rate * \\
-            \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {beta}_1^t}
+        learning\_rate & = learning\_rate * 
+            \frac{\sqrt{1 - {\beta}_2^t}}{1 - {beta}_1^t}
 
-        param\_out & = param - learning\_rate * (\\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
+        param\_out & = param - learning\_rate * (\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
 
 
     Args:
