@@ -107,22 +107,20 @@ template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
 __device__ inline void Compute(const InT *__restrict__ in0,
                                const InT *__restrict__ in1, OutT *out,
                                Functor func, int size) {
-  using OutVecType = CudaAlignedVector<OutT, VecSize>;
-  OutVecType *dst = reinterpret_cast<OutVecType *>(out);
   InT args[ET][VecSize];
   kernel_primitives::read_data<InT, VecSize, 1, 1>(&args[0][0], in0, size);
   kernel_primitives::read_data<InT, VecSize, 1, 1>(&args[1][0], in1, size);
   InT data[ET];
-  OutVecType result;
+  OutT result[VecSize];
 #pragma unroll
   for (int i = 0; i < VecSize; ++i) {
 #pragma unroll
     for (int j = 0; j < ET; ++j) {
       data[j] = args[j][i];
     }
-    result.val[i] = static_cast<OutT>(func(data));
+    result[i] = static_cast<OutT>(func(data));
   }
-  kernel_primitives::write_data<OutVecType, 1, 1, 1>(&result, dst, 0, 0);
+  kernel_primitives::write_data<OutT, VecSize, 1, 1>(out, result, size);
 }
 
 template <ElementwiseType ET, int VecSize, typename InT, typename OutT,

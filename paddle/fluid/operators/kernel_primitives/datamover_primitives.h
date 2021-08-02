@@ -121,24 +121,39 @@ __device__ __forceinline__ void read_data_bc(
   }
 }
 
-/** @brief: write_data
- * @param：
- * src: the source pointer
- * dst: the dst pointer
- * stride_nx: the stride of dst
- * stride_ny: the stride of dst
- * the shape of src is [NY, NX];
- */
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void write_data(T* dst, const T* src, int stride_nx, int stride_ny) {
-  uint32_t base_offset = threadIdx.x * NX;
+__device__ void write_data_base(T* dst, const T* __restrict__ src, int size) {
+  int dx = threadIdx.x * NX;
 #pragma unroll
-  for (int idy = 0; idy < NY; idy++) {
-#pragma unroll
-    for (int idx = 0; idx < NX; idx++) {
-      dst[idy * stride_ny + idx * stride_nx + base_offset] =
-          src[idx + idy * NX];
+  for (int idx = 0; idx < NX; ++idx) {
+    if ((idx + dx) >= size) {
+      break;
     }
+    dst[idx + dx] = src[idx];
+  }
+}
+
+template <typename T, int NX, int NY, int BlockSize>
+__device__ void write_data(T* dst, T* __restrict__ src, int size) {
+  enum {
+    VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1,
+    VECTORS_PER_THREAD = NX / VECTOR_SIZE,
+  };
+
+  // Vector per thread
+  if (blockDim.x * NX > size) {
+    read_data_base<T, NX, NY, BlockSize>(dst, src, size);
+  } else {
+    // Vector type
+    using VecType = VectorType<T, VECTOR_SIZE>;
+    VecType vec_temp[VECTORS_PER_THREAD];
+#pragma unroll
+    for (int idx = 0; idx < VECTORS_PER_THREAD; ++idx) {
+      vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
+    }
+    VecType* vec_dst = reinterpret_cast<VecType*>(dst);
+    write_data_base<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
+        vec_dst, vec_temp, VECTORS_PER_THREAD * blockDim.x);
   }
 }
 
