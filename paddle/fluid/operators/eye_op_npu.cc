@@ -29,11 +29,11 @@ class EyeNPUKernel : public framework::OpKernel<T> {
         num_rows >= 0, true,
         platform::errors::InvalidArgument(
             "The value of Input(num_rows) should be non-negative int."));
-    
+
     auto d_nums = ctx.Attr<int>("dtype");
     auto dtype =
         ConvertToNpuDtype(static_cast<framework::proto::VarType::Type>(d_nums));
-         
+
     auto num_columns = num_rows;
     PADDLE_ENFORCE_EQ(
         num_columns >= 0, true,
@@ -46,7 +46,7 @@ class EyeNPUKernel : public framework::OpKernel<T> {
 
     framework::NPUAttributeMap attr_input = {
         {"num_rows", num_rows}, {"num_columns", num_columns}, {"dtype", dtype}};
-       
+
     auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
