@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import collections
-import gast
+from paddle.utils.gast
 import inspect
 import six
 import textwrap
