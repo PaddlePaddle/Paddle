@@ -31,6 +31,7 @@
 namespace py = pybind11;
 using paddle::framework::ir::Graph;
 using paddle::framework::ir::Node;
+using paddle::framework::ir::NodeComp;
 using paddle::framework::ir::GraphSafeRemoveNodes;
 using paddle::framework::ir::HasCircle;
 using paddle::framework::ir::GraphNum;
@@ -50,7 +51,7 @@ void BindGraph(py::module *m) {
   m->def("graph_num", GraphNum);
   m->def("topology_sort", TopologySortOperations,
          return_value_policy::reference);
-  m->def("build_adjacency_list", BuildOperationAdjList,
+  m->def("build_adjacency_list", BuildOperationAdjList<NodeComp>,
          return_value_policy::reference);
   py::class_<Graph, std::shared_ptr<Graph>>(
       *m, "Graph",
