@@ -27,6 +27,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+constexpr char kGraphToProgramVarsToRemove[] =
+    "__graph_to_program_vars_to_remove__";
+constexpr char kGraphToProgramSortKind[] = "__graph_to_program_sort_kind__";
+
 // Compare nodes via node id.
 class Graph;
 
@@ -116,6 +120,9 @@ std::vector<T *> FilterByNodeWrapper(const Graph &graph) {
 }
 
 std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph);
+
+void GraphToProgram(const Graph &graph, ProgramDesc *p_program,
+                    const SortKind *sort_kind = nullptr);
 
 }  // namespace ir
 }  // namespace framework
