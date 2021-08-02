@@ -89,19 +89,13 @@ class TestEyeOp3(TestEyeOp):
         self.dtype = np.float16
 
 
-# class TestEyeOp4(TestEyeOp):
-#     def initTestCase(self):
-#         self.num_rows = 99
-#         self.num_columns = 1
-
-
-class TestEyeOp5(TestEyeOp):
+class TestEyeOp4(TestEyeOp):
     def initTestCase(self):
         self.num_rows = 1
         self.num_columns = 99
 
 
-class TestEyeOp6(TestEyeOp):
+class TestEyeOp5(TestEyeOp):
     def initTestCase(self):
         self.num_rows = 100
         self.num_columns = 100
