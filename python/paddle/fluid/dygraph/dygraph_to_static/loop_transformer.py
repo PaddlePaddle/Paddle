@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import copy
-from paddle.utils.gast
+from paddle.utils import gast
 
 from collections import defaultdict
 from paddle.fluid import unique_name

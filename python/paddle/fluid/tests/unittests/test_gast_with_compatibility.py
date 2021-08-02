@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import ast
-from paddle.utils.gast
+from paddle.utils import gast
 import sys
 import textwrap
 import unittest

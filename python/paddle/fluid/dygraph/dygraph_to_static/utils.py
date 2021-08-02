@@ -19,7 +19,7 @@ import astor
 import atexit
 import copy
 import collections
-from paddle.utils.gast
+from paddle.utils import gast
 import inspect
 import os
 import six
