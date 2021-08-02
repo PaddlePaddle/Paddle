@@ -42,17 +42,18 @@ class ImperativeQuantAware(object):
     Applying quantization aware training (QAT) to the dgraph model.
     """
 
-    def __init__(self,
-                 quantizable_layer_type=['Conv2D', 'Linear'],
-                 weight_quantize_type='abs_max',
-                 activation_quantize_type='moving_average_abs_max',
-                 weight_bits=8,
-                 activation_bits=8,
-                 moving_rate=0.9,
-                 weight_preprocess_layer=None,
-                 act_preprocess_layer=None,
-                 weight_quantize_layer=None,
-                 act_quantize_layer=None):
+    def __init__(
+            self,
+            quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+            weight_quantize_type='abs_max',
+            activation_quantize_type='moving_average_abs_max',
+            weight_bits=8,
+            activation_bits=8,
+            moving_rate=0.9,
+            weight_preprocess_layer=None,
+            act_preprocess_layer=None,
+            weight_quantize_layer=None,
+            act_quantize_layer=None):
         """
         The constructor for ImperativeQuantAware.
 
@@ -232,17 +233,18 @@ class ImperativeQuantizeInputs(object):
     logic both for activation inputs and weight inputs.
     """
 
-    def __init__(self,
-                 quantizable_layer_type=['Conv2D', 'Linear'],
-                 weight_quantize_type='abs_max',
-                 activation_quantize_type='moving_average_abs_max',
-                 weight_bits=8,
-                 activation_bits=8,
-                 moving_rate=0.9,
-                 weight_preprocess_layer=None,
-                 act_preprocess_layer=None,
-                 weight_quantize_layer=None,
-                 act_quantize_layer=None):
+    def __init__(
+            self,
+            quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+            weight_quantize_type='abs_max',
+            activation_quantize_type='moving_average_abs_max',
+            weight_bits=8,
+            activation_bits=8,
+            moving_rate=0.9,
+            weight_preprocess_layer=None,
+            act_preprocess_layer=None,
+            weight_quantize_layer=None,
+            act_quantize_layer=None):
         """
         The constructor for ImperativeQuantizeInputs. 
 
@@ -303,6 +305,18 @@ class ImperativeQuantizeInputs(object):
         }
 
     def apply(self, model):
+        """
+        Quantize the weights and activations to calculate for specific 
+        layers in the dygraph model.
+
+        Args:
+            model(fluid.dygraph.Layer): The target model which would
+                calculate the input quantization scale.
+
+        Returns:
+            None
+        """
+
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
 
@@ -544,7 +558,9 @@ class ImperativeQuantizeOutputs(object):
         1. the type of input op should be conv2d, depthwise_conv2d or matmul
         2. the previous ops of the input op are not fake_quantize_dequantize ops
         """
-        target_op_types = ["conv2d", "depthwise_conv2d", "matmul"]
+        target_op_types = [
+            "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose"
+        ]
         if in_op.type not in target_op_types:
             return False
 
