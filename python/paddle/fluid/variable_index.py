@@ -289,9 +289,11 @@ def _setitem_impl_(var, item, value):
     ends = []
     steps = []
 
+    item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
 
-    for dim, slice_item in enumerate(item):
+    dim = 0
+    for _, slice_item in enumerate(item):
         if is_integer_or_scalar_tensor(slice_item):
             decrease_axes.append(dim)
             start = slice_item
@@ -304,6 +306,7 @@ def _setitem_impl_(var, item, value):
             step = slice_item.step
 
             if start is None and end is None and step is None:
+                dim += 1
                 continue
 
             step = 1 if step is None else step
@@ -326,7 +329,7 @@ def _setitem_impl_(var, item, value):
                 end = MAX_INTEGER if step > 0 else (0 - MAX_INTEGER)
         else:
             raise IndexError(
-                "Valid index accept int or slice or ellipsis, but received {}.".
+                "Valid index accept int, slice, ellipsis or None, but received {}.".
                 format(slice_item))
 
         axes.append(dim)
@@ -334,12 +337,15 @@ def _setitem_impl_(var, item, value):
         ends.append(end)
         steps.append(step)
 
+        dim += 1
+
     attrs = {
         'axes': axes,
         'starts': starts,
         'ends': ends,
         'steps': steps,
-        'decrease_axes': decrease_axes
+        'decrease_axes': decrease_axes,
+        'none_axes': none_axes
     }
 
     from .layers import utils

@@ -38,7 +38,8 @@ void format_string_append(std::string& str, const char* fmt,  // NOLINT
   CHECK_GE(len, 0);
   size_t oldlen = str.length();
   str.resize(oldlen + len + 1);
-  CHECK(snprintf(&str[oldlen], (size_t)len + 1, fmt, args...) == len);
+  CHECK(snprintf(&str[oldlen], (size_t)len + 1, fmt, args...) ==  // NOLINT
+        len);
   str.resize(oldlen + len);
 }
 
@@ -127,7 +128,24 @@ template <class Container>
 std::string join_strings(const Container& strs, char delim) {
   std::string str;
 
-  int i = 0;
+  size_t i = 0;
+  for (auto& elem : strs) {
+    if (i > 0) {
+      str += delim;
+    }
+
+    str += boost::lexical_cast<std::string>(elem);
+    ++i;
+  }
+
+  return str;
+}
+
+template <class Container>
+std::string join_strings(const Container& strs, const std::string& delim) {
+  std::string str;
+
+  size_t i = 0;
   for (auto& elem : strs) {
     if (i > 0) {
       str += delim;
