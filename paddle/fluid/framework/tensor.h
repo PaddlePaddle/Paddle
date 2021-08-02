@@ -246,6 +246,26 @@ class Tensor {
 
   void set_layout(const DataLayout layout) { layout_ = layout; }
 
+#ifdef PADDLE_WITH_ASCEND_CL
+  DataLayout npu_storage_layout() const { return npu_storage_layout_; }
+
+  void set_npu_storage_layout(const DataLayout npu_storage_layout) {
+    npu_storage_layout_ = npu_storage_layout;
+  }
+
+  /*! Return the dimensions of the memory block used in NPU FRACTAL_NZ
+   * data_format. */
+  const DDim& npu_storage_dims() const;
+
+  /*! Return the numel of the memory block used in NPU FRACTAL_NZ data_format.
+   */
+  int64_t npu_storage_numel() const;
+
+  /*! Resize the dimensions of the memory block used in NPU FRACTAL_NZ
+   * data_format. */
+  Tensor& ResizeNPUDims(const DDim& npu_storage_dims);
+#endif
+
   void clear() {
     holder_ = nullptr;
     offset_ = 0;
@@ -303,6 +323,11 @@ class Tensor {
   // it doesn't fix the real issue, i.e. feeder should set up tensor layout
   // according to actual input data
   DataLayout layout_ = DataLayout::kNCHW;
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  DDim npu_storage_dims_;
+  DataLayout npu_storage_layout_ = DataLayout::kNCHW;
+#endif
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.

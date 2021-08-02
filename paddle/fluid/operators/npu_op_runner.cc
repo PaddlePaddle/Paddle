@@ -45,6 +45,20 @@ static std::map<DataLayout, aclFormat> DATA_LAYOUT_2_ACL_FORMAT = {
     {DataLayout::kNCHW, ACL_FORMAT_NCHW},
     {DataLayout::kNHWC, ACL_FORMAT_NHWC},
     {DataLayout::kAnyLayout, ACL_FORMAT_ND},
+    {DataLayout::kFractalNZ, ACL_FORMAT_FRACTAL_NZ},
+};
+
+static std::map<aclFormat, DataLayout> ACL_FORMAT_2_DATA_LAYOUT = {
+    {ACL_FORMAT_NCHW, DataLayout::kNCHW},
+    {ACL_FORMAT_NHWC, DataLayout::kNHWC},
+    {ACL_FORMAT_ND, DataLayout::kAnyLayout},
+    {ACL_FORMAT_FRACTAL_NZ, DataLayout::kFractalNZ},
+};
+
+static std::map<aclFormat, aclFormat> ACL_FORMAT_2_BASE_FORMAT = {
+    {ACL_FORMAT_NCHW, ACL_FORMAT_NCHW},
+    {ACL_FORMAT_ND, ACL_FORMAT_ND},
+    {ACL_FORMAT_FRACTAL_NZ, ACL_FORMAT_ND},
 };
 
 aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype) {
@@ -73,6 +87,55 @@ aclrtStream GetCurrentNPUStream(int device_id) {
   auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
       pool.Get(platform::NPUPlace(device_id)));
   return dev_ctx->stream();
+}
+
+std::vector<int64_t> InferShapeToStandardNCHW(std::vector<int64_t> dims) {
+  // Get the standard shape of NCHW format
+  std::vector<int64_t> res;
+  res.resize(4);
+  PADDLE_ENFORCE_LE(
+      dims.size(), 4,
+      platform::errors::InvalidArgument(
+          "The input shape should <= 4, but got %d", dims.size()));
+  switch (dims.size()) {
+    case 0:
+      res[0] = 1;
+      res[1] = 1;
+      res[2] = 1;
+      res[3] = 1;
+      break;
+    case 1:
+      res[0] = 1;
+      res[1] = dims[0];
+      res[2] = 1;
+      res[3] = 1;
+      break;
+    case 2:
+      res[0] = 1;
+      res[1] = dims[0];
+      res[2] = dims[1];
+      res[3] = 1;
+      break;
+    case 3:
+      res[0] = 1;
+      res[1] = dims[0];
+      res[2] = dims[1];
+      res[3] = dims[2];
+      break;
+    case 4:
+      res[0] = dims[0];
+      res[1] = dims[1];
+      res[2] = dims[2];
+      res[3] = dims[3];
+      break;
+    default:
+      PADDLE_ENFORCE_LE(
+          dims.size(), 4,
+          platform::errors::InvalidArgument(
+              "The input shape should <= 4 in NCHW format, but got %d",
+              dims.size()));
+  }
+  return res;
 }
 
 NpuOpRunner::NpuOpRunner() {}
