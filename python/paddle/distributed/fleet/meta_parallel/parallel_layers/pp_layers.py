@@ -68,11 +68,12 @@ class SegmentLayers(object):
         elif self.method.startswith('module:'):
             layertype = self.method.split(':')[1]
             weights = [0] * len(self._layers_desc)
-            for idx in self._find_layer_type(layertype):
+            for idx in self._gen_layer_weight(layertype):
                 weights[idx] = 1
+
             assert sum(
                 weights
-            ) % self.num_parts == 0, "number of layertype () should be divided by parts number({})".format(
+            ) % self.num_parts == 0, "number of layertype ({}) should be divided by parts number({})".format(
                 sum(weights), self.num_parts)
             part_size = sum(weights) // self.num_parts
             result = [0 for _ in range(self.num_parts + 1)]
@@ -88,25 +89,26 @@ class SegmentLayers(object):
             result[self.num_parts] = len(weights)
             return result
 
-    def _find_layer_type(self, layername):
-        idxs = []
-        typeregex = re.compile(layername, re.IGNORECASE)
+    def _gen_layer_weight(self, layername):
+        weight_idxs = []
+        regex = re.compile(layername, re.IGNORECASE)
         for idx, layer in enumerate(self._layers_desc):
             name = None
-            if isinstance(layer, LayerDesc):
-                name = layer.layer_func.__name__
-            elif isinstance(layer, Layer):
+            if isinstance(layer, Layer):
                 name = layer.__class__.__name__
+            elif isinstance(layer, LayerDesc):
+                name = layer.layer_func.__name__
             else:
                 try:
                     name = layer.__name__
                 except AttributeError:
+                    # it is not error
                     continue
-            if typeregex.search(name):
-                idxs.append(idx)
+            if regex.search(name):
+                weight_idxs.append(idx)
 
-        assert len(idxs) > 0
-        return idxs
+        assert len(weight_idxs) > 0
+        return weight_idxs
 
     def uniform(self, num_items, num_parts):
         result = [0 for _ in range(num_parts + 1)]
