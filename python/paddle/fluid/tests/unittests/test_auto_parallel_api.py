@@ -74,13 +74,18 @@ class TestAutoParallelAPI(unittest.TestCase):
         x_mesh_id = x.attr(mesh_attr)
         self.assertEqual(x_mesh_id, mesh._id)
         x_mesh = x.process_mesh
+
+        allatts = x.attr_names
         self.assertEqual(x_mesh, mesh)
         shard_mask_attr = _append_attr_suffix('mask')
         self.assertEqual(x.attr(shard_mask_attr), MASK.flatten().tolist())
         self.assertEqual(x.shard_mask, MASK.flatten().tolist())
         offload_attr = _append_attr_suffix('offload_device')
         self.assertEqual(y.attr(offload_attr), "gpu:3")
+        self.assertEqual(y.desc.has_attr(offload_attr), True)
         self.assertEqual(y.offload_device, "gpu:3")
+        y._remove_attr(offload_attr)
+        self.assertEqual(y.has_attr(offload_attr), False)
         ops = paddle.static.default_main_program().block(0).ops
         first_op = ops[0]
         last_op = ops[-1]
@@ -100,8 +105,7 @@ class TestAutoParallelAPI(unittest.TestCase):
             **kwargs)
         ops = paddle.static.default_main_program().block(0).ops
         last_op = ops[-1]
-        print("main:", paddle.static.default_main_program())
-        print("in type:", last_op.type)
+
         self.assertEqual(last_op.process_mesh, mesh)
         self.assertEqual(last_op.dims_mapping(data2.name), DIMS_MAPPING1)
         self.assertEqual(last_op.dims_mapping(data3.name), DIMS_MAPPING2)
@@ -115,6 +119,7 @@ class TestAutoParallelAPI(unittest.TestCase):
 
         self.assertEqual(MESH.parent, None)
         self.assertEqual(mesh1.parent, MESH)
+        self.assertEqual(mesh1._desc.parent, MESH._id)
         self.assertEqual(mesh4.parent, mesh1)
         self.assertEqual(mesh5.parent, mesh1)
         self.assertEqual(mesh1, mesh2)

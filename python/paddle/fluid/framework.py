@@ -1892,6 +1892,18 @@ class Variable(object):
         """
         self._update_desc_attr(name, val)
 
+    def has_attr(self, name):
+        """
+        Whether this Variable has the attribute with name or not.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            bool: True if has this attribute.
+        """
+        return self.desc.has_attr(name)
+
     def _remove_attr(self, name):
         self.desc.remove_attr(name)
 

@@ -274,7 +274,6 @@ def shard_op(op_fn, mesh, dims_mapping_dict, **kwargs):
     if dims_mapping_dict is None: dims_mapping_dict = dict()
     for idx in range(op_size, new_op_size):
         op = main_block.ops[idx]
-        print("in paddle:", op.type)
         attr_name = _append_attr_suffix('mesh_id')
         op._set_attr(attr_name, mesh._id)
         for var_name in op.input_arg_names + op.output_arg_names:
