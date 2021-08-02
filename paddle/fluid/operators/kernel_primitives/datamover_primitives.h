@@ -74,7 +74,7 @@ __device__ void read_data(T* dst, const T* __restrict__ src, int size) {
  * stride_ny: the stride of src
  * the shape of dst is [NY, NX]
  */
-template <typename T, int NX, int NY, int BS, int Shape_Size>
+template <typename T, int NX, int NY, int BS, int ShapeSize>
 __device__ __forceinline__ void read_data_bc(
     T* dst, const T* __restrict__ src, uint32_t fix, FastDivMod* divmoders,
     uint32_t* strides, uint32_t stride_nx, uint32_t stride_ny) {
@@ -88,7 +88,7 @@ __device__ __forceinline__ void read_data_bc(
       uint32_t idx = base_offset + ny * stride_ny + nx * stride_nx;
       offset = 0;
 #pragma unroll
-      for (int i = 0; i < Shape_Size; ++i) {
+      for (int i = 0; i < ShapeSize; ++i) {
         auto fast_divmoder = divmoders[i].Divmod(idx);
         idx = fast_divmoder.val[0];
         offset += fast_divmoder.val[1] * strides[i];
