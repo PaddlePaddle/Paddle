@@ -127,7 +127,10 @@ class ModelPipe(PipelineLayer):
         self.descs.append(lambda x: x[0])
 
         super().__init__(
-            layers=self.descs, loss_fn=CriterionPipe(), topology=topology)
+            layers=self.descs,
+            loss_fn=CriterionPipe(),
+            topology=topology,
+            seg_method="module:TransformerNetPipe")
 
 
 class TestDistPPTraning(unittest.TestCase):
