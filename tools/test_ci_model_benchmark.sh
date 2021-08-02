@@ -20,6 +20,7 @@ function check_whl {
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
     pip uninstall -y paddlepaddle_gpu
     pip install build/python/dist/*.whl
+    mkdir build/pr_whl && cp build/python/dist/*.whl build/pr_whl
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
 
     mkdir -p /tmp/pr && mkdir -p /tmp/develop
@@ -54,6 +55,8 @@ function compile_install_paddle {
     export WITH_TESTING=OFF
     export WITH_UNITY_BUILD=ON
     check_whl
+    cd /workspace/Paddle
+    git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/paddlepaddle/benchmark.git
 }
 
 function prepare_data {
@@ -61,10 +64,8 @@ function prepare_data {
     if [ -d "benchmark_data" ];then 
         echo -e "benchmark_data exist!"
     else
-        mkdir benchmark_data
-        cd benchmark_data
-        mkdir dataset
-        cd dataset
+        mkdir benchmark_data && cd benchmark_data
+        mkdir dataset && cd dataset
         wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/Bert.zip 
         unzip Bert.zip
         wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/imagenet100_data.zip
@@ -73,16 +74,26 @@ function prepare_data {
 }
 
 function run_model_benchmark {
+    cd /workspace/Paddle
+    pip install build/pr_whl/*.whl
     cd ${cache_dir}/benchmark_data
-    if [ -d "benchmark" ];then rm -rf benchmark
-    fi
-    git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/paddlepaddle/benchmark.git
     export data_path=${cache_dir}/benchmark_data/dataset
-    export BENCHMARK_ROOT=${cache_dir}/benchmark_data/benchmark
+    export BENCHMARK_ROOT=/workspace/Paddle/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
     bash model_ci.sh
 }
 
-compile_install_paddle
-prepare_data
-run_model_benchmark
+case $1 in
+  whl_check)
+    compile_install_paddle
+  ;;
+  run_benchmark)
+    prepare_data
+    run_model_benchmark
+  ;;
+  *)
+    compile_install_paddle
+    prepare_data
+    run_model_benchmark
+  ;;
+esac
