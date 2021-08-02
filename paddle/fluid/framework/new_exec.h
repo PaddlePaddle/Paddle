@@ -193,7 +193,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     AttributeMap op_attr_map = op->GetAttrMap();
 
     if (info.Checker() != nullptr) {
-      info.Checker()->Check(&attrs_1);
+      info.Checker()->Check(&op_attr_map);
     }
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
@@ -286,7 +286,8 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           var_scope->var_list.push_back(v);
 
           VariableNameMap copy_in_map;
-          copy_in_map["X"] = {inputs_names[var_name_item.first][i]};
+          auto x_iter = inputs_names.find(var_name_item.first);
+          copy_in_map["X"] = {x_iter->second[i]};
           VariableNameMap copy_out_map;
           copy_out_map["Out"] = {new_var_name};
           AttributeMap attr_map;
@@ -353,8 +354,8 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     auto kernel_iter = kernels.find(expected_kernel_key);
     PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
                       platform::errors::NotFound(
-                          "Operator (%s) does not have kernel for %s.", type_,
-                          KernelTypeToString(expected_kernel_key)));
+                          "Operator (%s) does not have kernel for %s.",
+                          op->Type(), KernelTypeToString(expected_kernel_key)));
 
     op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
     op_func_node.kernel_func_(exec_ctx);
