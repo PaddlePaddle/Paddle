@@ -17,7 +17,8 @@ import re
 from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
 from functools import partial
-from paddle.distributed.fleet.utils.recompute import recompute, check_recompute_necessary
+from paddle.distributed.fleet.utils.recompute import recompute
+from ..pp_utils.utils import _hp_recompute
 
 __all__ = []
 
@@ -130,7 +131,7 @@ class PipelineLayer(Layer):
                  topology=None,
                  loss_fn=None,
                  seg_method="uniform",
-                 checkpoint_interval=0):
+                 recompute_interval=0):
         super(PipelineLayer, self).__init__()
         if num_stages is None and topology is None:
             raise ValueError("should provide num_stages or topology")
@@ -143,7 +144,7 @@ class PipelineLayer(Layer):
         self.layers = layers
         self._loss_fn = loss_fn
         self._topo = topology
-        self._checkpoint_interval = checkpoint_interval
+        self._recompute_interval = recompute_interval
         world_size = dist.get_world_size()
         self.global_rank = dist.get_rank()
 
@@ -312,29 +313,33 @@ class PipelineLayer(Layer):
 
     def forward(self, input):
         def exec_range_func(start, end):
-            def exec_func(inputs):
+            def exec_func(*inputs):
+                if len(inputs) == 1:
+                    inputs = inputs[0]
+
                 for idx, layer in enumerate(self.run_function[start:end]):
                     inputs = layer(inputs)
+
                 return inputs
 
             return exec_func
 
-        if self._checkpoint_interval == 0:
+        if self._recompute_interval == 0:
             func = exec_range_func(0, len(self.run_function))
             input = func(input)
         else:
             num_layers = len(self.run_function)
-            for start_idx in range(0, num_layers, self._checkpoint_interval):
-                end_idx = min(start_idx + self._checkpoint_interval, num_layers)
+            for start_idx in range(0, num_layers, self._recompute_interval):
+                end_idx = min(start_idx + self._recompute_interval, num_layers)
                 funcs = self.run_function[start_idx:end_idx]
                 if not isinstance(input, tuple):
                     input = (input, )
 
                 if self._is_recompute(funcs, input):
-                    input = recompute(
+                    input = _hp_recompute(
                         exec_range_func(start_idx, end_idx), *input)
                 else:
-                    input = exec_range_func(start_idx, end_idx)(input)
+                    input = exec_range_func(start_idx, end_idx)(*input)
 
         return input
 

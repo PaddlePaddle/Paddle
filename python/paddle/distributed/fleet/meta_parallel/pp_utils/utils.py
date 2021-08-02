@@ -12,9 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import abc
 import paddle
-from ...utils import log_util as hp_util
+from paddle.fluid import core
+from paddle.autograd import PyLayer
+from paddle.fluid import framework
+import contextlib
+from paddle.distributed.fleet.utils.recompute import check_recompute_necessary, detach_variable, swith_rng_state
+
+import logging
+logger = logging.getLogger(__name__)
+formatter = logging.Formatter(
+    fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 __all__ = []
 
@@ -79,3 +90,107 @@ def get_tensor_bytes(tensor):
     else:
         raise ValueError("unknown data type: {}".format(tensor.dtype))
     return tensor.numel() * elem_size
+
+
+class _HPRecomputeFunction(PyLayer):
+    @staticmethod
+    def forward(ctx, run_function, all_outputs, *args):
+        check_recompute_necessary(args)
+
+        # store for recomputing 
+        ctx.run_function = run_function
+
+        # save input for backward
+        ctx.inputs = []
+        ctx.tensor_indices = []
+        tensor_inputs = []
+        for i, arg in enumerate(args):
+            if paddle.is_tensor(arg):
+                tensor_inputs.append(arg)
+                ctx.tensor_indices.append(i)
+                ctx.inputs.append(None)
+            else:
+                ctx.inputs.append(arg)
+        ctx.save_for_backward(*tensor_inputs)
+
+        cur_device = paddle.get_device()
+        if 'gpu:' not in cur_device:
+            raise RuntimeError(
+                "Recompute with RNG perserve is not support current device: {}.".
+                format(cur_device))
+        ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
+
+        # TODO support AMP
+        tracer = framework._dygraph_tracer()
+        ctx.is_fw_autocast = tracer._enable_autocast
+        ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
+
+        with paddle.no_grad():
+            outputs = run_function(*args)
+
+        if paddle.is_tensor(outputs):
+            all_outputs += [outputs]
+            return outputs
+        else:
+            all_outputs += outputs
+            return tuple(outputs)
+
+    @staticmethod
+    def backward(ctx, *args):
+        with paddle.fluid.dygraph.guard():
+            # Restore inputs
+            inputs = list(ctx.inputs)
+            tensor_indices = ctx.tensor_indices
+            tensors = ctx.saved_tensor()
+            for i, idx in enumerate(tensor_indices):
+                inputs[idx] = tensors[i]
+
+            tracer = framework._dygraph_tracer()
+            tracer._has_grad = True
+
+            # NOTE support AMP
+            # need restore auto_cast state as well as w/b list
+            with swith_rng_state(ctx.fw_cuda_rng_state):
+                with paddle.amp.auto_cast(
+                        enable=ctx.is_fw_autocast,
+                        custom_white_list=ctx.amp_white_list,
+                        custom_black_list=ctx.amp_black_list):
+                    detached_inputs = detach_variable(tuple(inputs))
+                    outputs = ctx.run_function(*detached_inputs)
+
+            if isinstance(outputs, core.VarBase):
+                outputs = (outputs, )
+            assert len(outputs) == len(args)
+
+            # run backward() with only tensor that requires grad
+            forward_outputs_with_grad = []
+            backward_inputs = list(args)
+            for i in range(len(outputs)):
+                if isinstance(outputs[i],
+                              core.VarBase) and not outputs[i].stop_gradient:
+                    forward_outputs_with_grad.append(outputs[i])
+            if len(forward_outputs_with_grad) == 0:
+                raise RuntimeError(
+                    "none of output has stop_gradient=False, this recompute() is not necessary"
+                )
+
+            assert len(backward_inputs) == len(
+                forward_outputs_with_grad
+            ), "number of forward outputs is [{}], but the backward got [{}] inputs".format(
+                len(forward_outputs_with_grad), len(backward_inputs))
+
+            # actually backward            
+            paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
+
+            grads = list(inp._grad_ivar() for inp in detached_inputs
+                         if isinstance(inp, core.VarBase))
+            return grads
+
+
+def _hp_recompute(function, *args):
+    all_outputs = []
+    _HPRecomputeFunction.apply(function, all_outputs, *args)
+    if len(all_outputs) == 1:
+        return all_outputs[0]
+    else:
+        return tuple(all_outputs)
