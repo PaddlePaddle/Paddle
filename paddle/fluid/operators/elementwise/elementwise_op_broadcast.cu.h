@@ -479,8 +479,6 @@ void LaunchBroadcastElementwiseCudaKernel(
   }
   int out_vec_size = GetVectorizedSizeImpl<OutT>(out->data<OutT>());
   int vec_size = std::min(out_vec_size, in_vec_size);
-  LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 4>(ctx, ins, out,
-                                                             axis, func);
 
   switch (vec_size) {
     case 4: {
