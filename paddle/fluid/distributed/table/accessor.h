@@ -18,14 +18,15 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/distributed/common/registerer.h"
+#include "paddle/fluid/distributed/common/afs_warpper.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 
 namespace paddle {
 namespace distributed {
-struct FsDataConverter {
-  std::string converter;
-  std::string deconverter;
-};
+//struct FsDataConverter {
+//  std::string converter;
+//  std::string deconverter;
+//};
 
 struct Region {
   Region() : data(NULL), size(0) {}

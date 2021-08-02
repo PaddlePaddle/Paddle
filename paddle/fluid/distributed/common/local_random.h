@@ -6,7 +6,7 @@
 #include <assert.h>
 
 namespace paddle {
-namespace ps {
+namespace distributed {
 
 // Get time in seconds.
 inline double current_realtime() {

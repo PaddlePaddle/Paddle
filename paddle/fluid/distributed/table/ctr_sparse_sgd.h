@@ -1,39 +1,20 @@
-#ifndef BAIDU_BAIDU_PSLIB_SGD_SPARSE_SGD_H
-#define BAIDU_BAIDU_PSLIB_SGD_SPARSE_SGD_H
+#pragma once
 #include <vector>
 #include <thread>
 #include <math.h>
 #include "glog/logging.h"       // for CHECK
-#include "common/local_random.h"    // for local_uniform_real_distribution
-#include "Eigen/Dense"
-#include "proto/ps.pb.h"
+#include "paddle/fluid/distributed/common/local_random.h"    // for local_uniform_real_distribution
+//#include "Eigen/Dense"
+#include "paddle/fluid/distributed/ps.pb.h"
+#include "paddle/fluid/distributed/common/registerer.h"
 
 namespace paddle {
-namespace ps {
+namespace distributed {
 
-inline std::vector<float>& local_float_vec() {
-    thread_local std::vector<float> vec;
-    return vec;
-}
-
-inline std::vector<float>& local_gradient_vec() {
-    thread_local std::vector<float> vec;
-    return vec;
-}
-
-inline std::vector<float>& local_g2sum_vec() {
-    thread_local std::vector<float> vec;
-    return vec;
-}
-
-inline std::vector<float>& local_score_vec() {
-    thread_local std::vector<float> vec;
-    return vec;
-}
-
-class SparseValueSGDRule {
+class CtrSparseValueSGDRule {
 public:
-    virtual ~SparseValueSGDRule() {}
+    CtrSparseValueSGDRule() {}
+    virtual ~CtrSparseValueSGDRule() {}
     virtual void load_config(const SparseCommonSGDRuleParameter& param, size_t emb_dim) {
         _embedding_dim = emb_dim;
         _name = param.name();
@@ -73,7 +54,10 @@ private:
     std::string _name;
 };
 
-class SparseNaiveSGDRule : public SparseValueSGDRule {
+REGISTER_PSCORE_REGISTERER(CtrSparseValueSGDRule);
+
+
+class CtrSparseNaiveSGDRule : public CtrSparseValueSGDRule {
 public:
     virtual void load_config(const SparseCommonSGDRuleParameter& param, size_t emb_dim);
     virtual void update_value_work(float* w, float* sgd, const float* push_value, float scale);
@@ -85,7 +69,7 @@ private:
     float _learning_rate;
 };
 
-class SparseAdaGradSGDRule : public SparseValueSGDRule {
+class CtrSparseAdaGradSGDRule : public CtrSparseValueSGDRule {
 public:
     virtual void load_config(const SparseCommonSGDRuleParameter& param, size_t emb_dim);
     virtual void update_value_work(float* w, float* sgd, const float* push_value, float scale);
@@ -101,7 +85,7 @@ private:
     float _initial_g2sum;
 };
 
-class StdAdaGradSGDRule : public SparseValueSGDRule {
+class CtrStdAdaGradSGDRule : public CtrSparseValueSGDRule {
 public:
     virtual void load_config(const SparseCommonSGDRuleParameter& param, size_t emb_dim);
     virtual void update_value_work(float* w, float* sgd, const float* push_value, float scale);
@@ -117,7 +101,7 @@ private:
     float _initial_g2sum;
 };
 
-class SparseAdamSGDRule : public SparseValueSGDRule {
+class CtrSparseAdamSGDRule : public CtrSparseValueSGDRule {
 public:
     virtual void load_config(const SparseCommonSGDRuleParameter& param, size_t emb_dim);
     virtual void update_value_work(float* w, float* sgd, const float* push_value, float scale);
@@ -144,32 +128,6 @@ protected:
     float _ada_epsilon;
 };
 
-struct HitIntervalSGDRule {
-    float learning_rate, initial_value;
-
-    void load_config(const HitIntervalSGDRuleParameter& param) {
-        learning_rate = param.learning_rate();
-        initial_value = param.initial_value();
-    }
-    template<class T>
-    void init_value(int n, T w[], bool zero_intialized = false) {
-        for (int i = 0; i < n; i++) {
-            w[i] = initial_value;
-        }
-    }
-
-    template<class T>
-    void update_value(int n, T w[], const T hit_interval_new[], const T need_hit_interval[]) {
-        for (int i = 0; i < n; i++) {
-            if (fabs(need_hit_interval[i] - 1.0) < 1e-4) {
-                w[i] = (1 - learning_rate) * w[i] + learning_rate * hit_interval_new[i];
-            } else {
-                w[i] = 0.0;
-            }
-        }
-    }
-};
 
 }
 }
-#endif

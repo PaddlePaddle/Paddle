@@ -48,14 +48,14 @@ namespace paddle {
 namespace distributed {
 
 
-static const int DOWNPOUR_DOWNPOUR_SPARSE_SHARD_BUCKET_NUM_BITS = 6;
-static const size_t DOWNPOUR_SPARSE_SHARD_BUCKET_NUM = (size_t)1
-                                              << DOWNPOUR_DOWNPOUR_SPARSE_SHARD_BUCKET_NUM_BITS;
+static const int CTR_SPARSE_SHARD_BUCKET_NUM_BITS = 6;
+static const size_t CTR_SPARSE_SHARD_BUCKET_NUM = (size_t)1
+                                              << CTR_SPARSE_SHARD_BUCKET_NUM_BITS;
 
-class DownpourFixedFeatureValue {
+class CtrFixedFeatureValue {
   public:
-    DownpourFixedFeatureValue() {}
-    ~DownpourFixedFeatureValue() {}
+    CtrFixedFeatureValue() {}
+    ~CtrFixedFeatureValue() {}
     float* data() {
       return data_.data();
     }
@@ -73,19 +73,19 @@ class DownpourFixedFeatureValue {
 };
 
 
-class DownpourValueBlock {
+class CtrValueBlock {
  public:
-  typedef typename robin_hood::unordered_map<uint64_t, DownpourFixedFeatureValue *> map_type;
-  ValueBlock() {}
-  ~ValueBlock() {}
+  typedef typename robin_hood::unordered_map<uint64_t, CtrFixedFeatureValue *> map_type;
+  CtrValueBlock() {}
+  ~CtrValueBlock() {}
 
-  DownpourFixedFeatureValue *Init(const uint64_t &id) {
+  CtrFixedFeatureValue *Init(const uint64_t &id) {
     size_t hash = _hasher(id);
     size_t bucket = compute_bucket(hash);
     auto &table = values_[bucket];
     
-    DownpourFixedFeatureValue *value = nullptr;
-    value = butil::get_object<DownpourFixedFeatureValue>();
+    CtrFixedFeatureValue *value = nullptr;
+    value = butil::get_object<CtrFixedFeatureValue>();
     table[id] = value;
     return value;
   }
@@ -99,13 +99,13 @@ class DownpourValueBlock {
     // auto &value = table.at(id);
     // return value->data_.data();
     auto res = table.find(id);
-    DownpourFixedFeatureValue *value = res->second;
+    CtrFixedFeatureValue *value = res->second;
     return value->data();
   }
 
   // TODO: whether need this?
   // for load, to reset count, unseen_days
-  DownpourFixedFeatureValue *GetValue(const uint64_t &id) {
+  CtrFixedFeatureValue *GetValue(const uint64_t &id) {
     size_t hash = _hasher(id);
     size_t bucket = compute_bucket(hash);
 
@@ -131,15 +131,15 @@ class DownpourValueBlock {
   }
 
   size_t compute_bucket(size_t hash) {
-    if (DOWNPOUR_SPARSE_SHARD_BUCKET_NUM == 1) {
+    if (CTR_SPARSE_SHARD_BUCKET_NUM == 1) {
       return 0;
     } else {
-      return hash >> (sizeof(size_t) * 8 - DOWNPOUR_DOWNPOUR_SPARSE_SHARD_BUCKET_NUM_BITS);
+      return hash >> (sizeof(size_t) * 8 - CTR_SPARSE_SHARD_BUCKET_NUM_BITS);
     }
   }
   
   map_type::iterator end() {
-    return values_[DOWNPOUR_SPARSE_SHARD_BUCKET_NUM - 1].end();
+    return values_[CTR_SPARSE_SHARD_BUCKET_NUM - 1].end();
   }
 
   map_type::iterator Find(uint64_t id) {
@@ -170,7 +170,7 @@ class DownpourValueBlock {
   }
 
  public:
-  map_type values_[DOWNPOUR_SPARSE_SHARD_BUCKET_NUM];
+  map_type values_[CTR_SPARSE_SHARD_BUCKET_NUM];
   std::hash<uint64_t> _hasher;
 
 };

@@ -28,6 +28,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/distributed/common/afs_warpper.h"
 
 namespace paddle {
 namespace distributed {

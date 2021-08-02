@@ -25,6 +25,8 @@
 #include "paddle/fluid/distributed/table/ssd_sparse_table.h"
 #endif
 #include "paddle/fluid/distributed/table/tensor_accessor.h"
+#include "paddle/fluid/distributed/table/ctr_accessor.h"
+#include "paddle/fluid/distributed/table/ctr_sparse_table.h"
 #include "paddle/fluid/distributed/table/tensor_table.h"
 
 namespace paddle {
@@ -40,7 +42,15 @@ REGISTER_PSCORE_CLASS(Table, BarrierTable);
 REGISTER_PSCORE_CLASS(Table, TensorTable);
 REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
 REGISTER_PSCORE_CLASS(Table, GlobalStepTable);
+REGISTER_PSCORE_CLASS(Table, CtrSparseTable);
 REGISTER_PSCORE_CLASS(ValueAccessor, CommMergeAccessor);
+REGISTER_PSCORE_CLASS(ValueAccessor, CtrDoubleUnitAccessor);
+REGISTER_PSCORE_CLASS(ValueAccessor, CtrUnitAccessor);
+REGISTER_PSCORE_CLASS(ValueAccessor, CtrCommonAccessor);
+REGISTER_PSCORE_CLASS(CtrSparseValueSGDRule, CtrStdAdaGradSGDRule);
+REGISTER_PSCORE_CLASS(CtrSparseValueSGDRule, CtrSparseAdamSGDRule);
+REGISTER_PSCORE_CLASS(CtrSparseValueSGDRule, CtrSparseNaiveSGDRule);
+REGISTER_PSCORE_CLASS(CtrSparseValueSGDRule, CtrSparseAdaGradSGDRule);
 
 int32_t TableManager::initialize() {
   static bool initialized = false;

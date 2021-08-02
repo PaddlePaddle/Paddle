@@ -5,11 +5,11 @@
 #include <vector>
 #include <string>
 #include <iostream>
-#include "ps_string.h"
-#include "proto/ps.pb.h"
+#include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/distributed/ps.pb.h"
 
 namespace paddle {
-namespace ps {
+namespace distributed {
 struct FsDataConverter {
     std::string converter;
     std::string deconverter;

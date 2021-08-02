@@ -1,8 +1,8 @@
-#include "common/afs_warpper.h"
-#include "common/fs.h"
+#include "paddle/fluid/distributed/common/afs_warpper.h"
+#include "paddle/fluid/framework/io/fs.h"
 
 namespace paddle {
-namespace ps {
+namespace distributed {
 	//AfsClient impl
     int AfsClient::initialize(const FsClientParameter& fs_client_param) {
         //temporarily implemented with hdfs-client

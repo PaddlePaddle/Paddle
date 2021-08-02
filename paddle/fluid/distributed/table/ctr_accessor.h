@@ -3,17 +3,17 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "paddle/fluid/distributed/ps.pb.h"
-#include "accessor.h"
-#include "sgd/sparse_sgd.h"  //TODO
+#include "paddle/fluid/distributed/table/accessor.h"
+#include "paddle/fluid/distributed/table/ctr_sparse_sgd.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 
 namespace paddle {
-namespace ps {
+namespace distributed {
 
 // double unit accessor
-class DownpourDoubleUnitAccessor : public ValueAccessor {
+class CtrDoubleUnitAccessor : public ValueAccessor {
   public:
-    struct DownpourDoubleUnitFeatureValue {
+    struct CtrDoubleUnitFeatureValue {
       /*
 	 float unseen_days;
 	 float delta_score;
@@ -94,7 +94,7 @@ class DownpourDoubleUnitAccessor : public ValueAccessor {
       int embedx_dim;
       int embedx_sgd_dim;
     };
-    struct DownpourDoubleUnitPushValue {
+    struct CtrDoubleUnitPushValue {
       /*
 	 float slot;
 	 float show;
@@ -115,34 +115,34 @@ class DownpourDoubleUnitAccessor : public ValueAccessor {
 	return 0;
       }
       static int show_index() {
-	return DownpourDoubleUnitPushValue::slot_index() + 1;
+	return CtrDoubleUnitPushValue::slot_index() + 1;
       }
       static int click_index() {
-	return DownpourDoubleUnitPushValue::show_index() + 1;
+	return CtrDoubleUnitPushValue::show_index() + 1;
       }
       static int embed_g_index() {
-	return DownpourDoubleUnitPushValue::click_index() + 1;
+	return CtrDoubleUnitPushValue::click_index() + 1;
       }
       static int embedx_g_index() {
-	return DownpourDoubleUnitPushValue::embed_g_index() + 1;
+	return CtrDoubleUnitPushValue::embed_g_index() + 1;
       }
       static float& slot(float* val) {
-	return val[DownpourDoubleUnitPushValue::slot_index()];
+	return val[CtrDoubleUnitPushValue::slot_index()];
       }
       static float& show(float* val) {
-	return val[DownpourDoubleUnitPushValue::show_index()];
+	return val[CtrDoubleUnitPushValue::show_index()];
       }
       static float& click(float* val) {
-	return val[DownpourDoubleUnitPushValue::click_index()];
+	return val[CtrDoubleUnitPushValue::click_index()];
       }
       static float& embed_g(float* val) {
-	return val[DownpourDoubleUnitPushValue::embed_g_index()];
+	return val[CtrDoubleUnitPushValue::embed_g_index()];
       }
       static float* embedx_g(float* val) {
-	return val + DownpourDoubleUnitPushValue::embedx_g_index();
+	return val + CtrDoubleUnitPushValue::embedx_g_index();
       }
     };
-    struct DownpourDoubleUnitPullValue {
+    struct CtrDoubleUnitPullValue {
       /*
 	 float show;
 	 float click;
@@ -171,20 +171,20 @@ class DownpourDoubleUnitAccessor : public ValueAccessor {
 	return 3;
       }
       static float& show(float* val) {
-	return val[DownpourDoubleUnitPullValue::show_index()];
+	return val[CtrDoubleUnitPullValue::show_index()];
       }
       static float& click(float* val) {
-	return val[DownpourDoubleUnitPullValue::click_index()];
+	return val[CtrDoubleUnitPullValue::click_index()];
       }
       static float& embed_w(float* val) {
-	return val[DownpourDoubleUnitPullValue::embed_w_index()];
+	return val[CtrDoubleUnitPullValue::embed_w_index()];
       }
       static float* embedx_w(float* val) {
-	return val + DownpourDoubleUnitPullValue::embedx_w_index();
+	return val + CtrDoubleUnitPullValue::embedx_w_index();
       }
     };
-    DownpourDoubleUnitAccessor() {}
-    virtual ~DownpourDoubleUnitAccessor() {}
+    CtrDoubleUnitAccessor() {}
+    virtual ~CtrDoubleUnitAccessor() {}
     virtual int initialize();
     // value维度
     virtual size_t dim();
@@ -217,8 +217,8 @@ class DownpourDoubleUnitAccessor : public ValueAccessor {
     // update delta_score and unseen_days after save
     virtual void update_stat_after_save(float* value, int param) override;
     // 判断该value是否保存到ssd
-    virtual bool save_ssd(float* value);
-    virtual bool save_cache(float* value, int param, double global_cache_threshold) override;
+    //virtual bool save_ssd(float* value);
+    //virtual bool save_cache(float* value, int param, double global_cache_threshold) override;
     // keys不存在时，为values生成随机值
     // 要求value的内存由外部调用者分配完毕
     virtual int32_t create(float** value, size_t num);
@@ -244,9 +244,11 @@ class DownpourDoubleUnitAccessor : public ValueAccessor {
   private:
     double show_click_score(double show, double click);
   private:
-    std::shared_ptr<SparseValueSGDRule> _embed_sgd_rule;
-    std::shared_ptr<SparseValueSGDRule> _embedx_sgd_rule;
-    DownpourDoubleUnitFeatureValue unit_feature_value;
+    //std::shared_ptr<CtrSparseValueSGDRule> _embed_sgd_rule;
+    //std::shared_ptr<CtrSparseValueSGDRule> _embedx_sgd_rule;
+    CtrSparseValueSGDRule* _embed_sgd_rule;
+    CtrSparseValueSGDRule* _embedx_sgd_rule;
+    CtrDoubleUnitFeatureValue unit_feature_value;
     float         _show_click_decay_rate;
     int32_t      _ssd_unseenday_threshold;
 };
@@ -254,9 +256,9 @@ class DownpourDoubleUnitAccessor : public ValueAccessor {
 /** 
  * @brief Accessor for unit
  **/
-class DownpourUnitAccessor : public ValueAccessor {
+class CtrUnitAccessor : public ValueAccessor {
   public:
-    struct DownpourUnitFeatureValue {
+    struct CtrUnitFeatureValue {
       /*
 	 float slot;
 	 float unseen_days;
@@ -338,7 +340,7 @@ class DownpourUnitAccessor : public ValueAccessor {
       int embedx_sgd_dim;
     };
 
-    struct DownpourUnitPushValue {
+    struct CtrUnitPushValue {
       /*
 	 float slot;
 	 float show;
@@ -361,16 +363,16 @@ class DownpourUnitAccessor : public ValueAccessor {
 	return 0;
       }
       static int show_index() {
-	return DownpourUnitPushValue::slot_index() + 1;
+	return CtrUnitPushValue::slot_index() + 1;
       }
       static int click_index() {
-	return DownpourUnitPushValue::show_index() + 1;
+	return CtrUnitPushValue::show_index() + 1;
       }
       static int embed_g_index() {
-	return DownpourUnitPushValue::click_index() + 1;
+	return CtrUnitPushValue::click_index() + 1;
       }
       static int embedx_g_index() {
-	return DownpourUnitPushValue::embed_g_index() + 1;
+	return CtrUnitPushValue::embed_g_index() + 1;
       }
       static float& slot(float* val) {
 	return val[0];
@@ -389,7 +391,7 @@ class DownpourUnitAccessor : public ValueAccessor {
       }
     };
 
-    struct DownpourUnitPullValue {
+    struct CtrUnitPullValue {
       /*
 	 float show;
 	 float click;
@@ -419,21 +421,21 @@ class DownpourUnitAccessor : public ValueAccessor {
 	return 3;
       }
       static float& show(float* val) {
-	return val[DownpourUnitPullValue::show_index()];
+	return val[CtrUnitPullValue::show_index()];
       }
       static float& click(float* val) {
-	return val[DownpourUnitPullValue::click_index()];
+	return val[CtrUnitPullValue::click_index()];
       }
       static float& embed_w(float* val) {
-	return val[DownpourUnitPullValue::embed_w_index()];
+	return val[CtrUnitPullValue::embed_w_index()];
       }
       static float* embedx_w(float* val) {
-	return val + DownpourUnitPullValue::embedx_w_index();
+	return val + CtrUnitPullValue::embedx_w_index();
       }
     };
-    DownpourUnitAccessor() {}
+    CtrUnitAccessor() {}
     virtual int initialize();
-    virtual ~DownpourUnitAccessor() {}
+    virtual ~CtrUnitAccessor() {}
 
     // value维度
     virtual size_t dim();
@@ -458,7 +460,7 @@ class DownpourUnitAccessor : public ValueAccessor {
     // 判断该value是否进行shrink
     virtual bool shrink(float* value); 
     // 判断该value是否保存到ssd
-    virtual bool save_ssd(float* value); 
+    //virtual bool save_ssd(float* value); 
     virtual bool need_extend_mf(float* value);
     virtual bool has_mf(size_t size);
     // 判断该value是否在save阶段dump, param作为参数用于标识save阶段，如downpour的xbox与batch_model
@@ -468,7 +470,7 @@ class DownpourUnitAccessor : public ValueAccessor {
     virtual bool save(float* value, int param) override;
     // update delta_score and unseen_days after save
     virtual void update_stat_after_save(float* value, int param) override;
-    virtual bool save_cache(float* value, int param, double global_cache_threshold) override;
+    //virtual bool save_cache(float* value, int param, double global_cache_threshold) override;
     // keys不存在时，为values生成随机值
     // 要求value的内存由外部调用者分配完毕
     virtual int32_t create(float** value, size_t num);
@@ -497,9 +499,11 @@ class DownpourUnitAccessor : public ValueAccessor {
     float show_click_score(float show, float click);
 
   private:
-    std::shared_ptr<SparseValueSGDRule> _embed_sgd_rule;
-    std::shared_ptr<SparseValueSGDRule> _embedx_sgd_rule;
-    DownpourUnitFeatureValue unit_feature_value;
+    //std::shared_ptr<CtrSparseValueSGDRule> _embed_sgd_rule;
+    //std::shared_ptr<CtrSparseValueSGDRule> _embedx_sgd_rule;
+    CtrSparseValueSGDRule* _embed_sgd_rule;
+    CtrSparseValueSGDRule* _embedx_sgd_rule;
+    CtrUnitFeatureValue unit_feature_value;
     float         _show_click_decay_rate;
     int32_t      _ssd_unseenday_threshold;
 };
@@ -507,9 +511,9 @@ class DownpourUnitAccessor : public ValueAccessor {
 /** 
  * @brief Accessor for unit
  **/
-class DownpourCommonAccessor : public ValueAccessor {
+class CtrCommonAccessor : public ValueAccessor {
   public:
-    struct DownpourCommonFeatureValue {
+    struct CtrCommonFeatureValue {
       /*
 	 float slot;
 	 float unseen_days;
@@ -591,7 +595,7 @@ class DownpourCommonAccessor : public ValueAccessor {
       int embedx_sgd_dim;
     };
 
-    struct DownpourCommonPushValue {
+    struct CtrCommonPushValue {
       /*
 	 float slot;
 	 float show;
@@ -614,35 +618,35 @@ class DownpourCommonAccessor : public ValueAccessor {
 	return 0;
       }
       static int show_index() {
-	return DownpourCommonPushValue::slot_index() + 1;
+	return CtrCommonPushValue::slot_index() + 1;
       }
       static int click_index() {
-	return DownpourCommonPushValue::show_index() + 1;
+	return CtrCommonPushValue::show_index() + 1;
       }
       static int embed_g_index() {
-	return DownpourCommonPushValue::click_index() + 1;
+	return CtrCommonPushValue::click_index() + 1;
       }
       static int embedx_g_index() {
-	return DownpourCommonPushValue::embed_g_index() + 1;
+	return CtrCommonPushValue::embed_g_index() + 1;
       }
       static float& slot(float* val) {
-	return val[DownpourCommonPushValue::slot_index()];
+	return val[CtrCommonPushValue::slot_index()];
       }
       static float& show(float* val) {
-	return val[DownpourCommonPushValue::show_index()];
+	return val[CtrCommonPushValue::show_index()];
       }
       static float& click(float* val) {
-	return val[DownpourCommonPushValue::click_index()];
+	return val[CtrCommonPushValue::click_index()];
       }
       static float& embed_g(float* val) {
-	return val[DownpourCommonPushValue::embed_g_index()];
+	return val[CtrCommonPushValue::embed_g_index()];
       }
       static float* embedx_g(float* val) {
-	return val + DownpourCommonPushValue::embedx_g_index();
+	return val + CtrCommonPushValue::embedx_g_index();
       }
     };
 
-    struct DownpourCommonPullValue {
+    struct CtrCommonPullValue {
       /*
 	 float embed_w;
 	 std::vector<float> embedx_w;
@@ -664,15 +668,15 @@ class DownpourCommonAccessor : public ValueAccessor {
 	return 1;
       }
       static float& embed_w(float* val) {
-	return val[DownpourCommonPullValue::embed_w_index()];
+	return val[CtrCommonPullValue::embed_w_index()];
       }
       static float* embedx_w(float* val) {
-	return val + DownpourCommonPullValue::embedx_w_index();
+	return val + CtrCommonPullValue::embedx_w_index();
       }
     };
-    DownpourCommonAccessor() {}
+    CtrCommonAccessor() {}
     virtual int initialize();
-    virtual ~DownpourCommonAccessor() {}
+    virtual ~CtrCommonAccessor() {}
 
     // value维度
     virtual size_t dim();
@@ -697,7 +701,7 @@ class DownpourCommonAccessor : public ValueAccessor {
     // 判断该value是否进行shrink
     virtual bool shrink(float* value); 
     // 判断该value是否保存到ssd
-    virtual bool save_ssd(float* value); 
+    //virtual bool save_ssd(float* value); 
     virtual bool need_extend_mf(float* value);
     virtual bool has_mf(size_t size);
     // 判断该value是否在save阶段dump, param作为参数用于标识save阶段，如downpour的xbox与batch_model
@@ -727,7 +731,7 @@ class DownpourCommonAccessor : public ValueAccessor {
     virtual float get_field(float* value, const std::string& name) override {
       CHECK(name == "show");
       if (name == "show") {
-	return unit_feature_value.show(value);
+	return common_feature_value.show(value);
       }
       return 0.0;
     }
@@ -735,10 +739,14 @@ class DownpourCommonAccessor : public ValueAccessor {
     float show_click_score(float show, float click);
 
   private:
-    std::shared_ptr<SparseValueSGDRule> _embed_sgd_rule;
-    std::shared_ptr<SparseValueSGDRule> _embedx_sgd_rule;
-    DownpourCommonFeatureValue common_feature_value;
+    //std::shared_ptr<CtrSparseValueSGDRule> _embed_sgd_rule;
+    //std::shared_ptr<CtrSparseValueSGDRule> _embedx_sgd_rule;
+    CtrSparseValueSGDRule* _embed_sgd_rule;
+    CtrSparseValueSGDRule* _embedx_sgd_rule;
+    CtrCommonFeatureValue common_feature_value;
     float         _show_click_decay_rate;
     int32_t      _ssd_unseenday_threshold;
 };
 
+}
+}

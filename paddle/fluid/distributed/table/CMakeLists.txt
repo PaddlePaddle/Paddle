@@ -1,4 +1,4 @@
-set_property(GLOBAL PROPERTY TABLE_DEPS string_helper)
+set_property(GLOBAL PROPERTY TABLE_DEPS string_helper afs_wrapper)
 set(graphDir graph)
 get_property(TABLE_DEPS GLOBAL PROPERTY TABLE_DEPS)
 set_source_files_properties(${graphDir}/graph_edge.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -33,6 +33,20 @@ set_source_files_properties(tensor_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUT
 
 cc_library(tensor_accessor SRCS tensor_accessor.cc DEPS ${TABLE_DEPS} eigen3 ps_framework_proto device_context)
 cc_library(tensor_table SRCS tensor_table.cc DEPS eigen3 ps_framework_proto executor scope device_context tensor ${TABLE_DEPS})
+
+set_source_files_properties(ctr_sparse_sgd.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+set_source_files_properties(ctr_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+set_source_files_properties(ctr_sparse_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+
+cc_library(ctr_sparse_sgd SRCS ctr_sparse_sgd.cc DEPS ${TABLE_DEPS} ps_framework_proto)
+cc_library(ctr_accessor SRCS ctr_accessor.cc DEPS ${TABLE_DEPS}
+ps_framework_proto string_helper)
+cc_library(ctr_sparse_table SRCS ctr_sparse_table.cc DEPS ps_framework_proto
+${TABLE_DEPS} fs afs_wrapper)
+
+
 set_source_files_properties(table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
-cc_library(table SRCS table.cc DEPS common_table tensor_accessor tensor_table ps_framework_proto string_helper device_context gflags glog boost)
+cc_library(table SRCS table.cc DEPS ctr_sparse_sgd ctr_accessor
+ctr_sparse_table common_table tensor_accessor tensor_table ps_framework_proto
+string_helper device_context gflags glog boost)
