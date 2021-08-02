@@ -47,6 +47,10 @@ namespace framework {
 using std::cerr;
 using std::endl;
 
+using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
+using OpKernelMap =
+    std::unordered_map<OpKernelType, OpKernelComputeFunc, OpKernelType::Hash>;
+
 framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
   fin.seekg(0, std::ios::end);
@@ -59,8 +63,7 @@ framework::ProgramDesc load_from_file(const std::string& file_name) {
   return program_desc;
 }
 
-struct KernelFunc {
-  using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
+struct OpKernelFunc {
   OpKernelComputeFunc compute_func_;
   OperatorBase* operator_base_;
 };
@@ -92,7 +95,7 @@ struct EventRun {
 };
 
 struct Instruction {
-  KernelFunc kernel_func_;
+  OpKernelFunc kernel_func_;
   std::map<std::string, std::vector<int>> input_index_;
   std::map<std::string, std::vector<int>> output_index_;
 
@@ -106,8 +109,7 @@ struct OpFuncNode {
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
 
-  using OpKernelFunc = std::function<void(const ExecutionContext&)>;
-  OpKernelFunc kernel_func_;
+  OpKernelComputeFunc kernel_func_;
 };
 
 int convert(const platform::Place& place) {
@@ -186,23 +188,21 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
 
     auto& info = OpInfoMap::Instance().Get(op->Type());
 
-    VariableNameMap inputs_1 = op->Inputs();
-    VariableNameMap outputs_1 = op->Outputs();
-    AttributeMap attrs_1 = op->GetAttrMap();
+    const VariableNameMap& inputs_names = op->Inputs();
+    const VariableNameMap& outputs_names = op->Outputs();
+    AttributeMap op_attr_map = op->GetAttrMap();
 
     if (info.Checker() != nullptr) {
       info.Checker()->Check(&attrs_1);
     }
-    auto op_base = info.Creator()(op->Type(), inputs_1, outputs_1, attrs_1);
-
-    auto input_names = op->Inputs();
-    auto output_names = op->Outputs();
+    auto op_base =
+        info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
 
     OpFuncNode op_func_node;
 
     VariableValueMap ins_map;
     std::map<std::string, std::vector<int>> ins_name2id;
-    for (auto& var_name_item : input_names) {
+    for (auto& var_name_item : inputs_names) {
       std::vector<Variable*> input_vars;
       std::vector<int> vec_ids;
       input_vars.reserve(var_name_item.second.size());
@@ -218,7 +218,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
 
     VariableValueMap outs_map;
     std::map<std::string, std::vector<int>> outs_name2id;
-    for (auto& var_name_item : output_names) {
+    for (auto& var_name_item : outputs_names) {
       std::vector<Variable*> output_vars;
       std::vector<int> vec_ids;
       output_vars.reserve(var_name_item.second.size());
@@ -248,9 +248,6 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
             "There are no kernels which are registered in the %s operator.",
             op->Type()));
 
-    using OpKernelFunc = std::function<void(const ExecutionContext&)>;
-    using OpKernelMap =
-        std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
     OpKernelMap& kernels = kernels_iter->second;
     // auto place = platform::CPUPlace();
     // auto place = platform::CUDAPlace(0);
@@ -289,7 +286,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           var_scope->var_list.push_back(v);
 
           VariableNameMap copy_in_map;
-          copy_in_map["X"] = {input_names[var_name_item.first][i]};
+          copy_in_map["X"] = {inputs_names[var_name_item.first][i]};
           VariableNameMap copy_out_map;
           copy_out_map["Out"] = {new_var_name};
           AttributeMap attr_map;
@@ -329,10 +326,6 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
                                 "There are no kernels which are registered in "
                                 "the memcpy operator."));
 
-          using OpKernelFunc = std::function<void(const ExecutionContext&)>;
-          using OpKernelMap = std::unordered_map<OpKernelType, OpKernelFunc,
-                                                 OpKernelType::Hash>;
-
           OpKernelMap& kernels = kernels_iter->second;
           platform::DeviceContextPool& pool =
               platform::DeviceContextPool::Instance();
@@ -344,7 +337,8 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
               dynamic_cast<const framework::OperatorWithKernel*>(copy_op)
                   ->GetExpectedKernelType(copy_exec_ctx);
           auto kernel_iter = kernels.find(expected_kernel_key);
-          copy_op_func_node.kernel_func_ = OpKernelFunc(kernel_iter->second);
+          copy_op_func_node.kernel_func_ =
+              OpKernelComputeFunc(kernel_iter->second);
           copy_op_func_node.kernel_func_(copy_exec_ctx);
           op_list->push_back(copy_op);
           vec_func_list->push_back(copy_op_func_node);
@@ -357,9 +351,12 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     op_list->push_back(op_base);
 
     auto kernel_iter = kernels.find(expected_kernel_key);
-    assert(kernel_iter != kernels.end());
+    PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
+                      platform::errors::NotFound(
+                          "Operator (%s) does not have kernel for %s.", type_,
+                          KernelTypeToString(expected_kernel_key)));
 
-    op_func_node.kernel_func_ = OpKernelFunc(kernel_iter->second);
+    op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
     op_func_node.kernel_func_(exec_ctx);
     vec_func_list->push_back(op_func_node);
   }
@@ -422,7 +419,7 @@ class InterpreterCore {
       : place_(place), prog_(prog), outer_scope_(scope) {
     paddle::framework::InitDevices();
 
-    is_build = false;
+    is_build_ = false;
 
     if (outer_scope_ != nullptr) {
       auto name_list = outer_scope_->LocalVarNames();
@@ -445,11 +442,11 @@ class InterpreterCore {
         startup_prog, &op_list, &vec_func_list, &global_scope, place_);
     // add variable to outer_scope
   }
-  void run(const std::vector<std::string> vec_name,
+  void run(const std::vector<std::string>& vec_name,
            const std::vector<framework::Tensor>& vec_tensor,
            const std::vector<std::string>& vec_fetch_name,
            std::vector<framework::Tensor>* vec_out) {
-    if (is_build == false) {
+    if (is_build_ == false) {
       paddle::framework::build_variable_scope(prog_, &global_scope);
     }
     for (size_t i = 0; i < vec_name.size(); ++i) {
@@ -461,10 +458,10 @@ class InterpreterCore {
       feed_tensor->ShareDataWith(vec_tensor[i]);
     }
 
-    if (is_build == false) {
+    if (is_build_ == false) {
       paddle::framework::build_op_func_list(prog_, &op_list, &vec_func_list,
                                             &global_scope, place_);
-      is_build = true;
+      is_build_ = true;
       // convert vec func_list to graph
       convert();
     } else {
@@ -474,6 +471,10 @@ class InterpreterCore {
     for (size_t i = 0; i < vec_fetch_name.size(); ++i) {
       auto it = global_scope.name2id.find(vec_fetch_name[i]);
       assert(it != global_scope.name2id.end());
+      PADDLE_ENFORCE_NE(it, global_scope.name2id.end(),
+                        platform::errors::NotFound(
+                            "Can't find (%d) the fetch var (%s) in scope", i,
+                            vec_fetch_name[i]));
 
       auto fetch_tensor =
           global_scope.var_list[it->second]->GetMutable<framework::LoDTensor>();
@@ -510,7 +511,7 @@ class InterpreterCore {
       temp_inst.output_index_ = vec_func_list[i].output_index;
 
       std::vector<size_t> gc_check_input_list;
-      for (auto item : vec_func_list[i].input_index) {
+      for (auto& item : vec_func_list[i].input_index) {
         for (auto id : item.second) {
           input_var2op_info_[id].push_back(i);
           gc_check_input_list.push_back(id);
@@ -531,7 +532,7 @@ class InterpreterCore {
 
     for (size_t i = 0; i < vec_instruction_.size(); ++i) {
       std::vector<size_t> vec_temp;
-      for (auto item : vec_instruction_[i].output_index_) {
+      for (auto& item : vec_instruction_[i].output_index_) {
         for (auto id : item.second) {
           vec_temp = merge_vec(vec_temp, input_var2op_info_[id]);
         }
@@ -650,7 +651,7 @@ class InterpreterCore {
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
   std::vector<paddle::framework::OperatorBase*> op_list;
 
-  bool is_build;
+  bool is_build_;
 
   std::vector<Instruction> vec_instruction_;
 
