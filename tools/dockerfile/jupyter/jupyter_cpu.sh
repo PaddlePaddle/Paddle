@@ -20,7 +20,7 @@ function ref_whl(){
       ref_gpu=gpu-cuda${ref_CUDA_MAJOR}-cudnn${CUDNN_MAJOR}
       install_gpu="_gpu"
   else
-      ref_gpu="cpu-avx"
+      ref_gpu="cpu"
       install_gpu=""
   fi
   
@@ -54,7 +54,7 @@ function ref_whl(){
 
   ref_dev=2.1.0.dev0
   
-  ref_web="https:\\/\\/paddle-wheel.bj.bcebos.com\\/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}${ref_gcc}"
+  ref_web="https:\\/\\/paddle-wheel.bj.bcebos.com\\/${PADDLE_BRANCH}/linux/linux-${ref_gpu}-${ref_mkl}${ref_gcc}-avx"
   
   if [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} == "ON" ]]; then
     ref_paddle38_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp38-cp38-linux_x86_64.whl
