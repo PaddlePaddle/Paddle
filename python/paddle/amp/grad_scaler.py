@@ -48,7 +48,6 @@ class GradScaler(AmpScaler):
 
         .. code-block:: python
             
-            # required: gpu, xpu
             import paddle
 
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
@@ -93,7 +92,6 @@ class GradScaler(AmpScaler):
 
             .. code-block:: python
                 
-                # required: gpu, xpu
                 import paddle
 
                 model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
@@ -130,7 +128,6 @@ class GradScaler(AmpScaler):
 
             .. code-block:: python
 
-                # required: gpu, xpu
                 import paddle
 
                 model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
@@ -159,7 +156,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -183,7 +180,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu         
+                # required: gpu,xpu         
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -207,7 +204,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 paddle.set_device('gpu')
                 scaler = paddle.amp.GradScaler(enable=True,
@@ -232,7 +229,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
                 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -258,7 +255,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -282,7 +279,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -308,7 +305,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -332,7 +329,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -358,7 +355,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -382,7 +379,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -408,7 +405,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -432,7 +429,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -465,7 +462,7 @@ class GradScaler(AmpScaler):
 
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
 
                 scaler = paddle.amp.GradScaler(enable=True,
@@ -490,7 +487,7 @@ class GradScaler(AmpScaler):
 
             .. code-block:: python
 
-                # required: gpu, xpu
+                # required: gpu,xpu
                 import paddle
 
                 scaler = paddle.amp.GradScaler(enable=True,
