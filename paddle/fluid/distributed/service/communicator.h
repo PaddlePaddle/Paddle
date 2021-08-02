@@ -68,31 +68,62 @@ class BlockingQueue {
   }
 
   bool Push(const T &elem) {
-    {
-      std::unique_lock<std::mutex> lock(mutex_);
-      cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-      queue_.push_back(elem);
-    }
-    cv_.notify_one();
+    std::unique_lock<std::mutex> lock(mutex_);
+    WaitForWrite(lock);
+
+    queue_.push_back(elem);
+
+    Notify();
     return true;
+  }
+  bool WaitForWrite(std::unique_lock<std::mutex> &lock) {  // NOLINT
+    while (FullUnlocked()) {
+      if (empty_waiters_ != 0) {
+        empty_cond_.notify_one();
+      }
+      full_waiters_++;
+      full_cond_.wait(lock);
+      full_waiters_--;
+    }
+    return true;
+  }
+  bool WaitForRead(std::unique_lock<std::mutex> &lock) {  // NOLINT
+    while (EmptyUnlocked()) {
+      if (full_waiters_ != 0) {
+        full_cond_.notify_one();
+      }
+      empty_waiters_++;
+      empty_cond_.wait(lock);
+      empty_waiters_--;
+    }
+    return true;
+  }
+  bool EmptyUnlocked() { return queue_.empty(); }
+
+  bool FullUnlocked() { return queue_.size() >= capacity_; }
+  void Notify() {
+    if (empty_waiters_ != 0 && (!EmptyUnlocked())) {
+      empty_cond_.notify_one();
+    }
+    if (full_waiters_ != 0 && (!FullUnlocked())) {
+      full_cond_.notify_one();
+    }
   }
 
   bool Push(T &&elem) {
-    {
-      std::unique_lock<std::mutex> lock(mutex_);
-      cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-      queue_.emplace_back(std::move(elem));
-    }
-    cv_.notify_one();
+    std::unique_lock<std::mutex> lock(mutex_);
+    WaitForWrite(lock);
+    queue_.emplace_back(std::move(elem));
+
+    Notify();
     return true;
   }
-
   T Pop() {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [=] { return !queue_.empty(); });
+    WaitForRead(lock);
     T rc(std::move(queue_.front()));
     queue_.pop_front();
-    cv_.notify_one();
+    Notify();
     return rc;
   }
 
@@ -107,11 +138,14 @@ class BlockingQueue {
   }
 
  private:
+  int empty_waiters_ = 0;
+  int full_waiters_ = 0;
+  std::condition_variable empty_cond_;
+  std::condition_variable full_cond_;
   const size_t capacity_;
   std::deque<T> queue_;
 
   mutable std::mutex mutex_;
-  std::condition_variable cv_;
 };
 
 template <typename T, int MajorType = Eigen::RowMajor,
