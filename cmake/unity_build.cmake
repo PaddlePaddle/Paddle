@@ -77,11 +77,14 @@ function(compose_unity_target_sources TARGET TYPE)
     get_property(unity_group_index_max GLOBAL PROPERTY ${TARGET}_${TYPE}_group_index)
     foreach(src ${ARGN})
         set(unity_file "")
-        # UB use absolute path of source.
+        # Note(zhouwei25): UB use the path releative to CMAKE_SOURCE_DIR.
+        # If use absolute path, sccache/ccache hit rate will be reduced.
         if(IS_ABSOLUTE ${src})
             set(src_absolute_path ${src})
+            file(RELATIVE_PATH src_relative_path ${CMAKE_SOURCE_DIR} ${src})
         else()
             set(src_absolute_path ${CMAKE_CURRENT_SOURCE_DIR}/${src})
+            file(RELATIVE_PATH src_relative_path ${CMAKE_SOURCE_DIR} ${src_absolute_path})
         endif()
         # If `unity_group_index_max` is empty, there is no combination
         # relationship.
@@ -106,7 +109,7 @@ function(compose_unity_target_sources TARGET TYPE)
                             set_property(GLOBAL APPEND PROPERTY ${unity_file_sources} ${UNITY_CU_BEFORE_CODE})
                         endif()
                     endif()
-                    set_property(GLOBAL APPEND PROPERTY ${unity_file_sources} "#include \"${src_absolute_path}\"")
+                    set_property(GLOBAL APPEND PROPERTY ${unity_file_sources} "#include \"${src_relative_path}\"")
                     set(unity_target_sources ${unity_target_sources} ${unity_file})
                     break()
                 endif()
