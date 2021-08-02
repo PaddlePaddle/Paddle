@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/program_processing.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
 
@@ -356,6 +357,10 @@ class Graph {
 
   void ResolveHazard(
       const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
+
+  // Unlike Graph::ResolveHazard which user inputs hazard var nodes, this
+  // method analyzes the hazard var nodes and then resolve them.
+  void AnalyzeResolveHazard();
 
   // Create a new and duplicated graph.
   // WARN: The method only clones the graph structure, not its attributes.

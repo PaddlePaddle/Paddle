@@ -24,11 +24,11 @@ class ProgramProcessor {
  public:
   ProgramProcessor();
 
-  void GetInputsOutputsInBlock(const BlockDesc &current_block,
-                               std::set<std::string> *inner_inputs,
-                               std::set<std::string> *inner_outputs);
+  static void GetInputsOutputsInBlock(const BlockDesc &current_block,
+                                      std::set<std::string> *inner_inputs,
+                                      std::set<std::string> *inner_outputs);
 
-  void AddDepToBlockOp(const BlockDesc &block);
+  static void AddDepToBlockOp(const BlockDesc &block);
 };
 }  // namespace framework
 }  // namespace paddle

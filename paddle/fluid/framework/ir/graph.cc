@@ -134,9 +134,30 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
     ir::Node *node = CreateOpNode(op);
     node->SetDescOrder(desc_order);
     ++desc_order;
+
+    std::vector<std::string> op_input_var_names = op->InputArgumentNames();
+    std::vector<std::string> op_output_var_names = op->OutputArgumentNames();
+
+    std::set<std::string> dep_input_var_names(op_input_var_names.begin(),
+                                              op_input_var_names.end());
+    std::set<std::string> dep_output_var_names(op_output_var_names.begin(),
+                                               op_output_var_names.end());
+
+    if (op->HasAttr("sub_block")) {
+      std::set<std::string> control_flow_inputs;
+      std::set<std::string> control_flow_outputs;
+      BlockDesc *sub_block =
+          BOOST_GET_MUTABLE(BlockDesc *, op->GetAttr("sub_block"));
+      ProgramProcessor::GetInputsOutputsInBlock(
+          *sub_block, &control_flow_inputs, &control_flow_outputs);
+      dep_input_var_names.insert(control_flow_inputs.begin(),
+                                 control_flow_inputs.end());
+      dep_output_var_names.insert(control_flow_outputs.begin(),
+                                  control_flow_outputs.end());
+    }
     // For input args, reuse the same var name if it was created before.
     // Otherwise, create a new one.
-    for (auto &each_var_name : op->InputArgumentNames()) {
+    for (auto &each_var_name : dep_input_var_names) {
       not_visited_vars.erase(each_var_name);
       ir::Node *var = nullptr;
       if (var_nodes.find(each_var_name) != var_nodes.end()) {
@@ -157,7 +178,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
     }
     // For output args, always create a new var.
     std::unordered_set<std::string> out_arg_set;
-    for (auto &each_var_name : op->OutputArgumentNames()) {
+    for (auto &each_var_name : dep_output_var_names) {
       not_visited_vars.erase(each_var_name);
       if (each_var_name != kEmptyVarName) {
         PADDLE_ENFORCE_EQ(out_arg_set.count(each_var_name), 0,
@@ -244,12 +265,27 @@ void Graph::ResolveHazard(
           (*it_old)->inputs.empty() ? nullptr : (*it_old)->inputs[0];
       // TODO(zcd): Add a test.
       if (upstream_op && upstream_op != write_op) {
-        ir::Node *dep_var = CreateControlDepVar();
-        write_op->inputs.push_back(dep_var);
-        upstream_op->outputs.push_back(dep_var);
-        VLOG(10) << "add dep_var:" << dep_var->Name();
-        dep_var->outputs.push_back(write_op);
-        dep_var->inputs.push_back(upstream_op);
+        // ops might have been connected via other vars.
+        bool has_dep = false;
+        for (ir::Node *u_out : upstream_op->outputs) {
+          for (ir::Node *w_in : write_op->inputs) {
+            if (u_out == w_in) {
+              has_dep = true;
+              break;
+            }
+          }
+          if (has_dep) {
+            break;
+          }
+        }
+        if (!has_dep) {
+          ir::Node *dep_var = CreateControlDepVar();
+          write_op->inputs.push_back(dep_var);
+          upstream_op->outputs.push_back(dep_var);
+          VLOG(10) << "add dep_var:" << dep_var->Name();
+          dep_var->outputs.push_back(write_op);
+          dep_var->inputs.push_back(upstream_op);
+        }
       }
 
       for (auto *read_op : read_ops) {
@@ -267,6 +303,9 @@ void Graph::ResolveHazard(
               break;
             }
           }
+          if (has_dep) {
+            break;
+          }
         }
         if (has_dep) continue;
 
@@ -279,6 +318,28 @@ void Graph::ResolveHazard(
       }
     }
   }
+}
+
+void Graph::AnalyzeResolveHazard() {
+  if (IsMainGraph()) {
+    for (size_t i = 0; i < sub_graphs_.size(); ++i) {
+      GetSubGraph(i)->AnalyzeResolveHazard();
+    }
+    return;
+  }
+
+  std::map<std::string, std::vector<Node *>> var_nodes;
+  for (Node *node : Nodes()) {
+    if (node->IsVar() && !node->IsCtrlVar()) {
+      if (var_nodes.find(node->Name()) == var_nodes.end()) {
+        var_nodes[node->Name()] = std::vector<Node *>({node});
+      } else {
+        var_nodes[node->Name()].push_back(node);
+      }
+    }
+  }
+
+  ResolveHazard(var_nodes);
 }
 
 std::shared_ptr<Graph> Graph::Clone() {

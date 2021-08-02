@@ -43,6 +43,24 @@ void ProgramProcessor::GetInputsOutputsInBlock(
         inner_outputs->insert(out_var_name);
       }
     }
+
+    if (op->HasAttr("sub_block")) {
+      // Control flow Ops
+      BlockDesc *sub_block =
+          BOOST_GET_MUTABLE(BlockDesc *, op->GetAttr("sub_block"));
+      std::set<std::string> control_flow_inputs;
+      std::set<std::string> control_flow_outputs;
+      GetInputsOutputsInBlock(*sub_block, &control_flow_inputs,
+                              &control_flow_outputs);
+      for (auto in_var_name : control_flow_inputs) {
+        VLOG(3) << "insert inner control_flow_input name:" << in_var_name;
+        inner_inputs->insert(in_var_name);
+      }
+      for (auto out_var_name : control_flow_outputs) {
+        VLOG(3) << "insert inner control_flow_output name:" << out_var_name;
+        inner_outputs->insert(out_var_name);
+      }
+    }
   }
 
   // Step2: Remove variable created in current control flow block.
@@ -92,9 +110,13 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       auto *op_inputs = op->MutableInputs();
       std::vector<std::string> *op_input_var_vec;
       VLOG(3) << "op_type:>>>>>>" << op_type;
-      if (op_type.compare("while") == 0) {
+      if (op_type == "while") {
         op_input_var_vec = &((*op_inputs)["kX"]);
-      } else if (op_type.compare("conditional_block") == 0) {
+      } else if (op_type == "while_grad") {
+        op_input_var_vec = &((*op_inputs)["kX"]);
+      } else if (op_type == "conditional_block") {
+        op_input_var_vec = &((*op_inputs)["kInputs"]);
+      } else if (op_type == "conditional_block_grad") {
         op_input_var_vec = &((*op_inputs)["kInputs"]);
       } else {
         // Only support while_op and conditinal_block_op now

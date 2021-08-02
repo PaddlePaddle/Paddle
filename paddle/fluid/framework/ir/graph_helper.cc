@@ -431,6 +431,9 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
   return ret;
 }
 
+std::map<std::string, std::vector<Node *>> GetSubGraphHazardVars(
+    const Graph &sub_graph);
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

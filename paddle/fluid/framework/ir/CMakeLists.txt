@@ -39,7 +39,7 @@ function(pass_library TARGET DEST)
 endfunction()
 
 cc_library(node SRCS node.cc DEPS proto_desc)
-cc_library(graph SRCS graph.cc DEPS node pretty_log)
+cc_library(graph SRCS graph.cc DEPS node pretty_log program_processing)
 cc_library(graph_helper SRCS graph_helper.cc DEPS graph)
 cc_library(pass SRCS pass.cc DEPS graph node graph_helper)
 cc_library(graph_traits SRCS graph_traits.cc DEPS graph)
