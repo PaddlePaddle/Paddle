@@ -20,65 +20,14 @@ namespace ir {
 
 constexpr char kPianoJitOpName[] = "PianoJitOp";
 
-static void ClusterNodesThroughDfs(
-    const Node* cur_node, std::unordered_map<const Node*, bool>* visited,
-    const std::unordered_map<const Node*, std::unordered_set<const Node*>>&
-        connection_recoder,
-    std::vector<const Node*>* cluster) {
-  cluster.push_back(cur_node);
-  visited.at(cur_node) = true;
-  for (const Node* next_node : connection_recoder.at(cur_node)) {
-    if (visited.at(next_node) == false) {
-      ClusterNodesThroughDfs(next_node, visited, connection_recoder, cluster);
-    }
-  }
-}
-
-static bool HasExtralConnectionPath(const Node* cur_op_node, const Node* next_op_node) {
-  std::vector<const Node*> source_nodes;
-  // TODO(levi): need implementation.
-}
-
 void PianoJitOpSearchAndReplacePass::ApplyImpl(ir::Graph* graph) const {
-  // Step1: Collect connection information between jit-supported ops. We can merge two jit_supported ops when two conditions are satisfied: 1) The two jit_supported ops are direct connected through a single layer of var node; 2) There is no extral multi layer connection path between two jit_supported ops.
+  // Step1: Collect direct connection information between jit-supported ops
+  // through a var.
   PianoJitOpSearchHelper search_helper;
-  std::vector<const Node*> target_op_nodes;
-  std::unordered_map<const Node*, std::unordered_set<const Node*>>
-      connection_recorder;
-  for (const Node* cur_node : graph.Nodes()) {
-    if (cur_node->IsOp() && search_helper.IsJitSupported(cur_node->name())) {
-      target_op_nodes.push_back(cur_node);
-      connection_recoder.emplace(cur_node, std::unordered_set<const Node*>());
-    }
-  }
-  if (target_op_nodes.size() == 0) return;
-
-  for (const Node* cur_node : target_op_nodes) {
-    for (const Node* next_var_node : cur_node->outputs) {
-      for (const Node* next_op_node : next_var_node->outputs) {
-        if (search_helper.IsJitSupported(next_op_node->name()) &&
-            !HasExtralConnectionPath(cur_node, next_op_node)) {
-          connection_recoder.at(cur_node).insert(next_op_node);
-          connection_recoder.at(next_op_node).insert(cur_node);
-        }
-      }
-    }
-  }
+        if (search_helper.IsJitSupported(next_op_node->name())) {
 
   // Step2: Find out clusters through dfs method.
   std::vector<std::vector<const Node*>> clusters;
-  std::unordered_map<const Node*, bool> visited;
-  for (const Node* target_op_node : target_op_nodes) {
-    visited.emplace(target_op_node, false);
-  }
-  for (const Node* target_op_node : target_op_nodes) {
-    if (!visited.at(target_op_node)) {
-      std::vector<const Node*> cluster;
-      ClusterNodesThroughDfs(target_op_node, &visited, connection_recoder,
-                             &cluster);
-      clusters.emplace_back(std::move(cluster));
-    }
-  }
 
   // Step3: Add a new op node for each cluster.
   for (const auto& cluster : clusters) {
@@ -103,10 +52,10 @@ void PianoJitOpSearchAndReplacePass::ApplyImpl(ir::Graph* graph) const {
           is_only_used_internel &=
               (cluster.find(next_op_node) != cluster.end());
         }
-        if (!is_only_used_internel) {
-          piano_jit_op_outputs.push_back(var_node);
-        } else {
+        if (is_only_used_internel) {
           graph->RemoveNode(var_node);
+        } else {
+          piano_jit_op_outputs.push_back(var_node);
         }
       } else {
         piano_jit_op_outputs.push_back(var_node);
@@ -120,7 +69,6 @@ void PianoJitOpSearchAndReplacePass::ApplyImpl(ir::Graph* graph) const {
         graph->CreateEmptyNode(PianoJitOpName, Node::Type::kOperation);
     piano_jit_op->inputs = piano_jit_op_inputs;
     piano_jit_op->outputs = piano_jit_op_outputs;
-    // TODO(levi): need to replace the references of merged op nodes in each cluster to the corresponding piano_jit_op.
   }
   // Step4: Delete merged ops.
   for (const Node* target_op_node : target_op_nodes) {
