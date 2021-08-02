@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <iostream>
 #include "paddle/fluid/operators/crop_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
-#include<iostream>
 
 namespace paddle {
 namespace operators {
@@ -34,8 +34,8 @@ class EyeNPUKernel : public framework::OpKernel<T> {
     // auto dtype = framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
     auto d_nums = ctx.Attr<int>("dtype");
 
-    
-    auto dtype = ConvertToNpuDtype(static_cast<framework::proto::VarType::Type>(d_nums));
+    auto dtype =
+        ConvertToNpuDtype(static_cast<framework::proto::VarType::Type>(d_nums));
     auto num_columns = num_rows;
     PADDLE_ENFORCE_EQ(
         num_columns >= 0, true,
@@ -46,7 +46,8 @@ class EyeNPUKernel : public framework::OpKernel<T> {
       num_columns = ctx.Attr<int64_t>("num_columns");
     }
 
-    framework::NPUAttributeMap attr_input = {{"num_rows", num_rows}, {"num_columns", num_columns}, {"dtype", dtype}};
+    framework::NPUAttributeMap attr_input = {
+        {"num_rows", num_rows}, {"num_columns", num_columns}, {"dtype", dtype}};
     auto* Out = ctx.Output<framework::Tensor>("Out");
     Out->mutable_data<T>(ctx.GetPlace());
 
@@ -55,8 +56,6 @@ class EyeNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     runner.Run(stream);
-    
-    
   }
 };
 
@@ -66,7 +65,7 @@ class EyeNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    eye,
-    ops::EyeNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    eye, ops::EyeNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::EyeNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::EyeNPUKernel<paddle::platform::NPUDeviceContext,  paddle::platform::float16>);
+    ops::EyeNPUKernel<paddle::platform::NPUDeviceContext,
+                      paddle::platform::float16>);

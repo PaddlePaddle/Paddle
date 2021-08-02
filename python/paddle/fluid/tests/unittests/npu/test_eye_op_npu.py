@@ -43,11 +43,11 @@ class TestEyeOp(OpTest):
         self.dtype = np.float32
 
         self.initTestCase()
-        
+
         if self.num_columns == 0:
             self.attrs = {
-            'num_rows': self.num_rows,
-            'dtype': framework.convert_np_dtype_to_dtype_(self.dtype)
+                'num_rows': self.num_rows,
+                'dtype': framework.convert_np_dtype_to_dtype_(self.dtype)
             }
             self.outputs = {'Out': np.eye(self.num_rows, dtype=self.dtype)}
         else:
@@ -56,8 +56,9 @@ class TestEyeOp(OpTest):
                 'num_columns': self.num_columns,
                 'dtype': framework.convert_np_dtype_to_dtype_(self.dtype)
             }
-            self.outputs = {'Out': np.eye(self.num_rows, self.num_columns, dtype=self.dtype)}
-        
+            self.outputs = {
+                'Out': np.eye(self.num_rows, self.num_columns, dtype=self.dtype)
+            }
 
     def initTestCase(self):
         self.num_rows = 219
@@ -75,10 +76,12 @@ class TestEyeOp1(TestEyeOp):
     def initTestCase(self):
         self.num_rows = 50
 
+
 class TestEyeOp2(TestEyeOp):
     def initTestCase(self):
         self.num_rows = 50
         self.dtype = np.int32
+
 
 class TestEyeOp3(TestEyeOp):
     def initTestCase(self):
@@ -91,10 +94,12 @@ class TestEyeOp3(TestEyeOp):
 #         self.num_rows = 99
 #         self.num_columns = 1
 
+
 class TestEyeOp5(TestEyeOp):
     def initTestCase(self):
         self.num_rows = 1
         self.num_columns = 99
+
 
 class TestEyeOp6(TestEyeOp):
     def initTestCase(self):
