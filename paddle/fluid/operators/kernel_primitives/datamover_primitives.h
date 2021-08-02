@@ -65,30 +65,6 @@ __device__ void read_data(T* dst, const T* __restrict__ src, int size) {
   }
 }
 
-/** @brief: read_data
- * read data from src ptr
- * @param：
- * src: the source pointer
- * dst: the dst pointer
- * stride_nx: the stride of src
- * stride_ny: the stride of src
- * the shape of dst is [NY, NX];
- */
-template <typename T, int NX, int NY, int BlockSize>
-__device__ void read_data(const T* __restrict__ src, T* dst, int stride_nx,
-                          int stride_ny) {
-  // out[NY][NX];
-  int base_offset = threadIdx.x * NX;
-#pragma unroll
-  for (int idy = 0; idy < NY; idy++) {
-#pragma unroll
-    for (int idx = 0; idx < NX; idx++) {
-      dst[idy * NX + idx] =
-          src[idy * stride_ny + stride_nx * idx + base_offset];
-    }
-  }
-}
-
 /** @brief: read_data_bc
  * read data from src ptr when the shape of src and dst are different
  * @param：
@@ -100,10 +76,11 @@ __device__ void read_data(const T* __restrict__ src, T* dst, int stride_nx,
  */
 template <typename T, int NX, int NY, int BS, int Shape_Size>
 __device__ __forceinline__ void read_data_bc(
-    const T* __restrict__ src, T* dst, uint32_t fix, FastDivMod* divmoders,
+    T* dst, const T* __restrict__ src, uint32_t fix, FastDivMod* divmoders,
     uint32_t* strides, uint32_t stride_nx, uint32_t stride_ny) {
   uint32_t base_offset = fix + threadIdx.x * NX;
   uint32_t offset = 0;
+
 #pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
 #pragma unroll
@@ -142,7 +119,7 @@ __device__ void write_data(T* dst, T* __restrict__ src, int size) {
 
   // Vector per thread
   if (blockDim.x * NX > size) {
-    read_data_base<T, NX, NY, BlockSize>(dst, src, size);
+    write_data_base<T, NX, NY, BlockSize>(dst, src, size);
   } else {
     // Vector type
     using VecType = VectorType<T, VECTOR_SIZE>;

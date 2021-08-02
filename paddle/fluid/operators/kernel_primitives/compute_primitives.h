@@ -17,6 +17,30 @@
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {
+/*************************** Compute Functor****************************/
+template <typename T>
+struct ADD {
+  __device__ __forceinline__ T operator()(const T in1, const T in2) {
+    return (in1 + in2);
+  }
+};
+
+template <typename T>
+struct RELU {
+  __device__ __forceinline__ T operator()(const T in) {
+    return (in > static_cast<T>(0) ? in : static_cast<T>(0.f));
+  }
+};
+
+template <typename T>
+struct FMA {
+  __device__ __forceinline__ T operator()(const T in1, const T in2,
+                                          const T in3) {
+    return in1 * in2 + in3;
+  }
+};
+
+/*************************** Compute Function****************************/
 
 /**
  * @brief compute functor for elementwise_two, in1 and in2 has the same shape
@@ -30,11 +54,10 @@ namespace kernel_primitives {
 template <typename T, int NX, int NY, int BlockSize, class OpFunc>
 __device__ void elementwise_binary(const T* __restrict__ in1,
                                    const T* __restrict__ in2,
-                                   T* __restrict__ out) {
-  OpFunc compute;
+                                   T* __restrict__ out, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
-    compute(in1[idx], in2[idx], &out[idx]);
+    out[idx] = compute(in1[idx], in2[idx]);
   }
 }
 
@@ -48,10 +71,10 @@ __device__ void elementwise_binary(const T* __restrict__ in1,
  */
 template <typename T, int NX, int NY, int BlockSize, class OpFunc>
 __device__ void elementwise_fma(const T* in1, const T* in2, const T* in3,
-                                T* out) {
+                                T* out, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
-    out[idx] = in1[idx] * in2[idx] + out[idx];
+    out[idx] = compute(in1[idx], in2[idx], in3[idx]);
   }
 }
 
@@ -65,13 +88,13 @@ __device__ void elementwise_fma(const T* in1, const T* in2, const T* in3,
  * OpFunc: compute functor eg: ADD, SUB, XOR, OR, MUL
  */
 template <typename T, int NX, int NY, int BlockSize, class OpFunc>
-__device__ void cycle_binary(const T* in1, const T* in2, T* out) {
-  OpFunc compute;
+__device__ void cycle_binary(const T* in1, const T* in2, T* out,
+                             OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX; idx++) {
 #pragma unroll
     for (int idy = 0; idy < NY; idy++) {
-      compute(in1[idx], in2[idx + idy * NX], out[idx + idy * NX]);
+      out[idx + idy * NX] = compute(in1[idx], in2[idx + idy * NX]);
     }
   }
 }
@@ -90,7 +113,7 @@ __device__ void elementwise_unary(const T* in, T* out) {
   OpFunc compute;
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {
-    compute(in[idx], out[idx]);
+    out[idx] = compute(in[idx]);
   }
 }
 
