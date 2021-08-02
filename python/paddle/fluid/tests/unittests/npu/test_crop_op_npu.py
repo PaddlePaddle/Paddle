@@ -66,14 +66,13 @@ class TestCropOp(OpTest):
             self.inputs['Offsets'] = np.array(self.offsets).astype('int32')
         else:
             self.attrs['offsets'] = self.offsets
-        
-        if len(self.offsets)==0:
+
+        if len(self.offsets) == 0:
             self.offsets = np.zeros_like(self.crop_shape)
 
         self.outputs = {
             'Out': crop(self.inputs['X'], self.offsets, self.crop_shape)
         }
-        
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -85,6 +84,7 @@ class TestCropOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
+
 
 class TestCase1(TestCropOp):
     def initTestCase(self):
@@ -107,11 +107,13 @@ class TestCase3(TestCropOp):
         self.offsets = [0, 2]
         self.offset_by_input = True
 
+
 class TestCase4(TestCropOp):
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]
         self.offsets = []
+
 
 class TestCase5(TestCropOp):
     def initTestCase(self):
@@ -119,6 +121,7 @@ class TestCase5(TestCropOp):
         self.crop_shape = [3, 3, 5]
         self.offsets = [3, 5, 4]
         self.offset_by_input = True
+
 
 class TestCase6(TestCropOp):
     def initTestCase(self):
@@ -129,6 +132,7 @@ class TestCase6(TestCropOp):
         self.__class__.no_need_check_grad = True
         self.dtype = np.float16
 
+
 class TestCase7(TestCropOp):
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
@@ -137,6 +141,7 @@ class TestCase7(TestCropOp):
         self.offset_by_input = True
         self.dtype = np.int32
 
+
 class TestCase8(TestCropOp):
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
@@ -144,6 +149,6 @@ class TestCase8(TestCropOp):
         self.offsets = []
         self.offset_by_input = True
 
+
 if __name__ == '__main__':
     unittest.main()
-
