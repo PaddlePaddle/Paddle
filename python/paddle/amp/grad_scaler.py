@@ -206,7 +206,6 @@ class GradScaler(AmpScaler):
 
                 # required: gpu,xpu
                 import paddle
-                paddle.set_device('gpu')
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
                                                incr_ratio=2.0,
