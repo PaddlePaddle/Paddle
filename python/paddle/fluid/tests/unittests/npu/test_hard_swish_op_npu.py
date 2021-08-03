@@ -25,6 +25,7 @@ import paddle.fluid as fluid
 paddle.enable_static()
 SEED = 2021
 
+
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestHardSwishNPU(OpTest):
@@ -42,7 +43,7 @@ class TestHardSwishNPU(OpTest):
         x[np.abs(x + offset) < 0.005] = 0.02
         x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
         out = (x * np.minimum(np.maximum(x + offset, 0.), threshold) /
-            scale).astype(x.dtype)
+               scale).astype(x.dtype)
 
         self.inputs = {'X': x}
         self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
@@ -60,8 +61,7 @@ class TestHardSwishNPU(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out')
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 # @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -72,7 +72,6 @@ class TestHardSwishNPU(OpTest):
 
 #     def init_dtype(self):
 #         self.dtype = np.float16
-
 
 if __name__ == '__main__':
     unittest.main()

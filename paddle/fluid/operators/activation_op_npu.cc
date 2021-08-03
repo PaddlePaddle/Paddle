@@ -16,8 +16,8 @@ limitations under the Licnse. */
 #include <string>
 
 #include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
@@ -349,12 +349,13 @@ class SigmoidGradNPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-void PrintTensor(const framework::Tensor& src, const framework::ExecutionContext& ctx){
-    std::vector<T> vec(src.numel());
-    TensorToVector(src, ctx.device_context(), &vec);
-    for(int i=0; i< static_cast<int>(vec.size()); ++i){
-        VLOG(4) << "vec[" << i<< "] : "<< vec[i];
-    }
+void PrintTensor(const framework::Tensor& src,
+                 const framework::ExecutionContext& ctx) {
+  std::vector<T> vec(src.numel());
+  TensorToVector(src, ctx.device_context(), &vec);
+  for (int i = 0; i < static_cast<int>(vec.size()); ++i) {
+    VLOG(4) << "vec[" << i << "] : " << vec[i];
+  }
 };
 
 // HardSwish = min(max(0, x+offset), threshold) * x / scale
@@ -376,14 +377,15 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    
+
     Tensor tensor_offset(x->type());
     tensor_offset.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&tensor_offset, static_cast<T>(offset));
 
     Tensor add_offset_val(x->type());
     add_offset_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_add = NpuOpRunner("AddV2", {*x, tensor_offset}, {add_offset_val});
+    const auto& runner_add =
+        NpuOpRunner("AddV2", {*x, tensor_offset}, {add_offset_val});
     runner_add.Run(stream);
 
     Tensor zero_val(x->type());
@@ -393,30 +395,34 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
 
     Tensor max_val(x->type());
     max_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_max = NpuOpRunner("Maximum", {add_offset_val, zero_val}, {max_val});
+    const auto& runner_max =
+        NpuOpRunner("Maximum", {add_offset_val, zero_val}, {max_val});
     runner_max.Run(stream);
 
     Tensor tensor_threshold_tmp(x->type());
     tensor_threshold_tmp.mutable_data<T>({1}, place);
-    FillNpuTensorWithConstant<T>(&tensor_threshold_tmp, static_cast<T>(threshold));
+    FillNpuTensorWithConstant<T>(&tensor_threshold_tmp,
+                                 static_cast<T>(threshold));
     Tensor tensor_threshold(x->type());
     tensor_threshold.mutable_data<T>(x->dims(), place);
-    const auto& runner_fill = NpuOpRunner("FillD", {tensor_threshold_tmp}, {tensor_threshold},
-                                     {{"dims", framework::vectorize(x->dims())}});
+    const auto& runner_fill =
+        NpuOpRunner("FillD", {tensor_threshold_tmp}, {tensor_threshold},
+                    {{"dims", framework::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
     Tensor min_val(x->type());
     min_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_min = NpuOpRunner("Minimum", {max_val, tensor_threshold}, {min_val});
+    const auto& runner_min =
+        NpuOpRunner("Minimum", {max_val, tensor_threshold}, {min_val});
     runner_min.Run(stream);
 
     Tensor mul_val(x->type());
     mul_val.mutable_data<T>(x->dims(), place);
     const auto& runner_mul = NpuOpRunner("Mul", {*x, min_val}, {mul_val});
     runner_mul.Run(stream);
-    
-    const auto& runner_div = NpuOpRunner("Power", {mul_val}, {*out},
-                                         {{"scale", 1.0f/scale}});
+
+    const auto& runner_div =
+        NpuOpRunner("Power", {mul_val}, {*out}, {{"scale", 1.0f / scale}});
     runner_div.Run(stream);
   }
 };
@@ -440,34 +446,39 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    
+
     Tensor tensor_offset(x->type());
     tensor_offset.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&tensor_offset, static_cast<T>(offset));
 
     Tensor add_offset_val(x->type());
     add_offset_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_add = NpuOpRunner("AddV2", {*x, tensor_offset}, {add_offset_val});
+    const auto& runner_add =
+        NpuOpRunner("AddV2", {*x, tensor_offset}, {add_offset_val});
     runner_add.Run(stream);
-  
+
     Tensor tensor_threshold_tmp(x->type());
     tensor_threshold_tmp.mutable_data<T>({1}, place);
-    FillNpuTensorWithConstant<T>(&tensor_threshold_tmp, static_cast<T>(threshold));
+    FillNpuTensorWithConstant<T>(&tensor_threshold_tmp,
+                                 static_cast<T>(threshold));
     Tensor tensor_threshold(x->type());
     tensor_threshold.mutable_data<T>(x->dims(), place);
-    const auto& runner_fill = NpuOpRunner("FillD", {tensor_threshold_tmp}, {tensor_threshold},
-                                     {{"dims", framework::vectorize(x->dims())}});
+    const auto& runner_fill =
+        NpuOpRunner("FillD", {tensor_threshold_tmp}, {tensor_threshold},
+                    {{"dims", framework::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
     Tensor tmp_bool1(framework::proto::VarType::BOOL);
     tmp_bool1.mutable_data<bool>(x->dims(), place);
-    const auto& runner_less = NpuOpRunner("Less", {add_offset_val, tensor_threshold}, {tmp_bool1});
+    const auto& runner_less =
+        NpuOpRunner("Less", {add_offset_val, tensor_threshold}, {tmp_bool1});
     runner_less.Run(stream);
     Tensor tmp1(x->type());
     tmp1.mutable_data<T>(x->dims(), place);
     auto dst_dtype = ConvertToNpuDtype(x->type());
-    const auto& runner_cast1 = NpuOpRunner("Cast", {tmp_bool1}, {tmp1},
-                                      {{"dst_type", static_cast<int>(dst_dtype)}});
+    const auto& runner_cast1 =
+        NpuOpRunner("Cast", {tmp_bool1}, {tmp1},
+                    {{"dst_type", static_cast<int>(dst_dtype)}});
     runner_cast1.Run(stream);
 
     Tensor zero_val(x->type());
@@ -477,18 +488,20 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
 
     Tensor tmp_bool2(framework::proto::VarType::BOOL);
     tmp_bool2.mutable_data<bool>(x->dims(), place);
-    const auto& runner_greater = NpuOpRunner("Greater", {add_offset_val, zero_val}, {tmp_bool2});
+    const auto& runner_greater =
+        NpuOpRunner("Greater", {add_offset_val, zero_val}, {tmp_bool2});
     runner_greater.Run(stream);
     Tensor tmp2(x->type());
     tmp2.mutable_data<T>(x->dims(), place);
-    const auto& runner_cast2 = NpuOpRunner("Cast", {tmp_bool2}, {tmp2},
-                                      {{"dst_type", static_cast<int>(dst_dtype)}});
+    const auto& runner_cast2 =
+        NpuOpRunner("Cast", {tmp_bool2}, {tmp2},
+                    {{"dst_type", static_cast<int>(dst_dtype)}});
     runner_cast2.Run(stream);
 
     Tensor tmp3(x->type());
     tmp3.mutable_data<T>(x->dims(), place);
     const auto& runner_pow1 = NpuOpRunner("Power", {*x}, {tmp3},
-                                         {{"scale", 2.0f}, {"shift", offset}});
+                                          {{"scale", 2.0f}, {"shift", offset}});
     runner_pow1.Run(stream);
 
     Tensor tmp4(x->type());
@@ -502,8 +515,8 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
 
     Tensor tmp6(x->type());
     tmp6.mutable_data<T>(x->dims(), place);
-    const auto& runner_pow2 = NpuOpRunner("Power", {tmp5}, {tmp6},
-                                         {{"scale", 1.0f/scale}, {"shift", 1.0f}});
+    const auto& runner_pow2 = NpuOpRunner(
+        "Power", {tmp5}, {tmp6}, {{"scale", 1.0f / scale}, {"shift", 1.0f}});
     runner_pow2.Run(stream);
 
     Tensor tmp7(x->type());
