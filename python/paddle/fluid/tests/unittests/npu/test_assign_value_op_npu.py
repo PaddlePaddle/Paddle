@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -72,6 +72,53 @@ class TestAssignValueNPUOp4(TestAssignValueNPUOp):
         self.value = numpy.random.choice(
             a=[False, True], size=(2, 5)).astype(numpy.bool)
         self.attrs["bool_values"] = [bool(v) for v in self.value.flat]
+
+
+class TestAssignApi(unittest.TestCase):
+    def setUp(self):
+        self.init_dtype()
+        self.value = (
+            -100 + 200 * numpy.random.random(size=(2, 5))).astype(self.dtype)
+        self.place = fluid.NPUPlace(0) if fluid.core.is_compiled_with_npu(
+        ) else fluid.CPUPlace()
+
+    def init_dtype(self):
+        self.dtype = "float32"
+
+    def test_assign(self):
+        main_program = fluid.Program()
+        with fluid.program_guard(main_program):
+            x = layers.create_tensor(dtype=self.dtype)
+            layers.assign(input=self.value, output=x)
+
+        exe = fluid.Executor(self.place)
+        [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
+        self.assertTrue(
+            numpy.array_equal(fetched_x, self.value),
+            "fetch_x=%s val=%s" % (fetched_x, self.value))
+        self.assertEqual(fetched_x.dtype, self.value.dtype)
+
+
+class TestAssignApi2(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "int32"
+
+
+class TestAssignApi3(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "int64"
+
+
+class TestAssignApi4(TestAssignApi):
+    def setUp(self):
+        self.init_dtype()
+        self.value = numpy.random.choice(
+            a=[False, True], size=(2, 5)).astype(numpy.bool)
+        self.place = fluid.NPUPlace(0) if fluid.core.is_compiled_with_npu(
+        ) else fluid.CPUPlace()
+
+    def init_dtype(self):
+        self.dtype = "bool"
 
 
 if __name__ == '__main__':
