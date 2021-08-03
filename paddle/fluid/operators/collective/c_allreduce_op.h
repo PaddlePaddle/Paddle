@@ -128,22 +128,41 @@ bool CheckNumerics(const framework::ExecutionContext& exe_ctx,
   auto& dev_ctx =
       exe_ctx.template device_context<paddle::platform::NPUDeviceContext>();
   using Tensor = paddle::framework::Tensor;
-  int num = in->numel();
+  auto num = in->numel();
+  auto fp32_dtype = framework::proto::VarType::FP32;
 
-  Tensor out(in->type());
-  out.Resize(in->dims());
-  out.mutable_data<T>(dev_ctx.GetPlace());
-  const auto& div_runner = NpuOpRunner("DIV", {*in}, {out}, {});
+  // get fp32 fp32_in
+  Tensor fp32_in(fp32_dtype);
+  fp32_in.Resize(in->dims());
+  fp32_in.mutable_data(dev_ctx.GetPlace());
+  auto aclDtype = ACL_FLOAT;
+  const auto& cast_runner = NpuOpRunner(
+      "Cast", {*in}, {fp32_in}, {{"dst_type", static_cast<int32_t>(aclDtype)}});
+  cast_runner.Run(stream);
+
+  // get fp32 scale
+  Tensor scale(fp32_dtype);
+  scale.Resize({1});
+  scale.mutable_data(dev_ctx.GetPlace());
+  FillNpuTensorWithConstant<float>(&scale, static_cast<float>(num));
+
+  // div
+  Tensor div_out(fp32_dtype);
+  div_out.Resize(in->dims());
+  div_out.mutable_data(dev_ctx.GetPlace());
+  const auto& div_runner = NpuOpRunner("DIV", {fp32_in, scale}, {div_out}, {});
   div_runner.Run(stream);
 
-  Tensor out2(in->type());
-  out2.Resize({1});
-  out.mutable_data<T>(dev_ctx.GetPlace());
-  const auto& reduce_sum_runner = NpuOpRunner("ReduceSumD", {out}, {out2}, {});
-  reduce_sum_runner.Run(stream);
+  // reduce_sum
+  Tensor sum(fp32_dtype);
+  sum.Resize({1});
+  sum.mutable_data(dev_ctx.GetPlace());
+  const auto& sum_runner = NpuOpRunner("ReduceSumD", {div_out}, {sum}, {});
+  sum_runner.Run(stream);
 
-  std::vector<T> vec;
-  TensorToVector(out2, dev_ctx, vec);
+  // value
+  std::vector<float> vec;
+  framework::TensorToVector<float>(sum, dev_ctx, &vec);
   float value = static_cast<float>(vec[0]);
   if (std::isinf(value)) {
     LOG(WARNING) << "detected Inf";
