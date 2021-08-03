@@ -703,8 +703,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
-      if (desc.Input("Shape").size() >= 1 ||
-          desc.Input("ShapeTensor").size() >= 1) {
+      if (desc.HasInput("Shape") || desc.HasInput("ShapeTensor")) {
         return false;
       }
       std::vector<int> shape =
