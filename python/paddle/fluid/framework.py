@@ -35,6 +35,7 @@ from .. import compat as cpt
 from .proto import framework_pb2
 
 from . import core
+from .core import disable_signal_handler
 from . import unique_name
 import paddle.version as fluid_version
 import warnings
@@ -60,6 +61,7 @@ __all__ = [
     'device_guard',
     'set_flags',
     'get_flags',
+    'disable_signal_handler',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
