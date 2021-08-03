@@ -405,7 +405,7 @@ configure_file(commit.h.in commit.h)
 # Adapt to custom op mechanism: Include the header files related to the data type
 # to avoid exposing the path of the underlying file
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include)
 
 if(WITH_ROCM)
   hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
