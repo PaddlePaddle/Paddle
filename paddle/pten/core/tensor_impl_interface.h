@@ -59,7 +59,7 @@ class TensorImplInterface {
    * Most of Tensor's methods need to have corresponding implementations
    * in TensorImplInterface
    */
-  virtual int64_t numel() const = 0;
+  virtual std::int64_t numel() const = 0;
 
   virtual DDim dims() const = 0;
 

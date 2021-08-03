@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/pten/core/tensor_impl_if.h"
+#include "paddle/pten/core/tensor_impl_interface.h"
 #include "paddle/pten/core/tensor_meta.h"
 
 namespace paddle {

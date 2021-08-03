@@ -18,8 +18,8 @@ limitations under the License. */
 #include <memory>
 #include <utility>
 
-#include "paddle/pten/core/autograd_meta_if.h"
-#include "paddle/pten/core/tensor_impl_if.h"
+#include "paddle/pten/core/autograd_meta_interface.h"
+#include "paddle/pten/core/tensor_impl_interface.h"
 
 // fluid headers [may be replaced by new impl]
 #include "paddle/fluid/framework/ddim.h"
