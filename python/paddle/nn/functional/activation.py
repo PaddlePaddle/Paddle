@@ -727,8 +727,9 @@ def selu(x,
 
 
 def silu(x, name=None):
-    r"""
+    """
     silu activation.
+    
     .. math:
         silu(x) = \frac{x}{1 + e^{-x}}
     
