@@ -68,8 +68,8 @@ struct GpuDevice;
 }  // namespace Eigen
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_header.h"
-#include "paddle/fluid/platform/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -137,12 +137,14 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 };
 
 #ifdef PADDLE_WITH_XPU
+namespace xpu = baidu::xpu::api;
 class XPUDeviceContext : public DeviceContext {
  public:
   XPUDeviceContext();
   explicit XPUDeviceContext(XPUPlace place);
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  XPUVersion xpu_version() const { return xpu_version_; }
   Place GetPlace() const override;
   xpu::Context* x_context() const;
 
@@ -159,6 +161,7 @@ class XPUDeviceContext : public DeviceContext {
 
  private:
   XPUPlace place_;
+  XPUVersion xpu_version_;
   xpu::Context* context_;
 #ifdef PADDLE_WITH_XPU_BKCL
   BKCLContext_t bkcl_context_;
