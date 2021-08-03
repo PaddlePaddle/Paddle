@@ -59,6 +59,7 @@ void BasicEngine::Init(
     auto grad_tensor = grad_tensors[i];
 
     auto init_node = var->GradVarBase()->GradNode();
+
     PADDLE_ENFORCE_EQ(
         var->GradVarBase()->GraphIsFreed(), false,
         platform::errors::Unavailable(
@@ -322,7 +323,7 @@ void BasicEngine::Execute() {
   // Start execute Computation graph
   std::queue<std::shared_ptr<GradOpNode>> q;
   for (size_t i = 0; i < init_nodes_.size(); ++i) {
-    if(node_deps_[init_nodes_[i].get()] == 0) {
+    if (node_deps_[init_nodes_[i].get()] == 0) {
       q.push(std::move(init_nodes_[i]));
     }
   }
