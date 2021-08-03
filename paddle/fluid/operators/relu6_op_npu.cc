@@ -24,8 +24,8 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class Relu6Kernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {	
-    VLOG(3) << "NPU" << std::endl ; 
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    VLOG(3) << "NPU" << std::endl;
     auto* x = ctx.Input<framework::Tensor>("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
     framework::NPUAttributeMap attr_input = {};
@@ -48,4 +48,4 @@ REGISTER_OP_NPU_KERNEL(
     relu6, ops::Relu6Kernel<paddle::platform::NPUDeviceContext, int>,
     ops::Relu6Kernel<paddle::platform::NPUDeviceContext, float>,
     ops::Relu6Kernel<paddle::platform::NPUDeviceContext, double>,
-    ops::Relu6Kernel<paddle::platform::NPUDeviceContext, plat::float16>) ; 
+    ops::Relu6Kernel<paddle::platform::NPUDeviceContext, plat::float16>);

@@ -28,11 +28,13 @@ from paddle.fluid import compiler, Program, program_guard
 
 paddle.enable_static()
 
+
 def ref_relu6(x, threshold=6.0):
     out = np.copy(x)
     out[np.abs(x - threshold) < 0.005] = threshold + 0.02
     out = np.minimum(np.maximum(x, 0), threshold)
     return out
+
 
 class TestActivation(OpTest):
     def setUp(self):
@@ -88,7 +90,7 @@ class TestRelu6API(unittest.TestCase):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 10, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
-        self.place=paddle.NPUPlace(0) 
+        self.place = paddle.NPUPlace(0)
 
     def test_static_api(self):
         paddle.enable_static()
