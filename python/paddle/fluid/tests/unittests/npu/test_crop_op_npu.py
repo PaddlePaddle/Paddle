@@ -22,30 +22,10 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+from test_crop_op import crop
 
 paddle.enable_static()
 np.random.seed(10)
-
-
-def crop(data, offsets, crop_shape):
-    def indexOf(shape, index):
-        result = []
-        for dim in reversed(shape):
-            result.append(index % dim)
-            index = index / dim
-        return result[::-1]
-
-    result = []
-    for i, value in enumerate(data.flatten()):
-        index = indexOf(data.shape, i)
-        selected = True
-        if len(index) == len(offsets):
-            for j, offset in enumerate(offsets):
-                selected = selected and index[j] >= offset and index[
-                    j] < crop_shape[j] + offset
-            if selected:
-                result.append(value)
-    return np.array(result).reshape(crop_shape)
 
 
 class TestCropOp(OpTest):
@@ -55,12 +35,19 @@ class TestCropOp(OpTest):
         self.op_type = "crop"
         self.attrs = {}
         self.offset_by_input = False
+        self.crop_by_input = False
         self.dtype = np.float32
         self.initTestCase()
-        self.inputs = {
-            'X': np.random.random(self.x_shape).astype(self.dtype),
-            'Y': np.random.random(self.crop_shape).astype(self.dtype)
-        }
+        if self.crop_by_input:
+            self.inputs = {
+                'X': np.random.random(self.x_shape).astype(self.dtype),
+                'Y': np.random.random(self.crop_shape).astype(self.dtype)
+            }
+        else:
+            self.attrs['shape'] = self.crop_shape
+            self.inputs = {
+                'X': np.random.random(self.x_shape).astype(self.dtype),
+            }
 
         if self.offset_by_input:
             self.inputs['Offsets'] = np.array(self.offsets).astype('int32')
@@ -147,6 +134,23 @@ class TestCase8(TestCropOp):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]
         self.offsets = []
+        self.offset_by_input = True
+
+
+class TestCase9(TestCropOp):
+    def initTestCase(self):
+        self.x_shape = (10, 9, 14)
+        self.crop_shape = [3, 3, 5]
+        self.offsets = [3, 5, 4]
+        self.crop_by_input = True
+
+
+class TestCase10(TestCropOp):
+    def initTestCase(self):
+        self.x_shape = (10, 9, 14)
+        self.crop_shape = [3, 3, 5]
+        self.offsets = [3, 5, 4]
+        self.crop_by_input = True
         self.offset_by_input = True
 
 

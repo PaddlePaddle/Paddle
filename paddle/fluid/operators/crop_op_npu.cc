@@ -38,12 +38,12 @@ class CropNPUKernel : public framework::OpKernel<T> {
       if (res.empty()) {
         offset_list.resize(x->dims().size(), 0);
       } else {
-        offset_list = res;
+        offset_list.insert(offset_list.end(), res.begin(), res.end());
       }
     }
 
     PADDLE_ENFORCE_EQ(
-        int64_t(offset_list.size()), x->dims().size(),
+        static_cast<int64_t>(offset_list.size()), x->dims().size(),
         platform::errors::InvalidArgument(
             "The shape (%d) of CropOp's "
             "'offset' attribute should be equal to the shape of dims "
@@ -56,19 +56,39 @@ class CropNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto* shape = ctx.Input<framework::Tensor>("Y");
-    PADDLE_ENFORCE_EQ(shape->dims().size(), x->dims().size(),
-                      platform::errors::InvalidArgument(
-                          "The shape of dims of (%d) of CropOp's "
-                          "Input(shape) should be equal to the shape of dims "
-                          "(%d) of the Input(X).",
-                          shape->dims().size(), x->dims().size()));
+    if (ctx.HasInput("Y")) {
+      auto* shape = ctx.Input<framework::Tensor>("Y");
+      PADDLE_ENFORCE_EQ(shape->dims().size(), x->dims().size(),
+                        platform::errors::InvalidArgument(
+                            "The shape of dims of (%d) of CropOp's "
+                            "Input(shape) should be equal to the shape of dims "
+                            "(%d) of the Input(X).",
+                            shape->dims().size(), x->dims().size()));
 
-    const auto& runner = NpuOpRunner("Crop", {*x, *shape}, {*out}, attr_input);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
+      const auto& runner =
+          NpuOpRunner("Crop", {*x, *shape}, {*out}, attr_input);
+      auto stream =
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+      runner.Run(stream);
+    } else {
+      auto shape_size = ctx.Attr<std::vector<int>>("shape");
+      PADDLE_ENFORCE_EQ(shape_size.size(), x->dims().size(),
+                        platform::errors::InvalidArgument(
+                            "The shape of dims of (%d) of CropOp's "
+                            "Input(shape) should be equal to the shape of dims "
+                            "(%d) of the Input(X).",
+                            shape_size.size(), x->dims().size()));
+      Tensor tmp_shape(x->type());
+      tmp_shape.Resize(framework::make_ddim(shape_size));
+      tmp_shape.mutable_data<T>(ctx.GetPlace());
+      const auto& runner =
+          NpuOpRunner("Crop", {*x, tmp_shape}, {*out}, attr_input);
+      auto stream =
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+      runner.Run(stream);
+    }
   }
 };
 
