@@ -235,35 +235,48 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     grad = block.var(grad_name)
                     if param.is_distributed:
                         continue
-                    param_grads.append(grad)
+                    param_grads.append((param, grad))
                     grads_to_idx[grad] = idx
 
-        segments = []
+        grad_segments = []
+        param_segments = []
         last_dtype = None
         # split the grad based on dtype and fused size
-        for var in param_grads:
-            if len(segments) == 0 \
-                    or len(segments[-1]) == self.fuse_grad_size_in_num \
-                    or var.dtype != last_dtype:
-                segments.append([var])
-                last_dtype = var.dtype
+        for param, grad in param_grads:
+            if len(grad_segments) == 0 \
+                    or len(grad_segments[-1]) == self.fuse_grad_size_in_num \
+                    or grad.dtype != last_dtype:
+                grad_segments.append([grad])
+                param_segments.append([param])
+                last_dtype = grad.dtype
             else:
-                segments[-1].append(var)
+                grad_segments[-1].append(grad)
+                param_segments[-1].append(param)
 
-        if len(segments) == 0:
+        if len(grad_segments) == 0:
             return
 
-        for segment in reversed(segments):
+        assert len(grad_segments) == len(param_segments)
+
+        for i in range(len(grad_segments) - 1, -1, -1):
+            grad_segment = grad_segments[i]
+            param_segment = param_segments[i]
             # insert coalesce tensor
             fused_var = block.create_var(
-                name=unique_name.generate('FusedOutput_{}'.format(segment[0]
-                                                                  .name)),
-                dtype=segment[0].dtype,
+                name=unique_name.generate('FusedOutput_{}'.format(grad_segment[
+                    0].name)),
+                dtype=grad_segment[0].dtype,
                 persistable=True,
                 stop_gradient=True)
-            idx = grads_to_idx[segment[-1]]
+            before_idx = grads_to_idx[grad_segment[0]]
+            after_idx = grads_to_idx[grad_segment[-1]]
+            offset = 1
+            for j in range(i + 1, len(grad_segments)):
+                # find the offset of the sync op and allreduce op
+                if after_idx == grads_to_idx[grad_segments[j][0]]:
+                    offset += 1
             block._insert_op_without_sync(
-                idx + 1,
+                after_idx + offset,
                 type='c_allreduce_sum',
                 inputs={'X': fused_var},
                 outputs={'Out': fused_var},
@@ -274,21 +287,21 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 })
             if not self.calc_comm_same_stream:
                 block._insert_op_without_sync(
-                    idx + 1,
+                    after_idx + offset,
                     type='c_sync_calc_stream',
                     inputs={'X': fused_var},
                     outputs={'Out': fused_var},
                     attrs={OP_ROLE_KEY: OpRole.Backward})
             block._insert_op_without_sync(
-                idx + 1,
+                before_idx,
                 type="coalesce_tensor",
-                inputs={"Input": segment},
-                outputs={"Output": segment,
+                inputs={"Input": param_segment},
+                outputs={"Output": grad_segment,
                          "FusedOutput": fused_var},
                 attrs={
-                    "copy_data": True,
+                    "copy_data": False,
                     "use_align": True,
-                    "dtype": segment[0].dtype,
+                    "dtype": grad_segment[0].dtype,
                     OP_ROLE_KEY: OpRole.Backward
                 })
 
@@ -302,8 +315,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 block._insert_op_without_sync(
                     idx,
                     type='c_sync_comm_stream',
-                    inputs={'X': segment[0]},
-                    outputs={'Out': segment[0]},
+                    inputs={'X': grad_segment[0]},
+                    outputs={'Out': grad_segment[0]},
                     attrs={'ring_id': ring_id,
                            OP_ROLE_KEY: OpRole.Backward})
                 break
