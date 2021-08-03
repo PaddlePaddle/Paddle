@@ -162,6 +162,8 @@ if "%WITH_SCCACHE%"=="ON" (
     sccache --stop-server 2> NUL
     if not exist D:\sccache mkdir D:\sccache
     set SCCACHE_DIR=D:\sccache\.cache
+    :: sccache will shut down if a source file takes more than 10 mins to compile
+    set SCCACHE_IDLE_TIMEOUT=0
     set SCCACHE_CACHE_SIZE=30G
     set SCCACHE_ERROR_LOG=D:\sccache\sccache_log.txt
     set SCCACHE_LOG=quiet
@@ -500,15 +502,6 @@ for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
 
-tree /F %cd%\paddle_inference_install_dir\paddle
-%cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
-set /p libsize=< lib_size.txt
-for /F %%i in ("%libsize%") do (
-    set /a libsize_m=%%i/1024
-    echo "Windows Paddle_Inference Size: !libsize_m!M"
-    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
-)
-
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
 for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
@@ -526,7 +519,6 @@ if %ERRORLEVEL% NEQ 0 (
     echo pip install whl package failed!
     exit /b 1
 )
-
 
 set CUDA_VISIBLE_DEVICES=0
 python %work_dir%\paddle\scripts\installation_validate.py
@@ -632,6 +624,15 @@ for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "1 card TestCases Total"
 call :timestamp "%start%" "%end%" "TestCases Total"
+
+tree /F %cd%\paddle_inference_install_dir\paddle
+%cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
+set /p libsize=< lib_size.txt
+for /F %%i in ("%libsize%") do (
+    set /a libsize_m=%%i/1024
+    echo "Windows Paddle_Inference Size: !libsize_m!M"
+    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
+)
 
 cd %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT%/include %TENSORRT_ROOT%/lib %MSVC_STATIC_CRT%
