@@ -17,8 +17,7 @@ import re
 from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
 from functools import partial
-from paddle.distributed.fleet.utils.recompute import recompute
-from ..pp_utils.utils import _hp_recompute
+from ..pp_utils.utils import _hp_recompute, _initialize_recompute_setting
 
 __all__ = []
 
@@ -131,7 +130,9 @@ class PipelineLayer(Layer):
                  topology=None,
                  loss_fn=None,
                  seg_method="uniform",
-                 recompute_interval=0):
+                 recompute_interval=0,
+                 recompute_offload=False,
+                 recompute_partition=False):
         super(PipelineLayer, self).__init__()
         if num_stages is None and topology is None:
             raise ValueError("should provide num_stages or topology")
@@ -145,6 +146,11 @@ class PipelineLayer(Layer):
         self._loss_fn = loss_fn
         self._topo = topology
         self._recompute_interval = recompute_interval
+        self._recompute_offload = recompute_offload
+        self._recompute_partition = recompute_partition
+
+        _initialize_recompute_setting(recompute_offload, recompute_partition)
+
         world_size = dist.get_world_size()
         self.global_rank = dist.get_rank()
 

@@ -19,7 +19,7 @@ from paddle.fluid import framework
 import contextlib
 from paddle.distributed.fleet.utils.recompute import check_recompute_necessary, detach_variable, swith_rng_state
 import paddle.distributed as dist
-
+import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter(
@@ -93,7 +93,66 @@ def get_tensor_bytes(tensor):
     return tensor.numel() * elem_size
 
 
-recompute_offload = False
+_hcg = None
+_recompute_offload = False
+_recompute_partition = False
+
+
+def _initialize_recompute_setting(is_offload, is_partition):
+    global _recompute_offload, _recompute_partition
+
+    _recompute_offload = is_offload
+    _recompute_partition = is_partition
+
+
+def _initialize_recompute_hcg(hcg):
+    global _hcg, _mp_degree
+    _hcg = hcg
+
+
+def _get_partition_start_end(tensor):
+    global _hcg
+    mp_degree = _hcg.get_model_parallel_world_size()
+    mp_rank = _hcg.get_model_parallel_rank()
+
+    tensor_numel = np.prod(tensor.shape)
+    assert tensor_numel != 0, "can't recompute zero element"
+    assert tensor_numel % mp_degree == 0
+    part_size = tensor_numel // mp_degree
+    start = mp_rank * part_size
+    end = start + part_size
+    return start, end
+
+
+def split_tensor_into_1d_equal_chunks(tensor):
+    global _hcg
+
+    mp_degree = _hcg.get_model_parallel_world_size()
+    mp_rank = _hcg.get_model_parallel_rank()
+    tensor_numel = paddle.numel(tensor)
+    assert tensor_numel != 0, "can't recompute zero element"
+    assert tensor_numel % mp_degree == 0
+
+    data = tensor.flatten_()
+    partition_size = tensor_numel // mp_degree
+    start_index = partition_size * mp_rank
+    end_index = start_index + partition_size
+    return data[start_index:end_index]
+
+
+def gather_split_1d_tensor(tensor):
+    global _hcg
+    mp_degree = _hcg.get_model_parallel_world_size()
+    mp_rank = _hcg.get_model_parallel_rank()
+    mp_group = _hcg.get_model_parallel_group()
+
+    if mp_degree < 2:
+        return tensor
+
+    tensor_list = []
+    paddle.distributed.all_gather(tensor_list, tensor, group=mp_group)
+    gathered = paddle.concat(x=tensor_list, axis=-1)
+    return gathered
 
 
 class _HPRecomputeFunction(PyLayer):
@@ -107,16 +166,8 @@ class _HPRecomputeFunction(PyLayer):
         # save input for backward
         ctx.inputs = []
         ctx.tensor_indices = []
+        ctx.tensor_shapes = []
         tensor_inputs = []
-        for i, arg in enumerate(args):
-            if paddle.is_tensor(arg):
-                arg = arg.cpu() if recompute_offload else arg
-                tensor_inputs.append(arg)
-                ctx.tensor_indices.append(i)
-                ctx.inputs.append(None)
-            else:
-                ctx.inputs.append(arg)
-        ctx.save_for_backward(*tensor_inputs)
 
         cur_device = paddle.get_device()
         if 'gpu:' not in cur_device:
@@ -133,6 +184,25 @@ class _HPRecomputeFunction(PyLayer):
         with paddle.no_grad():
             outputs = run_function(*args)
 
+        for i, arg in enumerate(args):
+            if paddle.is_tensor(arg):
+                if _recompute_partition:
+                    ctx.tensor_shapes.append(arg.shape)
+                    state = arg.stop_gradient
+                    partition = split_tensor_into_1d_equal_chunks(arg.detach(
+                    )).clone()
+                    arg = partition.cpu() if _recompute_offload else partition
+                    arg.stop_gradient = state
+                else:
+                    arg = arg.cpu() if _recompute_offload else arg
+                tensor_inputs.append(arg)
+                ctx.tensor_indices.append(i)
+                ctx.inputs.append(None)
+            else:
+                ctx.inputs.append(arg)
+
+        ctx.save_for_backward(*tensor_inputs)
+
         if paddle.is_tensor(outputs):
             all_outputs += [outputs]
             return outputs
@@ -146,12 +216,18 @@ class _HPRecomputeFunction(PyLayer):
             # Restore inputs
             inputs = list(ctx.inputs)
             tensor_indices = ctx.tensor_indices
-            tensors = ctx.saved_tensor()
+            tensor_shapes = ctx.tensor_shapes
+            tensors = list(ctx.saved_tensor())
 
             device_id = dist.ParallelEnv().device_id
             for i, idx in enumerate(tensor_indices):
+                if _recompute_partition:
+                    state = tensors[i].stop_gradient
+                    tensors[i] = gather_split_1d_tensor(tensors[i]).reshape_(
+                        tensor_shapes[i])
+                    tensors[i].stop_gradient = state
                 inputs[idx] = tensors[i].cuda(
-                    device_id) if recompute_offload else tensors[i]
+                    device_id) if _recompute_offload else tensors[i]
 
             tracer = framework._dygraph_tracer()
             tracer._has_grad = True
@@ -170,7 +246,6 @@ class _HPRecomputeFunction(PyLayer):
                 outputs = (outputs, )
             assert len(outputs) == len(args)
 
-            # run backward() with only tensor that requires grad
             forward_outputs_with_grad = []
             backward_inputs = list(args)
             for i in range(len(outputs)):
