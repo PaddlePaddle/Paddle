@@ -206,44 +206,8 @@ for dim_X in (1, 2, 3):
                 api_test(dim_X, dim_Y, transose_x, transose_y)
 
 
-# Test case more batch_size and N, M, K
-def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y,
-                               batch_size):
-    BATCH_SIZE = 2
-    M = 3
-    N = 4
-    K = 5
-    if (dim_X == 1 and transpose_X) or (dim_Y == 1 and transpose_Y):
-        K = 1
-    if dim_X == 1:
-        if transpose_X:
-            shape_X = [M]
-        else:
-            shape_X = [K]
-    if dim_Y == 1:
-        if transpose_Y:
-            shape_Y = [N]
-        else:
-            shape_Y = [K]
-    if dim_X >= 2:
-        if transpose_X:
-            shape_X = [K, M]
-        else:
-            shape_X = [M, K]
-    if dim_X == 3:
-        shape_X = [BATCH_SIZE] + shape_X
-    if dim_Y >= 2:
-        if transpose_Y:
-            shape_Y = [N, K]
-        else:
-            shape_Y = [K, N]
-    if dim_Y == 3:
-        shape_Y = [BATCH_SIZE] + shape_Y
-    return shape_X, shape_Y
-
-
 # Test case n-dim
-def generate_compatible_shapes(dim, transpose_X, transpose_Y):
+def generate_compatible_shapes_ndim(dim, transpose_X, transpose_Y):
     M = 2
     N = 4
     K = 3
@@ -270,8 +234,8 @@ for dim in [4]:
             test_name = (
                 'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
                     dim, dim, transpose_X, transpose_Y))
-            shape_X, shape_Y = generate_compatible_shapes(dim, transpose_X,
-                                                          transpose_Y)
+            shape_X, shape_Y = generate_compatible_shapes_ndim(dim, transpose_X,
+                                                               transpose_Y)
             globals()[test_name] = type(test_name, (Generator, OpTest), {
                 'shape_X': shape_X,
                 'shape_Y': shape_Y,
