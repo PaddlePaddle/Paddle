@@ -52,4 +52,7 @@ TEST(StringHelper, JoinStrings) {
 
   result = paddle::string::join_strings(v, ',');
   EXPECT_EQ(result, "hello,world");
+
+  result = paddle::string::join_strings(v, " new ");
+  EXPECT_EQ(result, "hello new world");
 }

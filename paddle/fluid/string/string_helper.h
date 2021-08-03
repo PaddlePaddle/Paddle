@@ -137,7 +137,9 @@ std::string join_strings(const Container& strs, char delim) {
       str += delim;
     }
 
-    str += boost::lexical_cast<std::string>(elem);
+    std::stringstream ss;
+    ss << elem;
+    str += ss.str();
     ++i;
   }
 
