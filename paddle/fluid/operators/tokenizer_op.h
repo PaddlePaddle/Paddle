@@ -159,7 +159,6 @@ class TokenizerKernel : public framework::OpKernel<T> {
       VLOG(3) << "The input text(list(str)) and text pair (list(str)) must"
               << "be the same number of text sequence. Please check the input!";
       return;
-      0
     }
 
     BertTokenizer* tokenizer_ptr = new BertTokenizer(*vocab);
