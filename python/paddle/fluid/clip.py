@@ -19,6 +19,7 @@ import six
 import warnings
 
 import functools
+import paddle
 from . import layers
 from . import framework
 from . import core
@@ -416,8 +417,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
-            square = layers.square(merge_grad)
-            sum_square = layers.reduce_sum(square)
+
+            sum_square = paddle.square(paddle.norm(merge_grad))
             sum_square_list.append(sum_square)
 
         # all parameters have been filterd out
@@ -439,6 +440,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if getattr(p, 'need_clip', True) is False:
                 params_and_grads.append((p, g))
                 continue
+            # TODO(wangxi): use place elementwise_mul
             new_grad = layers.elementwise_mul(x=g, y=clip_var)
             params_and_grads.append((p, new_grad))
 
@@ -460,8 +462,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         merge_grad = layers.get_tensor_from_selected_rows(
                             merge_grad)
 
-                    square = layers.square(merge_grad)
-                    sum_square = layers.reduce_sum(input=square)
+                    # maybe need a reduce_square_sum op
+                    sum_square = paddle.square(paddle.norm(merge_grad))
                     sum_square_list.append(sum_square)
 
             # all parameters have been filterd out
@@ -489,9 +491,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     continue
 
                 with p.block.program._optimized_guard([p, g]):
-                    new_grad = layers.elementwise_mul(x=g, y=scale_var)
-                param_new_grad_name_dict[p.name] = new_grad.name
-                params_and_grads.append((p, new_grad))
+                    # inplace
+                    p.block.append_op(
+                        type='elementwise_mul',
+                        inputs={'X': g,
+                                'Y': scale_var},
+                        outputs={'Out': g})
+                param_new_grad_name_dict[p.name] = g.name
+                params_and_grads.append((p, g))
 
         _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
         return params_and_grads
@@ -513,8 +520,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             merge_grad = layers.merge_selected_rows(grad)
             merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
-        square = layers.square(merge_grad)
-        local_norm_var = layers.reduce_sum(input=square)
+        local_norm_var = paddle.square(paddle.norm(merge_grad))
         context[self.group_name].append(local_norm_var)
 
         self.context = context
@@ -532,10 +538,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
             assert group_scale_var.shape == (1, )
             self.context[group_scale_name] = group_scale_var
 
-        new_grad = layers.elementwise_mul(
-            x=grad, y=self.context[group_scale_name])
+        # inplace
+        param.block.append_op(
+            type='elementwise_mul',
+            inputs={'X': grad,
+                    'Y': self.context[group_scale_name]},
+            outputs={'Out': grad})
 
-        return param, new_grad
+        return param, grad
 
 
 @framework.dygraph_not_support
@@ -709,7 +719,7 @@ def _correct_clip_op_role_var(params_grads, param_new_grad_name_dict):
             continue
         block_id_list.append(block_id)
         for op in param.block.program.global_block().ops:
-            if 'op_namescope' in op.all_attrs() and "gradient_clip" in op.attr(
+            if op.has_attr("op_namescope") and "gradient_clip" in op.attr(
                     "op_namescope") and op.attr('op_role_var'):
                 param_name = op.attr('op_role_var')[0]
                 if param_name in param_new_grad_name_dict:
