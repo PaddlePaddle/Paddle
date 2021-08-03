@@ -154,7 +154,6 @@ class PartialProgramLayer:
 
         # For AMP training
         self._amp_list = AutoMixedPrecisionLists()
-        self._amp_end_op_index = -1
 
     @LazyInitialized
     def _infer_program(self):
@@ -179,7 +178,7 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _infer_amp_program(self):
         """
-        Lazy initialized property of train_amp_program.
+        Lazy initialized property of infer_amp_program.
         """
         infer_amp_program = self._origin_main_program.clone()
         with program_guard(infer_amp_program):
