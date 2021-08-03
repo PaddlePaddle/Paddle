@@ -122,9 +122,6 @@ class TestAsymPad(TestPool2D_Op):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
-    def init_global_pool(self):
-        self.global_pool = False
-
     def init_data_type(self):
         self.dtype = np.float32
 

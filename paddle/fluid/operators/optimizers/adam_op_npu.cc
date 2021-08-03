@@ -141,7 +141,7 @@ class AdamNPUKernel : public framework::OpKernel<T> {
 
     if (ctx.HasInput("Beta2Tensor")) {
       beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
-      PADDLE_ENFORCE_EQ(beta1_tensor->numel(), 1,
+      PADDLE_ENFORCE_EQ(beta2_tensor->numel(), 1,
                         platform::errors::InvalidArgument(
                             "Input(Beta2Tensor) size must be 1, but get %d",
                             beta2_tensor->numel()));

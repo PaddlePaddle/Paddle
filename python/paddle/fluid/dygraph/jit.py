@@ -158,7 +158,7 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def declarative(function=None, input_spec=None):
+def declarative(function=None, input_spec=None, build_strategy=None):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
     @declarative handles the Program and Executor of static mode and returns
@@ -171,6 +171,12 @@ def declarative(function=None, input_spec=None):
         function (callable): callable imperative function.
         input_spec(list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to specific the shape/dtype/name
             information of each input Tensor.
+        build_strategy(BuildStrategy|None): This argument is used to compile the
+            converted program with the specified options, such as operators' fusion
+            in the computational graph and memory optimization during the execution
+            of the computational graph. For more information about build_strategy,
+            please refer to :code:`paddle.static.BuildStrategy`. The default is None.
+
 
     Returns:
         Tensor(s): containing the numerical result.
@@ -206,9 +212,17 @@ def declarative(function=None, input_spec=None):
         static_layer = copy_decorator_attrs(
             original_func=python_func,
             decorated_obj=StaticFunction(
-                function=python_func, input_spec=input_spec))
+                function=python_func,
+                input_spec=input_spec,
+                build_strategy=build_strategy))
 
         return static_layer
+
+    build_strategy = build_strategy or BuildStrategy()
+    if not isinstance(build_strategy, BuildStrategy):
+        raise TypeError(
+            "Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {}".
+            format(type(build_strategy).__name__))
 
     # for usage: `declarative(foo, ...)`
     if function is not None:
