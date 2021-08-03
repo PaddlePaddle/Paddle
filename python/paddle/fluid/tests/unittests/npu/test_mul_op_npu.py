@@ -434,28 +434,29 @@ class TestMulNet4_2(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        a_np = np.random.random(size=(2, 3, 2, 2)).astype(self.dtype)
-        b_np = np.random.random(size=(2, 3, 2, 2)).astype(self.dtype)
+        a_np = np.random.random(size=(12, 5)).astype(self.dtype)
+        b_np = np.random.random(size=(12, 5)).astype(self.dtype)
         c_np = np.random.random(size=(12, 5)).astype(self.dtype)
         d_np = np.random.random(size=(12, 5)).astype(self.dtype)
         label_np = np.random.randint(2, size=(2, 1)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(
-                name="a", shape=[2, 3, 2, 2], dtype=self.dtype)
-            b = paddle.static.data(
-                name="b", shape=[2, 3, 2, 2], dtype=self.dtype)
+            a = paddle.static.data(name="a", shape=[12, 5], dtype=self.dtype)
+            b = paddle.static.data(name="b", shape=[12, 5], dtype=self.dtype)
             c = paddle.static.data(name="c", shape=[12, 5], dtype=self.dtype)
             d = paddle.static.data(name="d", shape=[12, 5], dtype=self.dtype)
             label = paddle.static.data(
                 name="label", shape=[2, 1], dtype='int64')
 
-            sum_1 = paddle.add(a, b)
-            sum_2 = paddle.add(c, d)
-            result = paddle.fluid.layers.mul(sum_1, sum_2)
+            sum_1 = paddle.add(a, b)  # [12, 5]
+            sum_2 = paddle.add(c, d)  # [12, 5]
+            fc_1 = fluid.layers.fc(input=sum_1, size=2)  # [12, 2]
+            fc_1_re_shape = paddle.reshape(fc_1, shape=[2, 3, 2, 2])
+            fc_2 = fluid.layers.fc(input=sum_2, size=2)  # [12, 2]
+            result = paddle.fluid.layers.mul(fc_1_re_shape,
+                                             fc_2)  # [2, 3, 2, 2] * [12, 2]
 
-            fc_1 = fluid.layers.fc(input=result, size=8)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            prediction = fluid.layers.fc(input=result, size=2, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.reduce_mean(cost)
