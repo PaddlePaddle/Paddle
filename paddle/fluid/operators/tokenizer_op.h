@@ -105,6 +105,17 @@ class BertTokenizer {
       const string& truncation_strategy = "longest_first",
       bool return_overflowing_tokens = false,
       bool return_special_tokens_mask = false) const;
+  vector<unordered_map<string, vector<int64_t>>> BatchEncode(
+      const vector<string>& batch_text,
+      const vector<string>& batch_text_pair = vector<string>(),
+      bool is_split_into_words = false, const size_t max_seq_len = 0,
+      bool pad_to_max_seq_len = false, bool return_length = false,
+      bool return_token_type_ids = true, bool return_position_ids = false,
+      bool return_attention_mask = false,
+      const string& truncation_strategy = "longest_first",
+      const size_t stride = 0, bool return_overflowing_tokens = false,
+      bool return_special_tokens_mask = false) const;
+
   int64_t GetUnkTokenID() const;
   int64_t GetPadTokenID() const;
   int64_t GetClsTokenID() const;
@@ -137,24 +148,42 @@ class TokenizerKernel : public framework::OpKernel<T> {
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
 
-    BertTokenizer* tokenizer_ptr = nullptr;
-    try {
-      tokenizer_ptr = new BertTokenizer(*vocab);
-    } catch (std::exception& e) {
-      VLOG(0) << e.what() << endl;
+    auto is_split_into_words =
+        static_cast<bool>(ctx.Attr<bool>("is_split_into_words"));
+    auto max_seq_len = static_cast<size_t>(ctx.Attr<int>("max_seq_len"));
+    auto pad_to_max_seq_len =
+        static_cast<bool>(ctx.Attr<bool>("pad_to_max_seq_len"));
+
+    auto* text_pair = ctx.Input<std::vector<std::string>>("TextPair");
+    if (text_pair && text->size() != text_pair->size()) {
+      VLOG(3) << "The input text(list(str)) and text pair (list(str)) must"
+              << "be the same number of text sequence. Please check the input!";
       return;
+      0
     }
+
+    BertTokenizer* tokenizer_ptr = new BertTokenizer(*vocab);
 
     // only support cpu now
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
     unordered_map<size_t, vector<T>> batch_input_ids;
     unordered_map<size_t, vector<T>> batch_seg_ids;
+    vector<unordered_map<string, vector<int64_t>>> batch_encode_inputs;
+    if (text_pair) {
+      batch_encode_inputs =
+          tokenizer_ptr->BatchEncode(*text, *text_pair, is_split_into_words,
+                                     max_seq_len, pad_to_max_seq_len);
+    } else {
+      batch_encode_inputs = tokenizer_ptr->BatchEncode(
+          *text, vector<string>(), is_split_into_words, max_seq_len,
+          pad_to_max_seq_len);
+    }
     for (size_t i = 0; i < batch_size; ++i) {
-      auto res = tokenizer_ptr->Encode(text->at(i));
-      size_t seq_len = res["input_ids"].size();
-      batch_input_ids[i] = res["input_ids"];
-      batch_seg_ids[i] = res["token_type_ids"];
+      auto encoded_inputs = batch_encode_inputs[i];
+      size_t seq_len = encoded_inputs["input_ids"].size();
+      batch_input_ids[i] = encoded_inputs["input_ids"];
+      batch_seg_ids[i] = encoded_inputs["token_type_ids"];
       if (seq_len > batch_max_seq_len) {
         batch_max_seq_len = seq_len;
       }

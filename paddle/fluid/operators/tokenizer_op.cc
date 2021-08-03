@@ -757,6 +757,51 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
   return encoded_inputs;
 }
 
+vector<unordered_map<string, vector<int64_t>>> BertTokenizer::BatchEncode(
+    const vector<string>& batch_text,
+    const vector<string>& batch_text_pair /* = vector<string>() */,
+    bool is_split_into_words /* = false */, const size_t max_seq_len /* = 0 */,
+    bool pad_to_max_seq_len /* = false */, bool return_length /* = false */,
+    bool return_token_type_ids /* = true */,
+    bool return_position_ids /* = false */,
+    bool return_attention_mask /* = false */,
+    const string& truncation_strategy /* = "longest_first" */,
+    const size_t stride /* = 0 */, bool return_overflowing_tokens /* = false */,
+    bool return_special_tokens_mask /* = false */) const {
+  bool has_text_pair = false;
+  if (batch_text_pair.size() != 0) {
+    has_text_pair = true;
+  }
+
+  vector<unordered_map<string, vector<int64_t>>> batch_encode_inputs = {};
+  size_t batch_size = batch_text.size();
+  for (size_t i = 0; i < batch_size; i++) {
+    if (stride > 0 && has_text_pair) {
+      // TODO(Steffy-zxf): add processing for qa-task.
+      auto first_ids = get_input_ids(batch_text[i]);
+      vector<int64_t> pair_ids = {};
+      if (has_text_pair) {
+        auto second_ids = get_input_ids(batch_text_pair[i]);
+      }
+      break;
+    } else if (has_text_pair) {
+      batch_encode_inputs.push_back(Encode(
+          batch_text[i], batch_text_pair[i], max_seq_len, pad_to_max_seq_len,
+          return_length, return_token_type_ids, return_position_ids,
+          return_attention_mask, truncation_strategy, return_overflowing_tokens,
+          return_special_tokens_mask));
+    } else {
+      batch_encode_inputs.push_back(
+          Encode(batch_text[i], {}, max_seq_len, pad_to_max_seq_len,
+                 return_length, return_token_type_ids, return_position_ids,
+                 return_attention_mask, truncation_strategy,
+                 return_overflowing_tokens, return_special_tokens_mask));
+    }
+  }
+
+  return batch_encode_inputs;
+}
+
 class TokenizerOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -792,28 +837,36 @@ class TokenizerOp : public framework::OperatorWithKernel {
 class TokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddInput("Vocab",
+             "(std::map<std::wstring, std::int>), The vocab to map "
+             "token string to token id.");
     AddInput("Text",
              "(std::vector<std::string>), The sequence to be processed. "
              "One sequence is a string, a list of strings, "
              "or a list of integers depending on whether it "
              "has been pretokenized and converted to ids. ");
-    AddInput("Vocab",
-             "(std::map<std::wstring, std::int>), The vocab to map "
-             "token string to token id.");
-    AddOutput("InputIds", "(Tensor), The token ids of the input text.");
-    AddOutput("SegmentIds", "(Tensor), The segments ids of the input text.");
     AddInput("TextPair",
              "(std::vector<std::string>), Same as `text` argument, "
              "while it represents for the latter sequence of the "
              "sequence pair.")
         .AsDispensable();
+    AddOutput("InputIds", "(Tensor), The token ids of the input text.");
+    AddOutput("SegmentIds", "(Tensor), The segments ids of the input text.");
+    AddAttr<bool>(
+        "is_split_into_words",
+        "(bool), Whether or not the input is already pre-tokenized "
+        "(e.g., split into words). If set to True, the tokenizer "
+        "assumes the input is already split into words (for instance, "
+        "by splitting it on whitespace) which it will tokenize. This "
+        "is useful for NER or token classification.")
+        .SetDefault(false);
     AddAttr<int>("max_seq_len",
                  "(int), If set to a positive number, will limit the "
                  "total sequence returned so that it has a maximum length."
                  " If there are overflowing tokens, those overflowing "
                  "tokens will be added to the returned dictionary  when "
-                 "`return_overflowing_tokens` is `True`. Defaults to `None`.")
-        .SetDefault(-1);
+                 "`return_overflowing_tokens` is `True`.")
+        .SetDefault(0);
     AddAttr<bool>("pad_to_max_seq_len",
                   "(bool), If set to `True`, the returned sequences would be"
                   " padded up to `max_seq_len` specified length according to"
@@ -837,7 +890,7 @@ class TokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool), Whether to include the attention mask in the returned "
         "dictionary.")
         .SetDefault(false);
-    AddAttr<bool>(
+    AddAttr<string>(
         "truncation_strategy",
         "(std::string), String selected in the following options: \n"
         "1) longest_first(default) :Iteratively reduce the inputs sequence "

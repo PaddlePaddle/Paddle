@@ -18,21 +18,25 @@ import paddle
 import paddle.fluid.core as core
 
 from paddlenlp.transformers import BertTokenizer
-from paddlenlp.ops import set_string_list, set_string_map
+from paddlenlp.ops import to_strings_tensor, to_map_tensor
 
 
 class TestTokenizerDemo(unittest.TestCase):
     def test_string_input(self):
         paddle.set_device('cpu')
 
-        tokens = ['今天天气不错', '大暴雨']
-        tokens_tensor = set_string_list(tokens, "demo_tokens")
+        text = ['今天天气不错', '大暴雨']
+        text_tensor = to_strings_tensor(text, "text")
+        pair = ["测试测试", "测试测试"]
+        pair_tensor = to_strings_tensor(pair, "pair")
 
         t = BertTokenizer.from_pretrained('bert-base-chinese')
         vocab = t.vocab.token_to_idx
-        vocab_tensor = set_string_map(vocab, "demo_vocab")
+        vocab_tensor = to_map_tensor(vocab, "vocab")
 
-        input_ids, seg_ids = core.ops.tokenizer(tokens_tensor, vocab_tensor)
+        input_ids, seg_ids = core.ops.tokenizer(vocab_tensor, text_tensor, None,
+                                                "max_seq_len", 10,
+                                                "pad_to_max_seq_len", False)
         print(input_ids)
         print(seg_ids)
 

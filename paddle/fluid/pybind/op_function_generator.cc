@@ -66,6 +66,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
+    {"tokenizer", {"Text", "Vocab", "TextPair"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
