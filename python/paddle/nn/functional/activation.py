@@ -727,10 +727,11 @@ def selu(x,
 
 
 def silu(x, name=None):
-    """
-    silu activation.
-    
-    .. math:
+    r"""
+    silu activation
+
+    .. math::
+
         silu(x) = \frac{x}{1 + e^{-x}}
     
     Parameters:
