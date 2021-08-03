@@ -65,15 +65,17 @@ class SegmentLayers(object):
         if self.method == "uniform":
             return self.uniform(self.num_items, self.num_parts)
 
-        elif self.method.startswith('module:'):
-            layertype = self.method.split(':')[1]
+        elif self.method.startswith('layer:'):
+            # Divide equally according to the specified layer
+            layername = self.method.split(':')[1]
             weights = [0] * len(self._layers_desc)
-            for idx in self._gen_layer_weight(layertype):
+            weight_idxs = self._gen_layer_weight(layername)
+            for idx in weight_idxs:
                 weights[idx] = 1
 
             assert sum(
                 weights
-            ) % self.num_parts == 0, "number of layertype ({}) should be divided by parts number({})".format(
+            ) % self.num_parts == 0, "number of layers ({}) should be divided by part number({})".format(
                 sum(weights), self.num_parts)
             part_size = sum(weights) // self.num_parts
             result = [0 for _ in range(self.num_parts + 1)]
@@ -107,7 +109,8 @@ class SegmentLayers(object):
             if regex.search(name):
                 weight_idxs.append(idx)
 
-        assert len(weight_idxs) > 0
+        assert len(
+            weight_idxs) > 0, "weight_idxs' length should be greater than 0"
         return weight_idxs
 
     def uniform(self, num_items, num_parts):
