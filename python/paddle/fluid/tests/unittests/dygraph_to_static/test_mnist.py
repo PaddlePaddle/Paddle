@@ -32,6 +32,9 @@ from predictor_utils import PredictorTools
 
 SEED = 2020
 
+if paddle.fluid.is_compiled_with_cuda():
+    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,

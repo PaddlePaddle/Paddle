@@ -23,8 +23,6 @@ from paddle.fluid.optimizer import AdamOptimizer
 if paddle.fluid.is_compiled_with_cuda():
     paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
-paddle.device.set_device('cpu')
-
 
 class TestAMP(TestMNIST):
     def train_static(self):
@@ -36,18 +34,23 @@ class TestAMP(TestMNIST):
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
+        # NOTE(Aurelius84): In static AMP training, there is a grep_list but
+        # dygraph AMP don't. It will bring the numbers of cast_op is different
+        # and leads to loss has a bit diff.
         self.assertTrue(
-            np.allclose(dygraph_loss, static_loss),
+            np.allclose(
+                dygraph_loss, static_loss, atol=1e-3),
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                             static_loss))
 
     def train(self, to_static=False):
         paddle.seed(SEED)
-
         mnist = MNIST()
+
         if to_static:
             print("Successfully to apply @to_static.")
             mnist = paddle.jit.to_static(mnist)
+
         adam = AdamOptimizer(
             learning_rate=0.001, parameter_list=mnist.parameters())
 
@@ -69,8 +72,6 @@ class TestAMP(TestMNIST):
                 with paddle.amp.auto_cast():
                     prediction, acc, avg_loss = mnist(img, label=label)
 
-                # avg_loss.backward()
-                # adam.minimize(avg_loss)
                 scaled = scaler.scale(avg_loss)
                 scaled.backward()
                 scaler.minimize(adam, scaled)
