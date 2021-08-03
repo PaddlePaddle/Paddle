@@ -57,10 +57,14 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
     if (!training) {
       const auto *est_mean = ctx.Input<Tensor>("Mean");
       const auto *est_var = ctx.Input<Tensor>("Variance");
+      framework::Tensor reserve_space1, reserve_space2;
+      reserve_space1.mutable_data<float>(est_mean->dims(), ctx.GetPlace());
+      reserve_space2.mutable_data<float>(est_var->dims(), ctx.GetPlace());
 
       const auto &runner = NpuOpRunner(
           "BatchNorm", {x_tensor, *scale, *bias, *est_mean, *est_var},
-          {y_tesnor, *est_mean, *est_var, *est_mean, *est_var},
+          {y_tesnor, reserve_space1, reserve_space2, reserve_space1,
+           reserve_space2},
           {{"epsilon", epsilon},
            {"is_training", training},
            {"data_format", data_layout}});
