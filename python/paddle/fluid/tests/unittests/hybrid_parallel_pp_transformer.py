@@ -130,7 +130,7 @@ class ModelPipe(PipelineLayer):
             layers=self.descs,
             loss_fn=CriterionPipe(),
             topology=topology,
-            seg_method="module:TransformerNetPipe")
+            seg_method="layer:TransformerNetPipe")
 
 
 class TestDistPPTraning(unittest.TestCase):
