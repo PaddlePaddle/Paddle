@@ -115,14 +115,11 @@ std::vector<T *> FilterByNodeWrapper(const Graph &graph) {
   return ret;
 }
 
+std::vector<ir::Node *> TopologySortSolveHazard(const Graph &graph);
+
 std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph);
 
-// Return the Hazard Variables in the sub graph. Reference of Hazard:
-// https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
-// The returning map maps from the Hazard variable name to the nodes in the
-// sub_graph
-std::map<std::string, std::vector<Node *>> GetSubGraphHazardVars(
-    const Graph &sub_graph);
+std::vector<ir::Node *> NewTopologySortGraphByDescOrder(const Graph &graph);
 
 }  // namespace ir
 }  // namespace framework

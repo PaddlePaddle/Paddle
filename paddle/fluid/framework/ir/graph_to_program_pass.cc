@@ -100,7 +100,7 @@ std::vector<OpDesc>* GetGraphOpDesc(const std::vector<ir::Node*>& nodes,
   return ops;
 }
 
-void GraphToProgramPass::GraphToBlock(const Graph* graph,
+void GraphToProgramPass::GraphToBlock(Graph* graph,
                                       proto::BlockDesc* block) const {
   // Remove the unneeded variables after memory optimization.
   std::unordered_set<std::string> vars2remove;
@@ -133,10 +133,24 @@ void GraphToProgramPass::GraphToBlock(const Graph* graph,
         *graph, static_cast<framework::ir::SortKind>(sort_kind));
   } else {
     if (FLAGS_convert_all_blocks) {
-      nodes = TopologySortGraphByDescOrder(*graph);
+      nodes = TopologySortSolveHazard(*graph);
     } else {
       nodes = TopologySortOperations(*graph);
     }
+    /*
+    LOG(WARNING) << graph->ToString();
+    LOG(WARNING) << "Comparing two topo sorts";
+    auto desc_nodes = TopologySortSolveHazard(*graph);
+    auto origin_nodes = TopologySortOperations(*graph);
+    for (size_t i = 0; i < desc_nodes.size(); ++i) {
+      if (desc_nodes[i]->id() != origin_nodes[i]->id()) {
+        LOG(WARNING) << "i = " << i;
+        LOG(WARNING) << "Desc node_id = " << desc_nodes[i]->id() << ", name = "
+    << desc_nodes[i]->Name();
+        LOG(WARNING) << "Origin node_id = " << origin_nodes[i]->id() << ", name
+    = " << origin_nodes[i]->Name();
+      }
+    }*/
   }
 
   std::vector<OpDesc> ops;

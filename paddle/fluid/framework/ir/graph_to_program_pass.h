@@ -31,7 +31,7 @@ class GraphToProgramPass : public Pass {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void GraphToBlock(const Graph* graph, proto::BlockDesc* block) const;
+  void GraphToBlock(Graph* graph, proto::BlockDesc* block) const;
 };
 
 }  // namespace ir

@@ -182,16 +182,12 @@ void BuildTwoGraphs(Graph* g) {
   v2->inputs.push_back(o2);
   v2->outputs.push_back(o3);
   v2->outputs.push_back(o4);
-  // o2->v3->o5
-  //  o2->outputs.push_back(v3);
+  // v3->o5
   o5->inputs.push_back(v3);
-  //  v3->inputs.push_back(o2);
   v3->outputs.push_back(o5);
-  // o3-v4->o5
+  // o3->v4
   o3->outputs.push_back(v4);
-  //  o5->inputs.push_back(v4);
   v4->inputs.push_back(o3);
-  //  v4->outputs.push_back(o5);
 }
 
 TEST(GraphHelperTest, Circles) {
@@ -219,6 +215,215 @@ TEST(GraphHelperTest, GraphNum) {
   Graph g3(prog);
   BuildTwoGraphs(&g3);
   ASSERT_EQ(GraphNum(g3), 2UL);
+}
+
+TEST(GraphHelperTest, TopologySortSolveHazard_ForwardGraph) {
+  ProgramDesc prog;
+  Graph g(prog);
+
+  ir::Node* o1 = g.CreateEmptyNode("op1", Node::Type::kOperation);
+  ir::Node* o2 = g.CreateEmptyNode("op2", Node::Type::kOperation);
+  ir::Node* o3 = g.CreateEmptyNode("op3", Node::Type::kOperation);
+  ir::Node* v1 = g.CreateEmptyNode("var1", Node::Type::kVariable);
+  ir::Node* v2 = g.CreateEmptyNode("var2", Node::Type::kVariable);
+  ir::Node* v3 = g.CreateEmptyNode("var3", Node::Type::kVariable);
+
+  // o1->v1->o2->v2->o3->v3
+  o1->outputs.push_back(v1);
+  v1->inputs.push_back(o1);
+  v1->outputs.push_back(o2);
+  o2->inputs.push_back(v1);
+  o2->outputs.push_back(v2);
+  v2->inputs.push_back(o2);
+  v2->outputs.push_back(o3);
+  o3->inputs.push_back(v2);
+  o3->outputs.push_back(v3);
+  v3->inputs.push_back(o3);
+
+  std::vector<Node*> sorted_ops = TopologySortSolveHazard(g);
+  ASSERT_EQ(sorted_ops.size(), 3UL);
+  ASSERT_EQ(sorted_ops[0], o1);
+  ASSERT_EQ(sorted_ops[1], o2);
+  ASSERT_EQ(sorted_ops[2], o3);
+}
+
+TEST(GraphHelperTest, TopologySortSolveHazard_Tree) {
+  ProgramDesc prog;
+  Graph g(prog);
+
+  // Constructing binary tree
+  int num_op_nodes = 9;
+  std::vector<Node*> op_nodes({nullptr});
+  std::vector<Node*> var_nodes({nullptr});
+  for (int i = 1; i <= num_op_nodes; ++i) {
+    std::stringstream op_ss;
+    op_ss << "tree_op" << i;
+    op_nodes.push_back(g.CreateEmptyNode(op_ss.str(), Node::Type::kOperation));
+    std::stringstream var_ss;
+    var_ss << "tree_var" << i;
+    var_nodes.push_back(g.CreateEmptyNode(var_ss.str(), Node::Type::kVariable));
+    op_nodes[i]->outputs.push_back(var_nodes[i]);
+    var_nodes[i]->inputs.push_back(op_nodes[i]);
+
+    if (i >= 2) {
+      var_nodes[i >> 1]->outputs.push_back(op_nodes[i]);
+      op_nodes[i]->inputs.push_back(var_nodes[i >> 1]);
+    }
+  }
+
+  std::vector<Node*> sorted_ops = TopologySortSolveHazard(g);
+  ASSERT_EQ(sorted_ops.size(), (size_t)num_op_nodes);
+  for (size_t i = 0; i < sorted_ops.size(); ++i) {
+    ASSERT_EQ(sorted_ops[i], op_nodes[i + 1]);
+  }
+}
+
+TEST(GraphHelperTest, TopologySortSolveHazard_TwoNonConnected) {
+  ProgramDesc prog;
+  Graph g(prog);
+
+  BuildTwoGraphs(&g);
+
+  std::vector<Node*> sorted_ops = TopologySortSolveHazard(g);
+  ASSERT_EQ(sorted_ops.size(), 5UL);
+  for (size_t i = 0; i < sorted_ops.size(); ++i) {
+    std::stringstream op_ss;
+    op_ss << "op" << i + 1;
+    ASSERT_EQ(sorted_ops[i]->Name(), op_ss.str());
+  }
+}
+
+TEST(GraphHelperTest, TopologySortSolveHazard_TwoPaths) {
+  ProgramDesc prog;
+  Graph g(prog);
+
+  BuildOneGraph(&g);
+
+  std::vector<Node*> sorted_ops = TopologySortSolveHazard(g);
+  ASSERT_EQ(sorted_ops.size(), 5UL);
+  for (size_t i = 0; i < sorted_ops.size(); ++i) {
+    std::stringstream op_ss;
+    op_ss << "op" << i + 1;
+    ASSERT_EQ(sorted_ops[i]->Name(), op_ss.str());
+  }
+}
+
+TEST(GraphHelperTest, TopologySortSolveHazard_InplaceOp) {
+  ProgramDesc prog;
+  Graph g(prog);
+
+  ir::Node* o1 = g.CreateEmptyNode("op1", Node::Type::kOperation);
+  ir::Node* o2 = g.CreateEmptyNode("op2", Node::Type::kOperation);
+  ir::Node* o3 = g.CreateEmptyNode("op3", Node::Type::kOperation);
+  ir::Node* v1 = g.CreateEmptyNode("same_var", Node::Type::kVariable);
+  ir::Node* v2 = g.CreateEmptyNode("same_var", Node::Type::kVariable);
+  ir::Node* v3 = g.CreateEmptyNode("same_var", Node::Type::kVariable);
+
+  // o1->same_var->o2->same_var->o3->same_var
+  o1->outputs.push_back(v1);
+  v1->inputs.push_back(o1);
+  v1->outputs.push_back(o2);
+  o2->inputs.push_back(v1);
+  o2->outputs.push_back(v2);
+  v2->inputs.push_back(o2);
+  v2->outputs.push_back(o3);
+  o3->inputs.push_back(v2);
+  o3->outputs.push_back(v3);
+  v3->inputs.push_back(o3);
+
+  std::vector<Node*> sorted_ops = TopologySortSolveHazard(g);
+  ASSERT_EQ(sorted_ops.size(), 3UL);
+  for (size_t i = 0; i < sorted_ops.size(); ++i) {
+    std::stringstream op_ss;
+    op_ss << "op" << i + 1;
+    ASSERT_EQ(sorted_ops[i]->Name(), op_ss.str());
+  }
+}
+
+TEST(GraphHelperTest, TopologySortSolveHazard_OutputSameVar) {
+  ProgramDesc prog;
+  Graph g(prog);
+
+  ir::Node* o1 = g.CreateEmptyNode("op1", Node::Type::kOperation);
+  ir::Node* o2 = g.CreateEmptyNode("op2", Node::Type::kOperation);
+  ir::Node* o3 = g.CreateEmptyNode("op3", Node::Type::kOperation);
+  ir::Node* v1 = g.CreateEmptyNode("same_var", Node::Type::kVariable);
+  ir::Node* v2 = g.CreateEmptyNode("same_var", Node::Type::kVariable);
+  ir::Node* v3 = g.CreateEmptyNode("same_var", Node::Type::kVariable);
+
+  // o1->same_var
+  o1->outputs.push_back(v1);
+  v1->inputs.push_back(o1);
+  // o2->same_var
+  o2->outputs.push_back(v2);
+  v2->inputs.push_back(o2);
+  // o3->same_var
+  o3->outputs.push_back(v3);
+  v3->inputs.push_back(o3);
+
+  std::vector<Node*> sorted_ops = TopologySortSolveHazard(g);
+  ASSERT_EQ(sorted_ops.size(), 3UL);
+  for (size_t i = 0; i < sorted_ops.size(); ++i) {
+    std::stringstream op_ss;
+    op_ss << "op" << i + 1;
+    ASSERT_EQ(sorted_ops[i]->Name(), op_ss.str());
+  }
+}
+
+TEST(GraphHelperTest, TopologySortSolveHazard_TwoPathsSameVar) {
+  ProgramDesc prog;
+  Graph g(prog);
+
+  ir::Node* o1 = g.CreateEmptyNode("op1", Node::Type::kOperation);
+  ir::Node* o2 = g.CreateEmptyNode("op2", Node::Type::kOperation);
+  ir::Node* o3 = g.CreateEmptyNode("op3", Node::Type::kOperation);
+  ir::Node* o4 = g.CreateEmptyNode("op4", Node::Type::kOperation);
+  ir::Node* o5 = g.CreateEmptyNode("op5", Node::Type::kOperation);
+  ir::Node* o6 = g.CreateEmptyNode("op6", Node::Type::kOperation);
+  ir::Node* v1 = g.CreateEmptyNode("v1", Node::Type::kVariable);
+  ir::Node* v2 = g.CreateEmptyNode("same_var1", Node::Type::kVariable);
+  ir::Node* v3 = g.CreateEmptyNode("same_var1", Node::Type::kVariable);
+  ir::Node* v4 = g.CreateEmptyNode("same_var2", Node::Type::kVariable);
+  ir::Node* v5 = g.CreateEmptyNode("same_var2", Node::Type::kVariable);
+
+  // o1->v1
+  o1->outputs.push_back(v1);
+  v1->inputs.push_back(o1);
+
+  // v1->o2 and v1->o3
+  v1->outputs.push_back(o2);
+  v1->outputs.push_back(o3);
+  o2->inputs.push_back(v1);
+  o3->inputs.push_back(v1);
+
+  // o2->same_var1->o4->same_var2->o5->same_var1->o6
+  o2->outputs.push_back(v2);
+  v2->inputs.push_back(o2);
+  v2->outputs.push_back(o4);
+  o4->inputs.push_back(v2);
+  o4->outputs.push_back(v4);
+  v4->inputs.push_back(o4);
+  v4->outputs.push_back(o5);
+  o5->inputs.push_back(v4);
+  o5->outputs.push_back(v3);
+  v3->inputs.push_back(o5);
+  v3->outputs.push_back(o6);
+  o6->inputs.push_back(v3);
+
+  // o3->same_var2->o6
+  o3->outputs.push_back(v5);
+  v5->inputs.push_back(o3);
+  v5->outputs.push_back(o6);
+  o6->inputs.push_back(v5);
+
+  std::vector<Node*> sorted_ops = TopologySortSolveHazard(g);
+  ASSERT_EQ(sorted_ops.size(), 6UL);
+  ASSERT_EQ(sorted_ops[0], o1);
+  ASSERT_EQ(sorted_ops[1], o2);
+  ASSERT_EQ(sorted_ops[2], o4);
+  ASSERT_EQ(sorted_ops[3], o5);
+  ASSERT_EQ(sorted_ops[4], o3);
+  ASSERT_EQ(sorted_ops[5], o6);
 }
 
 }  // namespace ir

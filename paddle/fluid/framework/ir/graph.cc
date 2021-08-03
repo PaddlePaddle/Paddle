@@ -329,12 +329,32 @@ void Graph::AnalyzeResolveHazard() {
   }
 
   std::map<std::string, std::vector<Node *>> var_nodes;
+
+  std::map<Node *, int> in_degree;
+  std::vector<Node *> node_vector;
   for (Node *node : Nodes()) {
+    in_degree[node] = node->inputs.size();
+    if (in_degree[node] == 0) {
+      node_vector.push_back(node);
+    }
+  }
+
+  while (!node_vector.empty()) {
+    Node *node = node_vector.back();
+    node_vector.pop_back();
+
     if (node->IsVar() && !node->IsCtrlVar()) {
       if (var_nodes.find(node->Name()) == var_nodes.end()) {
         var_nodes[node->Name()] = std::vector<Node *>({node});
       } else {
         var_nodes[node->Name()].push_back(node);
+      }
+    }
+
+    for (Node *out_node : node->outputs) {
+      --in_degree[out_node];
+      if (in_degree[out_node] == 0) {
+        node_vector.push_back(out_node);
       }
     }
   }
