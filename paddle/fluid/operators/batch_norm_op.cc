@@ -357,11 +357,12 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           auto x_data = x->data<T>();
           auto mean = saved_mean->mutable_data<T>(ctx.GetPlace());
           auto variance = saved_variance->mutable_data<T>(ctx.GetPlace());
+
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
           for (int nc = 0; nc < C; ++nc) {
-            T sum = 0.0f;
+            double mean_sum = 0.0f;
             auto mean_data =
                 x_data + nc * sample_size;  // mean value of each channel
 #ifdef PADDLE_WITH_MKLML
@@ -369,14 +370,14 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 #endif
             for (auto i = 0; i < N; ++i) {
               for (auto j = 0; j < sample_size; ++j) {
-                sum += mean_data[j];  // add data for each channel
+                mean_sum += mean_data[j];  // add data for each channel
               }
               mean_data = mean_data +
                           C * sample_size;  // jump to the same channel index
             }
-            mean[nc] = sum / (N * sample_size);
+            mean[nc] = mean_sum / (N * sample_size);
 
-            T var = 0.0f;
+            double var_sum = 0.0f;
             auto var_data =
                 x_data + nc * sample_size;  // variance value of each channel
 #ifdef PADDLE_WITH_MKLML
@@ -384,11 +385,12 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 #endif
             for (auto i = 0; i < N; ++i) {
               for (auto j = 0; j < sample_size; ++j) {
-                var += (var_data[j] - mean[nc]) * (var_data[j] - mean[nc]);
+                var_sum += static_cast<double>((var_data[j] - mean[nc]) *
+                                               (var_data[j] - mean[nc]));
               }
               var_data = var_data + C * sample_size;
             }
-            variance[nc] = var / (N * sample_size);
+            variance[nc] = var_sum / (N * sample_size);
           }
           break;
         }
@@ -456,6 +458,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
       case DataLayout::kNCHW: {
         auto y_data = y->mutable_data<T>(ctx.GetPlace());
         auto x_data = x->data<T>();
+
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
