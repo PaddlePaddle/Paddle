@@ -142,8 +142,8 @@ def create_test_class(op_type, typename, callback):
     globals()[cls_name] = Cls
 
 
-for _type_name in {'float16', 'float32', 'int32', 'int64'}:
-    if _type_name == 'int32':
+for _type_name in {'float16', 'float32', 'int32', 'int64', 'bool'}:
+    if _type_name == 'int32' or 'bool':
         create_test_class('equal', _type_name, lambda _a, _b: _a == _b)
         continue
     create_test_class('equal', _type_name, lambda _a, _b: _a == _b)
