@@ -104,7 +104,10 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   // Const qualifier of Attrs had to be discarded to overwrite it.
   if (FLAGS_use_mkldnn) {
     auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(op.Attrs());
-    mutable_op_attrs = attrs;
+    mutable_op_attrs = default_attrs;
+    for (auto& attr : attrs) {
+      mutable_op_attrs[attr.first] = attr.second;
+    }
   }
 #endif
 
