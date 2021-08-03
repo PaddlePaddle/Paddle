@@ -60,6 +60,8 @@ class NpuOpRunner {
 
   NpuOpRunner &AddAttrs(const NPUAttributeMap &attrs);
 
+  NpuOpRunner &AddInput();
+
   NpuOpRunner &AddInput(const Tensor &tensor);
 
   // NOTE(zhiqiu): CANN-5.0.2 support input tensors on host.
@@ -94,8 +96,10 @@ class NpuOpRunner {
   void Run(aclrtStream stream = nullptr) const;
 
  private:
+  aclTensorDesc *CreateTensorDesc();
   aclTensorDesc *CreateTensorDesc(Tensor tensor,
                                   aclMemType mem_type = ACL_MEMTYPE_DEVICE);
+  aclDataBuffer *CreateDataBuffer();
   aclDataBuffer *CreateDataBuffer(Tensor tensor);
 
  private:

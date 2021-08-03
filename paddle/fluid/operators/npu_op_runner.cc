@@ -192,6 +192,14 @@ NpuOpRunner &NpuOpRunner::AddAttrs(const NPUAttributeMap &attrs) {
   return *this;
 }
 
+NpuOpRunner &NpuOpRunner::AddInput() {
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc());
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer());
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor) {
   // create aclTensorDesc
   input_descs_.emplace_back(CreateTensorDesc(tensor));
@@ -321,6 +329,17 @@ std::vector<aclDataBuffer *> &NpuOpRunner::GetOutputBuffers() {
   return output_buffers_;
 }
 
+aclTensorDesc *NpuOpRunner::CreateTensorDesc() {
+  VLOG(4) << "NPU create empty tensorDesc: "
+          << "dtype:" << ACL_DT_UNDEFINED << " "
+          << "format:" << ACL_FORMAT_UNDEFINED;
+  auto *desc =
+      aclCreateTensorDesc(ACL_DT_UNDEFINED, 0, nullptr, ACL_FORMAT_UNDEFINED);
+  PADDLE_ENFORCE_NOT_NULL(
+      desc, platform::errors::External("Call aclCreateTensorDesc failed."));
+  return desc;
+}
+
 aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
                                              aclMemType mem_type) {
   auto dtype = ConvertToNpuDtype(tensor.type());
@@ -348,6 +367,14 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
     PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorPlaceMent(desc, mem_type));
   }
   return desc;
+}
+
+aclDataBuffer *NpuOpRunner::CreateDataBuffer() {
+  VLOG(4) << "NPU create empty buffer";
+  auto *buffer = aclCreateDataBuffer(nullptr, 0);
+  PADDLE_ENFORCE_NOT_NULL(
+      buffer, platform::errors::External("Call aclCreateDataBuffer failed."));
+  return buffer;
 }
 
 aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
