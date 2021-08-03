@@ -1203,7 +1203,7 @@ class Executor(object):
                 if vardesc.persistable() == False and \
                     vardesc.type() == core.VarDesc.VarType.LOD_TENSOR and \
                     vardesc.need_check_feed() == True and \
-                    varobj._stop_gradient == True and \
+                    varobj.stop_gradient == True and \
                     varobj.is_data == True and \
                     varobj.belong_to_optimizer == False and \
                     varname not in feed:
@@ -1638,8 +1638,12 @@ class Executor(object):
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_desc = trainer._desc()  # slow, cache
-        ctx = [trainer_desc, dataset, scope, real_fetch_list]
+        trainer_instance = self._default_executor.init_for_dataset(
+            program.desc, trainer_desc, scope, dataset.dataset)
+
+        ctx = [scope, real_fetch_list, trainer_instance]
         if use_program_cache: self._add_ctx_cache(cache_key, ctx)
+
         return ctx
 
     def _run_pipeline(self,
@@ -1654,20 +1658,27 @@ class Executor(object):
                       print_period=100,
                       fetch_handler=None,
                       use_program_cache=False):
-        trainer_desc, dataset, scope, real_fetch_list = \
+        scope, real_fetch_list, trainer_instance = \
             self._prepare_pipeline_ctx(program, dataset, scope, thread,
                                        is_infer, debug, fetch_list, fetch_info,
                                        print_period, fetch_handler,
                                        use_program_cache)
 
-        trainer_instance = self._default_executor.init_for_dataset(
-            program.desc, trainer_desc, scope, dataset.dataset)
+        from paddle.optimizer.lr import LRScheduler
+        if hasattr(program, 'lr_sheduler'):
+            lr_sheduler = program.lr_sheduler
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_sheduler()
+            lr_var = program.global_block().vars[lr_sheduler._var_name]
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+            tensor.set(data, self.place)
 
         self._default_executor.run_from_dataset(trainer_instance)
-        self._default_executor.release_trainer(trainer_instance)
 
-        dataset._dynamic_adjust_after_train()
-        dataset._finish_to_run()
+        if not use_program_cache:
+            self._default_executor.release_trainer(trainer_instance)
+
         if real_fetch_list:
             arr = scope.find_var('fetch').get_fetch_list()
             tensors = arr._move_to_list()

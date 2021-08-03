@@ -15,6 +15,11 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/top_utils.h"
+
+// only can include the headers in paddle/top/api dirs
+#include "paddle/top/api/dev/core.h"
+#include "paddle/top/api/dev/math.h"
 
 namespace paddle {
 namespace operators {
@@ -31,17 +36,20 @@ template <typename DeviceContext, typename T>
 class MeanKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
+    auto* x = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
+    auto& dev_ctx = context.device_context<DeviceContext>();
 
-    output->mutable_data<T>(context.GetPlace());
+    auto pt_x =
+        framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());
+    auto pt_out =
+        framework::MakeTensorImpl<pt::DenseTensor>(*out, x->place(), x->type());
 
-    auto X = EigenVector<T>::Flatten(*input);
-    auto y = EigenScalar<T>::From(*output);
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
+    // call new kernel
+    pt::Mean<T>(dev_ctx, *pt_x.get(), pt_out.get());
 
-    y.device(place) = X.mean();
+    // share pt_out data to out
+    framework::ShareTensorImpl(pt_out.get(), out);
   }
 };
 
