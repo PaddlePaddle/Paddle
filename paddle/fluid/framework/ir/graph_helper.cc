@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include <queue>
 #include <stack>
+#include "paddle/fluid/framework/op_proto_maker.h"
 
+DECLARE_bool(convert_all_blocks);
 DEFINE_string(print_sub_graph_dir, "",
               "FLAGS_print_sub_graph_dir is used "
               "to print the nodes of sub_graphs.");
@@ -429,6 +431,117 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
   }
 
   return ret;
+}
+
+static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
+  desc->SetType("fill_constant");
+  desc->SetAttr(
+      OpProtoAndCheckerMaker::OpRoleAttrName(),
+      (static_cast<int>(OpRole::kBackward) | static_cast<int>(OpRole::kLoss)));
+  desc->SetAttr("value", 1.0f);
+  std::vector<std::string> output_names;
+  for (auto out : node.outputs) {
+    output_names.emplace_back(out->Name());
+  }
+  desc->SetOutput("Out", output_names);
+  return desc;
+}
+
+static void GetGraphOpDesc(const std::vector<Node *> &nodes,
+                           std::vector<OpDesc> *ops) {
+  for (Node *n : nodes) {
+    // if node is not Op, skip
+    if (!n->IsOp()) continue;
+
+    // create fill_constant op
+    if (n->Name() == "scale_loss_grad") {
+      ops->emplace_back();
+      auto &desc = ops->back();
+      ReplaceScaleLossGradOp(*n, &desc);
+    } else if (n->Op()) {
+      ops->emplace_back(*n->Op());
+    }
+    // delete no OpDesc op
+  }
+}
+
+static void GraphToBlock(const Graph &graph, proto::BlockDesc *block,
+                         const SortKind *sort_kind) {
+  // Remove the unneeded variables after memory optimization.
+  std::unordered_set<std::string> vars2remove;
+  if (graph.Has(kGraphToProgramVarsToRemove)) {
+    vars2remove =
+        graph.Get<std::unordered_set<std::string>>(kGraphToProgramVarsToRemove);
+    VLOG(2) << "graph (id: " << block->idx() << ") to program remove "
+            << vars2remove.size() << " nodes";
+  }
+
+  block->clear_vars();
+  std::unordered_set<std::string> visited_vars;
+  for (Node *n : graph.Nodes()) {
+    if (n->IsVar()) {
+      if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
+          !vars2remove.count(n->Var()->Name()) &&
+          n->GetVarNodeBlockId() == graph.GetBlockId()) {
+        visited_vars.insert(n->Var()->Name());
+        block->add_vars()->MergeFrom(*n->Var()->Proto());
+      }
+    }
+  }
+  block->clear_ops();
+
+  std::vector<Node *> nodes;
+  if (sort_kind != nullptr) {
+    // Inference Memory Optimize relays on this branch.
+    nodes = TopologyVarientSort(graph, *sort_kind);
+  } else {
+    if (FLAGS_convert_all_blocks) {
+      nodes = TopologySortGraphByDescOrder(graph);
+    } else {
+      nodes = TopologySortOperations(graph);
+    }
+  }
+
+  std::vector<OpDesc> ops;
+  GetGraphOpDesc(nodes, &ops);
+  for (auto &op : ops) {
+    block->add_ops()->MergeFrom(*op.Proto());
+  }
+}
+
+void GraphToProgram(const Graph &graph, ProgramDesc *program,
+                    const SortKind *sort_kind) {
+  PADDLE_ENFORCE_EQ(graph.IsMainGraph(), true,
+                    platform::errors::InvalidArgument(
+                        "This graph is a sub_graph, "
+                        "and can't convert to program individually"));
+  PADDLE_ENFORCE_NOT_NULL(
+      program,
+      platform::errors::InvalidArgument(
+          "program must not be nullptr when converting graph to program"));
+
+  proto::ProgramDesc program_pb(*(program->Proto()));
+  auto block = program_pb.mutable_blocks(kRootBlockIndex);
+  block->set_idx(kRootBlockIndex);
+
+  if (FLAGS_convert_all_blocks) {
+    GraphToBlock(*graph.GetSubGraph(kRootBlockIndex), block, sort_kind);
+
+    VLOG(3) << "Graph to program need convert " << graph.SubGraphsSize()
+            << " sub graph";
+    for (size_t idx = 0; idx < graph.SubGraphsSize(); ++idx) {
+      // avoid kRootBlockIndex not 0
+      if (idx == kRootBlockIndex) continue;
+
+      block = program_pb.add_blocks();
+      block->set_idx(idx);
+      GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind);
+    }
+  } else {
+    GraphToBlock(graph, block, sort_kind);
+  }
+
+  program->CopyFrom(program_pb);
 }
 
 }  // namespace ir
