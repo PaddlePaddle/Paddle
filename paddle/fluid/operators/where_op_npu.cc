@@ -1,0 +1,108 @@
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/fluid/operators/where_op.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
+
+namespace paddle {
+namespace operators {
+
+template <typename DeviceContext, typename T>
+class WhereNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* condition = ctx.Input<framework::Tensor>("Condition");
+    auto* X = ctx.Input<framework::Tensor>("X");
+    auto* Y = ctx.Input<framework::Tensor>("Y");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+
+    const auto& runner =
+        NpuOpRunner("Select", {*condition, *X, *Y}, {*out}, {});
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class WhereGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* condition = ctx.Input<framework::Tensor>("Condition");
+    auto* dout_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dx_t = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dy_t = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+
+    if (dx_t != nullptr) {
+      dx_t->mutable_data<T>(ctx.GetPlace());
+    }
+    if (dy_t != nullptr) {
+      dy_t->mutable_data<T>(ctx.GetPlace());
+    }
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    framework::Tensor* zero_t = const_cast<Tensor*>(dout_t);
+    framework::Tensor zeros(dout_t->type());
+    std::vector<int> zeros_dims;
+    for (auto i = 0; i < dout_t->dims().size(); ++i) {
+      zeros_dims.push_back(dout_t->dims()[i]);
+    }
+    zeros.Resize(framework::make_ddim(zeros_dims));
+    zeros.mutable_data<T>(ctx.GetPlace());
+
+    const auto& runner = NpuOpRunner("ZerosLike", {*dout_t}, {zeros}, {});
+    runner.Run(stream);
+    zero_t = &zeros;
+
+    if (dx_t != nullptr) {
+      const auto& runner =
+          NpuOpRunner("Select", {*condition, *dout_t, *zero_t}, {*dx_t}, {});
+      runner.Run(stream);
+    }
+    if (dy_t != nullptr) {
+      const auto& runner =
+          NpuOpRunner("Select", {*condition, *zero_t, *dout_t}, {*dy_t}, {});
+      runner.Run(stream);
+    }
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+REGISTER_OP_NPU_KERNEL(
+    where, paddle::operators::WhereNPUKernel<paddle::platform::NPUDeviceContext,
+                                             float>,
+    paddle::operators::WhereNPUKernel<paddle::platform::NPUDeviceContext,
+                                      double>,
+    paddle::operators::WhereNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    paddle::operators::WhereNPUKernel<paddle::platform::NPUDeviceContext,
+                                      int64_t>);
+REGISTER_OP_NPU_KERNEL(
+    where_grad,
+    paddle::operators::WhereGradNPUKernel<paddle::platform::NPUDeviceContext,
+                                          float>,
+    paddle::operators::WhereGradNPUKernel<paddle::platform::NPUDeviceContext,
+                                          double>,
+    paddle::operators::WhereGradNPUKernel<paddle::platform::NPUDeviceContext,
+                                          int>,
+    paddle::operators::WhereGradNPUKernel<paddle::platform::NPUDeviceContext,
+                                          int64_t>);
