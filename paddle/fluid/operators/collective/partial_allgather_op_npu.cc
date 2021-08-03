@@ -69,7 +69,10 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
     VLOG(3) << "begin hccl allgather, parameter is: "
             << ", group is " << group << ", ring_id is " << ring_id
             << ", nranks is " << nranks << ", rankid is " << rank;
-
+    VLOG(3) << "barrier start";
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclBarrier(comm->comm(), stream));
+    VLOG(3) << "barrier end";
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllGather(
         send_buff, recv_buff, send_numel, dtype, comm->comm(),
         reinterpret_cast<void *>(stream)));
