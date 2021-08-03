@@ -121,13 +121,16 @@ class ModelPipe(PipelineLayer):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
 
-        for x in range(5):
+        for x in range(6):
             self.descs.append(LayerDesc(TransformerNetPipe))
 
         self.descs.append(lambda x: x[0])
 
         super().__init__(
-            layers=self.descs, loss_fn=CriterionPipe(), topology=topology)
+            layers=self.descs,
+            loss_fn=CriterionPipe(),
+            topology=topology,
+            seg_method="layer:TransformerNetPipe")
 
 
 class TestDistPPTraning(unittest.TestCase):
