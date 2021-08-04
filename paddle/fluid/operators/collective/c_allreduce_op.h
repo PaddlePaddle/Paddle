@@ -157,7 +157,7 @@ bool CheckNumerics(const paddle::platform::NPUDeviceContext& dev_ctx,
   Tensor div_out(fp32_dtype);
   div_out.Resize(in->dims());
   div_out.mutable_data<float>(dev_ctx.GetPlace());
-  const auto& div_runner = NpuOpRunner("DIV", {fp32_in, scale}, {div_out}, {});
+  const auto& div_runner = NpuOpRunner("Div", {fp32_in, scale}, {div_out}, {});
   div_runner.Run(stream);
 
   // reduce_sum
@@ -165,7 +165,12 @@ bool CheckNumerics(const paddle::platform::NPUDeviceContext& dev_ctx,
   Tensor sum(fp32_dtype);
   sum.Resize({1});
   sum.mutable_data<float>(dev_ctx.GetPlace());
-  const auto& sum_runner = NpuOpRunner("ReduceSumD", {div_out}, {sum}, {});
+  std::vector<int> axes;
+  for (int i = 0; i < in->dims().size(); ++i) {
+    axes.push_back(i);
+  }
+  const auto& sum_runner = NpuOpRunner("ReduceSumD", {div_out}, {sum},
+                                       {{"axes", axes}, {"keep_dims", false}});
   sum_runner.Run(stream);
 
   // value

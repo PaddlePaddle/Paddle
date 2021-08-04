@@ -48,10 +48,9 @@ USE_OP_DEVICE_KERNEL(c_allreduce_sum, NPU);
 DECLARE_string(selected_npus);
 
 template <typename T>
-void Check(T value, int size = 1024) {
+void Check(T value, const p::NPUDeviceContext& ctx, int size = 1024) {
   f::Scope scope;
   auto x = scope.Var("in");
-  p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
   auto place = ctx.GetPlace();
 
   auto tensor_x = x->GetMutable<f::LoDTensor>();
@@ -65,6 +64,7 @@ void Check(T value, int size = 1024) {
 
   TensorFromVector(init, ctx, tensor_x);
   paddle::operators::CheckNumerics<T>(ctx, ctx.stream(), tensor_x);
+  ctx.Wait();
 }
 
 TEST(check_numeric, NPU) {
@@ -72,16 +72,20 @@ TEST(check_numeric, NPU) {
   auto fp16_inf = static_cast<p::float16>(inf);
   auto nan = NAN;
   auto fp16_nan = static_cast<p::float16>(nan);
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
 
   // Normal
-  Check<p::float16>(static_cast<p::float16>(1.0));
-  Check<float>(static_cast<float>(1.0));
+  VLOG(0) << "start normal";
+  Check<p::float16>(static_cast<p::float16>(1.0), ctx);
+  Check<float>(static_cast<float>(1.0), ctx);
 
   // Inf
-  Check<p::float16>(fp16_inf);
-  Check<float>(inf);
+  VLOG(0) << "start inf";
+  Check<p::float16>(fp16_inf, ctx);
+  Check<float>(inf, ctx);
 
   // Nan
-  Check<p::float16>(fp16_nan);
-  Check<float>(nan);
+  VLOG(0) << "start nan";
+  Check<p::float16>(fp16_nan, ctx);
+  Check<float>(nan, ctx);
 }
