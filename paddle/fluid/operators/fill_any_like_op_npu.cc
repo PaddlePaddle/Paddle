@@ -41,29 +41,28 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
          static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
             (common_type_value <=
              static_cast<CommonType>(std::numeric_limits<T>::max())),
-        true, platform::errors::InvalidArgument(
-                  "filled value is out of range for"
-                  " targeted type in fill_any_like, your kernel type is %s"
-                  ", please check value you set.",
-                  typeid(T).name()));
+        true,
+        platform::errors::InvalidArgument(
+            "The filled value is out of range for target type, "
+            "current kernel type is %s, the range should between %f "
+            "and %f, but now value is %f.",
+            typeid(T).name(),
+            static_cast<CommonType>(std::numeric_limits<T>::lowest()),
+            static_cast<CommonType>(std::numeric_limits<T>::max()), value));
 
     PADDLE_ENFORCE_EQ(
         std::isnan(value), false,
-        platform::errors::InvalidArgument("filled value should not be NaN,"
-                                          " but received NaN"));
-
-    auto shape = out->dims();
+        platform::errors::InvalidArgument("The filled value is NaN."));
 
     Tensor tensor_tmp(data_type);
     tensor_tmp.mutable_data<T>({1}, context.GetPlace());
     FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value));
 
-    out->mutable_data<T>(shape, context.GetPlace());
-
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+    auto shape = out->dims();
     const auto& runner = NpuOpRunner("FillD", {tensor_tmp}, {*out},
                                      {{"dims", framework::vectorize(shape)}});
     runner.Run(stream);
