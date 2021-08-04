@@ -932,7 +932,7 @@ class TestGradientTruncated(unittest.TestCase):
         # case 1
         array = np.arange(
             1, 1 + 2 * 3 * 4, dtype="float32").reshape([1, 2, 1, 3, 1, 4])
-        value = np.ones([4], dtype="float32").reshape(1, 4)
+        value = np.arange(100, 104, dtype="float32").reshape(1, 4)
 
         inps = paddle.to_tensor(array, stop_gradient=False)
         value = paddle.to_tensor(value, stop_gradient=False)
@@ -940,7 +940,7 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value(inps, value)
         loss.backward()
 
-        value_grad = np.array([[6., 6., 6., 6.]])
+        value_grad = np.array([[600., 606., 612., 618.]])
         input_grad = np.array(
             [[[[[[4., 32., 108., 256.]], [[500., 864., 1372., 2048.]],
                 [[2916., 4000., 5324., 6912.]]]],
@@ -956,7 +956,7 @@ class TestGradientTruncated(unittest.TestCase):
 
         # case 2
         array = np.arange(1, 2 * 3 * 4 + 1, dtype="float32").reshape([4, 2, 3])
-        value = np.ones([1], dtype="float32")
+        value = np.arange(100, 100 + 1, dtype="float32")
 
         inps2 = paddle.to_tensor(array, stop_gradient=False)
         value2 = paddle.to_tensor(value, stop_gradient=False)
@@ -964,7 +964,7 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value(inps2, value2)
         loss.backward()
 
-        value_grad2 = np.array([6.])
+        value_grad2 = np.array([600.])
         input_grad2 = np.array(
             [[[4., 32., 108.], [0., 0., 0.]], [[1372., 2048., 2916.],
                                                [4000., 5324., 6912.]],
@@ -988,7 +988,7 @@ class TestGradientTruncated(unittest.TestCase):
 
         array = np.arange(
             1, 1 + 2 * 3 * 4, dtype="float32").reshape([4, 3, 1, 1, 2, 1])
-        value = np.ones([2], dtype="float32").reshape(1, 2, 1)
+        value = np.arange(100, 100 + 2, dtype="float32").reshape(1, 2, 1)
 
         inps = paddle.to_tensor(array, stop_gradient=False)
         value = paddle.to_tensor(value, stop_gradient=False)
@@ -996,7 +996,7 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value(inps, value)
         loss.backward()
 
-        value_grad = np.array([[[6.], [6.]]])
+        value_grad = np.array([[[600.], [606.]]])
         input_grad = np.array(
             [[[[[[0.], [0.]]]], [[[[0.], [0.]]]], [[[[0.], [0.]]]]],
              [[[[[1372.], [2048.]]]], [[[[2916.], [4000.]]]],
@@ -1023,7 +1023,7 @@ class TestGradientTruncated(unittest.TestCase):
 
         array = np.arange(
             1, 1 + 2 * 3 * 4, dtype="float32").reshape([2, 3, 1, 4, 1])
-        value = np.ones([2], dtype="float32").reshape(1, 2, 1)
+        value = np.arange(100, 100 + 2, dtype="float32").reshape(1, 2, 1)
 
         inps = paddle.to_tensor(array, stop_gradient=False)
         value = paddle.to_tensor(value, stop_gradient=False)
@@ -1031,13 +1031,46 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value(inps, value)
         loss.backward()
 
-        value_grad = np.array([[[6.], [6.]]])
+        value_grad = np.array([[[600.], [606.]]])
         input_grad = np.array([[[[[0.], [32.], [108.],
                                   [0.]]], [[[0.], [864.], [1372.], [0.]]],
                                 [[[0.], [4000.], [5324.], [0.]]]],
                                [[[[8788.], [10976.], [13500.], [16384.]]],
                                 [[[19652.], [23328.], [27436.], [32000.]]],
                                 [[[37044.], [42592.], [48668.], [55296.]]]]])
+        self.assertTrue(
+            np.array_equal(inps.grad.numpy(), input_grad),
+            msg="The gradient of value should be \n{},\n but reveived {}".
+            format(input_grad, inps.grad.numpy()))
+        self.assertTrue(
+            np.array_equal(value.grad.numpy(), value_grad),
+            msg="The gradient of input should be \n{},\n but reveived {}".
+            format(value_grad, value.grad.numpy()))
+
+        # case 5:a[0].shape==value.shape
+        def set_value(t, value):
+            a = t * t
+            a[0] = value
+            y = a * a
+            return y.sum()
+
+        array = np.arange(1, 1 + 2 * 3 * 4, dtype="float32").reshape([2, 3, 4])
+        value = np.arange(100, 100 + 12, dtype="float32").reshape(3, 4)
+
+        inps = paddle.to_tensor(array, stop_gradient=False)
+        value = paddle.to_tensor(value, stop_gradient=False)
+
+        loss = set_value(inps, value)
+        loss.backward()
+
+        value_grad = np.array([[200., 202., 204., 206.],
+                               [208., 210., 212., 214.],
+                               [216., 218., 220., 222.]])
+        input_grad = np.array([[[0., 0., 0., 0.], [0., 0., 0., 0.],
+                                [0., 0., 0., 0.]],
+                               [[8788., 10976., 13500., 16384.],
+                                [19652., 23328., 27436., 32000.],
+                                [37044., 42592., 48668., 55296.]]])
         self.assertTrue(
             np.array_equal(inps.grad.numpy(), input_grad),
             msg="The gradient of value should be \n{},\n but reveived {}".
