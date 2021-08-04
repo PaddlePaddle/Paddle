@@ -843,7 +843,68 @@ class TestBackward(unittest.TestCase):
         loss.backward()
 
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
-        self.assertTrue((var.grad == x.grad[0, :, 0, 0]).all())
+        # 
+        self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
+
+
+class TestGradientTruncated(unittest.TestCase):
+    def fake_forward(self, t, value):
+        a = t * t
+        a[0, 1] = value
+
+        y = a * a
+
+        return y.sum()
+
+    def test_consistent_with_competitor(self):
+        paddle.disable_static()
+        array = np.arange(
+            1, 1 + 2 * 3 * 4, dtype="float32").reshape([1, 2, 1, 3, 1, 4])
+        value = np.ones([4], dtype="float32").reshape(1, 4)
+
+        inps = paddle.to_tensor(array, stop_gradient=False)
+        value = paddle.to_tensor(value, stop_gradient=False)
+
+        loss = self.fake_forward(inps, value)
+        loss.backward()
+
+        value_grad = np.array([[6., 6., 6., 6.]])
+        input_grad = np.array(
+            [[[[[[4., 32., 108., 256.]], [[500., 864., 1372., 2048.]],
+                [[2916., 4000., 5324., 6912.]]]],
+              [[[[0., 0., 0., 0.]], [[0., 0., 0., 0.]], [[0., 0., 0., 0.]]]]]])
+        self.assertTrue(
+            np.array_equal(inps.grad.numpy(), input_grad),
+            msg="The gradient of value should be \n{},\n but reveived {}".
+            format(input_grad, inps.grad.numpy()))
+        self.assertTrue(
+            np.array_equal(value.grad.numpy(), value_grad),
+            msg="The gradient of input should be \n{},\n but reveived {}".
+            format(value_grad, value.grad.numpy()))
+
+        array = np.arange(1, 2 * 3 * 4 + 1, dtype="float32").reshape([4, 2, 3])
+        value = np.ones([1], dtype="float32")
+
+        inps2 = paddle.to_tensor(array, stop_gradient=False)
+        value2 = paddle.to_tensor(value, stop_gradient=False)
+
+        loss = self.fake_forward(inps2, value2)
+        loss.backward()
+
+        value_grad2 = np.array([6.])
+        input_grad2 = np.array(
+            [[[4., 32., 108.], [0., 0., 0.]], [[1372., 2048., 2916.],
+                                               [4000., 5324., 6912.]],
+             [[8788., 10976., 13500.], [16384., 19652., 23328.]],
+             [[27436., 32000., 37044.], [42592., 48668., 55296.]]])
+        self.assertTrue(
+            np.array_equal(inps2.grad.numpy(), input_grad2),
+            msg="The gradient of value should be \n{},\n but reveived {}".
+            format(input_grad, inps2.grad.numpy()))
+        self.assertTrue(
+            np.array_equal(value2.grad.numpy(), value_grad2),
+            msg="The gradient of input should be \n{},\n but reveived {}".
+            format(value_grad, value2.grad.numpy()))
 
 
 if __name__ == '__main__':

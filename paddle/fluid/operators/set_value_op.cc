@@ -155,13 +155,18 @@ class SetValueGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     if (this->HasInput("ValueTensor")) {
-      op->SetType("slice");
-      op->SetInput("Input", this->OutputGrad("Out"));
+      op->SetInput("ValueTensor", this->Input("ValueTensor"));
+      // op->SetInput("StartsTensorList", this->Input("StartsTensorList"));
+      op->SetType("set_value_grad");
+      op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
       if (this->HasInput("StartsTensorList")) {
         op->SetInput("StartsTensorList", this->Input("StartsTensorList"));
       }
       if (this->HasInput("EndsTensorList")) {
         op->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+      }
+      if (this->HasInput("StepsTensorList")) {
+        op->SetInput("StepsTensorList", this->Input("StepsTensorList"));
       }
 
       // convert std::vector<int64_t > to std::vector<int >
@@ -174,25 +179,151 @@ class SetValueGradMaker : public framework::SingleGradOpMaker<T> {
       std::vector<int64_t> decrease_axes_int64 =
           static_cast<std::vector<int64_t>>(BOOST_GET_CONST(
               std::vector<int64_t>, this->GetAttr("decrease_axes")));
+      std::vector<int64_t> steps_int64 = static_cast<std::vector<int64_t>>(
+          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("steps")));
 
       std::vector<int> axes(axes_int64.begin(), axes_int64.end());
       std::vector<int> starts(starts_int64.begin(), starts_int64.end());
       std::vector<int> ends(ends_int64.begin(), ends_int64.end());
       std::vector<int> decrease_axes(decrease_axes_int64.begin(),
                                      decrease_axes_int64.end());
+      std::vector<int> steps(steps_int64.begin(), steps_int64.end());
 
       op->SetAttr("axes", axes);
       op->SetAttr("starts", starts);
       op->SetAttr("ends", ends);
-      op->SetAttr("decrease_axis", decrease_axes);
-      op->SetAttr("infer_flags", std::vector<int>({}));
 
-      op->SetOutput("Out", this->InputGrad("ValueTensor"));
+      op->SetAttr("steps", steps);
+
+      op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+      op->SetOutput(framework::GradVarName("ValueTensor"),
+                    this->InputGrad("ValueTensor"));
     } else {
       op->SetType("assign");
       op->SetInput("X", this->OutputGrad("Out"));
       op->SetOutput("Out", this->InputGrad("Input"));
     }
+  }
+};
+
+class SetValueGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "set_value_grad");
+    OP_INOUT_CHECK(ctx->HasInput("ValueTensor"), "Input", "ValueTensor",
+                   "set_value_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ValueTensor")),
+                   "Output", framework::GradVarName("ValueTensor"),
+                   "set_value_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")), "Output",
+                   framework::GradVarName("Input"), "set_value_grad");
+
+    auto in_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    PADDLE_ENFORCE_LT(
+        in_dims.size(), 7,
+        platform::errors::InvalidArgument(
+            "The dimension of set_value_grad operator's input should be less "
+            "than 7, but received dimension is %d.",
+            in_dims.size()));
+
+    auto starts_int = ctx->Attrs().Get<std::vector<int>>("starts");
+    auto ends_int = ctx->Attrs().Get<std::vector<int>>("ends");
+    auto steps_int = ctx->Attrs().Get<std::vector<int>>("steps");
+
+    std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
+    std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
+    std::vector<int64_t> steps(steps_int.begin(), steps_int.end());
+
+    auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
+
+    auto starts_size = starts.size();
+    auto ends_size = ends.size();
+    auto steps_size = steps.size();
+
+    if (ctx->HasInputs("StartsTensorList")) {
+      auto StartsTensorList = ctx->Inputs("StartsTensorList");
+      PADDLE_ENFORCE_GT(
+          StartsTensorList.size(), 0,
+          platform::errors::InvalidArgument(
+              "set_value_grad operator's StartsTensorList is empty."));
+      starts_size = StartsTensorList.size();
+    }
+    if (ctx->HasInputs("EndsTensorList")) {
+      auto EndsTensorList = ctx->Inputs("EndsTensorList");
+      PADDLE_ENFORCE_GT(
+          EndsTensorList.size(), 0,
+          platform::errors::InvalidArgument(
+              "set_value_grad operator's EndsTensorList is empty."));
+      ends_size = EndsTensorList.size();
+    }
+    if (ctx->HasInputs("StepsTensorList")) {
+      auto StepsTensorList = ctx->Inputs("StepsTensorList");
+      PADDLE_ENFORCE_GT(
+          StepsTensorList.size(), 0,
+          platform::errors::InvalidArgument(
+              "set_value_grad operator's StepsTensorList is empty."));
+      steps_size = StepsTensorList.size();
+    }
+
+    if (!ctx->HasInput("EndsTensor")) {
+      PADDLE_ENFORCE_EQ(
+          ends_size, axes.size(),
+          platform::errors::InvalidArgument(
+              "The size of ends attribute in set_value_grad operator is not "
+              "equal to the size of axes attribute. The ends attribute's size "
+              "is %d, axes attribute's size is %d.",
+              ends_size, axes.size()));
+    }
+    if (!ctx->HasInput("StartsTensor")) {
+      PADDLE_ENFORCE_EQ(
+          starts_size, axes.size(),
+          platform::errors::InvalidArgument(
+              "The size of starts attribute in set_value_grad operator is not "
+              "equal to the size of axes attribute. The starts attribute's "
+              "size is %d, axes attribute's size is %d.",
+              starts_size, axes.size()));
+    }
+    if (!ctx->HasInput("StepsTensorList")) {
+      PADDLE_ENFORCE_EQ(
+          steps_size, axes.size(),
+          platform::errors::InvalidArgument(
+              "The size of steps attribute in set_value_grad operator is not "
+              "equal to the size of axes attribute. The steps attribute's "
+              "size is %d, axes attribute's size is %d.",
+              steps_size, axes.size()));
+    }
+
+    ctx->ShareDim("ValueTensor", /*->*/ framework::GradVarName("ValueTensor"));
+    ctx->ShareLoD("ValueTensor", /*->*/ framework::GradVarName("ValueTensor"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto in_tensor = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    if (platform::is_cuda_pinned_place(in_tensor->place())) {
+      return framework::OpKernelType(in_tensor->type(), ctx.device_context());
+    }
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   in_tensor->place());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
+        var_name == "StepsTensorList") {
+      return expected_kernel_type;
+    }
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
+        var_name == "StepsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -215,6 +346,21 @@ REGISTER_OP_CPU_KERNEL(
     ops::SetValueKernel<plat::CPUDeviceContext, float>,
     ops::SetValueKernel<plat::CPUDeviceContext, double>,
     ops::SetValueKernel<plat::CPUDeviceContext, bool>);
+
+REGISTER_OPERATOR(set_value_grad, ops::SetValueGrad);
+REGISTER_OP_CPU_KERNEL(
+    set_value_grad,
+    ops::SetValueGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SetValueGradKernel<plat::CPUDeviceContext, int64_t>,
+    ops::SetValueGradKernel<plat::CPUDeviceContext, float>,
+    ops::SetValueGradKernel<plat::CPUDeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
+    set_value_grad,
+    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_VERSION(set_value)
     .AddCheckpoint(

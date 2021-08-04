@@ -22,8 +22,10 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/assign_value_op.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/slice_utils.h"
+#include "paddle/fluid/operators/strided_slice_op.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -31,6 +33,25 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using Variable = framework::Variable;
+using LoDTensorArray = framework::LoDTensorArray;
+using DDim = framework::DDim;
+
+void get_offsets(const DDim& big_dim, const DDim& small_dim, DDim start_offset,
+                 int cur_dim, std::vector<DDim>* offsets) {
+  if (cur_dim == big_dim.size()) {
+    offsets->push_back(start_offset);
+    return;
+  }
+  if (small_dim[cur_dim] == big_dim[cur_dim]) {
+    get_offsets(big_dim, small_dim, start_offset, cur_dim + 1, offsets);
+  } else {
+    for (int i = 0; i < big_dim[cur_dim]; i++) {
+      get_offsets(big_dim, small_dim, start_offset, cur_dim + 1, offsets);
+      start_offset[cur_dim] += 1;
+    }
+  }
+}
 
 inline std::string GetValueName(framework::proto::VarType::Type data_type) {
   std::string value_name;
@@ -218,6 +239,234 @@ class SetValueKernel : public framework::OpKernel<T> {
 
     // Step 3: Set out tensor with value_tensor
     out_e.device(eigen_place) = out_e - pad_e;
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SetValueGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    int rank = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
+
+    switch (rank) {
+      case 1:
+        SetValueGradCompute<1>(ctx);
+        break;
+      case 2:
+        SetValueGradCompute<2>(ctx);
+        break;
+      case 3:
+        SetValueGradCompute<3>(ctx);
+        break;
+      case 4:
+        SetValueGradCompute<4>(ctx);
+        break;
+      case 5:
+        SetValueGradCompute<5>(ctx);
+        break;
+      case 6:
+        SetValueGradCompute<6>(ctx);
+        break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The rank of set_value_grad's input should be less than 7, but "
+            "received %d.",
+            rank));
+    }
+  }
+
+ private:
+  template <size_t D>
+  void SetValueGradCompute(const framework::ExecutionContext& context) const {
+    auto starts_int = context.Attr<std::vector<int>>("starts");
+    auto ends_int = context.Attr<std::vector<int>>("ends");
+    auto steps_int = context.Attr<std::vector<int>>("steps");
+
+    std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
+    std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
+    std::vector<int64_t> steps(steps_int.begin(), steps_int.end());
+
+    auto axes = context.Attr<std::vector<int>>("axes");
+
+    auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto steps_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto reverse_axis = Eigen::array<bool, D>();
+
+    auto list_new_ends_tensor =
+        context.MultiInput<framework::Tensor>("EndsTensorList");
+    auto list_new_starts_tensor =
+        context.MultiInput<framework::Tensor>("StartsTensorList");
+    auto list_new_steps_tensor =
+        context.MultiInput<framework::Tensor>("StepsTensorList");
+
+    if (list_new_starts_tensor.size() > 0) {
+      starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
+    } else if (context.HasInput("StartsTensor")) {
+      auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
+      starts = GetDataFromTensor<int64_t>(starts_tensor);
+    }
+
+    if (list_new_ends_tensor.size() > 0) {
+      ends = GetDataFromTensorList<int64_t>(list_new_ends_tensor);
+    } else if (context.HasInput("EndsTensor")) {
+      auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
+      ends = GetDataFromTensor<int64_t>(ends_tensor);
+    }
+
+    if (list_new_steps_tensor.size() > 0) {
+      steps = GetDataFromTensorList<int64_t>(list_new_steps_tensor);
+    } else if (context.HasInput("StepsTensor")) {
+      auto* steps_tensor = context.Input<framework::Tensor>("StepsTensor");
+      steps = GetDataFromTensor<int64_t>(steps_tensor);
+    }
+
+    auto in = context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto grad_value = context.Output<framework::Tensor>(
+        framework::GradVarName("ValueTensor"));
+    auto grad_input =
+        context.Output<framework::Tensor>(framework::GradVarName("Input"));
+    auto in_dims = in->dims();
+
+    std::vector<int> decrease_axis;
+    std::vector<int> infer_flags(axes.size(), 1);
+    std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
+    StridedSliceOutDims(starts, ends, steps, axes, infer_flags, in_dims,
+                        decrease_axis, out_dims_vector.data(), axes.size(),
+                        false);
+
+    framework::DDim out_dims(framework::make_ddim(out_dims_vector));
+
+    std::vector<int> reverse_vector(starts.size(), 0);
+    StridedSliceFunctor(starts.data(), ends.data(), steps.data(), axes.data(),
+                        reverse_vector.data(), in_dims, infer_flags,
+                        decrease_axis, starts.size());
+
+    for (size_t axis = 0; axis < D; axis++) {
+      starts_indices[axis] = 0;
+      ends_indices[axis] = out_dims[axis];
+      steps_indices[axis] = 1;
+      reverse_axis[axis] = false;
+    }
+
+    for (size_t axis = 0; axis < axes.size(); axis++) {
+      int axis_index = axes[axis];
+      starts_indices[axis_index] = starts[axis];
+      ends_indices[axis_index] = ends[axis];
+      steps_indices[axis_index] = steps[axis];
+      reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
+    }
+
+    bool need_reverse = false;
+    for (size_t axis = 0; axis < axes.size(); axis++) {
+      if (reverse_vector[axis] == 1) {
+        need_reverse = true;
+        break;
+      }
+    }
+
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+
+    // Set gradient of `Input`
+    TensorCopy(*in, context.GetPlace(), grad_input);
+
+    if (!grad_value->IsInitialized()) {
+      grad_value->mutable_data<T>(context.GetPlace());
+    }
+
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+
+    math::SetConstant<DeviceContext, T> set_zero;
+    set_zero(dev_ctx, grad_value, static_cast<T>(0));
+
+    auto in_t =
+        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            *in);
+    auto grad_value_t =
+        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            *grad_value, out_dims);
+
+    auto grad_input_t =
+        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            *grad_input);
+
+    grad_input_t.stridedSlice(starts_indices, ends_indices, steps_indices)
+        .setZero();
+
+    if (grad_value->dims() == out_dims) {
+      if (need_reverse) {
+        framework::Tensor tmp;
+        tmp.mutable_data<T>(out_dims, context.GetPlace());
+        auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                            Eigen::DenseIndex>::From(tmp);
+        tmp_t.device(place) =
+            in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
+        grad_value_t.device(place) = tmp_t.reverse(reverse_axis);
+      } else {
+        grad_value_t.device(place) =
+            in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
+      }
+    } else {
+      int out_dims_size = out_dims.size();
+      auto grad_value_dims = grad_value->dims();
+      auto fake_grad_value_dims = out_dims;
+
+      // Create an extented shape according to the rules of broadcast.
+      auto grad_value_dims_size = grad_value_dims.size();
+      auto dim_one = out_dims_size;
+      for (int i = out_dims_size - 1; i >= 0; i--) {
+        if (out_dims[i] == 1) {
+          dim_one = i;
+        } else {
+          break;
+        }
+      }
+      for (int i = 0; i < out_dims_size; i++) {
+        if (i < dim_one - grad_value_dims_size || dim_one <= i) {
+          fake_grad_value_dims[i] = 1;
+        } else {
+          auto index_grad = i - (dim_one - grad_value_dims_size);
+          fake_grad_value_dims[i] = grad_value_dims[index_grad];
+          PADDLE_ENFORCE_EQ((out_dims[i] == grad_value_dims[index_grad]) ||
+                                (grad_value_dims[index_grad] == 1),
+                            true, platform::errors::InvalidArgument(
+                                      "An error occurred while calculating %s: "
+                                      "[%s] can not be accumulated into [%s].",
+                                      framework::GradVarName("ValueTensor"),
+                                      out_dims, grad_value_dims));
+        }
+      }
+
+      VLOG(3) << "Dimensions of " << framework::GradVarName("ValueTensor")
+              << "([" << grad_value_dims << "])is broadcasted into ["
+              << fake_grad_value_dims << "].";
+
+      auto extent = Eigen::DSizes<Eigen::DenseIndex, D>();
+      auto offset = out_dims;
+      for (int i = 0; i < out_dims_size; i++) {
+        offset[i] = 0;
+        extent[i] = fake_grad_value_dims[i];
+      }
+      std::vector<DDim> offsets;
+      get_offsets(out_dims, fake_grad_value_dims, offset, 0, &offsets);
+      framework::Tensor tmp;
+      tmp.mutable_data<T>(out_dims, context.GetPlace());
+      auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                          Eigen::DenseIndex>::From(tmp);
+
+      tmp_t.device(place) =
+          in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
+
+      if (need_reverse) {
+        tmp_t.device(place) = tmp_t.reverse(reverse_axis);
+      }
+      for (auto offset : offsets) {
+        grad_value_t.device(place) =
+            grad_value_t +
+            tmp_t.slice(framework::EigenDim<D>::From(offset), extent);
+      }
+    }
   }
 };
 
