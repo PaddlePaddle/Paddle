@@ -253,8 +253,14 @@ class ConvolutionDescriptor {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(desc,
                                                          CUDNN_TENSOR_OP_MATH));
-    } else if (dtype == CUDNN_DATA_FLOAT && !allow_tf32) {
 #if CUDA_VERSION >= 11000
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    } else if (dtype == CUDNN_DATA_BFLOAT16) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnSetConvolutionMathType(desc,
+                                                         CUDNN_TENSOR_OP_MATH));
+#endif  // CUDNN_VERSION_MIN(8,1,0)
+    } else if (dtype == CUDNN_DATA_FLOAT && !allow_tf32) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(desc, CUDNN_FMA_MATH));
 #endif  // CUDA_VERSION >= 11000
