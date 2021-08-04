@@ -363,56 +363,6 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
   }
 }
 
-void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
-                       const std::vector<OperatorBase*>& op_list,
-                       const VariableScope& var_scope,
-                       const platform::Place& place) {
-  for (size_t i = 0; i < vec_func_list.size(); ++i) {
-    auto& func_node = vec_func_list[i];
-    auto op_base = op_list[i];
-    // build runtime cost
-    VariableValueMap ins_map;
-    for (auto& var_name_item : func_node.input_index) {
-      std::vector<Variable*> input_vars;
-
-      input_vars.reserve(var_name_item.second.size());
-      for (auto& id : var_name_item.second) {
-        input_vars.emplace_back(var_scope.var_list[id]);
-      }
-      ins_map.emplace(var_name_item.first, std::move(input_vars));
-    }
-
-    VariableValueMap outs_map;
-    for (auto& var_name_item : func_node.output_index) {
-      std::vector<Variable*> out_vars;
-
-      out_vars.reserve(var_name_item.second.size());
-      for (auto& id : var_name_item.second) {
-        out_vars.emplace_back(var_scope.var_list[id]);
-      }
-      outs_map.emplace(var_name_item.first, std::move(out_vars));
-    }
-
-    RuntimeContext runtime_context({}, {});
-    runtime_context.inputs.swap(ins_map);
-    runtime_context.outputs.swap(outs_map);
-
-    RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
-
-    static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
-        &infer_shape_ctx);
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.Get(place);
-    Scope scope;
-
-    auto exec_context =
-        ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
-
-    func_node.kernel_func_(exec_context);
-  }
-}
-
 class InterpreterCore {
  public:
   InterpreterCore(const platform::Place& place, const ProgramDesc& prog,
