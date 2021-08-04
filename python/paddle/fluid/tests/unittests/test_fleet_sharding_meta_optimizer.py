@@ -367,7 +367,7 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
             "mp_degree": 1
         }
 
-        strategy.fuse_all_reduce_ops = True
+        strategy.fuse_all_reduce_ops = False
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
         startup_prog_ops = startup_prog.global_block().ops
         main_prog_ops = train_prog.global_block().ops
