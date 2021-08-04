@@ -151,9 +151,6 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
     def check_clip_result(self, out, out_clip):
         global_norm = 0
         for v in out:
-            # if encounter numerical accuracy problem, use
-            # global_norm += np.square(np.linalg.norm(v))
-            # and maybe paddle need a reduce_square_sum op better
             global_norm += np.sum(np.square(v))
         global_norm = np.sqrt(global_norm)
         scale = self.clip_norm / np.maximum(self.clip_norm, global_norm)
@@ -222,8 +219,8 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
 
         ops = [op.type for op in x.block.ops]
         self.assertListEqual(ops, [
-            'frobenius_norm', 'square', 'frobenius_norm', 'square', 'sum',
-            'sqrt', 'fill_constant', 'elementwise_max', 'elementwise_div',
+            'squared_l2_norm', 'squared_l2_norm', 'sum', 'sqrt',
+            'fill_constant', 'elementwise_max', 'elementwise_div',
             'elementwise_mul', 'elementwise_mul'
         ])
 

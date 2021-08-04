@@ -25,11 +25,32 @@ from . import framework
 from . import core
 from . import name_scope
 from .dygraph import base as imperative_base
+from .data_feeder import check_variable_and_dtype
+from .framework import in_dygraph_mode
+from .layer_helper import LayerHelper
 
 __all__ = [
     'set_gradient_clip', 'ErrorClipByValue', 'ClipGradByValue',
     'ClipGradByNorm', 'ClipGradByGlobalNorm'
 ]
+
+
+def _squared_l2_norm(x):
+    r"""
+    This OP returns the squared L2 norm of a tensor.
+    """
+    if in_dygraph_mode():
+        core.ops.squared_l2_norm(x)
+
+    op_type = 'squared_l2_norm'
+    check_variable_and_dtype(x, 'x', ['float32'], op_type)
+    helper = LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    inputs = {"X": x}
+    outputs = {'Out': out}
+    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out
 
 
 class BaseErrorClipAttr(object):
@@ -418,7 +439,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
-            sum_square = paddle.square(paddle.norm(merge_grad))
+            sum_square = _squared_l2_norm(merge_grad)
             sum_square_list.append(sum_square)
 
         # all parameters have been filterd out
@@ -440,7 +461,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if getattr(p, 'need_clip', True) is False:
                 params_and_grads.append((p, g))
                 continue
-            # TODO(wangxi): use place elementwise_mul
+            # TODO(wangxi): use inplace elementwise_mul
             new_grad = layers.elementwise_mul(x=g, y=clip_var)
             params_and_grads.append((p, new_grad))
 
@@ -462,8 +483,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         merge_grad = layers.get_tensor_from_selected_rows(
                             merge_grad)
 
-                    # maybe need a reduce_square_sum op
-                    sum_square = paddle.square(paddle.norm(merge_grad))
+                    sum_square = _squared_l2_norm(merge_grad)
                     sum_square_list.append(sum_square)
 
             # all parameters have been filterd out
@@ -520,7 +540,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             merge_grad = layers.merge_selected_rows(grad)
             merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
-        local_norm_var = paddle.square(paddle.norm(merge_grad))
+        local_norm_var = _squared_l2_norm(merge_grad)
         context[self.group_name].append(local_norm_var)
 
         self.context = context
