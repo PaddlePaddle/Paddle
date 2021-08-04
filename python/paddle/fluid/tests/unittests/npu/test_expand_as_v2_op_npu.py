@@ -43,7 +43,7 @@ class TestExpandAsOpRank1(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-3)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -66,7 +66,7 @@ class TestExpandAsOpRank2(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-3)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -89,7 +89,7 @@ class TestExpandAsOpRank3(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-3)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -112,7 +112,7 @@ class TestExpandAsOpRank4(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-3)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
