@@ -21,8 +21,8 @@ sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 
-paddle.enable_static()
 SEED = 2021
 
 
@@ -30,6 +30,8 @@ SEED = 2021
                  "core is not compiled with NPU")
 class TestHardSwishNPU(OpTest):
     def setUp(self):
+        paddle.enable_static()
+
         self.set_npu()
         self.op_type = "hard_swish"
         self.place = paddle.NPUPlace(0)
@@ -61,17 +63,54 @@ class TestHardSwishNPU(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+        self.check_grad_with_place(self.place, ['X'], 'Out', max_relative_error=0.02)
 
 
-# @unittest.skipIf(not paddle.is_compiled_with_npu(),
-#                  "core is not compiled with NPU")
-# class TestHardSwishNPUFp16(TestHardSwishNPU):
-#     def test_check_output(self):
-#         self.check_output_with_place(self.place, atol=1e-3)
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestHardSwishNPUFp16(TestHardSwishNPU):
+    def test_check_output(self):
+        self.check_output_with_place(self.place, atol=5e-3)
 
-#     def init_dtype(self):
-#         self.dtype = np.float16
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestHardSwishNPUWithCPU(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        
+        self.place = paddle.NPUPlace(0)
+        self.dtype = np.float32
+
+        self.x = np.random.uniform(-6, 10, [10, 12]).astype(self.dtype)
+
+        paddle.set_device('cpu')
+
+        data = paddle.to_tensor(self.x, stop_gradient=False)
+        y = F.hardswish(data)
+        y.sum().backward()
+
+        self.out_g = data.grad
+        self.out_y = y
+
+    def test_check_output_and_grad_npu(self):
+        paddle.set_device('npu')
+
+        data = paddle.to_tensor(self.x, stop_gradient=False)
+        y = F.hardswish(data)
+        y.sum().backward()
+
+        self.assertTrue(np.allclose(self.out_y.numpy(), y.numpy(), rtol=1e-06), 
+                    "Output of NPU HardSwish forward has diff at " + str(self.place) +
+                    "\nExpect " + str(self.out_y) + "\n" + "But Got" +
+                    str(y) + " in class " + self.__class__.__name__)
+        self.assertTrue(np.allclose(self.out_g.numpy(), data.grad.numpy(), rtol=1e-06),
+                    "Output of NPU HardSwish backward has diff at " + str(self.place) +
+                    "\nExpect " + str(self.out_g) + "\n" + "But Got" +
+                    str(data.grad) + " in class " + self.__class__.__name__)
 
 if __name__ == '__main__':
     unittest.main()

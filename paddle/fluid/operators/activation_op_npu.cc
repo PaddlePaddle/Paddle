@@ -348,16 +348,6 @@ class SigmoidGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
-void PrintTensor(const framework::Tensor& src,
-                 const framework::ExecutionContext& ctx) {
-  std::vector<T> vec(src.numel());
-  TensorToVector(src, ctx.device_context(), &vec);
-  for (int i = 0; i < static_cast<int>(vec.size()); ++i) {
-    VLOG(4) << "vec[" << i << "] : " << vec[i];
-  }
-};
-
 // HardSwish = min(max(0, x+offset), threshold) * x / scale
 template <typename DeviceContext, typename T>
 class HardSwishNPUKernel : public framework::OpKernel<T> {
