@@ -125,7 +125,7 @@ def _split_activation(tensor):
     mp_degree = _hcg.get_model_parallel_world_size()
     mp_rank = _hcg.get_model_parallel_rank()
     if mp_degree < 2:
-        return data
+        return tensor
 
     tensor_numel = paddle.numel(tensor)
     assert tensor_numel != 0, "can't recompute zero element"
@@ -206,16 +206,15 @@ class _HPRecomputeFunction(PyLayer):
 
         for i, arg in enumerate(args):
             if paddle.is_tensor(arg):
+                state = arg.stop_gradient
                 if _recompute_partition:
                     ctx.tensor_shapes.append(arg.shape)
-                    state = arg.stop_gradient
                     partition = _split_activation(arg.detach()).clone()
-
                     # TODO(shenliang03) not use calculate stream to D2H to speed
                     arg = partition.cpu() if _recompute_offload else partition
-                    arg.stop_gradient = state
                 else:
                     arg = arg.cpu() if _recompute_offload else arg
+                arg.stop_gradient = state
                 tensor_inputs.append(arg)
                 ctx.tensor_indices.append(i)
                 ctx.inputs.append(None)

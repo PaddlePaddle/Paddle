@@ -149,6 +149,10 @@ class PipelineLayer(Layer):
         self._recompute_offload = recompute_offload
         self._recompute_partition = recompute_partition
 
+        if recompute_interval > 0:
+            logger.info(
+                "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}".
+                format(recompute_offload, recompute_partition))
         _initialize_recompute_setting(recompute_offload, recompute_partition)
 
         world_size = dist.get_world_size()
@@ -317,38 +321,37 @@ class PipelineLayer(Layer):
             else:
                 self.run_function.append(layer)
 
+    def forward_function(self, start, end):
+        def execute_func(*x):
+            if len(x) == 1:
+                x = x[0]
+            for idx, layer in enumerate(self.run_function[start:end]):
+                x = layer(x)
+            return x
+
+        return execute_func
+
     def forward(self, input):
-        def exec_range_func(start, end):
-            def exec_func(*inputs):
-                if len(inputs) == 1:
-                    inputs = inputs[0]
-
-                for idx, layer in enumerate(self.run_function[start:end]):
-                    inputs = layer(inputs)
-                return inputs
-
-            return exec_func
-
         if self._recompute_interval == 0:
-            func = exec_range_func(0, len(self.run_function))
-            input = func(input)
+            input = self.forward_function(0, len(self.run_function))(input)
         else:
             num_layers = len(self.run_function)
             for start_idx in range(0, num_layers, self._recompute_interval):
                 end_idx = min(start_idx + self._recompute_interval, num_layers)
                 funcs = self.run_function[start_idx:end_idx]
+
                 if not isinstance(input, tuple):
                     input = (input, )
 
-                if self._is_recompute(funcs, input):
+                if self._need_recompute(funcs, input):
                     input = _hp_recompute(
-                        exec_range_func(start_idx, end_idx), *input)
+                        self.forward_function(start_idx, end_idx), *input)
                 else:
-                    input = exec_range_func(start_idx, end_idx)(*input)
+                    input = self.forward_function(start_idx, end_idx)(*input)
 
         return input
 
-    def _is_recompute(self, funcs, inputs):
+    def _need_recompute(self, funcs, inputs):
         if not any(input_.stop_gradient == False for input_ in inputs
                    if isinstance(input_, paddle.Tensor)):
             return False
