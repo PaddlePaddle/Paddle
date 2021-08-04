@@ -822,7 +822,7 @@ class TokenizerOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(framework::proto::VarType::INT64,
-                                   ctx.GetPlace());
+                                   paddle::platform::CPUPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
