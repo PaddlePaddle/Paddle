@@ -440,7 +440,7 @@ class CosNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
-    
+
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -450,6 +450,7 @@ class CosNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
 class CosGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
