@@ -79,7 +79,7 @@ class TestCosFp16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-3)
+        self.check_output_with_place(self.place)
 
 
 class TestCosNet(unittest.TestCase):
