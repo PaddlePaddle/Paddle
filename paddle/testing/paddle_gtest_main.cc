@@ -12,13 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <cstdlib>
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/npu_info.h"
 
+bool g_init = false;
+
+void exiting() {
+  if (g_init) {
+    LOG(WARNING) << "Exiting";
+    paddle::platform::AclInstance::Instance().Finalize();
+  }
+}
+
 int main(int argc, char** argv) {
+  std::atexit(exiting);
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
@@ -100,13 +111,15 @@ int main(int argc, char** argv) {
   int ret = 0;
   try {
     paddle::framework::InitDevices();
+    g_init = true;
     ret = RUN_ALL_TESTS();
   } catch (...) {
     LOG(WARNING) << "gtest main catch exception";
+    exit(1);
   }
 
 #ifdef PADDLE_WITH_ASCEND_CL
-  paddle::platform::AclInstance::Instance().Finalize();
+  // paddle::platform::AclInstance::Instance().Finalize();
   VLOG(0) << "gtest exit with Finalize npu device";
 #endif
 

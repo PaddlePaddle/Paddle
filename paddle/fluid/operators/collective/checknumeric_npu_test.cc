@@ -72,16 +72,18 @@ bool ContainsNan(const p::NPUDeviceContext& dev_ctx, aclrtStream stream,
     LOG(WARNING) << "ContainsNan catch exception";
   }
 
+  LOG(WARNING) << "reducesumd result:" << static_cast<float>(vec[0]);
   if (std::isnan(static_cast<float>(vec[0]))) {
     LOG(WARNING) << "contains nan";
     return true;
   }
 
-  if (std::isnan(static_cast<float>(vec[0]))) {
+  if (std::isinf(static_cast<float>(vec[0]))) {
     LOG(WARNING) << "contains inf";
     return true;
   }
 
+  LOG(WARNING) << "Contains end";
   return false;
 }
 
@@ -129,9 +131,9 @@ void Check(T value, int size = 2 * 512 * 8192) {
   }
 
   TensorFromVector(init, ctx, tensor_x);
-  // VLOG(0) << "begin check 1";
-  // paddle::operators::CheckNumerics<T>(ctx, ctx.stream(), tensor_x);
-  // VLOG(0) << "end check 1";
+  VLOG(0) << "begin check 1";
+  paddle::operators::CheckNumerics<T>(ctx, ctx.stream(), tensor_x);
+  VLOG(0) << "end check 1";
   // CheckNumerics<T>(ctx, ctx.stream(), tensor_x);
   // VLOG(0) << "end check 2";
   ContainsNan<T>(ctx, ctx.stream(), tensor_x);

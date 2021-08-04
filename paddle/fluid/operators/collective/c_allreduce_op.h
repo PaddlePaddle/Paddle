@@ -161,14 +161,21 @@ bool CheckNumerics(const paddle::platform::NPUDeviceContext& dev_ctx,
   for (int i = 0; i < in->dims().size(); ++i) {
     axes.push_back(i);
   }
-  const auto& sum_runner = NpuOpRunner("ReduceSumD", {div_out}, {sum},
-                                       {{"axes", axes}, {"keep_dims", false}});
-  sum_runner.Run(stream);
 
   // value
   std::vector<float> vec;
-  framework::TensorToVector<float>(sum, dev_ctx, &vec);
+  try {
+    const auto& sum_runner = NpuOpRunner(
+        "ReduceSumD", {div_out}, {sum}, {{"axes", axes}, {"keep_dims", false}});
+    sum_runner.Run(stream);
+    framework::TensorToVector<float>(sum, dev_ctx, &vec);
+  } catch (...) {
+    LOG(WARNING) << "checknumeric catch exception";
+    return true;
+  }
+
   float value = static_cast<float>(vec[0]);
+  LOG(WARNING) << "checknumeric get data:" << static_cast<float>(vec[0]);
   if (std::isinf(value)) {
     LOG(WARNING) << "detected Inf";
   } else if (std::isnan(value)) {
