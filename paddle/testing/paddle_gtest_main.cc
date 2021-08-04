@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
   envs.push_back("reallocate_gpu_memory_in_mb");
   envs.push_back("allocator_strategy");
   envs.push_back("selected_gpus");
+  envs.push_back("call_stack_level");
 #elif __clang__
   envs.push_back("use_mkldnn");
   envs.push_back("initial_cpu_memory_in_mb");
