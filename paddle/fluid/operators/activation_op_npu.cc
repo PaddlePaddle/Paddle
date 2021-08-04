@@ -398,35 +398,45 @@ class HardSigmoidGradNPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class ReciprocalNPUKernel : public framework::OpKernel<T> {
+class AtanNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
+
     auto* out = ctx.Output<Tensor>("Out");
+
     auto place = ctx.GetPlace();
+
     out->mutable_data<T>(place);
+
+    const auto& runner = NpuOpRunner("Atan", {*x}, {*out}, {});
+
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    const auto& runner = NpuOpRunner("Reciprocal", {*x}, {*out}, {});
+
     runner.Run(stream);
   }
 };
 
 template <typename DeviceContext, typename T>
-class ReciprocalGradNPUKernel : public framework::OpKernel<T> {
+class AtanGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<Tensor>("X");
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
     auto place = ctx.GetPlace();
+
     dx->mutable_data<T>(place);
+
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    const auto& runner_dx =
-        NpuOpRunner("ReciprocalGrad", {*out, *dout}, {*dx}, {});
+
+    const auto& runner_dx = NpuOpRunner("AtanGrad", {*x, *dout}, {*dx}, {});
+
     runner_dx.Run(stream);
   }
 };
@@ -519,15 +529,13 @@ REGISTER_OP_NPU_KERNEL(
                                   paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    reciprocal,
-    ops::ReciprocalNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ReciprocalNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::ReciprocalNPUKernel<paddle::platform::NPUDeviceContext,
-                             paddle::platform::float16>);
+    atan, ops::AtanNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::AtanNPUKernel<paddle::platform::NPUDeviceContext,
+                       paddle::platform::float16>,
+    ops::AtanNPUKernel<paddle::platform::NPUDeviceContext, double>);
 
 REGISTER_OP_NPU_KERNEL(
-    reciprocal_grad,
-    ops::ReciprocalGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ReciprocalGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::ReciprocalGradNPUKernel<paddle::platform::NPUDeviceContext,
-                                 paddle::platform::float16>);
+    atan_grad,
+    ops::AtanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::AtanGradNPUKernel<paddle::platform::NPUDeviceContext,
+                           paddle::platform::float16>);
