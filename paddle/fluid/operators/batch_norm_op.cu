@@ -134,7 +134,14 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
-
+    auto dtype = platform::CudnnDataType<T>::type;
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    // For bfloat16 data type, batch norm op is executed via NHWC layout
+    // The following related code change is made for the same reason.
+    if (dtype == CUDNN_DATA_BFLOAT16) {
+      const DataLayout data_layout_channel_last = DataLayout::kNHWC;
+    }
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
     bool test_mode = is_test && (!trainable_stats);
 
     // Get the size for each dimension.
@@ -154,8 +161,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
-    auto dtype = platform::CudnnDataType<T>::type;
-
 #ifdef PADDLE_WITH_HIP
     auto compute_format = data_layout == DataLayout::kNHWC ? DataLayout::kNHWC
                                                            : DataLayout::kNCHW;
@@ -164,19 +169,32 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 // HIP do not support compute format of NHWC
 // auto compute_format = DataLayout::kNCHW;
 #else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    const bool fast_nhwc_batch_norm =
+        test_mode ||
+        ((dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
+         FLAGS_cudnn_batchnorm_spatial_persistent);
+    auto compute_format =
+        fast_nhwc_batch_norm && (dtype == CUDNN_DATA_BFLOAT16 ||
+                                 data_layout == DataLayout::kNHWC)
+#else
     const bool fast_nhwc_batch_norm =
         test_mode ||
         (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent);
-
     auto compute_format =
         fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
             ? DataLayout::kNHWC
             : DataLayout::kNCHW;
 #endif
 
     Tensor transformed_x(x->type());
     Tensor transformed_y(y->type());
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    if ((dtype == CUDNN_DATA_BFLOAT16 || data_layout == DataLayout::kNHWC) &&
+#else
     if (data_layout == DataLayout::kNHWC &&
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
         compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
       VLOG(3) << "Transform input tensor from NHWC to NCHW.";
       ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
@@ -559,7 +577,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       }
     }
 
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    if ((dtype == CUDNN_DATA_BFLOAT16 || data_layout == DataLayout::kNHWC) &&
+#else
     if (data_layout == DataLayout::kNHWC &&
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
         compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
       VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
       TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
@@ -823,6 +845,12 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
+    auto dtype = platform::CudnnDataType<T>::type;
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    if (dtype == CUDNN_DATA_BFLOAT16) {
+      const DataLayout data_layout_channel_last = DataLayout::kNHWC;
+    }
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -893,7 +921,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
             "received: the first dimension of scale is [%d]",
             C, scale->dims()[0]));
 
-    auto dtype = platform::CudnnDataType<T>::type;
     const auto *reserve_space = ctx.Input<Tensor>("ReserveSpace");
 #ifdef PADDLE_WITH_HIP
     auto compute_format = data_layout == DataLayout::kNHWC ? DataLayout::kNHWC
@@ -903,11 +930,20 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 // HIP do not support compute format of NHWC
 // auto compute_format = DataLayout::kNCHW;
 #else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    const bool fast_nhwc_batch_norm =
+        (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
+        FLAGS_cudnn_batchnorm_spatial_persistent && reserve_space != nullptr;
+    auto compute_format =
+        fast_nhwc_batch_norm && (dtype == CUDNN_DATA_BFLOAT16 ||
+                                 data_layout == DataLayout::kNHWC)
+#else
     const bool fast_nhwc_batch_norm =
         dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent &&
         reserve_space != nullptr;
     auto compute_format =
         fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
             ? DataLayout::kNHWC
             : DataLayout::kNCHW;
 #endif
@@ -915,7 +951,11 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     Tensor transformed_x(x->type());
     Tensor transformed_d_y(d_y->type());
     Tensor transformed_d_x;
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    if ((dtype == CUDNN_DATA_BFLOAT16 || data_layout == DataLayout::kNHWC) &&
+#else
     if (data_layout == DataLayout::kNHWC &&
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
         compute_format == DataLayout::kNCHW) {
       VLOG(3) << "Transform input tensor from NHWC to NCHW.";
       ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
@@ -1183,7 +1223,12 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 #endif
         }
 
+#if CUDNN_VERSION_MIN(8, 1, 0)
+        if ((dtype == CUDNN_DATA_BFLOAT16 ||
+             data_layout == DataLayout::kNHWC) &&
+#else
         if (data_layout == DataLayout::kNHWC &&
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
             compute_format == DataLayout::kNCHW) {
           VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
           TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
@@ -1339,28 +1384,46 @@ class BatchNormDoubleGradKernel<platform::CUDADeviceContext, T>
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+#define REGISTER_BN_FP32_EX(op_name, grad, ...)                              \
+  REGISTER_OP_CUDA_KERNEL(                                                   \
+      op_name, ops::BatchNorm##grad##Kernel<plat::CUDADeviceContext, float>, \
+      ##__VA_ARGS__);
+
+#define REGISTER_BN_FP32_FP16(op_name, grad) \
+  REGISTER_BN_FP32_EX(                       \
+      op_name, grad,                         \
+      ops::BatchNorm##grad##Kernel<plat::CUDADeviceContext, plat::float16>)
+
+#define REGISTER_BN_FP32_FP64(op_name, grad) \
+  REGISTER_BN_FP32_EX(                       \
+      op_name, grad,                         \
+      ops::BatchNorm##grad##Kernel<plat::CUDADeviceContext, double>)
+
+#define REGISTER_BN_FP32_FP64_FP16(op_name, grad)                    \
+  REGISTER_BN_FP32_EX(                                               \
+      op_name, grad,                                                 \
+      ops::BatchNorm##grad##Kernel<plat::CUDADeviceContext, double>, \
+      ops::BatchNorm##grad##Kernel<plat::CUDADeviceContext, plat::float16>)
+
+#define REGISTER_BN_FP32_FP64_FP16_BF16(op_name, grad)                      \
+  REGISTER_BN_FP32_EX(                                                      \
+      op_name, grad,                                                        \
+      ops::BatchNorm##grad##Kernel<plat::CUDADeviceContext, double>,        \
+      ops::BatchNorm##grad##Kernel<plat::CUDADeviceContext, plat::float16>, \
+      ops::BatchNorm##grad##Kernel<plat::CUDADeviceContext, plat::bfloat16>)
+
 #ifdef PADDLE_WITH_HIP
-// MIOPEN do not support double
-REGISTER_OP_CUDA_KERNEL(
-    batch_norm, ops::BatchNormKernel<plat::CUDADeviceContext, float>,
-    ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>,
-    ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    batch_norm_grad_grad,
-    ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, float>);
+REGISTER_BN_FP32_FP16(batch_norm, )
+REGISTER_BN_FP32_FP16(batch_norm_grad, Grad)
+REGISTER_BN_FP32_EX(batch_norm_grad_grad, DoubleGrad)
 #else
-REGISTER_OP_CUDA_KERNEL(
-    batch_norm, ops::BatchNormKernel<plat::CUDADeviceContext, float>,
-    ops::BatchNormKernel<plat::CUDADeviceContext, double>,
-    ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>,
-    ops::BatchNormGradKernel<plat::CUDADeviceContext, double>,
-    ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    batch_norm_grad_grad,
-    ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, float>,
-    ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, double>);
+#if CUDNN_VERSION >= 8100
+REGISTER_BN_FP32_FP64_FP16_BF16(batch_norm, )
+REGISTER_BN_FP32_FP64_FP16_BF16(batch_norm_grad, Grad)
+#else
+REGISTER_BN_FP32_FP64_FP16(batch_norm, )
+REGISTER_BN_FP32_FP64_FP16(batch_norm_grad, Grad)
+REGISTER_BN_FP32_FP64(batch_norm_grad_grad, DoubleGrad)
+#endif  // CUDNN_VERSION >= 8100
 #endif
