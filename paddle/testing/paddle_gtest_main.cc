@@ -97,12 +97,17 @@ int main(int argc, char** argv) {
   char** new_argv_address = new_argv.data();
   ::GFLAGS_NAMESPACE::ParseCommandLineFlags(
       &new_argc, &new_argv_address, false);
-  paddle::framework::InitDevices();
-
-  int ret = RUN_ALL_TESTS();
+  int ret = 0;
+  try {
+    paddle::framework::InitDevices();
+    ret = RUN_ALL_TESTS();
+  } catch (...) {
+    LOG(WARNING) << "gtest main catch exception";
+  }
 
 #ifdef PADDLE_WITH_ASCEND_CL
   paddle::platform::AclInstance::Instance().Finalize();
+  VLOG(0) << "gtest exit with Finalize npu device";
 #endif
 
   if (env_str) free(env_str);
