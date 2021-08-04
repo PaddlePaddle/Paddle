@@ -352,16 +352,25 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         return;
       }
 
+      // input dimension is 2 and the format is NCHW. The input can be regarded
+      // as NHWC format
       if (x_dims.size() == 2 && data_layout == DataLayout::kNCHW) {
         data_layout = DataLayout::kNHWC;
       }
+
       switch (data_layout) {
         case DataLayout::kNCHW: {
           ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
           for (int nc = 0; nc < N * C; ++nc) {
             saved_mean_e(nc % C) += x_arr.col(nc).sum();
           }
           saved_mean_e /= N * sample_size;
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
           for (int nc = 0; nc < N * C; ++nc) {
             saved_variance_e(nc % C) +=
                 (x_arr.col(nc) - saved_mean_e(nc % C)).matrix().squaredNorm();
@@ -434,6 +443,9 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
                                N * C);
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
         for (int nc = 0; nc < N * C; ++nc) {
           y_arr.col(nc) = x_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
         }
@@ -704,9 +716,12 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     dy_sum_arr.setZero();
     dy_mul_x_sub_mean_mul_invstd_sum_arr.setZero();
 
+    // input dimension is 2 and the format is NCHW. The input can be regarded as
+    // NHWC format
     if (x_dims.size() == 2 && data_layout == DataLayout::kNCHW) {
       data_layout = DataLayout::kNHWC;
     }
+
     // inplace calculation
     // Y:  ((x - est_mean) * (inv_var) * scale + bias
     //   formula transform ====>
@@ -721,6 +736,9 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
                                   sample_size, N * C);
           ConstEigenArrayMap<T> y_data(x->data<T>(), sample_size, N * C);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
           for (int nc = 0; nc < N * C; ++nc) {
             x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
                                  scale_inv_var_nhw(nc % C) / scale_coefff +
@@ -729,12 +747,14 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
-
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
         for (int nc = 0; nc < N * C; ++nc) {
-          int c = nc % C;
-          dy_sum_arr(c) += d_y_arr.col(nc).sum();
-          dy_mul_x_sub_mean_mul_invstd_sum_arr(c) +=
-              ((x_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * d_y_arr.col(nc))
+          dy_sum_arr(nc % C) += d_y_arr.col(nc).sum();
+          dy_mul_x_sub_mean_mul_invstd_sum_arr(nc % C) +=
+              ((x_arr.col(nc) - mean_arr(nc % C)) * inv_var_arr(nc % C) *
+               d_y_arr.col(nc))
                   .sum();
         }
 
@@ -747,14 +767,16 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
                                    sample_size, N * C);
           if (!use_global_stats) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
             for (int nc = 0; nc < N * C; ++nc) {
-              int c = nc % C;
               d_x_arr.col(nc) =
-                  scale_inv_var_nhw(c) *
-                  (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(c) -
-                   (x_arr.col(nc) - mean_arr[c]) *
-                       dy_mul_x_sub_mean_mul_invstd_sum_arr(c) *
-                       inv_var_arr(c));
+                  scale_inv_var_nhw(nc % C) *
+                  (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(nc % C) -
+                   (x_arr.col(nc) - mean_arr[nc % C]) *
+                       dy_mul_x_sub_mean_mul_invstd_sum_arr(nc % C) *
+                       inv_var_arr(nc % C));
             }
           } else {
             for (int nc = 0; nc < N * C; ++nc) {
@@ -779,7 +801,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
-
         for (int nhw = 0; nhw < N * sample_size; ++nhw) {
           dy_sum_arr += d_y_arr.col(nhw);
           dy_mul_x_sub_mean_mul_invstd_sum_arr +=
@@ -795,6 +816,9 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
                                    N * sample_size);
           if (!use_global_stats) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
             for (int nhw = 0; nhw < N * sample_size; ++nhw) {
               d_x_arr.col(nhw) =
                   scale_inv_var_nhw *
