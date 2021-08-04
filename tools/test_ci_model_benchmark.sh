@@ -20,19 +20,17 @@ function check_whl {
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
     pip uninstall -y paddlepaddle_gpu
     pip install build/python/dist/*.whl
-    mkdir build/pr_whl && cp build/python/dist/*.whl build/pr_whl
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
-
+    mkdir build/pr_whl && cp build/python/dist/*.whl build/pr_whl
     mkdir -p /tmp/pr && mkdir -p /tmp/develop
     unzip -q build/python/dist/*.whl -d /tmp/pr
     rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
 
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
-    bash -x paddle/scripts/paddle_build.sh build
-    #make -j `nproc`
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
     cd build
+    make -j `nproc`
     unzip -q python/dist/*.whl -d /tmp/develop
 
     sed -i '/version.py/d' /tmp/pr/*/RECORD
