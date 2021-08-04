@@ -857,7 +857,7 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<T, dnnl::bi
       const framework::Tensor* input) {
     const T* input_data = input->data<T>();
     return this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->src1_desc(), to_void_cast<T>(input_data), "@src1_mem_p");
+        this->fwd_pd_->src1_desc(), to_void_cast<T>(input_data));
   }
 
  private:
@@ -980,24 +980,15 @@ class ReductionMKLDNNHandler
 
 template <typename T>
 class ActivationMKLDNNHandler
-    : public MKLDNNHandlerT<T, mkldnn::eltwise_forward,
+    : public MKLDNNHandlerNoCachingT<T, mkldnn::eltwise_forward,
                             mkldnn::eltwise_backward> {
  public:
   ActivationMKLDNNHandler(mkldnn::algorithm algorithm,
                           const framework::ExecutionContext& ctx,
-                          const MKLDNNDeviceContext& dev_ctx, Place cpu_place,
-                          const framework::Tensor* in_x,
-                          const std::string& unique_name, bool is_inplaced)
-      : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
-                                 mkldnn::eltwise_backward>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            is_inplaced ? platform::CreateKey(
-                              dev_ctx, framework::vectorize(in_x->dims()), "a",
-                              algorithm, unique_name)
-                        : platform::CreateKey(
-                              dev_ctx, framework::vectorize(in_x->dims()), "a",
-                              unique_name)) {
-    if (!this->isCached()) {
+                          const mkldnn::engine engine, Place cpu_place,
+                          const framework::Tensor* in_x)
+      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::eltwise_forward,
+                                 mkldnn::eltwise_backward>(engine, cpu_place) {
       float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
       float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
       // eltwise_linear means we are in scale op
@@ -1035,20 +1026,14 @@ class ActivationMKLDNNHandler
 
       this->AcquireForwardPrimitiveDescriptor(
           mkldnn::prop_kind::forward_training, algorithm, md, alpha, beta);
-    }
   }
 
   ActivationMKLDNNHandler(mkldnn::algorithm algorithm,
                           const framework::ExecutionContext& ctx,
-                          const MKLDNNDeviceContext& dev_ctx, Place cpu_place,
-                          const framework::Tensor* in_x, const Tensor* out_grad,
-                          const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
-                                 mkldnn::eltwise_backward>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(in_x->dims()),
-                                "a", unique_name)) {
-    if (!this->isBwdCached()) {
+                          const mkldnn::engine engine, Place cpu_place,
+                          const framework::Tensor* in_x, const Tensor* out_grad)
+      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::eltwise_forward,
+                                 mkldnn::eltwise_backward>(engine, cpu_place) {
       float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
       float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
 
@@ -1076,15 +1061,12 @@ class ActivationMKLDNNHandler
           mkldnn::prop_kind::forward_training, algorithm, src_md, alpha, beta);
       this->AcquireBackwardPrimitiveDescriptor(algorithm, diff_dst_md, src_md,
                                                alpha, beta);
-    }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBackwardSrcMemory(
       const framework::Tensor* input) {
     const T* input_data = input->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->src_desc(),
-                                            to_void_cast<T>(input_data),
-                                            "@bwd-src_mem_p");
+    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->src_desc(), to_void_cast<T>(input_data));
   }
 };
 
@@ -1634,11 +1616,6 @@ using ConvMKLDNNHandler =
     ConvMKLDNNTemplateHandler<mkldnn::convolution_forward,
                               mkldnn::convolution_backward_data,
                               mkldnn::convolution_backward_weights>;
-
-using ConvTransposeMKLDNNHandler =
-    ConvMKLDNNTemplateHandler<mkldnn::deconvolution_forward,
-                              mkldnn::deconvolution_backward_data,
-                              mkldnn::deconvolution_backward_weights>;
 
 template <typename T>
 static std::shared_ptr<mkldnn::memory> SetDstMemory(
