@@ -344,7 +344,6 @@ CPU_PARALLEL_JOB = [
     'stringprintf_test',
     'stringpiece_test',
     'split_test',
-    'string_helper_test',
     'selected_rows_test',
     'selected_rows_functor_test',
     'scope_test',
