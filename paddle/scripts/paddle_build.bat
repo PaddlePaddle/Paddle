@@ -75,6 +75,7 @@ if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
 if not defined retry_times set retry_times=3
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
+if not defined BUILD_DIR set BUILD_DIR=build
 
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
@@ -91,16 +92,16 @@ if "%WITH_PYTHON%" == "ON" (
 )
 
 rem -------Caching strategy 1: keep build directory for incremental compilation-----------
-rmdir build\python /s/q
-rmdir build\paddle\third_party\externalError /s/q
-rem rmdir build\paddle\fluid\pybind /s/q
-rmdir build\paddle_install_dir /s/q
-rmdir build\paddle_inference_install_dir /s/q
-rmdir build\paddle_inference_c_install_dir /s/q
-del build\CMakeCache.txt
+rmdir %BUILD_DIR%\python /s/q
+rmdir %BUILD_DIR%\paddle\third_party\externalError /s/q
+rem rmdir %BUILD_DIR%\paddle\fluid\pybind /s/q
+rmdir %BUILD_DIR%\paddle_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
+del %BUILD_DIR%\CMakeCache.txt
 
 if "%WITH_CACHE%"=="OFF" (
-    rmdir build /s/q
+    rmdir %BUILD_DIR% /s/q
     goto :mkbuild
 )
 
@@ -108,7 +109,7 @@ set error_code=0
 type %cache_dir%\error_code.txt
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
-    rmdir build /s/q
+    rmdir %BUILD_DIR% /s/q
     goto :mkbuild
 )
 
@@ -118,12 +119,12 @@ if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
     git diff HEAD last_pr --stat --name-only | findstr "setup.py.in"
     if !ERRORLEVEL! EQU 0 (
-        rmdir build /s/q
+        rmdir %BUILD_DIR% /s/q
     )
     git branch -D last_pr
     git branch last_pr
 ) else (
-    rmdir build /s/q
+    rmdir %BUILD_DIR% /s/q
     git branch last_pr
 )
 
@@ -134,21 +135,21 @@ set /p day_before=< %cache_dir%\day.txt
 if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
-    rmdir build /s/q
+    rmdir %BUILD_DIR% /s/q
     goto :mkbuild
 )
 
 :mkbuild
-if not exist build (
+if not exist %BUILD_DIR% (
     echo Windows build cache FALSE
     set Windows_Build_Cache=FALSE
-    mkdir build
+    mkdir %BUILD_DIR%
 ) else (
     echo Windows build cache TRUE
     set Windows_Build_Cache=TRUE
 )
 echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
-cd /d build
+cd /d %BUILD_DIR%
 dir .
 dir %cache_dir%
 dir paddle\fluid\pybind\Release
@@ -342,7 +343,7 @@ if %day_now% NEQ %day_before% (
 )
 
 if "%WITH_TPCACHE%"=="OFF" (
-    set THIRD_PARTY_PATH=%work_dir:\=/%/build/third_party
+    set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
     goto :cmake_impl
 )
 
@@ -651,7 +652,7 @@ echo    ========================================
 echo    Step 6. Check whether deleting a unit test ...
 echo    ========================================
 
-cd /d %work_dir%\build
+cd /d %work_dir%\%BUILD_DIR%
 echo set -e>  check_change_of_unittest.sh
 echo set +x>> check_change_of_unittest.sh
 echo GITHUB_API_TOKEN=%GITHUB_API_TOKEN% >>  check_change_of_unittest.sh
@@ -729,7 +730,7 @@ exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :zip_cc_file
-cd /d %work_dir%\build
+cd /d %work_dir%\%BUILD_DIR%
 tree /F %cd%\paddle_inference_install_dir\paddle
 if exist paddle_inference.zip del paddle_inference.zip
 python -c "import shutil;shutil.make_archive('paddle_inference', 'zip', root_dir='paddle_inference_install_dir')"
@@ -747,7 +748,7 @@ exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :zip_c_file
-cd /d %work_dir%\build
+cd /d %work_dir%\%BUILD_DIR%
 tree /F %cd%\paddle_inference_c_install_dir\paddle
 if exist paddle_inference_c.zip del paddle_inference_c.zip
 python -c "import shutil;shutil.make_archive('paddle_inference_c', 'zip', root_dir='paddle_inference_c_install_dir')"
