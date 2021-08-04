@@ -429,6 +429,28 @@ class SetValueGradKernel : public framework::OpKernel<T> {
       steps_indices[axis_index] = steps[axis];
       reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
     }
+    auto out_dims_origin = out_dims;
+    if (decrease_axis.size() > 0) {
+      std::vector<int64_t> new_out_shape;
+      for (size_t i = 0; i < decrease_axis.size(); ++i) {
+        PADDLE_ENFORCE_EQ(
+            out_dims[decrease_axis[i]], 1,
+            platform::errors::InvalidArgument(
+                "the size of decrease dimension should be 1, but received %d.",
+                out_dims[decrease_axis[i]]));
+        out_dims_origin[decrease_axis[i]] = 0;
+      }
+
+      for (int i = 0; i < out_dims_origin.size(); ++i) {
+        if (out_dims_origin[i] != 0) {
+          new_out_shape.push_back(out_dims_origin[i]);
+        }
+      }
+      if (new_out_shape.size() == 0) {
+        new_out_shape.push_back(1);
+      }
+      out_dims_origin = framework::make_ddim(new_out_shape);
+    }
 
     bool need_reverse = false;
     for (size_t axis = 0; axis < axes.size(); axis++) {
@@ -464,15 +486,18 @@ class SetValueGradKernel : public framework::OpKernel<T> {
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *grad_input);
 
+    framework::Tensor tmp(grad_input->type());
+    tmp.mutable_data<T>(out_dims, context.GetPlace());
+    set_zero(dev_ctx, &tmp, static_cast<T>(0));
+    auto tmp_t =
+        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            tmp);
+
     grad_input_t.stridedSlice(starts_indices, ends_indices, steps_indices)
-        .setZero();
+        .device(place) = tmp_t;
 
     if (grad_value->dims() == out_dims) {
       if (need_reverse) {
-        framework::Tensor tmp;
-        tmp.mutable_data<T>(out_dims, context.GetPlace());
-        auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
-                                            Eigen::DenseIndex>::From(tmp);
         tmp_t.device(place) =
             in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
         grad_value_t.device(place) = tmp_t.reverse(reverse_axis);
@@ -527,10 +552,6 @@ class SetValueGradKernel : public framework::OpKernel<T> {
       }
       std::vector<DDim> offsets;
       get_offsets(out_dims, fake_grad_value_dims, offset, 0, &offsets);
-      framework::Tensor tmp;
-      tmp.mutable_data<T>(out_dims, context.GetPlace());
-      auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
-                                          Eigen::DenseIndex>::From(tmp);
 
       tmp_t.device(place) =
           in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
