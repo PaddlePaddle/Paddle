@@ -217,12 +217,14 @@ class RawProgramOptimizer(MetaOptimizerBase):
         block = self.main_program.global_block()
         ring_id = self.global_ring_id
         param_grads = []
-        grads_to_idx = {}
+        first_backward_idx = -1
 
         # find all grad params
         for idx, op in enumerate(block.ops):
             if is_backward_op(op) and \
                     OP_ROLE_VAR_KEY in op.attr_names:
+                if first_backward_idx == -1:
+                    first_backward_idx = idx
                 op_role_var = op.attr(OP_ROLE_VAR_KEY)
                 if len(op_role_var) == 0:
                     continue
@@ -236,44 +238,58 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     if param.is_distributed:
                         continue
                     param_grads.append((param, grad))
-                    grads_to_idx[grad] = idx
 
-        grad_segments = []
-        param_segments = []
+        # find the index of the op which generates the grad
+        grads_to_idx = {}
+        for param, grad in param_grads:
+            for idx in range(first_backward_idx, len(block.ops)):
+                op = block.ops[idx]
+                if grad.name in op.output_arg_names:
+                    grads_to_idx[grad] = idx
+                    break
+
+        # structure of grad_param_segments is
+        # [([grad0, grad1], [param0, param1]), ([grad2, grad3], [param2, param3])]
+        # each entry of the list is a tuple stores the grads segment list and
+        # the corresponding params segment list
+        grad_param_segments = []
         last_dtype = None
         # split the grad based on dtype and fused size
         for param, grad in param_grads:
-            if len(grad_segments) == 0 \
-                    or len(grad_segments[-1]) == self.fuse_grad_size_in_num \
+            if len(grad_param_segments) == 0 \
+                    or len(grad_param_segments[-1][0]) == self.fuse_grad_size_in_num \
                     or grad.dtype != last_dtype:
-                grad_segments.append([grad])
-                param_segments.append([param])
+                grad_param_segments.append(([grad], [param]))
                 last_dtype = grad.dtype
             else:
-                grad_segments[-1].append(grad)
-                param_segments[-1].append(param)
+                grad_param_segments[-1][0].append(grad)
+                grad_param_segments[-1][1].append(param)
 
-        if len(grad_segments) == 0:
+        if len(grad_param_segments) == 0:
             return
 
-        assert len(grad_segments) == len(param_segments)
-
-        for i in range(len(grad_segments) - 1, -1, -1):
-            grad_segment = grad_segments[i]
-            param_segment = param_segments[i]
+        for i in range(len(grad_param_segments) - 1, -1, -1):
+            # travers the grad_param_segments in backward
+            # not to use reversed since needs the absolute index value
+            grad_segment, param_segment = grad_param_segments[i]
             # insert coalesce tensor
             fused_var = block.create_var(
                 name=unique_name.generate('FusedOutput_{}'.format(grad_segment[
                     0].name)),
                 dtype=grad_segment[0].dtype,
-                persistable=True,
+                persistable=False,
                 stop_gradient=True)
             before_idx = grads_to_idx[grad_segment[0]]
             after_idx = grads_to_idx[grad_segment[-1]]
             offset = 1
-            for j in range(i + 1, len(grad_segments)):
-                # find the offset of the sync op and allreduce op
-                if after_idx == grads_to_idx[grad_segments[j][0]]:
+            for j in range(i + 1, len(grad_param_segments)):
+                # Find the offset of the sync op and allreduce op
+                # Some ops may have multi grad_param pairs, and these grads might be
+                # split into different segments. If the last grad in this segment and
+                # the first grad in next segment are from the same op, it means
+                # a coalesce op has already been inserted before this op.
+                # Therefore, we have to insert the the sync/allreduce op with offset.
+                if after_idx == grads_to_idx[grad_param_segments[j][0][0]]:
                     offset += 1
             block._insert_op_without_sync(
                 after_idx + offset,
