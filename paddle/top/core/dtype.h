@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <ostream>
+
 namespace pt {
 
 /**
@@ -44,5 +46,7 @@ enum class DataType {
   kCOMPLEX128,
   kNumDataTypes,
 };
+
+std::ostream& operator<<(std::ostream& os, DataType dtype);
 
 }  // namespace pt

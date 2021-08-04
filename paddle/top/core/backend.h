@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <ostream>
 namespace pt {
 
 /**
@@ -32,14 +33,16 @@ enum class Backend {
   kUndef = 0,
   kCPU,
   kCUDA,
-  kCUDAPinned,
+  kCUDAPinned,  // need to be removed
   kHIP,
   kXPU,
   kNPU,
-  kNPUPinned,
+  kNPUPinned,  // need to be removed
   kMKLDNN,
   kCUDNN,
   kNumBackends,
 };
+
+std::ostream& operator<<(std::ostream& os, Backend backend);
 
 }  // namespace pt

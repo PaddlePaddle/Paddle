@@ -12,30 +12,32 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include <ostream>
+#include "paddle/top/core/layout.h"
 
 namespace pt {
 
-/**
- * We need to ensure that the operator library is relatively independent
- * and does not depend on the framework. Therefore, before calling the kernel
- * in the Tensor operation library inside the framework, the internal
- * layout needs to be converted to the data type in the Tensor operation
- * library.
- *
- * Here we also can use the DataLayout in framework, they are all enum classes.
- */
-enum class DataLayout {
-  kUndef = 0,
-  kAny,
-  kNHWC,
-  kNCHW,
-  kMKLDNN,
-  kNumLayouts,
-};
-
-std::ostream& operator<<(std::ostream& os, DataLayout dtype);
+std::ostream& operator<<(std::ostream& os, DataLayout dtype) {
+  switch (dtype) {
+    case DataLayout::kUndef:
+      os << "Undefined";
+      break;
+    case DataLayout::kAny:
+      os << "Any";
+      break;
+    case DataLayout::kNHWC:
+      os << "NHWC";
+      break;
+    case DataLayout::kNCHW:
+      os << "NCHW";
+      break;
+    case DataLayout::kMKLDNN:
+      os << "MKLDNN";
+      break;
+    default:
+      // TODO(chenweihang): change to enforce later
+      throw std::runtime_error("Invalid DataLayout type.");
+  }
+  return os;
+}
 
 }  // namespace pt
