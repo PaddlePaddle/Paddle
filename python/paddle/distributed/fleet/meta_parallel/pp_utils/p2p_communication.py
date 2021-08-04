@@ -160,7 +160,7 @@ def send_partial(tensor,
         return
     ring_id = 0 if group is None else group.id
 
-    if _is_valid_send_recv_partial(tensor):
+    if _is_valid_send_recv_partial(tensor, nranks):
         return _C_ops.partial_send(tensor, 'use_calc_stream', use_calc_stream,
                                    'ring_id', ring_id, 'peer', dst, 'num',
                                    nranks, 'id', rank_id)
@@ -179,7 +179,7 @@ def recv_partial(tensor,
         return
     ring_id = 0 if group is None else group.id
 
-    if _is_valid_send_recv_partial(tensor):
+    if _is_valid_send_recv_partial(tensor, nranks):
         _C_ops.partial_recv(tensor, 'use_calc_stream', use_calc_stream,
                             'ring_id', ring_id, 'peer', src, 'num', nranks,
                             'id', rank_id, 'dtype', tensor.dtype, 'out_shape',
@@ -194,7 +194,7 @@ def allgather_partial(tensor,
                       rank_id=0,
                       group=None,
                       use_calc_stream=True):
-    if not _is_valid_send_recv_partial(tensor):
+    if not _is_valid_send_recv_partial(tensor, nranks):
         return tensor
     if group is not None and not group.is_member():
         return
