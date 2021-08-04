@@ -49,18 +49,17 @@ class MKLDNNHandlerNoCachingT {
   }
 
   std::shared_ptr<TForward> AcquireForwardPrimitive() {
-     return  forward_p = std::make_shared<TForward>(*fwd_pd_);
+     return std::make_shared<TForward>(*fwd_pd_);
   }
 
   std::shared_ptr<TBackward> AcquireBackwardPrimitive() {
-     return  backward_p = std::make_shared<TBackward>(*bwd_pd_);
+     return std::make_shared<TBackward>(*bwd_pd_);
   }
 
   std::shared_ptr<TBackward_params> AcquireBackwardWeightsPrimitive() {
       PADDLE_ENFORCE_NOT_NULL(bwd_w_pd_, platform::errors::Unavailable(
                                              "Error: BWD_PD should be set when "
-                                             "getting BWD prim witk key: %s .",
-                                             key_p));
+                                             "getting BWD prim ."));
      return std::make_shared<TBackward_params>(*bwd_w_pd_);
   }
 
@@ -802,19 +801,13 @@ class MKLDNNHandler {
 };
 
 template <typename T>
-class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
+class BinaryMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   BinaryMKLDNNHandler(const dnnl::algorithm algo, const int axis,
-                      const MKLDNNDeviceContext& dev_ctx,
                       const mkldnn::engine engine, platform::Place cpu_place,
                       const Tensor* x, const Tensor* y, Tensor* z,
-                      float scale_x, float scale_y, float scale_z,
-                      const std::string& uniq_name)
-      : platform::MKLDNNHandlerT<T, dnnl::binary>(
-            dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
-                                uniq_name)) {
-    if (!this->isCached()) {
+                      float scale_x, float scale_y, float scale_z)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
       PADDLE_ENFORCE_EQ(
           x->layout(), DataLayout::kMKLDNN,
           platform::errors::InvalidArgument("Wrong layout set for X tensor."));
@@ -858,7 +851,6 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       auto attributes = CreateAttributes(algo, scale_x, scale_y, scale_z);
       this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md,
                                               src1_md, dst_md);
-    }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(

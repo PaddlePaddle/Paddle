@@ -57,9 +57,8 @@ class SoftmaxMKLDNNHandler
                        platform::Place cpu_place, const Tensor* out,
                        const Tensor* out_grad, Tensor* in_x_grad,
                        const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, mkldnn::softmax_forward,
-                                 mkldnn::softmax_backward>(
-            dev_ctx, mkldnn_engine, cpu_place) {
+      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::softmax_forward,
+                                 mkldnn::softmax_backward>(mkldnn_engine, cpu_place) {
       PADDLE_ENFORCE_EQ(
           out_grad->dims(), in_x_grad->dims(),
           platform::errors::InvalidArgument("The shape of softmax_grad's input "
