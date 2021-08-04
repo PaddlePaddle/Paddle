@@ -1631,7 +1631,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 #ifdef PADDLE_WITH_XPU
+  py::enum_<platform::XPUVersion>(m, "XPUVersion", py::arithmetic())
+      .value("XPU1", platform::XPUVersion::XPU1)
+      .value("XPU2", platform::XPUVersion::XPU2)
+      .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+  m.def("get_xpu_device_version",
+        [](int device_id) { return platform::get_xpu_version(device_id); });
 #endif
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
