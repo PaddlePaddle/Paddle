@@ -356,14 +356,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::SetValueGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SetValueGradKernel<plat::CPUDeviceContext, int64_t>,
     ops::SetValueGradKernel<plat::CPUDeviceContext, float>,
-    ops::SetValueGradKernel<plat::CPUDeviceContext, double>);
-
-REGISTER_OP_CUDA_KERNEL(
-    set_value_grad,
-    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::SetValueGradKernel<plat::CPUDeviceContext, double>,
+    ops::SetValueGradKernel<plat::CPUDeviceContext, bool>);
 
 REGISTER_OP_VERSION(set_value)
     .AddCheckpoint(

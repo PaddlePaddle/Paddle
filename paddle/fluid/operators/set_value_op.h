@@ -37,8 +37,9 @@ using Variable = framework::Variable;
 using LoDTensorArray = framework::LoDTensorArray;
 using DDim = framework::DDim;
 
-void get_offsets(const DDim& big_dim, const DDim& small_dim, DDim start_offset,
-                 int cur_dim, std::vector<DDim>* offsets) {
+inline void get_offsets(const DDim& big_dim, const DDim& small_dim,
+                        DDim start_offset, int cur_dim,
+                        std::vector<DDim>* offsets) {
   if (cur_dim == big_dim.size()) {
     offsets->push_back(start_offset);
     return;
