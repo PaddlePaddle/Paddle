@@ -53,7 +53,7 @@ class TestRelu6(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-7)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -73,7 +73,7 @@ class TestRelu6Float16(TestRelu6):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-3)
+        self.check_output_with_place(self.place)
 
 
 class TestReluNeg(TestRelu6):
@@ -99,7 +99,7 @@ class TestReluNeg(TestRelu6):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-7)
+        self.check_output_with_place(self.place)
 
 
 class TestRelu6Net(unittest.TestCase):
