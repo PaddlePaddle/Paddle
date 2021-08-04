@@ -63,11 +63,13 @@ void Mean(const CUDADeviceContext& dev_ctx,
       nullptr, temp_storage_bytes, trans_x, out_data, size_prob, stream);
   PADDLE_ENFORCE_CUDA_SUCCESS(err);
 
-  pt::DenseTensor tmp(std::unique_ptr<TensorMeta>(new TensorMeta(
-      paddle::framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
-      pt::TransToPtenBackend(dev_ctx.GetPlace()),
-      x.type(),
-      x.layout())));
+  pt::DenseTensor tmp(
+      TensorMeta(paddle::framework::make_ddim(
+                     {static_cast<int64_t>(temp_storage_bytes)}),
+                 pt::TransToPtenBackend(dev_ctx.GetPlace()),
+                 x.type(),
+                 x.layout()),
+      TensorStatus());
   auto* temp_storage = tmp.mutable_data<uint8_t>();
   err = cub::DeviceReduce::Sum(
       temp_storage, temp_storage_bytes, trans_x, out_data, size_prob, stream);

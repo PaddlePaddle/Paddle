@@ -75,6 +75,7 @@ if(WITH_UNITY_BUILD)
 endif()
 
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} top)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} top_utils)
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op lstm_op run_program_op eye_op recurrent_op
         sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 

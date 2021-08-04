@@ -64,10 +64,17 @@ class ScaleKernel : public framework::OpKernel<T> {
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
+#ifdef PADDLE_WITH_MKLDNN
+    auto pt_x = framework::MakeTensorImpl<pt::MKLDNNDenseTensor>(
+        *in, in->place(), in->type());
+    auto pt_out = framework::MakeTensorImpl<pt::MKLDNNDenseTensor>(
+        *out, in->place(), in->type());
+#else
     auto pt_x = framework::MakeTensorImpl<pt::DenseTensor>(*in, in->place(),
                                                            in->type());
     auto pt_out = framework::MakeTensorImpl<pt::DenseTensor>(*out, in->place(),
                                                              in->type());
+#endif
 
     // call new kernel
     pt::Scale<T>(dev_ctx, *pt_x.get(), scale, bias, bias_after_scale,

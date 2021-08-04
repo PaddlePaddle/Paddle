@@ -20,12 +20,12 @@ namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
 TEST(DenseTensor, Constructor) {
-  pt::DenseTensor tensor(std::unique_ptr<pt::TensorMeta>(
-      new pt::TensorMeta(framework::make_ddim({5, 10}),
-                         pt::Backend::kCPU,
-                         pt::DataType::kFLOAT32,
-                         pt::DataLayout::kNCHW,
-                         0UL)));
+  pt::DenseTensor tensor(pt::TensorMeta(framework::make_ddim({5, 10}),
+                                        pt::Backend::kCPU,
+                                        pt::DataType::kFLOAT32,
+                                        pt::DataLayout::kNCHW,
+                                        0UL),
+                         pt::TensorStatus());
   ASSERT_EQ(tensor.dims().size(), 2);
   ASSERT_EQ(tensor.backend(), pt::Backend::kCPU);
   ASSERT_EQ(tensor.type(), pt::DataType::kFLOAT32);

@@ -53,12 +53,12 @@ class SelectedRowsTensor : public TensorInterface {
   SelectedRowsTensor(SelectedRowsTensor&&) = delete;
   SelectedRowsTensor& operator=(SelectedRowsTensor&&) = delete;
 
-  SelectedRowsTensor(std::unique_ptr<TensorMeta> meta,
-                     std::unique_ptr<TensorStatus> status,
+  SelectedRowsTensor(const TensorMeta& meta,
+                     const TensorStatus& status,
                      const std::vector<int64_t>& rows,
                      int64_t height)
       : rows_(rows), height_(height) {
-    value_.reset(new DenseTensor(std::move(meta), std::move(status)));
+    value_.reset(new DenseTensor(meta, status));
   }
 
   const DenseTensor& value() const { return *value_; }

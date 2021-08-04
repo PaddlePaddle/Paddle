@@ -16,7 +16,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_MKLDNN
 
-#include "paddle/top/core/dense_tensor.h"
+#include "paddle/top/core/mkldnn_dense_tensor.h"
 #include "paddle/top/mkldnn/base.h"
 
 namespace pt {
@@ -25,11 +25,11 @@ using MKLDNNDeviceContext = paddle::platform::MKLDNNDeviceContext;
 
 template <typename T>
 void Scale(const MKLDNNDeviceContext& dev_ctx,
-           const DenseTensor& x,
+           const MKLDNNDenseTensor& x,
            float scale,
            float bias,
            bool bias_after_scale,
-           DenseTensor* out) {
+           MKLDNNDenseTensor* out) {
   bool is_inplaced = x.allocation() && x.allocation() == out->allocation();
 
   // TODO(chenweihang): add `name` into TensorMeta?
@@ -52,10 +52,8 @@ void Scale(const MKLDNNDeviceContext& dev_ctx,
   astream.wait();
 
   out->mutable_meta()->layout = DataLayout::kMKLDNN;
-  // TODO(chenweihang): we should use dynamic_cast get MKLDNNTensorMeta,
-  // Is there any better way here?
-  dynamic_cast<MKLDNNTensorMeta*>(out->mutable_meta())->format =
-      paddle::platform::GetMKLDNNFormat(*dst_memory_p);
+  // TODO(chenweihang): format is also meta info, how to deal with here?
+  out->set_format(paddle::platform::GetMKLDNNFormat(*dst_memory_p));
 }
 
 }  // namespace pt

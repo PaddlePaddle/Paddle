@@ -52,7 +52,7 @@ void DenseTensor::ShareAllocation(
 
 // TODO(chenweihang): Add other place branchs
 Place DenseTensor::GetPlaceByBackend() const {
-  switch (meta_->backend) {
+  switch (meta_.backend) {
     case Backend::kCPU:
       return CPUPlace();
 #ifdef PADDLE_WITH_CUDA
@@ -78,7 +78,7 @@ Place DenseTensor::GetPlaceByBackend() const {
 }
 
 size_t DenseTensor::MemorySize() const {
-  return allocation_ == nullptr ? 0UL : allocation_->size() - meta_->offset;
+  return allocation_ == nullptr ? 0UL : allocation_->size() - meta_.offset;
 }
 
 void DenseTensor::CheckMemorySize() const {
@@ -87,7 +87,7 @@ void DenseTensor::CheckMemorySize() const {
                               "Tensor holds no memory. "
                               "Call Tensor::mutable_data firstly."));
   size_t size_of_type =
-      paddle::framework::SizeOfType(TransToProtoVarType(meta_->type));
+      paddle::framework::SizeOfType(TransToProtoVarType(meta_.type));
   PADDLE_ENFORCE_LE(
       numel() * size_of_type,
       MemorySize(),
@@ -107,7 +107,7 @@ std::shared_ptr<Allocation> DenseTensor::MoveMemory() {
 const void* DenseTensor::data() const {
   CheckMemorySize();
   return reinterpret_cast<const void*>(
-      reinterpret_cast<uintptr_t>(allocation_->ptr()) + meta_->offset);
+      reinterpret_cast<uintptr_t>(allocation_->ptr()) + meta_.offset);
 }
 
 void* DenseTensor::mutable_data() {
@@ -120,7 +120,7 @@ void* DenseTensor::mutable_data() {
           dims(),
           "] now"));
   size_t size =
-      numel() * paddle::framework::SizeOfType(TransToProtoVarType(meta_->type));
+      numel() * paddle::framework::SizeOfType(TransToProtoVarType(meta_.type));
   auto place = GetPlaceByBackend();
   if (allocation_ == nullptr) {
     allocation_.reset();
@@ -128,7 +128,7 @@ void* DenseTensor::mutable_data() {
   } else {
     LOG(WARNING) << "When call mutable_data, DenseTensor has been initialized.";
     if (!(allocation_->place() == place) ||
-        allocation_->size() < size + meta_->offset) {
+        allocation_->size() < size + meta_.offset) {
       allocation_.reset();
       allocation_ = paddle::memory::AllocShared(place, size);
     } else {
@@ -136,7 +136,7 @@ void* DenseTensor::mutable_data() {
     }
   }
   return reinterpret_cast<void*>(
-      reinterpret_cast<uintptr_t>(allocation_->ptr()) + meta_->offset);
+      reinterpret_cast<uintptr_t>(allocation_->ptr()) + meta_.offset);
 }
 
 }  // namespace pt

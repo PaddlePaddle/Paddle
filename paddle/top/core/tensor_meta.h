@@ -16,10 +16,6 @@ limitations under the License. */
 
 #include <vector>
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "mkldnn.hpp"
-#endif
-
 #include "paddle/top/core/backend.h"
 #include "paddle/top/core/dtype.h"
 #include "paddle/top/core/layout.h"
@@ -67,10 +63,11 @@ using LoD = std::vector<std::vector<size_t>>;
  */
 struct TensorMeta {
   TensorMeta() = delete;
-  TensorMeta(const TensorMeta&) = delete;
   TensorMeta& operator=(const TensorMeta&) = delete;
-  // TensorMeta(TensorMeta&&) = delete;
   TensorMeta& operator=(TensorMeta&&) = delete;
+
+  TensorMeta(const TensorMeta&) = default;
+  // TensorMeta(TensorMeta&&) = default;
 
   TensorMeta(TensorMeta&& meta)
       : dims(meta.dims),
@@ -143,31 +140,5 @@ struct TensorMeta {
    */
   LoD lod;
 };
-
-#ifdef PADDLE_WITH_MKLDNN
-struct MKLDNNTensorMeta : public TensorMeta {
-  MKLDNNTensorMeta(
-      const DDim& dims,
-      Backend backend,
-      DataType type,
-      DataLayout layout,
-      size_t offset = 0UL,
-      const LoD& lod = {},
-      mkldnn::memory::format_tag format = mkldnn::memory::format_tag::undef)
-      : TensorMeta(dims, backend, type, layout, offset, lod), format(format) {}
-
-  ~MKLDNNTensorMeta() override {}
-
-  /**
-   * @brief the detail format of memory block which have layout as kMKLDNN
-   *
-   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
-   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
-   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
-   *       this field.
-   */
-  mkldnn::memory::format_tag format = mkldnn::memory::format_tag::undef;
-};
-#endif
 
 }  // namespace pt

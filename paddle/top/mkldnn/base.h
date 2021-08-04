@@ -16,6 +16,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_MKLDNN
 
+#include "paddle/top/core/mkldnn_dense_tensor.h"
+
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
@@ -33,7 +35,7 @@ class ScaleMKLDNNHandler
                                               mkldnn::eltwise_backward> {
  public:
   ScaleMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
-                     const pt::DenseTensor& in_x,
+                     const pt::MKLDNNDenseTensor& in_x,
                      const std::string& unique_name,
                      bool is_inplaced,
                      float alpha,
@@ -68,9 +70,7 @@ class ScaleMKLDNNHandler
 
     auto src_tz = paddle::framework::vectorize<int64_t>(in_x.dims());
     auto src_fmt =
-        src_tz.size() == 2
-            ? paddle::MKLDNNMemoryFormat::nc
-            : dynamic_cast<const MKLDNNTensorMeta&>(in_x.meta()).format;
+        src_tz.size() == 2 ? paddle::MKLDNNMemoryFormat::nc : in_x.format();
     auto md = mkldnn::memory::desc(
         src_tz, paddle::platform::MKLDNNGetDataType<T>(), src_fmt);
 

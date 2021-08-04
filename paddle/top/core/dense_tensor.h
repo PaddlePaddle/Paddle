@@ -65,24 +65,25 @@ class DenseTensor : public TensorInterface {
    *
    * Note: Tensor objects lacking meta information are not allowed to exist.
    */
-  explicit DenseTensor(std::unique_ptr<TensorMeta> meta,
-                       std::unique_ptr<TensorStatus> status =
-                           std::unique_ptr<TensorStatus>(new TensorStatus()))
+  DenseTensor(const TensorMeta& meta, const TensorStatus& status)
+      : meta_(meta), status_(status) {}
+
+  DenseTensor(TensorMeta&& meta, TensorStatus&& status)
       : meta_(std::move(meta)), status_(std::move(status)) {}
 
   ~DenseTensor() override {}
 
-  int64_t numel() const override { return meta_->numel; }
+  int64_t numel() const override { return meta_.numel; }
 
-  DDim dims() const override { return meta_->dims; }
+  DDim dims() const override { return meta_.dims; }
 
-  DataType type() const override { return meta_->type; }
+  DataType type() const override { return meta_.type; }
 
-  DataLayout layout() const override { return meta_->layout; }
+  DataLayout layout() const override { return meta_.layout; }
 
   Place place() const override;
 
-  Backend backend() const override { return meta_->backend; }
+  Backend backend() const override { return meta_.backend; }
 
   bool initialized() const override { return allocation_ != nullptr; }
 
@@ -90,9 +91,9 @@ class DenseTensor : public TensorInterface {
 
   const std::shared_ptr<Allocation>& allocation() const { return allocation_; }
 
-  const TensorMeta& meta() const { return *meta_; }
+  const TensorMeta& meta() const { return meta_; }
 
-  TensorMeta* mutable_meta() { return meta_.get(); }
+  TensorMeta* mutable_meta() { return &meta_; }
 
   /* Data Access Methods */
 
@@ -125,7 +126,7 @@ class DenseTensor : public TensorInterface {
 
   // For non-API and non-member interfaces, we still follow the C++ code style?
 
-  void Resize(const DDim& dims) { meta_->dims = dims; }
+  void Resize(const DDim& dims) { meta_.dims = dims; }
 
   void ShareAllocation(const std::shared_ptr<Allocation>& allocation);
 
@@ -141,9 +142,9 @@ class DenseTensor : public TensorInterface {
   // The actual Tensor storage holder
   std::shared_ptr<Allocation> allocation_;
   // The Tensor meta data
-  std::unique_ptr<TensorMeta> meta_;
+  TensorMeta meta_;
   // The Tensor status data
-  std::unique_ptr<TensorStatus> status_;
+  TensorStatus status_;
 };
 
 }  // namespace pt

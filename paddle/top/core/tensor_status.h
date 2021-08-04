@@ -47,10 +47,10 @@ class TensorInplaceVersion {
  */
 struct TensorStatus {
   TensorStatus() = default;
+  TensorStatus(const TensorStatus&) = default;
+  TensorStatus(TensorStatus&&) = default;
 
-  TensorStatus(const TensorStatus&) = delete;
   TensorStatus& operator=(const TensorStatus&) = delete;
-  TensorStatus(TensorStatus&&) = delete;
   TensorStatus& operator=(TensorStatus&&) = delete;
 
   TensorInplaceVersion inplace_version_counter{0};
