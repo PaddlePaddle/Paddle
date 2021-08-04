@@ -131,14 +131,7 @@ void Check(T value, int size = 2 * 512 * 8192) {
   }
 
   TensorFromVector(init, ctx, tensor_x);
-  // VLOG(0) << "begin check 1";
-  paddle::operators::CheckNumerics<T>(ctx, ctx.stream(), tensor_x);
-  // VLOG(0) << "end check 1";
-  // CheckNumerics<T>(ctx, ctx.stream(), tensor_x);
-  // VLOG(0) << "end check 2";
   ContainsNan2<T>(ctx, ctx.stream(), tensor_x);
-  // VLOG(0) << "end check 3";
-  // ctx.Wait();
 }
 
 TEST(check_numeric, NPU) {
