@@ -69,7 +69,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    mean_grad, ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    mean_grad,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
