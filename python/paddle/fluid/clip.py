@@ -39,8 +39,14 @@ def _squared_l2_norm(x):
     r"""
     This OP returns the squared L2 norm of a tensor.
     """
+
+    if core.is_compiled_with_npu() or core.is_compiled_with_xpu():
+        square = layers.square(x)
+        sum_square = layers.reduce_sum(square)
+        return sum_square
+
     if in_dygraph_mode():
-        core.ops.squared_l2_norm(x)
+        return core.ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
     check_variable_and_dtype(x, 'x', ['float32'], op_type)
