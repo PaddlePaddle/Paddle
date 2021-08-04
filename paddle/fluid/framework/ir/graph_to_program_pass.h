@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
@@ -22,16 +23,9 @@ namespace ir {
 
 class Graph;
 
-const char kGraphToProgramVarsToRemove[] =
-    "__graph_to_program_vars_to_remove__";
-const char kGraphToProgramSortKind[] = "__graph_to_program_sort_kind__";
-
 class GraphToProgramPass : public Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  void GraphToBlock(const Graph* graph, proto::BlockDesc* block) const;
 };
 
 }  // namespace ir
