@@ -90,7 +90,22 @@ class ProcessMesh(object):
         if mesh is None or not isinstance(mesh, np.ndarray):
             raise ValueError("mesh must be an instance of numpy.ndarray.")
 
+        # Every element of mesh must be greater than or equal to 0.
+        assert np.min(mesh) >= 0, ('Every element of mesh must be greater '
+                                   'than or equal to 0.')
+
+        unique_ids = set(mesh.flatten().tolist())
+        assert len(unique_ids) == mesh.size, ("All logical process ids "
+                                              "in mesh must be unique.")
+
         if parent is None:
+            # For root ProcessMesh, the ids of logical processes must be range
+            # from 0 to N-1, where N is the number of logical processes. 
+            assert np.max(mesh) == mesh.size - 1, (
+                'For root ProcessMesh, the '
+                'ids of logical processes must be range from 0 to N-1, where '
+                'N is the number of logical processes.')
+
             parent_id = core.kNoneProcessMeshIndex()
             assert len(_g_process_mesh_map.keys()) == 0, (
                 'The first '
@@ -100,6 +115,23 @@ class ProcessMesh(object):
                 'parent must be an instance'
                 ' of ProcessMesh.')
             parent_id = parent._desc.id
+
+            # All elements in mesh must belong to its parent ProcessMesh
+            parent_unique_ids = set(parent.process_group)
+            assert unique_ids <= parent_unique_ids, (
+                'All elements in mesh '
+                'must belong to its parent ProcessMesh')
+
+            # Get the root ProcessMesh
+            root_mesh = None
+            root_id = parent_id
+            while root_id != core.kNoneProcessMeshIndex():
+                root_mesh = _g_process_mesh_map[root_id]
+                root_id = root_mesh._desc.parent
+            max_id = max(root_mesh.process_group)
+            assert np.max(mesh) <= max_id, (
+                'Every element in mesh must be '
+                'less than equal to the max one in root ProcessMesh.')
 
         self._topology = list(mesh.shape)
         self._processes = mesh.flatten().tolist()
@@ -163,6 +195,18 @@ class ProcessMesh(object):
         return not self.__eq__(other)
 
 
+def _dims_mapping_checker(tensor, mesh, dims_mapping):
+    assert len(tensor.shape) == len(dims_mapping)
+    mesh_dim = len(mesh.topology)
+    dim_set = set()
+    for i in range(len(dims_mapping)):
+        assert dims_mapping[i] == -1 or (dims_mapping[i] < mesh_dim and
+                                         dims_mapping[i] >= 0)
+        if dims_mapping[i] >= 0:
+            assert dims_mapping[i] not in dim_set
+            dim_set.add(dims_mapping[i])
+
+
 def shard_tensor(x, mesh, dims_mapping):
     """
     Add distributed attributes for a tensors.
@@ -172,7 +216,8 @@ def shard_tensor(x, mesh, dims_mapping):
         mesh (ProcessMesh): an n-dimensional array of logical processes.
         dims_mapping (list): a list to describe the mapping between `x` and `mesh`,
             the dimension `i` of `x` is split across the dimension represented by
-            dims_mapping[i].
+            dims_mapping[i], where -1 means without parition along the corresponding
+            dimension.
 
     Returns:
         Tensor: the tensor `x` itself.
@@ -191,6 +236,7 @@ def shard_tensor(x, mesh, dims_mapping):
             dist.shard_tensor(x, mesh, [0, -1])
     """
     _static_mode_check()
+    _dims_mapping_checker(x, mesh, dims_mapping)
     attr_name = _append_attr_suffix('mesh_id')
     x._set_attr(attr_name, mesh._id)
     attr_name = _append_attr_suffix('dims_mapping')

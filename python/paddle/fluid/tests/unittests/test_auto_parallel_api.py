@@ -113,23 +113,21 @@ class TestAutoParallelAPI(unittest.TestCase):
     def test_process_mesh(self):
         mesh1 = dist.ProcessMesh(np.array([[0, 1, 2], [3, 4, 5]]), parent=MESH)
         mesh2 = dist.ProcessMesh(np.array([[0, 1, 2], [3, 4, 5]]), parent=mesh1)
-        mesh3 = dist.ProcessMesh(np.array([[2, 3, 4], [5, 6, 7]]), parent=mesh1)
-        mesh4 = dist.ProcessMesh(np.array([[0, 1], [2, 3]]), parent=mesh1)
-        mesh5 = dist.ProcessMesh(np.array([[4, 5], [6, 7]]), parent=mesh1)
+        mesh3 = dist.ProcessMesh(np.array([[0, 1], [2, 3]]), parent=mesh1)
+        mesh4 = dist.ProcessMesh(np.array([[2, 3], [4, 5]]), parent=mesh1)
 
         self.assertEqual(MESH.parent, None)
         self.assertEqual(mesh1.parent, MESH)
         self.assertEqual(mesh1._desc.parent, MESH._id)
+        self.assertEqual(mesh3.parent, mesh1)
         self.assertEqual(mesh4.parent, mesh1)
-        self.assertEqual(mesh5.parent, mesh1)
         self.assertEqual(mesh1, mesh2)
-        self.assertNotEqual(mesh1, mesh3)
-        self.assertNotEqual(mesh4, mesh5)
+        self.assertNotEqual(mesh3, mesh4)
         self.assertEqual(mesh2._id, mesh2._desc.id)
         self.assertEqual(mesh3.topology, mesh3._desc.topology)
-        self.assertEqual(mesh3.topology, [2, 3])
-        self.assertEqual(mesh3.process_group, [2, 3, 4, 5, 6, 7])
-        self.assertEqual(mesh5.process_group, mesh5._desc.process_group)
+        self.assertEqual(mesh3.topology, [2, 2])
+        self.assertEqual(mesh3.process_group, [0, 1, 2, 3])
+        self.assertEqual(mesh4.process_group, mesh4._desc.process_group)
 
 
 if __name__ == '__main__':
