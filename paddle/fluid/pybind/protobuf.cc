@@ -29,6 +29,9 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+PyTypeObject *g_vartype_pytype = nullptr;
+PyTypeObject *g_blockdesc_pytype = nullptr;
+
 namespace pd = paddle::framework;
 
 template <typename T>
@@ -82,8 +85,9 @@ void BindProgramDesc(pybind11::module *m) {
 }
 
 void BindBlockDesc(pybind11::module *m) {
-  pybind11::class_<pd::BlockDesc>(*m, "BlockDesc", "")
-      .def_property_readonly("id", &pd::BlockDesc::ID)
+  pybind11::class_<pd::BlockDesc> blockdesc(*m, "BlockDesc", "");
+  g_blockdesc_pytype = (PyTypeObject *)blockdesc.ptr();  // NOLINT
+  blockdesc.def_property_readonly("id", &pd::BlockDesc::ID)
       .def_property_readonly("parent", &pd::BlockDesc::Parent)
       .def("get_forward_block_idx", &pd::BlockDesc::ForwardBlockID)
       .def("_set_forward_block_idx", &pd::BlockDesc::SetForwardBlockID)
@@ -171,11 +175,20 @@ void BindVarDsec(pybind11::module *m) {
       .def("serialize_to_string", SerializeMessage<pd::VarDesc>)
       .def("persistable", &pd::VarDesc::Persistable)
       .def("set_persistable", &pd::VarDesc::SetPersistable)
+      .def("is_parameter", &pd::VarDesc::IsParameter)
+      .def("set_is_parameter", &pd::VarDesc::SetIsParameter)
+      .def("clear_is_parameter", &pd::VarDesc::ClearIsParameter)
+      .def("has_is_parameter", &pd::VarDesc::HasIsParameter)
+      .def("stop_gradient", &pd::VarDesc::StopGradient)
+      .def("set_stop_gradient", &pd::VarDesc::SetStopGradient)
+      .def("clear_stop_gradient", &pd::VarDesc::ClearStopGradient)
+      .def("has_stop_gradient", &pd::VarDesc::HasStopGradient)
       .def("need_check_feed", &pd::VarDesc::NeedCheckFeed)
       .def("set_need_check_feed", &pd::VarDesc::SetNeedCheckFeed);
 
-  pybind11::enum_<pd::proto::VarType::Type>(var_desc, "VarType", "")
-      .value("BOOL", pd::proto::VarType::BOOL)
+  pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
+  g_vartype_pytype = (PyTypeObject *)vartype.ptr();  // NOLINT
+  vartype.value("BOOL", pd::proto::VarType::BOOL)
       .value("UINT8", pd::proto::VarType::UINT8)
       .value("INT8", pd::proto::VarType::INT8)
       .value("INT16", pd::proto::VarType::INT16)

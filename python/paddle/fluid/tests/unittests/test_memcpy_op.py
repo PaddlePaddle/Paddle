@@ -144,31 +144,13 @@ class TestMemcpyOPError(unittest.TestCase):
                 feed={},
                 fetch_list=[selected_row_var.name, pinned_var.name])
 
-    def test_OTHER_PLACE_NotImplementedError(self):
-        main_program, pinned_var = self.get_prog()
-        lod_tensor_var = main_program.global_block().create_var( \
-            name="lod_tensor_0", dtype="float32", persistable=False, stop_gradient=True)
-        main_program.global_block().append_op(
-            type="fill_constant",
-            outputs={"Out": lod_tensor_var},
-            attrs={
-                "shape": lod_tensor_var.shape,
-                "dtype": lod_tensor_var.dtype,
-                "value": 1.0,
-                "place_type": 0
-            })
-        main_program.global_block().append_op(
-            type='memcpy',
-            inputs={'X': pinned_var},
-            outputs={'Out': lod_tensor_var},
-            attrs={'dst_place_type': 0, })
-        with self.assertRaises(NotImplementedError):
-            place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-            lod_tensor_var_, pinned_ = exe.run(
-                main_program,
-                feed={},
-                fetch_list=[lod_tensor_var.name, pinned_var.name])
+
+class TestMemcpyApi(unittest.TestCase):
+    def test_api(self):
+        a = paddle.ones([1024, 1024])
+        b = paddle.tensor.creation._memcpy(a, paddle.CUDAPinnedPlace())
+        self.assertEqual(b.place.__repr__(), "CUDAPinnedPlace")
+        self.assertTrue(np.array_equal(a.numpy(), b.numpy()))
 
 
 if __name__ == '__main__':

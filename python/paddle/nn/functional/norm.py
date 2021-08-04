@@ -19,19 +19,13 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, core
 from ...framework import create_parameter
-from ...fluid.initializer import Constant
-from ...fluid.param_attr import ParamAttr
+from ..initializer import Constant
+from ...framework import ParamAttr
 from ...fluid import core, dygraph_utils
+import numbers
+from paddle import _C_ops
 
-__all__ = [
-    'batch_norm',
-    #       'data_norm',
-    'instance_norm',
-    'layer_norm',
-    'local_response_norm',
-    'normalize',
-    #       'spectral_norm'
-]
+__all__ = []
 
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
@@ -86,9 +80,9 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = core.ops.p_norm(x, 'axis', axis, 'porder',
-                              float(p), 'keepdim', True, 'epsilon', epsilon)
-        return x / core.ops.elementwise_max(out, eps)
+        out = _C_ops.p_norm(x, 'axis', axis, 'porder',
+                            float(p), 'keepdim', True, 'epsilon', epsilon)
+        return x / _C_ops.elementwise_max(out, eps)
 
     check_type(p, 'p', (float, int), 'normalize')
     check_type(axis, 'axis', (int), 'normalize')
@@ -110,8 +104,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
     eps = out.block.create_var(dtype=out.dtype)
     paddle.fluid.layers.fill_constant([1], out.dtype, epsilon, out=eps)
-    return paddle.fluid.layers.elementwise_div(
-        x, paddle.maximum(out, eps), name=name)
+    return paddle.divide(x, paddle.maximum(out, eps), name=name)
 
 
 def batch_norm(x,
@@ -192,7 +185,7 @@ def batch_norm(x,
                  not training, "data_layout", data_format, "use_mkldnn", False,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
                  "trainable_statistics", trainable_statistics)
-        batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
+        batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
         return dygraph_utils._append_activation_in_dygraph(
@@ -289,6 +282,14 @@ def layer_norm(x,
     """
     input_shape = list(x.shape)
     input_ndim = len(input_shape)
+    if isinstance(normalized_shape, numbers.Integral):
+        normalized_shape = [normalized_shape]
+    elif isinstance(normalized_shape, tuple):
+        normalized_shape = list(normalized_shape)
+    elif not isinstance(normalized_shape, list):
+        raise ValueError(
+            "`normalized_shape` should be int, list of ints or tuple of ints.")
+
     normalized_ndim = len(normalized_shape)
     begin_norm_axis = input_ndim - normalized_ndim
     if input_ndim < normalized_ndim or input_shape[
@@ -300,8 +301,8 @@ def layer_norm(x,
                              1:] + ', but got input shape ' + str(input_shape))
 
     if in_dygraph_mode():
-        pre_act, _, _ = core.ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
-                                            'begin_norm_axis', begin_norm_axis)
+        pre_act, _, _ = _C_ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
+                                          'begin_norm_axis', begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
@@ -384,9 +385,9 @@ def instance_norm(x,
     """
 
     if in_dygraph_mode():
-        out, _, _ = core.ops.instance_norm(x, weight, bias, "epsilon", eps,
-                                           "momentum", momentum, "data_format",
-                                           data_format)
+        out, _, _ = _C_ops.instance_norm(x, weight, bias, "epsilon", eps,
+                                         "momentum", momentum, "data_format",
+                                         data_format)
         return out
 
     check_variable_and_dtype(x, 'input', ['float32', 'float64'], "InstanceNorm")
@@ -485,6 +486,12 @@ def local_response_norm(x,
         raise ValueError(
             'Expected 3D or higher dimensionality input, but got {} dimensions'.
             format(dim))
+
+    for i, sz in enumerate(sizes):
+        if not sz > 0:
+            raise ValueError("Expected every dim's size to be larger than 0, "
+                             "but the size of the {}-th dim is {}".format(i,
+                                                                          sz))
 
     channel_last = True if data_format[-1] == "C" else False
 

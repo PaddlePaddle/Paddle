@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/assign_value_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/operators/slice_utils.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -59,104 +60,45 @@ inline std::string GetValueName(framework::proto::VarType::Type data_type) {
   return value_name;
 }
 
-inline void CheckAndUpdateSlice(const framework::DDim in_dims,
-                                const std::vector<int64_t> axes,
-                                std::vector<int64_t>* starts,
-                                std::vector<int64_t>* ends,
-                                std::vector<int64_t>* steps) {
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int64_t axis = axes[i];
-    int64_t dim_value = in_dims[axis];
-
-    int64_t start =
-        (*starts)[i] < 0 ? ((*starts)[i] + dim_value) : (*starts)[i];
-    int64_t end = (*ends)[i] < 0 ? ((*ends)[i] + dim_value) : (*ends)[i];
-    start = std::max(start, static_cast<int64_t>(0));
-    end = std::min(end, dim_value);
-
-    int64_t step = (*steps)[i];
-    PADDLE_ENFORCE_NE(
-        step, 0, platform::errors::InvalidArgument(
-                     "Step should not be 0, but received step = %d.", step));
-    if (step > 0) {
-      start = std::min(start, dim_value);
-      end = std::max(end, static_cast<int64_t>(0));
-      PADDLE_ENFORCE_GT(
-          end, start,
-          platform::errors::InvalidArgument(
-              "When step > 0, end should be greater than start, but "
-              "received end = %d, start = %d.",
-              end, start));
-    } else {
-      // NOTE(liym27): When step < 0, start should less and equal to dim_value-1
-      // "end is -1" means contain the 0-th element of this axis.
-      start = std::min(start, dim_value - 1);
-      end = std::max(end, static_cast<int64_t>(-1));
-      PADDLE_ENFORCE_GT(
-          start, end,
-          platform::errors::InvalidArgument(
-              "When step < 0, start should be greater than end, but "
-              "received start = %d, end = %d.",
-              start, end));
-    }
-
-    (*starts)[i] = start;
-    (*ends)[i] = end;
-  }
-}
-
-inline framework::DDim GetSliceDims(const framework::DDim in_dims,
-                                    const std::vector<int64_t>& axes,
-                                    const std::vector<int64_t>& starts,
-                                    const std::vector<int64_t>& ends,
-                                    const std::vector<int64_t>& steps) {
-  framework::DDim slice_dims(in_dims);
-
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int64_t axis = axes[i];
-    int64_t start = starts[i];
-    int64_t end = ends[i];
-    int64_t step = steps[i];
-
-    if (step > 0) {
-      slice_dims[axis] = (end - start + step - 1) / step;
-    } else {
-      slice_dims[axis] = (end - start + step + 1) / step;
+// check whether the tensor with dimension of second can assign to the
+// tensor with dimension of first
+inline void CheckIsDimsMatch(const framework::DDim first,
+                             const framework::DDim second) {
+  int ignore_axis1 = 0, ignore_axis2 = 0;
+  for (; ignore_axis1 < first.size(); ++ignore_axis1) {
+    if (first[ignore_axis1] != 1) {
+      break;
     }
   }
-  return slice_dims;
-}
-
-inline framework::DDim GetDecreasedDims(
-    const framework::DDim slice_dims,
-    const std::vector<int64_t>& decrease_axes) {
-  // Get dims after decreasing axes.
-  framework::DDim decreased_dims(slice_dims);
-  if (decrease_axes.size() > 0) {
-    for (size_t i = 0; i < decrease_axes.size(); ++i) {
-      int64_t axis = decrease_axes[i];
-      PADDLE_ENFORCE_EQ(
-          decreased_dims[axis], 1,
-          platform::errors::InvalidArgument("decrease dim should be 1"));
-      decreased_dims[axis] = 0;
+  for (; ignore_axis2 < second.size(); ++ignore_axis2) {
+    if (second[ignore_axis2] != 1) {
+      break;
     }
+  }
 
-    std::vector<int64_t> new_shape;
-    for (int i = 0; i < decreased_dims.size(); ++i) {
-      if (decreased_dims[i] != 0) {
-        new_shape.push_back(decreased_dims[i]);
+  if (second.size() == ignore_axis2) {
+    // second tensor has only one value
+    return;
+  }
+
+  if (first.size() - ignore_axis1 >= second.size() - ignore_axis2) {
+    auto idx1 = first.size() - 1;
+    auto idx2 = second.size() - 1;
+    bool is_match = true;
+    for (; idx2 >= ignore_axis2; idx2--) {
+      if (first[idx1--] != second[idx2] && second[idx2] != 1) {
+        is_match = false;
+        break;
       }
     }
-
-    // NOTE(liym27): Paddle does not support that the rank of Tensor is 0, and
-    // uses [1] instead.
-    if (new_shape.size() == 0) {
-      new_shape.push_back(1);
+    if (is_match) {
+      return;
     }
-
-    decreased_dims = framework::make_ddim(new_shape);
   }
-  return decreased_dims;
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "The shape of tensor assigned value must match the shape "
+      "of target shape: %d, but now shape is %d.",
+      second.to_str(), first.to_str()));
 }
 
 template <typename DeviceContext, typename T>
@@ -212,6 +154,7 @@ class SetValueKernel : public framework::OpKernel<T> {
     auto steps = ctx.Attr<std::vector<int64_t>>("steps");
     auto shape = ctx.Attr<std::vector<int64_t>>("shape");
     auto decrease_axes = ctx.Attr<std::vector<int64_t>>("decrease_axes");
+    auto none_axes = ctx.Attr<std::vector<int64_t>>("none_axes");
 
     auto dtype = in->type();
     if (!starts_tensor_list.empty()) {
@@ -225,9 +168,35 @@ class SetValueKernel : public framework::OpKernel<T> {
     }
 
     auto in_dims = in->dims();
-    CheckAndUpdateSlice(in_dims, axes, &starts, &ends, &steps);
-    auto slice_dims = GetSliceDims(in_dims, axes, starts, ends, steps);
+    CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &steps);
+    auto slice_dims = GetSliceDims(in_dims, axes, starts, ends, &steps);
     auto decrease_slice_dims = GetDecreasedDims(slice_dims, decrease_axes);
+
+    auto slice_dims_for_assign = decrease_slice_dims;
+    if (!none_axes.empty()) {
+      std::vector<int64_t> slice_dims_with_none;
+
+      size_t none_axes_cur = 0, decrease_axes_cur = 0;
+      for (int i = 0; i < slice_dims.size(); ++i) {
+        while (none_axes_cur < none_axes.size() &&
+               none_axes[none_axes_cur] <= i) {
+          slice_dims_with_none.push_back(1);
+          none_axes_cur++;
+        }
+        if (decrease_axes_cur < decrease_axes.size() &&
+            decrease_axes[decrease_axes_cur] == i) {
+          decrease_axes_cur++;
+        } else {
+          slice_dims_with_none.push_back(slice_dims[i]);
+        }
+      }
+      while (none_axes_cur < none_axes.size()) {
+        slice_dims_with_none.push_back(1);
+        none_axes_cur++;
+      }
+
+      slice_dims_for_assign = framework::make_ddim(slice_dims_with_none);
+    }
 
     auto place = ctx.GetPlace();
     auto& eigen_place =
@@ -293,14 +262,17 @@ class SetValueKernel : public framework::OpKernel<T> {
     // If do broadcasting on Tensor with shape [3] and [3], the result's shape
     // is [3], which is right.
 
-    slice_tensor.Resize(decrease_slice_dims);
+    slice_tensor.Resize(slice_dims_for_assign);
     if (value_tensor != nullptr) {
+      CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
       // ElementwiseComputeEx can do broadcasting
       ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
           ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
     } else {
       Tensor value_t(dtype);
       auto value_dims = framework::make_ddim(shape);
+      CheckIsDimsMatch(slice_dims_for_assign, value_dims);
+
       value_t.mutable_data<T>(value_dims, place);
       auto value_name = GetValueName(dtype);
       CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);

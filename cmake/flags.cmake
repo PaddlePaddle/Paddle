@@ -28,7 +28,12 @@ function(CheckCompilerCXX14Flag)
 endfunction()
 
 CheckCompilerCXX14Flag()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+if(NOT WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+else()
+    set(CMAKE_CXX_STANDARD 14)
+endif()
+
 # safe_set_flag
 #
 # Set a compile flag only if compiler is support
@@ -181,8 +186,11 @@ endif()
 endif(NOT WIN32)
 
 if (APPLE)
-    # On Mac OS X build fat binaries with x86_64 architectures by default.
-    set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+    if(WITH_ARM)
+      set (CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Build architectures for OSX" FORCE)
+    else(WITH_ARM)
+     set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+    endif(WITH_ARM)
     # On Mac OS X register class specifier is deprecated and will cause warning error on latest clang 10.0
     set (COMMON_FLAGS -Wno-deprecated-register)
 endif(APPLE)

@@ -18,6 +18,8 @@ from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 import paddle.fluid.core as core
 
+__all__ = []
+
 
 class DatasetBase(object):
     """ Base dataset class. """
@@ -31,6 +33,8 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+        self.use_ps_gpu = False
+        self.psgpu = None
 
     def init(self,
              batch_size=1,
@@ -211,6 +215,20 @@ class DatasetBase(object):
         self.dataset.set_thread_num(self.thread_num)
         self.dataset.set_data_feed_desc(self._desc())
         self.dataset.create_readers()
+
+    def _set_use_ps_gpu(self, use_ps_gpu):
+        """
+        set use_ps_gpu flag
+
+        Args:
+            use_ps_gpu: bool
+        """
+        self.use_ps_gpu = use_ps_gpu
+        # if not defined heterps with paddle, users will not use psgpu
+        if not core._is_compiled_with_heterps():
+            self.use_ps_gpu = 0
+        elif self.use_ps_gpu:
+            self.psgpu = core.PSGPU()
 
     def _finish_to_run(self):
         self.dataset.destroy_readers()
@@ -529,12 +547,18 @@ class InMemoryDataset(DatasetBase):
 
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     def _set_queue_num(self, queue_num):
@@ -659,11 +683,14 @@ class InMemoryDataset(DatasetBase):
         self.dataset.generate_local_tables_unlock(
             table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
 
-    def load_into_memory(self):
+    def load_into_memory(self, is_shuffle=False):
         """
         :api_attr: Static Graph
         
         Load data into memory
+
+        Args:
+            is_shuffle(bool): whether to use local shuffle, default is False
 
         Examples:
             .. code-block:: python
@@ -689,7 +716,11 @@ class InMemoryDataset(DatasetBase):
                 dataset.load_into_memory()
         """
         self._prepare_to_run()
-        self.dataset.load_into_memory()
+        if not self.use_ps_gpu:
+            self.dataset.load_into_memory()
+        elif core._is_compiled_with_heterps():
+            self.psgpu.set_dataset(self.dataset)
+            self.psgpu.load_into_memory(is_shuffle)
 
     def preload_into_memory(self, thread_num=None):
         """

@@ -68,8 +68,8 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
     FillNpuTensorWithConstant<T>(&tensor_tmp, value);
 
     out_var->mutable_data<T>(shape, place);
-    auto runner = NpuOpRunner("FillD", {tensor_tmp}, {*out_var},
-                              {{"dims", framework::vectorize(shape)}});
+    const auto& runner = NpuOpRunner("FillD", {tensor_tmp}, {*out_var},
+                                     {{"dims", framework::vectorize(shape)}});
     runner.Run(stream);
   }
 };

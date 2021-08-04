@@ -22,6 +22,8 @@ from paddle.fluid.op import Operator
 from op_test import OpTest
 import paddle
 
+paddle.enable_static()
+
 
 class TestSGDOp(OpTest):
     def setUp(self):
@@ -225,29 +227,68 @@ class TestSGDV2(unittest.TestCase):
         adam.clear_gradients()
 
     def test_sgd(self):
-        place = fluid.CPUPlace()
-        main = fluid.Program()
-        with fluid.program_guard(main):
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+        paddle.enable_static()
 
-            rms_optimizer = paddle.optimizer.SGD(learning_rate=0.1)
-            rms_optimizer.minimize(avg_cost)
+        def check_sgd_optimizer(optimizer_attr):
+            init_program = paddle.static.Program()
+            program = paddle.static.Program()
+            block = program.global_block()
+            mul_x = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="mul.x",
+                optimize_attr=optimizer_attr)
+            mul_y = block.create_var(
+                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+            mul_out = block.create_var(
+                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+            mean_out = block.create_var(
+                dtype="float32", shape=[1], lod_level=0, name="mean.out")
+            block.append_op(
+                type="mul",
+                inputs={"X": mul_x,
+                        "Y": mul_y},
+                outputs={"Out": mul_out},
+                attrs={"x_num_col_dims": 1})
+            block.append_op(
+                type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            opts, _ = sgd_optimizer.minimize(mean_out, init_program)
+            return opts
 
-            fetch_list = [avg_cost]
-            train_reader = paddle.batch(
-                paddle.dataset.uci_housing.train(), batch_size=1)
-            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            for data in train_reader():
-                exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+        opts = check_sgd_optimizer({'learning_rate': 1.1})
+        self.assertEqual(len(opts), 2)
+        self.assertEqual([op.type for op in opts], ["scale", "sgd"])
+
+        opts = check_sgd_optimizer({'learning_rate': 1.0})
+        self.assertEqual(len(opts), 1)
+        self.assertEqual([op.type for op in opts], ["sgd"])
 
     def test_raise_error(self):
         self.assertRaises(ValueError, paddle.optimizer.SGD, learning_rate=None)
+
+    def test_sgd_group_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.SGD(learning_rate=0.01,
+                                    parameters=[{
+                                        'params': linear_1.parameters()
+                                    }, {
+                                        'params': linear_2.parameters(),
+                                        'weight_decay': 0.001,
+                                        'learning_rate': 0.1
+                                    }],
+                                    weight_decay=0.01)
+        out = linear_1(a)
+        out = linear_2(out)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
 
 
 if __name__ == "__main__":

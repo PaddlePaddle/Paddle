@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .cpp_extension import CUDAExtension
-from .cpp_extension import CppExtension
-from .cpp_extension import BuildExtension
-from .cpp_extension import load, setup
+from .cpp_extension import CUDAExtension  # noqa: F401
+from .cpp_extension import CppExtension  # noqa: F401
+from .cpp_extension import BuildExtension  # noqa: F401
+from .cpp_extension import load  # noqa: F401
+from .cpp_extension import setup  # noqa: F401
 
-from .extension_utils import parse_op_info
-from .extension_utils import get_build_directory
-from .extension_utils import load_op_meta_info_and_register_op
+from .extension_utils import parse_op_info  # noqa: F401
+from .extension_utils import get_build_directory  # noqa: F401
+from .extension_utils import load_op_meta_info_and_register_op  # noqa: F401
 
-from . import cpp_extension
-from . import extension_utils
-
-__all__ = [
-    'CppExtension', 'CUDAExtension', 'load', 'setup', 'get_build_directory'
+__all__ = [ #noqa
+        'CppExtension',
+        'CUDAExtension',
+        'load',
+        'setup',
+        'get_build_directory'
 ]

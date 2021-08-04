@@ -22,6 +22,7 @@ limitations under the License. */
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 #endif
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/float16.h"
@@ -563,15 +564,19 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_sizes{num_rows, k};
     auto e_indices =
         framework::EigenMatrix<int64_t>::From(*indices_tensor, dim);
-    auto e_tmp_indices = framework::EigenMatrix<int64_t>::From(temp_indices);
+    auto e_tmp_indices = framework::EigenMatrix<int64_t>::From(
+        static_cast<const Tensor>(temp_indices));
 
     std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
     auto dim = framework::make_ddim(odims);
     auto e_values = framework::EigenMatrix<T>::From(*out_tensor, dim);
-    auto e_tmp_values = framework::EigenMatrix<T>::From(temp_values);
+    auto e_tmp_values =
+        framework::EigenMatrix<T>::From(static_cast<const Tensor>(temp_values));
 
-    e_indices.device(dev) = e_tmp_indices.slice(slice_indices, slice_sizes);
-    e_values.device(dev) = e_tmp_values.slice(slice_indices, slice_sizes);
+    EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
+        dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);
+    EigenSlice<std::decay_t<decltype(dev)>, T, 2>::Eval(
+        dev, e_values, e_tmp_values, slice_indices, slice_sizes);
   }
   return true;
 }

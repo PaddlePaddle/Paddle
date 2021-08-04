@@ -88,8 +88,11 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
         platform::errors::InvalidArgument(
             "OutSize's dimension size must be 1, but got dimention = %d .",
             out_size_dim.size()));
-    PADDLE_ENFORCE_EQ(out_size_dim[0], 1, platform::errors::InvalidArgument(
-                                              "OutSize's dim[0] must be 1"));
+    PADDLE_ENFORCE_EQ(
+        out_size_dim[0], 1,
+        platform::errors::InvalidArgument(
+            "OutSize's 0-th dimension's value must be 1, but got value = %d .",
+            out_size_dim[0]));
     ctx->ShareLoD("X", "Out");
     return;
   }

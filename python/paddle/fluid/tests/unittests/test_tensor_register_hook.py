@@ -39,6 +39,21 @@ class SimpleNet(nn.Layer):
         return ret1, out
 
 
+class SimpleNetForStatic(nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(SimpleNetForStatic, self).__init__()
+        self.linear1 = nn.Linear(in_size, in_size)
+        self.linear2 = nn.Linear(in_size, out_size)
+
+    def forward(self, x):
+        ret1 = self.linear1(x)
+        ret1.register_hook(lambda grad: grad * 2)
+
+        ret2 = self.linear2(ret1)
+        out = paddle.mean(ret2, axis=-1)
+        return out
+
+
 class TestTensorRegisterHook(unittest.TestCase):
     def setUp(self):
         self.seed = 2021
@@ -450,6 +465,34 @@ class TestTensorRegisterHook(unittest.TestCase):
 
             with self.assertRaises(RuntimeError):
                 x.register_hook(lambda grad: grad * 2)
+
+    def test_register_hook_in_static_mode(self):
+        paddle.enable_static()
+
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(
+                    name='x', shape=[None, self.in_size], dtype='float32')
+
+                net = SimpleNetForStatic(self.in_size, self.out_size)
+                with self.assertRaises(AssertionError):
+                    out = net(x)
+
+        paddle.disable_static()
+
+    def test_register_hook_in_dy2static_mode(self):
+        net = SimpleNetForStatic(self.in_size, self.out_size)
+        jit_net = paddle.jit.to_static(
+            net, input_spec=[paddle.static.InputSpec([None, self.in_size])])
+
+        data = np.random.uniform(
+            size=[self.batch_size, self.in_size]).astype('float32')
+        data_t = paddle.to_tensor(data)
+
+        with self.assertRaises(AssertionError):
+            out = jit_net(data_t)
 
 
 HOOK_INIT_VALUE = 10

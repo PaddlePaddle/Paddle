@@ -33,10 +33,11 @@ class BasicApiTransformer(gast.NodeTransformer):
         self.root = wrapper_root.node
         self.class_node_dict = {}
 
-        self.name_to_tensor_shape = {}
-
     def transform(self):
+        to_tensor_transformer = ToTensorTransformer(self.root)
+        to_tensor_transformer.transform()
         self.visit(self.root)
+
         return self.wrapper_root
 
     def visit_Assign(self, node):
@@ -62,11 +63,6 @@ class BasicApiTransformer(gast.NodeTransformer):
 
     def _visit_Call(self, node):
         assert isinstance(node, gast.Call)
-        # Replace API `to_variable` with `fluid.layers.assign`
-        if is_to_variable(node):
-            node = to_assign_node(node)
-            return node
-
         func_name = astor.to_source(gast.gast_to_ast(node.func))
 
         if self._is_dygraph_forward(func_name):
@@ -100,6 +96,29 @@ class BasicApiTransformer(gast.NodeTransformer):
                 return True
             # TODO: node.value is not dygraph class
         return False
+
+
+class ToTensorTransformer(gast.NodeTransformer):
+    """
+    Class to transform paddle.to_tensor and paddle.to_variable to paddle.assign
+    """
+
+    def __init__(self, node):
+        assert isinstance(
+            node, gast.AST
+        ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
+        self.root = node
+
+    def transform(self):
+        self.visit(self.root)
+        return self.root
+
+    def visit_Call(self, node):
+        assert isinstance(node, gast.Call)
+        if is_to_variable(node):
+            node = to_assign_node(node)
+        self.generic_visit(node)
+        return node
 
 
 def is_to_variable(node):

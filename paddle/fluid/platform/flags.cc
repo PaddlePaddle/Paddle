@@ -93,6 +93,10 @@ DEFINE_string(selected_npus, "",
               "This option is useful when doing multi process training and "
               "each process have only one device (NPU). If you want to use "
               "all visible devices, set this to empty string.");
+DEFINE_string(
+    npu_config_path, "",
+    "The absolute path of configuration json file, like: /tmp/config.json. "
+    "If proveided, it will be passed to aclInit().");
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -577,6 +581,19 @@ DEFINE_string(tracer_mkldnn_ops_on, "",
  */
 DEFINE_string(tracer_mkldnn_ops_off, "",
               "List of OneDNN operation types to be turned off");
+
+/**
+ * Debug related FLAG
+ * Name: check_kernel_launch
+ * Since Version: 2.1.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Check kernel launch status after every kernel compute.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DEFINE_bool(check_kernel_launch, false,
+            "Check kernel launch status after every kernel compute");
+#endif
 
 /**
  * CUDNN related FLAG

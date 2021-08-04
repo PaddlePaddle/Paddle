@@ -51,26 +51,20 @@ struct FeaturePushValue {
   int slot;
   float lr_g;
   float mf_g[MF_DIM];
+
+  __device__ __forceinline__ FeaturePushValue
+  operator+(const FeaturePushValue& a) const {
+    FeaturePushValue out;
+    out.slot = a.slot;
+    out.show = a.show + show;
+    out.clk = a.clk + clk;
+    out.lr_g = a.lr_g + lr_g;
+    for (int i = 0; i < MF_DIM; ++i) {
+      out.mf_g[i] = a.mf_g[i] + mf_g[i];
+    }
+    return out;
+  }
 };
-// class DownpourFixedFeatureValue {
-//    public:
-//        DownpourFixedFeatureValue() {}
-//        ~DownpourFixedFeatureValue() {}
-//        float* data() {
-//            return _data.data();
-//        }
-//        size_t size() {
-//            return _data.size();
-//        }
-//        void resize(size_t size) {
-//            _data.resize(size);
-//        }
-//        void shrink_to_fit() {
-//            _data.shrink_to_fit();
-//        }
-//    private:
-//        std::vector<float> _data;
-//    };
 
 }  // end namespace framework
 }  // end namespace paddle

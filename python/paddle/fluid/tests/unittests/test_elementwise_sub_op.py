@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
+import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
 
 
@@ -235,6 +236,111 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
             self.shape, self.dtype)
         self.grad_x = np.real(self.grad_out)
         self.grad_y = -self.grad_out
+
+
+class TestSubtractApi(unittest.TestCase):
+    def _executed_api(self, x, y, name=None):
+        return paddle.subtract(x, y, name)
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
+            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+
+            y_1 = self._executed_api(x, y, name='subtract_res')
+            self.assertEqual(('subtract_res' in y_1.name), True)
+
+    def test_declarative(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32')
+                }
+
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
+            z = self._executed_api(x, y)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+            z_expected = np.array([1., -2., 2.])
+            self.assertEqual((z_value == z_expected).all(), True)
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([2, 3, 4]).astype('float64')
+            np_y = np.array([1, 5, 2]).astype('float64')
+            x = fluid.dygraph.to_variable(np_x)
+            y = fluid.dygraph.to_variable(np_y)
+            z = self._executed_api(x, y)
+            np_z = z.numpy()
+            z_expected = np.array([1., -2., 2.])
+            self.assertEqual((np_z == z_expected).all(), True)
+
+
+class TestSubtractInplaceApi(TestSubtractApi):
+    def _executed_api(self, x, y, name=None):
+        return x.subtract_(y, name)
+
+
+class TestSubtractInplaceBroadcastSuccess(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 4).astype('float')
+        self.y_numpy = np.random.rand(3, 4).astype('float')
+
+    def test_broadcast_success(self):
+        paddle.disable_static()
+        self.init_data()
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
+        inplace_result = x.subtract_(y)
+        numpy_result = self.x_numpy - self.y_numpy
+        self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
+        paddle.enable_static()
+
+
+class TestSubtractInplaceBroadcastSuccess2(TestSubtractInplaceBroadcastSuccess):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
+        self.y_numpy = np.random.rand(3, 1).astype('float')
+
+
+class TestSubtractInplaceBroadcastSuccess3(TestSubtractInplaceBroadcastSuccess):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
+        self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
+
+
+class TestSubtractInplaceBroadcastError(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(3, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
+    def test_broadcast_errors(self):
+        paddle.disable_static()
+        self.init_data()
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
+
+        def broadcast_shape_error():
+            x.subtract_(y)
+
+        self.assertRaises(ValueError, broadcast_shape_error)
+        paddle.enable_static()
+
+
+class TestSubtractInplaceBroadcastError2(TestSubtractInplaceBroadcastError):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 1, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
+
+class TestSubtractInplaceBroadcastError3(TestSubtractInplaceBroadcastError):
+    def init_data(self):
+        self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 
 if __name__ == '__main__':

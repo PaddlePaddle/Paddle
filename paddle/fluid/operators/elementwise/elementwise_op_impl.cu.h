@@ -14,9 +14,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/fast_divmod.h"
 
 #ifdef __HIPCC__
 #define ELEMENTWISE_BLOCK_SIZE 256
@@ -29,113 +28,153 @@ namespace operators {
 
 enum ElementwiseType { kUnary = 1, kBinary = 2 };
 
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) CudaAlignedVector {
-  T val[Size];
-};
+/*
+* According to NVIDIA, if number of threads per block is 64/128/256/512,
+* cuda performs better. And number of blocks should be greater (at least
+* 2x~4x) than number of SMs. Hence, SM count is took into account within
+* this function to determine the right number of threads per block.
+*/
+inline int GetThreadsConfig(const platform::CUDADeviceContext &ctx,
+                            int64_t numel, int vec_size) {
+  int threads = ELEMENTWISE_BLOCK_SIZE;
+  int sm_count = ctx.GetSMCount();
+  int active_threads_num = numel / vec_size;
+  if (active_threads_num / (sm_count << 1) < ELEMENTWISE_BLOCK_SIZE) {
+    // Round up threads number into an exponential multiple of 2, while number
+    // of acitve blocks is about twice of SM, to acquire better performance.
+    threads = platform::RoundToPowerOfTwo(active_threads_num / (sm_count << 1));
+  } else if (active_threads_num / (sm_count << 2) < ELEMENTWISE_BLOCK_SIZE) {
+    // Round up threads number into an exponential multiple of 2, while number
+    // of acitve blocks is about 4 times of SM, to acquire better performance.
+    threads = platform::RoundToPowerOfTwo(active_threads_num / (sm_count << 2));
+  }
+  // Number of threads per block shall be larger than 64.
+  return std::max(64, threads);
+}
 
+/*
+* Only the address of input data is the multiplier of 1,2,4, vectorized load
+* with corresponding multiplier-value is possible. Moreover, the maximum length
+* of vectorized load is 128 bits once. Hence, valid length of vectorized load
+* shall be determined under both former constraints.
+*/
 template <typename T>
 int GetVectorizedSizeImpl(const T *pointer) {
+  constexpr int max_load_bits = 128;
+  int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
+  constexpr int vec8 =
+      std::alignment_of<CudaAlignedVector<T, 8>>::value;  // NOLINT
   constexpr int vec4 =
       std::alignment_of<CudaAlignedVector<T, 4>>::value;  // NOLINT
   constexpr int vec2 =
       std::alignment_of<CudaAlignedVector<T, 2>>::value;  // NOLINT
-  if (address % vec4 == 0) {
-    return 4;
+  if (address % vec8 == 0) {
+    /*
+    * Currently, decide to deal with no more than 4 data once while adopting
+    * vectorization load/store, if performance test shows that dealing with
+    * 8 data once in vectorization load/store does get optimized, return code
+    * below can be changed into " return std::min(8, valid_vec_size); " .
+    */
+    return std::min(4, valid_vec_size);
+  } else if (address % vec4 == 0) {
+    return std::min(4, valid_vec_size);
   } else if (address % vec2 == 0) {
-    return 2;
+    return std::min(2, valid_vec_size);
+  } else {
+    return 1;
   }
-  return 1;
 }
 
-template <typename T>
+template <typename InT, typename OutT>
 int GetVectorizedSize(const std::vector<const framework::Tensor *> &ins,
                       const std::vector<framework::Tensor *> &outs) {
   int vec_size = 4;
   for (auto iter = ins.begin(); iter != ins.end(); ++iter) {
     vec_size =
-        std::min<int>(vec_size, GetVectorizedSizeImpl((*iter)->data<T>()));
+        std::min<int>(vec_size, GetVectorizedSizeImpl((*iter)->data<InT>()));
   }
   for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
     vec_size =
-        std::min<int>(vec_size, GetVectorizedSizeImpl((*iter)->data<T>()));
+        std::min<int>(vec_size, GetVectorizedSizeImpl((*iter)->data<OutT>()));
   }
   return vec_size;
 }
 
-template <ElementwiseType ET, int VecSize, typename T>
+template <ElementwiseType ET, int VecSize, typename InT, typename OutT>
 struct ElementwiseDataWrapper {
-  T *out;
-  const T *in0;
-  const T *in1;
-  __device__ ElementwiseDataWrapper(T *out, const T *in0,
-                                    const T *in1 = nullptr)
+  OutT *out;
+  const InT *in0;
+  const InT *in1;
+  __device__ ElementwiseDataWrapper(OutT *out, const InT *in0,
+                                    const InT *in1 = nullptr)
       : out(out), in0(in0), in1(in1) {}
 
-  using VecType = CudaAlignedVector<T, VecSize>;
+  using InVecType = CudaAlignedVector<InT, VecSize>;
+  using OutVecType = CudaAlignedVector<OutT, VecSize>;
 
-  inline __device__ void load_vector(VecType args[], int idx) {
-    const VecType *x_vec = reinterpret_cast<const VecType *>(in0);
+  inline __device__ void load_vector(InVecType args[], int idx) {
+    const InVecType *x_vec = reinterpret_cast<const InVecType *>(in0);
     args[0] = x_vec[idx];
     if (ET == ElementwiseType::kBinary) {
-      const VecType *y_vec = reinterpret_cast<const VecType *>(in1);
+      const InVecType *y_vec = reinterpret_cast<const InVecType *>(in1);
       args[1] = y_vec[idx];
     }
   }
 
-  inline __device__ void load_scalar(T args[], int idx) {
+  inline __device__ void load_scalar(InT args[], int idx) {
     args[0] = in0[idx];
     if (ET == ElementwiseType::kBinary) {
       args[1] = in1[idx];
     }
   }
 
-  inline __device__ void store_vector(VecType res, int idx) {
-    VecType *out_vec = reinterpret_cast<VecType *>(out);
+  inline __device__ void store_vector(OutVecType res, int idx) {
+    OutVecType *out_vec = reinterpret_cast<OutVecType *>(out);
     out_vec[idx] = res;
   }
 
-  inline __device__ void store_scalar(T res, int idx) { out[idx] = res; }
+  inline __device__ void store_scalar(OutT res, int idx) { out[idx] = res; }
 };
 
-template <ElementwiseType ET, int VecSize, typename T, typename Functor>
-__device__ void VectorizedKernelImpl(
-    ElementwiseDataWrapper<ET, VecSize, T> data, Functor func, int tid) {
-  using VecType = CudaAlignedVector<T, VecSize>;
-  VecType ins_vec[ET];
-  VecType out_vec;
-  T *ins_ptr[ET];
-  T *out_ptr;
+template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
+          typename Functor>
+__device__ inline void VectorizedKernelImpl(
+    ElementwiseDataWrapper<ET, VecSize, InT, OutT> data, Functor func,
+    int tid) {
+  using InVecType = CudaAlignedVector<InT, VecSize>;
+  using OutVecType = CudaAlignedVector<OutT, VecSize>;
+  InVecType ins_vec[ET];
+  OutVecType out_vec;
+  InT *ins_ptr[ET];
+  InT ins[ET];
 #pragma unroll
   for (int i = 0; i < ET; ++i) {
-    ins_ptr[i] = reinterpret_cast<T *>(&(ins_vec[i]));
+    ins_ptr[i] = reinterpret_cast<InT *>(&(ins_vec[i]));
   }
-  out_ptr = reinterpret_cast<T *>(&out_vec);
-
   // load
   data.load_vector(ins_vec, tid);
 
 // compute
 #pragma unroll
   for (int i = 0; i < VecSize; ++i) {
-    T ins[ET];
 #pragma unroll
     for (int j = 0; j < ET; ++j) {
       ins[j] = ins_ptr[j][i];
     }
-    out_ptr[i] = func(ins);
+    out_vec.val[i] = func(ins);
   }
-
   // store
   data.store_vector(out_vec, tid);
 }
 
-template <ElementwiseType ET, int VecSize, typename T, typename Functor>
-__device__ void ScalarKernelImpl(ElementwiseDataWrapper<ET, VecSize, T> data,
-                                 Functor func, int start, int remain) {
-  T ins[ET];
-  T out;
+template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
+          typename Functor>
+__device__ inline void ScalarKernelImpl(
+    ElementwiseDataWrapper<ET, VecSize, InT, OutT> data, Functor func,
+    int start, int remain) {
+  InT ins[ET];
+  OutT out;
 
   for (int i = 0; i < remain; ++i) {
     int idx = start + i;
@@ -148,14 +187,15 @@ __device__ void ScalarKernelImpl(ElementwiseDataWrapper<ET, VecSize, T> data,
   }
 }
 
-template <ElementwiseType ET, int VecSize, typename T, typename Functor>
-__global__ void VectorizedKernel(const T *__restrict__ in0,
-                                 const T *__restrict__ in1, T *out, int size,
-                                 Functor func) {
+template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
+          typename Functor>
+__global__ void VectorizedKernel(const InT *__restrict__ in0,
+                                 const InT *__restrict__ in1, OutT *out,
+                                 int size, Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int remain = size - VecSize * tid;
   remain = remain > 0 ? remain : 0;
-  auto data = ElementwiseDataWrapper<ET, VecSize, T>(out, in0, in1);
+  auto data = ElementwiseDataWrapper<ET, VecSize, InT, OutT>(out, in0, in1);
   if (remain >= VecSize) {
     VectorizedKernelImpl(data, func, tid);
   } else {
@@ -163,32 +203,34 @@ __global__ void VectorizedKernel(const T *__restrict__ in0,
   }
 }
 
-template <ElementwiseType ET, typename T, typename Functor>
-__global__ void ScalarKernel(const T *__restrict__ in0,
-                             const T *__restrict__ in1, T *out, int size,
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
+__global__ void ScalarKernel(const InT *__restrict__ in0,
+                             const InT *__restrict__ in1, OutT *out, int size,
                              Functor func) {
-  auto data = ElementwiseDataWrapper<ET, 1, T>(out, in0, in1);
+  auto data = ElementwiseDataWrapper<ET, 1, InT, OutT>(out, in0, in1);
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int remain = tid < size ? 1 : 0;
   ScalarKernelImpl(data, func, tid, remain);
 }
 
-template <ElementwiseType ET, typename T, typename Functor>
-void LaunchElementwiseCudaKernel(
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
+void LaunchSameDimsElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, Functor func) {
   // calculate the max vec_size for all ins and outs
   auto size = ins[0]->numel();
-  int vec_size = GetVectorizedSize<T>(ins, *outs);
-  int block_size = ELEMENTWISE_BLOCK_SIZE;
+  int vec_size = GetVectorizedSize<InT, OutT>(ins, *outs);
+  int block_size = GetThreadsConfig(ctx, size, vec_size);
   int grid_size =
       ((size + vec_size - 1) / vec_size + block_size - 1) / block_size;
-  const T *in0 = ins[0]->data<T>();
-  const T *in1 = (ET == ElementwiseType::kBinary) ? ins[1]->data<T>() : nullptr;
-  T *out = (*outs)[0]->data<T>();
+  const InT *in0 = ins[0]->data<InT>();
+  const InT *in1 =
+      (ET == ElementwiseType::kBinary) ? ins[1]->data<InT>() : nullptr;
+  OutT *out = (*outs)[0]->data<OutT>();
   // cuda kernel
   auto stream = ctx.stream();
+
   switch (vec_size) {
     case 4:
       VectorizedKernel<ET, 4><<<grid_size, block_size, 0, stream>>>(

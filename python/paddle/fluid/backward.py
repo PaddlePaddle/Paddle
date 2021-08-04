@@ -189,12 +189,20 @@ class ProgramStats(object):
                 persistable=False,
                 stop_gradient=False)
             seed = 0 if op.attr("fix_seed") is False else int(op.attr("seed"))
+
+            op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
+            )
+            op_device = ""
+            if op.desc.has_attr(op_device_attr_name):
+                op_device = op.desc.attr(op_device_attr_name)
+
             added_op = self.block._insert_op(
                 index=op.idx,
                 type='seed',
                 inputs={},
                 outputs={'Out': [added_var]},
-                attrs={'seed': seed})
+                attrs={'seed': seed,
+                       'op_device': op_device})
             self.ops.insert(op_idx, added_op)
             # modify dropout op desc so that it accept a seed var as input
             op.desc.set_input("Seed", [var_unique_name])
@@ -456,12 +464,13 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
     """
-    _MAX_ADD_NUM_ = core.globals()['FLAGS_max_inplace_grad_add']
+    _MAX_ADD_NUM_ = framework._global_flags()['FLAGS_max_inplace_grad_add']
     #pending_sum_ops = []
     pending_sum_ops = collections.OrderedDict()
     var_rename_count = collections.defaultdict(int)
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
+    var_device = collections.defaultdict(str)
     for idx, op_desc in enumerate(op_descs):
         op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
         )
@@ -473,11 +482,13 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                 continue
             if len(renamed_vars[var_name]) > 1:
                 if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
-                    _accumulate_gradients_by_sum_op_(
-                        var_name, renamed_vars, pending_sum_ops, idx, op_device)
+                    _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
+                                                     pending_sum_ops, idx,
+                                                     var_device[var_name])
                 else:
-                    _accumulate_gradients_by_add_ops_(
-                        var_name, renamed_vars, pending_sum_ops, idx, op_device)
+                    _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
+                                                      pending_sum_ops, idx,
+                                                      var_device[var_name])
 
         for param_idx, param_name in enumerate(op_desc.output_names()):
             arg_names = op_desc.output(param_name)
@@ -528,16 +539,19 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
                     renamed_vars[var_name].append(new_name)
+                    # record the latest device
+                    var_device[var_name] = op_device
 
     for var_name, inputs in six.iteritems(renamed_vars):
         if len(renamed_vars[var_name]) > 1:
             if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
-                _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
-                                                 pending_sum_ops, len(op_descs))
+                _accumulate_gradients_by_sum_op_(
+                    var_name, renamed_vars, pending_sum_ops,
+                    len(op_descs), var_device[var_name])
             else:
-                _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
-                                                  pending_sum_ops,
-                                                  len(op_descs))
+                _accumulate_gradients_by_add_ops_(
+                    var_name, renamed_vars, pending_sum_ops,
+                    len(op_descs), var_device[var_name])
 
     # sum_op descs are sorted according to their insert position
     for key, value in collections.OrderedDict(

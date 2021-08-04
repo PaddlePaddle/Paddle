@@ -437,6 +437,8 @@ void TestConcatMain() {
   ConcatCase2<DeviceContext, Place>(context);
   ConcatCase3<DeviceContext, Place>(context);
   ConcatCase4<DeviceContext, Place>(context);
+
+  delete context;
 }
 
 TEST(math, concat) {
