@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE(paddle-dev): We introduce third-party library Gast as unified AST
+# representation. See https://github.com/serge-sans-paille/gast for details.
+
+# Copyright (c) 2016, Serge Guelton
+# All rights reserved.
+
 from .astn import AstToGAst, GAstToAst
 from . import gast
 import ast
