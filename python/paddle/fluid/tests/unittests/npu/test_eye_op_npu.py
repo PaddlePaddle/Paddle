@@ -100,6 +100,7 @@ class TestEyeOp5(TestEyeOp):
         self.num_rows = 100
         self.num_columns = 100
 
+
 class TestEyeOp6(TestEyeOp):
     def initTestCase(self):
         self.num_rows = 100
@@ -188,6 +189,7 @@ class API_TestTensorEye(unittest.TestCase):
                 paddle.eye(10, num_columns=10, dtype="int8")
 
             self.assertRaises(TypeError, test_num_columns_type_check1)
+
 
 if __name__ == "__main__":
     unittest.main()
