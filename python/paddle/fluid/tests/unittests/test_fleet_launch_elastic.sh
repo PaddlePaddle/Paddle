@@ -186,6 +186,20 @@ export PADDLE_TRAINERS_NUM=2
 python -m paddle.distributed.launch elastic_demo.py &> log_0.log &
 p0=$!
 
+for i in {1..10}
+do
+    if grep "INFO:ELASTIC:ready with hosts" log_1.log | grep -q '10.10.10.10'; then
+        echo "rerun node 0 ok"
+        break
+    else
+        sleep 1
+    fi
+    if [ $i -eq 10 ]; then
+        echo "rerun node 0 error"
+        exit -1
+    fi
+done
+
 check_env
 
 echo "All check done"
