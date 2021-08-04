@@ -325,7 +325,6 @@ class PipelineLayer(Layer):
 
                 for idx, layer in enumerate(self.run_function[start:end]):
                     inputs = layer(inputs)
-
                 return inputs
 
             return exec_func

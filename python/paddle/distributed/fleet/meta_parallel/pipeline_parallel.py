@@ -215,6 +215,9 @@ class PipelineParallel(MetaParallelBase):
         if self.is_first_stage:
             assert len(inputs) == 2, "length of input should be 2"
             if isinstance(inputs[0], tuple):
+                assert len(
+                    inputs[0]
+                ) > 1, "If you use tuple for input data, it should have at least two inputs."
                 batch_size = inputs[0][0].shape[0]
                 assert self.micro_batch_size * self.accumulate_steps == batch_size, (
                     "batch_size needs to be divisible by micro_batch_size. Currently, "

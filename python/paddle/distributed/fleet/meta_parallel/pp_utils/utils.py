@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+
 import paddle
 from paddle.fluid import core
+from paddle import _C_ops
+import paddle.distributed as dist
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
-import contextlib
-from paddle.distributed.fleet.utils.recompute import check_recompute_necessary, detach_variable, swith_rng_state
-import paddle.distributed as dist
-import numpy as np
-import logging
-logger = logging.getLogger(__name__)
-formatter = logging.Formatter(
-    fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-ch = logging.StreamHandler()
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+from paddle.distributed.fleet.utils.recompute import check_recompute_necessary, detach_variable
+from ..parallel_layers.random import get_rng_state_tracker
 
 __all__ = []
 
@@ -106,62 +101,89 @@ def _initialize_recompute_setting(is_offload, is_partition):
 
 
 def _initialize_recompute_hcg(hcg):
-    global _hcg, _mp_degree
+    global _hcg
     _hcg = hcg
 
 
-def _get_partition_start_end(tensor):
+def _all_gather(tensor, group=None, use_calc_stream=True):
+    """
+    The main difference with paddle.distributed.all_gather: 
+    no need to pass in tensor_list, the returned tensor is spliced
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+    nranks = paddle.distributed.collective._get_global_group(
+    ).nranks if group is None else group.nranks
+    return _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
+                              'ring_id', ring_id, 'nranks', nranks)
+
+
+def _split_activation(tensor):
     global _hcg
+
     mp_degree = _hcg.get_model_parallel_world_size()
     mp_rank = _hcg.get_model_parallel_rank()
+    if mp_degree < 2:
+        return data
 
-    tensor_numel = np.prod(tensor.shape)
-    assert tensor_numel != 0, "can't recompute zero element"
-    assert tensor_numel % mp_degree == 0
-    part_size = tensor_numel // mp_degree
-    start = mp_rank * part_size
-    end = start + part_size
-    return start, end
-
-
-def split_tensor_into_1d_equal_chunks(tensor):
-    global _hcg
-
-    mp_degree = _hcg.get_model_parallel_world_size()
-    mp_rank = _hcg.get_model_parallel_rank()
     tensor_numel = paddle.numel(tensor)
     assert tensor_numel != 0, "can't recompute zero element"
-    assert tensor_numel % mp_degree == 0
+    assert tensor_numel % mp_degree == 0, "The capacity of the activation () cannot be divisible by mp_degree()".format(
+        tensor_numel, mp_degree)
 
+    # use inplace operation to save memory
     data = tensor.flatten_()
-    partition_size = tensor_numel // mp_degree
-    start_index = partition_size * mp_rank
-    end_index = start_index + partition_size
-    return data[start_index:end_index]
+    part_size = tensor_numel // mp_degree
+    start = part_size * mp_rank
+    end = start + part_size
+    return data[start:end]
 
 
-def gather_split_1d_tensor(tensor):
+def _merge_activation(tensor):
     global _hcg
     mp_degree = _hcg.get_model_parallel_world_size()
     mp_rank = _hcg.get_model_parallel_rank()
     mp_group = _hcg.get_model_parallel_group()
-
     if mp_degree < 2:
         return tensor
+    return _all_gather(tensor, group=mp_group)
 
-    tensor_list = []
-    paddle.distributed.all_gather(tensor_list, tensor, group=mp_group)
-    gathered = paddle.concat(x=tensor_list, axis=-1)
-    return gathered
+
+@contextlib.contextmanager
+def _swith_rng_state_tracker(rng_state, tracker):
+    orig_cuda_rng_state = paddle.get_cuda_rng_state()
+    orig_cuda_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
+    paddle.set_cuda_rng_state(rng_state)
+    get_rng_state_tracker().set_states_tracker(tracker)
+    try:
+        yield
+    finally:
+        paddle.set_cuda_rng_state(orig_cuda_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_cuda_rng_tracker)
 
 
 class _HPRecomputeFunction(PyLayer):
+    """
+    Compared with paddle.distributed.fleet.utils.recompute, there are the following differences:
+    1. In order to support PipeLineParallel, the input of recompute is modified to ensure that the input can be tuple type.
+    2. Offload support for activation
+    3. Support MP segmentation of activation to further reduce cuda memory
+    4. Adapt to the random state of MP
+    """
+
     @staticmethod
     def forward(ctx, run_function, all_outputs, *args):
         check_recompute_necessary(args)
 
         # store for recomputing 
         ctx.run_function = run_function
+
+        # store the rng states
+        ctx.fwd_cuda_rng_state = paddle.get_cuda_rng_state()
+        ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
+        ).get_states_tracker()
 
         # save input for backward
         ctx.inputs = []
@@ -170,11 +192,9 @@ class _HPRecomputeFunction(PyLayer):
         tensor_inputs = []
 
         cur_device = paddle.get_device()
-        if 'gpu:' not in cur_device:
-            raise RuntimeError(
-                "Recompute with RNG perserve is not support current device: {}.".
-                format(cur_device))
-        ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
+        assert 'gpu:' in paddle.get_device(
+        ), "Recompute with RNG is not support current device: {}.".format(
+            cur_device)
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -189,8 +209,9 @@ class _HPRecomputeFunction(PyLayer):
                 if _recompute_partition:
                     ctx.tensor_shapes.append(arg.shape)
                     state = arg.stop_gradient
-                    partition = split_tensor_into_1d_equal_chunks(arg.detach(
-                    )).clone()
+                    partition = _split_activation(arg.detach()).clone()
+
+                    # TODO(shenliang03) not use calculate stream to D2H to speed
                     arg = partition.cpu() if _recompute_offload else partition
                     arg.stop_gradient = state
                 else:
@@ -223,7 +244,7 @@ class _HPRecomputeFunction(PyLayer):
             for i, idx in enumerate(tensor_indices):
                 if _recompute_partition:
                     state = tensors[i].stop_gradient
-                    tensors[i] = gather_split_1d_tensor(tensors[i]).reshape_(
+                    tensors[i] = _merge_activation(tensors[i]).reshape_(
                         tensor_shapes[i])
                     tensors[i].stop_gradient = state
                 inputs[idx] = tensors[i].cuda(
@@ -232,9 +253,9 @@ class _HPRecomputeFunction(PyLayer):
             tracer = framework._dygraph_tracer()
             tracer._has_grad = True
 
-            # NOTE support AMP
             # need restore auto_cast state as well as w/b list
-            with swith_rng_state(ctx.fw_cuda_rng_state):
+            with _swith_rng_state_tracker(ctx.fwd_cuda_rng_state,
+                                          ctx.fwd_cuda_rng_state_tracker):
                 with paddle.amp.auto_cast(
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
@@ -264,7 +285,6 @@ class _HPRecomputeFunction(PyLayer):
 
             # actually backward            
             paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
-
             grads = list(inp._grad_ivar() for inp in detached_inputs
                          if isinstance(inp, core.VarBase))
             return grads
