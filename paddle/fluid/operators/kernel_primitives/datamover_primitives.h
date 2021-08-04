@@ -18,7 +18,8 @@
 #include <math.h>
 #include <iostream>
 #include <vector>
-#include "paddle/fluid/platform/fast_divmod.h"
+
+#define INT_BITS 32
 
 namespace paddle {
 namespace operators {
@@ -29,10 +30,48 @@ struct alignas(sizeof(T) * VecSize) VectorType {
   T val[VecSize];
 };
 
+struct FastDivMod {
+  // 1st value represents the result of input number divides by recorded divisor
+  // 2nd value represents the result of input number modulo by recorded divisor
+  using DivModT = VectorType<uint32_t, 2>;
+
+  FastDivMod() {}
+  HOSTDEVICE FastDivMod(uint32_t d) : divisor(d) {
+    static_assert(sizeof(unsigned int) == 4,
+                  "Only Support 32-bit unsigned int.");
+
+    for (shift_val = 0; shift_val < INT_BITS; ++shift_val) {
+      auto shift_limit = 1 << shift_val;
+      if (shift_limit >= divisor) break;
+    }
+    uint64_t long_one = 1;
+    uint64_t temp_div =
+        ((long_one << INT_BITS) * ((long_one << shift_val) - divisor)) /
+            divisor +
+        1;
+    multiplier = temp_div;
+  }
+
+  __device__ __forceinline__ uint32_t Div(uint32_t n) const {
+    uint32_t t = __umulhi(n, multiplier);
+    return (t + n) >> shift_val;
+  }
+
+  __device__ __forceinline__ DivModT Divmod(uint32_t n) const {
+    uint32_t q = Div(n);
+    DivModT result = {q, n - q * divisor};
+    return result;
+  }
+
+  int32_t divisor;
+  int32_t shift_val;
+  uint32_t multiplier;
+};
+
 template <typename T, int NX, int NY, int BlockSize>
 __device__ void read_data_base(T* dst, const T* __restrict__ src, int size) {
   int dx = threadIdx.x * NX;
-#pragma unroll
+#pragma unroll 4
   for (int idx = 0; idx < NX; ++idx) {
     if ((idx + dx) >= size) {
       break;
@@ -43,10 +82,8 @@ __device__ void read_data_base(T* dst, const T* __restrict__ src, int size) {
 
 template <typename T, int NX, int NY, int BlockSize>
 __device__ void read_data(T* dst, const T* __restrict__ src, int size) {
-  enum {
-    VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1,
-    VECTORS_PER_THREAD = NX / VECTOR_SIZE,
-  };
+  const int VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+  const int VECTORS_PER_THREAD = NX / VECTOR_SIZE;
 
   // Vector per thread
   if (blockDim.x * NX > size) {
@@ -58,7 +95,7 @@ __device__ void read_data(T* dst, const T* __restrict__ src, int size) {
     const VecType* vec_input = reinterpret_cast<const VecType*>(src);
     read_data_base<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
         vec_temp, vec_input, VECTORS_PER_THREAD * blockDim.x);
-#pragma unroll
+#pragma unroll 2
     for (int idx = 0; idx < NX; ++idx) {
       dst[idx] = *(reinterpret_cast<T*>(vec_temp) + idx);
     }
@@ -81,13 +118,13 @@ __device__ __forceinline__ void read_data_bc(
   uint32_t base_offset = fix + threadIdx.x * NX;
   uint32_t offset = 0;
 
-#pragma unroll
+#pragma unroll 2
   for (int ny = 0; ny < NY; ++ny) {
-#pragma unroll
+#pragma unroll 4
     for (uint32_t nx = 0; nx < NX; ++nx) {
       uint32_t idx = base_offset + ny * stride_ny + nx * stride_nx;
       offset = 0;
-#pragma unroll
+#pragma unroll 2
       for (int i = 0; i < ShapeSize; ++i) {
         auto fast_divmoder = divmoders[i].Divmod(idx);
         idx = fast_divmoder.val[0];
@@ -101,7 +138,7 @@ __device__ __forceinline__ void read_data_bc(
 template <typename T, int NX, int NY, int BlockSize>
 __device__ void write_data_base(T* dst, const T* __restrict__ src, int size) {
   int dx = threadIdx.x * NX;
-#pragma unroll
+#pragma unroll 4
   for (int idx = 0; idx < NX; ++idx) {
     if ((idx + dx) >= size) {
       break;
@@ -112,10 +149,8 @@ __device__ void write_data_base(T* dst, const T* __restrict__ src, int size) {
 
 template <typename T, int NX, int NY, int BlockSize>
 __device__ void write_data(T* dst, T* __restrict__ src, int size) {
-  enum {
-    VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1,
-    VECTORS_PER_THREAD = NX / VECTOR_SIZE,
-  };
+  const int VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+  const int VECTORS_PER_THREAD = NX / VECTOR_SIZE;
 
   // Vector per thread
   if (blockDim.x * NX > size) {
@@ -124,7 +159,7 @@ __device__ void write_data(T* dst, T* __restrict__ src, int size) {
     // Vector type
     using VecType = VectorType<T, VECTOR_SIZE>;
     VecType vec_temp[VECTORS_PER_THREAD];
-#pragma unroll
+#pragma unroll 2
     for (int idx = 0; idx < VECTORS_PER_THREAD; ++idx) {
       vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
     }
