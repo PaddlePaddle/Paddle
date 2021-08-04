@@ -122,69 +122,6 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 // return true if found_nan or return false;
-template <typename T>
-bool CheckNumerics(const paddle::platform::NPUDeviceContext& dev_ctx,
-                   aclrtStream stream, const paddle::framework::Tensor* in) {
-  using Tensor = paddle::framework::Tensor;
-  auto num = in->numel();
-  auto fp32_dtype = framework::proto::VarType::FP32;
-
-  // get fp32 fp32_in
-  Tensor fp32_in(fp32_dtype);
-  fp32_in.Resize(in->dims());
-  fp32_in.mutable_data<float>(dev_ctx.GetPlace());
-  auto aclDtype = ACL_FLOAT;
-  const auto& cast_runner = NpuOpRunner(
-      "Cast", {*in}, {fp32_in}, {{"dst_type", static_cast<int32_t>(aclDtype)}});
-  cast_runner.Run(stream);
-
-  // get fp32 scale
-  Tensor scale(fp32_dtype);
-  scale.Resize({1});
-  scale.mutable_data<float>(dev_ctx.GetPlace());
-  FillNpuTensorWithConstant<float>(&scale, static_cast<float>(num));
-
-  // div
-  Tensor div_out(fp32_dtype);
-  div_out.Resize(in->dims());
-  div_out.mutable_data<float>(dev_ctx.GetPlace());
-  const auto& div_runner = NpuOpRunner("Div", {fp32_in, scale}, {div_out}, {});
-  div_runner.Run(stream);
-
-  // reduce_sum
-  Tensor sum(fp32_dtype);
-  sum.Resize({1});
-  sum.mutable_data<float>(dev_ctx.GetPlace());
-  std::vector<int> axes;
-  for (int i = 0; i < in->dims().size(); ++i) {
-    axes.push_back(i);
-  }
-
-  // value
-  std::vector<float> vec;
-  try {
-    const auto& sum_runner = NpuOpRunner(
-        "ReduceSumD", {div_out}, {sum}, {{"axes", axes}, {"keep_dims", false}});
-    sum_runner.Run(stream);
-    framework::TensorToVector<float>(sum, dev_ctx, &vec);
-  } catch (...) {
-    LOG(WARNING) << "checknumeric catch exception";
-    return true;
-  }
-
-  float value = static_cast<float>(vec[0]);
-  LOG(WARNING) << "checknumeric get data:" << vec[0]
-               << ", vector size:" << vec.size();
-  if (std::isinf(value)) {
-    LOG(WARNING) << "detected Inf";
-  } else if (std::isnan(value)) {
-    LOG(WARNING) << "detected Nan";
-    return true;
-  }
-
-  return false;
-}
-
 inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
                         aclrtStream stream,
                         const paddle::framework::Tensor* in) {
@@ -216,7 +153,6 @@ inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
 
   if (std::isinf(static_cast<float>(vec[0]))) {
     LOG(WARNING) << "contains inf";
-    return true;
   }
 
   return false;
