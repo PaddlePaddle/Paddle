@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/fluid/utils/any.hpp"
 
 namespace paddle {
 namespace framework {
@@ -73,8 +74,8 @@ class Pass {
                       platform::errors::InvalidArgument(
                           "Attribute %s not registered for pass.", attr_name));
     try {
-      return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
-    } catch (boost::bad_any_cast &) {
+      return *paddle::any_cast<AttrType *>(attrs_.at(attr_name));
+    } catch (paddle::bad_any_cast &) {
       auto TypeToString = [](const std::type_info &info) -> std::string {
         if (std::type_index(info) == std::type_index(typeid(bool *))) {
           return "bool";
@@ -166,7 +167,7 @@ class Pass {
 
   // Pass doesn't take ownership. PassRegistrar should delete default_attrs
   void RegisterDefaultPassAttrs(
-      std::map<std::string, boost::any> default_attr_values) {
+      std::map<std::string, paddle::any> default_attr_values) {
     for (auto const &attr_name : default_attr_values) {
       default_pass_attrs_.insert(attr_name.first);
     }
@@ -180,7 +181,7 @@ class Pass {
   std::unordered_set<std::string> required_pass_attrs_;
   std::unordered_set<std::string> default_pass_attrs_;
   std::unordered_set<std::string> required_graph_attrs_;
-  std::map<std::string, boost::any> attrs_;
+  std::map<std::string, paddle::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
 };
 
@@ -290,7 +291,7 @@ struct PassRegistrar : public Registrar {
  private:
   std::unordered_set<std::string> required_pass_attrs_;
   std::unordered_set<std::string> required_graph_attrs_;
-  std::map<std::string, boost::any> default_attr_values_;
+  std::map<std::string, paddle::any> default_attr_values_;
   std::map<std::string, std::function<void(void)>> default_attr_dels_;
 };
 
