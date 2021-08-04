@@ -115,11 +115,14 @@ int main(int argc, char** argv) {
     ret = RUN_ALL_TESTS();
   } catch (...) {
     LOG(WARNING) << "gtest main catch exception";
-    exit(1);
+    g_init = false;
+    paddle::platform::AclInstance::Instance().Finalize();
+    return 1;
   }
 
 #ifdef PADDLE_WITH_ASCEND_CL
-  // paddle::platform::AclInstance::Instance().Finalize();
+  g_init = false;
+  paddle::platform::AclInstance::Instance().Finalize();
   VLOG(0) << "gtest exit with Finalize npu device";
 #endif
 

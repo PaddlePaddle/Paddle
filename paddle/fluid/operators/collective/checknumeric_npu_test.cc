@@ -48,8 +48,8 @@ USE_OP_DEVICE_KERNEL(c_allreduce_sum, NPU);
 DECLARE_string(selected_npus);
 
 template <typename T>
-bool ContainsNan(const p::NPUDeviceContext& dev_ctx, aclrtStream stream,
-                 const paddle::framework::Tensor* in) {
+bool ContainsNan2(const p::NPUDeviceContext& dev_ctx, aclrtStream stream,
+                  const paddle::framework::Tensor* in) {
   // auto& dev_ctx =
   //    exe_ctx.template device_context<paddle::platform::NPUDeviceContext>();
   using Tensor = paddle::framework::Tensor;
@@ -72,7 +72,7 @@ bool ContainsNan(const p::NPUDeviceContext& dev_ctx, aclrtStream stream,
     LOG(WARNING) << "ContainsNan catch exception";
   }
 
-  LOG(WARNING) << "reducesumd result:" << static_cast<float>(vec[0]);
+  LOG(WARNING) << "reducemeand result:" << vec[0];
   if (std::isnan(static_cast<float>(vec[0]))) {
     LOG(WARNING) << "contains nan";
     return true;
@@ -83,7 +83,7 @@ bool ContainsNan(const p::NPUDeviceContext& dev_ctx, aclrtStream stream,
     return true;
   }
 
-  LOG(WARNING) << "Contains end";
+  // LOG(WARNING) << "Contains end";
   return false;
 }
 
@@ -131,12 +131,12 @@ void Check(T value, int size = 2 * 512 * 8192) {
   }
 
   TensorFromVector(init, ctx, tensor_x);
-  VLOG(0) << "begin check 1";
+  // VLOG(0) << "begin check 1";
   paddle::operators::CheckNumerics<T>(ctx, ctx.stream(), tensor_x);
-  VLOG(0) << "end check 1";
+  // VLOG(0) << "end check 1";
   // CheckNumerics<T>(ctx, ctx.stream(), tensor_x);
   // VLOG(0) << "end check 2";
-  ContainsNan<T>(ctx, ctx.stream(), tensor_x);
+  ContainsNan2<T>(ctx, ctx.stream(), tensor_x);
   // VLOG(0) << "end check 3";
   // ctx.Wait();
 }
