@@ -472,7 +472,7 @@ class InverseTimeDecay(LRScheduler):
 
     .. math::
 
-        new\_learning\_rate = \\frac{learning\_rate}{1 + gamma * epoch}
+        new\_learning\_rate = \frac{learning\_rate}{1 + gamma * epoch}
 
     Args:
         learning_rate (float): The initial learning rate. It is a python float number.
@@ -555,9 +555,9 @@ class PolynomialDecay(LRScheduler):
 
     .. math::
 
-        decay\_steps & = decay\_steps * math.ceil(\\frac{epoch}{decay\_steps}) 
+        decay\_steps & = decay\_steps * math.ceil(\frac{epoch}{decay\_steps}) 
 
-        new\_learning\_rate & = (learning\_rate-end\_lr)*(1-\\frac{epoch}{decay\_steps})^{power}+end\_lr
+        new\_learning\_rate & = (learning\_rate-end\_lr)*(1-\frac{epoch}{decay\_steps})^{power}+end\_lr
 
     If cycle is set to False, then:
 
@@ -565,7 +565,7 @@ class PolynomialDecay(LRScheduler):
 
         epoch & = min(epoch, decay\_steps) 
 
-        new\_learning\_rate & = (learning\_rate-end\_lr)*(1-\\frac{epoch}{decay\_steps})^{power}+end\_lr
+        new\_learning\_rate & = (learning\_rate-end\_lr)*(1-\frac{epoch}{decay\_steps})^{power}+end\_lr
 
 
     Args:
@@ -676,7 +676,7 @@ class LinearWarmup(LRScheduler):
     
     .. math::
     
-            lr = start\_lr + (end\_lr - start\_lr) * \\frac{epoch}{warmup\_steps}
+            lr = start\_lr + (end\_lr - start\_lr) * \frac{epoch}{warmup\_steps}
     
     where start_lr is the initial learning rate, and end_lr is the final learning rate;
     
@@ -1407,14 +1407,13 @@ class CosineAnnealingDecay(LRScheduler):
 
     .. math::
 
-        \\begin{aligned}
-            \eta_t & = \eta_{min} + \\frac{1}{2}(\eta_{max} - \eta_{min})\left(1
-            + \cos\left(\\frac{T_{cur}}{T_{max}}\pi\\right)\\right),
-            & T_{cur} \\neq (2k+1)T_{max}; \\
-            \eta_{t+1} & = \eta_{t} + \\frac{1}{2}(\eta_{max} - \eta_{min})
-            \left(1 - \cos\left(\\frac{1}{T_{max}}\pi\\right)\\right),
-            & T_{cur} = (2k+1)T_{max}.
-        \end{aligned}
+        \eta_t & = \eta_{min} + \frac{1}{2}(\eta_{max} - \eta_{min})\left(1
+        + \cos\left(\frac{T_{cur}}{T_{max}}\pi\right)\right),
+        & T_{cur} \neq (2k+1)T_{max}; 
+
+        \eta_{t+1} & = \eta_{t} + \frac{1}{2}(\eta_{max} - \eta_{min})
+        \left(1 - \cos\left(\frac{1}{T_{max}}\pi\right)\right),
+        & T_{cur} = (2k+1)T_{max}.
     
     It has been proposed in `SGDR: Stochastic Gradient Descent with Warm Restarts <https://arxiv.org/abs/1608.03983>`_. 
     Note that this only implements the cosine annealing part of SGDR, and not the restarts.
