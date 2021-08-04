@@ -29,8 +29,15 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+namespace details {
+using ProgramDescs = std::vector<ProgramDesc>;
+constexpr char kProgramDescs[] = "program_descs";
+constexpr char kStartupProgramDescs[] = "startup_program_descs";
+}  // namespace details
+
 namespace ir {
 class Graph;
+
 template <typename PassType>
 struct PassRegistrar;
 
@@ -56,6 +63,8 @@ class Pass {
   std::string Type() const { return type_; }
 
   Graph *Apply(Graph *graph) const;
+
+  void Apply(ProgramDesc *main_program, ProgramDesc *startup_program) const;
 
   // Get a reference to the attributed previously set.
   template <typename AttrType>

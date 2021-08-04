@@ -32,7 +32,7 @@ class Adagrad(Optimizer):
 
         moment\_out &= moment + grad * grad
 
-        param\_out &= param - \\frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
+        param\_out &= param - \frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
 
 
     The original paper does not have the ``epsilon`` attribute. It is added here
