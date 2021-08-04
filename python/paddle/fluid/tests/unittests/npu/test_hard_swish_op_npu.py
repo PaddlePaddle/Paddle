@@ -63,7 +63,8 @@ class TestHardSwishNPU(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad_with_place(self.place, ['X'], 'Out', max_relative_error=0.02)
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', max_relative_error=0.02)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -81,7 +82,7 @@ class TestHardSwishNPUFp16(TestHardSwishNPU):
 class TestHardSwishNPUWithCPU(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        
+
         self.place = paddle.NPUPlace(0)
         self.dtype = np.float32
 
@@ -103,14 +104,19 @@ class TestHardSwishNPUWithCPU(unittest.TestCase):
         y = F.hardswish(data)
         y.sum().backward()
 
-        self.assertTrue(np.allclose(self.out_y.numpy(), y.numpy(), rtol=1e-06), 
-                    "Output of NPU HardSwish forward has diff at " + str(self.place) +
-                    "\nExpect " + str(self.out_y) + "\n" + "But Got" +
-                    str(y) + " in class " + self.__class__.__name__)
-        self.assertTrue(np.allclose(self.out_g.numpy(), data.grad.numpy(), rtol=1e-06),
-                    "Output of NPU HardSwish backward has diff at " + str(self.place) +
-                    "\nExpect " + str(self.out_g) + "\n" + "But Got" +
-                    str(data.grad) + " in class " + self.__class__.__name__)
+        self.assertTrue(
+            np.allclose(
+                self.out_y.numpy(), y.numpy(), rtol=1e-06),
+            "Output of NPU HardSwish forward has diff at " + str(self.place) +
+            "\nExpect " + str(self.out_y) + "\n" + "But Got" + str(y) +
+            " in class " + self.__class__.__name__ + ".")
+        self.assertTrue(
+            np.allclose(
+                self.out_g.numpy(), data.grad.numpy(), rtol=1e-06),
+            "Output of NPU HardSwish backward has diff at " + str(self.place) +
+            "\nExpect " + str(self.out_g) + "\n" + "But Got" + str(data.grad) +
+            " in class " + self.__class__.__name__ + ".")
+
 
 if __name__ == '__main__':
     unittest.main()
