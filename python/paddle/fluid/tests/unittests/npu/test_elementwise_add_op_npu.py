@@ -25,8 +25,6 @@ import paddle.fluid as fluid
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseAddOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -62,34 +60,32 @@ class TestElementwiseAddOp(OpTest):
         self.axis = -1
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X', 'Y'],
+            self.place,
+            ['X', 'Y'],
             'Out',
-            max_relative_error=0.006,
-            check_dygraph=False)
+            max_relative_error=0.006, )
 
     def test_check_grad_ingore_x(self):
         self.check_grad_with_place(
-            self.place, ['Y'],
+            self.place,
+            ['Y'],
             'Out',
             no_grad_set=set("X"),
-            max_relative_error=0.006,
-            check_dygraph=False)
+            max_relative_error=0.006, )
 
     def test_check_grad_ingore_y(self):
         self.check_grad_with_place(
-            self.place, ['X'],
+            self.place,
+            ['X'],
             'Out',
             no_grad_set=set("Y"),
-            max_relative_error=0.006,
-            check_dygraph=False)
+            max_relative_error=0.006, )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAddAPI(unittest.TestCase):
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -134,8 +130,6 @@ class TestAddAPI(unittest.TestCase):
                 msg="z_value = {}, but expected {}".format(z_value, z_expected))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAddError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):

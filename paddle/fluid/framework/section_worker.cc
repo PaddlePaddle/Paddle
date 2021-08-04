@@ -30,6 +30,36 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
   for (auto &op_desc : program_->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
+
+  // if not 1F1B scheduler
+  if (schedule_mode_ != 1) return;
+
+  bool is_first_stage = (pipeline_stage_ == 0);
+  int BACKWARD = static_cast<int>(OpRole::kBackward);
+  for (auto &op : ops_) {
+    int op_role = op->Attr<int>("op_role");
+    auto op_type = op->Type();
+
+    // pipeline backward send op
+    if (op_role != BACKWARD) continue;
+    if (op_type != "send_v2" && op_type != "partial_send") continue;
+
+    auto var_name = op->InputVars()[0];
+    VLOG(3) << "Pipeline backward send var " << var_name;
+    PADDLE_ENFORCE_NE(is_first_stage, true,
+                      platform::errors::PreconditionNotMet(
+                          "The first pipeline stage must do not have a "
+                          "backward send var, please check var %s",
+                          var_name));
+
+    backward_send_vars_.push_back(var_name);
+    skip_vars_.push_back(var_name);
+  }
+}
+
+void SectionWorker::PrepareUnusedVar() {
+  VLOG(5) << "begin prepare the unsed vars";
+  unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
 }
 
 void SectionWorker::RunForward(
@@ -96,13 +126,88 @@ void SectionWorker::RunUpdate(
   }
 }
 
-void SectionWorker::PrepareUnusedVar() {
-  VLOG(5) << "begin prepare the unsed vars";
-  unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
+void SectionWorker::RunFThenB(std::unique_ptr<GarbageCollector> &gc) {
+  // F-then-B scheduler which runs Forward phase for all microbatches,
+  // then runs Backward phase for all microbatches.
+  // step1: run forward
+  for (int i = 0; i < num_microbatches_; ++i) {
+    RunForward(i, gc, unused_vars_);
+  }
+  // step2: run backward
+  for (int i = 0; i < num_microbatches_; ++i) {
+    RunBackward(i, gc, unused_vars_);
+  }
+  // step3: run update
+  RunUpdate(gc, unused_vars_);
+}
+
+void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
+  // 1F1B scheduler, which runs forward phase and backward phase altertively
+  // after startup phase. For a stage, the number of microbatches for
+  // startup is num_pipeline_stages_ - pipeline_stage_ - 1, where
+  // num_pipeline_stages_ is the total number of pipeline stages and
+  // pipeline_stage_ is the pipeline stage of the current device.
+  auto startup_steps = num_pipeline_stages_ - pipeline_stage_ - 1;
+  VLOG(3) << "startup_steps:" << startup_steps
+          << ", num_stages: " << num_pipeline_stages_
+          << ", stage:" << pipeline_stage_;
+  PADDLE_ENFORCE_GT(
+      num_microbatches_, startup_steps,
+      platform::errors::InvalidArgument(
+          "To use pipeline with 1F1B scheduler, please make sure number of "
+          "microbatches (%d) is than startup steps (%d).",
+          num_microbatches_, startup_steps));
+  int fw_step = 0;
+  int bw_step = 0;
+
+  // startup phase
+  while (fw_step < startup_steps) {
+    RunForward(fw_step, gc, unused_vars_);
+    fw_step += 1;
+    VLOG(2) << "micro steps fw_step:" << fw_step;
+  }
+
+  // 1f1b phase
+  while (fw_step < num_microbatches_) {
+    RunForward(fw_step, gc, unused_vars_);
+
+    // delete backward send var at step=(bw_step - 2)
+    if (gc && bw_step >= 2) {
+      DeleteUnusedTensors(*microbatch_scopes_[bw_step - 2], backward_send_vars_,
+                          gc.get());
+    }
+
+    RunBackward(bw_step, gc, unused_vars_);
+
+    fw_step += 1;
+    bw_step += 1;
+    VLOG(2) << "micro steps fw_step:" << fw_step << ", bw_step:" << bw_step;
+  }
+
+  int reserve_bw_send_step = bw_step - 2;
+  // backward phase
+  while (bw_step < num_microbatches_) {
+    RunBackward(bw_step, gc, unused_vars_);
+    bw_step += 1;
+    VLOG(2) << "micro steps  bw_step:" << bw_step;
+  }
+
+  VLOG(2) << "run update";
+  RunUpdate(gc, unused_vars_);
+
+  if (gc) {
+    // NOTE(wangxi): program must add sync backward send comm at update
+    // delete backward send var
+    for (int i = reserve_bw_send_step; i < num_microbatches_; ++i) {
+      DeleteUnusedTensors(*microbatch_scopes_[i], backward_send_vars_,
+                          gc.get());
+    }
+  }
 }
 
 void SectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
+  VLOG(2) << "mini batch steps:" << batch_id_;
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
@@ -132,56 +237,11 @@ void SectionWorker::TrainFiles() {
   }  // max_memory_size >= 0
 
   if (schedule_mode_ == 0) {
-    // F-then-B scheduler which runs Forward phase for all microbatches,
-    // then runs Backward phase for all microbatches.
-    // step1: run forward
-    for (int i = 0; i < num_microbatches_; ++i) {
-      RunForward(i, gc, unused_vars_);
-    }
-    // step2: run backward
-    for (int i = 0; i < num_microbatches_; ++i) {
-      RunBackward(i, gc, unused_vars_);
-    }
-    // step3: run update
-    RunUpdate(gc, unused_vars_);
+    RunFThenB(gc);
   } else {
-    // 1F1B scheduler, which runs forward phase and backward phase altertively
-    // after startup phase. For a stage, the number of microbatches for
-    // startup is num_pipeline_stages_ - pipeline_stage_ - 1, where
-    // num_pipeline_stages_ is the total number of pipeline stages and
-    // pipeline_stage_ is the pipeline stage of the current device.
-    auto startup_steps = num_pipeline_stages_ - pipeline_stage_ - 1;
-    VLOG(3) << "startup_steps:" << startup_steps
-            << ", num_stages: " << num_pipeline_stages_
-            << ", stage:" << pipeline_stage_;
-    PADDLE_ENFORCE_GT(
-        num_microbatches_, startup_steps,
-        platform::errors::InvalidArgument(
-            "To use pipeline with 1F1B scheduler, please make sure number of "
-            "microbatches (%d) is than startup steps (%d).",
-            num_microbatches_, startup_steps));
-    int fw_step = 0;
-    int bw_step = 0;
-    // startup phase
-    while (fw_step < startup_steps) {
-      RunForward(fw_step, gc, unused_vars_);
-      fw_step += 1;
-    }
-
-    // 1f1b phase
-    while (fw_step < num_microbatches_) {
-      RunForward(fw_step, gc, unused_vars_);
-      fw_step += 1;
-      RunBackward(bw_step, gc, unused_vars_);
-      bw_step += 1;
-    }
-    // backward phase
-    while (bw_step < num_microbatches_) {
-      RunBackward(bw_step, gc, unused_vars_);
-      bw_step += 1;
-    }
-    RunUpdate(gc, unused_vars_);
+    Run1F1B(gc);
   }
+
   dev_ctx_->Wait();
   ++batch_id_;
 }

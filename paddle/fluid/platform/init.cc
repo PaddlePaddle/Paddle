@@ -29,8 +29,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_header.h"
-#include "paddle/fluid/platform/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
