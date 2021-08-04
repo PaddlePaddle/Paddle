@@ -399,7 +399,8 @@ class SetValueGradKernel : public framework::OpKernel<T> {
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
     auto in_dims = in->dims();
 
-    std::vector<int> decrease_axis;
+    auto decrease_axis = context.Attr<std::vector<int>>("decrease_axes");
+
     std::vector<int> infer_flags(axes.size(), 1);
     std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
     StridedSliceOutDims(starts, ends, steps, axes, infer_flags, in_dims,
@@ -485,20 +486,24 @@ class SetValueGradKernel : public framework::OpKernel<T> {
 
       // Create an extented shape according to the rules of broadcast.
       auto grad_value_dims_size = grad_value_dims.size();
-      auto dim_one = out_dims_size;
-      for (int i = out_dims_size - 1; i >= 0; i--) {
-        if (out_dims[i] == 1) {
-          dim_one = i;
-        } else {
-          break;
-        }
-      }
+
+      int num_decrease = 0;
+
+      int decrease_axis_size = decrease_axis.size();
       for (int i = 0; i < out_dims_size; i++) {
-        if (i < dim_one - grad_value_dims_size || dim_one <= i) {
+        if (decrease_axis.end() !=
+            std::find(decrease_axis.begin(), decrease_axis.end(), i)) {
+          fake_grad_value_dims[i] = 1;
+          num_decrease++;
+        } else if (i < out_dims_size - (grad_value_dims_size +
+                                        decrease_axis_size - num_decrease)) {
           fake_grad_value_dims[i] = 1;
         } else {
-          auto index_grad = i - (dim_one - grad_value_dims_size);
+          auto index_grad =
+              i - (out_dims_size -
+                   (grad_value_dims_size + decrease_axis_size - num_decrease));
           fake_grad_value_dims[i] = grad_value_dims[index_grad];
+
           PADDLE_ENFORCE_EQ((out_dims[i] == grad_value_dims[index_grad]) ||
                                 (grad_value_dims[index_grad] == 1),
                             true, platform::errors::InvalidArgument(
@@ -532,6 +537,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
       if (need_reverse) {
         tmp_t.device(place) = tmp_t.reverse(reverse_axis);
       }
+      // accumulate gradient
       for (auto offset : offsets) {
         grad_value_t.device(place) =
             grad_value_t +

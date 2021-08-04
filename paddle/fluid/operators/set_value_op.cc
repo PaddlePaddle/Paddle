@@ -196,6 +196,7 @@ class SetValueGradMaker : public framework::SingleGradOpMaker<T> {
       op->SetAttr("ends", ends);
 
       op->SetAttr("steps", steps);
+      op->SetAttr("decrease_axes", decrease_axes);
 
       op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
       op->SetOutput(framework::GradVarName("ValueTensor"),
