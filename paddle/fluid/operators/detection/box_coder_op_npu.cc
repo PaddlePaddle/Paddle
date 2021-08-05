@@ -70,20 +70,28 @@ struct BoxCoderFunction {
     DivWithBroadCastVoid(x, y, shape, &z);
     return z;
   }
+  void MulWithBroadCastVoid(const Tensor& x, const Tensor& y,
+                            const framework::DDim& shape, Tensor* z) {
+    z->mutable_data<T>(shape, place);
+    const auto& runner = NpuOpRunner("Mul", {x, y}, {*z}, {});
+    runner.Run(stream);
+  }
   Tensor MulWithBroadCast(const Tensor& x, const Tensor& y,
                           const framework::DDim& shape) {
     Tensor z;
-    z.mutable_data<T>(shape, place);
-    const auto& runner = NpuOpRunner("Mul", {x, y}, {z}, {});
-    runner.Run(stream);
+    MulWithBroadCastVoid(x, y, shape, &z);
     return z;
+  }
+  void AddWithBroadCastVoid(const Tensor& x, const Tensor& y,
+                            const framework::DDim& shape, Tensor* z) {
+    z->mutable_data<T>(shape, place);
+    const auto& runner = NpuOpRunner("AddV2", {x, y}, {*z}, {});
+    runner.Run(stream);
   }
   Tensor AddWithBroadCast(const Tensor& x, const Tensor& y,
                           const framework::DDim& shape) {
     Tensor z;
-    z.mutable_data<T>(shape, place);
-    const auto& runner = NpuOpRunner("AddV2", {x, y}, {z}, {});
-    runner.Run(stream);
+    AddWithBroadCastVoid(x, y, shape, &z);
     return z;
   }
   Tensor Abs(const Tensor& x) {
@@ -234,151 +242,82 @@ template <typename T>
 void BoxCoderDec(const framework::ExecutionContext& ctx, const Tensor* tb,
                  const Tensor* pb, const Tensor* pbv, const bool norm,
                  const std::vector<float>& variance, int axis, Tensor* out) {
-  auto shape_0 = framework::make_ddim({4, 1});
-  std::vector<T> vec_diff_w = {static_cast<T>(-1), static_cast<T>(0),
-                               static_cast<T>(1), static_cast<T>(0)};
-  std::vector<T> vec_diff_h = {static_cast<T>(0), static_cast<T>(-1),
-                               static_cast<T>(0), static_cast<T>(1)};
-  std::vector<T> vec_aver_x = {static_cast<T>(0.5), static_cast<T>(0),
-                               static_cast<T>(0.5), static_cast<T>(0)};
-  std::vector<T> vec_aver_y = {static_cast<T>(0), static_cast<T>(0.5),
-                               static_cast<T>(0), static_cast<T>(0.5)};
-  Tensor m_diff_w, m_diff_h;
-  Tensor m_aver_x, m_aver_y;
-
-  Vector2Tensor<T>(ctx, vec_diff_w, shape_0, &m_diff_w);
-  Vector2Tensor<T>(ctx, vec_diff_h, shape_0, &m_diff_h);
-  Vector2Tensor<T>(ctx, vec_aver_x, shape_0, &m_aver_x);
-  Vector2Tensor<T>(ctx, vec_aver_y, shape_0, &m_aver_y);
+  auto shape_0 = framework::make_ddim({4, 2});
+  Tensor m_diff;
+  Tensor m_aver;
+  std::vector<T> vec_diff = {static_cast<T>(-1), static_cast<T>(0),
+                             static_cast<T>(0),  static_cast<T>(-1),
+                             static_cast<T>(1),  static_cast<T>(0),
+                             static_cast<T>(0),  static_cast<T>(1)};
+  std::vector<T> vec_aver = {static_cast<T>(0.5), static_cast<T>(0),
+                             static_cast<T>(0),   static_cast<T>(0.5),
+                             static_cast<T>(0.5), static_cast<T>(0),
+                             static_cast<T>(0),   static_cast<T>(0.5)};
+  Vector2Tensor<T>(ctx, vec_diff, shape_0, &m_diff);
+  Vector2Tensor<T>(ctx, vec_aver, shape_0, &m_aver);
 
   BoxCoderFunction<T> F(ctx);
-
-  Tensor pb_x = F.Adds(F.Dot(*pb, m_aver_x), (norm ? 0 : 0.5));
-  Tensor pb_y = F.Adds(F.Dot(*pb, m_aver_y), (norm ? 0 : 0.5));
-  Tensor pb_w = F.Adds(F.Dot(*pb, m_diff_w), (norm ? 0 : 1));
-  Tensor pb_h = F.Adds(F.Dot(*pb, m_diff_h), (norm ? 0 : 1));
-
-  auto pb_reshape = axis == 0 ? framework::make_ddim({1, pb->dims()[0]})
-                              : framework::make_ddim({pb->dims()[0], 1});
-  pb_x.Resize(pb_reshape);
-  pb_y.Resize(pb_reshape);
-  pb_w.Resize(pb_reshape);
-  pb_h.Resize(pb_reshape);
+  Tensor pb_xy = F.Adds(F.Dot(*pb, m_aver), (norm ? 0 : 0.5));
+  Tensor pb_wh = F.Adds(F.Dot(*pb, m_diff), (norm ? 0 : 1));
+  auto pb_resize_shape = axis == 0
+                             ? framework::make_ddim({1, pb->dims()[0], 2})
+                             : framework::make_ddim({pb->dims()[0], 1, 2});
+  pb_xy.Resize(pb_resize_shape);
+  pb_wh.Resize(pb_resize_shape);
 
   auto tbox_slice_shape =
-      framework::make_ddim({tb->dims()[0], tb->dims()[1], 1});
-  auto tbox_resize_shape = framework::make_ddim({tb->dims()[0], tb->dims()[1]});
+      framework::make_ddim({tb->dims()[0], tb->dims()[1], 2});
   std::vector<int> tbox_slice_size = {static_cast<int>(tb->dims()[0]),
-                                      static_cast<int>(tb->dims()[1]), 1};
-  Tensor tbox0 = F.Slice(*tb, {0, 0, 0}, tbox_slice_size, tbox_slice_shape);
-  Tensor tbox1 = F.Slice(*tb, {0, 0, 1}, tbox_slice_size, tbox_slice_shape);
-  Tensor tbox2 = F.Slice(*tb, {0, 0, 2}, tbox_slice_size, tbox_slice_shape);
-  Tensor tbox3 = F.Slice(*tb, {0, 0, 3}, tbox_slice_size, tbox_slice_shape);
-  tbox0.Resize(tbox_resize_shape);
-  tbox1.Resize(tbox_resize_shape);
-  tbox2.Resize(tbox_resize_shape);
-  tbox3.Resize(tbox_resize_shape);
-  // LOG(INFO) << "tbox0 = " << tbox0;
-  // LOG(INFO) << "tbox1 = " << tbox1;
-  // LOG(INFO) << "tbox2 = " << tbox2;
-  // LOG(INFO) << "tbox3 = " << tbox3;
-  if (pbv) {
-    auto pbvt_slice_shape = framework::make_ddim({pbv->dims()[0], 1});
-    auto pbvt_resize_shape = axis == 0
-                                 ? framework::make_ddim({1, pbv->dims()[0]})
-                                 : pbvt_slice_shape;
-    std::vector<int> pbvt_slice_size = {static_cast<int>(pbv->dims()[0]), 1};
-    Tensor pbv_t0 = F.Slice(*pbv, {0, 0}, pbvt_slice_size, pbvt_slice_shape);
-    Tensor pbv_t1 = F.Slice(*pbv, {0, 1}, pbvt_slice_size, pbvt_slice_shape);
-    Tensor pbv_t2 = F.Slice(*pbv, {0, 2}, pbvt_slice_size, pbvt_slice_shape);
-    Tensor pbv_t3 = F.Slice(*pbv, {0, 3}, pbvt_slice_size, pbvt_slice_shape);
-    pbv_t0.Resize(pbvt_resize_shape);
-    pbv_t1.Resize(pbvt_resize_shape);
-    pbv_t2.Resize(pbvt_resize_shape);
-    pbv_t3.Resize(pbvt_resize_shape);
-    // LOG(INFO) << "pbv_t0 = " << pbv_t0;
-    // LOG(INFO) << "pbv_t1 = " << pbv_t1;
-    // LOG(INFO) << "pbv_t2 = " << pbv_t2;
-    // LOG(INFO) << "pbv_t3 = " << pbv_t3;
-    Tensor tb_x = F.AddWithBroadCast(
-        F.MulWithBroadCast(tbox0, F.Mul(pb_w, pbv_t0), tbox_resize_shape), pb_x,
-        tbox_resize_shape);
-    Tensor tb_y = F.AddWithBroadCast(
-        F.MulWithBroadCast(tbox1, F.Mul(pb_h, pbv_t1), tbox_resize_shape), pb_y,
-        tbox_resize_shape);
-    Tensor tb_w = F.MulWithBroadCast(
-        F.Exp(F.MulWithBroadCast(pbv_t2, tbox2, tbox_resize_shape)), pb_w,
-        tbox_resize_shape);
-    Tensor tb_h = F.MulWithBroadCast(
-        F.Exp(F.MulWithBroadCast(pbv_t3, tbox3, tbox_resize_shape)), pb_h,
-        tbox_resize_shape);
-    Tensor obox_0 = F.AddWithBroadCast(tb_x, F.Muls(tb_w, -0.5), tb_x.dims());
-    Tensor obox_1 = F.AddWithBroadCast(tb_y, F.Muls(tb_h, -0.5), tb_y.dims());
-    Tensor obox_2 =
-        F.Adds(F.AddWithBroadCast(tb_x, F.Muls(tb_w, 0.5), tb_x.dims()),
-               (norm ? 0 : -1));
-    Tensor obox_3 =
-        F.Adds(F.AddWithBroadCast(tb_y, F.Muls(tb_h, 0.5), tb_y.dims()),
-               (norm ? 0 : -1));
-    obox_0.Resize({tb->dims()[0], tb->dims()[1], 1});
-    obox_1.Resize({tb->dims()[0], tb->dims()[1], 1});
-    obox_2.Resize({tb->dims()[0], tb->dims()[1], 1});
-    obox_3.Resize({tb->dims()[0], tb->dims()[1], 1});
-    F.ConcatVoid({obox_0, obox_1, obox_2, obox_3},
-                 framework::make_ddim({tb->dims()[0], tb->dims()[1], 4}), 2,
-                 out);
-  } else if (variance.empty()) {
-    Tensor tb_x =
-        F.AddWithBroadCast(F.MulWithBroadCast(tbox0, pb_w, tbox_resize_shape),
-                           pb_x, tbox_resize_shape);
-    Tensor tb_y =
-        F.AddWithBroadCast(F.MulWithBroadCast(tbox1, pb_h, tbox_resize_shape),
-                           pb_y, tbox_resize_shape);
-    Tensor tb_w = F.MulWithBroadCast(F.Exp(tbox2), pb_w, tbox_resize_shape);
-    Tensor tb_h = F.MulWithBroadCast(F.Exp(tbox3), pb_h, tbox_resize_shape);
-    Tensor obox_0 = F.AddWithBroadCast(tb_x, F.Muls(tb_w, -0.5), tb_x.dims());
-    Tensor obox_1 = F.AddWithBroadCast(tb_y, F.Muls(tb_h, -0.5), tb_y.dims());
-    Tensor obox_2 =
-        F.Adds(F.AddWithBroadCast(tb_x, F.Muls(tb_w, 0.5), tb_x.dims()),
-               (norm ? 0 : -1));
-    Tensor obox_3 =
-        F.Adds(F.AddWithBroadCast(tb_y, F.Muls(tb_h, 0.5), tb_y.dims()),
-               (norm ? 0 : -1));
-    obox_0.Resize({obox_0.dims()[0], obox_0.dims()[1], 1});
-    obox_1.Resize({obox_1.dims()[0], obox_1.dims()[1], 1});
-    obox_2.Resize({obox_2.dims()[0], obox_2.dims()[1], 1});
-    obox_3.Resize({obox_3.dims()[0], obox_3.dims()[1], 1});
-    F.ConcatVoid({obox_0, obox_1, obox_2, obox_3},
-                 framework::make_ddim({tb->dims()[0], tb->dims()[1], 4}), 2,
-                 out);
-  } else {
-    Tensor tb_x = F.AddWithBroadCast(
-        F.MulWithBroadCast(tbox0, F.Muls(pb_w, variance[0]), tbox_resize_shape),
-        pb_x, tbox_resize_shape);
-    Tensor tb_y = F.AddWithBroadCast(
-        F.MulWithBroadCast(tbox1, F.Muls(pb_h, variance[1]), tbox_resize_shape),
-        pb_y, tbox_resize_shape);
-    Tensor tb_w = F.MulWithBroadCast(F.Exp(F.Muls(tbox2, variance[2])), pb_w,
-                                     tbox_resize_shape);
-    Tensor tb_h = F.MulWithBroadCast(F.Exp(F.Muls(tbox3, variance[3])), pb_h,
-                                     tbox_resize_shape);
+                                      static_cast<int>(tb->dims()[1]), 2};
+  Tensor tbox01 = F.Slice(*tb, {0, 0, 0}, tbox_slice_size, tbox_slice_shape);
+  Tensor tbox23 = F.Slice(*tb, {0, 0, 2}, tbox_slice_size, tbox_slice_shape);
 
-    Tensor obox_0 = F.AddWithBroadCast(tb_x, F.Muls(tb_w, -0.5), tb_x.dims());
-    Tensor obox_1 = F.AddWithBroadCast(tb_y, F.Muls(tb_h, -0.5), tb_y.dims());
-    Tensor obox_2 =
-        F.Adds(F.AddWithBroadCast(tb_x, F.Muls(tb_w, 0.5), tb_x.dims()),
-               (norm ? 0 : -1));
-    Tensor obox_3 =
-        F.Adds(F.AddWithBroadCast(tb_y, F.Muls(tb_h, 0.5), tb_y.dims()),
-               (norm ? 0 : -1));
-    obox_0.Resize({obox_0.dims()[0], obox_0.dims()[1], 1});
-    obox_1.Resize({obox_1.dims()[0], obox_1.dims()[1], 1});
-    obox_2.Resize({obox_2.dims()[0], obox_2.dims()[1], 1});
-    obox_3.Resize({obox_3.dims()[0], obox_3.dims()[1], 1});
-    F.ConcatVoid({obox_0, obox_1, obox_2, obox_3},
-                 framework::make_ddim({tb->dims()[0], tb->dims()[1], 4}), 2,
-                 out);
+  Tensor tb_xy;
+  Tensor tb_wh;
+  if (pbv) {
+    auto pbvt_slice_shape = framework::make_ddim({pbv->dims()[0], 2});
+    auto pbvt_resize_shape = axis == 0
+                                 ? framework::make_ddim({1, pbv->dims()[0], 2})
+                                 : framework::make_ddim({pbv->dims()[0], 1, 2});
+    std::vector<int> pbvt_slice_size = {static_cast<int>(pbv->dims()[0]), 2};
+    Tensor pbv_t01 = F.Slice(*pbv, {0, 0}, pbvt_slice_size, pbvt_slice_shape);
+    Tensor pbv_t23 = F.Slice(*pbv, {0, 2}, pbvt_slice_size, pbvt_slice_shape);
+    pbv_t01.Resize(pbvt_resize_shape);
+    pbv_t23.Resize(pbvt_resize_shape);
+
+    F.AddWithBroadCastVoid(
+        F.MulWithBroadCast(tbox01, F.Mul(pb_wh, pbv_t01), tbox_slice_shape),
+        pb_xy, tbox_slice_shape, &tb_xy);
+    F.MulWithBroadCastVoid(
+        F.Exp(F.MulWithBroadCast(pbv_t23, tbox23, tbox_slice_shape)), pb_wh,
+        tbox_slice_shape, &tb_wh);
+  } else if (variance.empty()) {
+    F.AddWithBroadCastVoid(F.MulWithBroadCast(tbox01, pb_wh, tbox_slice_shape),
+                           pb_xy, tbox_slice_shape, &tb_xy);
+    F.MulWithBroadCastVoid(F.Exp(tbox23), pb_wh, tbox_slice_shape, &tb_wh);
+  } else {
+    Tensor t_var01, t_var23;
+    auto t_var_shape = framework::make_ddim({1, 1, 2});
+    std::vector<T> vec_var01 = {static_cast<T>(variance[0]),
+                                static_cast<T>(variance[1])};
+    std::vector<T> vec_var23 = {static_cast<T>(variance[2]),
+                                static_cast<T>(variance[3])};
+    Vector2Tensor(ctx, vec_var01, t_var_shape, &t_var01);
+    Vector2Tensor(ctx, vec_var23, t_var_shape, &t_var23);
+    F.AddWithBroadCastVoid(
+        F.MulWithBroadCast(tbox01,
+                           F.MulWithBroadCast(pb_wh, t_var01, pb_wh.dims()),
+                           tbox_slice_shape),
+        pb_xy, tbox_slice_shape, &tb_xy);
+    F.MulWithBroadCastVoid(
+        F.Exp(F.MulWithBroadCast(t_var23, tbox23, tbox_slice_shape)), pb_wh,
+        tbox_slice_shape, &tb_wh);
   }
+  Tensor obox01 = F.AddWithBroadCast(tb_xy, F.Muls(tb_wh, -0.5), tb_xy.dims());
+  Tensor obox23 =
+      F.Adds(F.AddWithBroadCast(tb_xy, F.Muls(tb_wh, 0.5), tb_xy.dims()),
+             (norm ? 0 : -1));
+  F.ConcatVoid({obox01, obox23}, out->dims(), 2, out);
 }
 
 template <typename T>

@@ -171,12 +171,17 @@ class TestBoxCoderOp(OpTest):
         else:
             #encode_center_size
             self.prior_box = np.random.random((self.M, 4)).astype(self.dtype)
-            self.prior_box_var = np.random.random(
-                (self.M, 4)).astype(self.dtype)
+            if self.use_variance:
+                self.prior_box_var = np.random.random(4).astype(self.dtype)
+            else:
+                self.prior_box_var = np.random.random(
+                    (self.M, 4)).astype(self.dtype)
             self.target_box = np.random.random((self.N, 4)).astype(self.dtype)
             self.inputs['PriorBox'] = self.prior_box
-            self.inputs['PriorBoxVar'] = self.prior_box_var
+            #self.inputs['PriorBoxVar'] = self.prior_box_var
             self.inputs['TargetBox'] = (self.target_box, self.lod)
+            if (not self.use_variance):
+                self.inputs['PriorBoxVar'] = self.prior_box_var
 
     def set_attrs(self):
         self.attrs = {
@@ -214,6 +219,12 @@ class TestBoxCoderOpWithLoD(TestBoxCoderOp):
         self.lod = [[10, 20, 20]]
         self.code_type = 'encode_center_size'
         self.box_normalized = True
+
+
+class TestBoxCoderOpWithLoDWithVariance(TestBoxCoderOpWithLoD):
+    def set_init_config(self):
+        super(TestBoxCoderOpWithLoDWithVariance, self).set_init_config()
+        self.use_variance = True
 
 
 class TestBoxCoderOpWithAxis(TestBoxCoderOp):
