@@ -16,42 +16,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-inline std::vector<int> get_repeat_times_npu(
-    const framework::ExecutionContext& ctx) {
-  if (ctx.HasInput("RepeatTimes")) {
-    auto* repeat_tensor = ctx.Input<framework::LoDTensor>("RepeatTimes");
-    auto* repeat_data = repeat_tensor->data<int>();
-    framework::Tensor cpu_repeat_tensor;
-    if (!platform::is_cpu_place(repeat_tensor->place())) {
-      TensorCopySync(*repeat_tensor, platform::CPUPlace(), &cpu_repeat_tensor);
-      repeat_data = cpu_repeat_tensor.data<int>();
-    }
-    auto vec_repeat_times =
-        std::vector<int>(repeat_data, repeat_data + repeat_tensor->numel());
-    return vec_repeat_times;
-  }
-
-  auto list_repeat_times_tensor =
-      ctx.MultiInput<framework::Tensor>("repeat_times_tensor");
-  if (list_repeat_times_tensor.size() > 0) {
-    // get tensor from
-    std::vector<int> vec_repeat_times;
-    for (size_t i = 0; i < list_repeat_times_tensor.size(); ++i) {
-      auto tensor = list_repeat_times_tensor[i];
-      if (!platform::is_cpu_place(tensor->place())) {
-        framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_repeat_times.push_back(*temp.data<int32_t>());
-      } else {
-        vec_repeat_times.push_back(*tensor->data<int32_t>());
-      }
-    }
-    return vec_repeat_times;
-  } else {
-    return ctx.Attr<std::vector<int>>("repeat_times");
-  }
-}
-
 template <typename DeviceContext, typename T>
 class TileNPUKernel : public framework::OpKernel<T> {
  public:
@@ -68,7 +32,7 @@ class TileNPUKernel : public framework::OpKernel<T> {
             "The rank of the input 'x' for tile op "
             "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED, rank));
-    auto repeat_times = get_repeat_times_npu(context);
+    auto repeat_times = get_repeat_times(context);
     int repeat_times_size = repeat_times.size();
     PADDLE_ENFORCE_GE(
         repeat_times_size, 1,
@@ -92,7 +56,7 @@ class TileNPUKernel : public framework::OpKernel<T> {
     auto* in0 = context.Input<framework::Tensor>("X");
 
     auto in_dims = in0->dims();
-    auto repeat_times = get_repeat_times_npu(context);
+    auto repeat_times = get_repeat_times(context);
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       PADDLE_ENFORCE_GT(
           repeat_times[i], 0,
