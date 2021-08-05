@@ -112,9 +112,11 @@ __device__ void read_data(T* dst, const T* __restrict__ src, int size) {
  * the shape of dst is [NY, NX]
  */
 template <typename T, int NX, int NY, int BS, int ShapeSize>
-__device__ __forceinline__ void read_data_bc(
-    T* dst, const T* __restrict__ src, uint32_t fix, FastDivMod* divmoders,
-    uint32_t* strides, uint32_t stride_nx, uint32_t stride_ny) {
+__device__ __forceinline__ void read_data_bc(T* dst, const T* __restrict__ src,
+                                             uint32_t fix,
+                                             FastDivMod* divmoders,
+                                             uint32_t* strides, int stride_nx,
+                                             int stride_ny) {
   uint32_t base_offset = fix + threadIdx.x * NX;
   uint32_t offset = 0;
 
