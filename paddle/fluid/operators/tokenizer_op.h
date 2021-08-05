@@ -69,7 +69,7 @@ class WordPieceTokenizer {
 class BertTokenizer {
  public:
   explicit BertTokenizer(const framework::STRING_MAP vocab,
-                         bool do_lower_case = true,
+                         bool do_lower_case = false,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
                          const wstring& cls_token = L"[CLS]",

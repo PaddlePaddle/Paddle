@@ -146,25 +146,35 @@ def monkey_patch_varbase():
                     out = linear(t)  # call with different weight
 
         """
-        assert isinstance(value, (np.ndarray, core.VarBase)), \
-            "Variable set_value function, arguments type only support Variable, numpy, VarBase"
+        assert isinstance(value, (np.ndarray, core.VarBase, dict, str)), \
+            "Variable set_value function, arguments type only support Variable, numpy, VarBase, dict, string."
 
-        value_np = value
-        if isinstance(value, core.VarBase):
-            value_np = value.numpy()
+        if isinstance(value, (dict, str)):
+            assert len(self) == len(
+                value
+            ), "Variable length not match, Variable [ {} ] need tensor with length {} but load set tensor with length {}".format(
+                self.name, len(self), len(value))
+            if isinstance(value, dict):
+                self.value().set_string_map(value)
+            else:
+                self.value().set_string_list(value)
+        else:
+            value_np = value
+            if isinstance(value, core.VarBase):
+                value_np = value.numpy()
 
-        self_tensor_np = self.numpy()
+            self_tensor_np = self.numpy()
 
-        assert self_tensor_np.shape == value_np.shape, \
-            "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
-                self.name, self_tensor_np.shape, value_np.shape)
+            assert self_tensor_np.shape == value_np.shape, \
+                "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
+                    self.name, self_tensor_np.shape, value_np.shape)
 
-        assert self_tensor_np.dtype == value_np.dtype, \
-            "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                self.name, self_tensor_np.dtype, value_np.dtype)
+            assert self_tensor_np.dtype == value_np.dtype, \
+                "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
+                    self.name, self_tensor_np.dtype, value_np.dtype)
 
-        self.value().get_tensor().set(value_np,
-                                      framework._current_expected_place())
+            self.value().get_tensor().set(value_np,
+                                          framework._current_expected_place())
 
     @framework.dygraph_only
     def backward(self, grad_tensor=None, retain_graph=False):

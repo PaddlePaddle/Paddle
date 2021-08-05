@@ -131,7 +131,12 @@ def monkey_patch_math_varbase():
         return int(var.numpy().flatten()[0])
 
     def _len_(var):
-        return var.shape[0]
+        if var.type == core.VarDesc.VarType.MAP:
+            return len(var.value().get_map_tensor())
+        elif var.type == core.VarDesc.VarType.STRINGS:
+            return len(var.value().get_string_tensor())
+        else:
+            return var.shape[0]
 
     def _index_(var):
         numel = np.prod(var.shape)
