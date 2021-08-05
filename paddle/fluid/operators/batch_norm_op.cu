@@ -396,7 +396,7 @@ void SetBNConfigForNCHW(const int max_threads, const int reduce_num,
 struct BnNCHWIndexCalculator {
   BnNCHWIndexCalculator(int N, int C, int HxW) {
     CxHxW = C * HxW;
-    divmoder = FastDivMod(HxW);
+    divmoder = platform::FastDivMod(HxW);
   }
 
   __device__ inline int Get(int offset) const {
@@ -406,7 +406,7 @@ struct BnNCHWIndexCalculator {
     return index;
   }
   int CxHxW;
-  FastDivMod divmoder;
+  platform::FastDivMod divmoder;
 };
 
 template <typename Tx>
