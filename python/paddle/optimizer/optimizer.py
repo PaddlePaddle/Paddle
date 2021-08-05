@@ -860,6 +860,12 @@ class Optimizer(object):
         optimize_ops = self._create_optimization_pass(params_grads)
         return optimize_ops
 
+    def apply_optimize(self, loss, startup_program, params_grads):
+        """
+        See self._applay_optimize
+        """
+        return self._apply_optimize(loss, startup_program, params_grads)
+
     def _apply_optimize(self, loss, startup_program, params_grads):
         """
         Second part of `minimize`, appending optimization operators for
