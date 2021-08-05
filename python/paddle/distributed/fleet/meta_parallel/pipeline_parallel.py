@@ -64,18 +64,6 @@ class PipelineParallel(MetaParallelBase):
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
 
-    def _set_tensor_trainable(self, tensor):
-        if tensor is None:
-            return
-
-        if isinstance(tensor, tuple):
-            for t in tensor:
-                if is_float_tensor(t):
-                    t.stop_gradient = False
-        else:
-            if is_float_tensor(tensor):
-                tensor.stop_gradient = False
-
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         assert isinstance(optimizer, HybridParallelOptimizer), (
             'optimizer should be HybridParallelOptimizer subclass.')
@@ -117,7 +105,6 @@ class PipelineParallel(MetaParallelBase):
 
         for step_id in range(startup_steps):
             input_tensor = p2p.recv_forward()
-            self._set_tensor_trainable(input_tensor)
 
             output_tensor = self._forward_step(input_tensor)
             p2p.send_forward(output_tensor)
@@ -131,7 +118,6 @@ class PipelineParallel(MetaParallelBase):
         for i in range(steady_steps):
             last_iter = (i == (steady_steps - 1))
 
-            self._set_tensor_trainable(input_tensor)
             output_tensor = self._forward_step(input_tensor)
 
             output_tensor_grad = p2p.send_forward_recv_backward(output_tensor)

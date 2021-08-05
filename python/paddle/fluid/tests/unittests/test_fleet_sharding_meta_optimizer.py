@@ -264,8 +264,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'square',
-            'reduce_sum', 'square', 'reduce_sum', 'square', 'reduce_sum', 'sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
+            'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm', 'sum',
             'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
             'elementwise_div', 'elementwise_mul', 'elementwise_mul',
             'elementwise_mul', 'momentum', 'momentum', 'momentum'
@@ -366,6 +366,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "gradient_merge_acc_step": 1,
             "mp_degree": 1
         }
+
+        strategy.fuse_all_reduce_ops = False
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
         startup_prog_ops = startup_prog.global_block().ops
         main_prog_ops = train_prog.global_block().ops

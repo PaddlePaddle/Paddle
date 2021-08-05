@@ -2035,6 +2035,11 @@ class Operator(object):
                 del op_attrs[role_var_name]
 
             if len(self.desc.type()) != 0:
+                # NOTE(Aurelius84): prog.clone() will lead that var.op is always None,
+                # we add this to fix the problem.
+                for arg in self.desc.output_arg_names():
+                    if block.has_var(arg) and block.var(arg).op is None:
+                        block.var(arg).op = self
                 return
             if type is None:
                 raise ValueError(
