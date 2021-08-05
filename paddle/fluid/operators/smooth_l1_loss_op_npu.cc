@@ -23,10 +23,10 @@ template <typename DeviceContext, typename T>
 class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<Tensor>("X");
-    auto* Y = context.Input<Tensor>("Y");
-    auto* InsideWeight = context.Input<Tensor>("InsideWeight");
-    auto* OutsideWeight = context.Input<Tensor>("OutsideWeight");
+    auto* in_x = context.Input<Tensor>("X");
+    auto* in_y = context.Input<Tensor>("Y");
+    auto* inside_weight = context.Input<Tensor>("InsideWeight");
+    auto* outside_weight = context.Input<Tensor>("OutsideWeight");
     auto* out_diff = context.Output<Tensor>("Diff");
     auto* out_loss = context.Output<Tensor>("Out");
     out_diff->mutable_data<T>(context.GetPlace());
@@ -34,16 +34,16 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
 
     auto sigma = context.Attr<float>("sigma");
     T sigma2 = 1.0 / (sigma * sigma);
-    bool has_weight = (InsideWeight != nullptr) && (OutsideWeight != nullptr);
+    bool has_weight = (inside_weight != nullptr) && (outside_weight != nullptr);
 
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    const auto& runner1 = NpuOpRunner("Sub", {*X, *Y}, {*out_diff}, {});
+    const auto& runner1 = NpuOpRunner("Sub", {*in_x, *in_y}, {*out_diff}, {});
     runner1.Run(stream);
 
-    Tensor no_reduce_loss(X->type());
-    no_reduce_loss.Resize(X->dims());
+    Tensor no_reduce_loss(in_x->type());
+    no_reduce_loss.Resize(in_x->dims());
     no_reduce_loss.mutable_data<T>(context.GetPlace());
     // multiply inside weight
     if (has_weight) {
@@ -51,32 +51,32 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
       tmp_diff.Resize(out_diff->dims());
       tmp_diff.mutable_data<T>(context.GetPlace());
       const auto& runner2 =
-          NpuOpRunner("Mul", {*out_diff, *InsideWeight}, {tmp_diff}, {});
+          NpuOpRunner("Mul", {*out_diff, *inside_weight}, {tmp_diff}, {});
       runner2.Run(stream);
       framework::TensorCopy(
           tmp_diff, context.GetPlace(),
           context.template device_context<paddle::platform::NPUDeviceContext>(),
           out_diff);
 
-      Tensor tmp_x(X->type());
-      tmp_x.Resize(X->dims());
+      Tensor tmp_x(in_x->type());
+      tmp_x.Resize(in_x->dims());
       tmp_x.mutable_data<T>(context.GetPlace());
 
-      Tensor tmp_y(Y->type());
-      tmp_y.Resize(Y->dims());
+      Tensor tmp_y(in_y->type());
+      tmp_y.Resize(in_y->dims());
       tmp_y.mutable_data<T>(context.GetPlace());
 
       const auto& runner_x =
-          NpuOpRunner("Mul", {*X, *InsideWeight}, {tmp_x}, {});
+          NpuOpRunner("Mul", {*in_x, *inside_weight}, {tmp_x}, {});
       runner_x.Run(stream);
       const auto& runner_y =
-          NpuOpRunner("Mul", {*Y, *InsideWeight}, {tmp_y}, {});
+          NpuOpRunner("Mul", {*in_y, *inside_weight}, {tmp_y}, {});
       runner_y.Run(stream);
       const auto& runner3 = NpuOpRunner("SmoothL1Loss", {tmp_x, tmp_y},
                                         {no_reduce_loss}, {{"sigma", sigma2}});
       runner3.Run(stream);
     } else {
-      const auto& runner3 = NpuOpRunner("SmoothL1Loss", {*X, *Y},
+      const auto& runner3 = NpuOpRunner("SmoothL1Loss", {*in_x, *in_y},
                                         {no_reduce_loss}, {{"sigma", sigma2}});
       runner3.Run(stream);
     }
@@ -87,7 +87,7 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
       tmp_loss.Resize(no_reduce_loss.dims());
       tmp_loss.mutable_data<T>(context.GetPlace());
       const auto& runner4 =
-          NpuOpRunner("Mul", {no_reduce_loss, *OutsideWeight}, {tmp_loss}, {});
+          NpuOpRunner("Mul", {no_reduce_loss, *outside_weight}, {tmp_loss}, {});
       runner4.Run(stream);
       const auto& runner5 =
           NpuOpRunner("ReduceSumD", {tmp_loss}, {*out_loss},
@@ -106,15 +106,15 @@ template <typename DeviceContext, typename T>
 class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* InsideWeight = context.Input<Tensor>("InsideWeight");
-    auto* OutsideWeight = context.Input<Tensor>("OutsideWeight");
+    auto* inside_weight = context.Input<Tensor>("InsideWeight");
+    auto* outside_weight = context.Input<Tensor>("OutsideWeight");
     auto* diff = context.Input<Tensor>("Diff");
     auto* og = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* out1 = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto* outx_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* outy_grad = context.Output<Tensor>(framework::GradVarName("Y"));
     auto sigma = context.Attr<T>("sigma");
     T sigma2 = 1.0 / (sigma * sigma);
-    bool has_weight = (InsideWeight != nullptr) && (OutsideWeight != nullptr);
+    bool has_weight = (inside_weight != nullptr) && (outside_weight != nullptr);
 
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
@@ -143,11 +143,11 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
     runner_grad.Run(stream);
 
     if (has_weight) {
-      Tensor weight(InsideWeight->type());
-      weight.Resize(InsideWeight->dims());
+      Tensor weight(inside_weight->type());
+      weight.Resize(inside_weight->dims());
       weight.mutable_data<T>(context.GetPlace());
       const auto& runner_weight =
-          NpuOpRunner("Mul", {*InsideWeight, *OutsideWeight}, {weight}, {});
+          NpuOpRunner("Mul", {*inside_weight, *outside_weight}, {weight}, {});
       runner_weight.Run(stream);
 
       Tensor tmp_grad(gradient.type());
@@ -162,21 +162,21 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
           context.template device_context<paddle::platform::NPUDeviceContext>(),
           &gradient);
     }
-    if (out0) {
-      out0->mutable_data<T>(context.GetPlace());
+    if (outx_grad) {
+      outx_grad->mutable_data<T>(context.GetPlace());
       framework::TensorCopy(
           gradient, context.GetPlace(),
           context.template device_context<paddle::platform::NPUDeviceContext>(),
-          out0);
+          outx_grad);
     }
 
-    if (out1) {
-      out1->mutable_data<T>(context.GetPlace());
+    if (outy_grad) {
+      outy_grad->mutable_data<T>(context.GetPlace());
       Tensor coeff(framework::proto::VarType::FP32);
       coeff.mutable_data<float>({1}, context.GetPlace());
       FillNpuTensorWithConstant<float>(&coeff, -1);
       const auto& runner_y_grad =
-          NpuOpRunner("Mul", {coeff, gradient}, {*out1}, {});
+          NpuOpRunner("Mul", {coeff, gradient}, {*outy_grad}, {});
       runner_y_grad.Run(stream);
     }
   }
