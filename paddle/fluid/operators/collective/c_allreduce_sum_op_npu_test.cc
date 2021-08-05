@@ -38,6 +38,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
+// usage: node1: HCCL_WHITELIST_DISABLE=1 FLAGS_selected_npus=1 GLOG_v=3
+// RANK_ID=1 DEVICE_ID=1
+// ./paddle/fluid/operators/collective/c_allreduce_sum_op_npu_test
+// usage: node2: HCCL_WHITELIST_DISABLE=1 FLAGS_selected_npus=0 GLOG_v=3
+// RANK_ID=0 DEVICE_ID=0
+// ./paddle/fluid/operators/collective/c_allreduce_sum_op_npu_test
+
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
@@ -152,11 +159,18 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   f::AttributeMap attrs;
   attrs["tag"] = std::string("tagx_" + std::to_string(iter));
   attrs["ring_id"] = 0;
+  attrs["use_calc_stream"] = 1;
 
   auto op = f::OpRegistry::CreateOp("c_allreduce_sum", {{"X", {"Data"}}},
                                     {{"Out", {"OutData"}}}, attrs);
-
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 1; i++) {
+    op->Run(*scope, place);
+  }
+  if (rank_id == 1) {
+    VLOG(3) << "sleep:" << atoi(getenv("SLEEP"));
+    sleep(atoi(getenv("SLEEP")));
+  }
+  for (int i = 0; i < 1; i++) {
     op->Run(*scope, place);
   }
   ctx.Wait();
