@@ -30,10 +30,7 @@ class EyeNPUKernel : public framework::OpKernel<T> {
     auto dtype =
         ConvertToNpuDtype(static_cast<framework::proto::VarType::Type>(d_nums));
 
-    auto num_columns = num_rows;
-    if (ctx.HasAttr("num_columns")) {
-      num_columns = ctx.Attr<int64_t>("num_columns");
-    }
+    auto num_columns = ctx.Attr<int64_t>("num_columns");
     if (num_columns == -1) num_columns = num_rows;
 
     framework::NPUAttributeMap attr_input = {
