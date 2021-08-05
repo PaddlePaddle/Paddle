@@ -406,7 +406,7 @@ def disable_signal_handler():
             import paddle
             paddle.disable_signal_handler()
     """
-    return core.disable_signal_handler()
+    core.disable_signal_handler()
 
 
 def is_compiled_with_cuda():
