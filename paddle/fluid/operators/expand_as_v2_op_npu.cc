@@ -92,7 +92,7 @@ REGISTER_OP_NPU_KERNEL(
     expand_as_v2,
     ops::ExpandAsV2NPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ExpandAsV2NPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::ExpandAsV2NPUKernel<paddle::platform::NPUDeviceContext, signed char>,
-    ops::ExpandAsV2NPUKernel<paddle::platform::NPUDeviceContext, unsigned char>,
+    ops::ExpandAsV2NPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
+    ops::ExpandAsV2NPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
     ops::ExpandAsV2NPUKernel<paddle::platform::NPUDeviceContext,
                              paddle::platform::float16>);
