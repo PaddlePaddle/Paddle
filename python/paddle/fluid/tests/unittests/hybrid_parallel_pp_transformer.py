@@ -54,13 +54,17 @@ class EmbeddingNet(Layer):
         attention_mask = paddle.tensor.triu(
             (paddle.ones(
                 (length, length), dtype="float32") * -1e9), 1)
-        attention_mask.stop_gradient = True
+
+        no_used = paddle.ones((3, 3), dtype="int32")
+
         w_emb = self.word_embeddings(x)
         p_emb = self.position_embeddings(x)
         w_emb = w_emb + p_emb
 
+        attention_mask.stop_gradient = True
+        no_used.stop_gradient = True
         # need to fix bug of backward()
-        return w_emb, attention_mask
+        return w_emb, attention_mask, no_used, p_emb
 
 
 class TransformerNet(Layer):
@@ -99,12 +103,12 @@ class EmbeddingPipe(EmbeddingNet):
 
 class TransformerNetPipe(TransformerNet):
     def forward(self, args):
-        x, mask = args[0], args[1]
+        x, mask, no_used, p_emb = args[0], args[1], args[2], args[3]
 
         output = super().forward(x, mask)
-        output = output
+        output = output + p_emb
         mask.stop_gradient = True
-        return output, mask
+        return output, mask, no_used, p_emb
 
 
 class CriterionPipe(Layer):
@@ -174,6 +178,8 @@ class TestDistPPTraning(unittest.TestCase):
             x.stop_gradient = True
             loss = model.train_batch([x, x], optimizer, scheduler)
             # TODO(shenliang03) add utest for loss
+
+            print("loss: ", loss)
 
 
 if __name__ == "__main__":
