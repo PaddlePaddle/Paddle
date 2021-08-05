@@ -42,28 +42,28 @@ int main() {
   paddle::framework::InitDevices();
   paddle::framework::VariableScope global_scope;
   auto place = paddle::platform::CUDAPlace(0);
-  auto test_prog = paddle::framework::load_from_file("lm_startup_program");
+  auto test_prog = paddle::framework::LoadFromFile("lm_startup_program");
   {
-    paddle::framework::build_variable_scope(test_prog, &global_scope);
+    paddle::framework::BuildVariableScope(test_prog, &global_scope);
 
     std::vector<paddle::framework::OpFuncNode> vec_func_list;
     std::vector<paddle::framework::OperatorBase*> op_list;
-    paddle::framework::build_op_func_list(test_prog, op_list, vec_func_list,
-                                          &global_scope, place);
+    paddle::framework::BuildOpFuncList(test_prog, op_list, vec_func_list,
+                                       &global_scope, place);
 
     // paddle::framework::exec_op_func_list( vec_func_list, op_list,
     // global_scope, place );
   }
 
   cerr << "run main" << endl;
-  auto main_prog = paddle::framework::load_from_file("lm_main_program");
+  auto main_prog = paddle::framework::LoadFromFile("lm_main_program");
 
-  paddle::framework::build_variable_scope(main_prog, &global_scope);
+  paddle::framework::BuildVariableScope(main_prog, &global_scope);
 
   std::vector<paddle::framework::OpFuncNode> vec_main_func_list;
   std::vector<paddle::framework::OperatorBase*> op_main_list;
-  paddle::framework::build_op_func_list(
-      main_prog, op_main_list, vec_main_func_list, &global_scope, place);
+  paddle::framework::BuildOpFuncList(main_prog, op_main_list,
+                                     vec_main_func_list, &global_scope, place);
   paddle::framework::Scope scope;
   paddle::framework::InterpreterCore interp_core(place, main_prog, test_prog,
                                                  &scope);
@@ -76,7 +76,7 @@ int main() {
     // paddle::framework::exec_op_func_list( vec_main_func_list, op_main_list,
     // global_scope, place );
     std::vector<paddle::framework::Tensor> vec_out;
-    interp_core.run({}, {}, {}, vec_out);
+    interp_core.Run({}, {}, {}, vec_out);
   }
   ProfilerStop();
   auto end = std::chrono::steady_clock::now();
