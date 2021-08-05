@@ -337,15 +337,10 @@ def buffered(reader, size):
                 print(i)
     """
 
-    class EndSignal():
-        pass
-
-    end = EndSignal()
-
     def read_worker(r, q):
         for d in r:
             q.put(d)
-        q.put(end)
+        q.put(None)
 
     def data_reader():
         r = reader()
@@ -357,7 +352,7 @@ def buffered(reader, size):
         t.daemon = True
         t.start()
         e = q.get()
-        while e != end:
+        while e is not None:
             yield e
             e = q.get()
 
