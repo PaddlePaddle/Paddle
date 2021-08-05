@@ -48,7 +48,8 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
 
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    lr = 5e-3 if use_bf16 else 1e-3
+    sgd_optimizer = fluid.optimizer.SGD(learning_rate=lr)
 
     if use_bf16:
         sgd_optimizer = amp.bf16.decorate_bf16(
@@ -83,7 +84,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                 avg_loss_value, = exe.run(main_program,
                                           feed=feeder.feed(data),
                                           fetch_list=[avg_cost])
-                if avg_loss_value[0] < 10.0 or pure_bf16:
+                if avg_loss_value[0] < 10.0:
                     if save_dirname is not None:
                         paddle.static.save_inference_model(save_dirname, [x],
                                                            [y_predict], exe)
