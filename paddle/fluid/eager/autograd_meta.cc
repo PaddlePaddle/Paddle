@@ -12,21 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+
 /**
- * Implementation of GradNodeBase and Edge.
+ * Implementation of AutogradMeta and AutogradMetaInterface.
 **/
+
 namespace egr {
 
-void GradNodeBase::AddEdge(const std::vector<pt::Tensor>& tensors) {
-  for (const auto& tensor : tensors) {
-    auto* p_autograd_meta = EagerUtils::autograd_meta(tensor);
-    adj_edges_.emplace_back(p_autograd_meta->GetMutableGradNode(),
-                            p_autograd_meta->OutRank());
-  }
+AutogradMeta* EagerUtils::autograd_meta(const pt::Tensor& target) {
+  auto* autograd_meta_ptr = target.get_autograd_meta();
+  PADDLE_ENFORCE_NOT_NULL(
+      autograd_meta_ptr,
+      "Can't get NULL from autogradMeta, please init with autograd info!");
+  return static_cast<AutogradMeta*>(autograd_meta_ptr);
 }
-
-const std::vector<Edge>& GradNodeBase::GetEdges() const { return adj_edges_; }
 
 }  // namespace egr

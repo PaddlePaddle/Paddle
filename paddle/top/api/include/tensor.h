@@ -18,12 +18,7 @@ limitations under the License. */
 #include <memory>
 #include <utility>
 
-<<<<<<< HEAD:paddle/pten/core/tensor.h
-#include "paddle/pten/core/autograd_meta_interface.h"
-#include "paddle/pten/core/tensor_impl_interface.h"
-=======
 #include "paddle/top/core/tensor_interface.h"
->>>>>>> 3386c49be9b872fded2d50d1981a611abb21d1ed:paddle/top/api/include/tensor.h
 
 /**
  * [ Why still include the fluid headers? ]
@@ -210,7 +205,7 @@ class Tensor final {
    */
   void reset() { impl_.reset(); }
 
-  /* Part 6: Operator overloading */
+  /* Part 6: Operator overloading used by eager */
   Tensor& operator=(const Tensor& x) & {
     impl_ = x.impl_;
     return *this;
@@ -225,6 +220,10 @@ class Tensor final {
 
   /* Part 7: Autograd methods */
   // TODO(yangjiabin): Design autograd methods
+
+  AutogradMetaInterface* get_autograd_meta() const {
+    return autograd_meta_.get();
+  }
 
   /* Part 8: Auto generated Tensor methods */
   // ...
