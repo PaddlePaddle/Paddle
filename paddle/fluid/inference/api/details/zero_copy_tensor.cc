@@ -65,10 +65,13 @@ T *Tensor::mutable_data(PlaceType place) {
     case static_cast<int>(PlaceType::kXPU): {
       return tensor->mutable_data<T>(paddle::platform::XPUPlace(device_));
     }
+    case static_cast<int>(PlaceType::kNPU): {
+      return tensor->mutable_data<T>(paddle::platform::NPUPlace(device_));
+    }
     default:
       PADDLE_THROW(paddle::platform::errors::Unavailable(
-          "Only CPU / CUDA / XPU places is supported. The place `%d` is not "
-          "supported.",
+          "Only CPU / CUDA / XPU / NPU places is supported. The place `%d` is "
+          "not supported.",
           static_cast<int>(place)));
       break;
   }
@@ -86,6 +89,8 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kGPU;
   } else if (paddle::platform::is_xpu_place(tensor->place())) {
     *place = PlaceType::kXPU;
+  } else if (paddle::platform::is_npu_place(tensor->place())) {
+    *place = PlaceType::kNPU;
   } else {
     *place = PlaceType::kUNK;
   }
@@ -191,8 +196,9 @@ void Tensor::CopyToCpu(T *data) {
 #ifdef PADDLE_WITH_MKLDNN
     if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
       paddle::framework::innerTransDataLayoutFromMKLDNN(
-          tensor->layout(), paddle::platform::MKLDNNDeviceContext::tls()
-                                .get_cur_paddle_data_layout(),
+          tensor->layout(),
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .get_cur_paddle_data_layout(),
           *tensor, &out, paddle::platform::CPUPlace(), true);
     else
       std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
