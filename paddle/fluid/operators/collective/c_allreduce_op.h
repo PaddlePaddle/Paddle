@@ -143,16 +143,17 @@ inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
     TensorToVector(mean, dev_ctx, &vec);
   } catch (...) {
     LOG(WARNING) << "ContainsNan catch exception";
+    return true;
   }
 
   VLOG(4) << "reducemeand result:" << vec[0];
   if (std::isnan(static_cast<float>(vec[0]))) {
-    LOG(WARNING) << "contains nan";
+    LOG(WARNING) << "ContainsNan detects nan";
     return true;
   }
 
   if (std::isinf(static_cast<float>(vec[0]))) {
-    LOG(WARNING) << "contains inf";
+    LOG(WARNING) << "ContainsNan detects inf";
   }
 
   return false;
