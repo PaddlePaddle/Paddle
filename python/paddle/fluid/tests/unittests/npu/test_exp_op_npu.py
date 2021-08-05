@@ -64,64 +64,10 @@ class TestExpNPUOP(OpTest):
         self.__class__.use_npu = True
 
 
-# class TestExpNet(unittest.TestCase):
-#     def _test(self, run_npu=True):
-#         main_prog = paddle.static.Program()
-#         startup_prog = paddle.static.Program()
-#         main_prog.random_seed = SEED
-#         startup_prog.random_seed = SEED
-#         np.random.seed(SEED)
+class TestExpNPUOPFloat64(TestExpNPUOP):
+    def init_dtype(self):
+        self.dtype = np.float64
 
-#         a_np = np.random.random(size=(32, 32)).astype('float32')
-#         b_np = np.random.random(size=(32, 32)).astype('float32')
-#         label_np = np.random.randint(2, size=(32, 1)).astype('int')
-
-#         with paddle.static.program_guard(main_prog, startup_prog):
-#             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
-#             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-#             label = paddle.static.data(
-#                 name="label", shape=[32, 1], dtype='int')
-
-#             c = paddle.multiply(a, b)
-#             d = paddle.exp(c)
-
-#             fc_1 = fluid.layers.fc(input=d, size=128)
-#             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-
-#             cost = fluid.layers.cross_entropy(input=prediction, label=label)
-#             loss = fluid.layers.reduce_mean(cost)
-#             sgd = fluid.optimizer.SGD(learning_rate=0.01)
-#             sgd.minimize(loss)
-
-#         if run_npu:
-#             place = paddle.NPUPlace(0)
-#         else:
-#             place = paddle.CPUPlace()
-
-#         exe = paddle.static.Executor(place)
-#         exe.run(startup_prog)
-
-#         print("Start run on {}".format(place))
-#         for epoch in range(100):
-
-#             pred_res, loss_res = exe.run(
-#                 main_prog,
-#                 feed={"a": a_np,
-#                       "b": b_np,
-#                       "label": label_np},
-#                 fetch_list=[prediction, loss])
-#             if epoch % 10 == 0:
-#                 print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-#                     epoch, pred_res[0], loss_res))
-
-#         return pred_res, loss_res
-
-#     def test_npu(self):
-#         cpu_pred, cpu_loss = self._test(False)
-#         npu_pred, npu_loss = self._test(True)
-
-#         self.assertTrue(np.allclose(npu_pred, cpu_pred))
-#         self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
 if __name__ == "__main__":
     unittest.main()

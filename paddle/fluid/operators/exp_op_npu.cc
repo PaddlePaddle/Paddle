@@ -75,15 +75,14 @@ class ExpGradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-// support float, double, int, int64
 REGISTER_OP_NPU_KERNEL(
     exp, ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, float>,
 
-    ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
+    ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, double>);
 
 REGISTER_OP_NPU_KERNEL(
     exp_grad, ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
 
-    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, int>);
+    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
