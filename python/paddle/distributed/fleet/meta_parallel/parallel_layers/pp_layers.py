@@ -249,7 +249,6 @@ class PipelineLayer(Layer):
                     group=comm['group'])
 
     def allreduce_shared_weight_gradients(self):
-        return
         for key, comm in self.shared_comm.items():
             param = getattr(self.shared_layers[key], comm['weight_attr'])
             # need use trace_op to allreduce weight
