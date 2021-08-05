@@ -136,7 +136,6 @@ REGISTER_OP_NPU_KERNEL(
     ops::EqualNPUKernel<plat::NPUDeviceContext, int16_t>,
     ops::EqualNPUKernel<plat::NPUDeviceContext, int>,
     ops::EqualNPUKernel<plat::NPUDeviceContext, int64_t>,
-    // ops::EqualNPUKernel<plat::NPUDeviceContext, std::string>,
     ops::EqualNPUKernel<plat::NPUDeviceContext, bool>);
 
 REGISTER_OP_NPU_KERNEL(
@@ -146,11 +145,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, int8_t>,
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, uint8_t>,
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, int16_t>,
-    // ops::NotEqualNPUKernel<plat::NPUDeviceContext, uint16_t>,
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, int>,
-    // ops::NotEqualNPUKernel<plat::NPUDeviceContext, uint32_t>,
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, int64_t>);
-// ops::NotEqualNPUKernel<plat::NPUDeviceContext, uint64_t>);
 
 REGISTER_OP_NPU_KERNEL(
     less_than, ops::LessThanNPUKernel<plat::NPUDeviceContext, plat::float16>,
@@ -159,11 +155,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::LessThanNPUKernel<plat::NPUDeviceContext, int8_t>,
     ops::LessThanNPUKernel<plat::NPUDeviceContext, uint8_t>,
     ops::LessThanNPUKernel<plat::NPUDeviceContext, int16_t>,
-    // ops::LessThanNPUKernel<plat::NPUDeviceContext, uint16_t>,
     ops::LessThanNPUKernel<plat::NPUDeviceContext, int>,
-    // ops::LessThanNPUKernel<plat::NPUDeviceContext, uint32_t>,
     ops::LessThanNPUKernel<plat::NPUDeviceContext, int64_t>);
-// ops::LessThanNPUKernel<plat::NPUDeviceContext, uint64_t>);
 
 REGISTER_OP_NPU_KERNEL(
     less_equal, ops::LessEqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
@@ -172,11 +165,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, int8_t>,
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, uint8_t>,
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, int16_t>,
-    // ops::LessEqualNPUKernel<plat::NPUDeviceContext, uint16_t>,
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, int>,
-    // ops::LessEqualNPUKernel<plat::NPUDeviceContext, uint32_t>,
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, int64_t>);
-// ops::LessEqualNPUKernel<plat::NPUDeviceContext, uint64_t);
 
 REGISTER_OP_NPU_KERNEL(
     greater_than,
@@ -186,11 +176,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::GreaterThanNPUKernel<plat::NPUDeviceContext, int8_t>,
     ops::GreaterThanNPUKernel<plat::NPUDeviceContext, uint8_t>,
     ops::GreaterThanNPUKernel<plat::NPUDeviceContext, int16_t>,
-    // ops::GreaterThanNPUKernel<plat::NPUDeviceContext, uint16_t>,
     ops::GreaterThanNPUKernel<plat::NPUDeviceContext, int>,
-    // ops::GreaterThanNPUKernel<plat::NPUDeviceContext, uint32_t>,
     ops::GreaterThanNPUKernel<plat::NPUDeviceContext, int64_t>);
-// ops::GreaterThanNPUKernel<plat::NPUDeviceContext, uint64_t>);
 
 REGISTER_OP_NPU_KERNEL(
     greater_equal,
@@ -199,8 +186,5 @@ REGISTER_OP_NPU_KERNEL(
     ops::GreaterEqualNPUKernel<plat::NPUDeviceContext, double>,
     ops::GreaterEqualNPUKernel<plat::NPUDeviceContext, int8_t>,
     ops::GreaterEqualNPUKernel<plat::NPUDeviceContext, uint8_t>,
-    // ops::GreaterEqualNPUKernel<plat::NPUDeviceContext, uint16_t>,
     ops::GreaterEqualNPUKernel<plat::NPUDeviceContext, int>,
-    // ops::GreaterEqualNPUKernel<plat::NPUDeviceContext, uint32_t>,
     ops::GreaterEqualNPUKernel<plat::NPUDeviceContext, int64_t>);
-// ops::GreaterEqualNPUKernel<plat::NPUDeviceContext, uint64_t>);
