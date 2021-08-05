@@ -66,6 +66,7 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
       tmp_y.Resize(in_y->dims());
       tmp_y.mutable_data<T>(context.GetPlace());
 
+      // use in_x to mul inside_weight for adapting the npu interface
       const auto& runner_x =
           NpuOpRunner("Mul", {*in_x, *inside_weight}, {tmp_x}, {});
       runner_x.Run(stream);
@@ -120,6 +121,8 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+    // npu interface needs x and y as input.(for get diff), it is equal to use
+    // diff to sub 0.
     Tensor tmp_zero(diff->type());
     tmp_zero.Resize(diff->dims());
     tmp_zero.mutable_data<T>(context.GetPlace());
@@ -142,6 +145,7 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
                     {{"sigma", sigma2}});
     runner_grad.Run(stream);
 
+    // mul weights.
     if (has_weight) {
       Tensor weight(inside_weight->type());
       weight.Resize(inside_weight->dims());
