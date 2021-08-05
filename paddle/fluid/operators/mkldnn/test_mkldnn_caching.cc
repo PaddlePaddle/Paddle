@@ -70,10 +70,15 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
 
   std::map<const std::string, int> num_inputs = {{"softmax", 1},
                                                  {"relu", 1},
+                                                 {"conv2d", 2},
                                                  {"elementwise_add", 2},
                                                  {"elementwise_mul", 2}};
 
   std::string first_input = inplace == true ? output_name : "x";
+
+  std::string first_input_var_name = (op_type == "conv2d") ? "Input" : "X";
+  std::string second_input_var_name = (op_type == "conv2d") ? "Filter" : "Y";
+  std::string output_var_name = (op_type == "conv2d") ? "Output" : "Out";
 
   std::vector<InputVars> input_names = {
       {first_input, scope.Var(first_input)->GetMutable<framework::LoDTensor>()},
@@ -113,68 +118,37 @@ void RunOperator(const platform::Place &place, const std::string &op_type,
 
   auto &pool = platform::DeviceContextPool::Instance();
 
-  auto op = num_inputs[op_type] > 1
-                ? framework::OpRegistry::CreateOp(
-                      op_type, {{"X", {first_input}}, {"Y", {"x1"}}},
-                      {{"Out", {output_name}}}, {{"use_mkldnn", {true}}})
-                : framework::OpRegistry::CreateOp(
-                      op_type, {{"X", {first_input}}}, {{"Out", {output_name}}},
-                      {{"use_mkldnn", {true}}});
+  auto op =
+      num_inputs[op_type] > 1
+          ? framework::OpRegistry::CreateOp(
+                op_type, {{first_input_var_name, {first_input}},
+                          {second_input_var_name, {"x1"}}},
+                {{output_var_name, {output_name}}}, {{"use_mkldnn", {true}}})
+          : framework::OpRegistry::CreateOp(
+                op_type, {{first_input_var_name, {first_input}}},
+                {{output_var_name, {output_name}}}, {{"use_mkldnn", {true}}});
 
   op->Run(scope, place);
   pool.Get(place)->Wait();
 }
 
 TEST(test_softmax_reuse_cache, cpu_place) {
-  framework::DDim dims({32, 64});
+  framework::DDim dims({1, 16, 32, 64});
   platform::CPUPlace p;
   CacheTester ct;
-  RunOperator<float>(p, "softmax", dims, "softmax_out");
-  RunOperator<float>(p, "softmax", dims, "softmax_out");
+  RunOperator<float>(p, "conv2d", dims, "conv_out");
+  RunOperator<float>(p, "conv2d", dims, "conv_out");
   PADDLE_ENFORCE_EQ(ct.Analyze(4), true,
                     platform::errors::InvalidArgument(
                         "Wrong number of cached oneDNN objects"));
 }
 
 TEST(test_softmax_noreuse_cache, cpu_place) {
-  framework::DDim dims({32, 64});
+  framework::DDim dims({1, 16, 32, 64});
   platform::CPUPlace p;
   CacheTester ct;
-  RunOperator<float>(p, "softmax", dims, "softmax_out");
-  RunOperator<float>(p, "softmax", dims, "softmax_out2");
-  PADDLE_ENFORCE_EQ(ct.Analyze(8), true,
-                    platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
-}
-
-TEST(test_softmax_inplace_cache, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
-  CacheTester ct;
-  RunOperator<float>(p, "softmax", dims, "softmax_out");
-  RunOperator<float>(p, "softmax", dims, "softmax_out", true);
-  PADDLE_ENFORCE_EQ(ct.Analyze(7), true,
-                    platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
-}
-
-TEST(test_relu_inplace_cache, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
-  CacheTester ct;
-  RunOperator<float>(p, "relu", dims, "relu_out");
-  RunOperator<float>(p, "relu", dims, "relu_out", true);
-  PADDLE_ENFORCE_EQ(ct.Analyze(7), true,
-                    platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
-}
-
-TEST(test_elementwise_add_reuse_cache, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
-  CacheTester ct;
-  RunOperator<float>(p, "elementwise_add", dims, "elementwise_add_out");
-  RunOperator<float>(p, "relu", dims, "elementwise_add_out", true);
+  RunOperator<float>(p, "conv2d", dims, "conv_out");
+  RunOperator<float>(p, "conv2d", dims, "conv_out2");
   PADDLE_ENFORCE_EQ(ct.Analyze(8), true,
                     platform::errors::InvalidArgument(
                         "Wrong number of cached oneDNN objects"));

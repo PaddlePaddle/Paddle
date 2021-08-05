@@ -33,12 +33,13 @@ using platform::to_void_cast;
 template <typename T>
 class SoftmaxMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, mkldnn::softmax_forward,
-                                      mkldnn::softmax_backward> {
+                                               mkldnn::softmax_backward> {
  public:
   SoftmaxMKLDNNHandler(const mkldnn::engine mkldnn_engine,
                        platform::Place cpu_place, const Tensor* input,
                        Tensor* output, const int axis)
-      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::softmax_forward, mkldnn::softmax_backward>(
+      : platform::MKLDNNHandlerNoCachingT<T, mkldnn::softmax_forward,
+                                          mkldnn::softmax_backward>(
             mkldnn_engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
         input->dims(), output->dims(),
@@ -49,7 +50,8 @@ class SoftmaxMKLDNNHandler
     auto md = memory::desc(softmax_tz, platform::MKLDNNGetDataType<T>(),
                            input->format());
 
-    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring, md, axis);
+    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring, md,
+                                            axis);
   }
 
   SoftmaxMKLDNNHandler(const framework::ExecutionContext& ctx,
@@ -58,25 +60,26 @@ class SoftmaxMKLDNNHandler
                        const Tensor* out_grad, Tensor* in_x_grad,
                        const std::string& unique_name)
       : platform::MKLDNNHandlerNoCachingT<T, mkldnn::softmax_forward,
-                                 mkldnn::softmax_backward>(mkldnn_engine, cpu_place) {
-      PADDLE_ENFORCE_EQ(
-          out_grad->dims(), in_x_grad->dims(),
-          platform::errors::InvalidArgument("The shape of softmax_grad's input "
-                                            "and output must be identical."));
+                                          mkldnn::softmax_backward>(
+            mkldnn_engine, cpu_place) {
+    PADDLE_ENFORCE_EQ(
+        out_grad->dims(), in_x_grad->dims(),
+        platform::errors::InvalidArgument("The shape of softmax_grad's input "
+                                          "and output must be identical."));
 
-      auto dims = out_grad->dims();  // input and output share the same shape
-      const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
-      auto softmax_tz = framework::vectorize<int64_t>(dims);
+    auto dims = out_grad->dims();  // input and output share the same shape
+    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
+    auto softmax_tz = framework::vectorize<int64_t>(dims);
 
-      auto data_softmax_md = MKLDNNMemDesc(
-          softmax_tz, platform::MKLDNNGetDataType<T>(), out->format());
-      auto diff_softmax_md = MKLDNNMemDesc(
-          softmax_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
+    auto data_softmax_md = MKLDNNMemDesc(
+        softmax_tz, platform::MKLDNNGetDataType<T>(), out->format());
+    auto diff_softmax_md = MKLDNNMemDesc(
+        softmax_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
 
-      this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
-                                              data_softmax_md, axis);
-      this->AcquireBackwardPrimitiveDescriptor(diff_softmax_md, data_softmax_md,
-                                               axis);
+    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
+                                            data_softmax_md, axis);
+    this->AcquireBackwardPrimitiveDescriptor(diff_softmax_md, data_softmax_md,
+                                             axis);
   }
 };
 
@@ -93,7 +96,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), input->dims().size());
 
-    SoftmaxMKLDNNHandler<T> handler(mkldnn_engine, ctx.GetPlace(), input, output, axis);
+    SoftmaxMKLDNNHandler<T> handler(mkldnn_engine, ctx.GetPlace(), input,
+                                    output, axis);
 
     auto softmax_src_memory_p = handler.AcquireSrcMemory(input);
     // For Inplace src and and dst are the same memory object
