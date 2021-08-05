@@ -7097,9 +7097,9 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
 
     .. math::
 
-        dice\_loss &= 1 - \\frac{2 * intersection\_area}{total\_area} \\\\
-                  &= \\frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\\\
-                  &= \\frac{(union\_area - intersection\_area)}{total\_area}
+        dice\_loss &= 1 - \frac{2 * intersection\_area}{total\_area} \\
+                  &= \frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\
+                  &= \frac{(union\_area - intersection\_area)}{total\_area}
 
 
     Parameters:
@@ -13065,8 +13065,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
 
     .. math::
 
-        Out = -label * \\log{(input + \\epsilon)}
-              - (1 - label) * \\log{(1 - input + \\epsilon)}
+        Out = -label * \log{(input + \epsilon)}
+              - (1 - label) * \log{(1 - input + \epsilon)}
 
     Args:
         input (Tensor|list):  A 2-D tensor with shape [N x 1], where N is the
@@ -14500,17 +14500,17 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     .. math::
 
-        dkernel[0] &= dilations[0] \\times (kernel\_sizes[0] - 1) + 1
+        dkernel[0] &= dilations[0] \times (kernel\_sizes[0] - 1) + 1
 
-        dkernel[1] &= dilations[1] \\times (kernel\_sizes[1] - 1) + 1
+        dkernel[1] &= dilations[1] \times (kernel\_sizes[1] - 1) + 1
 
-        hout &= \\frac{H + paddings[0] + paddings[2] - dkernel[0]}{strides[0]} + 1
+        hout &= \frac{H + paddings[0] + paddings[2] - dkernel[0]}{strides[0]} + 1
 
-        wout &= \\frac{W + paddings[1] + paddings[3] - dkernel[1]}{strides[1]} + 1
+        wout &= \frac{W + paddings[1] + paddings[3] - dkernel[1]}{strides[1]} + 1
 
-        Cout &= C \\times kernel\_sizes[0] \\times kernel\_sizes[1]
+        Cout &= C \times kernel\_sizes[0] \times kernel\_sizes[1]
 
-        Lout &= hout \\times wout
+        Lout &= hout \times wout
 
 
     Parameters:

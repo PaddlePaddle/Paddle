@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,34 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-
-namespace paddle {
-namespace platform {
-class MKLDNNDeviceContext;
-struct CPUPlace;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
-namespace operators {
+#include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
 
 using dnnl::memory;
 using dnnl::primitive;
-using framework::DataLayout;
-using framework::ExecutionContext;
-using platform::GetMKLDNNFormat;
-using platform::MKLDNNDeviceContext;
-using platform::MKLDNNGetDataType;
-using platform::to_void_cast;
-using Tensor = framework::Tensor;
+using paddle::framework::DataLayout;
+using paddle::framework::ExecutionContext;
+using paddle::framework::vectorize;
+using paddle::platform::GetMKLDNNFormat;
+using paddle::platform::MKLDNNDeviceContext;
+using paddle::platform::MKLDNNGetDataType;
+using paddle::platform::to_void_cast;
+using Tensor = paddle::framework::Tensor;
+
+namespace {
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
-static framework::Tensor FoldOuterDims(const Tensor& input) {
+static Tensor FoldOuterDims(const Tensor& input) {
   auto output = input;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
@@ -52,36 +42,38 @@ static framework::Tensor FoldOuterDims(const Tensor& input) {
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
 template <typename T>
-static framework::Tensor FoldFirstAndLastDims(
-    const MKLDNNDeviceContext& dev_ctx, const Tensor* input) {
-  auto input_dims = framework::vectorize(input->dims());
+static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext& dev_ctx,
+                                   const Tensor* input) {
+  auto input_dims = vectorize(input->dims());
   if (input_dims.size() != 3) {
     return *input;
   }
 
-  framework::Tensor output;
+  Tensor output;
   output.Resize({input_dims[1], input_dims[0], input_dims[2]});
 
-  auto output_dims = framework::vectorize(output.dims());
+  auto output_dims = vectorize(output.dims());
 
-  memory::data_type input_type = framework::ToMKLDNNDataType(input->type());
-  std::string key = platform::CreateKey(dev_ctx, input_dims, input->format(),
-                                        input->format(), input_type);
-  platform::ReorderMKLDNNHandler reorder_handler(output_dims, input->type(),
-                                                 input_type, dev_ctx,
-                                                 dev_ctx.GetEngine(), key);
+  memory::data_type input_type =
+      paddle::framework::ToMKLDNNDataType(input->type());
+  std::string key = paddle::platform::CreateKey(
+      dev_ctx, input_dims, input->format(), input->format(), input_type);
+  paddle::platform::ReorderMKLDNNHandler reorder_handler(
+      output_dims, input->type(), input_type, dev_ctx, dev_ctx.GetEngine(),
+      key);
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      memory::format_tag::abc, platform::to_void_cast(input->data<T>()));
+      memory::format_tag::abc,
+      paddle::platform::to_void_cast(input->data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       &output, memory::format_tag::bac, dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                   reorder_dst_memory_p);
 
-  platform::RecordEvent record_reorder("int_reorder",
-                                       platform::EventRole::kUniqueOp);
+  paddle::platform::RecordEvent record_reorder(
+      "int_reorder", paddle::platform::EventRole::kUniqueOp);
 
-  auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+  auto& astream = MKLDNNDeviceContext::tls().get_stream();
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 
@@ -90,19 +82,23 @@ static framework::Tensor FoldFirstAndLastDims(
 }
 
 template <typename T>
-class MatMulMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::matmul> {
+class MatMulMKLDNNHandler
+    : public paddle::platform::MKLDNNHandlerT<T, dnnl::matmul> {
  public:
   MatMulMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
-                      const mkldnn::engine engine, platform::Place cpu_place,
-                      Tensor* x, bool trans_x, Tensor* y, bool trans_y,
-                      Tensor* out, float scale, const std::string& uniq_name)
-      : platform::MKLDNNHandlerT<T, dnnl::matmul>(
+                      const mkldnn::engine engine,
+                      paddle::platform::Place cpu_place, Tensor* x,
+                      bool trans_x, Tensor* y, bool trans_y, Tensor* out,
+                      float scale, const std::string& uniq_name)
+      : paddle::platform::MKLDNNHandlerT<T, dnnl::matmul>(
             dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
-                                uniq_name)) {
+            paddle::platform::CreateKey(dev_ctx, vectorize(x->dims()),
+                                        uniq_name)) {
     if (!this->isCached()) {
-      auto mat_dim_x = math::CreateMatrixDescriptor(x->dims(), 0, trans_x);
-      auto mat_dim_y = math::CreateMatrixDescriptor(y->dims(), 0, trans_y);
+      auto mat_dim_x = paddle::operators::math::CreateMatrixDescriptor(
+          x->dims(), 0, trans_x);
+      auto mat_dim_y = paddle::operators::math::CreateMatrixDescriptor(
+          y->dims(), 0, trans_y);
 
       memory::dim x_bs = mat_dim_x.batch_size_;
       memory::dim y_bs = mat_dim_y.batch_size_;
@@ -149,20 +145,21 @@ constexpr bool IsInt8() {
 
 template <typename T>
 constexpr bool IsBfloat16() {
-  return std::is_same<T, platform::bfloat16>::value;
+  return std::is_same<T, paddle::platform::bfloat16>::value;
 }
 
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
 // original x_dim is returned.
-static framework::DDim RowMatrixDimsFromVector(const framework::DDim& x_dim) {
-  return x_dim.size() > 1 ? x_dim : framework::make_ddim({1, x_dim[0]});
+static paddle::framework::DDim RowMatrixDimsFromVector(
+    const paddle::framework::DDim& x_dim) {
+  return x_dim.size() > 1 ? x_dim : paddle::framework::make_ddim({1, x_dim[0]});
 }
 
 // Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
 // original y_dim is returned.
-static framework::DDim ColumnMatrixDimsFromVector(
-    const framework::DDim& y_dim) {
-  return y_dim.size() > 1 ? y_dim : framework::make_ddim({y_dim[0], 1});
+static paddle::framework::DDim ColumnMatrixDimsFromVector(
+    const paddle::framework::DDim& y_dim) {
+  return y_dim.size() > 1 ? y_dim : paddle::framework::make_ddim({y_dim[0], 1});
 }
 
 /**
@@ -172,7 +169,7 @@ static framework::DDim ColumnMatrixDimsFromVector(
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorToMatrixSequence(
-    framework::Tensor* x, const math::MatDescriptor& descriptor) {
+    Tensor* x, const paddle::operators::math::MatDescriptor& descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -200,14 +197,14 @@ static void ReshapeTensorToMatrixSequence(
  * If any of `X` and `Y` has batch size BatchSize, the out will have the
  * BatchSize.
  */
-static void ReshapeXYOutToMatrixSequence(framework::Tensor* x,
-                                         framework::Tensor* y,
-                                         framework::Tensor* out, bool trans_x,
-                                         bool trans_y) {
+static void ReshapeXYOutToMatrixSequence(Tensor* x, Tensor* y, Tensor* out,
+                                         bool trans_x, bool trans_y) {
   auto x_dim = RowMatrixDimsFromVector(x->dims());
   auto y_dim = ColumnMatrixDimsFromVector(y->dims());
-  auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, trans_x);
-  auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  auto mat_dim_x =
+      paddle::operators::math::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y =
+      paddle::operators::math::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
@@ -244,8 +241,7 @@ class MatMulFactory {
   };
 
   void SetDNNLEngine(const ExecutionContext& ctx) {
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     engine_ = dev_ctx.GetEngine();
   }
 
@@ -263,19 +259,19 @@ class MatMulFactory {
 
     auto axis_set = std::set<int>(axis.begin(), axis.end());
     PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
-                      platform::errors::InvalidArgument(
+                      paddle::platform::errors::InvalidArgument(
                           "In an axis array, elements must be unique."));
 
-    PADDLE_ENFORCE_EQ(
-        in_rank, axis_size,
-        platform::errors::InvalidArgument("The input dimension's size "
-                                          "should be equal to the axis's size. "
-                                          "But received dimension is %d, "
-                                          "axis's size is %d",
-                                          in_rank, axis_size));
+    PADDLE_ENFORCE_EQ(in_rank, axis_size,
+                      paddle::platform::errors::InvalidArgument(
+                          "The input dimension's size "
+                          "should be equal to the axis's size. "
+                          "But received dimension is %d, "
+                          "axis's size is %d",
+                          in_rank, axis_size));
 
     PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
-                      platform::errors::InvalidArgument(
+                      paddle::platform::errors::InvalidArgument(
                           "Axis values must be ranging from 0 to (dims - 1)."));
 
     std::vector<int64_t> new_x(x.size());
@@ -285,8 +281,8 @@ class MatMulFactory {
     return new_x;
   }
 
-  std::pair<math::MatDescriptor, memory::dims> GetInputDimsAndStrides(
-      const ExecutionContext& ctx, std::string input_name) {
+  std::pair<paddle::operators::math::MatDescriptor, memory::dims>
+  GetInputDimsAndStrides(const ExecutionContext& ctx, std::string input_name) {
     auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
     auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
     auto input_dims = ctx.Input<Tensor>(input_name)->dims();
@@ -297,9 +293,10 @@ class MatMulFactory {
 
     auto& MatrixDimsFromVector = input_name == "X" ? RowMatrixDimsFromVector
                                                    : ColumnMatrixDimsFromVector;
-    math::MatDescriptor mat_dim =
-        math::CreateMatrixDescriptor(MatrixDimsFromVector(new_dims), 0,
-                                     ctx.Attr<bool>("transpose_" + input_name));
+    paddle::operators::math::MatDescriptor mat_dim =
+        paddle::operators::math::CreateMatrixDescriptor(
+            MatrixDimsFromVector(new_dims), 0,
+            ctx.Attr<bool>("transpose_" + input_name));
 
     memory::dims strides;
     if (!shape.empty()) {
@@ -340,17 +337,17 @@ class MatMulFactory {
   }
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
-    math::MatDescriptor mat_dim_x;
+    paddle::operators::math::MatDescriptor mat_dim_x;
     memory::dims strides_x;
     std::tie(mat_dim_x, strides_x) = GetInputDimsAndStrides(ctx, "X");
-    math::MatDescriptor mat_dim_y;
+    paddle::operators::math::MatDescriptor mat_dim_y;
     memory::dims strides_y;
     std::tie(mat_dim_y, strides_y) = GetInputDimsAndStrides(ctx, "Y");
 
     auto x_bs = mat_dim_x.batch_size_;
     auto y_bs = mat_dim_y.batch_size_;
     PADDLE_ENFORCE_EQ(x_bs > 0 && y_bs > 0 && x_bs != y_bs, false,
-                      platform::errors::InvalidArgument(
+                      paddle::platform::errors::InvalidArgument(
                           "If batch sizes of X and Y are positive,"
                           "they have to be equal."));
 
@@ -448,10 +445,10 @@ class MatMulFactory {
   }
 
   void SetOutputFormat(const ExecutionContext& ctx) {
-    using platform::MKLDNNFormatForSize;
+    using paddle::platform::MKLDNNFormatForSize;
     auto* out = ctx.Output<Tensor>("Out");
     auto format =
-        MKLDNNFormatForSize(out->dims().size(), MKLDNNMemoryFormat::nchw);
+        MKLDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
     out->set_format(format);
     out->set_layout(DataLayout::kMKLDNN);
   }
@@ -495,8 +492,8 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
   const auto& out_name = ctx.OutputName("Out");
   const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const auto batch_size = ctx.Input<Tensor>("X")->dims()[0];
-  std::string key = platform::CreateKey(dev_ctx, batch_size, out_name);
-  key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+  std::string key = paddle::platform::CreateKey(dev_ctx, batch_size, out_name);
+  key = paddle::platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto factory =
       std::static_pointer_cast<MatMulFactory<XT, YT, OT>>(dev_ctx.GetBlob(key));
@@ -529,161 +526,170 @@ static void ExecuteMatMul(const ExecutionContext& ctx) {
 }
 
 template <typename T>
-class DNNLMatMulKernel : public framework::OpKernel<T> {
+class DNNLMatMulKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const ExecutionContext& ctx) const override {
     if (ctx.HasAttr("head_number")) {
       PADDLE_ENFORCE_EQ(
           ctx.Attr<int>("head_number"), 1,
-          platform::errors::Unimplemented(
+          paddle::platform::errors::Unimplemented(
               "DNNL matmul doesn't support multiple heads. Expected "
               "head_number=1. But received `head_number` is %d",
               ctx.Attr<int>("head_number")));
     }
-    platform::MKLDNNDeviceContext::tls().log_lib_version();
+    MKLDNNDeviceContext::tls().log_lib_version();
     ExecuteMatMul<T, T>(ctx);
   }
 };
 
+}  // anonymous namespace
+
+namespace paddle {
+namespace operators {
+
 template <typename T>
-class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const ExecutionContext& ctx) const override {
-    if (ctx.HasAttr("head_number")) {
-      PADDLE_ENFORCE_EQ(
-          ctx.Attr<int>("head_number"), 1,
-          platform::errors::Unimplemented(
-              "DNNL matmul doesn't support multiple heads. Expected "
-              "head_number=1. But received `head_number` is %d",
-              ctx.Attr<int>("head_number")));
-    }
-    RunKernel<T>(ctx);
+void MatMulGradMKLDNNKernel<T>::Compute(const ExecutionContext& ctx) const {
+  if (ctx.HasAttr("head_number")) {
+    PADDLE_ENFORCE_EQ(
+        ctx.Attr<int>("head_number"), 1,
+        platform::errors::Unimplemented(
+            "DNNL matmul doesn't support multiple heads. Expected "
+            "head_number=1. But received `head_number` is %d",
+            ctx.Attr<int>("head_number")));
+  }
+  RunKernel(ctx);
+}
+
+template <typename T>
+void MatMulGradMKLDNNKernel<T>::ExecuteMatMulGrad(
+    const ExecutionContext& ctx, const MKLDNNDeviceContext& dev_ctx,
+    const mkldnn::engine& engine, Tensor* x, bool trans_x,
+    bool is_fold_init_dims_x, Tensor* y, bool trans_y, bool is_fold_init_dims_y,
+    Tensor* out, int execution_number) const {
+  // gradient is calculated in a different way when broadcasting is used
+  bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
+                      out->dims().size() == 2;
+
+  Tensor x_combined, y_combined;
+  if (!need_combine) {
+    x_combined = *x;
+    y_combined = *y;
+  } else {
+    x_combined = is_fold_init_dims_x ? FoldOuterDims(*x)
+                                     : FoldFirstAndLastDims<T>(dev_ctx, x);
+    y_combined = is_fold_init_dims_y ? FoldOuterDims(*y)
+                                     : FoldFirstAndLastDims<T>(dev_ctx, y);
   }
 
- private:
-  void ExecuteMatMulGrad(const ExecutionContext& ctx,
-                         const MKLDNNDeviceContext& dev_ctx,
-                         const mkldnn::engine& engine, Tensor* x, bool trans_x,
-                         bool is_fold_init_dims_x, Tensor* y, bool trans_y,
-                         bool is_fold_init_dims_y, Tensor* out,
-                         int execution_number) const {
-    // gradient is calculated in a different way when broadcasting is used
-    bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
-                        out->dims().size() == 2;
+  float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
 
-    Tensor x_combined, y_combined;
-    if (!need_combine) {
-      x_combined = *x;
-      y_combined = *y;
-    } else {
-      x_combined = is_fold_init_dims_x ? FoldOuterDims(*x)
-                                       : FoldFirstAndLastDims<T>(dev_ctx, x);
-      y_combined = is_fold_init_dims_y ? FoldOuterDims(*y)
-                                       : FoldFirstAndLastDims<T>(dev_ctx, y);
-    }
+  MatMulMKLDNNHandler<T> handler(dev_ctx, engine, ctx.GetPlace(), &x_combined,
+                                 trans_x, &y_combined, trans_y, out, alpha,
+                                 ctx.InputName(framework::GradVarName("Out")) +
+                                     std::to_string(execution_number));
 
-    MatMulMKLDNNHandler<T> handler(
-        dev_ctx, engine, ctx.GetPlace(), &x_combined, trans_x, &y_combined,
-        trans_y, out, ctx.Attr<float>("alpha"),
-        ctx.InputName(framework::GradVarName("Out")) +
-            std::to_string(execution_number));
+  const auto src_memory_p = handler.AcquireSrcMemory(&x_combined);
+  const auto weights_memory_p = handler.AcquireWeightsMemory(&y_combined);
+  const auto dst_memory_p = handler.AcquireDstMemory(out);
 
-    const auto src_memory_p = handler.AcquireSrcMemory(&x_combined);
-    const auto weights_memory_p = handler.AcquireWeightsMemory(&y_combined);
-    const auto dst_memory_p = handler.AcquireDstMemory(out);
+  auto matmul_p = handler.AcquireForwardPrimitive();
 
-    auto matmul_p = handler.AcquireForwardPrimitive();
+  std::unordered_map<int, dnnl::memory> matmul_args = {
+      {DNNL_ARG_SRC, *src_memory_p},
+      {DNNL_ARG_WEIGHTS, *weights_memory_p},
+      {DNNL_ARG_DST, *dst_memory_p}};
 
-    std::unordered_map<int, dnnl::memory> matmul_args = {
-        {DNNL_ARG_SRC, *src_memory_p},
-        {DNNL_ARG_WEIGHTS, *weights_memory_p},
-        {DNNL_ARG_DST, *dst_memory_p}};
+  auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+  matmul_p->execute(astream, matmul_args);
+  astream.wait();
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    matmul_p->execute(astream, matmul_args);
-    astream.wait();
+  out->set_layout(framework::DataLayout::kMKLDNN);
+  out->set_format(platform::GetMKLDNNFormat(
+      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims()))));
+}
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(
-        framework::vectorize<int64_t>(out->dims()))));
-  }
+template <typename T>
+void MatMulGradMKLDNNKernel<T>::RunKernel(const ExecutionContext& ctx) const {
+  const auto& dev_ctx =
+      ctx.template device_context<platform::MKLDNNDeviceContext>();
+  const auto& onednn_engine = dev_ctx.GetEngine();
 
-  template <typename Tout = T>
-  void RunKernel(const ExecutionContext& ctx) const {
-    const auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
-    const auto& onednn_engine = dev_ctx.GetEngine();
+  auto x = *ctx.Input<Tensor>("X");
+  auto y = *ctx.Input<Tensor>("Y");
+  auto dout = *ctx.Input<Tensor>(framework::GradVarName("Out"));
+  auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+  auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    auto x = *ctx.Input<Tensor>("X");
-    auto y = *ctx.Input<Tensor>("Y");
-    auto dout = *ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+  bool transpose_x = ctx.HasAttr("transpose_X") ? ctx.Attr<bool>("transpose_X")
+                                                : ctx.Attr<bool>("trans_x");
+  bool transpose_y = ctx.HasAttr("transpose_Y") ? ctx.Attr<bool>("transpose_Y")
+                                                : ctx.Attr<bool>("trans_y");
 
-    bool transpose_x = ctx.Attr<bool>("transpose_X");
-    bool transpose_y = ctx.Attr<bool>("transpose_Y");
+  ReshapeXYOutToMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
 
-    ReshapeXYOutToMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
-    framework::DDim dx_dims;
-    if (dx) {
-      dx_dims = dx->dims();
-      if (dx_dims != x.dims()) {
-        dx->Resize(x.dims());
-      }
-    }
-
-    framework::DDim dy_dims;
-    if (dy) {
-      dy_dims = dy->dims();
-      if (dy_dims != y.dims()) {
-        dy->Resize(y.dims());
-      }
-    }
-
-    if (transpose_x && transpose_y) {
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &y, true, true,
-                              &dout, true, false, dx, 0);
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, true, true,
-                              &x, true, false, dy, 1);
-    } else if (transpose_x) {
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &y, false, false,
-                              &dout, true, false, dx, 0);
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &x, false, false,
-                              &dout, false, true, dy, 1);
-    } else if (transpose_y) {
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, false, false,
-                              &y, false, true, dx, 0);
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, true, true,
-                              &x, false, true, dy, 1);
-    } else {
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, false, false,
-                              &y, true, false, dx, 0);
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &x, true, true,
-                              &dout, false, true, dy, 1);
-    }
-
-    if (dx) {
-      if (dx_dims != x.dims()) {
-        dx->Resize(dx_dims);
-      }
-    }
-    if (dy) {
-      if (dy_dims != y.dims()) {
-        dy->Resize(dy_dims);
-      }
+  framework::DDim dx_dims;
+  if (dx) {
+    dx_dims = dx->dims();
+    if (dx_dims != x.dims()) {
+      dx->Resize(x.dims());
     }
   }
-};
+
+  framework::DDim dy_dims;
+  if (dy) {
+    dy_dims = dy->dims();
+    if (dy_dims != y.dims()) {
+      dy->Resize(y.dims());
+    }
+  }
+
+  if (transpose_x && transpose_y) {
+    this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &y, true, true, &dout,
+                            true, false, dx, 0);
+    this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, true, true, &x,
+                            true, false, dy, 1);
+  } else if (transpose_x) {
+    this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &y, false, false,
+                            &dout, true, false, dx, 0);
+    this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &x, false, false,
+                            &dout, false, true, dy, 1);
+  } else if (transpose_y) {
+    this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, false, false,
+                            &y, false, true, dx, 0);
+    this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, true, true, &x,
+                            false, true, dy, 1);
+  } else {
+    this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, false, false,
+                            &y, true, false, dx, 0);
+    this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &x, true, true, &dout,
+                            false, true, dy, 1);
+  }
+
+  if (dx) {
+    if (dx_dims != x.dims()) {
+      dx->Resize(dx_dims);
+      dx->set_format(x.format());
+    }
+  }
+  if (dy) {
+    if (dy_dims != y.dims()) {
+      dy->Resize(dy_dims);
+      dy->set_format(y.format());
+    }
+  }
+}
+
+template class MatMulGradMKLDNNKernel<float>;
+template class MatMulGradMKLDNNKernel<paddle::platform::bfloat16>;
 
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(matmul, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::DNNLMatMulKernel<float>,
-                   ops::DNNLMatMulKernel<paddle::platform::bfloat16>,
-                   ops::DNNLMatMulKernel<int8_t>,
-                   ops::DNNLMatMulKernel<uint8_t>);
+                   DNNLMatMulKernel<float>,
+                   DNNLMatMulKernel<paddle::platform::bfloat16>,
+                   DNNLMatMulKernel<int8_t>, DNNLMatMulKernel<uint8_t>);
 
 REGISTER_OP_KERNEL(matmul_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::MatMulGradMKLDNNKernel<float>,
