@@ -39,13 +39,14 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
+    // out_diff = in_x - in_y
     const auto& runner1 = NpuOpRunner("Sub", {*in_x, *in_y}, {*out_diff}, {});
     runner1.Run(stream);
 
     Tensor no_reduce_loss(in_x->type());
     no_reduce_loss.Resize(in_x->dims());
     no_reduce_loss.mutable_data<T>(context.GetPlace());
-    // multiply inside weight
+    // multiply inside weight. tmp_diff = out_diff * inside_weight
     if (has_weight) {
       Tensor tmp_diff(out_diff->type());
       tmp_diff.Resize(out_diff->dims());
@@ -90,6 +91,7 @@ class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
       const auto& runner4 =
           NpuOpRunner("Mul", {no_reduce_loss, *outside_weight}, {tmp_loss}, {});
       runner4.Run(stream);
+      // out_loss[B,M] => [B,1] (B is batch.)
       const auto& runner5 =
           NpuOpRunner("ReduceSumD", {tmp_loss}, {*out_loss},
                       {{"axes", std::vector<int>{1}}, {"keep_dims", true}});
@@ -132,6 +134,7 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
     Tensor grad(diff->type());
     grad.Resize(diff->dims());
     grad.mutable_data<T>(context.GetPlace());
+    // og([B,1]) broadcast to [B,M] for adapting the npu interface.
     const auto& runner_broad =
         NpuOpRunner("BroadcastToD", {*og}, {grad},
                     {{"shape", framework::vectorize(diff->dims())}});
@@ -166,6 +169,7 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
           context.template device_context<paddle::platform::NPUDeviceContext>(),
           &gradient);
     }
+    // outx_grad = gradient
     if (outx_grad) {
       outx_grad->mutable_data<T>(context.GetPlace());
       framework::TensorCopy(
@@ -174,6 +178,7 @@ class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
           outx_grad);
     }
 
+    // outy_grad = -1 * gradient
     if (outy_grad) {
       outy_grad->mutable_data<T>(context.GetPlace());
       Tensor coeff(framework::proto::VarType::FP32);
