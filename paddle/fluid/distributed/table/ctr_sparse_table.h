@@ -26,9 +26,7 @@
 #include "Eigen/Dense"
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_table.h"
-//#include "paddle/fluid/distributed/table/depends/initializers.h"
 #include "paddle/fluid/distributed/table/depends/ctr_large_scale_kv.h"
-//#include "paddle/fluid/distributed/table/depends/sparse.h"
 #include "paddle/fluid/string/string_helper.h"
 
 #define PSERVER_SAVE_SUFFIX ".shard"
@@ -54,8 +52,6 @@ class CtrSparseTable : public SparseTable {
   virtual int32_t initialize();
   virtual int32_t initialize_shard() { return 0; }
   virtual int32_t initialize_value();
-  //virtual int32_t initialize_optimizer();
-  //virtual int32_t initialize_recorder();
 
   virtual int32_t load(const std::string& path, const std::string& param);
 
@@ -63,20 +59,6 @@ class CtrSparseTable : public SparseTable {
   
   int32_t load_local_fs(const std::string& path, const std::string& param);
   int32_t save_local_fs(const std::string& path, const std::string& param, const std::string& prefix);
-
-  //TODO
-  //int64_t SaveValueToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
-  //                        std::shared_ptr<::ThreadPool> pool, const int mode,
-  //                        int shard_id);
-  //TODO
-  //virtual void ProcessALine(const std::vector<std::string>& columns,
-  //                          const Meta& meta, const int64_t id,
-  //                          std::vector<std::vector<float>>* values);
-  //TODO
-  //virtual int64_t LoadFromText(
-  //    const std::string& valuepath, const std::string& metapath,
-  //    const int pserver_id, const int pserver_num, const int local_shard_num,
-  //    std::vector<std::shared_ptr<ValueBlock>>* blocks);
 
   //TODO: need this?
   virtual std::pair<int64_t, int64_t> print_table_stat();
@@ -90,8 +72,6 @@ class CtrSparseTable : public SparseTable {
 
   virtual int32_t push_sparse(const uint64_t* keys, const float** values,
                               size_t num);
-  //TODO: need this?
-  //virtual int32_t set_global_lr(float* lr) override;
 
   virtual int32_t flush();
   virtual int32_t shrink(const std::string& param);

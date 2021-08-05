@@ -24,6 +24,7 @@
 namespace paddle {
 namespace string {
 
+/*
 inline size_t count_spaces(const char* s) {
   size_t count = 0;
 
@@ -42,7 +43,7 @@ inline size_t count_nonspaces(const char* s) {
   }
 
   return count;
-}
+}*/
 
 // remove leading and tailing spaces
 std::string trim_spaces(const std::string& str) {
@@ -74,7 +75,8 @@ std::string erase_spaces(const std::string& str) {
   return result;
 }
 
-inline int str_to_float(const char* str, float* v) {
+/*
+int str_to_float(const char* str, float* v) {
   const char* head = str;
   char* cursor = NULL;
   int index = 0;
@@ -86,7 +88,7 @@ inline int str_to_float(const char* str, float* v) {
     head = cursor;
   }
   return index;
-}
+}*/
 
 // A helper class for reading lines from file.
 // A line buffer is maintained. It

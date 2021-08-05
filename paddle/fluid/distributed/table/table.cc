@@ -69,13 +69,10 @@ int32_t Table::initialize(const TableParameter &config,
     return -1;
   }
 
-  //TODO: check fs_config exists to compatible with table do not use afs_client
-  //TODO: include
   if (_afs_client.initialize(fs_config) != 0) {
     LOG(WARNING) << "Table fs_client initialize failed"; 
-    return -1; 
+    //return -1; 
   }  
-
   return initialize();
 }
 
@@ -85,6 +82,7 @@ int32_t Table::initialize_accessor() {
                << _config.table_id();
     return -1;
   }
+  
   auto *accessor = CREATE_PSCORE_CLASS(
       ValueAccessor,
       _config.accessor().accessor_class()) if (accessor == NULL) {

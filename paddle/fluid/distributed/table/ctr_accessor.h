@@ -735,17 +735,23 @@ class CtrCommonAccessor : public ValueAccessor {
       }
       return 0.0;
     }
+
   private:
-    float show_click_score(float show, float click);
+//    float show_click_score(float show, float click);
 
   private:
     //std::shared_ptr<CtrSparseValueSGDRule> _embed_sgd_rule;
     //std::shared_ptr<CtrSparseValueSGDRule> _embedx_sgd_rule;
-    CtrSparseValueSGDRule* _embed_sgd_rule;
-    CtrSparseValueSGDRule* _embedx_sgd_rule;
-    CtrCommonFeatureValue common_feature_value;
+//    CtrSparseValueSGDRule* _embed_sgd_rule;
+//    CtrSparseValueSGDRule* _embedx_sgd_rule;
+//    CtrCommonFeatureValue common_feature_value;
     float         _show_click_decay_rate;
     int32_t      _ssd_unseenday_threshold;
+  public:
+    CtrCommonFeatureValue common_feature_value;
+    float show_click_score(float show, float click);
+    CtrSparseValueSGDRule* _embed_sgd_rule;
+    CtrSparseValueSGDRule* _embedx_sgd_rule;
 };
 
 }

@@ -6,9 +6,6 @@
 #include "paddle/fluid/string/string_helper.h"
 
 
-
-//TODO: 上面一坨引用
-
 namespace paddle {
 namespace distributed {
 
@@ -86,24 +83,6 @@ bool CtrDoubleUnitAccessor::shrink(float* value) {
     }
     return false;
 }
-
-/*
-bool CtrDoubleUnitAccessor::save_ssd(float* value) {
-    if (unit_feature_value.unseen_days(value) > _ssd_unseenday_threshold) {
-        return true;
-    }
-    return false;
-}
-bool CtrDoubleUnitAccessor::save_cache(
-        float* value, int param, double global_cache_threshold) {
-    auto base_threshold = _config.downpour_accessor_param().base_threshold();
-    auto delta_keep_days = _config.downpour_accessor_param().delta_keep_days();
-    if (show_click_score(unit_feature_value.show(value), unit_feature_value.click(value)) >= base_threshold
-        && unit_feature_value.unseen_days(value) <= delta_keep_days) {
-        return unit_feature_value.show(value) > global_cache_threshold;
-    }
-    return false;
-}*/
 
 bool CtrDoubleUnitAccessor::save(float* value, int param) {
     //auto base_threshold = _config.downpour_accessor_param().base_threshold();
@@ -447,25 +426,6 @@ bool CtrUnitAccessor::shrink(float* value) {
     return false;
 }
 
-/*
-bool CtrUnitAccessor::save_ssd(float* value) {
-    if (unit_feature_value.unseen_days(value) > _ssd_unseenday_threshold) {
-        return true;
-    }
-    return false;
-}
-
-bool CtrUnitAccessor::save_cache(
-        float* value, int param, double global_cache_threshold) {
-    auto base_threshold = _config.downpour_accessor_param().base_threshold();
-    auto delta_keep_days = _config.downpour_accessor_param().delta_keep_days();
-    if (show_click_score(unit_feature_value.show(value), unit_feature_value.click(value)) >= base_threshold
-        && unit_feature_value.unseen_days(value) <= delta_keep_days) {
-        return unit_feature_value.show(value) > global_cache_threshold;
-    }
-    return false;
-}*/
-
 bool CtrUnitAccessor::save(float* value, int param) {
     //auto base_threshold = _config.downpour_accessor_param().base_threshold();
     //auto delta_threshold = _config.downpour_accessor_param().delta_threshold();
@@ -713,14 +673,12 @@ int CtrUnitAccessor::parse_from_string(const std::string& str, float* value) {
 // for common begin
 int CtrCommonAccessor::initialize() {
     auto name = _config.embed_sgd_param().name();
-    //TODO
     //_embed_sgd_rule = global_sparse_value_sgd_rule_factory().produce(name);
     _embed_sgd_rule = CREATE_PSCORE_CLASS(CtrSparseValueSGDRule, name);
     _embed_sgd_rule->load_config(_config.embed_sgd_param(), 1);
 
     name = _config.embedx_sgd_param().name();
     //_embedx_sgd_rule = global_sparse_value_sgd_rule_factory().produce(name);
-    
     _embedx_sgd_rule = CREATE_PSCORE_CLASS(CtrSparseValueSGDRule, name);
     _embedx_sgd_rule->load_config(_config.embedx_sgd_param(), _config.embedx_dim());
    

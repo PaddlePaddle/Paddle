@@ -41,7 +41,6 @@ int32_t CtrSparseTable::initialize() {
   for (int i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
-
   initialize_value();
   return 0;
 }
@@ -67,7 +66,6 @@ int32_t CtrSparseTable::load(const std::string& path,
   if (file_list.size() != expect_shard_num) {
     LOG(WARNING) << "CtrSparseTable file_size:" << file_list.size()
                  << " not equal to expect_shard_num:" << expect_shard_num;
-        //TODO load
     return -1;
   }
   if (file_list.size() == 0) {
@@ -77,9 +75,9 @@ int32_t CtrSparseTable::load(const std::string& path,
 
   size_t file_start_idx = _shard_idx * shard_values_.size();
 
-  //int load_param = atoi(param.c_str());
   size_t feature_value_size = _value_accesor->size() / sizeof(float);
-  int thread_num = shard_values_.size() < 15 ? shard_values_.size() : 15;
+  //TODO: multi-thread
+  //int thread_num = shard_values_.size() < 15 ? shard_values_.size() : 15;
   //omp_set_num_threads(thread_num);
   //#pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < task_pool_size_; ++ i) {
@@ -141,7 +139,6 @@ int32_t CtrSparseTable::load_local_fs(const std::string& path,
   if (file_list.size() != expect_shard_num) {
     LOG(WARNING) << "CtrSparseTable file_size:" << file_list.size()
                  << " not equal to expect_shard_num:" << expect_shard_num;
-        //TODO load
     return -1;
   }
   if (file_list.size() == 0) {
@@ -151,24 +148,11 @@ int32_t CtrSparseTable::load_local_fs(const std::string& path,
 
   size_t file_start_idx = _shard_idx * shard_values_.size();
 
-  //int load_param = atoi(param.c_str());
   size_t feature_value_size = _value_accesor->size() / sizeof(float);
   //int thread_num = shard_values_.size() < 15 ? shard_values_.size() : 15;
   //omp_set_num_threads(thread_num);
   //#pragma omp parallel for schedule(dynamic)
-  
-  //std::ifstream file(valuepath);
-  //std::string line;
-
-  //while (std::getline(file, line)) 
-
-
   for (size_t i = 0; i < task_pool_size_; ++ i) {
-    //FsChannelConfig channel_config;
-    //channel_config.path = file_list[file_start_idx + i];
-    //channel_config.converter = _value_accesor->converter(load_param).converter;
-    //channel_config.deconverter = _value_accesor->converter(load_param).deconverter;
-
     bool is_read_failed = false;
     int retry_num = 0;
     int err_no = 0;
@@ -176,7 +160,6 @@ int32_t CtrSparseTable::load_local_fs(const std::string& path,
       is_read_failed = false;
       err_no = 0;
       std::string line_data;
-      //auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
       std::ifstream file(file_list[file_start_idx + i]);
       char *end = NULL;
       auto& shard = shard_values_[i];
@@ -310,6 +293,7 @@ int32_t CtrSparseTable::save_local_fs(const std::string& dirname,
           std::string format_value = _value_accesor->
             parse_to_string(value.second->data(), value.second->size());
           std::string out_line = paddle::string::format_string("%lu %s\n", value.first, format_value.c_str());
+          //LOG(INFO) << out_line.c_str();
           os.write(out_line.c_str(), sizeof(char) * out_line.size());
           ++ feasign_cnt;
         }
@@ -377,8 +361,6 @@ int32_t CtrSparseTable::pull_sparse(float* pull_values,
             for (int mf_idx = data_size; mf_idx < value_size; ++mf_idx) {
               data_buffer[mf_idx] = 0.0;
             }
-            //int pull_data_idx = keys[i].second;
-            //float* select_data = pull_values + pull_data_idx * select_value_size;
             float* select_data = pull_values + select_value_size * offset;
             _value_accesor->select(&select_data, (const float**)&data_buffer_ptr, 1);
           }
@@ -424,7 +406,6 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys,
 
           for (auto& offset : offsets) {
             uint64_t key = keys[offset];
-            //uint64_t push_data_idx = keys[i].second;
             const float* update_data = values + offset * update_value_col;
             auto itr = local_shard->Find(key);
             if (itr == local_shard->end()) {
@@ -447,6 +428,7 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys,
             } else {//拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
               memcpy(data_buffer_ptr, value_data, value_size * sizeof(float));
               _value_accesor->update(&data_buffer_ptr, &update_data, 1);
+
               if (_value_accesor->need_extend_mf(data_buffer)) {
                 feature_value->resize(value_col);
                 value_data = const_cast<float*>(feature_value->data());
@@ -498,7 +480,6 @@ int32_t CtrSparseTable::_push_sparse(const uint64_t* keys,
 
           for (auto& offset : offsets) {
             uint64_t key = keys[offset];
-            //uint64_t push_data_idx = keys[i].second;
             const float* update_data = values[offset];
             auto itr = local_shard->Find(key);
             if (itr == local_shard->end()) {
@@ -538,12 +519,6 @@ int32_t CtrSparseTable::_push_sparse(const uint64_t* keys,
   }
   return 0;
 }
-
-/*
-int32_t CtrSparseTable::push_sparse_param(const uint64_t* keys,
-                                             const float* values, size_t num) {
-    return 0;
-}*/
 
 int32_t CtrSparseTable::flush() { return 0; }
 

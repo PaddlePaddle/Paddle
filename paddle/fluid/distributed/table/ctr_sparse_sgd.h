@@ -4,7 +4,6 @@
 #include <math.h>
 #include "glog/logging.h"       // for CHECK
 #include "paddle/fluid/distributed/common/local_random.h"    // for local_uniform_real_distribution
-//#include "Eigen/Dense"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 
@@ -25,7 +24,7 @@ public:
     const std::string& get_name() const {
         return _name;
     }
-    void init_value(float* value, float* sgd, bool zero_init = false) {
+    void init_value(float* value, float* sgd, bool zero_init = true) {
         init_value_work(value, sgd, zero_init);
     }
     void update_value(float* w, float* sgd, const float* push_value, float scale = 1) {
