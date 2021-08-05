@@ -42,7 +42,7 @@ class BCEWithLogitsLoss(Layer):
     .. math::
            Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
 
-    We know that :math:`\sigma(Logit) = \frac{1}{1 + \e^{-Logit}}`. By substituting this we get:
+    We know that :math:`\sigma(Logit) = \frac{1}{1 + e^{-Logit}}`. By substituting this we get:
 
     .. math::
            Out = Logit - Logit * Labels + \log(1 + e^{-Logit})
