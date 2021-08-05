@@ -45,13 +45,13 @@ class BCEWithLogitsLoss(Layer):
     We know that :math:`\sigma(Logit) = \frac{1}{1 + \e^{-Logit}}`. By substituting this we get:
 
     .. math::
-           Out = Logit - Logit * Labels + \log(1 + \e^{-Logit})
+           Out = Logit - Logit * Labels + \log(1 + e^{-Logit})
 
-    For stability and to prevent overflow of :math:`\e^{-Logit}` when Logit < 0,
+    For stability and to prevent overflow of :math:`e^{-Logit}` when Logit < 0,
     we reformulate the loss as follows:
 
     .. math::
-           Out = \max(Logit, 0) - Logit * Labels + \log(1 + \e^{-\|Logit\|})
+           Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
     Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
@@ -812,9 +812,9 @@ class NLLLoss(Layer):
         \left\{
             \begin{array}{lcl}
             \sum_{n=1}^N \frac{1}{\sum_{n=1}^N w_{y_n}} l_n, &
-            \text{if \ reduction} = \text{'mean';}\\
+            \text{if  reduction} = \text{'mean';}\\
             \sum_{n=1}^N l_n,  &
-            \text{if \ reduction} = \text{'sum'.}
+            \text{if  reduction} = \text{'sum'.}
             \end{array}
         \right.
 
