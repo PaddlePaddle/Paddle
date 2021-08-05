@@ -105,31 +105,6 @@ class QuantDequantTest2(InferencePassTest):
         self.fetch_list = [relu_out]
 
     def append_quantized_op(self, x, param_attr):
-        return fluid.layers.conv2d(
-            input=x,
-            num_filters=3,
-            filter_size=3,
-            param_attr=param_attr,
-            bias_attr=False,
-            act=None)
-
-    def set_quant_pattern(self):
-        self.activation_quant_type = 'moving_average_abs_max'
-        self.weight_quant_type = 'channel_wise_abs_max'
-        self.quantized_op_type = 'conv2d'
-        self.channels = 3
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(use_gpu, flatten=False, quant=True)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible(
-                    'quant_conv2d_dequant_fuse_pass'))
-
-
-class QuantFcDequantTest2(QuantDequantTest2):
-    def append_quantized_op(self, x, param_attr):
         return fluid.layers.fc(x,
                                size=100,
                                num_flatten_dims=3,
@@ -142,6 +117,14 @@ class QuantFcDequantTest2(QuantDequantTest2):
         self.weight_quant_type = 'abs_max'
         self.quantized_op_type = 'mul'
         self.channels = 1
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu, flatten=False, quant=True)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible(
+                    'quant_conv2d_dequant_fuse_pass'))
 
 
 if __name__ == "__main__":
