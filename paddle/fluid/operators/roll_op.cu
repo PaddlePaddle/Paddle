@@ -80,9 +80,11 @@ class RollKernel<platform::CUDADeviceContext, T>
         int dim = dims[i] >= 0 ? dims[i] : dims[i] + input_dim.size();
         int64_t size = input_dim[dim];
 
-        shifts[i] = (shifts[i] % size + size) % size;
-        strides[i] = stride_dim[dim];
-        sizes[i] = size;
+        if (size != 0) {
+          shifts[i] = (shifts[i] % size + size) % size;
+          strides[i] = stride_dim[dim];
+          sizes[i] = size;
+        }
       }
     }
 
@@ -151,10 +153,11 @@ class RollGradKernel<platform::CUDADeviceContext, T>
       for (size_t i = 0; i < nums; i++) {
         int dim = dims[i] >= 0 ? dims[i] : dims[i] + input_dim.size();
         int64_t size = input_dim[dim];
-
-        shifts[i] = ((-shifts[i]) % size + size) % size;
-        strides[i] = stride_dim[dim];
-        sizes[i] = size;
+        if (size != 0) {
+          shifts[i] = ((-shifts[i]) % size + size) % size;
+          strides[i] = stride_dim[dim];
+          sizes[i] = size;
+        }
       }
     }
 

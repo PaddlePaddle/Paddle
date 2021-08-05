@@ -391,16 +391,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         for _ in range(self._outstanding_capacity):
             self._try_put_indices()
 
-    def _clear_and_remove_data_queue(self):
-        if self._data_queue is not None:
-            while True:
-                try:
-                    self._data_queue.get_nowait()
-                except:
-                    self._data_queue.cancel_join_thread()
-                    self._data_queue.close()
-                    break
-
     def _shutdown_worker(self, worker_id, shutdown=False):
         if self._worker_status[worker_id] or (self._persistent_workers and
                                               shutdown):

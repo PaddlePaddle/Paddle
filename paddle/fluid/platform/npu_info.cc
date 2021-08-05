@@ -30,6 +30,7 @@ DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(enable_cublas_tensor_op_math);
 DECLARE_uint64(gpu_memory_limit_mb);
 DECLARE_string(selected_npus);
+DECLARE_string(npu_config_path);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
@@ -385,7 +386,14 @@ AclInstance &AclInstance::Instance() {
 }
 
 AclInstance::AclInstance() {
-  PADDLE_ENFORCE_NPU_SUCCESS(aclInit(nullptr));
+  if (!FLAGS_npu_config_path.empty()) {
+    VLOG(4) << "Call aclInit(" << FLAGS_npu_config_path << ") ";
+    PADDLE_ENFORCE_NPU_SUCCESS(aclInit(FLAGS_npu_config_path.c_str()));
+  } else {
+    VLOG(4) << "Call aclInit(nullptr) ";
+    PADDLE_ENFORCE_NPU_SUCCESS(aclInit(nullptr));
+  }
+
   VLOG(4) << "Call aclrtSetDevice ";
   // NOTE(zhiqiu): why set devices here?
   // Because ACL creates a default context which contains 2 streams

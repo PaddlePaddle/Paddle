@@ -42,7 +42,10 @@ namespace platform {
 
 std::once_flag SocketServer::init_flag_;
 
-constexpr char COMM_HEAD[] = "_pd_gen_comm_id_";
+struct CommHead {
+  int version = 1;  // unused for now
+  int ring_id = 0;
+};
 
 // Check system calls, such as socket, bind.
 #define CHECK_SYS_CALL(call, name)          \
@@ -188,11 +191,15 @@ int CreateListenSocket(const std::string& ep) {
 
 void CloseSocket(int fd) { CHECK_SYS_CALL(close(fd), "close"); }
 
-static int SocketAccept(int server_fd, const char* head) {
+static int SocketAccept(int server_fd, const CommHead head) {
+  static_assert(sizeof(CommHead) <= 1024,
+                "sizeof(CommHead) must <= buffer size");
+
   struct sockaddr_in client_addr;
   socklen_t addr_length = sizeof(client_addr);
   char buffer[1024] = {0};
   int conn = -1;
+  const char* phead = reinterpret_cast<const char*>(&head);
 
   while (true) {
     CHECK_SYS_CALL_VAL(
@@ -200,8 +207,10 @@ static int SocketAccept(int server_fd, const char* head) {
                &addr_length),
         "accept", conn);
 
-    int ret_val = SocketRecv(conn, buffer, strlen(head));
-    if (ret_val > 0 && strncmp(buffer, head, strlen(head)) == 0) {
+    int ret_val = SocketRecv(conn, buffer, sizeof(head));
+    if (ret_val > 0 && memcmp(buffer, phead, sizeof(head)) == 0) {
+      // send a message to the sender, indicating that the link is correct
+      CHECK_SYS_CALL(SocketSend(conn, phead, sizeof(head)), "send");
       break;  // accept client
     } else {
       VLOG(3) << "socket read failed with ret_val=" << ret_val;
@@ -211,7 +220,7 @@ static int SocketAccept(int server_fd, const char* head) {
   return conn;
 }
 
-static int ConnectAddr(const std::string& ep, const char* head) {
+static int ConnectAddr(const std::string& ep, const CommHead head) {
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
       addr.size(), 2UL,
@@ -219,9 +228,6 @@ static int ConnectAddr(const std::string& ep, const char* head) {
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
-
-  int sock = -1;
-  CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
 
   struct sockaddr_in server_addr;
   memset(&server_addr, 0, sizeof(server_addr));
@@ -245,10 +251,18 @@ static int ConnectAddr(const std::string& ep, const char* head) {
                     platform::errors::Unavailable("Open address %s failed: %s",
                                                   ep, strerror(errno)));
 
+  static_assert(sizeof(CommHead) <= 1024,
+                "sizeof(CommHead) must <= buffer size");
+  char buffer[1024] = {0};
+  const char* phead = reinterpret_cast<const char*>(&head);
+
   // TODO(wangxi) Set from env, default 900s=15min
   int timeout = 900 * 1000;
   int try_times = 0;
   int total_time = 0;
+
+  int sock = -1;
+  CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
   while (true) {
     int ret_val = -1;
     RETRY_SYS_CALL_VAL(
@@ -260,8 +274,19 @@ static int ConnectAddr(const std::string& ep, const char* head) {
       continue;
     }
 
-    CHECK_SYS_CALL(SocketSend(sock, head, strlen(head)), "send");
-    break;
+    CHECK_SYS_CALL(SocketSend(sock, phead, sizeof(head)), "send");
+    ret_val = SocketRecv(sock, buffer, sizeof(head));
+    if (ret_val > 0 && memcmp(buffer, phead, sizeof(head)) == 0) {
+      // recv same message from recver, indicating that the link is correct
+      break;  // accept client
+    } else {
+      VLOG(3) << "socket read failed with ret_val=" << ret_val;
+      CloseSocket(sock);
+    }
+    sock = -1;
+    CHECK_SYS_CALL_VAL(socket(AF_INET, SOCK_STREAM, 0), "socket", sock);
+    // unmatched link, retry after 80ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(80));
   }
   return sock;
 }
@@ -295,12 +320,15 @@ static void SendCommID(int conn, CommUniqueId* nccl_id) {
 
 template <typename CommUniqueId>
 void SendBroadCastCommID(std::vector<std::string> servers,
-                         std::vector<CommUniqueId>* nccl_ids) {
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
+  CommHead head;
+  head.ring_id = ring_id;
+
   // connect with server
   std::vector<int> connects;
   for (auto server : servers) {
     VLOG(3) << "connecting endpoint: " << server;
-    int conn = ConnectAddr(server, COMM_HEAD);
+    int conn = ConnectAddr(server, head);
     connects.push_back(conn);
   }
   VLOG(3) << "connecting completed...";
@@ -322,16 +350,18 @@ void SendBroadCastCommID(std::vector<std::string> servers,
 
 template <typename CommUniqueId>
 void RecvBroadCastCommID(std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids) {
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
   int server = CreateListenSocket(endpoint);
-  RecvBroadCastCommID(server, endpoint, nccl_ids);
+  RecvBroadCastCommID(server, endpoint, nccl_ids, ring_id);
   CloseSocket(server);
 }
 
 template <typename CommUniqueId>
 void RecvBroadCastCommID(int server_fd, std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids) {
-  int client = SocketAccept(server_fd, COMM_HEAD);
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
+  CommHead head;
+  head.ring_id = ring_id;
+  int client = SocketAccept(server_fd, head);
 
   for (size_t i = 0; i < nccl_ids->size(); ++i) {
     VLOG(3) << "trainer: " << endpoint
@@ -360,11 +390,15 @@ SocketServer& SocketServer::GetInstance(const std::string& end_point) {
 }
 
 /// template instantiation
-#define INSTANT_TEMPLATE(Type)                                              \
-  template void SendBroadCastCommID<Type>(std::vector<std::string> servers, \
-                                          std::vector<Type> * nccl_ids);    \
-  template void RecvBroadCastCommID<Type>(std::string endpoint,             \
-                                          std::vector<Type> * nccl_ids);
+#define INSTANT_TEMPLATE(Type)                                                 \
+  template void SendBroadCastCommID<Type>(std::vector<std::string> servers,    \
+                                          std::vector<Type> * nccl_ids,        \
+                                          int ring_id = 0);                    \
+  template void RecvBroadCastCommID<Type>(                                     \
+      std::string endpoint, std::vector<Type> * nccl_ids, int ring_id = 0);    \
+  template void RecvBroadCastCommID<Type>(int server_fd, std::string endpoint, \
+                                          std::vector<Type>* nccl_ids,         \
+                                          int ring_id = 0);
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 INSTANT_TEMPLATE(ncclUniqueId)
