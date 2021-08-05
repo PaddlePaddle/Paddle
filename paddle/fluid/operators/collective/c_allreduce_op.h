@@ -230,17 +230,6 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     auto d_type = in->type();
     switch (d_type) {
       case framework::proto::VarType::FP16: {
-        auto fp32_dtype = framework::proto::VarType::FP32;
-        Tensor fp32_in(fp32_dtype);
-        fp32_in.Resize(in->dims());
-        fp32_in.mutable_data<float>(dev_ctx->GetPlace());
-        auto aclDtype = ACL_FLOAT;
-        const auto& cast_runner =
-            NpuOpRunner("Cast", {*in}, {fp32_in},
-                        {{ "dst_type",
-                           static_cast<int32_t>(aclDtype) }});
-        cast_runner.Run(stream);
-        found_nan = ContainsNan(*dev_ctx, dev_ctx->stream(), &fp32_in);
         break;
       }
       case framework::proto::VarType::FP32: {
