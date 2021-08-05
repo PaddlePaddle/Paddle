@@ -349,7 +349,7 @@ class SigmoidGradNPUKernel : public framework::OpKernel<T> {
 };
 
 // HardSwish = min(max(0, x+offset), threshold) * x / scale
-template <typename DeviceContext, typename T>
+template <typename T>
 class HardSwishNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -378,37 +378,24 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
         NpuOpRunner("AddV2", {*x, tensor_offset}, {add_offset_val});
     runner_add.Run(stream);
 
-    Tensor zero_val(x->type());
-    zero_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_zero = NpuOpRunner("ZerosLike", {*x}, {zero_val});
-    runner_zero.Run(stream);
-
-    Tensor max_val(x->type());
-    max_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_max =
-        NpuOpRunner("Maximum", {add_offset_val, zero_val}, {max_val});
-    runner_max.Run(stream);
-
-    Tensor tensor_threshold_tmp(x->type());
-    tensor_threshold_tmp.mutable_data<T>({1}, place);
-    FillNpuTensorWithConstant<T>(&tensor_threshold_tmp,
-                                 static_cast<T>(threshold));
     Tensor tensor_threshold(x->type());
-    tensor_threshold.mutable_data<T>(x->dims(), place);
-    const auto& runner_fill =
-        NpuOpRunner("FillD", {tensor_threshold_tmp}, {tensor_threshold},
-                    {{"dims", framework::vectorize(x->dims())}});
-    runner_fill.Run(stream);
+    tensor_threshold.mutable_data<T>({1}, place);
+    FillNpuTensorWithConstant<T>(&tensor_threshold, static_cast<T>(threshold));
 
-    Tensor min_val(x->type());
-    min_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_min =
-        NpuOpRunner("Minimum", {max_val, tensor_threshold}, {min_val});
-    runner_min.Run(stream);
+    Tensor tensor_zero(x->type());
+    tensor_zero.mutable_data<T>({1}, place);
+    FillNpuTensorWithConstant<T>(&tensor_zero, static_cast<T>(0.0));
+
+    Tensor clip_val(x->type());
+    clip_val.mutable_data<T>(x->dims(), place);
+    const auto& runner_clip = NpuOpRunner(
+        "ClipByValue", {add_offset_val, tensor_zero, tensor_threshold},
+        {clip_val});
+    runner_clip.Run(stream);
 
     Tensor mul_val(x->type());
     mul_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_mul = NpuOpRunner("Mul", {*x, min_val}, {mul_val});
+    const auto& runner_mul = NpuOpRunner("Mul", {*x, clip_val}, {mul_val});
     runner_mul.Run(stream);
 
     const auto& runner_div =
@@ -417,7 +404,7 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class HardSwishGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -678,17 +665,11 @@ REGISTER_OP_NPU_KERNEL(
     ops::SigmoidGradNPUKernel<paddle::platform::NPUDeviceContext,
                               paddle::platform::float16>);
 
-REGISTER_OP_NPU_KERNEL(
-    hard_swish,
-    ops::HardSwishNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::HardSwishNPUKernel<paddle::platform::NPUDeviceContext,
-                            paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(hard_swish, ops::HardSwishNPUKernel<float>,
+                       ops::HardSwishNPUKernel<paddle::platform::float16>);
 
-REGISTER_OP_NPU_KERNEL(
-    hard_swish_grad,
-    ops::HardSwishGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::HardSwishGradNPUKernel<paddle::platform::NPUDeviceContext,
-                                paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(hard_swish_grad, ops::HardSwishGradNPUKernel<float>,
+                       ops::HardSwishGradNPUKernel<paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     hard_sigmoid,

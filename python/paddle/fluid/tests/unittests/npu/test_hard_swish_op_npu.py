@@ -26,6 +26,14 @@ import paddle.nn.functional as F
 SEED = 2021
 
 
+def ref_hard_swish_grad(x, threshold=6.0, scale=6.0, offset=3.0):
+    dout = np.full_like(x, fill_value=1. / x.size)
+    tmp = ((x + offset) < threshold).astype(x.dtype)
+    dx = dout * (((x + offset) > 0).astype(x.dtype) *
+                 (2 * x + offset) * tmp / scale + 1.0 - tmp)
+    return dx
+
+
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestHardSwishNPU(OpTest):
@@ -46,6 +54,7 @@ class TestHardSwishNPU(OpTest):
         x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
         out = (x * np.minimum(np.maximum(x + offset, 0.), threshold) /
                scale).astype(x.dtype)
+        self.x_grad = ref_hard_swish_grad(x, threshold, scale, offset)
 
         self.inputs = {'X': x}
         self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
@@ -63,8 +72,12 @@ class TestHardSwishNPU(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
+        # There is a problem that precision of grad result using float32
+        # can't satisfy the default precision requirement 
+        # when compared with numeric_grads, but the results on 
+        # NPU and CPU are same (verified in TestHardSwishNPUWithCPU)
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', max_relative_error=0.02)
+            self.place, ['X'], 'Out', user_defined_grads=[self.x_grad])
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -77,6 +90,7 @@ class TestHardSwishNPUFp16(TestHardSwishNPU):
         self.dtype = np.float16
 
 
+# test the result of hard_swish and hard_swish_grad on CPU and NPU
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestHardSwishNPUWithCPU(unittest.TestCase):
@@ -86,7 +100,7 @@ class TestHardSwishNPUWithCPU(unittest.TestCase):
         self.place = paddle.NPUPlace(0)
         self.dtype = np.float32
 
-        self.x = np.random.uniform(-6, 10, [10, 12]).astype(self.dtype)
+        self.x = np.random.uniform(-6, 10, [8, 15]).astype(self.dtype)
 
         paddle.set_device('cpu')
 
@@ -105,14 +119,12 @@ class TestHardSwishNPUWithCPU(unittest.TestCase):
         y.sum().backward()
 
         self.assertTrue(
-            np.allclose(
-                self.out_y.numpy(), y.numpy(), rtol=1e-06),
+            np.allclose(self.out_y.numpy(), y.numpy()),
             "Output of NPU HardSwish forward has diff at " + str(self.place) +
             "\nExpect " + str(self.out_y) + "\n" + "But Got" + str(y) +
             " in class " + self.__class__.__name__ + ".")
         self.assertTrue(
-            np.allclose(
-                self.out_g.numpy(), data.grad.numpy(), rtol=1e-06),
+            np.allclose(self.out_g.numpy(), data.grad.numpy()),
             "Output of NPU HardSwish backward has diff at " + str(self.place) +
             "\nExpect " + str(self.out_g) + "\n" + "But Got" + str(data.grad) +
             " in class " + self.__class__.__name__ + ".")
