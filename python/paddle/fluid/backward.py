@@ -945,6 +945,13 @@ def _append_backward_ops_with_checkpoints_(
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
+
+            # Set device for grad_op according to forward Op
+            if op_desc.has_attr(device_attr_name):
+                op_device = op_desc.attr(device_attr_name)
+                for g_op_desc in grad_op_desc:
+                    g_op_desc._set_attr(device_attr_name, op_device)
+
             for key in var_name_dict:
                 _rename_arg_(grad_op_desc, key, var_name_dict[key])
             grad_op_descs.extend(grad_op_desc)
