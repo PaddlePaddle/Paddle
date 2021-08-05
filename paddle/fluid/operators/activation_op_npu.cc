@@ -456,7 +456,6 @@ class CosGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* x = ctx.Input<Tensor>("X");
-
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     auto place = ctx.GetPlace();
@@ -477,13 +476,12 @@ class CosGradNPUKernel : public framework::OpKernel<T> {
 
     Tensor tmp(x->type());  // Temporary Tensor
     tmp.Resize(framework::make_ddim({1, 1}));
-    tmp.mutable_data<T>({1}, place);
+    tmp.mutable_data<T>(place);
     float factor = -1.;
     FillNpuTensorWithConstant<T>(&tmp, static_cast<T>(factor));
 
     const auto& runner_dx_ = NpuOpRunner("Xdivy", {*dx, tmp}, {*dx}, {});
     runner_dx_.Run(stream);
-
     // dx = -dout * Sine(x);
   }
 };
