@@ -187,8 +187,6 @@ class TestDistPPTraning(unittest.TestCase):
             # TODO(shenliang03) add utest for loss
             print("loss: ", loss)
 
-            print("loss: ", loss)
-
 
 if __name__ == "__main__":
     unittest.main()
