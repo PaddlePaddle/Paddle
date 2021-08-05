@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
  public:
   using CommonType = typename std::common_type<
@@ -74,9 +74,6 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(
-    fill_any_like,
-    ops::FillAnyLikeNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::FillAnyLikeNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::FillAnyLikeNPUKernel<paddle::platform::NPUDeviceContext,
-                              paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(fill_any_like, ops::FillAnyLikeNPUKernel<int>,
+                       ops::FillAnyLikeNPUKernel<float>,
+                       ops::FillAnyLikeNPUKernel<paddle::platform::float16>);
