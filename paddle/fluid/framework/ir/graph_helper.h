@@ -115,6 +115,9 @@ std::vector<T *> FilterByNodeWrapper(const Graph &graph) {
   return ret;
 }
 
+// Returns the hazard variable if there is hazard, else nullptr
+Node *CheckHazardVar(const Graph &graph, std::vector<Node *> *sorted_ops);
+
 std::vector<ir::Node *> TopologySortSolveHazard(const Graph &graph);
 
 std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph);

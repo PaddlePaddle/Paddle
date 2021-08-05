@@ -136,6 +136,15 @@ void GraphToProgramPass::GraphToBlock(Graph* graph,
       nodes = TopologySortSolveHazard(*graph);
     } else {
       nodes = TopologySortOperations(*graph);
+      Node* hazard_var = CheckHazardVar(*graph, &nodes);
+      LOG(WARNING) << graph->ToString();
+      if (hazard_var == nullptr) {
+        LOG(WARNING) << "No Hazard Var";
+      } else {
+        LOG(WARNING) << "Hazard Var Name: " << hazard_var->Name()
+                     << ", Type: " << hazard_var->Var()->GetType();
+      }
+      PADDLE_ENFORCE_EQ(0, 1, "Purpose for fail");
     }
     /*
     LOG(WARNING) << graph->ToString();

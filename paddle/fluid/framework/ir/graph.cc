@@ -488,19 +488,26 @@ std::string Graph::ToString(int level) const {
       ss << ", ToString: " << n->ToString();
     }
     ss << ", link to:" << std::endl;
-    for (auto op_vars : out_op_to_vars) {
-      Node *out_op = op_vars.first;
-      ss << "\tOpNode ID: " << out_op->id() << ", name: " << out_op->Name();
-      if (level >= 1) {
-        ss << ", ToString: " << out_op->ToString();
+    if (out_op_to_vars.size() == 0) {
+      for (Node *var : n->outputs) {
+        ss << "\tVarNode ID: " << var->id() << ", name: " << var->Name()
+           << std::endl;
       }
-      ss << std::endl << "\t\tThrough VarNodes: ";
-      std::set<Node *, decltype(cmp)> sort_id_vars(op_vars.second.begin(),
-                                                   op_vars.second.end(), cmp);
-      for (Node *var : sort_id_vars) {
-        ss << "ID: " << var->id() << ", name: " << var->Name() << "; ";
+    } else {
+      for (auto op_vars : out_op_to_vars) {
+        Node *out_op = op_vars.first;
+        ss << "\tOpNode ID: " << out_op->id() << ", name: " << out_op->Name();
+        if (level >= 1) {
+          ss << ", ToString: " << out_op->ToString();
+        }
+        ss << std::endl << "\t\tThrough VarNodes: ";
+        std::set<Node *, decltype(cmp)> sort_id_vars(op_vars.second.begin(),
+                                                     op_vars.second.end(), cmp);
+        for (Node *var : sort_id_vars) {
+          ss << "ID: " << var->id() << ", name: " << var->Name() << "; ";
+        }
+        ss << std::endl;
       }
-      ss << std::endl;
     }
   }
   return ss.str();

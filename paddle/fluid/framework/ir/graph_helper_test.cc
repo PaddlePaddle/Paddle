@@ -379,7 +379,7 @@ TEST(GraphHelperTest, TopologySortSolveHazard_TwoPathsSameVar) {
   ir::Node* o3 = g.CreateEmptyNode("op3", Node::Type::kOperation);
   ir::Node* o4 = g.CreateEmptyNode("op4", Node::Type::kOperation);
   ir::Node* o5 = g.CreateEmptyNode("op5", Node::Type::kOperation);
-  ir::Node* o6 = g.CreateEmptyNode("op6", Node::Type::kOperation);
+  ir::Node* o6 = g.CreateEmptyNode("fetch", Node::Type::kOperation);
   ir::Node* v1 = g.CreateEmptyNode("v1", Node::Type::kVariable);
   ir::Node* v2 = g.CreateEmptyNode("same_var1", Node::Type::kVariable);
   ir::Node* v3 = g.CreateEmptyNode("same_var1", Node::Type::kVariable);
