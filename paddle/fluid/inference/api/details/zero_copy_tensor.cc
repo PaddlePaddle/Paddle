@@ -196,9 +196,8 @@ void Tensor::CopyToCpu(T *data) {
 #ifdef PADDLE_WITH_MKLDNN
     if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
       paddle::framework::innerTransDataLayoutFromMKLDNN(
-          tensor->layout(),
-          paddle::platform::MKLDNNDeviceContext::tls()
-              .get_cur_paddle_data_layout(),
+          tensor->layout(), paddle::platform::MKLDNNDeviceContext::tls()
+                                .get_cur_paddle_data_layout(),
           *tensor, &out, paddle::platform::CPUPlace(), true);
     else
       std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
