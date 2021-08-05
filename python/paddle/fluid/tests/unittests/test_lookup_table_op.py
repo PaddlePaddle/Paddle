@@ -316,6 +316,124 @@ class TestLookupTableWithTensorIdsWIsSelectedRowsInt8(
             assert (row == result_array[idx]).all()
 
 
+@skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
+class TestLookupTableOpInt16(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table"
+        table = np.random.randint(
+            low=-128, high=127, size=(17, 31)).astype("int16")
+        ids = np.random.randint(0, 17, 4).astype("int64")
+        ids_expand = np.expand_dims(ids, axis=1)
+        self.inputs = {'W': table, 'Ids': ids_expand}
+        self.outputs = {'Out': table[ids]}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+@skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
+class TestLookupTableOpWithTensorIdsInt16(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table"
+        table = np.random.randint(
+            low=-128, high=127, size=(17, 31)).astype("int16")
+        ids = np.random.randint(
+            low=0, high=17, size=(2, 4, 5, 1)).astype("int64")
+        self.inputs = {'W': table, 'Ids': ids}
+        self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+@skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
+class TestLookupTableOpWithPaddingInt16(TestLookupTableOpInt16):
+    def test_check_output(self):
+        ids = np.squeeze(self.inputs['Ids'])
+        padding_idx = np.random.choice(ids, 1)[0]
+        self.outputs['Out'][ids == padding_idx] = np.zeros(31)
+        self.attrs = {'padding_idx': int(padding_idx)}
+        self.check_output()
+
+
+@skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
+class TestLookupTableOpWithTensorIdsAndPaddingInt16(
+        TestLookupTableOpWithTensorIdsInt16):
+    def test_check_output(self):
+        ids = self.inputs['Ids']
+        flatten_idx = ids.flatten()
+        padding_idx = np.random.choice(flatten_idx, 1)[0]
+        self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
+        self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
+        self.check_output()
+
+
+class TestLookupTableWIsSelectedRowsInt16(unittest.TestCase):
+    def prepare_ids(self, scope, place):
+        ids_tensor = scope.var('Ids').get_tensor()
+        ids_array = np.array([[0], [4], [3], [5]]).astype("int64")
+        ids_tensor.set(ids_array, place)
+        return ids_array
+
+    def prepare_w(self, scope, place):
+        rows = [0, 1, 2, 3, 4, 5, 6]
+        row_numel = 12
+
+        w_selected_rows = scope.var('W').get_selected_rows()
+        w_selected_rows.set_height(len(rows))
+        w_selected_rows.set_rows(rows)
+        w_array = np.ones((len(rows), row_numel)).astype("int16")
+        for i in range(len(rows)):
+            w_array[i] *= i
+        w_tensor = w_selected_rows.get_tensor()
+        w_tensor.set(w_array, place)
+
+    def create_out_tensor(self, scope, place):
+        return scope.var('Out').get_tensor()
+
+    def check_result(self, ids_array, result_array):
+        for idx, row in enumerate(ids_array):
+            assert (row[0] == result_array[idx]).all()
+
+    def check_with_place(self, place):
+        scope = core.Scope()
+
+        ids_array = self.prepare_ids(scope, place)
+
+        self.prepare_w(scope, place)
+
+        out_tensor = self.create_out_tensor(scope, place)
+
+        # create and run lookup_table operator
+        lookup_table = Operator("lookup_table", W='W', Ids='Ids', Out='Out')
+        lookup_table.run(scope, place)
+
+        # get result from Out
+        result_array = np.array(out_tensor)
+
+        self.check_result(ids_array, result_array)
+
+    def test_w_is_selected_rows(self):
+        places = [core.CPUPlace()]
+        # currently only support CPU
+        for place in places:
+            self.check_with_place(place)
+
+
+class TestLookupTableWithTensorIdsWIsSelectedRowsInt16(
+        TestLookupTableWIsSelectedRowsInt16):
+    def prepare_ids(self, scope, place):
+        ids_tensor = scope.var('Ids').get_tensor()
+        ids_array = np.random.randint(
+            low=0, high=6, size=(2, 4, 3, 1)).astype("int64")
+        ids_tensor.set(ids_array, place)
+        return ids_array
+
+    def check_result(self, ids_array, result_array):
+        for idx, row in np.ndenumerate(ids_array):
+            assert (row == result_array[idx]).all()
+
+
 class TestOutDtype(unittest.TestCase):
     def test_dtype(self):
         api_fn = F.embedding

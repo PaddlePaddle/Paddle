@@ -146,18 +146,9 @@ GetUnusedVars(const BlockDesc &block,
   return result;
 }
 
-void DeleteUnusedTensors(
-    const Scope &scope, const OperatorBase *op,
-    const std::unordered_map<const OperatorBase *, std::vector<std::string>>
-        &delete_vars_map,
-    GarbageCollector *gc) {
-  auto iter = delete_vars_map.find(op);
-  if (iter == delete_vars_map.end()) {
-    return;
-  }
-
-  auto &delete_vars = iter->second;
-
+void DeleteUnusedTensors(const Scope &scope,
+                         const std::vector<std::string> &delete_vars,
+                         GarbageCollector *gc) {
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
 
   for (auto &var_name : delete_vars) {
@@ -187,6 +178,20 @@ void DeleteUnusedTensors(
   if (!garbages.empty()) {
     gc->Add(std::move(garbages));
   }
+}
+
+void DeleteUnusedTensors(
+    const Scope &scope, const OperatorBase *op,
+    const std::unordered_map<const OperatorBase *, std::vector<std::string>>
+        &delete_vars_map,
+    GarbageCollector *gc) {
+  auto iter = delete_vars_map.find(op);
+  if (iter == delete_vars_map.end()) {
+    return;
+  }
+
+  auto &delete_vars = iter->second;
+  DeleteUnusedTensors(scope, delete_vars, gc);
 }
 
 static std::vector<std::unique_ptr<OperatorBase>> CreateOpsFromBlock(

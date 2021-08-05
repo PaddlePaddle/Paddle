@@ -1342,19 +1342,20 @@ def split(x,
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed.fleet as fleet
 
-            # required: gpu
-
+            paddle.enable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
+            fleet.init(is_collective=True)
             data = paddle.randint(0, 8, shape=[10,4])
             emb_out = paddle.distributed.split(
                 data,
                 (8, 8),
                 operation="embedding",
                 num_partitions=2)
+
     """
     assert isinstance(size, (list, tuple)), (
         "The type of size for "
@@ -1456,6 +1457,7 @@ def split(x,
 def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     """
     Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
+    
     Args:
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
@@ -1463,14 +1465,18 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             data type of the input Tensors.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
+    
     Returns:
         None.
+    
     Examples:
         .. code-block:: python
+
             # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
+            
             init_parallel_env()
             out_tensor_list = []
             if paddle.distributed.ParallelEnv().rank == 0:
@@ -1481,7 +1487,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
                 np_data2 = np.array([[19, 20, 21], [22, 23, 24]])
             data1 = paddle.to_tensor(np_data1)
             data2 = paddle.to_tensor(np_data2)
-            paddle.distributed.all_to_all([data1, data2], out_tensor_list)
+            paddle.distributed.alltoall([data1, data2], out_tensor_list)
             # out for rank 0: [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]
             # out for rank 1: [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]]
     """
@@ -1490,15 +1496,15 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
 
     ring_id = 0 if group is None else group.id
     temp = paddle.concat(in_tensor_list, axis=0)
+    nranks = len(in_tensor_list)
     if in_dygraph_mode():
-        _C_ops.alltoall_(temp, 'use_calc_stream', use_calc_stream, 'ring_id',
-                         ring_id)
+        out = _C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
+                              'ring_id', ring_id)
     else:
         op_type = 'alltoall'
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(
             dtype=in_tensor_list[0].dtype)
-        nranks = len(in_tensor_list)
 
         if not isinstance(in_tensor_list, list):
             raise ValueError("The type of 'in_tensor_list' for all_to_all "
@@ -1535,14 +1541,17 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         dst (int): The destination rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+    
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+
             # required: distributed
             import paddle
             from paddle.distributed import init_parallel_env
+
             init_parallel_env()
             if paddle.distributed.ParallelEnv().rank == 0:
                 data = paddle.to_tensor([7, 8, 9])
@@ -1585,14 +1594,17 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+    
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+
             # required: distributed
             import paddle
             from paddle.distributed import init_parallel_env
+
             init_parallel_env()
             if paddle.distributed.ParallelEnv().rank == 0:
                 data = paddle.to_tensor([7, 8, 9])

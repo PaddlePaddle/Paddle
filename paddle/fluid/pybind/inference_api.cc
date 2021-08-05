@@ -456,6 +456,7 @@ void BindAnalysisConfig(py::module *m) {
       .def(py::init<const AnalysisConfig &>())
       .def(py::init<const std::string &>())
       .def(py::init<const std::string &, const std::string &>())
+      .def("summary", &AnalysisConfig::Summary)
       .def("set_model", (void (AnalysisConfig::*)(const std::string &)) &
                             AnalysisConfig::SetModel)
       .def("set_model", (void (AnalysisConfig::*)(const std::string &,

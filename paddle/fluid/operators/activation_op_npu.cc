@@ -303,6 +303,134 @@ class SquareNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class SigmoidNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+
+    auto* out = ctx.Output<Tensor>("Out");
+
+    auto place = ctx.GetPlace();
+
+    out->mutable_data<T>(place);
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner = NpuOpRunner("Sigmoid", {*x}, {*out}, {});
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SigmoidGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<Tensor>("Out");
+
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    auto place = ctx.GetPlace();
+
+    dx->mutable_data<T>(place);
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner_dx =
+        NpuOpRunner("SigmoidGrad", {*out, *dout}, {*dx}, {});
+    runner_dx.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class HardSigmoidNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+    float slope = ctx.Attr<float>("slope");
+    float offset = ctx.Attr<float>("offset");
+
+    out->mutable_data<T>(ctx.GetPlace());
+
+    framework::NPUAttributeMap attr_input = {{"alpha", slope},
+                                             {"beta", offset}};
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner = NpuOpRunner("HardSigmoid", {*x}, {*out}, attr_input);
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class HardSigmoidGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<Tensor>("Out");
+
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    float slope = ctx.Attr<float>("slope");
+    float offset = ctx.Attr<float>("offset");
+
+    dx->mutable_data<T>(ctx.GetPlace());
+
+    framework::NPUAttributeMap attr_input = {{"alpha", slope},
+                                             {"beta", offset}};
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner_dx =
+        NpuOpRunner("HardSigmoidGrad", {*dout, *out}, {*dx}, attr_input);
+    runner_dx.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ReciprocalNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+    auto place = ctx.GetPlace();
+    out->mutable_data<T>(place);
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    const auto& runner = NpuOpRunner("Reciprocal", {*x}, {*out}, {});
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ReciprocalGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto place = ctx.GetPlace();
+    dx->mutable_data<T>(place);
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    const auto& runner_dx =
+        NpuOpRunner("ReciprocalGrad", {*out, *dout}, {*dx}, {});
+    runner_dx.Run(stream);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -366,3 +494,40 @@ REGISTER_OP_NPU_KERNEL(
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>,
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, int>);
+
+REGISTER_OP_NPU_KERNEL(
+    sigmoid, ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext,
+                          paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    sigmoid_grad,
+    ops::SigmoidGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SigmoidGradNPUKernel<paddle::platform::NPUDeviceContext,
+                              paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    hard_sigmoid,
+    ops::HardSigmoidNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::HardSigmoidNPUKernel<paddle::platform::NPUDeviceContext,
+                              paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    hard_sigmoid_grad,
+    ops::HardSigmoidGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::HardSigmoidGradNPUKernel<paddle::platform::NPUDeviceContext,
+                                  paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    reciprocal,
+    ops::ReciprocalNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ReciprocalNPUKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::ReciprocalNPUKernel<paddle::platform::NPUDeviceContext,
+                             paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    reciprocal_grad,
+    ops::ReciprocalGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ReciprocalGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::ReciprocalGradNPUKernel<paddle::platform::NPUDeviceContext,
+                                 paddle::platform::float16>);

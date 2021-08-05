@@ -3,7 +3,7 @@
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
-  feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
+  feed_fetch_method pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator)
 
@@ -57,7 +57,8 @@ set(PYBIND_SRCS
   inference_api.cc
   compatible.cc
   io.cc
-  generator_py.cc)
+  generator_py.cc
+  cuda_streams_py.cc)
 
 if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
