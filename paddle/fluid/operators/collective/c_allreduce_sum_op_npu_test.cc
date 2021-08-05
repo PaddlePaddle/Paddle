@@ -38,12 +38,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
-// usage: node1: HCCL_WHITELIST_DISABLE=1 FLAGS_selected_npus=1 GLOG_v=3
-// RANK_ID=1 DEVICE_ID=1
-// ./paddle/fluid/operators/collective/c_allreduce_sum_op_npu_test
-// usage: node2: HCCL_WHITELIST_DISABLE=1 FLAGS_selected_npus=0 GLOG_v=3
-// RANK_ID=0 DEVICE_ID=0
-// ./paddle/fluid/operators/collective/c_allreduce_sum_op_npu_test
+// Node1: HCCL_WHITELIST_DISABLE=1 FLAGS_selected_npus=1 GLOG_v=4 RANK_ID=1
+// DEVICE_ID=1 ./paddle/fluid/operators/collective/c_allreduce_sum_op_npu_test
+// Node2: HCCL_WHITELIST_DISABLE=1 FLAGS_selected_npus=0 GLOG_v=4 RANK_ID=0
+// DEVICE_ID=0 ./paddle/fluid/operators/collective/c_allreduce_sum_op_npu_test
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
@@ -60,7 +58,8 @@ template <typename T>
 void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
   std::string debugstring = "";
   for (auto ele : data) {
-    debugstring += std::to_string(ele) + std::string(",");
+    VLOG(3) << ele << " ";
+    // debugstring += std::to_string(ele) + std::string(",");
   }
   VLOG(3) << preStr << ":" << std::endl << debugstring;
 }
@@ -137,10 +136,13 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   int num1 = 3;
   int num2 = 128;
 
-  std::vector<float> init;
+  std::vector<paddle::platform::float16> init;
   for (int64_t i = 0; i < num1 * num2; ++i) {
-    init.push_back(1.0 + rank_id);
+    init.push_back(static_cast<paddle::platform::float16>(1.0 + rank_id));
   }
+  // init[0] = std::numeric_limits<float>::quiet_NaN();
+  init[0] = static_cast<paddle::platform::float16>(
+      std::numeric_limits<float>::quiet_NaN());
   PrintDebugInfo("input data", init);
 
   auto place = ctx.GetPlace();
@@ -152,7 +154,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   auto out = scope->Var("OutData");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({num1, num2});
-  tensor_out->mutable_data<float>(place);  // allocate
+  tensor_out->mutable_data<paddle::platform::float16>(place);  // allocate
   ctx.Wait();
 
   // run
@@ -166,24 +168,17 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   for (int i = 0; i < 1; i++) {
     op->Run(*scope, place);
   }
-  if (rank_id == 1) {
-    VLOG(3) << "sleep:" << atoi(getenv("SLEEP"));
-    sleep(atoi(getenv("SLEEP")));
-  }
-  for (int i = 0; i < 1; i++) {
-    op->Run(*scope, place);
-  }
   ctx.Wait();
 
-  std::vector<float> out_vec;
+  std::vector<paddle::platform::float16> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
   ctx.Wait();
 
   PrintDebugInfo("output data", out_vec);
 
   EXPECT_EQ(out_vec.size(), init.size());
-  for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], 3.0);
+  for (uint32_t i = 0; i < 10; i++) {
+    EXPECT_EQ(out_vec[i], static_cast<paddle::platform::float16>(3.0));
   }
 }
 

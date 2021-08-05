@@ -231,14 +231,14 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         break;
     }
 
-    if (check_numerics) {
-      T inf = static_cast<T>(std::numeric_limits<float>::infinity());
-      VLOG(4) << "fill input data constant inf";
-      auto dims = in->dims();
-      auto mutable_in = const_cast<framework::Tensor*>(in);
-      FillNpuTensorWithConstant<T>(mutable_in, inf);
-      mutable_in->Resize(dims);
-    }
+    // if (check_numerics) {
+    //   T inf = static_cast<T>(std::numeric_limits<float>::infinity());
+    //   VLOG(4) << "fill input data constant inf";
+    //   auto dims = in->dims();
+    //   auto mutable_in = const_cast<framework::Tensor*>(in);
+    //   FillNpuTensorWithConstant<T>(mutable_in, inf);
+    //   mutable_in->Resize(dims);
+    // }
 
     VLOG(3) << "hccl allreduce, parameter is: "
             << "input num: " << numel << "dtype: " << dtype
