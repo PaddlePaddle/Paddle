@@ -35,7 +35,6 @@ from .. import compat as cpt
 from .proto import framework_pb2
 
 from . import core
-from .core import disable_signal_handler
 from . import unique_name
 import paddle.version as fluid_version
 import warnings
@@ -389,6 +388,25 @@ def is_compiled_with_xpu():
             support_xpu = fluid.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
+
+
+def disable_signal_handler():
+    """
+    Reset signal handler registered by Paddle.
+
+    Paddle installs signal handlers at C++ level to log debug information upon failing.
+    However, conflicts can happen if another python module is making use of such signal.
+    Such being the case, one may disblae paddle signal handler via this interface.
+
+    Returns: None 
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.disable_signal_handler()
+    """
+    return core.disable_signal_handler()
 
 
 def is_compiled_with_cuda():
