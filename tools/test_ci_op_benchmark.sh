@@ -88,7 +88,7 @@ function load_CHANGE_OP_FILES {
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
-  [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && exit 0
+  #[ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && exit 0
 }
 
 # Clone benchmark repo
