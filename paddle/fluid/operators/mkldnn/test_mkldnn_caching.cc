@@ -33,6 +33,8 @@ USE_OP(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
 USE_OP(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
+USE_OP(conv2d);
+USE_OP_DEVICE_KERNEL(conv2d, MKLDNN);
 
 namespace paddle {
 namespace operators {
