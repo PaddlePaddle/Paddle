@@ -175,8 +175,9 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
 
   PrintDebugInfo("output data", out_vec);
 
+  EXPECT_TRUE((static_cast<float>(out_vec[0]) - 65504) < 0.1);
   EXPECT_EQ(out_vec.size(), init.size());
-  for (uint32_t i = 0; i < 10; i++) {
+  for (uint32_t i = 1; i < 10; i++) {
     EXPECT_EQ(out_vec[i], static_cast<paddle::platform::float16>(3.0));
   }
 }
