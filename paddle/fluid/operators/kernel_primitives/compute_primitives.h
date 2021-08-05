@@ -14,29 +14,94 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_fp16.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#endif
+
+#include <algorithm>
+#include "paddle/fluid/platform/float16.h"
+
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {
+namespace details {
+
+template <typename T>
+class MPTypeTrait {
+ public:
+  using Type = T;
+};
+
+template <>
+class MPTypeTrait<platform::float16> {
+ public:
+  using Type = float;
+};
+
+}  // namespace details
 /*************************** Compute Functor****************************/
 template <typename T>
-struct ADD {
+struct Add {
   __device__ __forceinline__ T operator()(const T in1, const T in2) {
-    return (in1 + in2);
+    return in1 + in2;
   }
 };
 
 template <typename T>
-struct RELU {
-  __device__ __forceinline__ T operator()(const T in) {
-    return (in > static_cast<T>(0) ? in : static_cast<T>(0.f));
+struct Sub {
+  __device__ __forceinline__ T operator()(const T in1, const T in2) {
+    return in1 - in2;
   }
 };
 
 template <typename T>
-struct FMA {
-  __device__ __forceinline__ T operator()(const T in1, const T in2,
-                                          const T in3) {
-    return in1 * in2 + in3;
+struct Mul {
+  __device__ __forceinline__ T operator()(const T in1, const T in2) {
+    return in1 * in2;
+  }
+};
+
+template <typename T, typename Enable = void>
+struct Div {
+  __device__ __forceinline__ T operator()(const T in1, const T in2) {
+    return in1 / in2;
+  }
+};
+
+template <typename T>
+struct Div<T, typename std::enable_if_t<std::is_integral<T>::value>> {
+  __device__ __forceinline__ T operator()(const T in1, const T in2) {
+    PADDLE_ENFORCE(in2 != 0,
+                   "Invalid Argument Error: Integer division by zero "
+                   "encountered in divide. Please check the input value.");
+    return in1 / in2;
+  }
+};
+
+template <typename T>
+struct FloorDiv {
+  __device__ __forceinline__ T operator()(const T in1, const T in2) {
+    PADDLE_ENFORCE(in2 != 0,
+                   "InvalidArgument: divide by zero "
+                   "encountered in floor-divide ops, please check.\n");
+    return static_cast<T>(std::trunc(in1 / in2));
+  }
+};
+
+template <typename T>
+struct Max {
+  __device__ __forceinline__ T operator()(const T in1, const T in2) {
+    return in1 > in2 ? in1 : in2;
+  }
+};
+
+template <typename T>
+struct Min {
+  __device__ __forceinline__ T operator()(const T in1, const T in2) {
+    return (in1 < in2 ? in1 : in2);
   }
 };
 
@@ -51,13 +116,17 @@ struct FMA {
  * BlockSize: the strid of col
  * OpFunc: compute functor eg: ADD, SUB, XOR, OR, MUL
  */
-template <typename T, int NX, int NY, int BlockSize, class OpFunc>
-__device__ void elementwise_binary(const T* __restrict__ in1,
-                                   const T* __restrict__ in2,
-                                   T* __restrict__ out, OpFunc compute) {
+template <typename T, typename OutT,  int NX, int NY, int BlockSize, class OpFunc>
+__device__ void elementwise_binary(OutT* out,
+	                               const T* in1,
+                                   const T* in2,
+								   OpFunc compute) {
+  T args[2];
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
-    out[idx] = compute(in1[idx], in2[idx]);
+	args[0] = in1[idx];
+	args[1] = in2[idx];
+    out[idx] = static_cast<OutT>(compute(args));
   }
 }
 
@@ -69,12 +138,12 @@ __device__ void elementwise_binary(const T* __restrict__ in1,
  * NY: the col of in1, in2 and in3
  * BlockSize: the strid of col
  */
-template <typename T, int NX, int NY, int BlockSize, class OpFunc>
-__device__ void elementwise_fma(const T* in1, const T* in2, const T* in3,
-                                T* out, OpFunc compute) {
+template <typename T, typename OutT,  int NX, int NY, int BlockSize, class OpFunc>
+__device__ void elementwise_fma(OutT* out, const T* in1, const T* in2, const T* in3,
+								OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
-    out[idx] = compute(in1[idx], in2[idx], in3[idx]);
+    out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx], in3[idx]));
   }
 }
 
@@ -87,14 +156,14 @@ __device__ void elementwise_fma(const T* in1, const T* in2, const T* in3,
  * BlockSize: the strid of col
  * OpFunc: compute functor eg: ADD, SUB, XOR, OR, MUL
  */
-template <typename T, int NX, int NY, int BlockSize, class OpFunc>
-__device__ void cycle_binary(const T* in1, const T* in2, T* out,
+template <typename T, typename OutT,  int NX, int NY, int BlockSize, class OpFunc>
+__device__ void cycle_binary(OutT *out, const T* in1, const T* in2,
                              OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX; idx++) {
 #pragma unroll
     for (int idy = 0; idy < NY; idy++) {
-      out[idx + idy * NX] = compute(in1[idx], in2[idx + idy * NX]);
+      out[idx + idy * NX] = static_cast<OutT>(compute(in1[idx], in2[idx + idy * NX]));
     }
   }
 }
@@ -108,12 +177,13 @@ __device__ void cycle_binary(const T* in1, const T* in2, T* out,
  * BlockSize: the strid of col
  * OpFunc: compute functor eg: relu, sigmoid, exp
  */
-template <typename T, int NX, int NY, int BlockSize, class OpFunc>
-__device__ void elementwise_unary(const T* in, T* out) {
-  OpFunc compute;
+template <typename T, typename OutT,  int NX, int NY, int BlockSize, class OpFunc>
+__device__ void elementwise_unary(OutT* out, const T* in, OpFunc compute) {
+  
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {
-    out[idx] = compute(in[idx]);
+	
+    out[idx] = static_cast<OutT>(compute(in + idx));
   }
 }
 
