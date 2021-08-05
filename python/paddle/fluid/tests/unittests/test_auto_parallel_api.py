@@ -42,6 +42,7 @@ class SimpleNet(nn.Layer):
     def __init__(self, vocab_size=128, hidden_size=4):
         super(SimpleNet, self).__init__()
         self.mesh = MESH
+        self.mesh.set_placement([5, 4, 3, 2, 1, 0])
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
         self.dense1 = nn.Linear(hidden_size, hidden_size)
         self.dense2 = nn.Linear(hidden_size, hidden_size // 2)
@@ -71,21 +72,21 @@ class TestAutoParallelAPI(unittest.TestCase):
             shape=[2, 4], value=4, dtype="float32")
         x, y, mesh = net.forward(data1, data2)
         mesh_attr = _append_attr_suffix('mesh_id')
-        x_mesh_id = x.attr(mesh_attr)
+        x_mesh_id = x._get_attr(mesh_attr)
         self.assertEqual(x_mesh_id, mesh._id)
         x_mesh = x.process_mesh
 
         allatts = x.attr_names
         self.assertEqual(x_mesh, mesh)
         shard_mask_attr = _append_attr_suffix('mask')
-        self.assertEqual(x.attr(shard_mask_attr), MASK.flatten().tolist())
+        self.assertEqual(x._get_attr(shard_mask_attr), MASK.flatten().tolist())
         self.assertEqual(x.shard_mask, MASK.flatten().tolist())
         offload_attr = _append_attr_suffix('offload_device')
-        self.assertEqual(y.attr(offload_attr), "gpu:3")
+        self.assertEqual(y._get_attr(offload_attr), "gpu:3")
         self.assertEqual(y.desc.has_attr(offload_attr), True)
         self.assertEqual(y.offload_device, "gpu:3")
         y._remove_attr(offload_attr)
-        self.assertEqual(y.has_attr(offload_attr), False)
+        self.assertEqual(y._has_attr(offload_attr), False)
         ops = paddle.static.default_main_program().block(0).ops
         first_op = ops[0]
         last_op = ops[-1]

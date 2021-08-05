@@ -23,6 +23,9 @@ __all__ = []
 
 _g_process_mesh_map = dict()
 
+# user defined map from logical process ids to physical ones
+_user_defined_physical_map = None
+
 
 def _append_attr_suffix(name):
     """
@@ -83,6 +86,7 @@ class ProcessMesh(object):
             assert mesh.parent is None
             assert mesh.topology == [2, 3]
             assert mesh.process_group == [2, 4, 5, 0, 1, 3]
+            mesh.set_placement([0, 1, 2, 3, 4, 5])
     """
 
     def __init__(self, mesh, parent=None):
@@ -184,6 +188,34 @@ class ProcessMesh(object):
         assert self._parent_id in _g_process_mesh_map, \
             "parent (%d) does not exist."%self._parent_id
         return _g_process_mesh_map[self._parent_id]
+
+    def set_placement(self, order):
+        """
+        Set the order of the physical process ids.
+
+        Args:
+            order (list): order of the physical process ids.
+        
+        Returns:
+            None
+        """
+        assert self.parent is None, ("This function can only be called by the "
+                                     "root ProcessMesh.")
+        unique_ids = set(order)
+        assert isinstance(order, list)
+
+        assert len(unique_ids) == len(order), ("All physical process ids "
+                                               "in must be unique.")
+        assert min(order) == 0
+        assert max(order) == len(order) - 1
+
+        logical_order = self.process_group
+        global _user_defined_physical_map
+        if _user_defined_physical_map is None:
+            _user_defined_physical_map = dict()
+        assert len(logical_order) == len(order)
+        for idx, l_id in enumerate(logical_order):
+            _user_defined_physical_map[l_id] = order[idx]
 
     def __eq__(self, other):
         assert other and isinstance(other, ProcessMesh)

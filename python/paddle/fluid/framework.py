@@ -1892,7 +1892,7 @@ class Variable(object):
         """
         self._update_desc_attr(name, val)
 
-    def has_attr(self, name):
+    def _has_attr(self, name):
         """
         Whether this Variable has the attribute with name or not.
 
@@ -1924,7 +1924,7 @@ class Variable(object):
     def attr_names(self):
         return self.desc.attr_names()
 
-    def attr(self, name):
+    def _get_attr(self, name):
         """
         Get the attribute by name.
 
