@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid import core
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 from .streams import Stream  # noqa: F401
 from .streams import Event  # noqa: F401
@@ -63,6 +64,11 @@ def current_stream(device=None):
     return core._get_current_stream(device_id)
 
 
+def set_current_stream(stream):
+
+    return core._set_current_stream(stream)
+
+
 def synchronize(device=None):
     '''
     Wait for the compute on the given CUDA device to finish.
@@ -94,3 +100,12 @@ def synchronize(device=None):
             raise ValueError("device type must be int or paddle.CUDAPlace")
 
     return core._device_synchronize(device_id)
+
+
+@signature_safe_contextmanager
+def stream_guard(stream):
+    pre_stream = set_current_stream(stream)
+    try:
+        yield
+    finally:
+        stream = set_current_stream(pre_stream)
