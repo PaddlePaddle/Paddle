@@ -55,6 +55,7 @@ class ProcessMesh(object):
     example, the following diagram is represented by the n-dimensional array
     numpy.array([[2, 4, 5], [0, 1, 3]]), and first logical process is the one
     with id=2.
+
     | 2 | 4 | 5 |
     | 0 | 1 | 3 |
 
@@ -332,11 +333,15 @@ def set_shard_mask(x, mask):
             will not be put on the corresponding logical process.
             For example, the following diagram is represented by the n-dimensional array
             numpy.array([[2, 4, 5], [0, 1, 3]]).
+
                  | 2 | 4 | 5 |
                  | 0 | 1 | 3 |
+
             And the following diagram gives the `mask`.
+
                  | 1 | 0 | 1 |
                  | 0 | 1 | 0 |
+
             Then, the tensor `x` will be put on logical processes 2, 5 and 1.
 
     Returns:
