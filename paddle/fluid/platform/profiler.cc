@@ -262,10 +262,9 @@ void DisableProfiler(EventSortingKey sorted_key,
 
   ParseEvents(all_events, true, sorted_key);
   ParseEvents(all_events, false, sorted_key);
-  if (VLOG_IS_ON(5)) {
-    std::vector<std::vector<MemEvent>> all_mem_events = GetMemEvents();
-    ParseMemEvents(all_mem_events);
-  }
+
+  std::vector<std::vector<MemEvent>> all_mem_events = GetMemEvents();
+  ParseMemEvents(all_mem_events);
 
   ResetProfiler();
   g_state = ProfilerState::kDisabled;
