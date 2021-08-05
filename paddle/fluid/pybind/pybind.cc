@@ -1956,7 +1956,7 @@ All parameter, weight, gradient are variables in Paddle.
              }
 
              std::vector<framework::Tensor> vec_out;
-             self.run(vec_name, vec_tensor, vec_fetch_name, &vec_out);
+             self.Run(vec_name, vec_tensor, vec_fetch_name, &vec_out);
              std::vector<py::array> vec_ret;
              for (size_t i = 0; i < vec_out.size(); ++i) {
                vec_ret.push_back(TensorToPyArray(vec_out[i], true));
