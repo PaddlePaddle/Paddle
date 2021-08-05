@@ -24,12 +24,10 @@ limitations under the License. */
 
 namespace pt {
 
-using NPUDeviceContext = paddle::platform::NPUDeviceContext;
+using NPUContext = paddle::platform::NPUDeviceContext;
 
 template <typename T>
-void Mean(const NPUDeviceContext& dev_ctx,
-          const DenseTensor& x,
-          DenseTensor* out) {
+void Mean(const NPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   std::vector<int> axes;
   paddle::framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                    {"axes", axes}};
@@ -41,7 +39,7 @@ void Mean(const NPUDeviceContext& dev_ctx,
 }
 
 template <typename T>
-void Scale(const NPUDeviceContext& dev_ctx,
+void Scale(const NPUContext& dev_ctx,
            const DenseTensor& x,
            float scale,
            float bias,

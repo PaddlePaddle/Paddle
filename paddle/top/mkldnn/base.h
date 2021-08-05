@@ -23,7 +23,7 @@ limitations under the License. */
 
 namespace pt {
 
-using MKLDNNDeviceContext = paddle::platform::MKLDNNDeviceContext;
+using MKLDNNDContext = paddle::platform::MKLDNNDeviceContext;
 
 // TODO(chenweihang): the handlers in `mkldnn_reuse.h` are coupled to
 // `ExecutionContext`, refactoring that may be a big project!
@@ -34,7 +34,7 @@ class ScaleMKLDNNHandler
                                               mkldnn::eltwise_forward,
                                               mkldnn::eltwise_backward> {
  public:
-  ScaleMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
+  ScaleMKLDNNHandler(const MKLDNNDContext& dev_ctx,
                      const pt::MKLDNNDenseTensor& in_x,
                      const std::string& unique_name,
                      bool is_inplaced,

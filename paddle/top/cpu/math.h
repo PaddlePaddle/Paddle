@@ -33,7 +33,7 @@ template <typename T,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = paddle::framework::EigenVector<T, MajorType, IndexType>;
 
-using CPUDeviceContext = paddle::platform::CPUDeviceContext;
+using CPUContext = paddle::platform::CPUDeviceContext;
 
 /**
  * [ How do we organize the kernel directory ]
@@ -56,16 +56,12 @@ using CPUDeviceContext = paddle::platform::CPUDeviceContext;
  */
 
 template <typename T>
-void Sign(const CPUDeviceContext& dev_ctx,
-          const DenseTensor& x,
-          DenseTensor* out) {
-  module::Sign<CPUDeviceContext, T>(dev_ctx, x, out);
+void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  module::Sign<CPUContext, T>(dev_ctx, x, out);
 }
 
 template <typename T>
-void Mean(const CPUDeviceContext& dev_ctx,
-          const DenseTensor& x,
-          DenseTensor* out) {
+void Mean(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   out->mutable_data<T>();
   auto x_data = EigenVector<T>::Flatten(x);
   auto y_data = EigenScalar<T>::From(*out);
@@ -74,14 +70,13 @@ void Mean(const CPUDeviceContext& dev_ctx,
 }
 
 template <typename T>
-void Scale(const CPUDeviceContext& dev_ctx,
+void Scale(const CPUContext& dev_ctx,
            const DenseTensor& x,
            float scale,
            float bias,
            bool bias_after_scale,
            DenseTensor* out) {
-  module::Scale<CPUDeviceContext, T>(
-      dev_ctx, x, scale, bias, bias_after_scale, out);
+  module::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
 }
 
 }  // namespace pt

@@ -21,10 +21,10 @@ limitations under the License. */
 
 namespace pt {
 
-using MKLDNNDeviceContext = paddle::platform::MKLDNNDeviceContext;
+using MKLDNNDContext = paddle::platform::MKLDNNDeviceContext;
 
 template <typename T>
-void Scale(const MKLDNNDeviceContext& dev_ctx,
+void Scale(const MKLDNNDContext& dev_ctx,
            const MKLDNNDenseTensor& x,
            float scale,
            float bias,
@@ -45,7 +45,7 @@ void Scale(const MKLDNNDeviceContext& dev_ctx,
   auto dst_memory_p = handler.AcquireDstMemory(out);
   auto activation_p = handler.AcquireForwardPrimitive();
 
-  auto& astream = MKLDNNDeviceContext::tls().get_stream();
+  auto& astream = MKLDNNDContext::tls().get_stream();
   activation_p->execute(
       astream,
       {{MKLDNN_ARG_FROM, *src_memory_p}, {MKLDNN_ARG_TO, *dst_memory_p}});

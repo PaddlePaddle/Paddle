@@ -29,8 +29,9 @@ limitations under the License. */
 
 namespace pt {
 
+// TODO(chenweihang): also support CUDA, XPU, NPU, ...
 template <typename T>
-void Scale(const CPUDeviceContext& dev_ctx,
+void Scale(const CPUContext& dev_ctx,
            const SelectedRowsTensor& x,
            float scale,
            float bias,

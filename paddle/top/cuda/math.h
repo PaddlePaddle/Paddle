@@ -25,13 +25,11 @@ limitations under the License. */
 
 namespace pt {
 
-using CUDADeviceContext = paddle::platform::CUDADeviceContext;
+using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
-void Sign(const CUDADeviceContext& dev_ctx,
-          const DenseTensor& x,
-          DenseTensor* out) {
-  module::Sign<CUDADeviceContext, T>(dev_ctx, x, out);
+void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  module::Sign<CUDAContext, T>(dev_ctx, x, out);
 }
 
 // TODO(chenweihang): Perhaps the Kernel call should not be implemented by
@@ -40,19 +38,16 @@ void Sign(const CUDADeviceContext& dev_ctx,
 // include header files, there will be many more function declarations and
 // redundant function call
 template <typename T>
-void Mean(const CUDADeviceContext& dev_ctx,
-          const DenseTensor& x,
-          DenseTensor* out);
+void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
 template <typename T>
-void Scale(const CUDADeviceContext& dev_ctx,
+void Scale(const CUDAContext& dev_ctx,
            const DenseTensor& x,
            float scale,
            float bias,
            bool bias_after_scale,
            DenseTensor* out) {
-  module::Scale<CUDADeviceContext, T>(
-      dev_ctx, x, scale, bias, bias_after_scale, out);
+  module::Scale<CUDAContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
 }
 
 }  // namespace pt

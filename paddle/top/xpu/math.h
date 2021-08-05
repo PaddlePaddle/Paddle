@@ -24,12 +24,10 @@ limitations under the License. */
 
 namespace pt {
 
-using XPUDeviceContext = paddle::platform::XPUDeviceContext;
+using XPUContext = paddle::platform::XPUDeviceContext;
 
 template <typename T>
-void Sign(const XPUDeviceContext& dev_ctx,
-          const DenseTensor& x,
-          DenseTensor* out) {
+void Sign(const XPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   T* out_data = out->mutable_data<T>();
   auto xpu_ctx = dev_ctx.x_context();
   int r = xpu::activation_forward(
@@ -40,9 +38,7 @@ void Sign(const XPUDeviceContext& dev_ctx,
 }
 
 template <typename T>
-void Mean(const XPUDeviceContext& dev_ctx,
-          const DenseTensor& x,
-          DenseTensor* out) {
+void Mean(const XPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   T* out_data = out->mutable_data<T>();
   auto xpu_ctx = dev_ctx.x_context();
   const T* x_data = x.data<T>();
@@ -55,7 +51,7 @@ void Mean(const XPUDeviceContext& dev_ctx,
 }
 
 template <typename T>
-void Scale(const XPUDeviceContext& dev_ctx,
+void Scale(const XPUContext& dev_ctx,
            const DenseTensor& x,
            float scale,
            float bias,

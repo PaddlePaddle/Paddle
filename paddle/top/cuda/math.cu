@@ -46,9 +46,7 @@ struct DivideFunctor {
  */
 
 template <typename T>
-void Mean(const CUDADeviceContext& dev_ctx,
-          const DenseTensor& x,
-          DenseTensor* out) {
+void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   auto size_prob = x.numel();
   const T* x_data = x.data<T>();
   T* out_data = out->mutable_data<T>();
@@ -76,13 +74,13 @@ void Mean(const CUDADeviceContext& dev_ctx,
   PADDLE_ENFORCE_CUDA_SUCCESS(err);
 }
 
-template void Mean<float>(const CUDADeviceContext& dev_ctx,
+template void Mean<float>(const CUDAContext& dev_ctx,
                           const DenseTensor& x,
                           DenseTensor* out);
-template void Mean<double>(const CUDADeviceContext& dev_ctx,
+template void Mean<double>(const CUDAContext& dev_ctx,
                            const DenseTensor& x,
                            DenseTensor* out);
-template void Mean<paddle::platform::float16>(const CUDADeviceContext& dev_ctx,
+template void Mean<paddle::platform::float16>(const CUDAContext& dev_ctx,
                                               const DenseTensor& x,
                                               DenseTensor* out);
 
