@@ -76,28 +76,24 @@ TEST(check_numeric, NPU) {
   auto fp16_nan = static_cast<p::float16>(nan);
 
   bool result = false;
-  try {
-    // Normal
-    VLOG(0) << "start normal";
-    result = Check<p::float16>(static_cast<p::float16>(65546));
-    ASSERT_FALSE(result);
-    Check<float>(static_cast<float>(1.0));
-    ASSERT_FALSE(result);
+  // Normal
+  VLOG(0) << "start normal";
+  result = Check<p::float16>(static_cast<p::float16>(65546));
+  ASSERT_FALSE(result);
+  Check<float>(static_cast<float>(1.0));
+  ASSERT_FALSE(result);
 
-    // Inf
-    VLOG(0) << "start inf";
-    result = Check<p::float16>(fp16_inf);
-    ASSERT_FALSE(result);
-    result = Check<float>(inf);
-    ASSERT_FALSE(result);
+  // Inf
+  VLOG(0) << "start inf";
+  result = Check<p::float16>(fp16_inf);
+  ASSERT_FALSE(result);
+  result = Check<float>(inf);
+  ASSERT_FALSE(result);
 
-    // Nan
-    VLOG(0) << "start nan";
-    result = Check<p::float16>(fp16_nan);
-    ASSERT_TRUE(result);
-    result = Check<float>(nan);
-    ASSERT_TRUE(result);
-  } catch (...) {
-    LOG(WARNING) << "catch execption";
-  }
+  // Nan
+  VLOG(0) << "start nan";
+  result = Check<p::float16>(fp16_nan);
+  ASSERT_TRUE(result);
+  result = Check<float>(nan);
+  ASSERT_TRUE(result);
 }
