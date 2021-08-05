@@ -12,24 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cstdlib>
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/npu_info.h"
 
-bool g_init = false;
-
-void exiting() {
-  if (g_init) {
-    LOG(WARNING) << "Exiting";
-    paddle::platform::AclInstance::Instance().Finalize();
-  }
-}
-
 int main(int argc, char** argv) {
-  std::atexit(exiting);
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
@@ -56,7 +45,6 @@ int main(int argc, char** argv) {
   envs.push_back("reallocate_gpu_memory_in_mb");
   envs.push_back("allocator_strategy");
   envs.push_back("selected_gpus");
-  envs.push_back("call_stack_level");
 #elif __clang__
   envs.push_back("use_mkldnn");
   envs.push_back("initial_cpu_memory_in_mb");
@@ -108,22 +96,12 @@ int main(int argc, char** argv) {
   char** new_argv_address = new_argv.data();
   ::GFLAGS_NAMESPACE::ParseCommandLineFlags(
       &new_argc, &new_argv_address, false);
-  int ret = 0;
-  try {
-    paddle::framework::InitDevices();
-    g_init = true;
-    ret = RUN_ALL_TESTS();
-  } catch (...) {
-    LOG(WARNING) << "gtest main catch exception";
-    g_init = false;
-    paddle::platform::AclInstance::Instance().Finalize();
-    return 1;
-  }
+  paddle::framework::InitDevices();
+
+  int ret = RUN_ALL_TESTS();
 
 #ifdef PADDLE_WITH_ASCEND_CL
-  g_init = false;
   paddle::platform::AclInstance::Instance().Finalize();
-  VLOG(0) << "gtest exit with Finalize npu device";
 #endif
 
   if (env_str) free(env_str);
