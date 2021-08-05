@@ -145,6 +145,47 @@ class ReluGradNPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
+class Relu6NPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+
+    out->mutable_data<T>(ctx.GetPlace());
+
+    const auto& runner = NpuOpRunner("Relu6",
+                                     {
+                                         *x,
+                                     },
+                                     {*out}, {});
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class Relu6GradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    dx->mutable_data<T>(ctx.GetPlace());
+    const auto& runner = NpuOpRunner("Relu6Grad", {*dout, *out}, {*dx}, {});
+
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
 class SqrtNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -456,6 +497,17 @@ REGISTER_OP_NPU_KERNEL(
     ops::ReluGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ReluGradNPUKernel<paddle::platform::NPUDeviceContext,
                            paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    relu6, ops::Relu6NPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::Relu6NPUKernel<paddle::platform::NPUDeviceContext,
+                        paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    relu6_grad,
+    ops::Relu6GradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::Relu6GradNPUKernel<paddle::platform::NPUDeviceContext,
+                            paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     sqrt, ops::SqrtNPUKernel<paddle::platform::NPUDeviceContext, float>,
