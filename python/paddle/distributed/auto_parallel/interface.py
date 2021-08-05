@@ -55,12 +55,8 @@ class ProcessMesh(object):
     example, the following diagram is represented by the n-dimensional array
     numpy.array([[2, 4, 5], [0, 1, 3]]), and first logical process is the one
     with id=2.
-    
-    -------------
     | 2 | 4 | 5 |
-    -------------
     | 0 | 1 | 3 |
-    -------------
 
     Args:
         mesh (numpy.ndarray): an n-dimensional array of processes. Its data type is int.
@@ -157,6 +153,18 @@ class ProcessMesh(object):
         
         Returns:
             list: A list of `int` represents the topology of logical processes.
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle
+                import paddle.distributed as dist
+                
+                paddle.enable_static()
+                
+                mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
+                assert mesh.topology == [2, 3]
         """
         return self._topology
 
@@ -170,6 +178,18 @@ class ProcessMesh(object):
         
         Returns:
             list: A list of `int` represents all logical processes.
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle
+                import paddle.distributed as dist
+                
+                paddle.enable_static()
+                
+                mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
+                assert mesh.process_group == [2, 4, 5, 0, 1, 3]
         """
         return self._processes
 
@@ -183,6 +203,18 @@ class ProcessMesh(object):
         
         Returns:
             ProcessMesh: the parent ProcessMesh.
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle
+                import paddle.distributed as dist
+                
+                paddle.enable_static()
+                
+                mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
+                assert mesh.parent is None
         """
         if self._parent_id == core.kNoneProcessMeshIndex(): return None
         assert self._parent_id in _g_process_mesh_map, \
@@ -198,6 +230,18 @@ class ProcessMesh(object):
         
         Returns:
             None
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle
+                import paddle.distributed as dist
+                
+                paddle.enable_static()
+                
+                mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
+                mesh.set_placement([0, 1, 2, 3, 4, 5])
         """
         assert self.parent is None, ("This function can only be called by the "
                                      "root ProcessMesh.")
@@ -288,18 +332,11 @@ def set_shard_mask(x, mask):
             will not be put on the corresponding logical process.
             For example, the following diagram is represented by the n-dimensional array
             numpy.array([[2, 4, 5], [0, 1, 3]]).
-
-                 -------------
                  | 2 | 4 | 5 |
-                 -------------
                  | 0 | 1 | 3 |
-                 -------------
             And the following diagram gives the `mask`.
-                 -------------
                  | 1 | 0 | 1 |
-                 -------------
                  | 0 | 1 | 0 |
-                 -------------
             Then, the tensor `x` will be put on logical processes 2, 5 and 1.
 
     Returns:
