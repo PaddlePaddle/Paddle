@@ -57,6 +57,7 @@ class ProcessMesh(object):
     with id=2.
 
     | 2 | 4 | 5 |
+
     | 0 | 1 | 3 |
 
     Args:
@@ -335,11 +336,13 @@ def set_shard_mask(x, mask):
             numpy.array([[2, 4, 5], [0, 1, 3]]).
 
                  | 2 | 4 | 5 |
+
                  | 0 | 1 | 3 |
 
             And the following diagram gives the `mask`.
 
                  | 1 | 0 | 1 |
+
                  | 0 | 1 | 0 |
 
             Then, the tensor `x` will be put on logical processes 2, 5 and 1.
