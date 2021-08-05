@@ -34,7 +34,7 @@ USE_OP_DEVICE_KERNEL(relu, MKLDNN);
 USE_OP(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP(conv2d);
-USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);   
+USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);
 
 namespace paddle {
 namespace operators {
@@ -149,7 +149,7 @@ TEST(test_conv2d_noreuse_cache, cpu_place) {
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal2");
-  PADDLE_ENFORCE_EQ(ct.Analyze(9), true,
+  PADDLE_ENFORCE_EQ(ct.Analyze(18), true,
                     platform::errors::InvalidArgument(
                         "Wrong number of cached oneDNN objects"));
 }
