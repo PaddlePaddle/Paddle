@@ -27,12 +27,12 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/norm_utils.cu.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/platform/float16.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
-static inline int64_t AlignUp(int64_t a, int64_t b) { return (a + b - 1) / b; }
 
 namespace paddle {
 namespace operators {
@@ -127,21 +127,15 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
 //    (ensure coalesced gloabl mem access)
 //    2) when lack paralleism degree and workload of each thread is too much,
 //    use 2D grid partition.
-void SetBNConfigForCLast(const int reduce_num, const int left_num,
-                         int *blocking_size, bool *should_reduce_again,
-                         dim3 *block_dim, dim3 *grid_dim) {
+void SetBNConfigForCLast(const int max_threads, const int reduce_num,
+                         const int left_num, int *blocking_size,
+                         bool *should_reduce_again, dim3 *block_dim,
+                         dim3 *grid_dim) {
   block_dim->z = 1;
   grid_dim->z = 1;
   *should_reduce_again = false;
 
-  int device_id = platform::GetCurrentDeviceId();
-  int max_mp = platform::GetCUDAMultiProcessors(device_id);
-  int max_threads_per_mp =
-      platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
-  int max_threads = max_threads_per_mp * max_mp;
-
   int num_block = (max_threads / left_num);
-
   if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
     *blocking_size = detail::GetLastPow2(reduce_num / num_block);
 
@@ -299,7 +293,7 @@ static __global__ void BNFwElementwiselyUpdateY(
 }
 
 template <typename T>
-void BNForwardTrainingCLastFastInterface(
+void FastBNForwardTrainingCLast(
     gpuStream_t stream, framework::DataLayout compute_format, Tensor tensor_x,
     const int x_numel, const int max_threads, const T *x,
     const BatchNormParamType<T> *scale, const BatchNormParamType<T> *bias,
@@ -314,7 +308,7 @@ void BNForwardTrainingCLastFastInterface(
   int blocking_size = 1;
   int reduce_num = N * HxW;
   int left_num = C;
-  SetBNConfigForCLast(reduce_num, left_num, &blocking_size,
+  SetBNConfigForCLast(max_threads, reduce_num, left_num, &blocking_size,
                       &should_reduce_again, &block, &grid);
 
   if (!should_reduce_again) {
@@ -358,9 +352,9 @@ void BNForwardTrainingCLastFastInterface(
   }
 }
 
-void SetBNConfigForNCHW(const int reduce_num, const int left_num,
-                        bool *should_reduce_again, dim3 *block_dim,
-                        dim3 *grid_dim) {
+void SetBNConfigForNCHW(const int max_threads, const int reduce_num,
+                        const int left_num, bool *should_reduce_again,
+                        dim3 *block_dim, dim3 *grid_dim) {
   constexpr int min_reduce_num_per_thread = 16;
   constexpr int max_reduce_num_per_thread = 256;
   constexpr int max_num_threads = detail::kMaxThread;
@@ -369,12 +363,9 @@ void SetBNConfigForNCHW(const int reduce_num, const int left_num,
   block_dim->x = detail::GetBlockDim(reduce_num);
   block_dim->y = 1;
   grid_num = left_num;
-  reduce_num_per_thread = AlignUp(reduce_num, block_dim->x * block_dim->y);
-  int device_id = platform::GetCurrentDeviceId();
-  int max_mp = platform::GetCUDAMultiProcessors(device_id);
-  int max_threads_per_mp =
-      platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
-  int max_threads = max_threads_per_mp * max_mp;
+  reduce_num_per_thread =
+      detail::AlignUp(reduce_num, block_dim->x * block_dim->y);
+
   int num_threads = block_dim->x * block_dim->y;
   int max_num_blocks = max_threads / num_threads;
 
@@ -388,10 +379,10 @@ void SetBNConfigForNCHW(const int reduce_num, const int left_num,
   // the number cannot be larger than max_reduce_num_per_thread, so we
   // choose the maximum between the result above and input_split_num_2.
   int input_split_num_1 =
-      AlignUp(reduce_num_per_thread, min_reduce_num_per_thread);
+      detail::AlignUp(reduce_num_per_thread, min_reduce_num_per_thread);
   int input_split_num_2 =
-      AlignUp(reduce_num_per_thread, max_reduce_num_per_thread);
-  int input_split_num_3 = AlignUp(max_num_blocks, grid_num);
+      detail::AlignUp(reduce_num_per_thread, max_reduce_num_per_thread);
+  int input_split_num_3 = detail::AlignUp(max_num_blocks, grid_num);
 
   grid_dim->x = grid_num;
   grid_dim->y = std::max(std::min(input_split_num_1, input_split_num_3),
@@ -400,58 +391,6 @@ void SetBNConfigForNCHW(const int reduce_num, const int left_num,
   if (grid_dim->y > 1) {
     *should_reduce_again = true;
   }
-}
-
-template <typename T>
-static __device__ T WarpReduce(T val) {
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-  for (int stride = detail::kWarpSize / 2; stride > 0; stride >>= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
-    val = (val + temp);
-  }
-  return val;
-}
-
-template <typename T>
-static __device__ T BlockXReduce(T val) {
-  using detail::kWarpSize;
-  __shared__ T shared[kWarpSize];
-  int block_dim_x = blockDim.x;
-  if (blockDim.x > kWarpSize) {
-    block_dim_x = blockDim.x / kWarpSize;
-    int lane = threadIdx.x % kWarpSize;
-    int wid = threadIdx.x / kWarpSize;
-    val = WarpReduce(val);
-    if (lane == 0) {
-      shared[wid] = val;
-    }
-    __syncthreads();
-    val = shared[lane];
-  }
-
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-  for (int stride = 1; stride < block_dim_x; stride <<= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
-    val = val + temp;
-  }
-  return val;
-}
-
-template <typename T>
-static __device__ T BlockYReduce(T val) {
-  __shared__ T shared_memory[detail::kMaxThread];
-  shared_memory[SharedMemoryIndex(0)] = val;
-  for (int stride = blockDim.y / 2; stride > 0; stride >>= 1) {
-    __syncthreads();
-    if (threadIdx.y < stride && threadIdx.y + stride < blockDim.y) {
-      T temp = shared_memory[SharedMemoryIndex(stride)];
-      val = val + temp;
-    }
-    shared_memory[SharedMemoryIndex(0)] = val;
-  }
-  return val;
 }
 
 struct BnNCHWIndexCalculator {
@@ -499,6 +438,8 @@ __global__ void BnFwNCHWSinglePass(
   __shared__ BatchNormParamType<Tx> share_inv_var_val;
   __shared__ BatchNormParamType<Tx> share_mean_val;
 
+  auto reducer = CustomSum<BatchNormParamType<Tx>>();
+
   // 1. reduce for each thread
   if (left_idx < left_num) {
     // 1.1. load REDUCE_VEC_SIZE data once, and then compute
@@ -508,12 +449,12 @@ __global__ void BnFwNCHWSinglePass(
 #pragma unroll
       for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
         int reduce_idx = input_idx + i * stride;
-// int idx_x = bn_index_calculator.Get(reduce_idx);
-#if 1
+        // Note: when using fastdivmod optimization, uncomment 1st line, comment
+        // 2-5 lines.
+        // int idx_x = bn_index_calculator.Get(reduce_idx);
         int div = reduce_idx / (HxW);  // get batch id
         int mod = reduce_idx % (HxW);  // get offset in HW orientation
         int idx_x = div * CxHxW + mod;
-#endif
         input_reg[i] = static_cast<BatchNormParamType<Tx>>(input[idx_x]);
       }
 #pragma unroll
@@ -532,12 +473,12 @@ __global__ void BnFwNCHWSinglePass(
         break;
       }
       int reduce_idx = input_idx;
-// int idx_x = bn_index_calculator.Get(reduce_idx);
-#if 1
+      // Note: when using fastdivmod optimization, uncomment 1st line, comment
+      // 2-5 lines.
+      // int idx_x = bn_index_calculator.Get(reduce_idx);
       int div = reduce_idx / (HxW);
       int mod = reduce_idx % (HxW);
       int idx_x = div * CxHxW + mod;
-#endif
       input_reg[i] = static_cast<BatchNormParamType<Tx>>(input[idx_x]);
       input_idx += stride;
     }
@@ -554,8 +495,8 @@ __global__ void BnFwNCHWSinglePass(
   }
 
   // 2. reduce in block x
-  mean_sum = BlockXReduce(mean_sum);
-  square_sum = BlockXReduce(square_sum);
+  mean_sum = BlockXReduce(mean_sum, reducer);
+  square_sum = BlockXReduce(square_sum, reducer);
 
   if (left_idx < left_num) {
     if (threadIdx.x == 0) {
@@ -583,12 +524,13 @@ __global__ void BnFwNCHWSinglePass(
 
   if (left_idx < left_num) {
     while (input_idx < reduce_num) {
-// int idx_x = bn_index_calculator.Get(input_idx);
-#if 1
+      // Note: when using fastdivmod optimization, uncomment 1st line, comment
+      // 2-5 lines.
+      // int idx_x = bn_index_calculator.Get(input_idx);
       int div = input_idx / (HxW);
       int mod = input_idx % (HxW);
       int idx_x = div * CxHxW + mod;
-#endif
+
       BatchNormParamType<Tx> x_sub_mean =
           static_cast<BatchNormParamType<Tx>>(input[idx_x]) - share_mean_val;
       output[idx_x] =
@@ -619,6 +561,8 @@ __global__ void BnFwNCHW2DReduce(const Tx *x, int reduce_num, int left_num,
   BatchNormParamType<Tx> x_sum = 0;
   BatchNormParamType<Tx> x_square_sum = 0;
 
+  auto reducer = CustomSum<BatchNormParamType<Tx>>();
+
   // 1. reduce for each thread
   if (left_idx < left_num) {
     // 1.1. load REDUCE_VEC_SIZE data once, and then compute
@@ -628,12 +572,12 @@ __global__ void BnFwNCHW2DReduce(const Tx *x, int reduce_num, int left_num,
 #pragma unroll
       for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
         int reduce_idx = input_idx + i * stride;
-// int idx_x = bn_index_calculator.Get(reduce_idx);
-#if 1
+        // Note: when using fastdivmod optimization, uncomment 1st line, comment
+        // 2-5 lines.
+        // int idx_x = bn_index_calculator.Get(reduce_idx);
         int div = reduce_idx / (HxW);
         int mod = reduce_idx % (HxW);
         int idx_x = div * CxHxW + mod;
-#endif
         input_reg[i] = static_cast<BatchNormParamType<Tx>>(input[idx_x]);
       }
 #pragma unroll
@@ -652,12 +596,12 @@ __global__ void BnFwNCHW2DReduce(const Tx *x, int reduce_num, int left_num,
         break;
       }
       int reduce_idx = input_idx;
-// int idx_x = bn_index_calculator.Get(reduce_idx);
-#if 1
+      // Note: when using fastdivmod optimization, uncomment 1st line, comment
+      // 2-5 lines.
+      // int idx_x = bn_index_calculator.Get(reduce_idx);
       int div = reduce_idx / (HxW);
       int mod = reduce_idx % (HxW);
       int idx_x = div * CxHxW + mod;
-#endif
       input_reg[i] = static_cast<BatchNormParamType<Tx>>(input[idx_x]);
       input_idx += stride;
     }
@@ -675,14 +619,14 @@ __global__ void BnFwNCHW2DReduce(const Tx *x, int reduce_num, int left_num,
 
   // 2. reduce in block y
   if (blockDim.y > 1) {
-    x_sum = BlockYReduce(x_sum);
-    x_square_sum = BlockYReduce(x_square_sum);
+    x_sum = BlockYReduce(x_sum, reducer);
+    x_square_sum = BlockYReduce(x_square_sum, reducer);
   }
   __syncthreads();
 
   // 3. reduce in block x
-  x_sum = BlockXReduce(x_sum);
-  x_square_sum = BlockXReduce(x_square_sum);
+  x_sum = BlockXReduce(x_sum, reducer);
+  x_square_sum = BlockXReduce(x_square_sum, reducer);
   if (threadIdx.x == 0) {
     temp_x_sum[blockIdx.x + blockIdx.y * gridDim.x] = x_sum;
     temp_square_sum[blockIdx.x + blockIdx.y * gridDim.x] = x_square_sum;
@@ -690,7 +634,7 @@ __global__ void BnFwNCHW2DReduce(const Tx *x, int reduce_num, int left_num,
 }
 
 template <typename T>
-void BNForwardTrainingNCHWFastInterface(
+void FastBNForwardTrainingNCHW(
     gpuStream_t stream, framework::DataLayout compute_format, Tensor tensor_x,
     const int x_numel, const int max_threads, const T *x,
     const BatchNormParamType<T> *scale, const BatchNormParamType<T> *bias,
@@ -704,7 +648,8 @@ void BNForwardTrainingNCHWFastInterface(
   bool should_reduce_again = false;
   int reduce_num = N * HxW;
   int left_num = C;
-  SetBNConfigForNCHW(reduce_num, left_num, &should_reduce_again, &block, &grid);
+  SetBNConfigForNCHW(max_threads, reduce_num, left_num, &should_reduce_again,
+                     &block, &grid);
 
   auto bn_index_calculator = BnNCHWIndexCalculator(N, C, HxW);
 
@@ -785,16 +730,16 @@ void BNForwardTrainingDriver(
     }
   } else if (is_clast) {
     // fast impl for nhwc format.
-    BNForwardTrainingCLastFastInterface<T>(
-        stream, compute_format, tensor_x, x_numel, max_threads, x, scale, bias,
-        C, N, HxW, epsilon, this_factor, y, mean_out, variance_out, saved_mean,
-        saved_variance);
+    FastBNForwardTrainingCLast<T>(stream, compute_format, tensor_x, x_numel,
+                                  max_threads, x, scale, bias, C, N, HxW,
+                                  epsilon, this_factor, y, mean_out,
+                                  variance_out, saved_mean, saved_variance);
   } else {
     // fast impl for nchw format.
-    BNForwardTrainingNCHWFastInterface<T>(
-        stream, compute_format, tensor_x, x_numel, max_threads, x, scale, bias,
-        C, N, HxW, epsilon, this_factor, y, mean_out, variance_out, saved_mean,
-        saved_variance);
+    FastBNForwardTrainingNCHW<T>(stream, compute_format, tensor_x, x_numel,
+                                 max_threads, x, scale, bias, C, N, HxW,
+                                 epsilon, this_factor, y, mean_out,
+                                 variance_out, saved_mean, saved_variance);
   }
 }
 
