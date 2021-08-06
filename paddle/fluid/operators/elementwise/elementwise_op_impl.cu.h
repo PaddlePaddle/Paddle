@@ -160,11 +160,13 @@ void LaunchSameDimsElementwiseCudaKernel(
   auto stream = ctx.stream();
   switch (ET) {
     case ElementwiseType::kBinary:
-      ElementVectorizedBinary<vec_size><<<grid_size, block_size, 0, stream>>>(
+      ElementVectorizedBinary<vec_size, InT, OutT,
+                              Functor><<<grid_size, block_size, 0, stream>>>(
           in0, in1, out, size, func);
       break;
     case ElementwiseType::kUnary:
-      ElementVectorizedUnary<vec_size><<<grid_size, block_size, 0, stream>>>(
+      ElementVectorizedUnary<vec_size, InT, OutT,
+                             Functor><<<grid_size, block_size, 0, stream>>>(
           in0, out, size, func);
       break;
   }
