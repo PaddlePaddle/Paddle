@@ -74,8 +74,8 @@ struct DivFunctor<T, typename std::enable_if_t<std::is_integral<T>::value>> {
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
-__device__ void elementwise_binary(OutT* out, const T* in1, const T* in2,
-                                   OpFunc compute) {
+__device__ void ElementwiseBinary(OutT* out, const T* in1, const T* in2,
+                                  OpFunc compute) {
   T args[2];
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
@@ -95,8 +95,8 @@ __device__ void elementwise_binary(OutT* out, const T* in1, const T* in2,
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
-__device__ void elementwise_fma(OutT* out, const T* in1, const T* in2,
-                                const T* in3, OpFunc compute) {
+__device__ void ElementwiseFma(OutT* out, const T* in1, const T* in2,
+                               const T* in3, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
     out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx], in3[idx]));
@@ -114,8 +114,8 @@ __device__ void elementwise_fma(OutT* out, const T* in1, const T* in2,
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
-__device__ void cycle_binary(OutT* out, const T* in1, const T* in2,
-                             OpFunc compute) {
+__device__ void CycleBinary(OutT* out, const T* in1, const T* in2,
+                            OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX; idx++) {
 #pragma unroll
@@ -137,7 +137,7 @@ __device__ void cycle_binary(OutT* out, const T* in1, const T* in2,
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
-__device__ void elementwise_unary(OutT* out, const T* in, OpFunc compute) {
+__device__ void ElementwiseUnary(OutT* out, const T* in, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {
     out[idx] = static_cast<OutT>(compute(in + idx));

@@ -100,7 +100,7 @@ struct BroadcastConfig {
   }
 };
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void read_data_base(T* dst, const T* __restrict__ src, int size) {
+__device__ void ReadDataBase(T* dst, const T* __restrict__ src, int size) {
   int dx = threadIdx.x * NX;
 #pragma unroll
   for (int idx = 0; idx < NX; ++idx) {
@@ -112,19 +112,19 @@ __device__ void read_data_base(T* dst, const T* __restrict__ src, int size) {
 }
 
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void read_data(T* dst, const T* __restrict__ src, int size) {
+__device__ void ReadData(T* dst, const T* __restrict__ src, int size) {
   const int VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
   const int VECTORS_PER_THREAD = NX / VECTOR_SIZE;
 
   // Vector per thread
   if (blockDim.x * NX > size) {
-    read_data_base<T, NX, NY, BlockSize>(dst, src, size);
+    ReadDataBase<T, NX, NY, BlockSize>(dst, src, size);
   } else {
     // Vector type
     using VecType = VectorType<T, VECTOR_SIZE>;
     VecType vec_temp[VECTORS_PER_THREAD];
     const VecType* vec_input = reinterpret_cast<const VecType*>(src);
-    read_data_base<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
+    ReadDataBase<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
         vec_temp, vec_input, VECTORS_PER_THREAD * blockDim.x);
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
@@ -133,7 +133,7 @@ __device__ void read_data(T* dst, const T* __restrict__ src, int size) {
   }
 }
 
-/** @brief: read_data_bc
+/** @brief: ReadDataBc
  * read data from src ptr when the shape of src and dst are different
  * @param：
  * src: the source pointer
@@ -143,11 +143,11 @@ __device__ void read_data(T* dst, const T* __restrict__ src, int size) {
  * the shape of dst is [NY, NX]
  */
 template <typename T, int NX, int NY, int BS, int ShapeSize>
-__device__ __forceinline__ void read_data_bc(T* dst, const T* __restrict__ src,
-                                             uint32_t fix,
-                                             BroadcastConfig<ShapeSize> config,
-                                             int num, int stride_nx,
-                                             int stride_ny) {
+__device__ __forceinline__ void ReadDataBc(T* dst, const T* __restrict__ src,
+                                           uint32_t fix,
+                                           BroadcastConfig<ShapeSize> config,
+                                           int num, int stride_nx,
+                                           int stride_ny) {
   uint32_t base_offset = fix + threadIdx.x * NX;
   uint32_t offset = 0;
 
@@ -171,7 +171,7 @@ __device__ __forceinline__ void read_data_bc(T* dst, const T* __restrict__ src,
 }
 
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void write_data_base(T* dst, const T* __restrict__ src, int size) {
+__device__ void WriteDataBase(T* dst, const T* __restrict__ src, int size) {
   int dx = threadIdx.x * NX;
 #pragma unroll
   for (int idx = 0; idx < NX; ++idx) {
@@ -183,13 +183,13 @@ __device__ void write_data_base(T* dst, const T* __restrict__ src, int size) {
 }
 
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void write_data(T* dst, T* __restrict__ src, int size) {
+__device__ void WriteData(T* dst, T* __restrict__ src, int size) {
   const int VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
   const int VECTORS_PER_THREAD = NX / VECTOR_SIZE;
 
   // Vector per thread
   if (blockDim.x * NX > size) {
-    write_data_base<T, NX, NY, BlockSize>(dst, src, size);
+    WriteDataBase<T, NX, NY, BlockSize>(dst, src, size);
   } else {
     // Vector type
     using VecType = VectorType<T, VECTOR_SIZE>;
@@ -199,7 +199,7 @@ __device__ void write_data(T* dst, T* __restrict__ src, int size) {
       vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
     }
     VecType* vec_dst = reinterpret_cast<VecType*>(dst);
-    write_data_base<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
+    WriteDataBase<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
         vec_dst, vec_temp, VECTORS_PER_THREAD * blockDim.x);
   }
 }
