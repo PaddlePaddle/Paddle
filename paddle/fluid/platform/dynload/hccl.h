@@ -18,6 +18,7 @@ limitations under the License. */
 #include <hccl/hccl.h>
 #include <hccl/hccl_types.h>
 #include <mutex>  // NOLINT
+#include "paddle/fluid/platform/npu_info.h"
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
@@ -39,6 +40,7 @@ extern void* hccl_dso_handle;
       std::call_once(hccl_dso_flag, []() {                               \
         hccl_dso_handle = paddle::platform::dynload::GetHCCLDsoHandle(); \
       });                                                                \
+      SetNPUExceptionCallback(#__name);                                  \
       static void* p_##__name = dlsym(hccl_dso_handle, #__name);         \
       return reinterpret_cast<HCCL_func>(p_##__name)(args...);           \
     }                                                                    \

@@ -112,6 +112,17 @@ void ResetNPUDeviceId(int id) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetDevice(id));
 }
 
+void inline SetNPUExceptionCallback(std::string func_name) {
+  auto callback = [](aclrtExceptionInfo *info) {
+    std::string err_msg = string::Sprintf(
+        "Calling %d failed, device_id=%d, stream_id=%d, task_id=%d, tid=%d, "
+        "ret_code=%d",
+        func_name, info->deviceid, info->streamid, info->taskid, info->tid,
+        info->retcode);
+    PADDLE_THROW(platform::errors::External(err_msg));
+  } PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetExceptionInfoCallback(callback));
+}
+
 void NPUMemoryUsage(size_t *available, size_t *total) {
   size_t actual_available, actual_total;
   RecordedNPUMemGetInfo(available, total, &actual_available, &actual_total,
