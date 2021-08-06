@@ -80,7 +80,6 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
   auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
   Tensor new_x = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
-  // const T* new_x_data = new_x.data<T>();
   int new_n = n;
   if (n > 0) {
     // newX = X
@@ -129,7 +128,6 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
   // Calculate Out = newX^{n} for abs(n) > 4 with time complexity as O(logN)
   int bit = 0;
   Tensor z = Tensor(X->type());
-  // const T* z_data;
   bool out_inited = false;
   Tensor temp_out = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
   Tensor temp_z = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
@@ -142,7 +140,6 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
       framework::TensorCopy(temp_z, ctx.GetPlace(), dev_ctx, &z);
     } else {
       z = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
-      // z_data = z.data<T>();
       framework::TensorCopy(new_x, ctx.GetPlace(), dev_ctx, &z);
     }
     if (bit == 1) {
@@ -225,7 +222,6 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   }
 
   Tensor new_x = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
-  // const T* new_x_data = new_x.data<T>();
   int new_n = n;
   if (n > 0) {
     // newX = X

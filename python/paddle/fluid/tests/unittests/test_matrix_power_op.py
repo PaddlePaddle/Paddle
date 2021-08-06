@@ -97,59 +97,50 @@ class TestMatrixPowerOpN10(TestMatrixPowerOp):
         self.n = 10
 
 
-class TestMatrixPowerOpNMinus2(TestMatrixPowerOp):
+class TestMatrixPowerOpNMinus(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "float64"
+        self.n = -1
+
+    def test_grad(self):
+        self.check_grad(
+            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6)
+
+
+class TestMatrixPowerOpNMinus2(TestMatrixPowerOpNMinus):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
         self.n = -2
 
-    def test_grad(self):
-        self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6)
 
-
-class TestMatrixPowerOpNMinus3(TestMatrixPowerOp):
+class TestMatrixPowerOpNMinus3(TestMatrixPowerOpNMinus):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
         self.n = -3
 
-    def test_grad(self):
-        self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6)
 
-
-class TestMatrixPowerOpNMinus4(TestMatrixPowerOp):
+class TestMatrixPowerOpNMinus4(TestMatrixPowerOpNMinus):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
         self.n = -4
 
-    def test_grad(self):
-        self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6)
 
-
-class TestMatrixPowerOpNMinus5(TestMatrixPowerOp):
+class TestMatrixPowerOpNMinus5(TestMatrixPowerOpNMinus):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
         self.n = -5
 
-    def test_grad(self):
-        self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6)
 
-
-class TestMatrixPowerOpNMinus6(TestMatrixPowerOp):
+class TestMatrixPowerOpNMinus6(TestMatrixPowerOpNMinus):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
         self.n = -5
-
-    def test_grad(self):
-        self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6)
 
 
 class TestMatrixPowerOpNMinus10(TestMatrixPowerOp):
@@ -215,14 +206,21 @@ class TestMatrixPowerOpBatchedFP32(TestMatrixPowerOpFP32):
         self.n = 2
 
 
-class TestMatrixPowerOpLargeFP32(TestMatrixPowerOpFP32):
+class TestMatrixPowerOpLarge1FP32(TestMatrixPowerOpFP32):
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float32"
         self.n = 2
 
 
-class TestMatrixPowerOpFP32Minus1(TestMatrixPowerOpFP32):
+class TestMatrixPowerOpLarge2FP32(TestMatrixPowerOpFP32):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "float32"
+        self.n = 32
+
+
+class TestMatrixPowerOpFP32Minus(TestMatrixPowerOpFP32):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float32"
