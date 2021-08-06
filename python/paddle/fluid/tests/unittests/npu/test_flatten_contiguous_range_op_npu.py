@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,7 +50,6 @@ class TestFlattenOp(OpTest):
 
     def test_check_grad(self):
         pass
-        #self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
