@@ -112,15 +112,26 @@ void ResetNPUDeviceId(int id) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetDevice(id));
 }
 
+void callback(::aclrtExceptionInfo *info) {
+  // NOTE: the struct defination
+  typedef struct ExceptionInfo {
+    uint32_t taskid;
+    uint32_t streamid;
+    uint32_t tid;
+    uint32_t deviceid;
+    uint32_t retcode;
+  } ExceptionInfo;
+  auto cast_info = reinterpret_cast<ExceptionInfo *>(info);
+  std::string err_msg = string::Sprintf(
+      "HCCL/ACL failed, device_id=%d, stream_id=%d, task_id=%d, tid=%d, "
+      "ret_code=%d",
+      cast_info->deviceid, cast_info->streamid, cast_info->taskid,
+      cast_info->tid, cast_info->retcode);
+  PADDLE_THROW(platform::errors::External(err_msg));
+}
+
 void SetNPUExceptionCallback(std::string func_name) {
   VLOG(4) << "register exception callback before " << func_name;
-  auto callback = [](aclrtExceptionInfo *info) {
-    std::string err_msg = string::Sprintf(
-        "HCCL/ACL failed, device_id=%d, stream_id=%d, task_id=%d, tid=%d, "
-        "ret_code=%d",
-        info->deviceid, info->streamid, info->taskid, info->tid, info->retcode);
-    PADDLE_THROW(platform::errors::External(err_msg));
-  };
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetExceptionInfoCallback(callback));
 }
 
