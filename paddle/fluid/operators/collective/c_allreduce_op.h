@@ -256,7 +256,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             << "hccl_red_type: " << hccl_red_type << ", group is: " << group
             << ", sendbuff:" << sendbuff << ", recvbuff:" << recvbuff
             << ", out_size:" << out->memory_size();
-
+    SetNPUExceptionCallback("HcclAllReduce");
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
         sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
         reinterpret_cast<void*>(stream)));

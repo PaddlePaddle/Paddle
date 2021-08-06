@@ -40,7 +40,6 @@ extern void* hccl_dso_handle;
       std::call_once(hccl_dso_flag, []() {                               \
         hccl_dso_handle = paddle::platform::dynload::GetHCCLDsoHandle(); \
       });                                                                \
-      SetNPUExceptionCallback(#__name);                                  \
       static void* p_##__name = dlsym(hccl_dso_handle, #__name);         \
       return reinterpret_cast<HCCL_func>(p_##__name)(args...);           \
     }                                                                    \

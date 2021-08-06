@@ -59,7 +59,7 @@ class PartialSendOpASCENDKernel : public framework::OpKernel<T> {
     VLOG(3) << "begin hccl send, parameter is: "
             << "root " << root << ", comm: " << comm->comm()
             << ", stream: " << stream;
-
+    SetNPUExceptionCallback("HcclBroadcast");
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
 
