@@ -125,6 +125,17 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "normalize the gradients by the number of time-step, "
                   "which is also the sequence's length.")
         .SetDefault(false);
+    AddAttr<bool>(
+        "size_average",
+        "(bool, default: false), normalize the loss by the batch size."
+        "If True, supersedes norm_by_times")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "length_average",
+        "(bool, default: false), normalize the loss by the total number of "
+        "frames"
+        "in the batch. If True, supersedes size_average and norm_by_times")
+        .SetDefault(false);
     AddComment(R"DOC(
 An operator integrating the open-source
 [warp-ctc](https://github.com/baidu-research/warp-ctc) library, which is used in

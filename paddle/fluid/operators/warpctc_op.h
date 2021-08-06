@@ -366,22 +366,49 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
 
     logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
+    bool size_average = ctx.Attr<bool>("size_average");
+    bool length_average = ctx.Attr<bool>("length_average");
+
+    if ((norm_by_times && size_average) || (norm_by_times && length_average) ||
+        (size_average && length_average)) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "[warpctc grad] norm_by_times, size_average and length_average "
+          "should one be true."));
+    }
 
     if (ctx.HasInput("LogitsLength")) {
-      size_t max_seq_length = warpctc_grad->dims()[0];
-      size_t num_sequences = warpctc_grad->dims()[1];
-      size_t seq_width = warpctc_grad->dims()[2];
+      size_t Tmax = warpctc_grad->dims()[0];
+      size_t B = warpctc_grad->dims()[1];
+      size_t D = warpctc_grad->dims()[2];
 
       auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
       framework::Tensor logits_length_cpu;
       framework::TensorCopy(*logits_length, platform::CPUPlace(),
                             &logits_length_cpu);
 
+      // total logits length
+      int total_length = 0;
+      auto* length_ptr = logits_length_cpu.data<int64_t>();
+      for (size_t i = 0; i < B; i++) {
+        total_length += length_ptr[i];
+      }
+      VLOG(3) << "[warpctc grad] total logits length: " << total_length;
+      if (length_average) {
+        T scale = 1.0;
+        scale = 1.0 / static_cast<T>(total_length);
+        VLOG(3) << "[warpctc grad][length_average] scale: " << scale
+                << "total logits len: " << total_length;
+      } else if (size_average) {
+        T scale = 1.0;
+        scale = 1.0 / static_cast<T>(B);
+        VLOG(3) << "[warpctc grad][size_average] scale: " << scale
+                << "Batchsize: " << B;
+      }
+
       LoDTensor logits_grad_with_lod;
-      auto logits_grad_dims =
-          framework::make_ddim({static_cast<int64_t>(max_seq_length),
-                                static_cast<int64_t>(num_sequences),
-                                static_cast<int64_t>(seq_width)});
+      auto logits_grad_dims = framework::make_ddim({static_cast<int64_t>(Tmax),
+                                                    static_cast<int64_t>(B),
+                                                    static_cast<int64_t>(D)});
       T* logits_grad_cpu_data = logits_grad_with_lod.mutable_data<T>(
           logits_grad_dims, platform::CPUPlace());
 
@@ -397,22 +424,35 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
           scaled_logits.mutable_data<T>(logits_grad_dims, platform::CPUPlace());
 
       const T* loss_grad_data = loss_grad_cpu.data<T>();
-      for (size_t i = 0; i < max_seq_length; ++i) {
-        for (size_t j = 0; j < num_sequences; ++j) {
+      for (size_t i = 0; i < Tmax; ++i) {
+        for (size_t j = 0; j < B; ++j) {
           T scale = 1.0;
-          if (norm_by_times) {
-            scale = 1.0 / static_cast<T>(logits_length_cpu.data<int64_t>()[j]);
+          if (length_average) {
+            // Compute the avg. log-probability per batch sample and frame.
+            // https://github.com/espnet/warp-ctc/blob/pytorch_bindings/pytorch_binding/warpctc_pytorch/__init__.py#L42
+            scale = 1.0 / static_cast<T>(total_length);
+          } else if (size_average) {
+            // Compute the avg. log-probability per batch sample.
+            // https://github.com/espnet/warp-ctc/blob/pytorch_bindings/pytorch_binding/warpctc_pytorch/__init__.py#L46
+            scale = 1.0 / static_cast<T>(B);
+          } else if (norm_by_times) {
+            auto len = static_cast<T>(logits_length_cpu.data<int64_t>()[j]);
+            scale = 1.0 / len;
           }
-          for (size_t k = 0; k < seq_width; ++k) {
-            size_t idx = i * (num_sequences * seq_width) + j * seq_width + k;
+          for (size_t k = 0; k < D; ++k) {
+            size_t idx = i * (B * D) + j * D + k;
             scaled_logits_data[idx] =
                 logits_grad_cpu_data[idx] * loss_grad_data[j] * scale;
           }
         }
       }
-
       TensorCopySync(scaled_logits, ctx.GetPlace(), logits_grad);
     } else {
+      if (size_average || length_average) {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "[warpctc grad] size_average and length_average not support by "
+            "1.x."));
+      }
       math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *warpctc_grad,
           logits_grad, -1, 0, norm_by_times, math::kLengthBatchWidth);

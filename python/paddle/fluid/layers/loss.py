@@ -478,7 +478,9 @@ def warpctc(input,
             blank=0,
             norm_by_times=False,
             input_length=None,
-            label_length=None):
+            label_length=None,
+            size_average=False,
+            length_average=False):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -515,6 +517,12 @@ def warpctc(input,
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
+       size_average (bool): normalize the loss by the batch size. 
+            If `True`, supersedes  `norm_by_times`
+            (default: `False`)
+       length_average (bool): normalize the loss by the total number of frames
+            in the batch. If `True`, supersedes `size_average` and `norm_by_times`
+            (default: `False`)
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -602,15 +610,11 @@ def warpctc(input,
                 "input_length and label_length must not be None in dygraph mode!"
             )
         grad, loss_out = _C_ops.warpctc(
-            input,
-            label,
-            input_length,
-            label_length,
-            'blank',
-            blank,
-            'norm_by_times',
-            norm_by_times, )
+            input, label, input_length, label_length, 'blank', blank,
+            'norm_by_times', norm_by_times, 'size_average', size_average,
+            'length_average', length_average)
         return loss_out
+
     helper = LayerHelper('warpctc', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], "warpctc")
     check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
@@ -634,6 +638,8 @@ def warpctc(input,
         attrs={
             'blank': blank,
             'norm_by_times': norm_by_times,
+            'size_average': size_average,
+            'length_average': length_average,
         })
     return loss_out
 

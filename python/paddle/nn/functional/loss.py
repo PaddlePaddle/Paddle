@@ -1001,7 +1001,9 @@ def ctc_loss(log_probs,
              label_lengths,
              blank=0,
              reduction='mean',
-             norm_by_times=False):
+             norm_by_times=False,
+             size_average=False,
+             length_average=False):
     """
 
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
@@ -1017,7 +1019,9 @@ def ctc_loss(log_probs,
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
         norm_by_times (bool, default False) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
-
+        size_average (bool): normalize the loss by the batch size (default: `False`). If `True`, supersedes `norm_by_times` (default: `False`)
+        length_average (bool): normalize the loss by the total number of frames in the batch. If `True`, supersedes `size_average` and `norm_by_times` (default: `False`)
+            
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
 
@@ -1081,9 +1085,10 @@ def ctc_loss(log_probs,
     """
 
     loss_out = fluid.layers.warpctc(log_probs, labels, blank, norm_by_times,
-                                    input_lengths, label_lengths)
+                                    input_lengths, label_lengths, size_average,
+                                    length_average)
 
-    loss_out = fluid.layers.squeeze(loss_out, [-1])
+    loss_out = fluid.layers.squeeze(loss_out, [-1])  # (B)
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
         loss_out = paddle.mean(loss_out / label_lengths)
