@@ -436,6 +436,8 @@ int32_t GraphBrpcService::graph_set_node_feat(Table *table,
       buffer += feat_len;
     }
   }
+
+
   ((GraphTable *)table)->set_node_feat(node_ids, feature_names, features);
 
   return 0;

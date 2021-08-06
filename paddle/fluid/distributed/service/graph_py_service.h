@@ -163,6 +163,7 @@ class GraphPyClient : public GraphPyService {
                                            int start, int size, int step = 1);
   ::paddle::distributed::PSParameter GetWorkerProto();
 
+
  protected:
   mutable std::mutex mutex_;
   int client_id;

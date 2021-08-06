@@ -165,6 +165,7 @@ void GraphPyServer::start_server(bool block) {
   ::paddle::distributed::DownpourWorkerParameter* downpour_worker_proto =
       worker_proto->mutable_downpour_worker_param();
 
+
   for (auto& tuple : this->table_id_map) {
     VLOG(0) << " make a new table " << tuple.second;
     ::paddle::distributed::TableParameter* worker_sparse_table_proto =

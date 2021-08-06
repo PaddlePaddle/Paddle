@@ -569,6 +569,7 @@ void RunBrpcPushSparse() {
   ASSERT_TRUE(node_feat[1][0] == "helloworld");
 
 
+
   // Test string
   node_ids.clear();
   node_ids.push_back(37);

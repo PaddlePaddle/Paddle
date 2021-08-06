@@ -229,6 +229,7 @@ void BindGraphPyClient(py::module* m) {
       .def("bind_local_server", &GraphPyClient::bind_local_server);
 }
 
+
 using paddle::distributed::TreeIndex;
 using paddle::distributed::IndexWrapper;
 using paddle::distributed::IndexNode;

@@ -624,6 +624,7 @@ int32_t GraphTable::initialize() {
   // shards.resize(shard_num_per_table);
   shards = std::vector<GraphShard>(shard_num_per_table, GraphShard(shard_num));
   return 0;
+
 }
 }
 };

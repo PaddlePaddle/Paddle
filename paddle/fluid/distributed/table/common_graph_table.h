@@ -46,6 +46,7 @@ class GraphShard {
     }
     return res;
   }
+
   GraphNode *add_graph_node(uint64_t id);
   FeatureNode *add_feature_node(uint64_t id);
   Node *find_node(uint64_t id);

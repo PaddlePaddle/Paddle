@@ -27,6 +27,7 @@
 namespace paddle {
 namespace distributed {
 
+
 void GraphPsService_Stub::service(
     ::google::protobuf::RpcController *controller,
     const ::paddle::distributed::PsRequestMessage *request,
