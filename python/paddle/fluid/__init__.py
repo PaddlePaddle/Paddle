@@ -174,7 +174,8 @@ def __bootstrap__():
             ' OpenBlas does not support multi-threads.'.format(num_threads),
             file=sys.stderr)
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
-
+    
+    os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
     sysstr = platform.system()
     read_env_flags = [
