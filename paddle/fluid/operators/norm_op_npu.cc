@@ -23,10 +23,10 @@ class NormNPUKernel : public framework::OpKernel<T> {
   void CheckAxis(int axis, int rank) const {
     // check the axis is in [-rank, rank-1]
     if (axis <= rank - 1 && axis >= -rank) return;
-    PADDLE_THROW(
+    PADDLE_THROW(platform::errors::InvalidArgument(
         "axis in norm operator must between (%d) and (%d)"
         "but got (%d).",
-        -rank, rank - 1, axis);
+        -rank, rank - 1, axis));
   }
 
  public:
