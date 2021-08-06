@@ -378,9 +378,9 @@ class TestGradScalerStateDict(unittest.TestCase):
     def test_with_state_dict(self):
         with fluid.dygraph.guard():
             out_use_state_dict = self.train_resnet(
-                enable_amp=True, use_data_loader=True, use_save_load=True)
+                enable_amp=True, use_data_loader=False, use_save_load=True)
             out_no_state_dict = self.train_resnet(
-                enable_amp=True, use_data_loader=True, use_save_load=False)
+                enable_amp=True, use_data_loader=False, use_save_load=False)
         print('save_load:', out_use_state_dict[0], out_no_state_dict[0])
         self.assertTrue(
             np.allclose(
