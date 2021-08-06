@@ -34,6 +34,31 @@ class Flatten2NPUKernel : public framework::OpKernel<T> {
     runner.Run(stream);
   }
 };
+
+using Tensor = framework::Tensor;
+
+template <typename DeviceContext, typename T>
+class FlattenContiguousRangeNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto *X = ctx.Input<Tensor>("X");
+    auto *Out = ctx.Output<Tensor>("Out");
+    int start_axis = ctx.Attr<int>("start_axis");
+    int stop_axis = ctx.Attr<int>("stop_axis");
+
+    Out->mutable_data<T>(ctx.GetPlace());
+
+    const auto &runner =
+        NpuOpRunner("FlattenV2", {*X}, {*Out},
+                    {{"axis", static_cast<int32_t>(start_axis)},
+                     {"end_axis", static_cast<int32_t>(stop_axis)}});
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    runner.Run(stream);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -45,3 +70,18 @@ REGISTER_OP_NPU_KERNEL(flatten2, ops::Flatten2NPUKernel<float>,
                        ops::Flatten2NPUKernel<int>,
                        ops::Flatten2NPUKernel<int8_t>,
                        ops::Flatten2NPUKernel<int64_t>);
+
+REGISTER_OP_NPU_KERNEL(
+    flatten_contiguous_range,
+    ops::FlattenContiguousRangeNPUKernel<paddle::platform::NPUDeviceContext,
+                                         float>,
+    ops::FlattenContiguousRangeNPUKernel<paddle::platform::NPUDeviceContext,
+                                         double>,
+    ops::FlattenContiguousRangeNPUKernel<paddle::platform::NPUDeviceContext,
+                                         uint8_t>,
+    ops::FlattenContiguousRangeNPUKernel<paddle::platform::NPUDeviceContext,
+                                         int>,
+    ops::FlattenContiguousRangeNPUKernel<paddle::platform::NPUDeviceContext,
+                                         int8_t>,
+    ops::FlattenContiguousRangeNPUKernel<paddle::platform::NPUDeviceContext,
+                                         int64_t>);
