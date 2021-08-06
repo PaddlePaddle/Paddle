@@ -114,10 +114,10 @@ __global__ void ElementVectorizedUnary(const InT *__restrict__ in0, OutT *out,
   InT args[VecSize];
   OutT result[VecSize];
 
-  kernel_primitives::read_data<InT, VecSize, 1, 1>(args, in0 + fix, num);
-  kernel_primitives::elementwise_unary<InT, OutT, VecSize, 1, 1, Functor>(
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args, in0 + fix, num);
+  kernel_primitives::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(
       result, args, func);
-  kernel_primitives::write_data<OutT, VecSize, 1, 1>(out + fix, result, num);
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
 }
 
 template <int VecSize, typename InT, typename OutT, typename Functor>
@@ -133,12 +133,12 @@ __global__ void ElementVectorizedBinary(const InT *__restrict__ in0,
   InT args[2][VecSize];
   OutT result[VecSize];
 
-  kernel_primitives::read_data<InT, VecSize, 1, 1>(args[0], in0 + fix, num);
-  kernel_primitives::read_data<InT, VecSize, 1, 1>(args[1], in1 + fix, num);
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[0], in0 + fix, num);
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[1], in1 + fix, num);
 
-  kernel_primitives::elementwise_binary<InT, OutT, VecSize, 1, 1, Functor>(
+  kernel_primitives::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(
       result, args[0], args[1], func);
-  kernel_primitives::write_data<OutT, VecSize, 1, 1>(out + fix, result, num);
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>

@@ -185,28 +185,26 @@ __global__ void BroadcastKernelBinary(
 
   // load in0
   if (use_broadcast[0]) {
-    kernel_primitives::read_data_bc<InT, VecSize, DATA_PER_THREAD, 1,
-                                    ShapeSize>(arg0, in0, fix, configlists[0],
-                                               numel, 1, 1);
+    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
+        arg0, in0, fix, configlists[0], numel, 1, 1);
   } else {
-    kernel_primitives::read_data<InT, VecSize, 1, 1>(arg0, in0 + fix, num);
+    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg0, in0 + fix, num);
   }
 
   // load in1
   if (use_broadcast[1]) {
-    kernel_primitives::read_data_bc<InT, VecSize, DATA_PER_THREAD, 1,
-                                    ShapeSize>(arg1, in1, fix, configlists[1],
-                                               numel, 1, 1);
+    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
+        arg1, in1, fix, configlists[1], numel, 1, 1);
   } else {
-    kernel_primitives::read_data<InT, VecSize, 1, 1>(arg1, in1 + fix, num);
+    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg1, in1 + fix, num);
   }
 
   // compute
-  kernel_primitives::elementwise_binary<InT, OutT, VecSize, 1, 1, Functor>(
+  kernel_primitives::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(
       result, arg0, arg1, func);
 
   // store
-  kernel_primitives::write_data<OutT, VecSize, 1, 1>(out + fix, result, num);
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
 }
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
@@ -222,12 +220,12 @@ __global__ void BroadcastKernelUnary(const InT *__restrict__ in, OutT *out,
   if (blockIdx.x < main_tid) {
     num = blockDim.x * VecSize;  // blockIdx.x < main_tid
   }
-  kernel_primitives::read_data_bc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
+  kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
       arg, in, fix * VecSize, config, numel, 1, 1);
-  kernel_primitives::elementwise_unary<InT, OutT, VecSize, 1, 1, Functor>(
+  kernel_primitives::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(
       &result[0], &arg[0], func);
-  kernel_primitives::write_data<OutT, VecSize, 1, 1>(out + fix * VecSize,
-                                                     &result[0], num);
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix * VecSize,
+                                                    &result[0], num);
 }
 
 template <typename InT, typename OutT, ElementwiseType ET, int VecSize,
