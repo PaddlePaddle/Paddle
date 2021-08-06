@@ -47,11 +47,10 @@ class TileNPUKernel : public framework::OpKernel<T> {
             "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED, repeat_times_size));
     rank = std::max(rank, repeat_times_size);
-    switch (rank) { REP_TILE_TEMPLATE(MAX_RANK_SUPPORTED) }
+    Tile(context);
   }
 
  protected:
-  template <int Rank>
   void Tile(const framework::ExecutionContext& context) const {
     auto* in0 = context.Input<framework::Tensor>("X");
 
