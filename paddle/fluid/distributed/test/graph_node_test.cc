@@ -575,6 +575,15 @@ void RunBrpcPushSparse() {
   VLOG(0) << "get_node_feat: " << node_feat[1][0].size();
   VLOG(0) << "get_node_feat: " << node_feat[1][1].size();
 
+  node_feat[1][0] = "helloworld";
+
+  client1.set_node_feat(std::string("user"), node_ids, feature_names, node_feat);
+
+  node_feat =
+      client1.get_node_feat(std::string("user"), node_ids, feature_names);
+  VLOG(0) << "get_node_feat: " << node_feat[1][0];
+  ASSERT_EQ(node_feat[1][0], "helloworld");
+
   std::remove(edge_file_name);
   std::remove(node_file_name);
   testAddNode(worker_ptr_);

@@ -86,6 +86,9 @@ class GraphBrpcService : public PsBaseService {
   int32_t graph_get_node_feat(Table *table, const PsRequestMessage &request,
                               PsResponseMessage &response,
                               brpc::Controller *cntl);
+  int32_t graph_set_node_feat(Table *table, const PsRequestMessage &request,
+                              PsResponseMessage &response,
+                              brpc::Controller *cntl);
   int32_t clear_nodes(Table *table, const PsRequestMessage &request,
                       PsResponseMessage &response, brpc::Controller *cntl);
   int32_t add_graph_node(Table *table, const PsRequestMessage &request,
