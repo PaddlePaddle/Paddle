@@ -366,50 +366,32 @@ class TestWarpCTCOpWithPadding(OpTest):
     def test_check_grad_norm_by_times(self):
         self.attrs['norm_by_times'] = True
         self.outputs['WarpCTCGrad'] = self.gradient
-        if core.is_compiled_with_rocm():
-            self.check_grad(
-                ["Logits"],
-                "Loss",
-                max_relative_error=0.009,
-                check_dygraph=False)
-        else:
+        if not core.is_compiled_with_rocm():
             self.check_grad(
                 ["Logits"],
                 "Loss",
                 max_relative_error=0.007,
-                check_dygraph=False)
+                check_dygraph=True)
             
      def test_check_grad_size_average(self):
         self.attrs['size_average'] = True
         self.outputs['WarpCTCGrad'] = self.gradient
-        if core.is_compiled_with_rocm():
-            self.check_grad(
-                ["Logits"],
-                "Loss",
-                max_relative_error=0.009,
-                check_dygraph=False)
-        else:
+        if not core.is_compiled_with_rocm():
             self.check_grad(
                 ["Logits"],
                 "Loss",
                 max_relative_error=0.007,
-                check_dygraph=False)
+                check_dygraph=True)
             
     def test_check_grad_length_average(self):
         self.attrs['length_average'] = True
         self.outputs['WarpCTCGrad'] = self.gradient
-        if core.is_compiled_with_rocm():
-            self.check_grad(
-                ["Logits"],
-                "Loss",
-                max_relative_error=0.009,
-                check_dygraph=False)
-        else:
+        if not core.is_compiled_with_rocm():
             self.check_grad(
                 ["Logits"],
                 "Loss",
                 max_relative_error=0.007,
-                check_dygraph=False)
+                check_dygraph=True)
             
 
 class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):
