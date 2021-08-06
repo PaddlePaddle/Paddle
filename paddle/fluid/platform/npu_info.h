@@ -49,6 +49,9 @@ void SetNPUDeviceId(int device_id);
 //! Reset the NPU device id for next execution.
 void ResetNPUDeviceId(int device_id);
 
+//! Set exception callback before "func_name".
+void SetNPUExceptionCallback(std::string func_name);
+
 //! Get the memory usage of current NPU device.
 void NPUMemoryUsage(size_t *available, size_t *total);
 

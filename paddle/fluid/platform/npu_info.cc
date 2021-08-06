@@ -112,7 +112,7 @@ void ResetNPUDeviceId(int id) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetDevice(id));
 }
 
-void inline SetNPUExceptionCallback(std::string func_name) {
+void SetNPUExceptionCallback(std::string func_name) {
   auto callback = [](aclrtExceptionInfo *info) {
     std::string err_msg = string::Sprintf(
         "Calling %d failed, device_id=%d, stream_id=%d, task_id=%d, tid=%d, "
