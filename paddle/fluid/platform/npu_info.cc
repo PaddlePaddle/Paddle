@@ -113,14 +113,15 @@ void ResetNPUDeviceId(int id) {
 }
 
 void SetNPUExceptionCallback(std::string func_name) {
+  VLOG(4) << "register exception callback before " << func_name;
   auto callback = [](aclrtExceptionInfo *info) {
     std::string err_msg = string::Sprintf(
-        "Calling %d failed, device_id=%d, stream_id=%d, task_id=%d, tid=%d, "
+        "HCCL/ACL failed, device_id=%d, stream_id=%d, task_id=%d, tid=%d, "
         "ret_code=%d",
-        func_name, info->deviceid, info->streamid, info->taskid, info->tid,
-        info->retcode);
+        info->deviceid, info->streamid, info->taskid, info->tid, info->retcode);
     PADDLE_THROW(platform::errors::External(err_msg));
-  } PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetExceptionInfoCallback(callback));
+  };
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetExceptionInfoCallback(callback));
 }
 
 void NPUMemoryUsage(size_t *available, size_t *total) {
