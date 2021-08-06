@@ -373,15 +373,17 @@ class TestGradScalerStateDict(unittest.TestCase):
                 paddle.save(scaler.state_dict(), 'ResNet_model.pdparams')
                 dict_load = paddle.load('ResNet_model.pdparams')
                 scaler.load_state_dict(dict_load)
+        if use_data_loader:
+            train_reader._reset()
         return dy_out, dy_param_value, dy_grad_value
 
     def test_with_state_dict(self):
         with fluid.dygraph.guard():
             out_use_state_dict = self.train_resnet(
-                enable_amp=True, use_data_loader=False, use_save_load=True)
+                enable_amp=True, use_data_loader=True, use_save_load=True)
             out_no_state_dict = self.train_resnet(
-                enable_amp=True, use_data_loader=False, use_save_load=False)
-        print(out_use_state_dict[0], out_no_state_dict[0])
+                enable_amp=True, use_data_loader=True, use_save_load=False)
+        print('save_load:', out_use_state_dict[0], out_no_state_dict[0])
         self.assertTrue(
             np.allclose(
                 out_use_state_dict[0], out_no_state_dict[0], atol=1.e-2))
