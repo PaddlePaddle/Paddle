@@ -123,9 +123,10 @@ class GraphTable : public SparseTable {
                                 const std::vector<std::string> &feature_names,
                                 std::vector<std::vector<std::string>> &res);
 
-  virtual int32_t set_node_feat(const std::vector<uint64_t> &node_ids,
-                                const std::vector<std::string> &feature_names,
-                                const std::vector<std::vector<std::string>> &res);
+  virtual int32_t set_node_feat(
+      const std::vector<uint64_t> &node_ids,
+      const std::vector<std::string> &feature_names,
+      const std::vector<std::vector<std::string>> &res);
 
  protected:
   std::vector<GraphShard> shards;

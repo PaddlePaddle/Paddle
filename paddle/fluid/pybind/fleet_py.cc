@@ -217,18 +217,17 @@ void BindGraphPyClient(py::module* m) {
               std::vector<uint64_t> node_ids,
               std::vector<std::string> feature_names,
               std::vector<std::vector<py::bytes>> bytes_feats) {
-             std::vector<std::vector<std::string >> feats(bytes_feats.size());
+             std::vector<std::vector<std::string>> feats(bytes_feats.size());
              for (int i = 0; i < bytes_feats.size(); ++i) {
                for (int j = 0; j < bytes_feats[i].size(); ++j) {
                  feats[i].push_back(std::string(bytes_feats[i][j]));
                }
              }
              self.set_node_feat(node_type, node_ids, feature_names, feats);
-             return ;
+             return;
            })
       .def("bind_local_server", &GraphPyClient::bind_local_server);
 }
-
 
 using paddle::distributed::TreeIndex;
 using paddle::distributed::IndexWrapper;

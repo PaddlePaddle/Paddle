@@ -165,7 +165,6 @@ void GraphPyServer::start_server(bool block) {
   ::paddle::distributed::DownpourWorkerParameter* downpour_worker_proto =
       worker_proto->mutable_downpour_worker_param();
 
-
   for (auto& tuple : this->table_id_map) {
     VLOG(0) << " make a new table " << tuple.second;
     ::paddle::distributed::TableParameter* worker_sparse_table_proto =
@@ -333,7 +332,7 @@ std::vector<std::vector<std::string>> GraphPyClient::get_node_feat(
 
 void GraphPyClient::set_node_feat(
     std::string node_type, std::vector<uint64_t> node_ids,
-    std::vector<std::string> feature_names, 
+    std::vector<std::string> feature_names,
     const std::vector<std::vector<std::string>> features) {
   if (this->table_id_map.count(node_type)) {
     uint32_t table_id = this->table_id_map[node_type];
@@ -341,7 +340,7 @@ void GraphPyClient::set_node_feat(
         worker_ptr->set_node_feat(table_id, node_ids, feature_names, features);
     status.wait();
   }
-  return ;
+  return;
 }
 
 std::vector<FeatureNode> GraphPyClient::pull_graph_list(std::string name,

@@ -15,14 +15,14 @@
 #include "paddle/fluid/distributed/table/common_graph_table.h"
 #include <time.h>
 #include <algorithm>
+#include <chrono>
 #include <set>
 #include <sstream>
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/graph/graph_node.h"
-#include "paddle/fluid/string/printf.h"
-#include <chrono>
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -406,31 +406,30 @@ int32_t GraphTable::random_sample_neighboors(
     int thread_pool_index = get_thread_pool_index(node_id);
     auto rng = _shards_task_rng_pool[thread_pool_index];
 
-    tasks.push_back(_shards_task_pool[thread_pool_index]->enqueue(
-        [&]() -> int {
-          Node *node = find_node(node_id);
+    tasks.push_back(_shards_task_pool[thread_pool_index]->enqueue([&]() -> int {
+      Node *node = find_node(node_id);
 
-          if (node == nullptr) {
-            actual_size = 0;
-            return 0;
-          }
-          std::vector<int> res = node->sample_k(sample_size, rng);
-          actual_size = res.size() * (Node::id_size + Node::weight_size);
-          int offset = 0;
-          uint64_t id;
-          float weight;
-          char *buffer_addr = new char[actual_size];
-          buffer.reset(buffer_addr);
-          for (int &x : res) {
-            id = node->get_neighbor_id(x);
-            weight = node->get_neighbor_weight(x);
-            memcpy(buffer_addr + offset, &id, Node::id_size);
-            offset += Node::id_size;
-            memcpy(buffer_addr + offset, &weight, Node::weight_size);
-            offset += Node::weight_size;
-          }
-          return 0;
-        }));
+      if (node == nullptr) {
+        actual_size = 0;
+        return 0;
+      }
+      std::vector<int> res = node->sample_k(sample_size, rng);
+      actual_size = res.size() * (Node::id_size + Node::weight_size);
+      int offset = 0;
+      uint64_t id;
+      float weight;
+      char *buffer_addr = new char[actual_size];
+      buffer.reset(buffer_addr);
+      for (int &x : res) {
+        id = node->get_neighbor_id(x);
+        weight = node->get_neighbor_weight(x);
+        memcpy(buffer_addr + offset, &id, Node::id_size);
+        offset += Node::id_size;
+        memcpy(buffer_addr + offset, &weight, Node::weight_size);
+        offset += Node::weight_size;
+      }
+      return 0;
+    }));
   }
   for (size_t idx = 0; idx < node_num; ++idx) {
     tasks[idx].get();
@@ -470,10 +469,10 @@ int32_t GraphTable::get_node_feat(const std::vector<uint64_t> &node_ids,
   return 0;
 }
 
-
-int32_t GraphTable::set_node_feat(const std::vector<uint64_t> &node_ids,
-                                  const std::vector<std::string> &feature_names,
-                                  const std::vector<std::vector<std::string>> &res) {
+int32_t GraphTable::set_node_feat(
+    const std::vector<uint64_t> &node_ids,
+    const std::vector<std::string> &feature_names,
+    const std::vector<std::vector<std::string>> &res) {
   size_t node_num = node_ids.size();
   std::vector<std::future<int>> tasks;
   for (size_t idx = 0; idx < node_num; ++idx) {
@@ -497,9 +496,6 @@ int32_t GraphTable::set_node_feat(const std::vector<uint64_t> &node_ids,
   }
   return 0;
 }
-
-
-
 
 std::pair<int32_t, std::string> GraphTable::parse_feature(
     std::string feat_str) {
@@ -624,7 +620,6 @@ int32_t GraphTable::initialize() {
   // shards.resize(shard_num_per_table);
   shards = std::vector<GraphShard>(shard_num_per_table, GraphShard(shard_num));
   return 0;
-
 }
 }
 };

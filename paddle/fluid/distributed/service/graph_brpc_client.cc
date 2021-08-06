@@ -27,7 +27,6 @@
 namespace paddle {
 namespace distributed {
 
-
 void GraphPsService_Stub::service(
     ::google::protobuf::RpcController *controller,
     const ::paddle::distributed::PsRequestMessage *request,
@@ -497,17 +496,19 @@ std::future<int32_t> GraphBrpcClient::set_node_feat(
   size_t request_call_num = request2server.size();
   std::vector<std::vector<uint64_t>> node_id_buckets(request_call_num);
   std::vector<std::vector<int>> query_idx_buckets(request_call_num);
-  std::vector<std::vector<std::vector<std::string>>> features_idx_buckets(request_call_num);
+  std::vector<std::vector<std::vector<std::string>>> features_idx_buckets(
+      request_call_num);
   for (int query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
     int server_index = get_server_index_by_id(node_ids[query_idx]);
     int request_idx = server2request[server_index];
     node_id_buckets[request_idx].push_back(node_ids[query_idx]);
     query_idx_buckets[request_idx].push_back(query_idx);
-    if(features_idx_buckets[request_idx].size() == 0) {
+    if (features_idx_buckets[request_idx].size() == 0) {
       features_idx_buckets[request_idx].resize(feature_names.size());
     }
-    for(int feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
-      features_idx_buckets[request_idx][feat_idx].push_back(features[feat_idx][query_idx]);
+    for (int feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
+      features_idx_buckets[request_idx][feat_idx].push_back(
+          features[feat_idx][query_idx]);
     }
   }
 
@@ -553,10 +554,12 @@ std::future<int32_t> GraphBrpcClient::set_node_feat(
     std::string set_feature = "";
     for (size_t feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
       for (size_t node_idx = 0; node_idx < node_num; ++node_idx) {
-        size_t feat_len = features_idx_buckets[request_idx][feat_idx][node_idx].size(); 
+        size_t feat_len =
+            features_idx_buckets[request_idx][feat_idx][node_idx].size();
         set_feature.append((char *)&feat_len, sizeof(size_t));
-        set_feature.append(features_idx_buckets[request_idx][feat_idx][node_idx].data(),
-                      feat_len); 
+        set_feature.append(
+            features_idx_buckets[request_idx][feat_idx][node_idx].data(),
+            feat_len);
       }
     }
     closure->request(request_idx)
@@ -571,7 +574,6 @@ std::future<int32_t> GraphBrpcClient::set_node_feat(
 
   return fut;
 }
-
 
 int32_t GraphBrpcClient::initialize() {
   // set_shard_num(_config.shard_num());

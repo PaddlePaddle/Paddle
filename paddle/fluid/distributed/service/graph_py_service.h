@@ -155,14 +155,12 @@ class GraphPyClient : public GraphPyService {
   std::vector<std::vector<std::string>> get_node_feat(
       std::string node_type, std::vector<uint64_t> node_ids,
       std::vector<std::string> feature_names);
-  void set_node_feat(
-      std::string node_type, std::vector<uint64_t> node_ids,
-      std::vector<std::string> feature_names,
-      const std::vector<std::vector<std::string>> features);
+  void set_node_feat(std::string node_type, std::vector<uint64_t> node_ids,
+                     std::vector<std::string> feature_names,
+                     const std::vector<std::vector<std::string>> features);
   std::vector<FeatureNode> pull_graph_list(std::string name, int server_index,
                                            int start, int size, int step = 1);
   ::paddle::distributed::PSParameter GetWorkerProto();
-
 
  protected:
   mutable std::mutex mutex_;

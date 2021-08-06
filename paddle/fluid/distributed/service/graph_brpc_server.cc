@@ -425,18 +425,17 @@ int32_t GraphBrpcService::graph_set_node_feat(Table *table,
   std::vector<std::vector<std::string>> features(
       feature_names.size(), std::vector<std::string>(node_num));
 
-  const char* buffer = request.params(2).c_str();
-   
+  const char *buffer = request.params(2).c_str();
+
   for (size_t feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
     for (size_t node_idx = 0; node_idx < node_num; ++node_idx) {
       size_t feat_len = *(size_t *)(buffer);
       buffer += sizeof(size_t);
       auto feat = std::string(buffer, feat_len);
-      features[feat_idx][node_idx] = feat; 
+      features[feat_idx][node_idx] = feat;
       buffer += feat_len;
     }
   }
-
 
   ((GraphTable *)table)->set_node_feat(node_ids, feature_names, features);
 
