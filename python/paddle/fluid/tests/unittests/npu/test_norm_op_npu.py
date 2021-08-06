@@ -59,17 +59,6 @@ class TestNorm(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
-    def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out')
-
-
-""" Note(@xiongkun03) : This Test case may not always pass. 
-                        May Raise :
-                        Expected [ 0.0135 ] but got [ 0.014 ]
-                        This is caused by Float16 round-off error in forward procedure. 
-                        May effect the accuracy of some model. recommend usage of float32 instead of float16.
-"""
-
 
 class TestNormFP16(TestNorm):
     def set_npu(self):
@@ -81,12 +70,6 @@ class TestNormFP16(TestNorm):
         self.axis = -1
         self.epsilon = 1e-10
         self.shape = (2, 3, 100)
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
-
-    def test_check_grad(self):
-        pass
 
 
 if __name__ == '__main__':

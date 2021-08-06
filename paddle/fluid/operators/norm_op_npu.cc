@@ -25,7 +25,7 @@ class NormNPUKernel : public framework::OpKernel<T> {
     if (axis <= rank - 1 && axis >= -rank) return;
     PADDLE_THROW(
         "axis in norm operator must between (%d) and (%d)"
-        "but (%d) got.",
+        "but got (%d).",
         -rank, rank - 1, axis);
   }
 
