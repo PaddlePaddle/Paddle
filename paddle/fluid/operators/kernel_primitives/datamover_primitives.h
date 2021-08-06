@@ -68,10 +68,41 @@ struct FastDivMod {
   uint32_t multiplier;
 };
 
+template <int kDims>
+struct BroadcastConfig {
+  FastDivMod divmoders[kDims];
+  uint32_t strides[framework::DDim::kMaxRank];
+  HOSTDEVICE BroadcastConfig() {}
+
+  HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
+                             const std::vector<int64_t>& in_dims,
+                             int dim_size) {
+    std::vector<uint32_t> strides_in;
+    std::vector<FastDivMod> divmoders_in;
+    // for divmoders
+    divmoders_in.resize(dim_size);
+    for (int i = 0; i < dim_size; ++i) {
+      divmoders_in[i] = FastDivMod(out_dims[i]);
+    }
+    // for strides
+    strides_in.resize(dim_size, 1);
+    for (int i = 0; i < dim_size; ++i) {
+      strides_in[i] = in_dims[i] == 1 ? 0 : strides_in[i];
+      strides_in[i] =
+          (i != 0 && strides_in[i] != 0)
+              ? std::accumulate(in_dims.begin(), in_dims.begin() + i, 1,
+                                std::multiplies<int64_t>())
+              : strides_in[i];
+    }
+
+    memcpy(strides, strides_in.data(), kDims * sizeof(uint32_t));
+    memcpy(divmoders, divmoders_in.data(), kDims * sizeof(FastDivMod));
+  }
+};
 template <typename T, int NX, int NY, int BlockSize>
 __device__ void read_data_base(T* dst, const T* __restrict__ src, int size) {
   int dx = threadIdx.x * NX;
-#pragma unroll 4
+#pragma unroll
   for (int idx = 0; idx < NX; ++idx) {
     if ((idx + dx) >= size) {
       break;
@@ -95,7 +126,7 @@ __device__ void read_data(T* dst, const T* __restrict__ src, int size) {
     const VecType* vec_input = reinterpret_cast<const VecType*>(src);
     read_data_base<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
         vec_temp, vec_input, VECTORS_PER_THREAD * blockDim.x);
-#pragma unroll 2
+#pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       dst[idx] = *(reinterpret_cast<T*>(vec_temp) + idx);
     }
@@ -114,25 +145,27 @@ __device__ void read_data(T* dst, const T* __restrict__ src, int size) {
 template <typename T, int NX, int NY, int BS, int ShapeSize>
 __device__ __forceinline__ void read_data_bc(T* dst, const T* __restrict__ src,
                                              uint32_t fix,
-                                             FastDivMod* divmoders,
-                                             uint32_t* strides, int stride_nx,
+                                             BroadcastConfig<ShapeSize> config,
+                                             int num, int stride_nx,
                                              int stride_ny) {
   uint32_t base_offset = fix + threadIdx.x * NX;
   uint32_t offset = 0;
 
-#pragma unroll 2
+#pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
-#pragma unroll 4
+#pragma unroll
     for (uint32_t nx = 0; nx < NX; ++nx) {
       uint32_t idx = base_offset + ny * stride_ny + nx * stride_nx;
-      offset = 0;
-#pragma unroll 2
-      for (int i = 0; i < ShapeSize; ++i) {
-        auto fast_divmoder = divmoders[i].Divmod(idx);
-        idx = fast_divmoder.val[0];
-        offset += fast_divmoder.val[1] * strides[i];
+      if (idx < num) {
+        offset = 0;
+#pragma unroll
+        for (int i = 0; i < ShapeSize; ++i) {
+          auto fast_divmoder = config.divmoders[i].Divmod(idx);
+          idx = fast_divmoder.val[0];
+          offset += fast_divmoder.val[1] * config.strides[i];
+        }
+        dst[nx + ny * NX] = src[offset];
       }
-      dst[nx + ny * NX] = src[offset];
     }
   }
 }
@@ -140,7 +173,7 @@ __device__ __forceinline__ void read_data_bc(T* dst, const T* __restrict__ src,
 template <typename T, int NX, int NY, int BlockSize>
 __device__ void write_data_base(T* dst, const T* __restrict__ src, int size) {
   int dx = threadIdx.x * NX;
-#pragma unroll 4
+#pragma unroll
   for (int idx = 0; idx < NX; ++idx) {
     if ((idx + dx) >= size) {
       break;
@@ -161,7 +194,7 @@ __device__ void write_data(T* dst, T* __restrict__ src, int size) {
     // Vector type
     using VecType = VectorType<T, VECTOR_SIZE>;
     VecType vec_temp[VECTORS_PER_THREAD];
-#pragma unroll 2
+#pragma unroll
     for (int idx = 0; idx < VECTORS_PER_THREAD; ++idx) {
       vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
     }

@@ -103,15 +103,6 @@ int GetVectorizedSize(const std::vector<const framework::Tensor *> &ins,
 }
 
 template <int VecSize, typename InT, typename OutT, typename Functor>
-__device__ inline void Binary(const InT *__restrict__ in0,
-                              const InT *__restrict__ in1, OutT *out,
-                              Functor func, int size) {}
-
-template <int VecSize, typename InT, typename OutT, typename Functor>
-__device__ inline void Unary(const InT *__restrict__ in, OutT *out,
-                             Functor func, int size) {}
-
-template <int VecSize, typename InT, typename OutT, typename Functor>
 __global__ void ElementVectorizedUnary(const InT *__restrict__ in0, OutT *out,
                                        int size, Functor func) {
   int tid = blockIdx.x * blockDim.x;
@@ -144,6 +135,7 @@ __global__ void ElementVectorizedBinary(const InT *__restrict__ in0,
 
   kernel_primitives::read_data<InT, VecSize, 1, 1>(args[0], in0 + fix, num);
   kernel_primitives::read_data<InT, VecSize, 1, 1>(args[1], in1 + fix, num);
+
   kernel_primitives::elementwise_binary<InT, OutT, VecSize, 1, 1, Functor>(
       result, args[0], args[1], func);
   kernel_primitives::write_data<OutT, VecSize, 1, 1>(out + fix, result, num);

@@ -16,7 +16,8 @@
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
-#define MAX_DIM 5
+
+#define MAX_INPUT_NUM 2
 
 namespace kps = paddle::operators::kernel_primitives;
 
@@ -165,179 +166,140 @@ struct DimensionsTransform {
   }
 };
 
-struct StridesCalculation {
-  std::vector<std::vector<uint32_t>> strides;
-  std::vector<kps::FastDivMod> divmoders;
-
- private:
-  // To calculate the strides of each input_tensor.
-  __inline__ void CalculateStrides(
-      int N, int dim_size, const std::vector<std::vector<int64_t>> &in_dims) {
-    for (int j = 0; j < N; ++j) {
-      for (int i = 0; i < dim_size; ++i) {
-        strides[j][i] = in_dims[j][i] == 1 ? 0 : strides[j][i];
-        strides[j][i] =
-            (i != 0 && strides[j][i] != 0)
-                ? std::accumulate(in_dims[j].begin(), in_dims[j].begin() + i, 1,
-                                  std::multiplies<int64_t>())
-                : strides[j][i];
-      }
-    }
-  }
-
- public:
-  explicit StridesCalculation(const int64_t &dim_size,
-                              const std::vector<std::vector<int64_t>> &in_dims,
-                              const std::vector<int64_t> &out_dims) {
-    const auto N = in_dims.size();
-    divmoders.resize(dim_size);
-    strides.resize(N, std::vector<uint32_t>(dim_size, 1));
-
-    for (int i = 0; i < dim_size; ++i) {
-      divmoders[i] = kps::FastDivMod(out_dims[i]);
-    }
-    CalculateStrides(N, dim_size, in_dims);
-  }
-};
-/*
-void GetStrides(const std::vector<std::vector<int64_t>> &in_dims,
-                framework::Array<int, MAX_DIM> &strides, int dim_size) {}
-*/
-template <ElementwiseType ET, int kDims>
-struct BroadcastArgsWarpper {
-  kps::FastDivMod divmoders[kDims];
-  uint32_t strides[ET][framework::DDim::kMaxRank];
-
-  HOSTDEVICE BroadcastArgsWarpper(const StridesCalculation &offset_calculator) {
-    for (int j = 0; j < ET; ++j) {
-      memcpy(strides[j], offset_calculator.strides[j].data(),
-             kDims * sizeof(uint32_t));
-    }
-    memcpy(divmoders, offset_calculator.divmoders.data(),
-           kDims * sizeof(kps::FastDivMod));
-  }
-};
-
-template <typename InT, typename OutT, typename Functor, int Shape_Size,
-          int VecSize, int DATA_PER_THREAD, ElementwiseType ET,
-          typename BroadcastArgsWarpper>
-__device__ void compute(framework::Array<const InT *__restrict__, ET> in_data,
-                        OutT *out, framework::Array<bool, ET> use_broadcast,
-                        uint32_t out_num, BroadcastArgsWarpper config,
-                        Functor func, int fix) {
-  OutT result[DATA_PER_THREAD * VecSize];
-  InT arg[ET][VecSize * DATA_PER_THREAD];
-
-#pragma unroll
-  for (int i = 0; i < ET; i++) {
-    // broadcast load
-    if (use_broadcast[i]) {
-      kernel_primitives::read_data_bc<InT, VecSize, DATA_PER_THREAD, 1,
-                                      Shape_Size>(
-          &arg[i][0], in_data[i], fix * VecSize, &config.divmoders[0],
-          &config.strides[i][0], static_cast<int>(1),
-          static_cast<int>(blockDim.x * VecSize));
-    } else {
-      kernel_primitives::read_data<InT, VecSize, 1, 1>(
-          arg[i], in_data[i] + fix * VecSize, blockDim.x * VecSize);
-    }
-  }
-  kernel_primitives::elementwise_binary<InT, OutT, VecSize, 1, 1, Functor>(
-      result, arg[0], arg[1], func);
-  kernel_primitives::write_data<OutT, VecSize, 1, 1>(
-      out + fix * VecSize, result, blockDim.x * VecSize);
-}
-
-template <typename InT, typename OutT, typename Functor, int Shape_Size,
-          int VecSize, int DATA_PER_THREAD, ElementwiseType ET,
-          typename BroadcastArgsWarpper>
-__global__ void BroadcastKernel(
-    framework::Array<const InT *__restrict__, ET> in_data, OutT *out,
-    framework::Array<bool, ET> use_broadcast, uint32_t out_num,
-    BroadcastArgsWarpper broadcastconfig, int main_tid, int tail_tid,
-    Functor func) {
+template <typename InT, typename OutT, int ShapeSize, int VecSize,
+          int DATA_PER_THREAD, typename Functor>
+__global__ void BroadcastKernelBinary(
+    const InT *__restrict__ in0, const InT *__restrict__ in1, OutT *out,
+    framework::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
+    framework::Array<kps::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
+        configlists,
+    int main_tid, int tail_tid, Functor func) {
+  int fix = blockIdx.x * blockDim.x * VecSize;
+  int num = tail_tid;
+  InT arg0[VecSize * DATA_PER_THREAD];
+  InT arg1[VecSize * DATA_PER_THREAD];
+  OutT result[VecSize * DATA_PER_THREAD];
   if (blockIdx.x < main_tid) {
-    int tid = blockIdx.x * blockDim.x;
-    compute<InT, OutT, Functor, Shape_Size, VecSize, DATA_PER_THREAD, ET,
-            BroadcastArgsWarpper>(in_data, out, use_broadcast, out_num,
-                                  broadcastconfig, func, tid * DATA_PER_THREAD);
+    num = blockDim.x * VecSize;  // blockIdx.x < main_tid
+  }
 
+  // load in0
+  if (use_broadcast[0]) {
+    kernel_primitives::read_data_bc<InT, VecSize, DATA_PER_THREAD, 1,
+                                    ShapeSize>(arg0, in0, fix, configlists[0],
+                                               numel, 1, 1);
   } else {
-    int loop = tail_tid - threadIdx.x;
-    for (int fix = 0; fix < loop; fix += blockDim.x) {
-      compute<InT, OutT, Functor, Shape_Size, 1, 1, ET, BroadcastArgsWarpper>(
-          in_data, out, use_broadcast, out_num, broadcastconfig, func,
-          fix + main_tid * VecSize * DATA_PER_THREAD * blockDim.x);
+    kernel_primitives::read_data<InT, VecSize, 1, 1>(arg0, in0 + fix, num);
+  }
+
+  // load in1
+  if (use_broadcast[1]) {
+    kernel_primitives::read_data_bc<InT, VecSize, DATA_PER_THREAD, 1,
+                                    ShapeSize>(arg1, in1, fix, configlists[1],
+                                               numel, 1, 1);
+  } else {
+    kernel_primitives::read_data<InT, VecSize, 1, 1>(arg1, in1 + fix, num);
+  }
+
+  // compute
+  kernel_primitives::elementwise_binary<InT, OutT, VecSize, 1, 1, Functor>(
+      result, arg0, arg1, func);
+
+  // store
+  kernel_primitives::write_data<OutT, VecSize, 1, 1>(out + fix, result, num);
+}
+
+template <typename InT, typename OutT, int ShapeSize, int VecSize,
+          int DATA_PER_THREAD, typename Functor>
+__global__ void BroadcastKernelUnary(const InT *__restrict__ in, OutT *out,
+                                     int numel,
+                                     kps::BroadcastConfig<ShapeSize> config,
+                                     int main_tid, int tail_tid, Functor func) {
+  int fix = blockIdx.x * blockDim.x;
+  int num = tail_tid;
+  InT arg[VecSize * DATA_PER_THREAD];
+  OutT result[VecSize * DATA_PER_THREAD];
+  if (blockIdx.x < main_tid) {
+    num = blockDim.x * VecSize;  // blockIdx.x < main_tid
+  }
+  kernel_primitives::read_data_bc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
+      arg, in, fix * VecSize, config, numel, 1, 1);
+  kernel_primitives::elementwise_unary<InT, OutT, VecSize, 1, 1, Functor>(
+      &result[0], &arg[0], func);
+  kernel_primitives::write_data<OutT, VecSize, 1, 1>(out + fix * VecSize,
+                                                     &result[0], num);
+}
+
+template <typename InT, typename OutT, ElementwiseType ET, int VecSize,
+          int Size, typename Functor>
+void LaunchKernel(const platform::CUDADeviceContext &ctx,
+                  const std::vector<const framework::Tensor *> &ins,
+                  framework::Tensor *out, Functor func,
+                  DimensionsTransform merge_dims) {
+  int numel = out->numel();
+  const int threads = 256;
+  const int data_per_thread = 1;
+  int blocks =
+      ((numel + VecSize * data_per_thread - 1) / (VecSize * data_per_thread) +
+       threads - 1) /
+      threads;
+
+  int main_tid = numel / (data_per_thread * VecSize * threads);
+  int tail_tid = numel % (data_per_thread * VecSize * threads);
+  auto stream = ctx.stream();
+  const InT *in0 = ins[0]->data<InT>();
+  const InT *in1 =
+      (ET == ElementwiseType::kBinary) ? ins[1]->data<InT>() : nullptr;
+  OutT *out_data = out->data<OutT>();
+
+  framework::Array<kps::BroadcastConfig<Size>, MAX_INPUT_NUM> configlists;
+  framework::Array<bool, MAX_INPUT_NUM> use_broadcast;
+
+  for (int i = 0; i < ET; i++) {
+    use_broadcast[i] = (ins[i]->numel() != numel);
+    if (use_broadcast[i]) {
+      configlists[i] = kps::BroadcastConfig<Size>(
+          merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
   }
+
+  if (ET == kUnary) {
+    BroadcastKernelUnary<InT, OutT, Size, VecSize, data_per_thread,
+                         Functor><<<blocks, threads, 0, stream>>>(
+        in0, out_data, numel, configlists[0], main_tid, tail_tid, func);
+  } else {  // kBinary
+    BroadcastKernelBinary<InT, OutT, Size, VecSize, data_per_thread,
+                          Functor><<<blocks, threads, 0, stream>>>(
+        in0, in1, out_data, use_broadcast, numel, configlists, main_tid,
+        tail_tid, func);
+  }
 }
+
 template <typename InT, typename OutT, ElementwiseType ET, int VecSize,
           typename Functor>
 void LaunchBroadcastKernelForDifferentDimSize(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins, framework::Tensor *out,
     int axis, Functor func) {
-  /*
-    int numel = out->numel();
-    const int threads = 256;
-    const int data_per_thread = 1;
-    int blocks =
-        ((numel + VecSize * data_per_thread - 1) / (VecSize * data_per_thread) +
-         threads - 1) /
-        threads;
+  const auto merge_dims = DimensionsTransform(ins, out->dims(), axis);
 
-    int main_tid = numel / (data_per_thread * VecSize * threads);
-    int tail_tid = numel % (data_per_thread * VecSize * threads);
-    auto stream = ctx.stream();
+#define DIM_SIZE(size)                                                       \
+  case size: {                                                               \
+    LaunchKernel<InT, OutT, ET, VecSize, size, Functor>(ctx, ins, out, func, \
+                                                        merge_dims);         \
+  } break;
 
-    const auto merge_dims = DimensionsTransform(ins, out->dims(), axis);
-    const auto offset_calculator = StridesCalculation(
-        merge_dims.dim_size, merge_dims.in_dims, merge_dims.out_dims);
-    auto out_data = out->data<InT>();
-
-    framework::Array<const InT *__restrict__, ET> in_data;
-    framework::Array<bool, ET> use_broadcast;
-    framework::Array<BroadcastConfig, ET> configlists;
-    for (int i = 0; i < ET; i++) {
-      in_data[i] = ins[i]->data<InT>();
-      use_broadcast[i] = (ins[i]->numel() != numel);
-          if (use_broadcast[i]) {
-
-          }
-    }
-    if (ET == ElementwiseType::Unary) {
-
-    } else {
-      BroadcastKernelBinary<InT, OuT, Functor,
-    }
-  #define DIM_SIZE(size) \
-    case size: { \
-          if (ET == ElementwiseType::kBinary) {
-                  BroadcastKernelBinary<InT, OutT, Functor, size, VecSize,
-  data_per_thread, decltype(broadcast
-          }
-      auto broadcast_warpper = \
-          BroadcastArgsWarpper<ET, size>(offset_calculator); \
-      BroadcastKernel<InT, OutT, Functor, size, VecSize, data_per_thread, ET, \
-                      decltype( \
-                          broadcast_warpper)><<<blocks, threads, 0, stream>>>( \
-          in_data, out_data, use_broadcast, numel, broadcast_warpper, main_tid,
-  \
-          tail_tid, func); \
-    } break;
-
-    switch (merge_dims.dim_size) {
-      DIM_SIZE(1);
-      DIM_SIZE(2);
-      DIM_SIZE(3);
-      DIM_SIZE(4);
-      DIM_SIZE(5);
-      DIM_SIZE(6);
-      DIM_SIZE(7);
-      DIM_SIZE(8);
-    }
-  #undef DIM_SIZE
-  */
+  switch (merge_dims.dim_size) {
+    DIM_SIZE(1);
+    DIM_SIZE(2);
+    DIM_SIZE(3);
+    DIM_SIZE(4);
+    DIM_SIZE(5);
+    DIM_SIZE(6);
+    DIM_SIZE(7);
+    DIM_SIZE(8);
+  }
+#undef DIM_SIZE
 }
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchBroadcastElementwiseCudaKernel(
