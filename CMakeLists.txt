@@ -342,6 +342,8 @@ include(coveralls)          # set code coverage
 include(configure)          # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
+# Adapt to custom op mechanism: Include the header files related to the data type
+# to avoid exposing the path of the underlying fil
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/utils)
 
 if(WITH_NV_JETSON)

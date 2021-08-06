@@ -393,7 +393,6 @@ def find_files(pattern, root, recursive=False):
 headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension/include')) +  # extension
-    list(find_files('*', '${BOOST_INCLUDE_DIR}/boost', True)) + # boost
     # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
     # to `extension/incude`,
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
@@ -450,7 +449,7 @@ class InstallHeaders(Command):
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            patterns = ['boost/src/extern_boost', 'install/mkldnn/include']
+            patterns = ['install/mkldnn/include']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
