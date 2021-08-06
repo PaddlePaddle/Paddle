@@ -69,7 +69,7 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
     VLOG(3) << "begin hccl allgather, parameter is: "
             << ", group is " << group << ", ring_id is " << ring_id
             << ", nranks is " << nranks << ", rankid is " << rank;
-    SetNPUExceptionCallback("HcclAllGather");
+    platform::SetNPUExceptionCallback("HcclAllGather");
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllGather(
         send_buff, recv_buff, send_numel, dtype, comm->comm(),
         reinterpret_cast<void *>(stream)));

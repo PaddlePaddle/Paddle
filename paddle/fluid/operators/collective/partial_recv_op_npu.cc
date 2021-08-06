@@ -64,7 +64,7 @@ class PartialRecvOpASCENDKernel : public framework::OpKernel<T> {
             << ", peer:" << peer << ", numel:" << numel << ", ptr:" << ptr
             << ", dtype:" << dtype << ", root:" << root
             << ", comm: " << comm->comm() << ", stream: " << stream;
-    SetNPUExceptionCallback("HcclBroadcast");
+    platform::SetNPUExceptionCallback("HcclBroadcast");
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
 
