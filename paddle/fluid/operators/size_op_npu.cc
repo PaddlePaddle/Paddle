@@ -31,8 +31,8 @@ class SizeNPUKernel : public framework::OpKernel<T> {
 
     framework::NPUAttributeMap attr_input = {};
     // set attrs if have
-    if (ctx.HasAttr("out_type")) {
-      attr_input["out_type"] = ctx.Attr<int>("out_type");
+    if (ctx.HasAttr("index")) {
+      attr_input["index"] = ctx.Attr<int>("index");
     }
 
     out->mutable_data<T>(ctx.GetPlace());
@@ -57,4 +57,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::SizeNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SizeNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::SizeNPUKernel<paddle::platform::NPUDeviceContext, bool>);
-
