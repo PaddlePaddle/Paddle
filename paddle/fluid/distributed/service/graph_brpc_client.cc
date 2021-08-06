@@ -535,7 +535,7 @@ std::future<int32_t> GraphBrpcClient::set_node_feat(
 
   for (int request_idx = 0; request_idx < request_call_num; ++request_idx) {
     int server_index = request2server[request_idx];
-    closure->request(request_idx)->set_cmd_id(PS_GRAPH_GET_NODE_FEAT);
+    closure->request(request_idx)->set_cmd_id(PS_GRAPH_SET_NODE_FEAT);
     closure->request(request_idx)->set_table_id(table_id);
     closure->request(request_idx)->set_client_id(_client_id);
     size_t node_num = node_id_buckets[request_idx].size();
