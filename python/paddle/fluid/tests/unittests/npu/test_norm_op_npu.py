@@ -22,7 +22,6 @@ import paddle
 import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
 
-paddle.enable_static()
 SEED = 2021
 
 
@@ -72,21 +71,7 @@ class TestNorm(OpTest):
 """
 
 
-class TestNormFP16(OpTest):
-    def setUp(self):
-        paddle.enable_static()
-        self.set_npu()
-        self.place = paddle.NPUPlace(0)
-        self.op_type = "norm"
-        self.init_dtype()
-
-        x = np.random.random(self.shape).astype(self.dtype)
-        y, norm = l2_norm(x, self.axis, self.epsilon)
-        y, norm = y.astype(self.dtype), norm.astype(self.dtype)
-        self.inputs = {'X': x}
-        self.attrs = {'epsilon': self.epsilon, 'axis': self.axis}
-        self.outputs = {'Out': y, 'Norm': norm}
-
+class TestNormFP16(TestNorm):
     def set_npu(self):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True
@@ -99,6 +84,9 @@ class TestNormFP16(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        pass
 
 
 if __name__ == '__main__':
