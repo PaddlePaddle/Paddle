@@ -80,7 +80,7 @@ class TestDropoutOpInput1d(TestDropoutOp):
         }
 
 
-class TestDropoutOpInput1d(TestDropoutOp):
+class TestDropoutOpInput1d_1(TestDropoutOp):
     # the input is 1-D
     def setUp(self):
         self.op_type = "dropout"

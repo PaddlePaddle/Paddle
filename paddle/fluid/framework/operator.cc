@@ -36,7 +36,8 @@ class LoDTensor;
 }  // namespace framework
 }  // namespace paddle
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_op_list.h"
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -1254,7 +1255,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
 #endif
 #ifdef PADDLE_WITH_XPU
   if (kernel_iter == kernels.end() &&
-      is_xpu_place(expected_kernel_key.place_)) {
+      is_xpu_place(expected_kernel_key.place_) &&
+      !paddle::platform::is_xpu_support_op(type_, expected_kernel_key)) {
     VLOG(3) << "missing XPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
