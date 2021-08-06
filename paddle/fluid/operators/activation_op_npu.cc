@@ -685,8 +685,7 @@ REGISTER_OP_NPU_KERNEL(
 REGISTER_OP_NPU_KERNEL(
     atan, ops::AtanNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AtanNPUKernel<paddle::platform::NPUDeviceContext,
-                       paddle::platform::float16>,
-    ops::AtanNPUKernel<paddle::platform::NPUDeviceContext, double>);
+                       paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     atan_grad,

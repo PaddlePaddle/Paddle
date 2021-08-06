@@ -48,8 +48,6 @@ class TestAtan(OpTest):
         self.__class__.use_npu = True
 
     def test_check_grad(self):
-        if self.dtype == np.float64:
-            return
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
     def test_out_name(self):
@@ -64,7 +62,7 @@ class TestAtan(OpTest):
             self.assertEqual(result, expected)
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(paddle.NPUPlace(0)):
             np_x = np.array([0.1])
             x = fluid.dygraph.to_variable(np_x)
             z = paddle.atan(x).numpy()
@@ -78,11 +76,6 @@ class TestAtan(OpTest):
 class TestAtanShape(TestAtan):
     def set_attrs(self):
         self.shape = [12, 23, 10]
-
-
-class TestAtanFloat64(TestAtan):
-    def set_attrs(self):
-        self.dtype = np.float64
 
 
 class TestAtanFloat16(TestAtan):
