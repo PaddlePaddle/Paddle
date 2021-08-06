@@ -40,7 +40,7 @@ class Quant_Conv_DequantTest(InferencePassTest):
             "data": np.random.random([1, 3, 32, 32]).astype("float32"),
         }
         self.enable_trt = True
-        self.trt_parameters = QuantDequantTest1.TensorRTParam(
+        self.trt_parameters = Quant_Conv_DequantTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
         self.fetch_list = [relu_out]
 
@@ -84,7 +84,7 @@ class Quant_Fc1_DequantTest(InferencePassTest):
             "data": np.random.random([1, 3, 32, 32]).astype("float32"),
         }
         self.enable_trt = True
-        self.trt_parameters = QuantDequantTest2.TensorRTParam(
+        self.trt_parameters = Quant_Fc1_DequantTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
         self.fetch_list = [relu_out]
 
@@ -127,7 +127,7 @@ class Quant_Fc2_DequantTest(InferencePassTest):
             "data": np.random.random([1, 3, 32, 32]).astype("float32"),
         }
         self.enable_trt = True
-        self.trt_parameters = QuantDequantTest2.TensorRTParam(
+        self.trt_parameters = Quant_Fc2_DequantTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
         self.fetch_list = [relu_out]
 
