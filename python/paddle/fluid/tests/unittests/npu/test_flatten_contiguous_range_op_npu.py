@@ -305,31 +305,13 @@ class TestFlattenPython(unittest.TestCase):
         self.assertRaises(ValueError, test_InputError)
 
         def test_Negative():
-            paddle.disable_static()
+            paddle.disable_static(paddle.NPUPlace(0))
             img = paddle.to_tensor(x)
             out = paddle.flatten(img, start_axis=-2, stop_axis=-1)
             return out.numpy().shape
 
         res_shape = test_Negative()
         self.assertTrue((2, 3, 16) == res_shape)
-
-
-class TestDygraphInplaceFlattenPython(unittest.TestCase):
-    def test_python_api(self):
-        image_shape = (2, 3, 4, 4)
-        x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] *
-                      image_shape[3]).reshape(image_shape) / 100.
-        x = x.astype('float32')
-
-        def test_Negative():
-            paddle.disable_static()
-            img = paddle.to_tensor(x)
-            out = img.flatten_(start_axis=-2, stop_axis=-1)
-            return out.numpy().shape
-
-        res_shape = test_Negative()
-        self.assertTrue((2, 3, 16) == res_shape)
-        paddle.enable_static()
 
 
 if __name__ == "__main__":
