@@ -379,8 +379,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                   'w') as f:
             f.writelines(str(main_block.program))
 
-        # GPU and NPU need to wait server ready
-        self._wait()
+        # GPU need to wait server ready, GPU and NPU is Layered connection
+        if not core.is_compiled_with_npu():
+            self._wait()
         return optimize_ops, params_grads
 
     def _init_pair_comm(self, pair, ring_id):
