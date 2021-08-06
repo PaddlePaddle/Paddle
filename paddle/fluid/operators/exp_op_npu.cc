@@ -63,9 +63,7 @@ class ExpGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     dx->mutable_data<T>(ctx.GetPlace());
-
     const auto& runner = NpuOpRunner("Mul", {*dout, *out}, {*dx}, {});
-
     runner.Run(stream);
   }
 };
@@ -77,12 +75,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     exp, ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, float>,
-
     ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, double>);
 
 REGISTER_OP_NPU_KERNEL(
     exp_grad, ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-
-    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
+    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, double>);
