@@ -140,7 +140,7 @@ class TestMatrixPowerOpNMinus6(TestMatrixPowerOpNMinus):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
-        self.n = -5
+        self.n = -6
 
 
 class TestMatrixPowerOpNMinus10(TestMatrixPowerOp):

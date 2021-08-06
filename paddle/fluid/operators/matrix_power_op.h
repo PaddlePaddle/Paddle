@@ -197,12 +197,12 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
   if (n == 0) {
-    // \nalba X = O
+    // \nabla X = O
     math::SetConstant<DeviceContext, T> zero;
     zero(dev_ctx, dX, static_cast<T>(0));
     return;
   } else if (n == 1) {
-    // \nalba X = \nalba Out
+    // \nabla X = \nabla Out
     framework::TensorCopy(*dOut, ctx.GetPlace(), dev_ctx, dX);
     return;
   }
@@ -211,7 +211,7 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   auto no_trans_desc = math::CreateMatrixDescriptor(x_dims, 0, false);
 
   if (n == -1) {
-    // \nalba X = Out^{T} \times \nalba Out \times Out^{T}
+    // \nabla X = Out^{T} \times \nabla Out \times Out^{T}
     Tensor temp_dx =
         ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
     blas.MatMul(*Out, trans_desc, *dOut, no_trans_desc, static_cast<T>(-1),
@@ -233,7 +233,7 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
     new_n = -n;
   }
 
-  // Use chain rule blow to compute \nalba newX^{n}
+  // Use chain rule blow to compute \nabla newX^{n}
   // First, Get newX^{0}, newX^{1}, ..., newX^{n - 1}
   Tensor identity = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
   EyeFunctor<T> functor(M, identity.data<T>());
@@ -252,8 +252,8 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
     index++;
   }
 
-  // Second, \nalba newX = \sum_{i = 0}^{n - 1} (newX^{T}^{i}
-  //                      \times \nalba Out
+  // Second, \nabla newX = \sum_{i = 0}^{n - 1} (newX^{T}^{i}
+  //                      \times \nabla Out
   //                      \times (newX^{T}^{n - i - 1})
   Tensor dx_new = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
   blas.MatMul(*tensor_list[new_n - 1], trans_desc, *dOut, no_trans_desc,
@@ -277,10 +277,10 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   }
 
   if (n > 0) {
-    // \nalba X = \nalba newX
+    // \nabla X = \nabla newX
     framework::TensorCopy(dx_new, ctx.GetPlace(), dev_ctx, dX);
   } else {
-    // \nalba X = newX^{T} \times \nalba newX \times newX^{T}
+    // \nabla X = newX^{T} \times \nabla newX \times newX^{T}
     Tensor temp_dx =
         ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
     blas.MatMul(new_x, trans_desc, dx_new, no_trans_desc, static_cast<T>(-1),
