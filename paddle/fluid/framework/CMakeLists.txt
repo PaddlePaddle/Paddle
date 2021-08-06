@@ -406,6 +406,7 @@ configure_file(commit.h.in commit.h)
 # to avoid exposing the path of the underlying file
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include)
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/utils)
 
 if(WITH_ROCM)
   hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
