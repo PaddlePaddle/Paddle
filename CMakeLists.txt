@@ -342,6 +342,7 @@ include(coveralls)          # set code coverage
 include(configure)          # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/utils)
 
 if(WITH_NV_JETSON)
     set(WITH_ARM ON CACHE STRING "Set WITH_ARM=ON when compiling WITH_NV_JETSON=ON." FORCE)

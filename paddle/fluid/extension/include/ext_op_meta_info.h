@@ -19,8 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/utils/any.hpp"
-
+#include "any.hpp"
 #include "ext_dll_decl.h"   // NOLINT
 #include "ext_exception.h"  // NOLINT
 #include "ext_tensor.h"     // NOLINT
