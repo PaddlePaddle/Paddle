@@ -748,37 +748,6 @@ class TestReduceSumOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.reduce_sum, x2)
 
 
-class API_TestSumOpError(unittest.TestCase):
-    def test_errors(self):
-        def test_dtype1():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="float64")
-                paddle.sum(data, dtype="float32")
-
-        self.assertRaises(ValueError, test_dtype1)
-
-        def test_dtype2():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="int64")
-                paddle.sum(data, dtype="int32")
-
-        self.assertRaises(ValueError, test_dtype2)
-
-        def test_dtype3():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="float64")
-                paddle.sum(data, dtype="int32")
-
-        self.assertRaises(ValueError, test_dtype3)
-
-        def test_type():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="int32")
-                paddle.sum(data, dtype="bool")
-
-        self.assertRaises(TypeError, test_type)
-
-
 class API_TestSumOp(unittest.TestCase):
     def run_static(self,
                    shape,
@@ -805,13 +774,25 @@ class API_TestSumOp(unittest.TestCase):
         shape = [10, 10]
         axis = 1
 
+        self.run_static(shape, "bool", axis, attr_dtype=None)
+        self.run_static(shape, "bool", axis, attr_dtype="int32")
+        self.run_static(shape, "bool", axis, attr_dtype="int64")
+
         self.run_static(shape, "int32", axis, attr_dtype=None)
         self.run_static(shape, "int32", axis, attr_dtype="int32")
         self.run_static(shape, "int32", axis, attr_dtype="int64")
 
+        self.run_static(shape, "int64", axis, attr_dtype=None)
+        self.run_static(shape, "int64", axis, attr_dtype="int64")
+        self.run_static(shape, "int64", axis, attr_dtype="int32")
+
         self.run_static(shape, "float32", axis, attr_dtype=None)
         self.run_static(shape, "float32", axis, attr_dtype="float32")
         self.run_static(shape, "float32", axis, attr_dtype="float64")
+
+        self.run_static(shape, "float64", axis, attr_dtype=None)
+        self.run_static(shape, "float64", axis, attr_dtype="float32")
+        self.run_static(shape, "float64", axis, attr_dtype="float64")
 
         shape = [5, 5, 5]
         self.run_static(shape, "int32", (0, 1), attr_dtype="int32")
