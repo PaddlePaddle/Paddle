@@ -1,3 +1,8 @@
+// Copy from https://github.com/skarupke/flat_hash_map
+//Modify the following points:
+//1. modify std::max to (std::max) to fix the building failed problem on windows platform
+
+
 //          Copyright Malte Skarupke 2017.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See http://www.boost.org/LICENSE_1_0.txt)
@@ -623,7 +628,7 @@ public:
 
     void rehash(size_t num_buckets)
     {
-        num_buckets = std::max(num_buckets, static_cast<size_t>(std::ceil(num_elements / static_cast<double>(_max_load_factor))));
+        num_buckets = (std::max)(num_buckets, static_cast<size_t>(std::ceil(num_elements / static_cast<double>(_max_load_factor))));
         if (num_buckets == 0)
         {
             reset_to_empty_state();
@@ -797,7 +802,7 @@ private:
     static int8_t compute_max_lookups(size_t num_buckets)
     {
         int8_t desired = detailv3::log2(num_buckets);
-        return std::max(detailv3::min_lookups, desired);
+        return (std::max)(detailv3::min_lookups, desired);
     }
 
     size_t num_buckets_for_reserve(size_t num_elements) const
@@ -868,7 +873,7 @@ private:
 
     void grow()
     {
-        rehash(std::max(size_t(4), 2 * bucket_count()));
+        rehash((std::max)(size_t(4), 2 * bucket_count()));
     }
 
     void deallocate_data(EntryPointer begin, size_t num_slots_minus_one, int8_t max_lookups)
@@ -1278,7 +1283,7 @@ struct fibonacci_hash_policy
 
     int8_t next_size_over(size_t & size) const
     {
-        size = std::max(size_t(2), detailv3::next_power_of_two(size));
+        size = (std::max)(size_t(2), detailv3::next_power_of_two(size));
         return 64 - detailv3::log2(size);
     }
     void commit(int8_t shift)

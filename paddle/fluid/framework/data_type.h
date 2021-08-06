@@ -23,12 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif
-#endif
-
 namespace paddle {
 namespace platform {
 struct bfloat16;
