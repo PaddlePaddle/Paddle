@@ -24,7 +24,7 @@ from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 from paddle.fluid.core import AnalysisConfig
 
 
-class QuantDequantTest1(InferencePassTest):
+class Quant_Conv_DequantTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -68,7 +68,7 @@ class QuantDequantTest1(InferencePassTest):
                     'quant_conv2d_dequant_fuse_pass'))
 
 
-class QuantDequantTest2(InferencePassTest):
+class Quant_Fc1_DequantTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -111,7 +111,7 @@ class QuantDequantTest2(InferencePassTest):
                     'quant_conv2d_dequant_fuse_pass'))
 
 
-class QuantDequantTest3(InferencePassTest):
+class Quant_Fc2_DequantTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
