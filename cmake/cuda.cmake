@@ -8,9 +8,9 @@ if (WITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")
   set(paddle_known_gpu_archs10 "53 62 72")
 else()
-  set(paddle_known_gpu_archs "35 50 52 60 61 70 75 80")
-  set(paddle_known_gpu_archs10 "35 50 52 60 61 70 75")
-  set(paddle_known_gpu_archs11 "52 60 61 70 75 80")
+  set(paddle_known_gpu_archs "35 50 60 70 75 80")
+  set(paddle_known_gpu_archs10 "35 50 60 70 75")
+  set(paddle_known_gpu_archs11 "35 50 60 70 75 80")
 endif()
 
 ######################################################################################
