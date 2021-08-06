@@ -223,6 +223,7 @@ class TestFlattenOp_int64(TestFlattenOp):
         }
 
 
+##TODO---------------------------------------
 class TestFlatten2OpError(unittest.TestCase):
     def test_errors(self):
         image_shape = (2, 3, 4, 4)
