@@ -381,7 +381,7 @@ class TestGradScalerStateDict(unittest.TestCase):
                 enable_amp=True, use_data_loader=False, use_save_load=True)
             out_no_state_dict = self.train_resnet(
                 enable_amp=True, use_data_loader=False, use_save_load=False)
-        print('save_load:', out_use_state_dict[0], out_no_state_dict[0])
+        print(out_use_state_dict[0], out_no_state_dict[0])
         self.assertTrue(
             np.allclose(
                 out_use_state_dict[0], out_no_state_dict[0], atol=1.e-2))
