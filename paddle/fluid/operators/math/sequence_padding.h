@@ -106,7 +106,7 @@ class PaddingLoDTensorFunctor {
                   const framework::LoDTensor& seq_tensor,
                   framework::LoDTensor* pad_tensor,
                   const framework::LoDTensor& pad_value, int pad_seq_len = -1,
-                  int lod_level = 0, bool norm_by_times = false,
+                  int lod_level = 0, bool norm_by_times = false,  bool size_average=false, bool length_average=false,
                   const PadLayout layout = kBatchLengthWidth);
 };
 
@@ -116,7 +116,7 @@ class UnpaddingLoDTensorFunctor {
   void operator()(const DeviceContext& context,
                   const framework::LoDTensor& pad_tensor,
                   framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
-                  int lod_level = 0, bool norm_by_times = false,
+                  int lod_level = 0, bool norm_by_times = false,  bool size_average=false, bool length_average=false,
                   const PadLayout layout = kBatchLengthWidth);
 };
 

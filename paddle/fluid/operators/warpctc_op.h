@@ -285,7 +285,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
       math::PaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *logits,
-          &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */,
+          &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */, false, false,
           math::kLengthBatchWidth);
     }
     const T* warpctc_logits_data = warpctc_logits.data<T>();
@@ -321,7 +321,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
             ctx.template device_context<DeviceContext>(), *label,
             &warpctc_label, label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
-            false /*norm_by_times*/, math::kBatchLengthWidth);
+            false /*norm_by_times*/, false, false, math::kBatchLengthWidth);
       } else {
         LoDTensor gpu_label;
         gpu_label.mutable_data<int>(
@@ -331,7 +331,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
             ctx.template device_context<DeviceContext>(), *label, &gpu_label,
             label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
-            false /*norm_by_times*/, math::kBatchLengthWidth);
+            false /*norm_by_times*/, false, false, math::kBatchLengthWidth);
         TensorCopySync(gpu_label, platform::CPUPlace(), &warpctc_label);
       }
     } else {
@@ -448,14 +448,9 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
       }
       TensorCopySync(scaled_logits, ctx.GetPlace(), logits_grad);
     } else {
-      if (size_average || length_average) {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "[warpctc grad] size_average and length_average not support by "
-            "1.x."));
-      }
       math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *warpctc_grad,
-          logits_grad, -1, 0, norm_by_times, math::kLengthBatchWidth);
+          logits_grad, -1, 0, norm_by_times, size_average, length_average, math::kLengthBatchWidth);
 
       const T* loss_grad_data = loss_grad->data<T>();
       math::ScaleLoDTensorFunctor<DeviceContext, T>()(
