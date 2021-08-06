@@ -39,12 +39,10 @@ class ExpandAsV2NPUKernel : public framework::OpKernel<T> {
                           "The rank (%d) of the input 'target_tensor' for "
                           "expand_as_v2 op must be less than or equal to %d.",
                           target_rank, MAX_RANK_SUPPORTED));
-
-    switch (target_rank) { REP_EXPAND_AS_TEMPLATE(MAX_RANK_SUPPORTED) }
+    ExpandAs(context);
   }
 
  protected:
-  template <int Rank>
   void ExpandAs(const framework::ExecutionContext& context) const {
     auto* in0 = context.Input<framework::Tensor>("X");
     auto in_dims = in0->dims();
