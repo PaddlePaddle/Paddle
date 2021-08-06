@@ -6031,7 +6031,7 @@ class RecomputeOptimizer(Optimizer):
         self._main_program = loss.block.program
         self.block = loss.block
         if startup_program == None:
-            startup_program = fluid.default_startup_program()
+            startup_program = paddle.static.default_startup_program()
 
         with program_guard(self._main_program, startup_program):
             assert len(self.checkpoint_shape) > 0, (
