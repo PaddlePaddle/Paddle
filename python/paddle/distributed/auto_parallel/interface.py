@@ -65,7 +65,7 @@ class ProcessMesh(object):
         mesh (numpy.ndarray): an N-dimensional array describes the toplogy
             of logical processes. The shape of the N-dimensional array
             represents the topology of logical processes and every 
-            element of the N-dimensional array represent a logical process.
+            element of the N-dimensional array represents a logical process.
         parent (ProcessMesh, optional): the parent ProcessMesh. None means
             the ProcessMesh is the root one without parent ProcessMesh.
             Default: None.
