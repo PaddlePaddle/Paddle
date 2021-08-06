@@ -150,15 +150,6 @@ class VarDesc {
 
   Attribute GetAttr(const std::string &name) const;
 
-  template <typename T>
-  T GetAttrIfExists(const std::string &name) const {
-    T result{};
-    if (HasAttr(name)) {
-      result = BOOST_GET_CONST(T, GetAttr(name));
-    }
-    return result;
-  }
-
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;

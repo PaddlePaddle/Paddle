@@ -1885,16 +1885,13 @@ class Variable(object):
 
         Args:
             name(str): the attribute name.
-            val(bool|int|str|float|list): the value of the attribute.
-
-        Raises:
-            ValueError: If the type of value doesn't match with desc.attr_type(name).
+            val(int|str|list): the value of the attribute.
         """
         self._update_desc_attr(name, val)
 
     def _has_attr(self, name):
         """
-        Whether this Variable has the attribute with name or not.
+        Whether this Variable has the attribute with the name `name` or not.
 
         Args:
             name(str): the attribute name.
@@ -1913,15 +1910,13 @@ class Variable(object):
 
         Args:
             name(str): the attribute name.
-            val(bool|int|str|float|list): the value of the attribute.
-
-        Raises:
-            ValueError: If the type of value doesn't match with desc.attr_type(name).
+            val(int|str|list): the value of the attribute.
         """
         self.desc._set_attr(name, val)
 
     @property
     def attr_names(self):
+        """Get the names of all attributes defined."""
         return self.desc.attr_names()
 
     def _get_attr(self, name):
@@ -1932,7 +1927,7 @@ class Variable(object):
             name(str): the attribute name.
 
         Returns:
-            bool|int|str|float|list: The attribute value. The return value
+            int|str|list: The attribute value. The return value
             can be any valid attribute type.
         """
         return self.desc.attr(name)
@@ -1941,12 +1936,6 @@ class Variable(object):
     def process_mesh(self):
         """
         Get the process mesh belonging to this Variable.
-
-        Args:
-            None.
-
-        Returns:
-            ProcessMesh: the process mesh associated with the var.
         """
         from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
         from paddle.distributed.auto_parallel.interface import ProcessMesh
@@ -1958,12 +1947,6 @@ class Variable(object):
     def shard_mask(self):
         """
         Get shard_mask belonging to this Variable.
-
-        Args:
-            None.
-
-        Returns:
-            list(int): the shard mask associated with the var.
         """
         mask_attr_name = 'mask' + core.kAutoParallelSuffix()
         return self.desc.attr(mask_attr_name)
@@ -1971,13 +1954,7 @@ class Variable(object):
     @property
     def offload_device(self):
         """
-        Get the offload device belonging to this Variable.
-
-        Args:
-            None.
-
-        Returns:
-            string: the offload devce associated with the var.
+        Get the offload device of this Variable.
         """
         offload_attr_name = 'offload_device' + core.kAutoParallelSuffix()
         return self.desc.attr(offload_attr_name)
@@ -2660,13 +2637,7 @@ class Operator(object):
     @property
     def process_mesh(self):
         """
-        Get the process mesh belonging to this Variable.
-
-        Args:
-            name(str): the attribute name.
-
-        Returns:
-            int: the process mesh index.
+        Get the process mesh belonging to this Operator.
         """
         from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
         mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
@@ -2676,9 +2647,6 @@ class Operator(object):
     def dims_mapping(self, name):
         """
         Get the dims_mapping for the op's var named `name`.
-
-        Args:
-            name(str): the Variable name.
         """
         dims_mapping_attr_name = name + core.kAutoParallelSuffix()
         return self.attr(dims_mapping_attr_name)
@@ -2686,13 +2654,7 @@ class Operator(object):
     @property
     def pipeline_stage(self):
         """
-        Get shard_mask belonging to this Variable.
-
-        Args:
-            None.
-
-        Returns:
-            list(int): the shard mask associated with the var.
+        Get pipeline stage of the Operator.
         """
         pipeline_stage_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix()
         return self.desc.attr(pipeline_stage_attr_name)

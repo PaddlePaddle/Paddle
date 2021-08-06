@@ -21,6 +21,7 @@ from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
 
+# a map from ProcessMesh ids to the ProcessMesh instances
 _g_process_mesh_map = dict()
 
 # user defined map from logical process ids to physical ones
@@ -29,47 +30,51 @@ _user_defined_physical_map = None
 
 def _append_attr_suffix(name):
     """
-    Append Auto Parallel Suffix for distributed attribute.
+    Append auto parallel suffix for distributed attribute name.
     """
     return name + core.kAutoParallelSuffix()
 
 
 def _remove_attr_suffix(name):
     """
-    Remove Auto Parallel Suffix for distributed attribute.
+    Remove auto parallel suffix from distributed attribute name.
     """
     return name.strip(core.kAutoParallelSuffix())
 
 
 def _static_mode_check():
     if in_dygraph_mode():
-        raise RuntimeError("Now auto-parallel only supports static mode, please"
-                           " use paddle.enable_static().")
+        raise RuntimeError("Auto-parallel only supports static mode, "
+                           "please use paddle.enable_static().")
 
 
 class ProcessMesh(object):
-    """
-    A mesh is an n-dimensional array of logical processes. The shape of the 
-    n-dimensional array represents the topology of logical processes and each
-    element of the n-dimensional array represent a logical process. For
-    example, the following diagram is represented by the n-dimensional array
-    numpy.array([[2, 4, 5], [0, 1, 3]]), and first logical process is the one
-    with id=2.
-
-    | 2 | 4 | 5 |
-
-    | 0 | 1 | 3 |
+    r"""
+    The class `Processmesh` describes the topology of logical processes. 
+    A mesh is an N-dimensional array. The shape of the N-dimensional
+    array represents the topology of logical processes and every
+    element of the N-dimensional array represent a logical process. For
+    example, the 2-dimensional array numpy.array([[2, 4, 5], [0, 1, 3]])
+    illustrates six logical processes organized as the topology [2, 3],
+    i.e., the shape of the 2-dimensional array. With the above topology,
+    there are two parallel groups, where the first parallel group has a
+    parallel degree of 2 and the second one has a parallel degree of 3.
+    And the first logical process is the one with id=2.
 
     Args:
-        mesh (numpy.ndarray): an n-dimensional array of processes. Its data type is int.
-        parent (ProcessMesh): the parent ProcessMesh. None means
-            no parent ProcessMesh.
+        mesh (numpy.ndarray): an N-dimensional array describes the toplogy
+            of logical processes. The shape of the N-dimensional array
+            represents the topology of logical processes and every 
+            element of the N-dimensional array represent a logical process.
+        parent (ProcessMesh, optional): the parent ProcessMesh. None means
+            the ProcessMesh is the root one without parent ProcessMesh.
+            Default: None.
     
     Returns:
         None
 
     Raises:
-        ValueError: if ``mesh`` is not an instance of numpy.ndarray.
+        ValueError: If `mesh` is not an instance of numpy.ndarray.
 
     Examples:
         .. code-block:: python
@@ -85,55 +90,43 @@ class ProcessMesh(object):
             assert mesh.topology == [2, 3]
             assert mesh.process_group == [2, 4, 5, 0, 1, 3]
             mesh.set_placement([0, 1, 2, 3, 4, 5])
+
     """
 
     def __init__(self, mesh, parent=None):
         _static_mode_check()
         if mesh is None or not isinstance(mesh, np.ndarray):
-            raise ValueError("mesh must be an instance of numpy.ndarray.")
+            raise ValueError('mesh must be an instance of numpy.ndarray.')
 
-        # Every element of mesh must be greater than or equal to 0.
-        assert np.min(mesh) >= 0, ('Every element of mesh must be greater '
-                                   'than or equal to 0.')
+        # Every element of mesh must be >= 0.
+        assert np.min(mesh) >= 0, ('All elements of mesh must be >= 0.')
 
         unique_ids = set(mesh.flatten().tolist())
-        assert len(unique_ids) == mesh.size, ("All logical process ids "
-                                              "in mesh must be unique.")
+        assert len(unique_ids) == mesh.size, (
+            'All elements of mesh must be unique.')
 
         if parent is None:
             # For root ProcessMesh, the ids of logical processes must be range
             # from 0 to N-1, where N is the number of logical processes. 
             assert np.max(mesh) == mesh.size - 1, (
-                'For root ProcessMesh, the '
-                'ids of logical processes must be range from 0 to N-1, where '
-                'N is the number of logical processes.')
+                'For root ProcessMesh, ids of logical processes must be range '
+                'from 0 to N-1, where N is the number of logical processes.')
 
             parent_id = core.kNoneProcessMeshIndex()
             assert len(_g_process_mesh_map.keys()) == 0, (
-                'The first '
-                'ProcessMesh must be the root, which has no parent.')
+                'The first ProcessMesh must be the root, which has no parent.')
         else:
+            assert len(_g_process_mesh_map.keys()) > 0, (
+                'All ProcessMesh must have a parent except the root one.')
+
             assert isinstance(parent, ProcessMesh), (
-                'parent must be an instance'
-                ' of ProcessMesh.')
+                'parent must be an instance of ProcessMesh.')
             parent_id = parent._desc.id
 
-            # All elements in mesh must belong to its parent ProcessMesh
-            parent_unique_ids = set(parent.process_group)
-            assert unique_ids <= parent_unique_ids, (
-                'All elements in mesh '
-                'must belong to its parent ProcessMesh')
-
-            # Get the root ProcessMesh
-            root_mesh = None
-            root_id = parent_id
-            while root_id != core.kNoneProcessMeshIndex():
-                root_mesh = _g_process_mesh_map[root_id]
-                root_id = root_mesh._desc.parent
-            max_id = max(root_mesh.process_group)
-            assert np.max(mesh) <= max_id, (
-                'Every element in mesh must be '
-                'less than equal to the max one in root ProcessMesh.')
+            # All elements in mesh must belong to its parent
+            parent_ids = set(parent.process_group)
+            assert unique_ids <= parent_ids, (
+                'All elements in mesh must belong to its parent.')
 
         self._topology = list(mesh.shape)
         self._processes = mesh.flatten().tolist()
@@ -142,90 +135,39 @@ class ProcessMesh(object):
 
         self._id = self._desc.id
         self._parent_id = parent_id
-        assert self._id not in _g_process_mesh_map, "%d already exists." % self._id
+        assert self._id not in _g_process_mesh_map, (
+            "The ProcessMesh with id %d already exists." % self._id)
         _g_process_mesh_map[self._id] = self
 
     @property
     def topology(self):
-        """
+        r"""
         Get the topology of logical processes belonging to this ProcessMesh.
-
-        Args:
-            None
-        
-        Returns:
-            list: A list of `int` represents the topology of logical processes.
-
-        Examples:
-            .. code-block:: python
-
-                import numpy as np
-                import paddle
-                import paddle.distributed as dist
-                
-                paddle.enable_static()
-                
-                mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
-                assert mesh.topology == [2, 3]
+        This is the shape of `mesh` used to initialized this ProcessMesh.
         """
         return self._topology
 
     @property
     def process_group(self):
-        """
-        Get all processes belonging to this ProcessMesh.
-
-        Args:
-            None
-        
-        Returns:
-            list: A list of `int` represents all logical processes.
-
-        Examples:
-            .. code-block:: python
-
-                import numpy as np
-                import paddle
-                import paddle.distributed as dist
-                
-                paddle.enable_static()
-                
-                mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
-                assert mesh.process_group == [2, 4, 5, 0, 1, 3]
+        r"""
+        Get a list of all processes belonging to this ProcessMesh.
         """
         return self._processes
 
     @property
     def parent(self):
-        """
+        r"""
         Get the parent ProcessMesh.
-
-        Args:
-            None
-        
-        Returns:
-            ProcessMesh: the parent ProcessMesh.
-
-        Examples:
-            .. code-block:: python
-
-                import numpy as np
-                import paddle
-                import paddle.distributed as dist
-                
-                paddle.enable_static()
-                
-                mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
-                assert mesh.parent is None
         """
         if self._parent_id == core.kNoneProcessMeshIndex(): return None
-        assert self._parent_id in _g_process_mesh_map, \
-            "parent (%d) does not exist."%self._parent_id
+        assert self._parent_id in _g_process_mesh_map, (
+            "parent with id %d does not exist." % self._parent_id)
         return _g_process_mesh_map[self._parent_id]
 
     def set_placement(self, order):
         """
-        Set the order of the physical process ids.
+        Set the map from logical processes to physical ones using the
+        user defined order.
 
         Args:
             order (list): order of the physical process ids.
@@ -244,21 +186,26 @@ class ProcessMesh(object):
                 
                 mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
                 mesh.set_placement([0, 1, 2, 3, 4, 5])
+
         """
-        assert self.parent is None, ("This function can only be called by the "
-                                     "root ProcessMesh.")
+        assert self.parent is None, (
+            "This function can only be called by the root ProcessMesh.")
         unique_ids = set(order)
         assert isinstance(order, list)
 
-        assert len(unique_ids) == len(order), ("All physical process ids "
-                                               "in must be unique.")
+        assert len(unique_ids) == len(order), (
+            "All elements in order must be unique.")
         assert min(order) == 0
-        assert max(order) == len(order) - 1
+        assert max(order) == len(order) - 1, (
+            "All elements in order must be from 0 to N - 1, where N "
+            "is the number of physical processes.")
 
         logical_order = self.process_group
         global _user_defined_physical_map
-        if _user_defined_physical_map is None:
-            _user_defined_physical_map = dict()
+        assert _user_defined_physical_map is None, (
+            "This function can only be called once.")
+        _user_defined_physical_map = dict()
+
         assert len(logical_order) == len(order)
         for idx, l_id in enumerate(logical_order):
             _user_defined_physical_map[l_id] = order[idx]
@@ -291,11 +238,10 @@ def shard_tensor(x, mesh, dims_mapping):
 
     Args:
         x (Tensor): the tensor to process.
-        mesh (ProcessMesh): an n-dimensional array of logical processes.
+        mesh (ProcessMesh): an instance of ProcessMesh to describe the topology of logical processes.
         dims_mapping (list): a list to describe the mapping between `x` and `mesh`,
-            the dimension `i` of `x` is split across the dimension represented by
-            dims_mapping[i], where -1 means without parition along the corresponding
-            dimension.
+            the dimension `i` of `x` is split across the dimension `dims_mapping[i]`, where -1 means
+            without parition along the corresponding dimension.
 
     Returns:
         Tensor: the tensor `x` itself.
@@ -312,6 +258,7 @@ def shard_tensor(x, mesh, dims_mapping):
             mesh = dist.ProcessMesh(np.array([[2, 4, 5], [0, 1, 3]]))
             x = paddle.ones([4, 6])
             dist.shard_tensor(x, mesh, [0, -1])
+
     """
     _static_mode_check()
     _dims_mapping_checker(x, mesh, dims_mapping)
@@ -328,24 +275,14 @@ def set_shard_mask(x, mask):
 
     Args:
         x (Tensor): the tensor to process.
-        mask (numpy.ndarray): the shape of `mask` must be the same as the ProcessMesh info belonging to
-            the tensor `x`. The value of every element of `mask` must be one or zero, where one means 
+        mask (numpy.ndarray): the shape of `mask` must be the same as the ProcessMesh belonging to
+            the tensor `x`. Every value of `mask` must be one or zero, where one means 
             the tenor `x` will be put on the corresponding logical process and zero means the tensor `x`
             will not be put on the corresponding logical process.
-            For example, the following diagram is represented by the n-dimensional array
-            numpy.array([[2, 4, 5], [0, 1, 3]]).
-
-                 | 2 | 4 | 5 |
-
-                 | 0 | 1 | 3 |
-
-            And the following diagram gives the `mask`.
-
-                 | 1 | 0 | 1 |
-
-                 | 0 | 1 | 0 |
-
-            Then, the tensor `x` will be put on logical processes 2, 5 and 1.
+            For example, for a ProcessMesh represented by the 2-dimensional
+            array numpy.array([[2, 4, 5], [0, 1, 3]]), and a `mask` given by the
+            2-dimensional array numpy.array([[1, 0, 1], [0, 1, 0]]),
+            then the tensor `x` will only be put on logical processes 2, 5 and 1.
 
     Returns:
         Tensor: the tensor `x` itself.
@@ -363,6 +300,7 @@ def set_shard_mask(x, mask):
             mask = np.array([[1, 0, 1], [0, 1, 0]])
             x = paddle.ones([4, 6])
             dist.set_shard_mask(x, mask)
+
     """
     _static_mode_check()
     assert isinstance(mask, np.ndarray)
@@ -376,9 +314,12 @@ def shard_op(op_fn, mesh, dims_mapping_dict, **kwargs):
     Call a functioin and add distributed attributes for ops added by the function.
 
     Args:
-        op_fn (callable): a callable object of a API.
-        mesh (ProcessMesh): an instance of ProcessMesh which specifies the logical topology of ops added by the function.
-        dims_mapping_dict (dict): a mapping from tensor's name to the its dims_mapping
+        op_fn (callable): a callable object of an API.
+        mesh (ProcessMesh): an instance of ProcessMesh specifies the topology of logical processes.
+        dims_mapping_dict (dict): a mapping from tensor's name to its dims_mapping. 
+            The dims_mapping is a list to describe the mapping between a tensor and `mesh`,
+            the dimension `i` of the tensor is split across the dimension `dims_mapping[i]`,
+            where -1 means without parition along the corresponding dimension.
         kwargs (dict): a dict of parameter passed to the function `op_fn`.
 
     Returns:
@@ -398,6 +339,7 @@ def shard_op(op_fn, mesh, dims_mapping_dict, **kwargs):
             y = paddle.zeros([4, 6])
             kwargs = {'x': x, 'y': y}
             dist.shard_op(paddle.add, mesh, None, **kwargs)
+
     """
     _static_mode_check()
     main_prog = paddle.fluid.default_main_program()
@@ -442,6 +384,7 @@ def set_offload_device(x, device):
             
             x = paddle.ones([4, 6])
             dist.set_offload_device(x, 'cpu')
+
     """
     _static_mode_check()
     attr_name = _append_attr_suffix("offload_device")
@@ -454,7 +397,7 @@ def set_pipeline_stage(stage):
     Set the pipeline stage of the following ops.
 
     Args:
-        stage (int): the pipeline stage the following ops belonging to
+        stage (int): the pipeline stage the following ops belonging to.
 
     Returns:
         None.
@@ -469,6 +412,7 @@ def set_pipeline_stage(stage):
             paddle.enable_static()
             
             dist.set_pipeline_stage(0)
+
     """
     from paddle.fluid.framework import _set_pipeline_stage
     _static_mode_check()
