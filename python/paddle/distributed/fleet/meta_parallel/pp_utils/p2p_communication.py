@@ -161,12 +161,15 @@ def send_partial(tensor,
     ring_id = 0 if group is None else group.id
 
     if _is_valid_send_recv_partial(tensor, nranks):
-        return _C_ops.partial_send(tensor, 'use_calc_stream', use_calc_stream,
-                                   'ring_id', ring_id, 'peer', dst, 'num',
-                                   nranks, 'id', rank_id)
+        return _C_ops.partial_send(tensor.detach(), 'use_calc_stream',
+                                   use_calc_stream, 'ring_id', ring_id, 'peer',
+                                   dst, 'num', nranks, 'id', rank_id)
     else:
         return paddle.distributed.send(
-            tensor, dst=dst, group=group, use_calc_stream=use_calc_stream)
+            tensor.detach(),
+            dst=dst,
+            group=group,
+            use_calc_stream=use_calc_stream)
 
 
 def recv_partial(tensor,
@@ -180,13 +183,16 @@ def recv_partial(tensor,
     ring_id = 0 if group is None else group.id
 
     if _is_valid_send_recv_partial(tensor, nranks):
-        _C_ops.partial_recv(tensor, 'use_calc_stream', use_calc_stream,
+        _C_ops.partial_recv(tensor.detach(), 'use_calc_stream', use_calc_stream,
                             'ring_id', ring_id, 'peer', src, 'num', nranks,
                             'id', rank_id, 'dtype', tensor.dtype, 'out_shape',
                             tensor.shape)
     else:
         paddle.distributed.recv(
-            tensor, src=src, group=group, use_calc_stream=use_calc_stream)
+            tensor.detach(),
+            src=src,
+            group=group,
+            use_calc_stream=use_calc_stream)
 
 
 def allgather_partial(tensor,
@@ -200,9 +206,9 @@ def allgather_partial(tensor,
         return
     ring_id = 0 if group is None else group.id
 
-    return _C_ops.partial_allgather_(tensor, 'use_calc_stream', use_calc_stream,
-                                     'ring_id', ring_id, 'nranks', nranks,
-                                     'rank', rank_id)
+    return _C_ops.partial_allgather_(tensor.detach(), 'use_calc_stream',
+                                     use_calc_stream, 'ring_id', ring_id,
+                                     'nranks', nranks, 'rank', rank_id)
 
 
 def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
@@ -257,7 +263,7 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
             for d in tensor_send_prev:
                 paddle.distributed.wait(d, use_calc_stream=True)
                 send_partial(
-                    d.detach(),
+                    d,
                     dst=0,
                     nranks=mp_degree,
                     rank_id=mp_rank,
@@ -266,7 +272,7 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
         else:
             paddle.distributed.wait(tensor_send_prev, use_calc_stream=True)
             send_partial(
-                tensor_send_prev.detach(),
+                tensor_send_prev,
                 dst=0,
                 nranks=mp_degree,
                 rank_id=mp_rank,
@@ -277,28 +283,28 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
         if isinstance(tensor_recv_prev, tuple):
             for d in tensor_recv_prev:
                 recv_partial(
-                    d.detach(),
+                    d,
                     src=0,
                     nranks=mp_degree,
                     rank_id=mp_rank,
                     group=_hcg.recv_prev_group,
                     use_calc_stream=True)
                 allgather_partial(
-                    d.detach(),
+                    d,
                     nranks=mp_degree,
                     rank_id=mp_rank,
                     group=mp_group,
                     use_calc_stream=True)
         else:
             recv_partial(
-                tensor_recv_prev.detach(),
+                tensor_recv_prev,
                 src=0,
                 nranks=mp_degree,
                 rank_id=mp_rank,
                 group=_hcg.recv_prev_group,
                 use_calc_stream=True)
             allgather_partial(
-                tensor_recv_prev.detach(),
+                tensor_recv_prev,
                 nranks=mp_degree,
                 rank_id=mp_rank,
                 group=mp_group,
@@ -309,7 +315,7 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
             for d in tensor_send_next:
                 paddle.distributed.wait(d, use_calc_stream=True)
                 send_partial(
-                    d.detach(),
+                    d,
                     dst=1,
                     nranks=mp_degree,
                     rank_id=mp_rank,
@@ -318,7 +324,7 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
         else:
             paddle.distributed.wait(tensor_send_next, use_calc_stream=True)
             send_partial(
-                tensor_send_next.detach(),
+                tensor_send_next,
                 dst=1,
                 nranks=mp_degree,
                 rank_id=mp_rank,
@@ -329,14 +335,14 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
         if isinstance(tensor_recv_next, tuple):
             for d in tensor_recv_next:
                 recv_partial(
-                    d.detach(),
+                    d,
                     src=1,
                     nranks=mp_degree,
                     rank_id=mp_rank,
                     group=_hcg.recv_next_group,
                     use_calc_stream=True)
                 allgather_partial(
-                    d.detach(),
+                    d,
                     nranks=mp_degree,
                     rank_id=mp_rank,
                     group=mp_group,
@@ -344,7 +350,7 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
 
         else:
             recv_partial(
-                tensor_recv_next.detach(),
+                tensor_recv_next,
                 src=1,
                 nranks=mp_degree,
                 rank_id=mp_rank,
@@ -352,7 +358,7 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
                 use_calc_stream=True)
 
             allgather_partial(
-                tensor_recv_next.detach(),
+                tensor_recv_next,
                 nranks=mp_degree,
                 rank_id=mp_rank,
                 group=mp_group,
