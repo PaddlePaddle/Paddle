@@ -20,6 +20,7 @@ limitations under the Licnse. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
+#include "paddle/fluid/framework/tensor_util.h"
 namespace paddle {
 namespace operators {
 
@@ -184,6 +185,41 @@ class Relu6GradNPUKernel : public framework::OpKernel<T> {
     runner.Run(stream);
   }
 };
+
+
+
+template <typename DeviceContext, typename T>
+class LeakyReluNPUKernel: public framework::OpKernel<T>{ 
+    public:
+        void Compute(const framework::ExecutionContext& ctx) const override {
+            auto* x = ctx.Input<Tensor>("X");
+            auto* out = ctx.Output<Tensor>("Out");
+            float slope = ctx.Attr<float>("negative_slope");
+            //this->PrintTensor(x, ctx); 
+       //     std::vector<T> vec(x.numel());
+       //     TensorToVector(src, ctx.device_context(), &vec);
+       //     for(int i=0; i< static_cast<int>(vec.size()); ++i){
+       //         VLOG(3) << "vec[" << i<< "] : "<< vec[i];
+       //     }
+            auto stream = ctx.template device_context<paddle::platform::NPUDeviceContext>().stream();
+
+            out->mutable_data<T>(ctx.GetPlace());
+            const auto& runner = NpuOpRunner("LeakyRelu", {*x}, {*out}, {{"negative_slope", slope}});
+            runner.Run(stream);
+        }
+
+        void PrintTensor(const framework::Tensor& src, const framework::ExecutionContext& ctx){
+            std::vector<T> vec(src.numel());
+            TensorToVector(src, ctx.device_context(), &vec);
+            for(int i=0; i< static_cast<int>(vec.size()); ++i){
+                VLOG(3) << "vec[" << i<< "] : "<< vec[i];
+            }
+        }
+};
+
+
+
+
 
 template <typename DeviceContext, typename T>
 class SqrtNPUKernel : public framework::OpKernel<T> {
@@ -562,6 +598,13 @@ REGISTER_OP_NPU_KERNEL(
     relu6_grad,
     ops::Relu6GradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::Relu6GradNPUKernel<paddle::platform::NPUDeviceContext,
+                            paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    leaky_relu,
+    ops::LeakyReluNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::LeakyReluNPUKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::LeakyReluNPUKernel<paddle::platform::NPUDeviceContext,
                             paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
