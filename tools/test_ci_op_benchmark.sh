@@ -160,7 +160,7 @@ function compile_install_paddlepaddle {
   export WITH_PYTHON=ON
   export WITH_TESTING=OFF
   export BUILD_TYPE=Release
-  export CUDA_ARCH_NAME=Auto
+  export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto}
   export WITH_DISTRIBUTE=OFF
   export CMAKE_BUILD_TYPE=Release
   [ -d build ] && rm -rf build
@@ -277,9 +277,6 @@ function summary_problems {
 
 function cpu_op_benchmark {
   LOG "[INFO] Start run op benchmark cpu test ..."
-  load_CHANGE_OP_FILES
-  prepare_benchmark_environment
-  load_CHANGE_OP_MAP
   build_whl
   LOG "[INFO] Op benchmark run success and no error!"
   exit 0
@@ -288,6 +285,9 @@ function cpu_op_benchmark {
 
 function gpu_op_benchmark {
   LOG "[INFO] Start run op benchmark gpu test ..."
+  load_CHANGE_OP_FILES
+  prepare_benchmark_environment
+  load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
   run_op_benchmark_test
   summary_problems
