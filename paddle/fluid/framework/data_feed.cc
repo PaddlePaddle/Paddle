@@ -465,6 +465,19 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
 // explicit instantiation
 template class InMemoryDataFeed<Record>;
 
+void MultiSlotDataFeed::SetThreadId(int thread_id) { thread_id_ = thread_id; }
+
+void MultiSlotDataFeed::SetThreadNum(int thread_num) {
+  thread_num_ = thread_num;
+}
+
+void MultiSlotDataFeed::SetGlobalQueue(void* channel) {
+  global_queue_ = static_cast<
+      paddle::framework::ChannelObject<std::vector<MultiSlotType>>*>(channel);
+  VLOG(3) << "global queue set " << &global_queue_ << " "
+          << global_queue_->Size();
+}
+
 void MultiSlotDataFeed::Init(
     const paddle::framework::DataFeedDesc& data_feed_desc) {
   finish_init_ = false;
@@ -522,21 +535,86 @@ void MultiSlotDataFeed::Init(
 
 void MultiSlotDataFeed::ReadThread() {
 #ifdef _LINUX
+  if (filelist_.size() != 0 &&
+      thread_id_ >= static_cast<int>(filelist_.size())) {
+    VLOG(3) << "no need to read thread id " << thread_id_;
+    return;
+  }
   std::string filename;
-  while (PickOneFile(&filename)) {
+  while (1) {
+    if (filelist_.size() == 0) {
+      filename = "";
+      VLOG(3) << "read without file";
+    } else if (!PickOneFile(&filename)) {
+      VLOG(3) << "read file done " << filename;
+      break;
+    }
     int err_no = 0;
     fp_ = fs_open_read(filename, &err_no, pipe_command_);
     CHECK(fp_ != nullptr);
     __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
     std::vector<MultiSlotType> instance;
     int ins_num = 0;
+
+    paddle::framework::ChannelWriter<std::vector<MultiSlotType>> writer(
+        global_queue_);
     while (ParseOneInstanceFromPipe(&instance)) {
       ins_num++;
-      queue_->Put(instance);
+      if (global_queue_ != nullptr) {
+        // writer will be auto flushed every blocksize
+        writer << std::move(instance);
+        instance = std::vector<MultiSlotType>();
+      } else {
+        queue_->Put(instance);
+      }
     }
     VLOG(3) << "filename: " << filename << " inst num: " << ins_num;
+    if (global_queue_ != nullptr) {
+      VLOG(3) << "flush global queue size " << global_queue_->Size()
+              << " thread id " << thread_id_;
+      writer.Flush();
+    }
+    if (filelist_.size() == 0) {
+      break;
+    }
   }
   queue_->Close();
+  if (global_queue_ != nullptr) {
+    VLOG(3) << "close global queue " << global_queue_->Size();
+    global_queue_->Close();
+  }
+#endif
+}
+
+int MultiSlotDataFeed::Next() {
+#ifdef _LINUX
+  CheckStart();
+  int index = 0;
+  std::vector<MultiSlotType> ins_vec;
+  while (index < default_batch_size_) {
+    std::vector<MultiSlotType> instance;
+    if (global_queue_ != nullptr) {
+      if (!global_queue_->Get(instance)) {
+        VLOG(3) << "global queue empty " << &global_queue_
+                << " size:" << global_queue_->Size()
+                << " thread:" << thread_id_;
+        break;
+      }
+    } else {
+      if (!queue_->Get(instance)) {
+        VLOG(3) << "no more data in local queue";
+        break;
+      }
+    }
+    AddInstanceToInsVec(&ins_vec, instance, index++);
+  }
+  batch_size_ = index;
+  if (batch_size_ != 0) {
+    PutToFeedVec(ins_vec);
+  }
+  return batch_size_;
+#else
+  return 0;
 #endif
 }
 

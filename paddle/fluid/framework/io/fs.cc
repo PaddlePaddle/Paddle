@@ -30,7 +30,10 @@ static void fs_add_read_converter_internal(std::string& path,  // NOLINT
     return;
   }
 
-  if (!is_pipe) {
+  if (path == "") {
+    path = string::format_string("%s", converter.c_str());
+    is_pipe = true;
+  } else if (!is_pipe) {
     path = string::format_string("( %s ) < \"%s\"", converter.c_str(),
                                  path.c_str());
     is_pipe = true;

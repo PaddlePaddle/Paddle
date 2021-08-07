@@ -166,8 +166,9 @@ class DLManager {
     return false;
   }
 
-  paddle::framework::CustomParser* Load(const std::string& name,
-                                        std::vector<SlotConf>& conf) {
+  paddle::framework::CustomParser* Load(
+      const std::string& name,
+      std::vector<SlotConf>& conf) {  // NOLINT
 #ifdef _LINUX
     std::lock_guard<std::mutex> lock(mutex_);
     DLHandle handle;
@@ -194,8 +195,9 @@ class DLManager {
     return nullptr;
   }
 
-  paddle::framework::CustomParser* ReLoad(const std::string& name,
-                                          std::vector<SlotConf>& conf) {
+  paddle::framework::CustomParser* ReLoad(
+      const std::string& name,
+      std::vector<SlotConf>& conf) {  // NOLINT
     Close(name);
     return Load(name, conf);
   }
@@ -287,6 +289,8 @@ class DataFeed {
     place_ = place;
   }
   virtual const paddle::platform::Place& GetPlace() const { return place_; }
+
+  virtual void SetGlobalQueue(void* channel) {}
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -601,7 +605,7 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   for (size_t& x : offset) {
     uint64_t t;
     ar >> t;
-    x = (size_t)t;
+    x = (size_t)t;  // NOLINT
   }
 #endif
   ar >> ins.MutableFloatData();
@@ -757,19 +761,30 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
 class MultiSlotDataFeed
     : public PrivateQueueDataFeed<std::vector<MultiSlotType>> {
  public:
-  MultiSlotDataFeed() {}
+  MultiSlotDataFeed() { global_queue_ = nullptr; }
   virtual ~MultiSlotDataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc);
   virtual bool CheckFile(const char* filename);
+  virtual void SetGlobalQueue(void* channel);
+
+  virtual void SetThreadId(int thread_id);
+  virtual void SetThreadNum(int thread_num);
 
  protected:
+  int thread_id_;
+  int thread_num_;
+
   virtual void ReadThread();
+  virtual int Next();
   virtual void AddInstanceToInsVec(std::vector<MultiSlotType>* vec_ins,
                                    const std::vector<MultiSlotType>& instance,
                                    int index);
   virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
   virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
+
+  // global queue for all reader and worker
+  paddle::framework::ChannelObject<std::vector<MultiSlotType>>* global_queue_;
 };
 
 class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {

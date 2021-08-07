@@ -611,6 +611,29 @@ void DatasetImpl<T>::CreateReaders() {
     return;
   }
   VLOG(3) << "data feed class name: " << data_feed_desc_.name();
+
+  int read_np = thread_num_;
+  if (filelist_.size() != 0 &&
+      static_cast<int>(filelist_.size()) < thread_num_) {
+    read_np = filelist_.size();
+  }
+  VLOG(3) << "read_np " << read_np;
+
+  global_queues_.reserve(read_np);
+
+  if (data_feed_desc_.name() == "MultiSlotDataFeed" &&
+      static_cast<int>(filelist_.size()) < thread_num_) {
+    for (int i = 0; i < read_np; ++i) {
+      // auto global_queue_ =
+      //    paddle::framework::MakeChannel<std::vector<MultiSlotType>>();
+      // global_queue_->SetCapacity(
+      //    static_cast<int>(data_feed_desc_.batch_size()) * thread_num_ * 100);
+      // global_queues_.push_back(global_queue_);
+      global_queues_.push_back(
+          paddle::framework::MakeChannel<std::vector<MultiSlotType>>());
+    }
+  }
+
   int channel_idx = 0;
   for (int i = 0; i < thread_num_; ++i) {
     readers_.push_back(DataFeedFactory::CreateDataFeed(data_feed_desc_.name()));
@@ -626,6 +649,14 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetParseContent(parse_content_);
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvMerge(enable_pv_merge_);
+
+    // MultiSlotDataFeed ONLY
+    if (data_feed_desc_.name() == "MultiSlotDataFeed" &&
+        static_cast<int>(filelist_.size()) < thread_num_) {
+      VLOG(3) << "global queue enabled " << (i % read_np);
+      readers_[i]->SetGlobalQueue(global_queues_[i % read_np].get());
+    }
+
     // Notice: it is only valid for untest of test_paddlebox_datafeed.
     // In fact, it does not affect the train process when paddle is
     // complied with Box_Ps.
