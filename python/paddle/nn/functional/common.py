@@ -1449,9 +1449,8 @@ def linear(x, weight, bias=None, name=None):
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dygraph_mode():
-        pre_bias = _varbase_creator(dtype=x.dtype)
-        _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
-                      False, "alpha", 1)
+        pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
+                                    False)
 
         if bias is None:
             return pre_bias
@@ -1467,13 +1466,12 @@ def linear(x, weight, bias=None, name=None):
 
         inputs = {'X': [x], 'Y': [weight]}
         attrs = {
-            'transpose_X': False,
-            'transpose_Y': False,
-            'alpha': 1,
+            'trans_x': False,
+            'trans_y': False,
         }
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
-            type='matmul', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+            type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
         if bias is not None:
             res = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
