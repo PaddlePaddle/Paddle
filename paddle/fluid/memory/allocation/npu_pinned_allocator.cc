@@ -64,6 +64,8 @@ void NPUPinnedAllocator::FreeImpl(Allocation *allocation) {
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetEvent(c.event, c.stream));
 
     reseted_events_[c.stream].push_back(c);
+    VLOG(4) << "events size:" << reseted_events_[c.stream].size()
+            << " on stream:" << c.stream;
   }
   return;
 }
