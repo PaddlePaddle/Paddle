@@ -694,6 +694,9 @@ void DatasetImpl<T>::DestroyReaders() {
   VLOG(3) << "readers size1: " << readers_.size();
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
   VLOG(3) << "readers size: " << readers_.size();
+  std::vector<paddle::framework::Channel<std::vector<MultiSlotType>>>().swap(
+      global_queues_);
+  VLOG(3) << "destroy global_queues_ size: " << global_queues_.size();
   file_idx_ = 0;
   cur_channel_ = 1 - cur_channel_;
 }

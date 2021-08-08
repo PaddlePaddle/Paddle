@@ -552,7 +552,10 @@ class TestDataset(unittest.TestCase):
 
         dataset2 = paddle.distributed.QueueDataset()
         dataset2.init(
-            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
+            batch_size=32,
+            thread_num=3,
+            pipe_command="cat ./test_queue_dataset_run_a.txt",
+            use_var=slots_vars)
         dataset.set_filelist([])
         try:
             exe.train_from_dataset(fluid.default_main_program(), dataset2)
