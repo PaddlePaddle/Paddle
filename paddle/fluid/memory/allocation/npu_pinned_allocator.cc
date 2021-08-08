@@ -33,11 +33,7 @@ void NPUPinnedAllocator::ProcessEventsAndFree() {
       delete allocation;
       PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetEvent(c.event, c.stream));
 
-      VLOG(4) << "events size:" << reseted_events_[c.stream].size();
       reseted_events_[c.stream].push(c);
-      VLOG(4) << "events size:" << reseted_events_[c.stream].size()
-              << " on stream:" << c.stream
-              << " npu_events size:" << npu_events_.size();
     } else {
       ++it;
     }
@@ -82,8 +78,7 @@ void NPUPinnedAllocator::RecordEvent(Allocation *allocation,
                                      aclrtStream stream) {
   auto it = reseted_events_.find(stream);
   if (it != reseted_events_.end()) {
-    auto q = it->second;
-    VLOG(4) << "events size:" << q.size() << " on stream:" << stream;
+    auto &q = it->second;
     if (q.size() > 0) {
       auto &c = q.front();
       q.pop();
@@ -93,7 +88,6 @@ void NPUPinnedAllocator::RecordEvent(Allocation *allocation,
       VLOG(4) << "events size:" << q.size() << " on stream:" << stream;
       return;
     }
-    VLOG(4) << "events size:" << q.size() << " on stream:" << stream;
   }
 
   aclrtEvent event = nullptr;
