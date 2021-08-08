@@ -15,6 +15,7 @@
 #pragma once
 
 #ifdef PADDLE_WITH_ASCEND_CL
+#include <deque>
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
@@ -27,6 +28,11 @@
 namespace paddle {
 namespace memory {
 namespace allocation {
+
+struct EventContext {
+  aclrtEvent event = nullptr;
+  aclrtStream stream = nullptr;
+};
 
 class NPUPinnedAllocator : public Allocator {
  public:
@@ -41,7 +47,8 @@ class NPUPinnedAllocator : public Allocator {
   uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
-  std::unordered_map<Allocation *, aclrtEvent> npu_events_;
+  std::unordered_map<Allocation *, EventContext> npu_events_;
+  std::unordered_map<aclrtStream, std::deque<EventContext>> reseted_events_;
 };
 
 }  // namespace allocation

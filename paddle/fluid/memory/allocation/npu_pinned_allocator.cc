@@ -21,9 +21,9 @@ namespace allocation {
 
 void NPUPinnedAllocator::ProcessEventsAndFree() {
   for (auto it = npu_events_.begin(); it != npu_events_.end();) {
-    aclrtEvent event = it->second;
+    auto &c = it->second;
     aclrtEventStatus status = ACL_EVENT_STATUS_COMPLETE;
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(event, &status));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(c.event, &status));
 
     if (status == ACL_EVENT_STATUS_COMPLETE) {
       Allocation *allocation = it->first;
@@ -31,7 +31,9 @@ void NPUPinnedAllocator::ProcessEventsAndFree() {
       free(ptr);
       npu_events_.erase(it++);
       delete allocation;
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyEvent(event));
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetEvent(c.event, c.stream));
+
+      reseted_events_[c.stream].push_back(c);
     } else {
       ++it;
     }
@@ -52,14 +54,16 @@ Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
 void NPUPinnedAllocator::FreeImpl(Allocation *allocation) {
   void *ptr = allocation->ptr();
   auto iter = npu_events_.find(allocation);
-  aclrtEvent event = iter->second;
+  auto &c = iter->second;
   aclrtEventStatus status = ACL_EVENT_STATUS_COMPLETE;
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(event, &status));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(c.event, &status));
   if (status == ACL_EVENT_STATUS_COMPLETE) {
     free(ptr);
     npu_events_.erase(allocation);
     delete allocation;
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyEvent(event));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetEvent(c.event, c.stream));
+
+    reseted_events_[c.stream].push_back(c);
   }
   return;
 }
@@ -70,10 +74,24 @@ uint64_t NPUPinnedAllocator::ReleaseImpl(const platform::Place &place) {
 
 void NPUPinnedAllocator::RecordEvent(Allocation *allocation,
                                      aclrtStream stream) {
+  auto it = reseted_events_.find(stream);
+  if (it != reseted_events_.end()) {
+    auto q = it->second;
+    VLOG(4) << "events size:" << q.size() << " on stream:" << stream;
+    if (q.size() > 0) {
+      auto &c = q.front();
+      q.pop_front();
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(c.event, c.stream));
+      npu_events_.insert({allocation, c});
+      return;
+    }
+  }
+
   aclrtEvent event = nullptr;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateEvent(&event));
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(event, stream));
-  npu_events_.insert({allocation, event});
+  EventContext c({event, stream});
+  npu_events_.insert({allocation, c});
 }
 
 }  // namespace allocation
