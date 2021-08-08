@@ -21,7 +21,7 @@ namespace allocation {
 
 void NPUPinnedAllocator::ProcessEventsAndFree() {
   for (auto it = npu_events_.begin(); it != npu_events_.end();) {
-    auto &c = it->second;
+    auto c = it->second;
     aclrtEventStatus status = ACL_EVENT_STATUS_COMPLETE;
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(c.event, &status));
 
@@ -33,7 +33,11 @@ void NPUPinnedAllocator::ProcessEventsAndFree() {
       delete allocation;
       PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetEvent(c.event, c.stream));
 
-      reseted_events_[c.stream].push_back(c);
+      VLOG(4) << "events size:" << reseted_events_[c.stream].size();
+      reseted_events_[c.stream].push(c);
+      VLOG(4) << "events size:" << reseted_events_[c.stream].size()
+              << " on stream:" << c.stream
+              << " npu_events size:" << npu_events_.size();
     } else {
       ++it;
     }
@@ -63,7 +67,7 @@ void NPUPinnedAllocator::FreeImpl(Allocation *allocation) {
     delete allocation;
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetEvent(c.event, c.stream));
 
-    reseted_events_[c.stream].push_back(c);
+    reseted_events_[c.stream].push(c);
     VLOG(4) << "events size:" << reseted_events_[c.stream].size()
             << " on stream:" << c.stream;
   }
@@ -82,11 +86,14 @@ void NPUPinnedAllocator::RecordEvent(Allocation *allocation,
     VLOG(4) << "events size:" << q.size() << " on stream:" << stream;
     if (q.size() > 0) {
       auto &c = q.front();
-      q.pop_front();
+      q.pop();
       PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(c.event, c.stream));
       npu_events_.insert({allocation, c});
+
+      VLOG(4) << "events size:" << q.size() << " on stream:" << stream;
       return;
     }
+    VLOG(4) << "events size:" << q.size() << " on stream:" << stream;
   }
 
   aclrtEvent event = nullptr;
@@ -94,6 +101,8 @@ void NPUPinnedAllocator::RecordEvent(Allocation *allocation,
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(event, stream));
   EventContext c({event, stream});
   npu_events_.insert({allocation, c});
+  VLOG(4) << "events size:" << reseted_events_[stream].size()
+          << " on stream:" << stream;
 }
 
 }  // namespace allocation

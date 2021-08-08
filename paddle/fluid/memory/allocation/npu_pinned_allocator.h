@@ -15,8 +15,8 @@
 #pragma once
 
 #ifdef PADDLE_WITH_ASCEND_CL
-#include <deque>
 #include <mutex>  // NOLINT
+#include <queue>
 #include <string>
 #include <unordered_map>
 
@@ -48,7 +48,7 @@ class NPUPinnedAllocator : public Allocator {
 
  private:
   std::unordered_map<Allocation *, EventContext> npu_events_;
-  std::unordered_map<aclrtStream, std::deque<EventContext>> reseted_events_;
+  std::unordered_map<aclrtStream, std::queue<EventContext>> reseted_events_;
 };
 
 }  // namespace allocation
