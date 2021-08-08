@@ -306,16 +306,17 @@ void BoxCoderDec(const framework::ExecutionContext& ctx, const Tensor* tb,
     Vector2Tensor(ctx, vec_var23, t_var_shape, &t_var23);
     F.AddWithBroadCastVoid(
         F.MulWithBroadCast(tbox01,
-                           F.MulWithBroadCast(pb_wh, t_var01, pb_wh.dims()),
+                           F.MulWithBroadCast(pb_wh, t_var01, pb_resize_shape),
                            tbox_slice_shape),
         pb_xy, tbox_slice_shape, &tb_xy);
     F.MulWithBroadCastVoid(
         F.Exp(F.MulWithBroadCast(t_var23, tbox23, tbox_slice_shape)), pb_wh,
         tbox_slice_shape, &tb_wh);
   }
-  Tensor obox01 = F.AddWithBroadCast(tb_xy, F.Muls(tb_wh, -0.5), tb_xy.dims());
+  Tensor obox01 =
+      F.AddWithBroadCast(tb_xy, F.Muls(tb_wh, -0.5), tbox_slice_shape);
   Tensor obox23 =
-      F.Adds(F.AddWithBroadCast(tb_xy, F.Muls(tb_wh, 0.5), tb_xy.dims()),
+      F.Adds(F.AddWithBroadCast(tb_xy, F.Muls(tb_wh, 0.5), tbox_slice_shape),
              (norm ? 0 : -1));
   F.ConcatVoid({obox01, obox23}, out->dims(), 2, out);
 }
@@ -330,6 +331,28 @@ class BoxCoderNPUKernel : public framework::OpKernel<T> {
     auto* output_box = ctx.Output<Tensor>("OutputBox");
     std::vector<float> variance = ctx.Attr<std::vector<float>>("variance");
     const int axis = ctx.Attr<int>("axis");
+
+    if (prior_box_var) {
+      PADDLE_ENFORCE_EQ(variance.empty(), true,
+                        platform::errors::InvalidArgument(
+                            "Input 'PriorBoxVar' and attribute 'variance'"
+                            " of BoxCoder operator should not be used at the "
+                            "same time."));
+    }
+    if (!(variance.empty())) {
+      PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()), 4,
+                        platform::errors::InvalidArgument(
+                            "Size of attribute 'variance' in BoxCoder operator"
+                            " should be 4. But received size is %d",
+                            variance.size()));
+    }
+
+    if (target_box->lod().size()) {
+      PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input 'TargetBox' of BoxCoder operator only"
+                            " supports LoD with one level."));
+    }
 
     auto code_type = GetBoxCodeType(ctx.Attr<std::string>("code_type"));
     bool normalized = ctx.Attr<bool>("box_normalized");
