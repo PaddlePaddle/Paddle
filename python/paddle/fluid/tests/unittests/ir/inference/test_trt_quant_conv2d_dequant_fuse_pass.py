@@ -84,7 +84,7 @@ class Quant_Fc_DequantTest1(InferencePassTest):
             "data": np.random.random([1, 3, 32, 32]).astype("float32"),
         }
         self.enable_trt = True
-        self.trt_parameters = Quant_Fc1_DequantTest.TensorRTParam(
+        self.trt_parameters = Quant_Fc_DequantTest1.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
         self.fetch_list = [relu_out]
 
@@ -111,7 +111,7 @@ class Quant_Fc_DequantTest1(InferencePassTest):
                     'quant_conv2d_dequant_fuse_pass'))
 
 
-class Quant_Fc2_DequantTest2(InferencePassTest):
+class Quant_Fc_DequantTest2(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -127,7 +127,7 @@ class Quant_Fc2_DequantTest2(InferencePassTest):
             "data": np.random.random([1, 3, 32, 32]).astype("float32"),
         }
         self.enable_trt = True
-        self.trt_parameters = Quant_Fc2_DequantTest.TensorRTParam(
+        self.trt_parameters = Quant_Fc_DequantTest2.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
         self.fetch_list = [relu_out]
 
