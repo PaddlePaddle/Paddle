@@ -39,20 +39,21 @@ def get_resnet50_model():
     return main, startup, image, label, loss
 
 
+def global_block_contains_op(program, op_type):
+    for op in program.global_block().ops:
+        if op.type == op_type:
+            return True
+    return False
+
+
 class TestApplyPassToProgram(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 
-    def global_block_contains_op(self, program, op_type):
-        for op in program.global_block().ops:
-            if op.type == op_type:
-                return True
-        return False
-
-    def _test_case(self):
+    def test_case(self):
         main, startup, image, label, loss = get_resnet50_model()
         fused_op = "fused_elemwise_add_activation"
-        self.assertFalse(self.global_block_contains_op(main, fused_op))
+        self.assertFalse(global_block_contains_op(main, fused_op))
         attrs = {
             "int_attr": -3,
             "size_t_attr": 10,
@@ -67,7 +68,7 @@ class TestApplyPassToProgram(unittest.TestCase):
         ret_attrs = _apply_pass(main, startup, "fuse_elewise_add_act_pass",
                                 attrs, attr_types)
         self.assertEqual(attrs, ret_attrs)
-        self.assertTrue(self.global_block_contains_op(main, fused_op))
+        self.assertTrue(global_block_contains_op(main, fused_op))
 
 
 class TestIRPassBase(unittest.TestCase):
@@ -89,15 +90,43 @@ class TestIRPassBase(unittest.TestCase):
         self.num_classes = 1000
 
     def get_strategy(self):
-        return {'enable_inplace': True, 'enable_addto': True}
+        return {
+            'enable_inplace': True,
+            'enable_addto': True,
+            'fuse_all_optimizer_ops': True,
+            'fuse_elewise_add_act_ops': True,
+        }
+
+    def check_before_applied(self, main, startup):
+        self.assertFalse(global_block_contains_op(main, "share_buffer"))
+        self.assertFalse(global_block_contains_op(main, "coalesce_tensor"))
+        self.assertFalse(
+            global_block_contains_op(main, "fused_elemwise_add_activation"))
 
     def check_after_applied(self, main, startup):
-        op_name = "share_buffer"
-        cnt = 0
+        self.assertTrue(global_block_contains_op(main, "share_buffer"))
+        self.assertTrue(global_block_contains_op(main, "coalesce_tensor"))
+        self.assertTrue(
+            global_block_contains_op(main, "fused_elemwise_add_activation"))
+
+        share_dims_cnt = 0
+        non_share_dims_cnt = 0
         for op in main.global_block().ops:
-            if op.type == op_name:
-                cnt += 1
-        self.assertGreaterEqual(cnt, 1)
+            if op.type != "share_buffer":
+                continue
+
+            share_dims = op.attr("share_dims")
+            if share_dims:
+                for i in range(len(share_dims)):
+                    self.assertEqual(share_dims[0], share_dims[i])
+                if share_dims[0] is True:
+                    share_dims_cnt += 1
+                else:
+                    non_share_dims_cnt += 1
+            else:
+                non_share_dims_cnt += 1
+        self.assertGreaterEqual(share_dims_cnt, 1)
+        self.assertGreaterEqual(non_share_dims_cnt, 1)
 
     def test_main(self, batch_num=20, batch_size=32):
         main1, startup1, image, label, loss1 = get_resnet50_model()
@@ -106,6 +135,7 @@ class TestIRPassBase(unittest.TestCase):
         build_strategy = paddle.static.BuildStrategy()
         for k, v in self.get_strategy().items():
             setattr(build_strategy, k, v)
+        self.check_before_applied(main2, startup2)
         apply_build_strategy(main2, startup2, build_strategy,
                              {"use_cuda": self.use_cuda})
         self.check_after_applied(main2, startup2)

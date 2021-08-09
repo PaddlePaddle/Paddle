@@ -281,6 +281,7 @@ static void BuildInplaceAddToGraph(Node *in_var_0, Node *in_var_1,
   share_buffer_op.SetInput("X", {in_var_0->Name()});
   share_buffer_op.SetOutput("Out", {in_var_1->Name()});
   share_buffer_op.SetOutput("XOut", {in_var_0->Name()});
+  share_buffer_op.SetAttr("share_dims", std::vector<bool>(1, false));
 
   auto *new_share_buffer_op = graph->CreateOpNode(&share_buffer_op);
   new_share_buffer_op->inputs.push_back(in_var_0);

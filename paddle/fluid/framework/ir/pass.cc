@@ -111,17 +111,28 @@ void Pass::MergePrograms(ProgramDesc *dst, const details::ProgramDescs &srcs,
       if (dst_block->FindVar(src_new_var->Name())) continue;
       auto *dst_new_var = dst_block->Var(src_new_var->Name());
       *dst_new_var = *src_new_var;
+      VLOG(10) << "Create new variable " << dst_new_var->Name();
     }
   };
   VisitAllElements(srcs, create_var_visitor, reverse);
 
   auto create_op_visitor = [dst, reverse](const ProgramDesc &src) {
     auto ops = src.Block(0).AllOps();
-    VisitAllElements(ops,
-                     [dst](const OpDesc *src_op) {
-                       dst->MutableBlock(0)->AppendOp()->CopyFrom(*src_op);
-                     },
-                     reverse);
+    auto copy_op_visitor = [dst, reverse](const OpDesc *src_op) {
+      auto *dst_block = dst->MutableBlock(0);
+      auto *op = reverse ? dst_block->PrependOp() : dst_block->AppendOp();
+      op->CopyFrom(*src_op);
+      VLOG(10) << (reverse ? "Prepend" : "Append") << " op " << op->Type();
+      // FIXME(zjl): some passes does not add VarDesc to program,
+      // we should fix this bug later...
+      for (const auto &in_var_name : op->InputArgumentNames()) {
+        dst_block->Var(in_var_name);
+      }
+      for (const auto &out_var_name : op->OutputArgumentNames()) {
+        dst_block->Var(out_var_name);
+      }
+    };
+    VisitAllElements(ops, copy_op_visitor, reverse);
   };
   VisitAllElements(srcs, create_op_visitor, reverse);
 }
@@ -138,12 +149,14 @@ void Pass::ApplyImpl(ProgramDesc *main_program,
   if (graph.Has(details::kStartupProgramDescs)) {
     const auto &startups =
         graph.Get<details::ProgramDescs>(details::kStartupProgramDescs);
+    VLOG(10) << "Merge startup programs";
     MergePrograms(startup_program, startups, /*append=*/true);
   }
 
   if (graph.Has(details::kProgramDescs)) {
     const auto &mains =
         graph.Get<details::ProgramDescs>(details::kProgramDescs);
+    VLOG(10) << "Merge main programs";
     MergePrograms(main_program, mains, /*append=*/false);
   }
 

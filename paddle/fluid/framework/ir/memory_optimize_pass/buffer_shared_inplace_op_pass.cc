@@ -173,7 +173,8 @@ GetInplaceVars(const BlockDesc &block, bool use_cuda,
       GetEagerDeletionCleanVars(*block.Program(), skip_vars)[0];
   const auto all_ops = block.AllOps();
   PADDLE_ENFORCE_EQ(all_gc_vars.size(), all_ops.size(),
-                    platform::errors::PermissionDenied("op number not match"));
+                    platform::errors::PermissionDenied(
+                        "GC analysis error: op number not match"));
   size_t n = all_ops.size();
   std::unordered_set<std::string> visited_vars;
   std::unordered_set<std::string> reused_in_vars(skip_vars.begin(),
@@ -265,7 +266,8 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
   auto *block = main_program->MutableBlock(0);
   auto inplace_vars = GetInplaceVars(*block, use_cuda, skip_vars);
   PADDLE_ENFORCE_EQ(inplace_vars.size(), block->OpSize(),
-                    platform::errors::PermissionDenied("Op number not match"));
+                    platform::errors::PermissionDenied(
+                        "Inplace analysis error: op number not match"));
   int64_t n = static_cast<int64_t>(inplace_vars.size());
   for (int64_t i = n - 1; i >= 0; --i) {
     if (inplace_vars[i].empty()) continue;
@@ -281,6 +283,7 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
     op->SetOutput("XOut", inputs);  // add necessary dependency
+    op->SetAttr("share_dims", std::vector<bool>(inputs.size(), false));
   }
   block->Flush();
 }
