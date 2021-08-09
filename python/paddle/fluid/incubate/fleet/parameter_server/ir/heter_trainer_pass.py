@@ -27,7 +27,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import get_vars_name_in_block
 
 
-def split_heter_worker_ops_pass(program, config):
+def split_heter_worker_ops_pass(program, config, stage_id):
     """
     split heter worker program from origin-program
     1. find heter op (located on different device)
@@ -47,11 +47,11 @@ def split_heter_worker_ops_pass(program, config):
     if current_device not in heter_ops:
         raise ValueError("Op which run on device {} not exist.".format(
             current_device))
-
+    program_block_ops = union_forward_gradient_op(program_block_ops)
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
     heter_program = framework.Program()
     create_heter_program(program, config, heter_program, heter_ops,
-                         block_vars_detail, current_device)
+                         block_vars_detail, current_device, stage_id)
     return heter_program
 
 
@@ -64,10 +64,12 @@ def split_trainer_ops_pass(program, config):
     """
     # Todo: support user define default_device (MrChengmo)
     default_deveice = "cpu"
-    program, heter_ops, _, program_block_ops = find_heter_ops(program,
-                                                              default_deveice)
+    program, heter_ops, default_ops, program_block_ops = find_heter_ops(
+        program, default_deveice)
+    program_block_ops = union_forward_gradient_op(program_block_ops)
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
-    create_trainer_program(program, config, heter_ops, block_vars_detail)
+    create_trainer_program(program, config, default_ops, heter_ops,
+                           block_vars_detail)
     return program
 
 

@@ -591,8 +591,11 @@ class TheOnePSRuntime(RuntimeBase):
             wait_server_ready(self.role_maker._get_pserver_endpoints())
 
             # for ps-heter mode, wait heter worker ready
-            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
-            ):
+            #if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+            #):
+            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._get_heter_worker_endpoints(
+            ) != "":
+
                 wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
                 self._heter_client = HeterClient(
@@ -605,21 +608,23 @@ class TheOnePSRuntime(RuntimeBase):
                            scope=fluid.global_scope()):
         self._communicator.push_sparse_param(var_name, table_id, scope)
 
+    '''
+      we add device attribute to role_maker 
+    '''
+
     def _get_executor(self):
         executor = fluid.Executor(fluid.CPUPlace())
         if self.role_maker._is_heter_parameter_server_mode:
-            heter_worker_device_guard = self.context[
-                "valid_strategy"].a_sync_configs[
-                    "heter_worker_device_guard"].upper()
-            if heter_worker_device_guard not in ["GPU", "XPU", "CPU"]:
-                raise ValueError("Heter Worker Not Support Device {}".format(
-                    heter_worker_device_guard))
             if self.role_maker._is_heter_worker():
-                if heter_worker_device_guard == "GPU":
+                heter_device_type = self.role_maker._heter_device_type().upper()
+                if heter_device_type not in ["GPU", "XPU", "CPU"]:
+                    raise ValueError("Heter Worker Not Support Device {}".
+                                     format(device_type))
+                if heter_device_type == "GPU":
                     executor = Executor(
                         fluid.CUDAPlace(
                             int(os.getenv("FLAGS_selected_gpus", "0"))))
-                elif heter_worker_device_guard == "XPU":
+                elif heter_device_type == "XPU":
                     executor = Executor(
                         fluid.XPUPlace(
                             int(os.getenv("FLAGS_selected_xpus", "0"))))
