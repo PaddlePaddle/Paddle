@@ -91,7 +91,7 @@ class Quant_Fc1_DequantTest(InferencePassTest):
     def append_quantized_op(self, x, param_attr):
         return fluid.layers.fc(x,
                                size=100,
-                               num_flatten_dims=1,
+                               num_flatten_dims=3,
                                param_attr=param_attr,
                                bias_attr=False,
                                act=None)
@@ -134,7 +134,7 @@ class Quant_Fc2_DequantTest(InferencePassTest):
     def append_quantized_op(self, x, param_attr):
         return fluid.layers.fc(x,
                                size=100,
-                               num_flatten_dims=3,
+                               num_flatten_dims=1,
                                param_attr=param_attr,
                                bias_attr=False,
                                act=None)
