@@ -428,6 +428,9 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         self._adapt_amp_clip_without_sharding()
 
+        # loss div dp_degree
+        self._insert_loss_grad_scale_op()
+
         self._apply_optimize_offload_pass()
 
         # step6: (optional) sharding gradient merge
@@ -561,11 +564,6 @@ class ShardingOptimizer(MetaOptimizerBase):
     def _init_comm(self):
         # sync var
         startup_block = self._startup_program.global_block()
-        self.startup_prog_sync_var = startup_block.create_var(
-            name="startup_prog_sync_var",
-            shape=[1],
-            dtype=core.VarDesc.VarType.INT32,
-            persistable=False)
 
         # mp ring
         if self.mp_degree > 1:
@@ -1281,7 +1279,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         this funtion is to ensure the initialization between dp group to be 
         identical when hybrid-dp is used.
         """
-        if not self.hybrid_dp: return
+        if not self.hybrid_dp:
+            return
 
         startup_block = self._startup_program.global_block()
 
