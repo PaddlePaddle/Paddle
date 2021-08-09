@@ -82,10 +82,9 @@ class TestIRPassBase(unittest.TestCase):
                 'FLAGS_max_inplace_grad_add': 6,
             })
             self.place = paddle.CUDAPlace(0)
-            self.use_cuda = True
         else:
             self.place = paddle.CPUPlace()
-            self.use_cuda = False
+        self.use_cuda = isinstance(self.place, paddle.CUDAPlace)
         self.executor = paddle.static.Executor(self.place)
         self.num_classes = 1000
 
@@ -125,10 +124,20 @@ class TestIRPassBase(unittest.TestCase):
                     non_share_dims_cnt += 1
             else:
                 non_share_dims_cnt += 1
-        self.assertGreaterEqual(share_dims_cnt, 1)
+        if self.use_cuda:
+            self.assertGreaterEqual(share_dims_cnt, 1)
+        else:
+            self.assertEqual(share_dims_cnt, 0)
         self.assertGreaterEqual(non_share_dims_cnt, 1)
 
-    def test_main(self, batch_num=20, batch_size=32):
+    def test_main(self):
+        if self.use_cuda:
+            batch_num = 20
+            batch_size = 32
+        else:
+            batch_num = 5
+            batch_size = 4
+
         main1, startup1, image, label, loss1 = get_resnet50_model()
         main2, startup2, image, label, loss2 = get_resnet50_model()
 
@@ -151,7 +160,7 @@ class TestIRPassBase(unittest.TestCase):
         with paddle.static.scope_guard(scope2):
             self.executor.run(startup2)
 
-        for _ in range(batch_num):
+        for idx in range(batch_num):
             feed = {
                 image.name: np.random.rand(*image_shape).astype('float32'),
                 label.name: np.random.randint(
@@ -168,7 +177,7 @@ class TestIRPassBase(unittest.TestCase):
                 loss_value2 = self.executor.run(main2,
                                                 feed=feed,
                                                 fetch_list=[loss2])[0]
-            self.assertEqual(loss_value1, loss_value2)
+            self.assertEqual(loss_value1, loss_value2, "batch {}".format(idx))
 
 
 if __name__ == "__main__":

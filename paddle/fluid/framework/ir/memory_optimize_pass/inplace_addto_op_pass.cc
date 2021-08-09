@@ -343,6 +343,8 @@ GetAllVersionVarsMap(const Graph &graph) {
 
 void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
                                    ProgramDesc *startup_program) const {
+  if (!Get<bool>(kUseCuda)) return;
+
   Graph graph(*main_program);
   auto all_ver_vars = GetAllVersionVarsMap(graph);
 

@@ -17,14 +17,6 @@ import copy
 from .framework import _apply_pass
 
 
-def has_coalesce_tensor_op(program):
-    for block in program.blocks:
-        for op in block.ops:
-            if op.type == "coalesce_tensor":
-                return True
-    return False
-
-
 def get_data_vars(program):
     data_vars = []
     for var_name, var in program.global_block().vars.items():
@@ -71,9 +63,7 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
     if build_strategy.fuse_elewise_add_act_ops:
         apply_pass("fuse_elewise_add_act_pass")
         build_strategy.fuse_elewise_add_act_ops = False
-    if build_strategy.fuse_all_optimizer_ops and not has_coalesce_tensor_op(
-            main_program):
-        apply_pass("coalesce_grad_tensor_pass")
+    if build_strategy.fuse_all_optimizer_ops:
         apply_pass("fuse_adam_op_pass")
         apply_pass("fuse_sgd_op_pass")
         apply_pass("fuse_momentum_op_pass")
@@ -82,7 +72,7 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
     if build_strategy.cache_runtime_context:
         apply_pass("runtime_context_cache_pass")
         build_strategy.cache_runtime_context = False
-    if build_strategy.enable_addto:
+    if build_strategy.enable_addto and use_cuda:
         # NOTE: how to get fetch vars to skip memory optimization?  
         apply_pass("inplace_addto_op_pass")
         build_strategy.enable_addto = False
