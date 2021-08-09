@@ -21,6 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -112,37 +113,42 @@ class VarDesc {
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
+  bool IsParameter() const { return desc_.is_parameter(); }
+
+  void SetIsParameter(bool is_parameter) {
+    desc_.set_is_parameter(is_parameter);
+  }
+
+  void ClearIsParameter() { desc_.clear_is_parameter(); }
+
+  bool HasIsParameter() const { return desc_.has_is_parameter(); }
+
+  bool StopGradient() const { return desc_.stop_gradient(); }
+
+  void SetStopGradient(bool stop_gradient) {
+    desc_.set_stop_gradient(stop_gradient);
+  }
+
+  void ClearStopGradient() { desc_.clear_stop_gradient(); }
+
+  bool HasStopGradient() const { return desc_.has_stop_gradient(); }
+
   bool NeedCheckFeed() const { return desc_.need_check_feed(); }
 
   void SetNeedCheckFeed(bool need_check_feed) {
     desc_.set_need_check_feed(need_check_feed);
   }
 
-  int32_t GetDistributedAttrUid() const { return distributed_attr_uid_; }
-
-  void SetDistributedAttrUid(int32_t distributed_attr_uid) {
-    distributed_attr_uid_ = distributed_attr_uid;
+  bool HasAttr(const std::string &name) const {
+    return attrs_.find(name) != attrs_.end();
   }
 
-  bool HasDistributedAttr(const std::string &name) const {
-    return distributed_attrs_.find(name) != distributed_attrs_.end();
-  }
+  std::vector<std::string> AttrNames() const;
 
-  std::vector<std::string> DistributedAttrNames() const;
+  void SetAttr(const std::string &name, const Attribute &v);
+  void RemoveAttr(const std::string &name);
 
-  void SetDistributedAttr(const std::string &name, const Attribute &v);
-  void RemoveDistributedAttr(const std::string &name);
-
-  Attribute GetDistributedAttr(const std::string &name) const;
-
-  template <typename T>
-  T GetDistributedAttrIfExists(const std::string &name) const {
-    T result{};
-    if (HasDistributedAttr(name)) {
-      result = BOOST_GET_CONST(T, GetDistributedAttr(name));
-    }
-    return result;
-  }
+  Attribute GetAttr(const std::string &name) const;
 
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
@@ -151,9 +157,7 @@ class VarDesc {
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
   proto::VarDesc desc_;
-  AttributeMap distributed_attrs_;
-  int32_t distributed_attr_uid_{-1};
-  bool need_update_{false};
+  AttributeMap attrs_;
 };
 
 bool operator==(const VarDesc &left, const VarDesc &right);

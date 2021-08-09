@@ -73,6 +73,7 @@ _dygraph_tracer_ = None
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
+_current_pipeline_stage = None
 _global_flags_ = core.globals()
 
 
@@ -238,6 +239,11 @@ def _static_only_(func):
         return func(*args, **kwargs)
 
     return __impl__
+
+
+def _set_pipeline_stage(stage):
+    global _current_pipeline_stage
+    _current_pipeline_stage = stage
 
 
 # NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
@@ -946,7 +952,7 @@ class Variable(object):
 
         self.block.vars[name] = self
         self.op = None
-        self._stop_gradient = stop_gradient
+        self.stop_gradient = stop_gradient
         self.is_data = is_data
 
     def detach(self):
@@ -1183,7 +1189,7 @@ class Variable(object):
             var_str = "{name} : {type})".\
                 format(name=self.name, type=type_str)
 
-        if type(self) == Parameter:
+        if self.is_parameter:
             if self.trainable:
                 var_str = "trainable param " + var_str
             else:
@@ -1238,7 +1244,7 @@ class Variable(object):
         proto = framework_pb2.VarDesc.FromString(six.binary_type(protostr))
         res_str = _debug_string_(proto, throw_on_error)
         if with_details:
-            additional_attr = ("error_clip", "stop_gradient")
+            additional_attr = ("error_clip", )
             for attr_name in additional_attr:
                 res_str += "%s: %s\n" % (attr_name,
                                          cpt.to_text(getattr(self, attr_name)))
@@ -1278,11 +1284,11 @@ class Variable(object):
                 assert linear.weight.gradient() is None
                 assert (out1.gradient() == 0).all()
         """
-        return self._stop_gradient
+        return self.desc.stop_gradient()
 
     @stop_gradient.setter
     def stop_gradient(self, s):
-        self._stop_gradient = s
+        self.desc.set_stop_gradient(s)
 
     @property
     def persistable(self):
@@ -1312,6 +1318,31 @@ class Variable(object):
     @persistable.setter
     def persistable(self, p):
         self.desc.set_persistable(p)
+
+    @property
+    def is_parameter(self):
+        """
+        Indicating if current Variable is a Parameter
+
+        Examples:
+          .. code-block:: python
+
+            import paddle
+            new_parameter = paddle.static.create_parameter(name="X",
+                                                shape=[10, 23, 48],
+                                                dtype='float32')
+            if new_parameter.is_parameter:
+                print("Current var is a Parameter")
+            else:
+                print("Current var is not a Parameter")
+
+            # Current var is a Parameter
+        """
+        return self.desc.is_parameter()
+
+    @is_parameter.setter
+    def is_parameter(self, p):
+        self.desc.set_is_parameter(p)
 
     @property
     def name(self):
@@ -1856,6 +1887,86 @@ class Variable(object):
             type='size', inputs={'Input': [self]}, outputs={'Out': [output]})
         return output
 
+    def _set_attr(self, name, val):
+        """
+        Set the value of attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(int|str|list): the value of the attribute.
+        """
+        self._update_desc_attr(name, val)
+
+    def _has_attr(self, name):
+        """
+        Whether this Variable has the attribute with the name `name` or not.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            bool: True if has this attribute.
+        """
+        return self.desc.has_attr(name)
+
+    def _remove_attr(self, name):
+        self.desc.remove_attr(name)
+
+    def _update_desc_attr(self, name, val):
+        """
+        Update the value of desc's attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(int|str|list): the value of the attribute.
+        """
+        self.desc._set_attr(name, val)
+
+    @property
+    def attr_names(self):
+        """Get the names of all attributes defined."""
+        return self.desc.attr_names()
+
+    def _get_attr(self, name):
+        """
+        Get the attribute by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            int|str|list: The attribute value. The return value
+            can be any valid attribute type.
+        """
+        return self.desc.attr(name)
+
+    @property
+    def process_mesh(self):
+        """
+        Get the process mesh belonging to this Variable.
+        """
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+        from paddle.distributed.auto_parallel.interface import ProcessMesh
+        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
+        mesh_id = self.desc.attr(mesh_attr_name)
+        return _g_process_mesh_map[mesh_id]
+
+    @property
+    def shard_mask(self):
+        """
+        Get shard_mask belonging to this Variable.
+        """
+        mask_attr_name = 'mask' + core.kAutoParallelSuffix()
+        return self.desc.attr(mask_attr_name)
+
+    @property
+    def offload_device(self):
+        """
+        Get the offload device of this Variable.
+        """
+        offload_attr_name = 'offload_device' + core.kAutoParallelSuffix()
+        return self.desc.attr(offload_attr_name)
+
 
 def get_all_op_protos():
     """
@@ -2055,6 +2166,11 @@ class Operator(object):
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
                             "used at the same time." % type)
+            if _current_pipeline_stage is not None:
+                pipeline_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix(
+                )
+                self._update_desc_attr(pipeline_attr_name,
+                                       _current_pipeline_stage)
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -2532,6 +2648,31 @@ class Operator(object):
 
         return False
 
+    @property
+    def process_mesh(self):
+        """
+        Get the process mesh belonging to this Operator.
+        """
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
+        mesh_id = self.attr(mesh_attr_name)
+        return _g_process_mesh_map[mesh_id]
+
+    def dims_mapping(self, name):
+        """
+        Get the dims_mapping for the op's var named `name`.
+        """
+        dims_mapping_attr_name = name + core.kAutoParallelSuffix()
+        return self.attr(dims_mapping_attr_name)
+
+    @property
+    def pipeline_stage(self):
+        """
+        Get pipeline stage of the Operator.
+        """
+        pipeline_stage_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix()
+        return self.desc.attr(pipeline_stage_attr_name)
+
 
 class Block(object):
     """
@@ -2877,12 +3018,7 @@ class Block(object):
             param = ParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
-            # NOTE: Why only set stop_gradient=False in static mode
-            # Because in dygraph mode, the `stop_gradient` and `trainable`
-            # are related, and `trainable` default vallue is `True` or
-            # it is specified by users, there is no need to set
-            # `stop_gradient` for ParamBase here.
-            param.stop_gradient = False
+
         if 'initializer' in kwargs:
 
             def _is_inited_by(block, var):
@@ -3055,7 +3191,23 @@ class Block(object):
         # sync variables from cpp
         for var in self.desc.all_vars():
             if not self.has_var(var.name()):
-                self.create_var(name=var.name(), desc=var, type=var.type())
+                is_stop_gradient = False
+                if var.has_stop_gradient():
+                    is_stop_gradient = var.stop_gradient()
+                if var.has_is_parameter() and var.is_parameter():
+                    self.create_parameter(
+                        name=var.name(),
+                        desc=var,
+                        type=var.type(),
+                        shape=var.shape(),
+                        dtype=var.dtype(),
+                        stop_gradient=is_stop_gradient)
+                else:
+                    self.create_var(
+                        name=var.name(),
+                        desc=var,
+                        type=var.type(),
+                        stop_gradient=is_stop_gradient)
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
@@ -4766,6 +4918,33 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
+    def _remove_training_info(self):
+        """
+        This method will create a new program and do following adjustments on it:
+        1. Remove all variable's `is_parameter` attribute if exist.
+
+        2. Remove all variable's `stop_gradient` attribute if exist.
+
+        Notes: This API is a very low level API.
+
+        Returns:
+            Program: The new program.
+        """
+        res = Program()
+        res.desc = core.ProgramDesc(self.desc)
+
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
+        res._sync_with_cpp()
+
+        for i in six.moves.range(res.desc.num_blocks()):
+            block = res.desc.block(i)
+            for var in block.all_vars():
+                var.clear_is_parameter()
+                var.clear_stop_gradient()
+        return res
+
     @staticmethod
     def parse_from_string(binary_str):
         """
@@ -5412,6 +5591,8 @@ class Parameter(Variable):
         self.need_clip = kwargs.get('need_clip', True)
 
         self.is_distributed = False
+
+        self.is_parameter = True
 
     def __str__(self):
         return self._to_readable_code()
