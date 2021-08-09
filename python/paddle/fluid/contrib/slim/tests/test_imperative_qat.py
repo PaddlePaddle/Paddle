@@ -74,10 +74,11 @@ class TestImperativeQat(unittest.TestCase):
             quant_conv1 = QuantizedConv2D(conv1)
             data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
             quant_conv1(fluid.dygraph.to_variable(data))
-            
+
             conv_transpose = Conv2DTranspose(4, 6, (3, 3))
             quant_conv_transpose = QuantizedConv2DTranspose(conv_transpose)
-            x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+            x_var = paddle.uniform(
+                (2, 4, 8, 8), dtype='float32', min=-1., max=1.)
             quant_conv_transpose(x_var)
 
             seed = 1
