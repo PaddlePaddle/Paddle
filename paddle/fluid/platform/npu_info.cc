@@ -113,21 +113,28 @@ void ResetNPUDeviceId(int id) {
 }
 
 void callback(::aclrtExceptionInfo *info) {
-  // NOTE: the struct defination
-  typedef struct ExceptionInfo {
-    uint32_t taskid;
-    uint32_t streamid;
-    uint32_t tid;
-    uint32_t deviceid;
-    uint32_t retcode;
-  } ExceptionInfo;
-  auto cast_info = reinterpret_cast<ExceptionInfo *>(info);
-  std::string err_msg = string::Sprintf(
-      "HCCL/ACL failed, device_id=%d, stream_id=%d, task_id=%d, tid=%d, "
-      "ret_code=%d",
-      cast_info->deviceid, cast_info->streamid, cast_info->taskid,
-      cast_info->tid, cast_info->retcode);
-  PADDLE_THROW(platform::errors::External(err_msg));
+  auto device_id =
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetDeviceIdFromExceptionInfo(info));
+  auto stream_id =
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetStreamIdFromExceptionInfo(info));
+  auto task_id =
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetTaskIdFromExceptionInfo(info));
+  auto thread_id =
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetThreadIdFromExceptionInfo(info));
+  char op_name[256];
+  aclTensorDesc *input_desc = nullptr;
+  aclTensorDesc *output_desc = nullptr;
+  size_t input_cnt = 0;
+  size_t output_cnt = 0;
+  PADDLE_ENFORCE_NPU_SUCCESS(aclmdlCreateAndGetOpDesc(
+      device_id, stream_id, task_id, op_name, 256, &input_desc, &input_cnt,
+      &output_desc, &output_cnt));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyTensorDesc(input_desc));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyTensorDesc(output_desc));
+  PADDLE_THROW(platform::errors::External(
+      "HCCL/ACL failed, device_id=%d, stream_id=%d, task_id=%d, thread_id=%d, "
+      "task_name=%s",
+      device_id, stream_id, task_id, thread_id, op_name));
 }
 
 void SetNPUExceptionCallback(std::string func_name) {
