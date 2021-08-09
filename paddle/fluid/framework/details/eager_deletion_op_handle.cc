@@ -19,6 +19,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include <algorithm>
 
 namespace paddle {
 namespace framework {
@@ -175,6 +176,16 @@ void EagerDeletionOpHandle::ClearGarbages(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
+}
+
+std::vector<std::string> EagerDeletionOpHandle::VarsToDelete() const {
+  std::vector<std::string> var_names;
+  var_names.reserve(var_infos_.size());
+  for (auto &info : var_infos_) {
+    var_names.emplace_back(info->Name());
+  }
+  std::sort(var_names.begin(), var_names.end());
+  return var_names;
 }
 
 }  // namespace details

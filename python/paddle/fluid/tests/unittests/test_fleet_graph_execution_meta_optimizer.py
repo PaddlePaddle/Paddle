@@ -209,7 +209,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         proc_b.start()
         wait([proc_a, proc_b])
 
-    def test_graph_execution_optimizer(self):
+    def test_graph_execution_optimizer_v2(self):
         port_a = self._dist_ut_port_0 + 6
         port_b = self._dist_ut_port_1 + 6
         node_a = {

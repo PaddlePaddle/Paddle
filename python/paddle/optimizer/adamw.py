@@ -32,14 +32,14 @@ class AdamW(Adam):
 
         t & = t + 1
 
-        moment\_1\_out & = {\\beta}_1 * moment\_1 + (1 - {\\beta}_1) * grad
+        moment\_1\_out & = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad
 
-        moemnt\_2\_out & = {\\beta}_2 * moment\_2 + (1 - {\\beta}_2) * grad * grad
+        moemnt\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
 
-        learning\_rate & = learning\_rate * \\
-            \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {beta}_1^t}
+        learning\_rate & = learning\_rate * 
+            \frac{\sqrt{1 - {\beta}_2^t}}{1 - {beta}_1^t}
 
-        param\_out & = param - learning\_rate * (\\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
+        param\_out & = param - learning\_rate * (\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
 
 
     Args:
@@ -185,10 +185,9 @@ class AdamW(Adam):
         Raises:
             Exception: The type of coeff and parameter is not consistent.
         """
-        if not isinstance(param_and_grad, dict):
-            param, grad = param_and_grad
-        else:
-            param, grad = self._update_param_group(param_and_grad)
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
+        param, grad = param_and_grad
 
         if self._apply_decay_param_fun is not None \
                 and not self._apply_decay_param_fun(param.name):

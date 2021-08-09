@@ -111,6 +111,7 @@ message BuildStrategy {
   optional bool fuse_bn_add_act_ops = 10 [ default = true ];
   optional bool enable_auto_fusion = 11 [ default = false ];
   optional bool enable_addto = 12 [ default = false ];
+  optional bool fix_op_run_order = 13 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -143,6 +144,13 @@ message AsyncConfig {
   optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
   optional int32 lr_decay_steps = 11 [ default = 10 ];
   optional int32 use_ps_gpu = 12 [ default = 0 ];
+}
+
+message TrainerDescConfig {
+  optional string dump_fields_path = 1;
+  repeated string dump_fields = 2;
+  repeated string dump_param = 3;
+  repeated string stat_var_names = 4;
 }
 
 message PipelineConfig {
@@ -188,7 +196,7 @@ message DistributedStrategy {
   optional bool find_unused_parameters = 28 [ default = false ];
   optional bool tensor_parallel = 29 [ default = false ];
   optional bool without_graph_optimization = 30 [ default = false ];
-  optional int32 fuse_grad_size_in_num = 31 [ default = 1 ];
+  optional int32 fuse_grad_size_in_num = 31 [ default = 8 ];
   optional bool calc_comm_same_stream = 32 [ default = false ];
   optional bool asp = 33 [ default = false ];
 
@@ -205,6 +213,7 @@ message DistributedStrategy {
   optional ShardingConfig sharding_configs = 111;
   optional HybridConfig hybrid_configs = 112;
   optional TensorParallelConfig tensor_parallel_configs = 113;
+  optional TrainerDescConfig trainer_desc_configs = 114;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
   optional GradientScaleConfig gradient_scale_configs = 203;
