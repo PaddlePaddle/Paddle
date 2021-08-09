@@ -33,8 +33,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using Variable = framework::Variable;
-using LoDTensorArray = framework::LoDTensorArray;
 using DDim = framework::DDim;
 
 inline void get_offsets(const DDim& big_dim, const DDim& small_dim,
