@@ -257,20 +257,6 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                             "but received %d. ",
                             logits_dims[0]));
 
-      PADDLE_ENFORCE_GT(logits_dims[1], 0,
-                        platform::errors::InvalidArgument(
-                            "The second dimension of Input(Logits) should be "
-                            "greater than zero "
-                            "but received %d. ",
-                            logits_dims[1]));
-
-      PADDLE_ENFORCE_GT(logits_dims[2], 0,
-                        platform::errors::InvalidArgument(
-                            "The third dimension of Input(Logits) should be "
-                            "greater than zero "
-                            "but received %d. ",
-                            logits_dims[2]));
-
       PADDLE_ENFORCE_EQ(
           logits_dims[0], static_cast<int64_t>(logits_lod.back()),
           platform::errors::InvalidArgument(
