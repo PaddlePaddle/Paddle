@@ -15,6 +15,7 @@
 #include <string>
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/platform/enforce.h"
