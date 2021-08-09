@@ -331,9 +331,10 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     saved_mean->mutable_data<T>(ctx.GetPlace());
     saved_variance->mutable_data<T>(ctx.GetPlace());
 
-    // input dimension is 2 and the format is NCHW. The input can be regarded
-    // as NHWC format
-    if (x_dims.size() == 2 && data_layout == DataLayout::kNCHW) {
+    // sample_size is 1 and the format is NCHW. The input can be regarded
+    // as NHWC format, for exampel Input similar to [N,C],[N,C,1,1] can be
+    // regarded as "NHWC" format
+    if (sample_size == 1 && data_layout == DataLayout::kNCHW) {
       data_layout = DataLayout::kNHWC;
     }
 
@@ -637,9 +638,10 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                                           : x_dims[x_dims.size() - 1]);
     const int sample_size = x->numel() / N / C;
 
-    // input dimension is 2 and the format is NCHW. The input can be regarded as
-    // NHWC format
-    if (x_dims.size() == 2 && data_layout == DataLayout::kNCHW) {
+    // sample_size is 1 and the format is NCHW. The input can be regarded
+    // as NHWC format, for exampel Input similar to [N,C],[N,C,1,1] can be
+    // regarded as "NHWC" format
+    if (sample_size == 1 && data_layout == DataLayout::kNCHW) {
       data_layout = DataLayout::kNHWC;
     }
 
