@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
+DECLARE_bool(sync_npu_calc_communication);
+
 namespace paddle {
 namespace operators {
 
