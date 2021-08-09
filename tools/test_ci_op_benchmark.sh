@@ -295,6 +295,7 @@ function gpu_op_benchmark {
   exit 0
 }
 
+
 case $1 in
   cpu_op_benchmark)
     cpu_op_benchmark
