@@ -275,8 +275,6 @@ class TestWarpCTCOpWithPadding(OpTest):
         self.labels_length = np.array([3, 1, 4, 4], dtype=np.int64)
         self.blank = self.num_classes - 1
         self.norm_by_times = False
-        self.size_average = False
-        self.length_average = False
 
     def setUp(self):
         self.op_type = "warpctc"
@@ -341,8 +339,6 @@ class TestWarpCTCOpWithPadding(OpTest):
         self.attrs = {
             "blank": self.blank,
             "norm_by_times": self.norm_by_times,
-            "size_average": self.size_average,
-            "length_average": self.length_average,
         }
 
     def test_check_output(self):
@@ -362,36 +358,6 @@ class TestWarpCTCOpWithPadding(OpTest):
                 "Loss",
                 max_relative_error=0.007,
                 check_dygraph=False)
-
-    def test_check_grad_norm_by_times(self):
-        self.attrs['norm_by_times'] = True
-        self.outputs['WarpCTCGrad'] = self.gradient
-        if not core.is_compiled_with_rocm():
-            self.check_grad(
-                ["Logits"],
-                "Loss",
-                max_relative_error=0.007,
-                check_dygraph=True)
-
-    def test_check_grad_size_average(self):
-        self.attrs['size_average'] = True
-        self.outputs['WarpCTCGrad'] = self.gradient
-        if not core.is_compiled_with_rocm():
-            self.check_grad(
-                ["Logits"],
-                "Loss",
-                max_relative_error=0.007,
-                check_dygraph=True)
-
-    def test_check_grad_length_average(self):
-        self.attrs['length_average'] = True
-        self.outputs['WarpCTCGrad'] = self.gradient
-        if not core.is_compiled_with_rocm():
-            self.check_grad(
-                ["Logits"],
-                "Loss",
-                max_relative_error=0.007,
-                check_dygraph=True)
 
 
 class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):
