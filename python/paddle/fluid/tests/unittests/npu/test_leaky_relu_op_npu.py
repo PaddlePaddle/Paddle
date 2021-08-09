@@ -18,7 +18,7 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -29,42 +29,43 @@ SEED = 2121
 class TestLeakyRelu(OpTest):
     def setUp(self):
         self.set_npu()
-        self.place = paddle.NPUPlace(0)
         self.op_type = "leaky_relu"
         self.init_dtype()
 
-        x = np.random.random([20, 20]).astype(self.dtype)
-        negative_slope = np.float32(0.01) 
-        out = np.where(x >= 0, x, x * negative_slope).astype(self.dtype)
+        x = np.random.random([10, 10]).astype(self.dtype)
+        negative_slope = 0.01 
+        out = np.where(x >= 0, x, x * negative_slope)
         
         self.inputs = {'X': x}
 
-        self.attrs = {'negative_slope': negative_slope}
+        self.attrs = {"alpha": negative_slope}
         self.outputs = {'Out': out}
 
     def set_npu(self):
         self.__class__.use_npu = True
+        self.place = paddle.NPUPlace(0)
 
     def init_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
-    """
+
+    
     def test_check_grad(self):
-        if self.dtype == np.float16:
+        if self.dtype != np.float16:
             return
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', max_relative_error=0.01)
-    """
+            self.place, ['X'], 'Out')
 
 class TestLeakyRelu16(TestLeakyRelu):
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.place = paddle.NPUPlace(0)
+        self.__class__.no_need_check_grad = True
+
     def init_dtype(self):
         self.dtype = np.float16
-
-class TestLeakydouble(TestLeakyRelu):
-    def init_dtype(self):
-        self.dtype = np.double
 
 if __name__ == '__main__':
     unittest.main()
