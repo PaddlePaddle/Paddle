@@ -240,6 +240,38 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<int64_t> &&dims) {
   return *this;
 }
 
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<float> &&values) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(values, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<double> &&values) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(values, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddOutput(const Tensor &tensor) {
   // create aclTensorDesc
   output_descs_.emplace_back(CreateTensorDesc(tensor));
