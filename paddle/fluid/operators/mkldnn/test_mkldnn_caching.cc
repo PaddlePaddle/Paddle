@@ -140,7 +140,7 @@ TEST(test_conv2d_reuse_cache, cpu_place) {
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   PADDLE_ENFORCE_EQ(ct.Analyze(9), true,
                     platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
+                        "Invalid number of cached oneDNN objects"));
 }
 
 TEST(test_conv2d_noreuse_cache, cpu_place) {
@@ -151,7 +151,7 @@ TEST(test_conv2d_noreuse_cache, cpu_place) {
   RunOperator<float>(p, "conv2d", dims, "input_signal2");
   PADDLE_ENFORCE_EQ(ct.Analyze(18), true,
                     platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
+                        "Invalid number of cached oneDNN objects"));
 }
 
 }  // namespace operators
