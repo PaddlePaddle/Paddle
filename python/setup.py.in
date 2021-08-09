@@ -21,7 +21,6 @@ class BinaryDistribution(Distribution):
 
 RC      = 0
 
-
 ext_name = '.dll' if os.name == 'nt' else ('.dylib' if sys.platform == 'darwin' else '.so')
 
 def git_commit():

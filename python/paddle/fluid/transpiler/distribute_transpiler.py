@@ -149,23 +149,6 @@ class DistributeTranspilerConfig(object):
     .. py:attribute:: slice_var_up (bool)
 
           Whether to do Tensor slice for parameter servers, default is True.
-        param_list = []
-        grad_list = []
-        param_grad_set = set()
-        for p, g in self.params_grads:
-            # skip parameter marked not trainable
-            if type(p) == Parameter and p.trainable == False:
-                continue
-            if p.name not in param_grad_set:
-                param_list.append(p)
-                param_grad_set.add(p.name)
-            if g.name not in param_grad_set:
-                grad_list.append(g)
-                param_grad_set.add(g.name)
-=======
-          Whether to do Tensor slice for parameter servers, default is True.
->>>>>>> f39c3a5aa8fb74e90908847ec072241b19809291
->>>>>>> Stashed changes
 
     .. py:attribute:: split_method (PSDispatcher)
 
@@ -2061,11 +2044,6 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             block_map[varname].append((int(offset), int(size)))
 
         for varname, split in six.iteritems(block_map):
-            block_map[varname].append((long(offset), long(size)))
-        # Do not remove this important debug message:
-        print("block map: %s" % block_map)
-
-        for varname, splited in block_map.iteritems():
             orig_var = program.global_block().var(varname)
             if len(split) == 1:
                 if self.sync_mode and add_trainer_suffix:
