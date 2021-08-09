@@ -82,7 +82,7 @@ void Pass::Apply(ProgramDesc *main_program,
       platform::errors::InvalidArgument("startup program must be provided"));
 
   ApplyImpl(main_program, startup_program);
-  VLOG(10) << "finish to apply pass " << Type() << " to graph";
+  VLOG(10) << "finish to apply pass " << Type() << " to program";
 }
 
 template <typename Container, typename Visitor>

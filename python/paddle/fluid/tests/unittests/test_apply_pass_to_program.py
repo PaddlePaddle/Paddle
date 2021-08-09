@@ -102,6 +102,12 @@ class TestIRPassBase(unittest.TestCase):
         self.assertFalse(
             global_block_contains_op(main, "fused_elemwise_add_activation"))
 
+        adam_cnt = 0
+        for op in main.global_block().ops:
+            if op.type == "adam":
+                adam_cnt += 1
+        self.assertGreater(adam_cnt, 1)
+
     def check_after_applied(self, main, startup):
         self.assertTrue(global_block_contains_op(main, "share_buffer"))
         self.assertTrue(global_block_contains_op(main, "coalesce_tensor"))
@@ -129,6 +135,12 @@ class TestIRPassBase(unittest.TestCase):
         else:
             self.assertEqual(share_dims_cnt, 0)
         self.assertGreaterEqual(non_share_dims_cnt, 1)
+
+        adam_cnt = 0
+        for op in main.global_block().ops:
+            if op.type == "adam":
+                adam_cnt += 1
+        self.assertEqual(adam_cnt, 1)
 
     def test_main(self):
         if self.use_cuda:
