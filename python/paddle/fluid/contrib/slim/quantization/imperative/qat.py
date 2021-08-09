@@ -213,7 +213,7 @@ class ImperativeQuantAware(object):
         the out_scale value of outputs would be calculated.
 
         Args:
-            model(fluid.dygraph.Layer): the model to be quantized.
+            model(paddle.nn.Layer): the model to be quantized.
         Returns:
             None
         """
@@ -368,7 +368,7 @@ class ImperativeQuantizeOutputs(object):
         output scales for specific layers in the dygraph model.
 
         Args:
-            model(fluid.dygraph.Layer): The target model which would be
+            model(paddle.nn.Layer): The target model which would be
                 calculate the output quantization scale.
 
         Returns:
