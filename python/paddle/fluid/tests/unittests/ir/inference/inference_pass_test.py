@@ -46,7 +46,7 @@ class InferencePassTest(unittest.TestCase):
         self.enable_mkldnn = False
         self.enable_mkldnn_bfloat16 = False
         self.enable_trt = False
-        self.enable_tensorrt_oss = True
+        self.enable_tensorrt_oss = False
         self.trt_parameters = None
         self.dynamic_shape_params = None
         self.enable_lite = False
