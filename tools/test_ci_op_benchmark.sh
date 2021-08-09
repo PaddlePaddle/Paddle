@@ -167,14 +167,19 @@ function compile_install_paddlepaddle {
   bash paddle/scripts/paddle_build.sh build_only $(nproc)
   [ $? -ne 0 ] && LOG "[FATAL] compile fail." && exit 7
   LOG "[INFO] Build fineshed"
+  set -x
+  echo 11111111111,${branch_name}
+  pwd
   mkdir build/${branch_name}
   cp build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl build/${branch_name}/
+  set +x
+  exit 123
 }
 
 function build_whl {
   for branch_name in "develop" "test"
   do
-    git checkout $branch_name
+    git checkout ${branch_name}
     [ $? -ne 0 ] && LOG "[FATAL] Missing branch ${branch_name}." && exit 7
     LOG "[INFO] Now branch name is ${branch_name}."
     compile_install_paddlepaddle
