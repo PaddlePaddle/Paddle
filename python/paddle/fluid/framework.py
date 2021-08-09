@@ -4222,14 +4222,20 @@ class Program(object):
         all_new_vars = self._find_var_class_kwargs(desc)
         block_num = desc.num_blocks()
         assert block_num == len(all_new_vars)
+        assert block_num == self.desc.num_blocks()
 
         # clear old blocks and desc
-        self.blocks = []
-        self.desc = None
+        for idx in range(block_num):
+            block = self.blocks[idx]
+            block.vars.clear()
+            block.ops.clear()
 
-        # create new blocks and set desc
-        self.desc = desc
-        self.blocks = [Block(self, idx) for idx in range(block_num)]
+        for idx in range(block_num):
+            block_desc = self.blocks[idx].desc
+            new_block_desc = desc.block(idx)
+            block_desc._move_from(new_block_desc)
+
+        del desc
 
         # add new vars first
         for idx in range(block_num):
