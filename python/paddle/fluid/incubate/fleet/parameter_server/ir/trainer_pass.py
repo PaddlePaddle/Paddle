@@ -663,7 +663,6 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
     # append the listen_and_serv op
     heter_program.global_block().append_op(
         type="heter_listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs)
-
     check_heter_compile_time_strategy(program, config, send_grad_var_list)
 
 
@@ -679,29 +678,6 @@ def check_heter_compile_time_strategy(program, config, send_grad_var_list):
 
     for useless_grad_var in useless_grad_var_list:
         config.remove_var_pair_by_grad(useless_grad_var)
-
-
-#def create_trainer_program(program, config, default_ops, heter_ops, block_var_detail):
-#    # This function mainly includes the following contents:
-#    # 1. For every heter block in origin program
-#    #     a) delete heter op and related variables
-#    #     b) add send&recv op
-#    #     c) add communicate ops as follows:
-#    #         origin_var -> reshape -> concat -> joint_var.0_1
-#    #         send&recv op(send joint_var.0_1; recv joint_var.1_2)
-#    #         joint_var.1_2 -> slice -> reshape -> origin_var
-#    #     d) remove send op which related var@grad is not in trainer program
-#    # 2. check every op's device
-#    static_var = []
-#    for device in heter_ops.keys():
-#        for heter_block_index in sorted(heter_ops[device]):
-#            static_var += replace_ops_by_communicate_op(
-#                program, config, heter_block_index,
-#                heter_ops[device][heter_block_index], block_var_detail)
-#            remove_trainer_send_op(program, config, heter_block_index,
-#                                   block_var_detail)
-#    deleter_trainer_useless_var(config, program, static_var)
-#    check_op_device(program.global_block(), DEFAULT_DEVICE)
 
 
 def create_trainer_program(program, config, program_block_ops_list,
@@ -1088,7 +1064,6 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
             if var not in previous_block_private and var not in previous_block_entrance:
                 previous_block_entrance.append(var)
             previous_block_exit.append(var)
-
     return block_var_detail
 
 
@@ -1284,23 +1259,6 @@ def add_heter_trainer_useful_vars(config, program, heter_program, heter_block,
                     var, force_persistable=False)
             else:
                 heter_block._clone_variable(var, force_persistable=False)
-
-    #program_useful_var_list = []
-
-    #for op in program.global_block().ops:
-    #    input_var_list, output_var_list = find_op_input_output(
-    #        program, program.global_block(), op)
-    #    op_var_list = list(set(input_var_list).union(set(output_var_list)))
-    #    porgram_useful_var_list = list(
-    #        set(program_useful_var_list).union(set(op_var_list)))
-
-    #program_useful_var_list += static_var
-    #program_useless_var_list = list(
-    #    set(get_vars_name_in_block(program.global_block())).difference(
-    #        set(program_useful_var_list)))
-    #for var in program_useless_var_list:
-    #    program.global_block()._remove_var(var)
-    #return program_useless_var_list
 
 
 def delete_trainer_useless_var(config, program, static_var):

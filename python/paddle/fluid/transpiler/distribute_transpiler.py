@@ -149,6 +149,23 @@ class DistributeTranspilerConfig(object):
     .. py:attribute:: slice_var_up (bool)
 
           Whether to do Tensor slice for parameter servers, default is True.
+        param_list = []
+        grad_list = []
+        param_grad_set = set()
+        for p, g in self.params_grads:
+            # skip parameter marked not trainable
+            if type(p) == Parameter and p.trainable == False:
+                continue
+            if p.name not in param_grad_set:
+                param_list.append(p)
+                param_grad_set.add(p.name)
+            if g.name not in param_grad_set:
+                grad_list.append(g)
+                param_grad_set.add(g.name)
+=======
+          Whether to do Tensor slice for parameter servers, default is True.
+>>>>>>> f39c3a5aa8fb74e90908847ec072241b19809291
+>>>>>>> Stashed changes
 
     .. py:attribute:: split_method (PSDispatcher)
 
@@ -583,7 +600,6 @@ class DistributeTranspiler(object):
                     sync_mode=False,
                     current_endpoint="127.0.0.1:7000")
         """
-
         err_msg = """
 
 API is deprecated since 2.0.0 Please use FleetAPI instead.
@@ -903,9 +919,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                         OP_ROLE_VAR_ATTR_NAME:
                         [param_varname, recv_op_role_var_name]
                     })
-
         self._update_remote_sparse_update_op(program, need_sparse_update_params)
-
         if self.sync_mode:
             # form a WAW dependency
             program.global_block().append_op(
@@ -1922,9 +1936,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         # create table param and grad var in pserver program
         # create table optimize block in pserver program
         table_opt_op = [
-            op for op in self.optimize_ops
-            if 'Param' in op.input_names and op.input("Param")[0] ==
-            self.table_name
+            op for op in self.optimize_ops if 'Param' in op.input_names and
+            op.input("Param")[0] == self.table_name
         ][0]
 
         origin_param_var = self.origin_program.global_block().vars[
@@ -2048,6 +2061,11 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             block_map[varname].append((int(offset), int(size)))
 
         for varname, split in six.iteritems(block_map):
+            block_map[varname].append((long(offset), long(size)))
+        # Do not remove this important debug message:
+        print("block map: %s" % block_map)
+
+        for varname, splited in block_map.iteritems():
             orig_var = program.global_block().var(varname)
             if len(split) == 1:
                 if self.sync_mode and add_trainer_suffix:

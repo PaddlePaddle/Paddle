@@ -27,6 +27,7 @@ import warnings
 import six
 import struct
 import yaml_reader
+
 import paddle
 import paddle.fluid as fluid
 from distutils.util import strtobool
@@ -1019,7 +1020,6 @@ class ParameterServerLauncher(object):
         self.worker_endpoints_port = [
             x.strip().split(":")[1] for x in self.worker_endpoints.split(",")
         ]
-
         self.node_ips = list(
             set(self.server_endpoints_ips + self.worker_endpoints_ips))
         if self.distribute_mode == DistributeMode.PS_HETER:
@@ -1216,7 +1216,6 @@ class ParameterServerLauncher(object):
         for idx, cur_worker in enumerate(pod.workers):
             device_id = "0" if heter_device_num == 0 else str(device_list[
                 idx % heter_device_num])
-
             proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
@@ -1287,7 +1286,6 @@ class ParameterServerLauncher(object):
         for idx, cur_heter_worker in enumerate(pod.heter_workers):
             device_id = str(device_list[idx % heter_device_num])
             stage_id = cur_heter_worker.stage
-
             proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
