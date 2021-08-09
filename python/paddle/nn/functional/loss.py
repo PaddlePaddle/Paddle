@@ -1029,6 +1029,7 @@ def ctc_loss(log_probs,
 
         .. code-block:: python
 
+            # required: skiptest
             # declarative mode
             import paddle.nn.functional as F
             import numpy as np
