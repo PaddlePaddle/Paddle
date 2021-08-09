@@ -14,7 +14,7 @@
 import paddle
 from paddle.fluid import core, unique_name
 from functools import reduce
-from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
+from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op, is_backward_op
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 
 import re
@@ -431,15 +431,19 @@ def insert_reduce_ops(block,
                       reduce_vars,
                       shard,
                       op_role=OpRole.Backward,
-                      use_calc_stream=False):
+                      use_calc_stream=False,
+                      rank=None):
     """
     _add_allreduce_ops
     """
+    grad_in_this_device = []
     for var in reduce_vars:
 
         root_id = get_grad_device(var, shard)
         assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
             root_id)
+        if rank is not None and rank == root_id:
+            grad_in_this_device.append(var)
         block._insert_op_without_sync(
             insert_idx,
             type='c_reduce_sum',
@@ -451,7 +455,8 @@ def insert_reduce_ops(block,
                 'use_calc_stream': use_calc_stream,
                 OP_ROLE_KEY: op_role
             })
-    return
+
+    return grad_in_this_device
 
 
 def get_grad_device(grad_name, shard):
@@ -460,7 +465,12 @@ def get_grad_device(grad_name, shard):
     base_name = None
     # mind the traversal order 
     possible_suffixes = [
-        '.cast_fp16@GRAD@MERGED', '.cast_fp16@GRAD', '@GRAD@MERGED', '@GRAD'
+        '.cast_fp16@GRAD@MERGED',
+        '.cast_fp16@GRAD',
+        '@GRAD',
+        # for pipeline
+        '@GRAD@MERGED',
+        '@GRAD@MERGED@FP16'
     ]
     for suffix in possible_suffixes:
         if suffix in grad_name:
@@ -485,6 +495,15 @@ def get_first_check_finite_and_unscale_op_idx(block, raise_error=True):
         )
 
     return -1
+
+
+def get_first_optimize_op_idx(block):
+    first_opt_op_idx = None
+    for index, op in reversed(tuple(enumerate(block.ops))):
+        if is_backward_op(op) and first_opt_op_idx is None:
+            first_opt_op_idx = index + 1
+            break
+    return first_opt_op_idx
 
 
 def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
