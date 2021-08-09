@@ -31,7 +31,7 @@ from paddle.fluid.dygraph.nn import Linear
 from test_dist_base import print_to_err, print_to_out, runtime_main, TestParallelDyGraphRunnerBase
 
 seed = 90
-RUN_STEP = 50
+RUN_STEP = 20
 batch_size = 4
 batch_num = 1000
 
@@ -100,7 +100,7 @@ class TestNoSyncUnusedParam(TestParallelDyGraphRunnerBase):
                 data = self._get_data(data, args)
                 if step_id == RUN_STEP:
                     break
-                if step_id % 10 != 0:
+                if step_id % 3 != 0:
                     with model.no_sync():
                         loss = self.run_one_loop(model, opt, data)
                         loss.backward()
@@ -137,7 +137,7 @@ class TestNoSyncUnusedParam(TestParallelDyGraphRunnerBase):
             data = self._get_data(data, args)
             if step_id == RUN_STEP:
                 break
-            if step_id % 10 != 0:
+            if step_id % 3 != 0:
                 with model.no_sync():
                     loss = self.run_one_loop(model, opt, data)
                     loss.backward()
