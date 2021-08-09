@@ -220,13 +220,6 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                             "but received %d. ",
                             sequence_width));
 
-      PADDLE_ENFORCE_GT(logits_dims[2], 0,
-                        platform::errors::InvalidArgument(
-                            "The third dimension of Input(Logits) should be "
-                            "greater than zero "
-                            "but received %d. ",
-                            logits_dims[2]));
-
       auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
       auto* labels_length = ctx.Input<framework::Tensor>("LabelLength");
       framework::Tensor logits_length_cpu;
