@@ -544,13 +544,16 @@ def start_local_trainers(cluster,
     return procs
 
 
-def pull_worker_log(tp):
+def pull_worker_log(tp, print_rank_no=False):
     if tp.log_fn:
         with open(tp.log_fn.name, 'r') as fin:
             fin.seek(tp.log_offset, 0)
             for line in fin:
                 try:
-                    sys.stdout.write(line)
+                    new_line = line
+                    if print_rank_no:
+                        new_line = "[rank:{}] {}".format(tp.local_rank, line)
+                    sys.stdout.write(new_line)
                 except UnicodeEncodeError:
                     sys.stdout.write(
                         'UnicodeEncodeError occurs at this line. '
@@ -560,14 +563,18 @@ def pull_worker_log(tp):
 
 
 def watch_local_trainers(procs, nranks):
+    platform = os.environ.get('PADDLE_RUNNING_PLATFORM')
     try:
         error = False
         error_rank = []
         # wait all process finish or one error
         alive = False
         for p in procs:
-            if p.log_fn and p.local_rank == 0:
-                pull_worker_log(p)
+            if p.log_fn and platform == "ASCEND_MODELARTS":
+                pull_worker_log(p, print_rank_no=True)
+            else:
+                if p.log_fn and p.local_rank == 0:
+                    pull_worker_log(p)
 
             ret = p.proc.poll()
             if ret is None:

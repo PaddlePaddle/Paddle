@@ -226,7 +226,17 @@ static int ConnectAddr(const std::string& ep, const char* head) {
 
   char* ip = NULL;
   struct hostent* hp = NULL;
-  hp = gethostbyname(host.c_str());
+
+  // sleep for 2 minutes
+  for (int i = 0; i < 40; i++) {
+    hp = gethostbyname(host.c_str());
+    if (hp != NULL) {
+      break;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    LOG(WARNING) << "gethostbyname " << host.c_str() << " error!";
+  }
   PADDLE_ENFORCE_NOT_NULL(hp, platform::errors::InvalidArgument(
                                   "Fail to get host by name %s.", host));
 

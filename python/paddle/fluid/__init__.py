@@ -246,6 +246,7 @@ def __bootstrap__():
             'reallocate_gpu_memory_in_mb',
             'gpu_memory_limit_mb',
             'npu_config_path',
+            'sync_npu_calc_communication',
         ]
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])

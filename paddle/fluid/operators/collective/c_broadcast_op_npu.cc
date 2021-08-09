@@ -61,14 +61,20 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
             << framework::product(out->dims());
 
-    dev_ctx->Wait();
+    if (ctx.Attr<bool>("use_calc_stream") &&
+        FLAGS_sync_npu_calc_communication) {
+      VLOG(4) << "sync_npu_calc_communication";
+      dev_ctx->Wait();
+    }
 
+    /*
     if (out != x) {
       framework::TensorCopy(*static_cast<const framework::Tensor*>(x), place,
                             *platform::DeviceContextPool::Instance().Get(place),
                             static_cast<framework::Tensor*>(out));
     }
     dev_ctx->Wait();
+    */
 
     out->Resize(x->dims());
     out->set_lod(x->lod());

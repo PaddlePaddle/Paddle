@@ -197,6 +197,18 @@ DEFINE_bool(
     sync_nccl_allreduce, true,
     "If set true, will call `cudaStreamSynchronize(nccl_stream)`"
     "after allreduce, this mode can get better performance in some scenarios.");
+
+/**
+ * NPU related FLAG
+ * Name: FLAGS_sync_npu_calc_communication
+ * Since Version: 2.2
+ * Value Range: bool, default=false
+ */
+
+DEFINE_bool(sync_npu_calc_communication, false,
+            "If set true, will call `aclrtSynchronizeStream` to sync NPU calc "
+            "stream to wait commnunication ends.");
+
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
