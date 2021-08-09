@@ -79,10 +79,7 @@ class TransformerNet(Layer):
 
         self.norm1 = nn.LayerNorm(d_model, epsilon=1e-5)
 
-    def forward(self, x):
-        mask = paddle.tensor.triu(
-            (paddle.ones(
-                (length, length), dtype="int32") * -1e9), 1)
+    def forward(self, x, mask):
         q = self.q_proj(x)
         k = self.k_proj(x)
         v = self.v_proj(x)
@@ -119,7 +116,8 @@ class CriterionPipe(Layer):
         super(CriterionPipe, self).__init__()
 
     def forward(self, out, label):
-        return out.mean()
+        loss = out.mean()
+        return loss
 
 
 class ModelPipe(PipelineLayer):
@@ -136,10 +134,7 @@ class ModelPipe(PipelineLayer):
             layers=self.descs,
             loss_fn=CriterionPipe(),
             topology=topology,
-            seg_method="layer:TransformerNetPipe",
-            recompute_interval=1,
-            recompute_partition=True,
-            recompute_offload=True)
+            seg_method="layer:TransformerNetPipe")
 
 
 class TestDistPPTraning(unittest.TestCase):
@@ -181,10 +176,9 @@ class TestDistPPTraning(unittest.TestCase):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
-            label = paddle.zeros(shape=[batch_size, 1], dtype="float32")
-            label.stop_gradient = True
-            loss = model.train_batch([x, label], optimizer, scheduler)
+            loss = model.train_batch([x, x], optimizer, scheduler)
             # TODO(shenliang03) add utest for loss
+
             print("loss: ", loss)
 
 

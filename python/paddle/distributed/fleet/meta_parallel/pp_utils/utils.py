@@ -243,8 +243,8 @@ class _HPRecomputeFunction(PyLayer):
             for i, idx in enumerate(tensor_indices):
                 if _recompute_partition:
                     state = tensors[i].stop_gradient
-                    tensors[i] = _merge_activation(tensors[i]).reshape_(
-                        tensor_shapes[i])
+                    tensors[i] = _merge_activation(tensors[i]).detach(
+                    ).reshape_(tensor_shapes[i])
                     tensors[i].stop_gradient = state
                 inputs[idx] = tensors[i].cuda(
                     device_id) if _recompute_offload else tensors[i]
@@ -267,20 +267,24 @@ class _HPRecomputeFunction(PyLayer):
             assert len(outputs) == len(args)
 
             forward_outputs_with_grad = []
-            backward_inputs = list(args)
+            # backward_inputs = list(args)
+            backward_inputs = []
+
             for i in range(len(outputs)):
                 if isinstance(outputs[i],
                               core.VarBase) and not outputs[i].stop_gradient:
                     forward_outputs_with_grad.append(outputs[i])
+                    backward_inputs.append(args[i])
+
             if len(forward_outputs_with_grad) == 0:
                 raise RuntimeError(
                     "none of output has stop_gradient=False, this recompute() is not necessary"
                 )
 
-            assert len(backward_inputs) == len(
-                forward_outputs_with_grad
-            ), "number of forward outputs is [{}], but the backward got [{}] inputs".format(
-                len(forward_outputs_with_grad), len(backward_inputs))
+            # assert len(backward_inputs) == len(
+            #     forward_outputs_with_grad
+            # ), "number of forward outputs is [{}], but the backward got [{}] inputs".format(
+            #     len(forward_outputs_with_grad), len(backward_inputs))
 
             # actually backward            
             paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
