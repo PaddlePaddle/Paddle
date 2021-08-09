@@ -121,33 +121,44 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
 };
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-// return true if found_inf_or_nan or return false;
-template <typename T>
-bool ContainsNan(const framework::ExecutionContext& exe_ctx, aclrtStream stream,
-                 const paddle::framework::Tensor* in) {
-  auto& dev_ctx =
-      exe_ctx.template device_context<paddle::platform::NPUDeviceContext>();
+// return true if found_nan or return false;
+inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
+                        aclrtStream stream,
+                        const paddle::framework::Tensor* in) {
   using Tensor = paddle::framework::Tensor;
   Tensor out(in->type());
 
   Tensor mean(in->type());
   mean.Resize({1});
-  mean.mutable_data<T>(dev_ctx.GetPlace());
+  mean.mutable_data<float>(dev_ctx.GetPlace());
   std::vector<int> axes;
   for (int i = 0; i < in->dims().size(); ++i) {
     axes.push_back(i);
   }
-  const auto& runner_mean = NpuOpRunner("ReduceMeanD", {*in}, {mean},
-                                        {{"axes", axes}, {"keep_dims", false}});
 
-  std::vector<T> vec;
-  TensorToVector(mean, exe_ctx.device_context(), &vec);
-
-  if (std::isnan(static_cast<float>(vec[0]))) {
+  std::vector<float> vec;
+  try {
+    const auto& runner_mean = paddle::operators::NpuOpRunner(
+        "ReduceMeanD", {*in}, {mean}, {{"axes", axes}, {"keep_dims", false}});
+    TensorToVector(mean, dev_ctx, &vec);
+  } catch (...) {
+    LOG(WARNING) << "ContainsNan catch exception";
     return true;
   }
+
+  VLOG(4) << "reducemeand result:" << vec[0];
+  if (std::isnan(static_cast<float>(vec[0]))) {
+    LOG(WARNING) << "ContainsNan detects nan";
+    return true;
+  }
+
+  if (std::isinf(static_cast<float>(vec[0]))) {
+    LOG(WARNING) << "ContainsNan detects inf";
+  }
+
   return false;
 }
+
 #endif
 
 template <ReduceType red_type, typename T>
@@ -214,22 +225,24 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     framework::Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
 
-    bool has_nan = false;
+    bool found_nan = false;
 
     auto d_type = in->type();
     switch (d_type) {
-      case framework::proto::VarType::FP16:
+      case framework::proto::VarType::FP16: {
+        break;
+      }
       case framework::proto::VarType::FP32: {
-        VLOG(4) << "prepare to check nan";
-        has_nan = ContainsNan<T>(ctx, dev_ctx->stream(), in);
-        VLOG(4) << "ContainsNan:" << has_nan;
+        VLOG(4) << "prepare to FoundNanInf";
+        found_nan = ContainsNan(*dev_ctx, dev_ctx->stream(), in);
+        VLOG(4) << "check_numerics:" << found_nan;
         break;
       }
       default:
         break;
     }
 
-    if (has_nan) {
+    if (found_nan) {
       T inf = static_cast<T>(std::numeric_limits<float>::infinity());
       VLOG(4) << "fill input data constant inf";
       auto dims = in->dims();

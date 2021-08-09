@@ -89,7 +89,6 @@ void TensorRTEngine::FreezeNetwork() {
   if (enable_int8) {
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
-    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
 
     if (calibrator_) {
       infer_builder_config_->setInt8Calibrator(calibrator_);
