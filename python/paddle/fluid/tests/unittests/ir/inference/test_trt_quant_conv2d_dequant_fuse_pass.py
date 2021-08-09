@@ -68,7 +68,7 @@ class Quant_Conv_DequantTest(InferencePassTest):
                     'quant_conv2d_dequant_fuse_pass'))
 
 
-class Quant_Fc1_DequantTest(InferencePassTest):
+class Quant_Fc1_Int8_DequantTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -111,7 +111,7 @@ class Quant_Fc1_DequantTest(InferencePassTest):
                     'quant_conv2d_dequant_fuse_pass'))
 
 
-class Quant_Fc2_DequantTest(InferencePassTest):
+class Quant_Fc2_Int8_DequantTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
