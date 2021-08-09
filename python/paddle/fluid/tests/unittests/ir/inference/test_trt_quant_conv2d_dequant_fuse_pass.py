@@ -34,7 +34,7 @@ class Quant_Conv_DequantTest(InferencePassTest):
                 trainable=False)
             quantized_op_out = self.append_quantized_op(data, param_attr)
             relu_out = fluid.layers.relu(quantized_op_out)
-        self.set_quant_pattern()
+            self.set_quant_pattern()
 
         self.feeds = {
             "data": np.random.random([1, 3, 32, 32]).astype("float32"),
@@ -78,7 +78,7 @@ class Quant_Fc_DequantTest1(InferencePassTest):
                 trainable=False)
             quantized_op_out = self.append_quantized_op(data, param_attr)
             relu_out = fluid.layers.relu(quantized_op_out)
-        self.set_quant_pattern()
+            self.set_quant_pattern()
 
         self.feeds = {
             "data": np.random.random([1, 3, 32, 32]).astype("float32"),
@@ -92,6 +92,49 @@ class Quant_Fc_DequantTest1(InferencePassTest):
         return fluid.layers.fc(x,
                                size=100,
                                num_flatten_dims=3,
+                               param_attr=param_attr,
+                               bias_attr=False,
+                               act=None)
+
+    def set_quant_pattern(self):
+        self.activation_quant_type = 'moving_average_abs_max'
+        self.weight_quant_type = 'abs_max'
+        self.quantized_op_type = 'mul'
+        self.channels = 1
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu, flatten=False, quant=True)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible(
+                    'quant_conv2d_dequant_fuse_pass'))
+
+
+class Quant_Fc_DequantTest1(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 3, 32, 32], dtype="float32")
+            param_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.0),
+                trainable=False)
+            quantized_op_out = self.append_quantized_op(data, param_attr)
+            relu_out = fluid.layers.relu(quantized_op_out)
+            self.set_quant_pattern()
+
+        self.feeds = {
+            "data": np.random.random([1, 3, 32, 32]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = Quant_Fc_DequantTest1.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
+        self.fetch_list = [relu_out]
+
+    def append_quantized_op(self, x, param_attr):
+        return fluid.layers.fc(x,
+                               size=100,
+                               num_flatten_dims=1,
                                param_attr=param_attr,
                                bias_attr=False,
                                act=None)
