@@ -32,7 +32,8 @@ template <typename T>
 void CopyValidData(framework::Tensor* dst_tensor,
                    const framework::Tensor* src_tensor,
                    const framework::Vector<size_t>& seq_offsets,
-                   int pad_seq_len, int step_width, bool norm_by_len, bool size_average, bool length_average, int total_logits_len,
+                   int pad_seq_len, int step_width, bool norm_by_len,
+                   bool size_average, bool length_average, int total_logits_len,
                    CopyType type, PadLayout layout) {
   int seq_num = seq_offsets.size() - 1;
   const T* src_data = src_tensor->data<T>();
@@ -56,17 +57,20 @@ void CopyValidData(framework::Tensor* dst_tensor,
                               : seq_idx * step_width;
 
     float scale = 1.0f;
-    if (length_average){
+    if (length_average) {
       scale = 1.0f / static_cast<float>(total_logits_len);
-      VLOG(3) << "[warpctc grad][length_average]: scale " << scale << "total_logits_len " << total_logits_len;
-    } else if (size_average){
+      VLOG(3) << "[warpctc grad][length_average]: scale " << scale
+              << "total_logits_len " << total_logits_len;
+    } else if (size_average) {
       scale = 1.0f / static_cast<float>(seq_num);
-      VLOG(3) << "[warpctc grad][size_average]: scale " << scale << "B " << seq_num;
-    } else if (norm_by_len){
+      VLOG(3) << "[warpctc grad][size_average]: scale " << scale << "B "
+              << seq_num;
+    } else if (norm_by_len) {
       scale = 1.0f / static_cast<float>(valid_seq_len);
-      VLOG(3) << "[warpctc grad][norm_by_len]: scale " << scale << "T " << valid_seq_len;
+      VLOG(3) << "[warpctc grad][norm_by_len]: scale " << scale << "T "
+              << valid_seq_len;
     }
-    
+
     for (int step_idx = 0; step_idx < valid_seq_len; ++step_idx) {
       const T* src =
           src_data + (type == kSeqToPad ? seq_data_offset : pad_data_offset);
@@ -107,7 +111,8 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
                   const framework::LoDTensor& seq_tensor,
                   framework::LoDTensor* pad_tensor,
                   const framework::LoDTensor& pad_value, int pad_seq_len = -1,
-                  int lod_level = 0, bool norm_by_times = false, bool size_average = false, bool length_average=false, 
+                  int lod_level = 0, bool norm_by_times = false,
+                  bool size_average = false, bool length_average = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_lod = seq_tensor.lod();
     const auto seq_offsets = framework::ToAbsOffset(seq_lod)[lod_level];
@@ -142,7 +147,8 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
     }
 
     CopyValidData<T>(pad_tensor, &seq_tensor, seq_offsets, pad_seq_len,
-                     step_width, norm_by_times, false, false, 0, kSeqToPad, layout);
+                     step_width, norm_by_times, false, false, 0, kSeqToPad,
+                     layout);
   }
 };
 
@@ -152,7 +158,8 @@ class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& pad_tensor,
                   framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
-                  int lod_level = 0, bool norm_by_times = false, bool size_average = false, bool length_average = false,
+                  int lod_level = 0, bool norm_by_times = false,
+                  bool size_average = false, bool length_average = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
     const auto& seq_tensor_dims = seq_tensor->dims();
@@ -167,7 +174,8 @@ class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
               step_width, layout);
 
     CopyValidData<T>(seq_tensor, &pad_tensor, seq_offsets, pad_seq_len,
-                     step_width, norm_by_times, size_average, length_average, total_logits_len, kPadToSeq, layout);
+                     step_width, norm_by_times, size_average, length_average,
+                     total_logits_len, kPadToSeq, layout);
   }
 };
 

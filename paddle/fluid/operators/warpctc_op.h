@@ -285,8 +285,8 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
       math::PaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *logits,
-          &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */, false, false,
-          math::kLengthBatchWidth);
+          &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */, false,
+          false, math::kLengthBatchWidth);
     }
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
@@ -450,7 +450,8 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
     } else {
       math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *warpctc_grad,
-          logits_grad, -1, 0, norm_by_times, size_average, length_average, math::kLengthBatchWidth);
+          logits_grad, -1, 0, norm_by_times, size_average, length_average,
+          math::kLengthBatchWidth);
 
       const T* loss_grad_data = loss_grad->data<T>();
       math::ScaleLoDTensorFunctor<DeviceContext, T>()(
