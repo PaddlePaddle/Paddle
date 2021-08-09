@@ -171,7 +171,7 @@ template <typename InT, typename OutT, int ShapeSize, int VecSize,
 __global__ void BroadcastKernelBinary(
     const InT *__restrict__ in0, const InT *__restrict__ in1, OutT *out,
     framework::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
-    framework::Array<kps::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
+    framework::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
         configlists,
     int main_tid, int tail_tid, Functor func) {
   int fix = blockIdx.x * blockDim.x * VecSize;
@@ -209,10 +209,10 @@ __global__ void BroadcastKernelBinary(
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
           int DATA_PER_THREAD, typename Functor>
-__global__ void BroadcastKernelUnary(const InT *__restrict__ in, OutT *out,
-                                     int numel,
-                                     kps::BroadcastConfig<ShapeSize> config,
-                                     int main_tid, int tail_tid, Functor func) {
+__global__ void BroadcastKernelUnary(
+    const InT *__restrict__ in, OutT *out, int numel,
+    kps::details::BroadcastConfig<ShapeSize> config, int main_tid, int tail_tid,
+    Functor func) {
   int fix = blockIdx.x * blockDim.x;
   int num = tail_tid;
   InT arg[VecSize * DATA_PER_THREAD];
@@ -250,13 +250,14 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
       (ET == ElementwiseType::kBinary) ? ins[1]->data<InT>() : nullptr;
   OutT *out_data = out->data<OutT>();
 
-  framework::Array<kps::BroadcastConfig<Size>, MAX_INPUT_NUM> configlists;
+  framework::Array<kps::details::BroadcastConfig<Size>, MAX_INPUT_NUM>
+      configlists;
   framework::Array<bool, MAX_INPUT_NUM> use_broadcast;
 
   for (int i = 0; i < ET; i++) {
     use_broadcast[i] = (ins[i]->numel() != numel);
     if (use_broadcast[i]) {
-      configlists[i] = kps::BroadcastConfig<Size>(
+      configlists[i] = kps::details::BroadcastConfig<Size>(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
   }
