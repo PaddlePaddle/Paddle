@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/utils/any.hpp"
+#include "paddle/utils/any.h"
 namespace paddle {
 namespace framework {
 class OpDesc;

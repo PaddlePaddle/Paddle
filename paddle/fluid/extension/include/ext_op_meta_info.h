@@ -19,7 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "any.hpp"
+#include "any.h"
 #include "ext_dll_decl.h"   // NOLINT
 #include "ext_exception.h"  // NOLINT
 #include "ext_tensor.h"     // NOLINT

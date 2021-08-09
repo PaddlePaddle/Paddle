@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/utils/any.hpp"
+#include "paddle/utils/any.h"
 
 namespace paddle {
 namespace framework {

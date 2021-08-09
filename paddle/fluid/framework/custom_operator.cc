@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/fluid/utils/any.hpp"
+#include "paddle/utils/any.h"
 
 namespace paddle {
 namespace framework {

@@ -397,7 +397,7 @@ headers = (
     # to `extension/incude`,
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/utils/any.hpp'])
+    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
