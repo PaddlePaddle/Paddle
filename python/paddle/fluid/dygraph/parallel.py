@@ -19,6 +19,7 @@ import warnings
 from collections import OrderedDict
 import itertools
 import warnings
+from contextlib import contextmanager
 
 import paddle
 from paddle.fluid import core
@@ -483,6 +484,7 @@ class DataParallel(layers.Layer):
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
+        self.require_backward_grad_sync = True
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 
@@ -576,9 +578,19 @@ class DataParallel(layers.Layer):
             return itertools.chain(*map(self._find_varbase, obj.values()))
         return []
 
+    @contextmanager
+    def no_sync(self):
+        old_require_backward_grad_sync = self.require_backward_grad_sync
+        self.require_backward_grad_sync = False
+        try:
+            yield
+        finally:
+            self.require_backward_grad_sync = old_require_backward_grad_sync
+
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
-        if self._strategy.nranks > 1 and framework._dygraph_tracer()._has_grad:
+        if self._strategy.nranks > 1 and framework._dygraph_tracer(
+        )._has_grad and self.require_backward_grad_sync:
             self._reducer.prepare_for_backward(
                 list(self._find_varbase(outputs)))
         return outputs

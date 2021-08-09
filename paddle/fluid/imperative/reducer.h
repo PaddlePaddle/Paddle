@@ -197,6 +197,7 @@ class Reducer {
   std::unordered_map<GradOpNode*, size_t> node_deps_;
   std::unordered_map<VariableWrapper*, size_t> var_index_map_;
   std::vector<size_t> unused_vars_;
+  bool grad_need_hooks_{false};
   bool has_marked_unused_vars_{false};
   bool find_unused_vars_each_step_{false};
   bool find_unused_vars_once_{true};
