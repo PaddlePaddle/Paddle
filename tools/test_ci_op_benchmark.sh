@@ -164,7 +164,7 @@ function compile_install_paddlepaddle {
   export WITH_DISTRIBUTE=OFF
   export CMAKE_BUILD_TYPE=Release
   [ -d build ] && rm -rf build
-  bash paddle/scripts/paddle_build.sh build $(nproc)
+  bash paddle/scripts/paddle_build.sh build_only $(nproc)
   [ $? -ne 0 ] && LOG "[FATAL] compile fail." && exit 7
   mkdir build/${branch_name} && cp build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl build/${branch_name}/
 }
