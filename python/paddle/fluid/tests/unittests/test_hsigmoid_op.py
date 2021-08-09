@@ -576,20 +576,18 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                 path_code=path_code_int32)
 
         # test paddle.nn.HSigmoidLoss
-        paddle.disable_static()
+        paddle.disable_static(self.place)
         x_arr = np.array([], dtype=np.float32)
         x = paddle.to_tensor(np.reshape(x_arr, (100000, 0)))
         label = paddle.to_tensor(0, dtype='int64')
-        paddle.enable_static()
         self.assertRaises(ValueError, paddle.nn.HSigmoidLoss, x, label)
 
         # test paddle.nn.functional.hsigmoid_loss
-        paddle.disable_static()
         x = paddle.to_tensor(np.reshape(x_arr, (10, 0)), dtype='float32')
         label = paddle.to_tensor([], dtype='int64')
         weight = paddle.to_tensor([], dtype='float32')
-        paddle.enable_static()
         self.assertRaises(ValueError, F.hsigmoid_loss, x, label, 0, weight)
+        paddle.enable_static()
 
         # test paddle.fluid.layers.hsigmoid
         with program_guard(Program()):
