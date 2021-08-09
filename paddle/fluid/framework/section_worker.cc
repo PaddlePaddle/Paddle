@@ -207,7 +207,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
 
 void SectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
-  VLOG(2) << "mini batch steps:" << batch_id_;
+  VLOG(1) << "mini batch steps:" << batch_id_;
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
