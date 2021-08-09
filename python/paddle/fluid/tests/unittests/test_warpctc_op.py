@@ -382,6 +382,8 @@ class TestWarpCTCOpFp64(OpTest):
         self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
         self.blank = self.num_classes - 1
         self.norm_by_times = False
+        self.size_average = False
+        self.length_average = False
 
     def setUp(self):
         self.op_type = "warpctc"
@@ -446,6 +448,8 @@ class TestWarpCTCOpFp64(OpTest):
         self.attrs = {
             "blank": self.blank,
             "norm_by_times": self.norm_by_times,
+            "size_average": self.size_average,
+            "length_average": self.length_average,
         }
 
     def test_check_output(self):
@@ -454,6 +458,49 @@ class TestWarpCTCOpFp64(OpTest):
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
         self.check_grad(["Logits"], "Loss")
+
+
+
+class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpFp64):
+    def config(self):
+        self.batch_size = 4
+        self.num_classes = 8
+        self.logits_lod = [[4, 1, 5, 5]]
+        self.labels_lod = [[3, 1, 4, 2]]
+        self.logits_length = np.array([4, 1, 5, 5], dtype=np.int64)
+        self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
+        self.blank = self.num_classes - 1
+        self.norm_by_times = True
+        self.size_average = False
+        self.length_average = False
+
+
+class TestWarpCTCOpFp64SizeAverage(TestWarpCTCOpFp64):
+    def config(self):
+        self.batch_size = 4
+        self.num_classes = 8
+        self.logits_lod = [[4, 1, 5, 5]]
+        self.labels_lod = [[3, 1, 4, 2]]
+        self.logits_length = np.array([4, 1, 5, 5], dtype=np.int64)
+        self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
+        self.blank = self.num_classes - 1
+        self.norm_by_times = False
+        self.size_average = True
+        self.length_average = False
+
+
+class TestWarpCTCOpFp64LengthAverage(TestWarpCTCOpFp64):
+    def config(self):
+        self.batch_size = 4
+        self.num_classes = 8
+        self.logits_lod = [[4, 1, 5, 5]]
+        self.labels_lod = [[3, 1, 4, 2]]
+        self.logits_length = np.array([4, 1, 5, 5], dtype=np.int64)
+        self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
+        self.blank = self.num_classes - 1
+        self.norm_by_times = False
+        self.size_average = False
+        self.length_average = True
 
 
 class TestWarpCTCOpError(unittest.TestCase):
