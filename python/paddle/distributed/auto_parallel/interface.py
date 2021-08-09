@@ -39,8 +39,8 @@ def shard_tensor(tensor, mesh, dims_mapping):
         tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
         dist_config.set_tensor_distributed_attr_program(tensor.desc,
                                                         tensor_dist_attr)
-    tensor_dist_attr.set_process_mesh(mesh, is_annotated=True)
-    tensor_dist_attr.set_dims_mapping(dims_mapping, is_annotated=True)
+    tensor_dist_attr.set_process_mesh(mesh)
+    tensor_dist_attr.set_dims_mapping(dims_mapping)
     return tensor
 
 
@@ -61,7 +61,7 @@ def set_shard_mask(tensor, mask):
         tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
         dist_config.set_tensor_distributed_attr_program(tensor.desc,
                                                         tensor_dist_attr)
-    tensor_dist_attr.set_shard_mask(mask, is_annotated=True)
+    tensor_dist_attr.set_shard_mask(mask)
     return tensor
 
 
@@ -97,7 +97,7 @@ def set_offload_device(tensor, offload_device):
         tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
         dist_config.set_tensor_distributed_attr_program(tensor.desc,
                                                         tensor_dist_attr)
-    tensor_dist_attr.set_offload_device(offload_device, is_annotated=True)
+    tensor_dist_attr.set_offload_device(offload_device)
     return tensor
 
 

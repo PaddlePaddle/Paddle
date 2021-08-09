@@ -53,37 +53,40 @@ class TensorDistributedAttribute:
 
     def set_process_mesh(self, process_mesh, is_annotated=False):
         self._process_mesh = process_mesh
-        self._is_annotated["process_mesh"] = is_annotated
+        # self._is_annotated["process_mesh"] = is_annotated
 
     def get_dims_mapping(self):
         return self._dims_mapping
 
     def set_dims_mapping(self, dims_mapping, is_annotated=False):
         self._dims_mapping = dims_mapping
-        self._is_annotated["dims_mapping"] = is_annotated
+        # self._is_annotated["dims_mapping"] = is_annotated
 
     def get_shard_mask(self):
         return self._shard_mask
 
     def set_shard_mask(self, shard_mask, is_annotated=False):
         self._shard_mask = shard_mask
-        self._is_annotated["shard_mask"] = is_annotated
+        # self._is_annotated["shard_mask"] = is_annotated
 
     def get_offload_device(self):
         return self._offload_device
 
     def set_offload_device(self, offload_device, is_annotated=False):
         self._offload_device = offload_device
-        self._is_annotated["offload_device"] = is_annotated
+        # self._is_annotated["offload_device"] = is_annotated
 
     def is_annotated(self, dist_attr_name):
         return self._is_annotated.get(dist_attr_name, False)
 
-    def mark_as_parameter(self):
-        self._is_parameter = True
+    def mark_as_annotated(self, dist_attr_name):
+        self._is_annotated[dist_attr_name] = True
 
     def is_parameter(self):
         return self._is_parameter
+
+    def mark_as_parameter(self):
+        self._is_parameter = True
 
     def is_valid(self):
         tensor_shape = self._desc.shape()
@@ -167,14 +170,14 @@ class OperatorDistributedAttribute:
 
     def set_process_mesh(self, process_mesh, is_annotated=False):
         self._process_mesh = process_mesh
-        self._is_annotated["process_mesh"] = is_annotated
+        # self._is_annotated["process_mesh"] = is_annotated
 
     def get_input_dims_mapping(self, name):
         return self._inputs_dims_mapping.get(name, None)
 
     def set_input_dims_mapping(self, name, dims_mapping, is_annotated=False):
         self._inputs_dims_mapping[name] = dims_mapping
-        self._is_annotated_inputs_dims_mapping[name] = is_annotated
+        # self._is_annotated_inputs_dims_mapping[name] = is_annotated
 
     def get_input_dim_mapping(self, name, dim):
         input_dims_mapping = self._inputs_dims_mapping.get(name, None)
@@ -193,7 +196,7 @@ class OperatorDistributedAttribute:
 
     def set_output_dims_mapping(self, name, dims_mapping, is_annotated=False):
         self._outputs_dims_mapping[name] = dims_mapping
-        self._is_annotated_outputs_dims_mapping[name] = is_annotated
+        # self._is_annotated_outputs_dims_mapping[name] = is_annotated
 
     def get_output_dim_mapping(self, name, dim):
         output_dims_mapping = self._outputs_dims_mapping.get(name, None)
@@ -230,17 +233,26 @@ class OperatorDistributedAttribute:
     def is_annotated(self, dist_attr_name):
         return self._is_annotated.get(dist_attr_name, False)
 
+    def mark_as_annotated(self, dist_attr_name):
+        self._is_annotated[dist_attr_name] = True
+
     def is_annotated_input_dims_mapping(self, name):
         return self._is_annotated_inputs_dims_mapping.get(name, False)
+
+    def mark_as_annotated_input_dims_mapping(self, name):
+        self._is_annotated_inputs_dims_mapping[name] = True
 
     def is_annotated_output_dims_mapping(self, name):
         return self._is_annotated_outputs_dims_mapping.get(name, False)
 
-    def mark_as_parameter(self, arg_name):
-        self._parameters[arg_name] = True
+    def mark_as_annotated_output_dims_mapping(self, name):
+        self._is_annotated_outputs_dims_mapping[name] = True
 
     def is_parameter(self, arg_name):
         return self._parameters.get(arg_name, False)
+
+    def mark_as_parameter(self, arg_name):
+        self._parameters[arg_name] = True
 
     def is_valid(self):
         for name, dims_mapping in self._inputs_dims_mapping.items():
@@ -405,11 +417,15 @@ class DistributedConfiguration:
                     tensor_dist_attr = TensorDistributedAttribute(tensor.desc)
                     self.set_tensor_distributed_attr_program(tensor.desc,
                                                              tensor_dist_attr)
+                if tensor_dist_attr.get_process_mesh() is not None:
+                    tensor_dist_attr.mark_as_annotated("process_mesh")
                 if tensor_dist_attr.get_dims_mapping() is None:
                     tensor_dims_mapping = [
                         -1 for _ in range(len(tensor.desc.shape()))
                     ]
                     tensor_dist_attr.set_dims_mapping(tensor_dims_mapping)
+                else:
+                    tensor_dist_attr.mark_as_annotated("dims_mapping")
                 if isinstance(tensor, framework.Parameter):
                     tensor_dist_attr.mark_as_parameter()
             for op in block.ops:
@@ -419,9 +435,12 @@ class DistributedConfiguration:
                     )
                     op.desc.set_distributed_attr_uid(distributed_attr_uid)
                     op_dist_attr = OperatorDistributedAttribute(op.desc)
-                    # Default distributed implementation for all operators
-                    op_dist_attr.set_impl_idx(-2)
-                    self.set_op_distributed_attr_program(op.desc, op_dist_attr)
+                # Default distributed implementation for all operators
+                # This will be update during the completion prcess
+                op_dist_attr.set_impl_idx(-2)
+                self.set_op_distributed_attr_program(op.desc, op_dist_attr)
+                if op_dist_attr.get_process_mesh() is not None:
+                    op_dist_attr.mark_as_annotated("process_mesh")
                 for tensor_name in op.input_arg_names:
                     # There may be a better way to find the tensor by name
                     tensor = op.block._var_recursive(tensor_name)
@@ -433,6 +452,9 @@ class DistributedConfiguration:
                                                             tensor_dims_mapping)
                         op_dist_attr.set_input_shape(tensor_name,
                                                      tensor.desc.shape())
+                    else:
+                        op_dist_attr.mark_as_annotated_input_dims_mapping(
+                            tensor_name)
                     if isinstance(tensor, framework.Parameter):
                         op_dist_attr.mark_as_parameter(tensor_name)
                 for tensor_name in op.output_arg_names:
@@ -446,6 +468,9 @@ class DistributedConfiguration:
                             tensor_name, tensor_dims_mapping)
                         op_dist_attr.set_output_shape(tensor_name,
                                                       tensor.desc.shape())
+                    else:
+                        op_dist_attr.mark_as_annotated_output_dims_mapping(
+                            tensor_name)
                     if isinstance(tensor, framework.Parameter):
                         op_dist_attr.mark_as_parameter(tensor_name)
 
