@@ -519,11 +519,8 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             self.assertTrue(np.allclose(ret, self.out_np))
 
     def test_errors(self):
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with program_guard(Program(), Program()):
             # test paddle.nn.HSigmoidLoss
-            self.assertRaises(ValueError, paddle.nn.HSigmoidLoss, 6, 1)
-
             x_arr = np.array([], dtype=np.float32)
             x = paddle.to_tensor(np.reshape(x_arr, (100000, 0)))
             label = paddle.to_tensor(0, dtype='int64')
@@ -532,6 +529,22 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                 paddle.nn.HSigmoidLoss, 
                 x, 
                 label)
+
+            # test paddle.nn.functional.hsigmoid_loss
+            x_arr = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(x_arr, (10, 0)), dtype='float32')
+
+            label = paddle.to_tensor([], dtype='int64')
+
+            weight = paddle.to_tensor([], dtype='float32')
+
+            self.assertRaises(ValueError, F.hsigmoid_loss, x, label, 0,
+                              weight)
+ 
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            # test paddle.nn.HSigmoidLoss
+            self.assertRaises(ValueError, paddle.nn.HSigmoidLoss, 6, 1)
 
             # test paddle.nn.functional.hsigmoid_loss
             x = paddle.static.data('x', [4, 6])
