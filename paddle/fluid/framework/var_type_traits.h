@@ -90,6 +90,9 @@ class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
 namespace paddle {
 namespace framework {
 
+using STRINGS = std::vector<std::wstring>;
+using STRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
+
 const char *ToTypeName(int var_id);
 const std::type_index &VarTraitIdToTypeIndex(int var_id);
 int TypeIndexToVarTraitId(const std::type_index &type);
@@ -178,8 +181,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId, platform::BKCLCommunicator,
 #endif
-    int, float, std::vector<std::string>,
-    std::unordered_map<std::wstring, int>>;
+    int, float, STRINGS, STRING_MAP>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -202,8 +204,6 @@ struct VarTypeTrait {
 
 // Users should set some of variable type ids to be what is defined in
 // framework.proto below
-
-using STRING_MAP = std::unordered_map<std::wstring, int>;
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
@@ -214,7 +214,7 @@ REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
 REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
-REG_PROTO_VAR_TYPE_TRAIT(std::vector<std::string>, proto::VarType::STRINGS);
+REG_PROTO_VAR_TYPE_TRAIT(STRINGS, proto::VarType::STRINGS);
 REG_PROTO_VAR_TYPE_TRAIT(STRING_MAP, proto::VarType::MAP);
 
 /** End of variable type registration */

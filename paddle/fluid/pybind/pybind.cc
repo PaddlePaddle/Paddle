@@ -137,6 +137,8 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
+PYBIND11_MAKE_OPAQUE(paddle::framework::STRINGS);
+// PYBIND11_MAKE_OPAQUE(paddle::framework::STRING_MAP);
 
 namespace paddle {
 namespace pybind {
@@ -1181,25 +1183,19 @@ All parameter, weight, gradient are variables in Paddle.
              return py::bytes(*self.GetMutable<std::string>());
            })
       .def("set_string_list",
-           [](Variable &self, std::vector<std::string> str_list) {
-             *self.GetMutable<std::vector<std::string>>() = str_list;
+           [](Variable &self, STRINGS str_list) {
+             *self.GetMutable<STRINGS>() = str_list;
            })
       .def("set_string_map",
-           [](Variable &self, std::unordered_map<std::wstring, int32_t> map) {
-             *self.GetMutable<std::unordered_map<std::wstring, int32_t>>() =
-                 map;
+           [](Variable &self, STRING_MAP map) {
+             *self.GetMutable<STRING_MAP>() = map;
            })
       .def("get_string_tensor",
-           [](Variable &self) {
-             return self.GetMutable<std::vector<std::string>>();
-           },
+           [](Variable &self) { return self.GetMutable<STRINGS>(); },
            py::return_value_policy::reference)
-      .def(
-          "get_map_tensor",
-          [](Variable &self) {
-            return self.GetMutable<std::unordered_map<std::wstring, int32_t>>();
-          },
-          py::return_value_policy::reference)
+      .def("get_map_tensor",
+           [](Variable &self) { return self.GetMutable<STRING_MAP>(); },
+           py::return_value_policy::reference)
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)

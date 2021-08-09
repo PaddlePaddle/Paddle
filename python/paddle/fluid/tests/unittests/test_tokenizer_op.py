@@ -65,11 +65,17 @@ class TestTokenizerDemo(unittest.TestCase):
         vocab = t.vocab.token_to_idx
         vocab_tensor = to_map_tensor(vocab, "vocab")
 
-        input_ids, seg_ids = core.ops.tokenizer(
-            vocab_tensor, text_tensor, None, "max_seq_len", 5,
-            "pad_to_max_seq_len", True, "is_split_into_words", False)
+        input_ids, seg_ids = core.ops.tokenizer(vocab_tensor, text_tensor,
+                                                pair_tensor,
+                                                "is_split_into_words", False)
+        encoded_inputs = t(text, pair)
         print(input_ids)
+        print(encoded_inputs[0]["input_ids"])
+        print(encoded_inputs[1]["input_ids"])
+
         print(seg_ids)
+        print(encoded_inputs[0]["token_type_ids"])
+        print(encoded_inputs[1]["token_type_ids"])
 
 
 if __name__ == '__main__':
