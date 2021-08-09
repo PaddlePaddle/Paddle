@@ -20,6 +20,8 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.fluid.layer_helper import LayerHelper
+from functools import reduce
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -980,7 +982,7 @@ class TestGradientTruncated(unittest.TestCase):
             format(value_grad, value2.grad.numpy()))
 
         # case 3
-        def set_value(t, value):
+        def set_value3(t, value):
             a = t * t
             a[0, :, 0, :] = value
             y = a * a
@@ -993,7 +995,7 @@ class TestGradientTruncated(unittest.TestCase):
         inps = paddle.to_tensor(array, stop_gradient=False)
         value = paddle.to_tensor(value, stop_gradient=False)
 
-        loss = set_value(inps, value)
+        loss = set_value3(inps, value)
         loss.backward()
 
         value_grad = np.array([[[600.], [606.]]])
@@ -1015,7 +1017,7 @@ class TestGradientTruncated(unittest.TestCase):
             format(value_grad, value.grad.numpy()))
 
         #case 4: step >0
-        def set_value(t, value):
+        def set_value4(t, value):
             a = t * t
             a[0, :, 0, ::3] = value
             y = a * a
@@ -1028,7 +1030,7 @@ class TestGradientTruncated(unittest.TestCase):
         inps = paddle.to_tensor(array, stop_gradient=False)
         value = paddle.to_tensor(value, stop_gradient=False)
 
-        loss = set_value(inps, value)
+        loss = set_value4(inps, value)
         loss.backward()
 
         value_grad = np.array([[[600.], [606.]]])
@@ -1048,7 +1050,7 @@ class TestGradientTruncated(unittest.TestCase):
             format(value_grad, value.grad.numpy()))
 
         # case 5:a[0].shape==value.shape
-        def set_value(t, value):
+        def set_value5(t, value):
             a = t * t
             a[0] = value
             y = a * a
@@ -1060,7 +1062,7 @@ class TestGradientTruncated(unittest.TestCase):
         inps = paddle.to_tensor(array, stop_gradient=False)
         value = paddle.to_tensor(value, stop_gradient=False)
 
-        loss = set_value(inps, value)
+        loss = set_value5(inps, value)
         loss.backward()
 
         value_grad = np.array([[200., 202., 204., 206.],
@@ -1079,6 +1081,70 @@ class TestGradientTruncated(unittest.TestCase):
             np.array_equal(value.grad.numpy(), value_grad),
             msg="The gradient of input should be \n{},\n but reveived {}".
             format(value_grad, value.grad.numpy()))
+
+        def test_static_graph(self):
+            paddle.enable_static()
+
+            to_string = lambda x, i, : x + '_' + str(i)
+
+            def set_value(array, i):
+                name_x = to_string('x', i)
+
+                x = paddle.static.data(
+                    name=name_x, shape=array.shape, dtype='float32')
+                x.stop_gradient = False
+
+                value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+
+                start = paddle.fluid.layers.fill_constant(
+                    [1], "int32", 5, force_cpu=True)
+                end = paddle.fluid.layers.fill_constant(
+                    [1], "int32", 0, force_cpu=True)
+                step = paddle.fluid.layers.fill_constant(
+                    [1], "int32", -2, force_cpu=True)
+
+                inputs = {
+                    'Input': x,
+                    'ValueTensor': value,
+                    'StartsTensorList': [start],
+                    'EndsTensorList': [end],
+                    'StepsTensorList': [step]
+                }
+
+                helper = LayerHelper("set_value")
+                y = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+                helper.append_op(
+                    type="set_value",
+                    inputs=inputs,
+                    outputs={'Out': y},
+                    attrs={'axes': [0]})
+
+                y2 = y + 1
+                loss = paddle.fluid.layers.reduce_sum(y2)
+                sgd = paddle.optimizer.Adam()
+                sgd.minimize(loss)
+                place = paddle.fluid.CPUPlace(
+                ) if not paddle.fluid.core.is_compiled_with_cuda(
+                ) else paddle.fluid.CUDAPlace(0)
+
+                prog = paddle.static.default_main_program()
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(prog,
+                              feed={x.name: array},
+                              fetch_list=[x.grad_name])
+                self.assertTrue((out[0][5:0:-2] == 0).all())
+
+            input_shape = [7, 6, 5, 4, 3, 2]
+            numel = reduce(lambda x, y: x * y, input_shape)
+            array = np.arange(0, numel, dtype="float32").reshape(input_shape)
+
+            for i in range(len(input_shape)):
+                program = paddle.static.Program()
+                with paddle.static.program_guard(program):
+                    set_value(array, i)
+                    array = array[0]
 
 
 if __name__ == '__main__':

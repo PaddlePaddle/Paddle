@@ -350,15 +350,12 @@ class SetValueGradKernel : public framework::OpKernel<T> {
  private:
   template <size_t D>
   void SetValueGradCompute(const framework::ExecutionContext& context) const {
-    auto starts_int = context.Attr<std::vector<int>>("starts");
-    auto ends_int = context.Attr<std::vector<int>>("ends");
-    auto steps_int = context.Attr<std::vector<int>>("steps");
+    auto starts = context.Attr<std::vector<int64_t>>("starts");
+    auto ends = context.Attr<std::vector<int64_t>>("ends");
+    auto steps = context.Attr<std::vector<int64_t>>("steps");
 
-    std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
-    std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
-    std::vector<int64_t> steps(steps_int.begin(), steps_int.end());
-
-    auto axes = context.Attr<std::vector<int>>("axes");
+    auto axes_int64 = context.Attr<std::vector<int64_t>>("axes");
+    std::vector<int> axes(axes_int64.begin(), axes_int64.end());
 
     auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
     auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
@@ -394,14 +391,21 @@ class SetValueGradKernel : public framework::OpKernel<T> {
     }
 
     auto in = context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    PADDLE_ENFORCE_EQ(
+        in->IsInitialized(), true,
+        platform::errors::PermissionDenied(
+            "The input of `set_value_grad`(%s) has not been initialized",
+            framework::GradVarName("Out")));
     auto grad_value = context.Output<framework::Tensor>(
         framework::GradVarName("ValueTensor"));
     auto grad_input =
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
     auto in_dims = in->dims();
 
-    auto decrease_axis = context.Attr<std::vector<int>>("decrease_axes");
-
+    auto decrease_axis_int64 =
+        context.Attr<std::vector<int64_t>>("decrease_axes");
+    std::vector<int> decrease_axis(decrease_axis_int64.begin(),
+                                   decrease_axis_int64.end());
     std::vector<int> infer_flags(axes.size(), 1);
     std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
     StridedSliceOutDims(starts, ends, steps, axes, infer_flags, in_dims,
@@ -460,110 +464,131 @@ class SetValueGradKernel : public framework::OpKernel<T> {
       }
     }
 
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
+    math::SetConstant<DeviceContext, T> set_zero;
 
-    // Set gradient of `Input`
-    TensorCopy(*in, context.GetPlace(), grad_input);
-
-    if (!grad_value->IsInitialized()) {
+    if ((grad_value) && (!grad_value->IsInitialized())) {
       grad_value->mutable_data<T>(context.GetPlace());
     }
+    if (grad_input) {
+      // Set gradient of `Input`
+      TensorCopy(*in, context.GetPlace(), grad_input);
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+      auto grad_input_t =
+          framework::EigenTensor<T, D, Eigen::RowMajor,
+                                 Eigen::DenseIndex>::From(*grad_input);
 
-    math::SetConstant<DeviceContext, T> set_zero;
-    set_zero(dev_ctx, grad_value, static_cast<T>(0));
+      framework::Tensor tmp(grad_input->type());
+      tmp.mutable_data<T>(out_dims, context.GetPlace());
+      set_zero(dev_ctx, &tmp, static_cast<T>(0));
+      auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                          Eigen::DenseIndex>::From(tmp);
 
-    auto in_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *in);
-    auto grad_value_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *grad_value, out_dims);
+      grad_input_t.stridedSlice(starts_indices, ends_indices, steps_indices)
+          .device(place) = tmp_t;
+    }
+    if (grad_value) {
+      set_zero(dev_ctx, grad_value, static_cast<T>(0));
 
-    auto grad_input_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *grad_input);
+      auto in_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                         Eigen::DenseIndex>::From(*in);
+      auto grad_value_t =
+          framework::EigenTensor<T, D, Eigen::RowMajor,
+                                 Eigen::DenseIndex>::From(*grad_value,
+                                                          out_dims);
 
-    framework::Tensor tmp(grad_input->type());
-    tmp.mutable_data<T>(out_dims, context.GetPlace());
-    set_zero(dev_ctx, &tmp, static_cast<T>(0));
-    auto tmp_t =
-        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            tmp);
+      if (grad_value->dims() == out_dims) {
+        if (need_reverse) {
+          framework::Tensor tmp(grad_value->type());
+          tmp.mutable_data<T>(out_dims, context.GetPlace());
+          set_zero(dev_ctx, &tmp, static_cast<T>(0));
+          auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                              Eigen::DenseIndex>::From(tmp);
 
-    grad_input_t.stridedSlice(starts_indices, ends_indices, steps_indices)
-        .device(place) = tmp_t;
+          tmp_t.device(place) =
+              in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
+          grad_value_t.device(place) = tmp_t.reverse(reverse_axis);
+        } else {
+          grad_value_t.device(place) =
+              in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
+        }
+      } else {
+        int out_dims_size = out_dims.size();
+        auto grad_value_dims = grad_value->dims();
+        auto fake_grad_value_dims = out_dims;
 
-    if (grad_value->dims() == out_dims) {
-      if (need_reverse) {
+        // Create an extented shape according to the rules of broadcast.
+        auto grad_value_dims_size = grad_value_dims.size();
+
+        int num_decrease = 0;
+
+        int decrease_axis_size = decrease_axis.size();
+        for (int i = 0; i < out_dims_size; i++) {
+          if (decrease_axis.end() !=
+              std::find(decrease_axis.begin(), decrease_axis.end(), i)) {
+            fake_grad_value_dims[i] = 1;
+            num_decrease++;
+          } else if (i < out_dims_size - (grad_value_dims_size +
+                                          decrease_axis_size - num_decrease)) {
+            fake_grad_value_dims[i] = 1;
+          } else {
+            auto index_grad =
+                i - (out_dims_size - (grad_value_dims_size +
+                                      decrease_axis_size - num_decrease));
+            fake_grad_value_dims[i] = grad_value_dims[index_grad];
+
+            PADDLE_ENFORCE_EQ((out_dims[i] == grad_value_dims[index_grad]) ||
+                                  (grad_value_dims[index_grad] == 1),
+                              true,
+                              platform::errors::InvalidArgument(
+                                  "An error occurred while calculating %s: "
+                                  "[%s] can not be accumulated into [%s].",
+                                  framework::GradVarName("ValueTensor"),
+                                  out_dims, grad_value_dims));
+          }
+        }
+
+        VLOG(3) << "Dimensions of " << framework::GradVarName("ValueTensor")
+                << "([" << grad_value_dims << "])is broadcasted into ["
+                << fake_grad_value_dims << "].";
+
+        auto extent = Eigen::DSizes<Eigen::DenseIndex, D>();
+        auto offset = out_dims;
+        for (int i = 0; i < out_dims_size; i++) {
+          offset[i] = 0;
+          extent[i] = fake_grad_value_dims[i];
+        }
+        std::vector<DDim> offsets;
+        get_offsets(out_dims, fake_grad_value_dims, offset, 0, &offsets);
+
+        framework::Tensor tmp(grad_value->type());
+        tmp.mutable_data<T>(out_dims, context.GetPlace());
+        set_zero(dev_ctx, &tmp, static_cast<T>(0));
+        auto tmp_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                            Eigen::DenseIndex>::From(tmp);
+
         tmp_t.device(place) =
             in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
-        grad_value_t.device(place) = tmp_t.reverse(reverse_axis);
-      } else {
-        grad_value_t.device(place) =
-            in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
-      }
-    } else {
-      int out_dims_size = out_dims.size();
-      auto grad_value_dims = grad_value->dims();
-      auto fake_grad_value_dims = out_dims;
 
-      // Create an extented shape according to the rules of broadcast.
-      auto grad_value_dims_size = grad_value_dims.size();
-
-      int num_decrease = 0;
-
-      int decrease_axis_size = decrease_axis.size();
-      for (int i = 0; i < out_dims_size; i++) {
-        if (decrease_axis.end() !=
-            std::find(decrease_axis.begin(), decrease_axis.end(), i)) {
-          fake_grad_value_dims[i] = 1;
-          num_decrease++;
-        } else if (i < out_dims_size - (grad_value_dims_size +
-                                        decrease_axis_size - num_decrease)) {
-          fake_grad_value_dims[i] = 1;
-        } else {
-          auto index_grad =
-              i - (out_dims_size -
-                   (grad_value_dims_size + decrease_axis_size - num_decrease));
-          fake_grad_value_dims[i] = grad_value_dims[index_grad];
-
-          PADDLE_ENFORCE_EQ((out_dims[i] == grad_value_dims[index_grad]) ||
-                                (grad_value_dims[index_grad] == 1),
-                            true, platform::errors::InvalidArgument(
-                                      "An error occurred while calculating %s: "
-                                      "[%s] can not be accumulated into [%s].",
-                                      framework::GradVarName("ValueTensor"),
-                                      out_dims, grad_value_dims));
+        // accumulate gradient
+        for (auto offset : offsets) {
+          grad_value_t.device(place) =
+              grad_value_t +
+              tmp_t.slice(framework::EigenDim<D>::From(offset), extent);
         }
-      }
+        if (need_reverse) {
+          framework::Tensor tmp_value(grad_value->type());
+          tmp_value.mutable_data<T>(grad_value->dims(), context.GetPlace());
 
-      VLOG(3) << "Dimensions of " << framework::GradVarName("ValueTensor")
-              << "([" << grad_value_dims << "])is broadcasted into ["
-              << fake_grad_value_dims << "].";
+          auto tmp_value_t =
+              framework::EigenTensor<T, D, Eigen::RowMajor,
+                                     Eigen::DenseIndex>::From(tmp_value);
 
-      auto extent = Eigen::DSizes<Eigen::DenseIndex, D>();
-      auto offset = out_dims;
-      for (int i = 0; i < out_dims_size; i++) {
-        offset[i] = 0;
-        extent[i] = fake_grad_value_dims[i];
-      }
-      std::vector<DDim> offsets;
-      get_offsets(out_dims, fake_grad_value_dims, offset, 0, &offsets);
-
-      tmp_t.device(place) =
-          in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
-
-      if (need_reverse) {
-        tmp_t.device(place) = tmp_t.reverse(reverse_axis);
-      }
-      // accumulate gradient
-      for (auto offset : offsets) {
-        grad_value_t.device(place) =
-            grad_value_t +
-            tmp_t.slice(framework::EigenDim<D>::From(offset), extent);
+          tmp_value_t.device(place) = grad_value_t.reverse(reverse_axis);
+          grad_value_t.device(place) = tmp_value_t;
+        }
       }
     }
   }

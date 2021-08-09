@@ -157,10 +157,10 @@ class SetValueGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     if (this->HasInput("ValueTensor")) {
-      op->SetInput("ValueTensor", this->Input("ValueTensor"));
-      // op->SetInput("StartsTensorList", this->Input("StartsTensorList"));
       op->SetType("set_value_grad");
+
       op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+      op->SetInput("ValueTensor", this->Input("ValueTensor"));
       if (this->HasInput("StartsTensorList")) {
         op->SetInput("StartsTensorList", this->Input("StartsTensorList"));
       }
@@ -171,36 +171,12 @@ class SetValueGradMaker : public framework::SingleGradOpMaker<T> {
         op->SetInput("StepsTensorList", this->Input("StepsTensorList"));
       }
 
-      // convert std::vector<int64_t > to std::vector<int >
-      std::vector<int64_t> axes_int64 = static_cast<std::vector<int64_t>>(
-          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("axes")));
-      std::vector<int64_t> starts_int64 = static_cast<std::vector<int64_t>>(
-          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("starts")));
-      std::vector<int64_t> ends_int64 = static_cast<std::vector<int64_t>>(
-          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("ends")));
-      std::vector<int64_t> decrease_axes_int64 =
-          static_cast<std::vector<int64_t>>(BOOST_GET_CONST(
-              std::vector<int64_t>, this->GetAttr("decrease_axes")));
-      std::vector<int64_t> steps_int64 = static_cast<std::vector<int64_t>>(
-          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("steps")));
+      op->SetAttrMap(this->Attrs());
 
-      std::vector<int> axes(axes_int64.begin(), axes_int64.end());
-      std::vector<int> starts(starts_int64.begin(), starts_int64.end());
-      std::vector<int> ends(ends_int64.begin(), ends_int64.end());
-      std::vector<int> decrease_axes(decrease_axes_int64.begin(),
-                                     decrease_axes_int64.end());
-      std::vector<int> steps(steps_int64.begin(), steps_int64.end());
-
-      op->SetAttr("axes", axes);
-      op->SetAttr("starts", starts);
-      op->SetAttr("ends", ends);
-
-      op->SetAttr("steps", steps);
-      op->SetAttr("decrease_axes", decrease_axes);
-
-      op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
       op->SetOutput(framework::GradVarName("ValueTensor"),
                     this->InputGrad("ValueTensor"));
+      op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+
     } else {
       op->SetType("assign");
       op->SetInput("X", this->OutputGrad("Out"));
@@ -216,13 +192,6 @@ class SetValueGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "set_value_grad");
-    OP_INOUT_CHECK(ctx->HasInput("ValueTensor"), "Input", "ValueTensor",
-                   "set_value_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ValueTensor")),
-                   "Output", framework::GradVarName("ValueTensor"),
-                   "set_value_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")), "Output",
-                   framework::GradVarName("Input"), "set_value_grad");
 
     auto in_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE_LT(
@@ -232,15 +201,11 @@ class SetValueGrad : public framework::OperatorWithKernel {
             "than 7, but received dimension is %d.",
             in_dims.size()));
 
-    auto starts_int = ctx->Attrs().Get<std::vector<int>>("starts");
-    auto ends_int = ctx->Attrs().Get<std::vector<int>>("ends");
-    auto steps_int = ctx->Attrs().Get<std::vector<int>>("steps");
+    auto starts = ctx->Attrs().Get<std::vector<int64_t>>("starts");
+    auto ends = ctx->Attrs().Get<std::vector<int64_t>>("ends");
+    auto steps = ctx->Attrs().Get<std::vector<int64_t>>("steps");
 
-    std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
-    std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
-    std::vector<int64_t> steps(steps_int.begin(), steps_int.end());
-
-    auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
+    auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
 
     auto starts_size = starts.size();
     auto ends_size = ends.size();
@@ -298,9 +263,12 @@ class SetValueGrad : public framework::OperatorWithKernel {
               "size is %d, axes attribute's size is %d.",
               steps_size, axes.size()));
     }
-
-    ctx->ShareDim("ValueTensor", /*->*/ framework::GradVarName("ValueTensor"));
-    ctx->ShareLoD("ValueTensor", /*->*/ framework::GradVarName("ValueTensor"));
+    if (ctx->HasOutput(framework::GradVarName("ValueTensor"))) {
+      ctx->ShareDim("ValueTensor",
+                    /*->*/ framework::GradVarName("ValueTensor"));
+      ctx->ShareLoD("ValueTensor",
+                    /*->*/ framework::GradVarName("ValueTensor"));
+    }
   }
 
  protected:
@@ -351,6 +319,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::SetValueKernel<plat::CPUDeviceContext, bool>);
 
 REGISTER_OPERATOR(set_value_grad, ops::SetValueGrad);
+
 REGISTER_OP_CPU_KERNEL(
     set_value_grad,
     ops::SetValueGradKernel<paddle::platform::CPUDeviceContext, int>,
