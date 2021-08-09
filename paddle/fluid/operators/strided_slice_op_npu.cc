@@ -114,72 +114,34 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
                         reverse_vector.data(), in_dims, infer_flags,
                         decrease_axis, starts.size());
 
-    // input tensors used for ScatterElements
-    Tensor in_starts_indices;
-    Tensor in_ends_indices;
-    Tensor in_strides_indices;
-    in_starts_indices.mutable_data<int64_t>({D}, place);
-    in_ends_indices.mutable_data<int64_t>({D}, place);
-    in_strides_indices.mutable_data<int64_t>({D}, place);
+    // construct the starts_indices, ends_indices and strides_indices tensor for
+    // calling StridedSlice op
+    std::vector<int64_t> starts_indices_vector(D, 0);
+    std::vector<int64_t> ends_indices_vector(out_dims_vector.begin(),
+                                             out_dims_vector.end());
+    std::vector<int64_t> strides_indices_vector(D, 1);
 
-    // initialization
-    FillNpuTensorWithConstant<int64_t>(&in_starts_indices, 0);
-    TensorFromVector(out_dims_vector, ctx.device_context(), &in_ends_indices);
-    FillNpuTensorWithConstant<int64_t>(&in_strides_indices, 1);
-
-    // output tensors used for ScatterElements
-    Tensor out_starts_indices = in_starts_indices;
-    Tensor out_ends_indices = in_ends_indices;
-    Tensor out_strides_indices = in_strides_indices;
-
-    // call ScatterElements to prepare
-    // starts_indices/ends_indices/strides_indices
-    Tensor ids_tmp;
-    Tensor updates_starts_tmp;
-    Tensor updates_ends_tmp;
-    Tensor updates_strides_tmp;
-
-    ids_tmp.mutable_data<int64_t>({static_cast<int>(axes.size())}, place);
-    updates_starts_tmp.mutable_data<int64_t>({static_cast<int>(axes.size())},
-                                             place);
-    updates_ends_tmp.mutable_data<int64_t>({static_cast<int>(axes.size())},
-                                           place);
-    updates_strides_tmp.mutable_data<int64_t>({static_cast<int>(axes.size())},
-                                              place);
-
-    std::vector<int64_t> ids_vector(axes.size(), 0);
-    std::vector<int64_t> updates_starts_vector(axes.size(), 0);
-    std::vector<int64_t> updates_ends_vector(axes.size(), 0);
-    std::vector<int64_t> updates_strides_vector(axes.size(), 0);
     for (size_t axis = 0; axis < axes.size(); axis++) {
-      ids_vector[axis] = axes[axis];
-      updates_starts_vector[axis] = starts[axis];
-      updates_ends_vector[axis] = ends[axis];
-      updates_strides_vector[axis] = strides[axis];
+      int axis_index = axes[axis];
+      starts_indices_vector[axis_index] = starts[axis];
+      ends_indices_vector[axis_index] = ends[axis];
+      strides_indices_vector[axis_index] = strides[axis];
     }
 
-    TensorFromVector(ids_vector, ctx.device_context(), &ids_tmp);
-    TensorFromVector(updates_starts_vector, ctx.device_context(),
-                     &updates_starts_tmp);
-    TensorFromVector(updates_ends_vector, ctx.device_context(),
-                     &updates_ends_tmp);
-    TensorFromVector(updates_strides_vector, ctx.device_context(),
-                     &updates_strides_tmp);
+    Tensor starts_indices_tensor;
+    Tensor ends_indices_tensor;
+    Tensor strides_indices_tensor;
 
-    const auto& runner_starts = NpuOpRunner(
-        "ScatterElements", {in_starts_indices, ids_tmp, updates_starts_tmp},
-        {out_starts_indices}, {});
-    runner_starts.Run(stream);
+    starts_indices_tensor.mutable_data<int64_t>({D}, place);
+    ends_indices_tensor.mutable_data<int64_t>({D}, place);
+    strides_indices_tensor.mutable_data<int64_t>({D}, place);
 
-    const auto& runner_ends = NpuOpRunner(
-        "ScatterElements", {in_ends_indices, ids_tmp, updates_ends_tmp},
-        {out_ends_indices}, {});
-    runner_ends.Run(stream);
-
-    const auto& runner_strides = NpuOpRunner(
-        "ScatterElements", {in_strides_indices, ids_tmp, updates_strides_tmp},
-        {out_strides_indices}, {});
-    runner_strides.Run(stream);
+    TensorFromVector(starts_indices_vector, ctx.device_context(),
+                     &starts_indices_tensor);
+    TensorFromVector(ends_indices_vector, ctx.device_context(),
+                     &ends_indices_tensor);
+    TensorFromVector(strides_indices_vector, ctx.device_context(),
+                     &strides_indices_tensor);
 
     auto out_dims_origin = out_dims;
     if (decrease_axis.size() > 0) {
@@ -216,8 +178,8 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(place);
 
     const auto& runner = NpuOpRunner(
-        "StridedSlice",
-        {*in, out_starts_indices, out_ends_indices, out_strides_indices},
+        "StridedSlice", {*in, starts_indices_tensor, ends_indices_tensor,
+                         strides_indices_tensor},
         {*out}, {{"begin_mask", 0},
                  {"end_mask", 0},
                  {"ellipsis_mask", 0},
