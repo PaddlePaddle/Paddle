@@ -19,12 +19,12 @@
 #include <iostream>
 #include <vector>
 
-#define INT_BITS 32
-
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {
 namespace details {
+
+#define INT_BITS 32
 
 template <typename T, int VecSize>
 struct alignas(sizeof(T) * VecSize) VectorType {
@@ -101,6 +101,7 @@ struct BroadcastConfig {
   }
 };
 
+#undef INT_BITS
 }  // namespace details
 
 template <typename T, int NX, int NY, int BlockSize>
