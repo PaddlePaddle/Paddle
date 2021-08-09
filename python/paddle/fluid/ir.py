@@ -45,12 +45,13 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
         attrs = dict(pass_attrs)
         attr_types = {}
         update_attr(attrs, attr_types, "nranks", 1, "size_t")
-        update_attr(attrs, attr_types, "use_cuda", False)
+        update_attr(attrs, attr_types, "use_cuda", False, "bool")
         # TODO(zjl): how to skip fetch variables ?
         update_attr(attrs, attr_types, "mem_opt_skip_vars",
                     get_data_vars(main_program), "list[str]")
         _apply_pass(main_program, startup_program, name, attrs, attr_types)
 
+    use_cuda = pass_attrs.get("use_cuda", False)
     build_strategy = build_strategy._copy()
     if build_strategy.sync_batch_norm:
         apply_pass("sync_batch_norm_pass")
