@@ -603,12 +603,12 @@ __device__ void ReduceHigherDim(const Tx* x, Ty* y, ReduceOp reducer,
 // when reduce_dim.size() != 1 and reduce_dim.size() != x_dim.size(), this
 // function will be used
 template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
-          typename TransformOp, typename ReduceIndexCal, typename LeftIndexCal>
+          typename TransformOp>
 __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
                           TransformOp transformer, MPType init, int reduce_num,
                           int left_num, bool reduce_lastdim,
-                          ReduceIndexCal reduce_index_calculator,
-                          LeftIndexCal left_index_calculator) {
+                          const IndexCalculator& reduce_index_calculator,
+                          const IndexCalculator& left_index_calculator) {
   int input_idx, left_idx, stride;
   // the last dim gets involved in reduction
   if (reduce_lastdim) {
@@ -621,7 +621,7 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
     stride = gridDim.y * blockDim.y;
   }
   // calculate the offset, means the addr where each thread really start.
-  int input_offset = left_index_calculator(left_idx);
+  int input_offset = left_index_calculator.Get(left_idx);
   const Tx* input = x + input_offset;
   MPType reduce_var = init;
 
@@ -634,7 +634,7 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
 #pragma unroll
       for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
         int reduce_idx = input_idx + i * stride;
-        int idx_x = reduce_index_calculator(reduce_idx);
+        int idx_x = reduce_index_calculator.Get(reduce_idx);
         input_reg[i] = input[idx_x];
       }
 #pragma unroll
@@ -653,7 +653,7 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
         break;
       }
       int reduce_idx = input_idx;
-      int idx_x = reduce_index_calculator(reduce_idx);
+      int idx_x = reduce_index_calculator.Get(reduce_idx);
       input_reg[i] = input[idx_x];
       input_idx += stride;
     }
@@ -697,23 +697,15 @@ __device__ void ReduceModule(const Tx* x, Ty* y, ReduceOp reducer,
                              int reduce_type, bool reduce_lastdim,
                              const IndexCalculator& reduce_index_calculator,
                              const IndexCalculator& left_index_calculator) {
-  if (reduce_type == ReduceType::kReduceLastDim) {
+  if (reduce_type == ReduceType::kReduceLastDim ||
+      reduce_type == ReduceType::kReduceAny) {
     ReduceAny<Tx, Ty, MPType, ReduceOp, TransformOp>(
         x, y, reducer, transformer, init, reduce_num, left_num, reduce_lastdim,
-        [&](int idx) { return idx; },
-        [&](int idx) { return idx * reduce_num; });
-
+        reduce_index_calculator, left_index_calculator);
     // reduce_rank == 1 && reduce_dim[0] != x_dim.size() - 1
   } else if (reduce_type == ReduceType::kReduceHigherDim) {
     ReduceHigherDim<Tx, Ty, MPType, ReduceOp, TransformOp>(
         x, y, reducer, transformer, init, reduce_num, left_num, blocking_size);
-
-    // reduce_rank >= 2
-  } else {
-    ReduceAny<Tx, Ty, MPType, ReduceOp, TransformOp>(
-        x, y, reducer, transformer, init, reduce_num, left_num, reduce_lastdim,
-        [&](int idx) { return reduce_index_calculator.Get(idx); },
-        [&](int idx) { return left_index_calculator.Get(idx); });
   }
 }
 
