@@ -133,21 +133,30 @@ void GraphToProgramPass::GraphToBlock(Graph* graph,
         *graph, static_cast<framework::ir::SortKind>(sort_kind));
   } else {
     if (FLAGS_convert_all_blocks) {
+      std::cout << graph->ToString() << std::endl;
       nodes = TopologySortSolveHazard(*graph);
     } else {
       nodes = TopologySortOperations(*graph);
       Node* hazard_var = CheckHazardVar(*graph, &nodes);
-      LOG(WARNING) << graph->ToString();
+      std::cout << graph->ToString() << std::endl;
       if (hazard_var == nullptr) {
         LOG(WARNING) << "No Hazard Var";
       } else {
         LOG(WARNING) << "Hazard Var Name: " << hazard_var->Name()
                      << ", Type: " << hazard_var->Var()->GetType();
       }
+      std::set<Node*> op_nodes;
+      for (Node* n : graph->Nodes()) {
+        if (n->IsOp()) {
+          op_nodes.insert(n);
+        }
+      }
+      LOG(WARNING) << "Graph Op Nodes Size = " << op_nodes.size()
+                   << ", nodes.size() = " << nodes.size();
       PADDLE_ENFORCE_EQ(0, 1, "Purpose for fail");
     }
     /*
-    LOG(WARNING) << graph->ToString();
+    std::cout << graph->ToString() << std::endl;
     LOG(WARNING) << "Comparing two topo sorts";
     auto desc_nodes = TopologySortSolveHazard(*graph);
     auto origin_nodes = TopologySortOperations(*graph);

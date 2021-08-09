@@ -407,9 +407,9 @@ class DescOrderComparator {
     if (n1->DescOrder() < n2->DescOrder()) {
       return true;
     } else if (n1->DescOrder() == n2->DescOrder()) {
-      return n1->ToString() < n2->ToString();
-      // return n1->id() < n2->id() ||
-      //       (n1->id() == n2->id() && n1->ToString() < n2->ToString());
+      // return n1->ToString() < n2->ToString();
+      return n1->id() > n2->id() ||
+             (n1->id() == n2->id() && n1->ToString() < n2->ToString());
     }
     return false;
   }
@@ -438,7 +438,104 @@ bool NodeCanBlockWrite(Node *node) {
   // && node->Var() != nullptr &&
   // node->Var()->GetType() != proto::VarType::LOD_TENSOR_ARRAY;
 }
+/*
+bool SimulateRunNode(Node* node, std::set<std::string> *var_cannot_overwrite) {
+  // Check if we run node op, what changes var_cannot_overwrite
+    for (Node *in_var : node->inputs) {
+      if (var_cannot_overwrite->find(in_var->Name()) !=
+          var_cannot_overwrite->end()) {
+        // If all output op of in_var is in sorted_op, remove in_var from
+        // var_cannot_overwrite
+        bool all_read = true;
+        for (Node *read_op : in_var->outputs) {
+          if (std::find(sorted_ops->begin(), sorted_ops->end(), read_op) ==
+              sorted_ops->end()) {
+            all_read = false;
+            break;
+          }
+        }
+        if (all_read) {
+          var_cannot_overwrite->erase(in_var->Name());
+        }
+      }
+    }
+    // all output vars should not be overwritten now.
+    bool out_has_conflict = false;
+    for (Node *out_var : node->outputs) {
+      if (var_cannot_overwrite->find(out_var->Name()) !=
+          var_cannot_overwrite->end()) {
+        out_has_conflict = true;
+        break;
+      } else if (NodeCanBlockWrite(out_var)) {
+        var_cannot_overwrite->insert(out_var->Name());
+      }
+    }
+    return !out_has_conflict;
+}
 
+template <class NodeComparator = ir::NodeComp>
+bool ResolveHazardSortHelper(const std::map<ir::Node *, std::set<ir::Node *,
+NodeComparator>,
+                               NodeComparator> &adj_list,
+                std::set<ir::Node*, NodeComparator>* out_nodes,
+                std::unordered_set<ir::Node *> *visited,
+                std::vector<ir::Node *> *ret,
+                std::set<std::string> *var_cannot_overwrite) {
+
+   while (!out_nodes.empty()) {
+     bool has_update = false;
+     std::unordered_set<ir::Node *> backup_visited(*visited);
+     std::vector<ir::Node *> backup_ret(*ret);
+     std::set<std::string> backup_var_cannot_overwrite(*var_cannot_overwrite);
+     for (auto iter = out_nodes.begin(); iter != out_nodes.end(); ++iter) {
+       Node* node = *iter;
+       if (visited->find(node) != visited->end()) {
+         has_update = true;
+         out_nodes.erase(node);
+       }
+
+       visited->insert(node);
+       std::set<ir::Node *, NodeComparator> adj = adj_list.at(node);
+       bool success = ResolveHazardSortHelper<NodeComparator>(adj_list, &adj,
+visited, var_cannot_overwrite);
+       if (success && SimulateRunNode(node, var_cannot_overwrite)) {
+           ret->push_back(node);
+           has_update = true;
+           out_nodes.erase(node);
+       } else {
+         visited = backup_visited;
+         ret = backup_ret;
+         var_cannot_overwrite = backup_var_cannot_overwrite;
+       }
+     }
+     if (!has_update) {
+       return false;
+     }
+   }
+
+   return true;
+}
+
+std::vector<ir::Node *> TopologySortGraphByDescOrderResolveHazard(const Graph
+&graph) {
+  std::map<ir::Node *, std::set<ir::Node *, DescOrderComparator>,
+           DescOrderComparator>
+      adj_list = BuildOperationAdjList<DescOrderComparator>(graph);
+  PADDLE_ENFORCE_EQ(HasCircleInternal<DescOrderComparator>(adj_list, nullptr),
+                    false, platform::errors::InvalidArgument(
+                               "Generated graph shouldn't contain cycle."));
+  std::unordered_set<ir::Node *> visited;
+  std::vector<ir::Node *> ret;
+  for (auto adj : adj_list) {
+    if (visited.find(adj.first) == visited.end()) {
+      ResolveHazardSortHelper<DescOrderComparator>(adj_list, adj.first,
+&visited, &ret);
+    }
+  }
+
+  return ret;
+}
+*/
 Node *CheckHazardVar(const Graph &graph, std::vector<Node *> *sorted_ops) {
   std::set<std::string> var_cannot_overwrite;
   for (size_t i = 0; i < sorted_ops->size(); ++i) {
@@ -477,12 +574,14 @@ Node *CheckHazardVar(const Graph &graph, std::vector<Node *> *sorted_ops) {
 
 template <class NodeComparator>
 bool TopologySortSolveHazardHelper(
-    std::vector<ir::Node *> *sorted_ops,
-    std::set<ir::Node *, NodeComparator> *candidates,
-    std::map<ir::Node *, int, NodeComparator> *in_degree,
+    std::vector<Node *> *sorted_ops, std::vector<Node *> *candidates,
+    std::map<Node *, int, NodeComparator> *in_degree,
     std::set<std::string> *var_cannot_overwrite) {
   std::set<std::string> save_var_cannot_overwrite(*var_cannot_overwrite);
   for (Node *node : *candidates) {
+    // for (auto iter = candidates->rbegin(); iter != candidates->rend();
+    // ++iter) {
+    //  Node* node = *iter;
     /*
     LOG(WARNING) << "sorted_ops:";
     for (Node *op : *sorted_ops) {
@@ -501,6 +600,10 @@ bool TopologySortSolveHazardHelper(
     LOG(WARNING) << before_ss.str();
     */
     sorted_ops->push_back(node);
+    std::cout << "sorted_ops.size() = " << sorted_ops->size()
+              << ", in_degree->size() = " << in_degree->size() << std::endl;
+    std::cout << "current node id = " << node->id()
+              << ", node->Name() = " << node->Name() << std::endl;
     // Check if we run node op, what changes var_cannot_overwrite
     for (Node *in_var : node->inputs) {
       if (var_cannot_overwrite->find(in_var->Name()) !=
@@ -550,7 +653,8 @@ bool TopologySortSolveHazardHelper(
       std::set<ir::Node *, DescOrderComparator> out_candidates;
       for (Node *out_var : node->outputs) {
         for (Node *out_op : out_var->outputs) {
-          if (out_op->Name() == "fetch") {
+          if (out_op->Name() == "fetch" ||
+              in_degree->find(out_op) == in_degree->end()) {
             continue;
           }
           --(in_degree->at(out_op));
@@ -559,10 +663,22 @@ bool TopologySortSolveHazardHelper(
           }
         }
       }
-      std::set<ir::Node *, DescOrderComparator> next_step_candidates(
-          *candidates);
-      next_step_candidates.erase(node);
-      next_step_candidates.insert(out_candidates.begin(), out_candidates.end());
+
+      std::vector<ir::Node *> next_step_candidates(*candidates);
+      auto cur_node_iter = std::find(next_step_candidates.begin(),
+                                     next_step_candidates.end(), node);
+      if (cur_node_iter != next_step_candidates.end()) {
+        next_step_candidates.erase(cur_node_iter);
+      }
+
+      if (out_candidates.size() == 1) {
+        next_step_candidates.insert(next_step_candidates.begin(),
+                                    *(out_candidates.begin()));
+      } else {
+        next_step_candidates.insert(next_step_candidates.end(),
+                                    out_candidates.begin(),
+                                    out_candidates.end());
+      }
       bool success = TopologySortSolveHazardHelper(
           sorted_ops, &next_step_candidates, in_degree, var_cannot_overwrite);
       if (success) {
@@ -571,7 +687,8 @@ bool TopologySortSolveHazardHelper(
       // if not success, restore
       for (Node *out_var : node->outputs) {
         for (Node *out_op : out_var->outputs) {
-          if (out_op->Name() == "fetch") {
+          if (out_op->Name() == "fetch" ||
+              in_degree->find(out_op) == in_degree->end()) {
             continue;
           }
           ++(in_degree->at(out_op));
@@ -608,7 +725,7 @@ std::vector<ir::Node *> TopologySortSolveHazard(const Graph &graph) {
     }
     for (Node *var : n->outputs) {
       for (Node *out : var->outputs) {
-        if (out->Name() != "fetch") {
+        if (out->Name() != "fetch" && in_degree.find(out) != in_degree.end()) {
           ++in_degree[out];
         }
       }
@@ -626,8 +743,10 @@ std::vector<ir::Node *> TopologySortSolveHazard(const Graph &graph) {
     std::set<std::string> var_cannot_overwrite;
     LOG(WARNING) << "in_degree.size() = " << in_degree.size()
                  << ", fetch_ops.size() = " << fetch_ops.size();
+    std::vector<Node *> priority_candidates(candidates.begin(),
+                                            candidates.end());
     bool sort_success = TopologySortSolveHazardHelper<DescOrderComparator>(
-        &sorted_ops, &candidates, &in_degree, &var_cannot_overwrite);
+        &sorted_ops, &priority_candidates, &in_degree, &var_cannot_overwrite);
 
     PADDLE_ENFORCE_EQ(sort_success, true,
                       platform::errors::PreconditionNotMet(
