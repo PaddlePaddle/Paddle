@@ -59,7 +59,7 @@ cc_library(coalesce_grad_tensor_pass SRCS coalesce_grad_tensor_pass.cc DEPS grap
 
 pass_library(graph_to_program_pass base)
 pass_library(graph_viz_pass base)
-pass_library(lock_free_optimize_pass base)
+pass_library(lock_free_optimize_pass base DEPS string_helper)
 pass_library(fc_fuse_pass inference)
 pass_library(map_matmul_to_mul_pass inference)
 pass_library(attention_lstm_fuse_pass inference)
