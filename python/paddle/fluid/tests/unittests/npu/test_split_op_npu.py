@@ -55,11 +55,10 @@ class TestCase1(OpTest):
         self.__class__.op_type = "split"
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ["X"], self.outs, check_dygraph=False)
+        self.check_grad_with_place(self.place, ["X"], self.outs)
 
     def set_example(self):
         self.dtype = "float32"
@@ -76,34 +75,12 @@ class TestCase2(TestCase1):
         self.num_or_sections = 4
 
 
-# class TestCase3(TestCase1):
-#     def set_example(self):
-#         self.x=np.random.random((20,4,50)) * 100
-#         self.dtype = "int32"
-#         self.axis=1
-#         self.num_or_sections = 2
-
-
 class TestCase4(TestCase1):
     def set_example(self):
         self.dtype = "float16"
         self.x = np.random.random((4, 50, 20))
         self.axis = 2
         self.num_or_sections = 4
-
-
-# Test AxisTensor
-# class TestCase4(TestCase1):
-#     def set_example(self):
-#         self.dtype="float32"
-#         self.x = np.random.random((2,20,40))
-#         self.num_or_sections = 2
-#         self.axis = 2
-#     def setUp(self):
-#         super().setUp()
-#         self.inputs.update({
-#             'AxisTensor': np.array([self.axis]).astype("int32")
-#         })
 
 
 # Test Sections
@@ -117,6 +94,122 @@ class TestCase5(TestCase1):
     def setUp(self):
         super().setUp()
         self.attrs.update({"sections": [2, 2, 4, 2], "num": 0})
+
+
+class API_TestSplit(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.layers.data('data', shape=[-1, 10], dtype='float32')
+            x0, x1 = paddle.split(data, num_or_sections=(3, 7), axis=1)
+            place = fluid.NPUPlace(0)
+            exe = fluid.Executor(place)
+            input1 = np.random.random([1, 10]).astype('float32')
+            r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
+            ex_x0, ex_x1 = np.split(input1, (3, ), axis=1)
+            self.assertTrue(np.allclose(ex_x0, r0))
+            self.assertTrue(np.allclose(ex_x1, r1))
+
+
+class API_TestSplit2(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.layers.data('data', shape=[-1, 10], dtype='float32')
+            x0, x1 = paddle.split(data, num_or_sections=2, axis=1)
+            place = fluid.NPUPlace(0)
+            exe = fluid.Executor(place)
+            input1 = np.random.random([1, 10]).astype('float32')
+            r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
+            ex_x0, ex_x1 = np.split(input1, 2, axis=1)
+            self.assertTrue(np.allclose(ex_x0, r0))
+            self.assertTrue(np.allclose(ex_x1, r1))
+
+
+class API_TestDygraphSplit(unittest.TestCase):
+    def test_out1(self):
+        with fluid.dygraph.guard(paddle.NPUPlace(0)):
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = fluid.dygraph.to_variable(input_1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
+        self.assertTrue(np.allclose(ex_x0, x0_out))
+        self.assertTrue(np.allclose(ex_x1, x1_out))
+        self.assertTrue(np.allclose(ex_x2, x2_out))
+
+    def test_out2(self):
+        with fluid.dygraph.guard(paddle.NPUPlace(0)):
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = fluid.dygraph.to_variable(input_1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=[1, 2, 3], axis=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(input_1, (1, 3), axis=1)
+        self.assertTrue(np.allclose(ex_x0, x0_out))
+        self.assertTrue(np.allclose(ex_x1, x1_out))
+        self.assertTrue(np.allclose(ex_x2, x2_out))
+
+
+class API_TestSplit(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.layers.data('data', shape=[-1, 10], dtype='float32')
+            x0, x1 = paddle.split(data, num_or_sections=(3, 7), axis=1)
+            place = fluid.NPUPlace(0)
+            exe = fluid.Executor(place)
+            input1 = np.random.random([1, 10]).astype('float32')
+            r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
+            ex_x0, ex_x1 = np.split(input1, (3, ), axis=1)
+            self.assertTrue(np.allclose(ex_x0, r0))
+            self.assertTrue(np.allclose(ex_x1, r1))
+
+
+class API_TestSplit2(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.layers.data('data', shape=[-1, 10], dtype='float32')
+            x0, x1 = paddle.split(data, num_or_sections=2, axis=1)
+            place = fluid.NPUPlace(0)
+            exe = fluid.Executor(place)
+            input1 = np.random.random([1, 10]).astype('float32')
+            r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
+            ex_x0, ex_x1 = np.split(input1, 2, axis=1)
+            self.assertTrue(np.allclose(ex_x0, r0))
+            self.assertTrue(np.allclose(ex_x1, r1))
+
+
+class API_TestDygraphSplit(unittest.TestCase):
+    def test_out1(self):
+        with fluid.dygraph.guard(paddle.NPUPlace(0)):
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = fluid.dygraph.to_variable(input_1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
+        self.assertTrue(np.allclose(ex_x0, x0_out))
+        self.assertTrue(np.allclose(ex_x1, x1_out))
+        self.assertTrue(np.allclose(ex_x2, x2_out))
+
+    def test_out2(self):
+        with fluid.dygraph.guard(paddle.NPUPlace(0)):
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = fluid.dygraph.to_variable(input_1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=[1, 2, 3], axis=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(input_1, (1, 3), axis=1)
+        self.assertTrue(np.allclose(ex_x0, x0_out))
+        self.assertTrue(np.allclose(ex_x1, x1_out))
+        self.assertTrue(np.allclose(ex_x2, x2_out))
 
 
 if __name__ == '__main__':

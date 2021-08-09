@@ -30,15 +30,19 @@ class SplitNPUKernel : public framework::OpKernel<T> {
     std::vector<int> sections = ctx.Attr<std::vector<int>>("sections");
     int axis = ctx.Attr<int>("axis");
 
-    auto in_dims = in->dims();
-    auto outs_number = outs.size();
-
-    bool need_resize_outs_dims = false;
+    // auto in_dims = in->dims();
+    // auto outs_number = outs.size();
+    // bool need_resize_outs_dims = false;
 
     if (ctx.HasInput("AxisTensor")) {
-      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
-      axis = GetDataFromTensor(axis_tensor)[0];
-      need_resize_outs_dims = true;
+      // TODO(liupeng51):
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "The AxisTensor is not supported on NPU now."));
+    }
+    if (ctx.HasInput("SectionsTensorList")) {
+      // TODO(liupeng51):
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "The SectionsTensorList is not supported on NPU now."));
     }
 
     PADDLE_ENFORCE_EQ(
@@ -47,20 +51,21 @@ class SplitNPUKernel : public framework::OpKernel<T> {
             "axis(%d) must satisfy 0 <= axis < input.dims(%d) and ", axis,
             static_cast<int>(in->dims().size())));
 
-    auto sections_tensor_list =
-        ctx.MultiInput<framework::Tensor>("SectionsTensorList");
-    if (sections_tensor_list.size() > 0) {
-      sections = GetDataFromTensorList(sections_tensor_list);
-      need_resize_outs_dims = true;
-    }
-
-    if (need_resize_outs_dims) {
-      std::vector<framework::DDim> outs_dims =
-          UpdateOutsDims(true, true, in_dims, num, sections, axis, outs_number);
-      for (size_t j = 0; j < outs.size(); ++j) {
-        outs[j]->Resize(outs_dims[j]);
-      }
-    }
+    // TODO(liupeng51):
+    // auto sections_tensor_list =
+    //     ctx.MultiInput<framework::Tensor>("SectionsTensorList");
+    // if (sections_tensor_list.size() > 0) {
+    //   sections = GetDataFromTensorList(sections_tensor_list);
+    //   need_resize_outs_dims = true;
+    // }
+    // if (need_resize_outs_dims) {
+    //   std::vector<framework::DDim> outs_dims =
+    //       UpdateOutsDims(true, true, in_dims, num, sections, axis,
+    //       outs_number);
+    //   for (size_t j = 0; j < outs.size(); ++j) {
+    //     outs[j]->Resize(outs_dims[j]);
+    //   }
+    // }
 
     std::vector<Tensor> outputs;
     auto place = ctx.GetPlace();
