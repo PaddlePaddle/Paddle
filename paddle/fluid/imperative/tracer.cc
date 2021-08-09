@@ -30,6 +30,8 @@ DECLARE_string(tracer_mkldnn_ops_off);
 namespace paddle {
 namespace imperative {
 
+thread_local bool Tracer::has_grad_ = true;
+
 static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }

@@ -138,6 +138,35 @@ void TensorFromArray(const T* src, const size_t& array_size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  else if (platform::is_npu_place(dst_place)) {  // NOLINT
+    //  1. vector -> npu pinned tensor
+    platform::NPUPinnedPlace npu_pinned_place;
+    Tensor npu_pinned_tensor;
+    npu_pinned_tensor.Resize(dst->dims());
+    auto npu_pinned_ptr =
+        npu_pinned_tensor.mutable_data(npu_pinned_place, dst->type());
+    memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
+
+    //  2. async copy npu pinned tensor -> npu tensor
+    memory::Copy(
+        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+        npu_pinned_place, npu_pinned_ptr, size,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+
+    //  3. record event
+    auto npu_pinned_allocator =
+        static_cast<paddle::memory::allocation::NPUPinnedAllocator*>(
+            paddle::memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(npu_pinned_place)
+                .get());
+    paddle::memory::allocation::Allocation* allocation =
+        npu_pinned_tensor.Holder().get();
+    npu_pinned_allocator->RecordEvent(
+        allocation,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+  }
+#endif
 }
 
 template <typename T>
