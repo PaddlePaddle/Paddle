@@ -444,7 +444,7 @@ class InstallHeaders(Command):
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
-            if 'fluid' or 'utils' in install_dir:
+            if 'fluid' in install_dir or 'utils' in install_dir:
                 install_dir = "paddle/extension/include/"
         else:
             # third_party
