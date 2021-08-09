@@ -168,12 +168,10 @@ function compile_install_paddlepaddle {
   [ $? -ne 0 ] && LOG "[FATAL] compile fail." && exit 7
   LOG "[INFO] Build fineshed"
   set -x
-  echo 11111111111,${branch_name}
-  pwd
   mkdir build/${branch_name}
   cp build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl build/${branch_name}/
   set +x
-  exit 123
+  ls build/
 }
 
 function build_whl {
