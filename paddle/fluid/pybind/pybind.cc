@@ -42,6 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/new_exec.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -1631,7 +1632,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 #ifdef PADDLE_WITH_XPU
+  py::enum_<platform::XPUVersion>(m, "XPUVersion", py::arithmetic())
+      .value("XPU1", platform::XPUVersion::XPU1)
+      .value("XPU2", platform::XPUVersion::XPU2)
+      .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+  m.def("get_xpu_device_version",
+        [](int device_id) { return platform::get_xpu_version(device_id); });
 #endif
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
@@ -1934,6 +1941,34 @@ All parameter, weight, gradient are variables in Paddle.
         self.Run(prog, scope, block_id, create_local_scope, create_vars,
                  fetch_vars);
       });
+
+  py::class_<framework::InterpreterCore>(m, "InterpreterCore")
+      .def(py::init<const platform::Place &, const ProgramDesc &,
+                    const ProgramDesc &, Scope *>())
+      .def("run",
+           [](InterpreterCore &self,
+              const std::unordered_map<std::string, py::array> &input_dict,
+              std::vector<std::string> vec_fetch_name) {
+             pybind11::gil_scoped_release release;
+             std::vector<framework::Tensor> vec_tensor;
+             std::vector<std::string> vec_name;
+
+             for (auto &item : input_dict) {
+               framework::LoDTensor t;
+               SetTensorFromPyArray<platform::CPUPlace>(
+                   &t, item.second, platform::CPUPlace(), false);
+               vec_name.push_back(item.first);
+               vec_tensor.push_back(t);
+             }
+
+             std::vector<framework::Tensor> vec_out;
+             self.run(vec_name, vec_tensor, vec_fetch_name, &vec_out);
+             std::vector<py::array> vec_ret;
+             for (size_t i = 0; i < vec_out.size(); ++i) {
+               vec_ret.push_back(TensorToPyArray(vec_out[i], true));
+             }
+             return vec_ret;
+           });
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);

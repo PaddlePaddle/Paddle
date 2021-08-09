@@ -15,7 +15,6 @@
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
 #include <sstream>
 
-#include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -50,8 +49,11 @@ void CommonSparseTable::ProcessALine(const std::vector<std::string>& columns,
       float v = 0.0;
 
       try {
-        v = lexical_cast<float>(va);
-      } catch (boost::bad_lexical_cast& e) {
+        v = std::stof(va);
+      } catch (std::invalid_argument& e) {
+        VLOG(0) << "id: " << id << " get unexpected value: " << va
+                << " and be reset to: 0.0";
+      } catch (std::out_of_range& e) {
         VLOG(0) << "id: " << id << " get unexpected value: " << va
                 << " and be reset to: 0.0";
       }
@@ -131,7 +133,7 @@ int64_t CommonSparseTable::LoadFromText(
 
   while (std::getline(file, line)) {
     auto values = paddle::string::split_string<std::string>(line, "\t");
-    auto id = lexical_cast<uint64_t>(values[0]);
+    auto id = std::stoull(values[0]);
 
     if (id % pserver_num != pserver_id) {
       VLOG(3) << "will not load " << values[0] << " from " << valuepath
@@ -150,10 +152,9 @@ int64_t CommonSparseTable::LoadFromText(
     VALUE* value_instant = block->GetValue(id);
 
     if (values.size() == 5) {
-      value_instant->count_ = lexical_cast<int>(values[1]);
-      value_instant->unseen_days_ = lexical_cast<int>(values[2]);
-      value_instant->is_entry_ =
-          static_cast<bool>(lexical_cast<int>(values[3]));
+      value_instant->count_ = std::stoi(values[1]);
+      value_instant->unseen_days_ = std::stoi(values[2]);
+      value_instant->is_entry_ = static_cast<bool>(std::stoi(values[3]));
     }
 
     std::vector<float*> block_values = block->Get(id, meta.names, meta.dims);
