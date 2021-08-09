@@ -519,27 +519,6 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             self.assertTrue(np.allclose(ret, self.out_np))
 
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            # test paddle.nn.HSigmoidLoss
-            x_arr = np.array([], dtype=np.float32)
-            x = paddle.to_tensor(np.reshape(x_arr, (100000, 0)))
-            label = paddle.to_tensor(0, dtype='int64')
-
-            self.assertRaises(ValueError, 
-                paddle.nn.HSigmoidLoss, 
-                x, 
-                label)
-
-            # test paddle.nn.functional.hsigmoid_loss
-            x_arr = np.array([], dtype=np.float32)
-            x = paddle.to_tensor(np.reshape(x_arr, (10, 0)), dtype='float32')
-
-            label = paddle.to_tensor([], dtype='int64')
-
-            weight = paddle.to_tensor([], dtype='float32')
-
-            self.assertRaises(ValueError, F.hsigmoid_loss, x, label, 0,
-                              weight)
  
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -596,6 +575,28 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                 8,
                 weight,
                 path_code=path_code_int32)
+
+        paddle.disable_static()
+        # test paddle.nn.HSigmoidLoss
+        x_arr = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(x_arr, (100000, 0)))
+        label = paddle.to_tensor(0, dtype='int64')
+
+        self.assertRaises(ValueError, 
+            paddle.nn.HSigmoidLoss, 
+            x, 
+            label)
+
+        # test paddle.nn.functional.hsigmoid_loss
+        x_arr = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(x_arr, (10, 0)), dtype='float32')
+
+        label = paddle.to_tensor([], dtype='int64')
+
+        weight = paddle.to_tensor([], dtype='float32')
+
+        self.assertRaises(TypeError, F.hsigmoid_loss, x, label, 0,
+                              weight)
 
         # test paddle.fluid.layers.hsigmoid
         with program_guard(Program()):
