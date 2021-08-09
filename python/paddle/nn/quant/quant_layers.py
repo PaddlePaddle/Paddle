@@ -499,6 +499,11 @@ class QuantizedConv2DTranspose(layers.Layer):
                  act_pre_layer=None,
                  weight_quant_layer=None,
                  act_quant_layer=None):
+        r"""
+        Constructor.
+
+        The arguments are the same as ImperativeQuantAware.
+        """
         super(QuantizedConv2DTranspose, self).__init__()
         # For Conv2DTranspose
         self._groups = getattr(layer, '_groups')

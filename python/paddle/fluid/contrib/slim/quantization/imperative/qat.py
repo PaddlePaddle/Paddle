@@ -307,10 +307,10 @@ class ImperativeQuantizeInputs(object):
     def apply(self, model):
         """
         Quantize the weights and activations to calculate for specific 
-        layers in the dygraph model.
+        layers.
 
         Args:
-            model(fluid.dygraph.Layer): The target model which would
+            model(paddle.nn.Layer): The target model which would
                 calculate the input quantization scale.
 
         Returns:

@@ -47,7 +47,6 @@ layer_name_map = {
 }
 
 # Apply fake quant for the inputs of these layers
-# TODO (jc): support paddle.nn.Conv2DTranspose
 fake_quant_input_layers = [
     paddle.nn.Conv2D, paddle.nn.Linear, paddle.nn.Conv2DTranspose
 ]
@@ -125,7 +124,7 @@ def find_parent_layer_and_sub_name(model, name):
     For example, if name is 'block_1/convbn_1/conv_1', the parent layer is
     'block_1/convbn_1' and the sub_name is `conv_1`.
     Args:
-        model(fluid.dygraph.Layer): the model to be quantized.
+        model(paddle.nn.Layer): the model to be quantized.
         name(string): the name of a layer
 
     Returns:
