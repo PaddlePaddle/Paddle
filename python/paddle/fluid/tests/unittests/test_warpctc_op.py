@@ -460,7 +460,6 @@ class TestWarpCTCOpFp64(OpTest):
         self.check_grad(["Logits"], "Loss")
 
 
-
 class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpFp64):
     def config(self):
         self.batch_size = 4
