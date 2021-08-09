@@ -19,11 +19,12 @@
 #include <iostream>
 #include <vector>
 
-#define INT_BITS 32
-
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {
+namespace details {
+
+#define INT_BITS 32
 
 template <typename T, int VecSize>
 struct alignas(sizeof(T) * VecSize) VectorType {
@@ -99,8 +100,13 @@ struct BroadcastConfig {
     memcpy(divmoders, divmoders_in.data(), kDims * sizeof(FastDivMod));
   }
 };
+
+#undef INT_BITS
+}  // namespace details
+
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void ReadDataBase(T* dst, const T* __restrict__ src, int size) {
+__device__ __forceinline__ void ReadDataBase(T* dst, const T* __restrict__ src,
+                                             int size) {
   int dx = threadIdx.x * NX;
 #pragma unroll
   for (int idx = 0; idx < NX; ++idx) {
@@ -112,7 +118,8 @@ __device__ void ReadDataBase(T* dst, const T* __restrict__ src, int size) {
 }
 
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void ReadData(T* dst, const T* __restrict__ src, int size) {
+__device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
+                                         int size) {
   const int VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
   const int VECTORS_PER_THREAD = NX / VECTOR_SIZE;
 
@@ -121,7 +128,7 @@ __device__ void ReadData(T* dst, const T* __restrict__ src, int size) {
     ReadDataBase<T, NX, NY, BlockSize>(dst, src, size);
   } else {
     // Vector type
-    using VecType = VectorType<T, VECTOR_SIZE>;
+    using VecType = details::VectorType<T, VECTOR_SIZE>;
     VecType vec_temp[VECTORS_PER_THREAD];
     const VecType* vec_input = reinterpret_cast<const VecType*>(src);
     ReadDataBase<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
@@ -142,12 +149,11 @@ __device__ void ReadData(T* dst, const T* __restrict__ src, int size) {
  * stride_ny: the stride of src
  * the shape of dst is [NY, NX]
  */
-template <typename T, int NX, int NY, int BS, int ShapeSize>
-__device__ __forceinline__ void ReadDataBc(T* dst, const T* __restrict__ src,
-                                           uint32_t fix,
-                                           BroadcastConfig<ShapeSize> config,
-                                           int num, int stride_nx,
-                                           int stride_ny) {
+template <typename T, int NX, int NY, int BlockSize, int ShapeSize>
+__device__ __forceinline__ void ReadDataBc(
+    T* dst, const T* __restrict__ src, uint32_t fix,
+    details::BroadcastConfig<ShapeSize> config, int num, int stride_nx,
+    int stride_ny) {
   uint32_t base_offset = fix + threadIdx.x * NX;
   uint32_t offset = 0;
 
@@ -171,7 +177,8 @@ __device__ __forceinline__ void ReadDataBc(T* dst, const T* __restrict__ src,
 }
 
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void WriteDataBase(T* dst, const T* __restrict__ src, int size) {
+__device__ __forceinline__ void WriteDataBase(T* dst, const T* __restrict__ src,
+                                              int size) {
   int dx = threadIdx.x * NX;
 #pragma unroll
   for (int idx = 0; idx < NX; ++idx) {
@@ -183,7 +190,8 @@ __device__ void WriteDataBase(T* dst, const T* __restrict__ src, int size) {
 }
 
 template <typename T, int NX, int NY, int BlockSize>
-__device__ void WriteData(T* dst, T* __restrict__ src, int size) {
+__device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
+                                          int size) {
   const int VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
   const int VECTORS_PER_THREAD = NX / VECTOR_SIZE;
 
@@ -192,7 +200,7 @@ __device__ void WriteData(T* dst, T* __restrict__ src, int size) {
     WriteDataBase<T, NX, NY, BlockSize>(dst, src, size);
   } else {
     // Vector type
-    using VecType = VectorType<T, VECTOR_SIZE>;
+    using VecType = details::VectorType<T, VECTOR_SIZE>;
     VecType vec_temp[VECTORS_PER_THREAD];
 #pragma unroll
     for (int idx = 0; idx < VECTORS_PER_THREAD; ++idx) {
