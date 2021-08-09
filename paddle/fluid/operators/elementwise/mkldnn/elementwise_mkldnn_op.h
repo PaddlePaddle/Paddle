@@ -54,8 +54,12 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
     // For Inplace src and and dst are the same memory object
-    auto dst_memory =
-        x->IsSharedBufferWith(*z) ? src_x_memory : handler.AcquireDstMemory(z);
+    // (jczaja) UT mechanics is testing inplace for this op
+    // regardless shapes, which is wrong when X is to be broadcasted as output
+    // is of bigger shape that X.
+    auto dst_memory = (x->numel() == z->numel() && x->IsSharedBufferWith(*z))
+                          ? src_x_memory
+                          : handler.AcquireDstMemory(z);
 
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
