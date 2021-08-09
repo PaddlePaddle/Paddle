@@ -1139,6 +1139,7 @@ def margin_softmax_with_cross_entropy(logits,
 
     Examples:
     .. code-block:: python
+        # required: gpu
         # for single GPU
         import paddle
         import numpy as np
