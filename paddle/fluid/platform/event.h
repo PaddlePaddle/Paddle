@@ -120,7 +120,6 @@ class MemEvent {
 
 class CudaEvent {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
  public:
   CudaEvent() {
 #ifdef PADDLE_WITH_HIP
@@ -130,7 +129,7 @@ class CudaEvent {
 #endif
   }
 
-  explicit CudaEvent(unsigned int flags) : flags_(flags) {
+  CudaEvent(unsigned int flags) : flags_(flags) {
 #ifdef PADDLE_WITH_HIP
     hipEventCreateWithFlags(&event_, flags_);
 #else
@@ -138,15 +137,7 @@ class CudaEvent {
 #endif
   }
 
-  ~CudaEvent() {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event_));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event_));
-#endif
-  }
-
-  void Record(const paddle::platform::stream::CUDAStream& stream) {
+  void Record(paddle::platform::stream::CUDAStream& stream) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
 #else
