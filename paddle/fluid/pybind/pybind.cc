@@ -1943,20 +1943,21 @@ All parameter, weight, gradient are variables in Paddle.
            [](InterpreterCore &self,
               const std::unordered_map<std::string, py::array> &input_dict,
               std::vector<std::string> vec_fetch_name) {
-             pybind11::gil_scoped_release release;
-             std::vector<framework::Tensor> vec_tensor;
-             std::vector<std::string> vec_name;
-
-             for (auto &item : input_dict) {
-               framework::LoDTensor t;
-               SetTensorFromPyArray<platform::CPUPlace>(
-                   &t, item.second, platform::CPUPlace(), false);
-               vec_name.push_back(item.first);
-               vec_tensor.push_back(t);
-             }
-
              std::vector<framework::Tensor> vec_out;
-             self.run(vec_name, vec_tensor, vec_fetch_name, &vec_out);
+             {
+               pybind11::gil_scoped_release release;
+               std::vector<framework::Tensor> vec_tensor;
+               std::vector<std::string> vec_name;
+
+               for (auto &item : input_dict) {
+                 framework::LoDTensor t;
+                 SetTensorFromPyArray<platform::CPUPlace>(
+                     &t, item.second, platform::CPUPlace(), false);
+                 vec_name.push_back(item.first);
+                 vec_tensor.push_back(t);
+               }
+               self.run(vec_name, vec_tensor, vec_fetch_name, &vec_out);
+             }
              std::vector<py::array> vec_ret;
              for (size_t i = 0; i < vec_out.size(); ++i) {
                vec_ret.push_back(TensorToPyArray(vec_out[i], true));

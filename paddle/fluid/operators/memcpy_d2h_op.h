@@ -46,7 +46,7 @@ class MemcpyD2HFunctor {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
 
     if (dst_place_type_ == 1) {
-      framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
+      framework::TensorCopy(lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_,
                             &out_tensor);
     } else if (dst_place_type_ == 0) {
       framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);

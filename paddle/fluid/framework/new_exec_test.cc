@@ -44,45 +44,49 @@ int main() {
   auto place = paddle::platform::CUDAPlace(0);
   auto test_prog = paddle::framework::load_from_file("lm_startup_program");
   {
+    std::cerr << "build_variable_scope";
     paddle::framework::build_variable_scope(test_prog, &global_scope);
 
     std::vector<paddle::framework::OpFuncNode> vec_func_list;
     std::vector<paddle::framework::OperatorBase*> op_list;
-    paddle::framework::build_op_func_list(test_prog, op_list, vec_func_list,
-                                          &global_scope, place);
+    std::cerr << "build_op_func_list";
+    paddle::framework::build_op_func_list(test_prog, &op_list, &vec_func_list,
+                                          &global_scope, nullptr, nullptr,
+                                          place);
 
     // paddle::framework::exec_op_func_list( vec_func_list, op_list,
     // global_scope, place );
   }
 
-  cerr << "run main" << endl;
+  std::cerr << "run main" << std::endl;
   auto main_prog = paddle::framework::load_from_file("lm_main_program");
 
   paddle::framework::build_variable_scope(main_prog, &global_scope);
-
+  paddle::framework::Scope scope;
   std::vector<paddle::framework::OpFuncNode> vec_main_func_list;
   std::vector<paddle::framework::OperatorBase*> op_main_list;
-  paddle::framework::build_op_func_list(
-      main_prog, op_main_list, vec_main_func_list, &global_scope, place);
-  paddle::framework::Scope scope;
   paddle::framework::InterpreterCore interp_core(place, main_prog, test_prog,
                                                  &scope);
+  paddle::framework::build_op_func_list(
+      main_prog, &op_main_list, &vec_main_func_list, &global_scope,
+      &(interp_core.D2HContextPool()), &(interp_core.H2DContextPool()), place);
+
   auto start = std::chrono::steady_clock::now();
   ProfilerStart("new_executor.prof");
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
-      cerr << i << endl;
+      std::cerr << i << std::endl;
     }
     // paddle::framework::exec_op_func_list( vec_main_func_list, op_main_list,
     // global_scope, place );
     std::vector<paddle::framework::Tensor> vec_out;
-    interp_core.run({}, {}, {}, vec_out);
+    interp_core.run({}, {}, {}, &vec_out);
   }
   ProfilerStop();
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 
-  cerr << "time cost " << diff.count() << endl;
+  std::cerr << "time cost " << diff.count() << std::endl;
 
   return 1;
 }

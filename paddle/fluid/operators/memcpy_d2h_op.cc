@@ -124,7 +124,7 @@ raise error if the type is not listed above.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OPERATOR(
-    memcpy_d2h, ops::MemcpyD2HOp, ops::MemcpyOpD2HProtoMaker,
+    memcpy_d2h, ops::MemcpyD2HOp, ops::MemcpyD2HOpProtoMaker,
     ops::MemcpyD2HInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
