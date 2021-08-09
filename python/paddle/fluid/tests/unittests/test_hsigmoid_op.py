@@ -524,6 +524,15 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             # test paddle.nn.HSigmoidLoss
             self.assertRaises(ValueError, paddle.nn.HSigmoidLoss, 6, 1)
 
+            x_arr = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(x_arr, (100000, 0)))
+            label = paddle.to_tensor(0, dtype='int64')
+
+            self.assertRaises(ValueError, 
+                paddle.nn.HSigmoidLoss, 
+                x, 
+                label)
+
             # test paddle.nn.functional.hsigmoid_loss
             x = paddle.static.data('x', [4, 6])
             label = paddle.static.data('label', [4, 1], 'int64')
