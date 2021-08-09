@@ -311,6 +311,19 @@ if(WITH_ASCEND OR WITH_ASCEND_CL)
     endif()
     if(WITH_ASCEND_CL)
         list(APPEND third_party_deps extern_ascend_cl)
+        list(APPEND third_party_deps extern_protobuf extern_gflags extern_glog)
+
+        if(WITH_HIERARCHICAL_HCCL)
+            include(external/snappy)
+            list(APPEND third_party_deps extern_snappy)
+
+            include(external/leveldb)
+            list(APPEND third_party_deps extern_leveldb)
+
+            include(external/brpc)
+            list(APPEND third_party_deps extern_brpc)
+            message(STATUS "Paddle need brpc to enable hierarchical hccl!")
+        endif()
     endif()
 endif ()
 

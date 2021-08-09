@@ -15,6 +15,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 
+#include <acl/acl.h>
+#include <acl/acl_base.h>
+
 #include <hccl/hccl.h>
 #include <hccl/hccl_types.h>
 #include <mutex>  // NOLINT

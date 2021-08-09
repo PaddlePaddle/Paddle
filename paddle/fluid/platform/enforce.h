@@ -47,8 +47,15 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "acl/acl.h"
-#include "hccl/hccl_types.h"
 #endif  // PADDLE_WITH_ASCEND_CL
+
+#ifdef PADDLE_WITH_HCCL
+#include "hccl/hccl_types.h"
+#endif  // PADDLE_WITH_HCCL
+
+#ifdef PADDLE_WITH_HIERARCHICAL_HCCL
+#include "paddle/fluid/operators/collective/hierarchical_hccl/hierarchical_hccl_types.h"
+#endif  // PADDLE_WITH_HIERARCHICAL_HCCL
 
 #include <fstream>
 #include <iomanip>
@@ -1180,7 +1187,19 @@ struct NPUStatusType {};
 
 DEFINE_NPU_STATUS_TYPE(aclError, ACL_ERROR_NONE);
 DEFINE_NPU_STATUS_TYPE(HcclResult, HCCL_SUCCESS);
+
+#ifdef PADDLE_WITH_HIERARCHICAL_HCCL
+DEFINE_NPU_STATUS_TYPE(HierarchicalHcclResult, SUCCESS);
+#endif  // PADDLE_WITH_HIERARCHICAL_HCCL
 }  // namespace details
+
+#ifdef PADDLE_WITH_HIERARCHICAL_HCCL
+inline std::string build_npu_error_msg(HierarchicalHcclResult stat) {
+  std::ostringstream sout;
+  sout << " Hierarchical Hccl error, the error code is : " << stat << ". ";
+  return sout.str();
+}
+#endif  // PADDLE_WITH_HIERARCHICAL_HCCL
 
 inline std::string build_npu_error_msg(aclError stat) {
   std::ostringstream sout;
@@ -1207,6 +1226,7 @@ inline std::string build_npu_error_msg(HcclResult stat) {
       __THROW_ERROR_INTERNAL__(__summary__);                   \
     }                                                          \
   } while (0)
+
 #endif  // PADDLE_WITH_ASCEND_CL
 
 }  // namespace platform

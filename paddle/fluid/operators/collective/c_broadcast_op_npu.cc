@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
+#include "paddle/fluid/platform/collective_helper.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
@@ -30,14 +30,24 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
-    HcclDataType dtype = platform::ToHCCLDataType(x->type());
 
     auto out = ctx.Output<framework::LoDTensor>("Out");
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
+    auto dtype = platform::ToHCCLDataType(x->type());
+
+#if defined(PADDLE_WITH_HCCL)
     auto comm =
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+#elif defined(PADDLE_WITH_HIERARCHICAL_HCCL)
+    auto comm = paddle::platform::HierarchicalHcclCommContext::Instance().Get(
+        ring_id, place);
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with hierarchical hccl or "
+        "hccl."));
+#endif
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -51,18 +61,14 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     std::string group =
         std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
 
-    VLOG(3) << "begin hccl broadcast, parameter is: "
+    VLOG(3) << "begin ascend broadcast, parameter is: "
             << "root " << root << ", group is " << group
             << ", comm: " << comm->comm() << ", stream: " << stream;
 
+#if defined(PADDLE_WITH_HCCL)
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
-
-    VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-            << framework::product(out->dims());
-
     dev_ctx->Wait();
-
     if (out != x) {
       framework::TensorCopy(*static_cast<const framework::Tensor*>(x), place,
                             *platform::DeviceContextPool::Instance().Get(place),
@@ -72,6 +78,18 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
 
     out->Resize(x->dims());
     out->set_lod(x->lod());
+#elif defined(PADDLE_WITH_HIERARCHICAL_HCCL)
+    void* out_ptr = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
+    PADDLE_ENFORCE_NPU_SUCCESS(paddle::operators::hierarchical_hccl_broadcast(
+        ptr, out_ptr, numel, dtype, root, comm->comm().c_str(), stream));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with hierarchical hccl or "
+        "hccl."));
+#endif
+    VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+            << framework::product(out->dims());
+
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));

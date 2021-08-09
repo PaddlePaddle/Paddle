@@ -14,8 +14,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_RCCL)
 
 #include <stdio.h>
 #include <memory>
@@ -78,6 +77,7 @@ inline HcclDataType ToHCCLDataType(framework::proto::VarType::Type type) {
 //   }
 // };
 
+#if defined(PADDLE_WITH_HCCL)
 struct HCCLContext {
   std::unique_ptr<NPUDeviceContext> ctx_;
   HcclComm comm_;
@@ -349,6 +349,7 @@ class HCCLCommunicator {
   // just used for sync_batch_norm op.
   std::unique_ptr<HCCLContextMap> sync_batch_norm_ctx_;
 };
+#endif
 
 }  // namespace platform
 }  // namespace paddle

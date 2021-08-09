@@ -77,6 +77,10 @@ struct GpuDevice;
 #include "paddle/fluid/platform/npu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_HIERARCHICAL_HCCL
+#include "paddle/fluid/operators/collective/hierarchical_hccl/hierarchical_hccl_types.h"
+#endif
+
 namespace paddle {
 namespace platform {
 
@@ -203,12 +207,24 @@ class NPUDeviceContext : public DeviceContext {
 
   void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL)
   /*! \brief  Return hccl communicators. */
   HcclComm hccl_comm() const { return hccl_comm_; }
 
   /*! \brief  Set hccl communicators. */
   void set_hccl_comm(HcclComm comm) { hccl_comm_ = comm; }
+#endif
+
+#if defined(PADDLE_WITH_HIERARCHICAL_HCCL)
+  /*! \brief  Return hccl communicators. */
+  HierarchicalHcclCommGroupIdType hierarchical_hccl_com_() const {
+    return hierarchical_hccl_com__;
+  }
+
+  /*! \brief  Set hccl communicators. */
+  void set_hierarchical_hccl_com(HierarchicalHcclCommGroupIdType comm) {
+    hierarchical_hccl_com__ = comm;
+  }
 #endif
 
   // template <typename Callback>
@@ -222,9 +238,13 @@ class NPUDeviceContext : public DeviceContext {
   NPUPlace place_;
   aclrtContext context_;
 
-#ifdef PADDLE_WITH_ASCEND_CL
+#ifdef PADDLE_WITH_HCCL
   // HCCLContext_t hccl_context_;
   HcclComm hccl_comm_{nullptr};
+#endif
+
+#ifdef PADDLE_WITH_HIERARCHICAL_HCCL
+  HierarchicalHcclCommGroupIdType hierarchical_hccl_com__;
 #endif
 
   // Need to be the same with other DeviceContext,

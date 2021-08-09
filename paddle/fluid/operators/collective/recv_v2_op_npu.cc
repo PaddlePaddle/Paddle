@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/recv_v2_op.h"
+#include "paddle/fluid/platform/collective_helper.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
@@ -31,12 +31,22 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(out->dims(), ctx.GetPlace());
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
     int numel = out->numel();
-    HcclDataType dtype = platform::ToHCCLDataType(out->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
+    auto dtype = platform::ToHCCLDataType(out->type());
+
+#if defined(PADDLE_WITH_HCCL)
     auto comm =
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+#elif defined(PADDLE_WITH_HIERARCHICAL_HCCL)
+    auto comm = paddle::platform::HierarchicalHcclCommContext::Instance().Get(
+        ring_id, place);
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with hierarchical hccl or "
+        "hccl."));
+#endif
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -54,14 +64,22 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
 
     int root = peer;
 
-    VLOG(3) << "begin hccl recv, parameter is: "
+    VLOG(3) << "begin ascend recv, parameter is: "
             << "ring_id:" << ring_id << ", nranks:" << nranks
             << ", peer:" << peer << ", numel:" << numel << ", ptr:" << ptr
             << ", dtype:" << dtype << ", root:" << root
             << ", comm: " << comm->comm() << ", stream: " << stream;
-
+#if defined(PADDLE_WITH_HCCL)
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
+#elif defined(PADDLE_WITH_HIERARCHICAL_HCCL)
+    PADDLE_ENFORCE_NPU_SUCCESS(paddle::operators::hierarchical_hccl_broadcast(
+        ptr, ptr, numel, dtype, root, comm->comm().c_str(), stream));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with hierarchical hccl or "
+        "hccl."));
+#endif
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

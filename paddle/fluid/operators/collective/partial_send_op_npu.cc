@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/send_v2_op.h"
-
 #include "paddle/fluid/platform/collective_helper.h"
+
+#if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/hccl_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -33,12 +35,22 @@ class PartialSendOpASCENDKernel : public framework::OpKernel<T> {
 
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()) + offset);
     int numel = send_numel;
-    HcclDataType dtype = platform::ToHCCLDataType(x->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
+    auto dtype = platform::ToHCCLDataType(x->type());
+
+#if defined(PADDLE_WITH_HCCL)
     auto comm =
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+#elif defined(PADDLE_WITH_HIERARCHICAL_HCCL)
+    auto comm = paddle::platform::HierarchicalHcclCommContext::Instance().Get(
+        ring_id, place);
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with hierarchical hccl or "
+        "hccl."));
+#endif
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -56,12 +68,21 @@ class PartialSendOpASCENDKernel : public framework::OpKernel<T> {
 
     int root = rank;
 
-    VLOG(3) << "begin hccl send, parameter is: "
+    VLOG(3) << "begin ascend partial send, parameter is: "
             << "root " << root << ", comm: " << comm->comm()
             << ", stream: " << stream;
 
+#if defined(PADDLE_WITH_HCCL)
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
+#elif defined(PADDLE_WITH_HIERARCHICAL_HCCL)
+    PADDLE_ENFORCE_NPU_SUCCESS(paddle::operators::hierarchical_hccl_broadcast(
+        ptr, ptr, numel, dtype, root, comm->comm().c_str(), stream));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle collective should compile with hierarchical hccl or "
+        "hccl."));
+#endif
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

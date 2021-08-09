@@ -21,7 +21,7 @@ namespace framework {
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL)
 #include "acl/acl.h"
 #include "hccl/hccl.h"
 #include "hccl/hccl_types.h"
@@ -49,7 +49,7 @@ class CCommInitOpAscend : public framework::OperatorBase {
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input con not be empty."));
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL)
     HcclRootInfo* hccl_id = var->GetMutable<HcclRootInfo>();
 
     int rank_ids = Attr<int>("rank_ids");

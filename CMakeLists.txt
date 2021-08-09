@@ -47,6 +47,8 @@ option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"       OFF)
 # NOTE(zhiqiu): WITH_ASCEND_CL can be compile on x86_64, so we can set WITH_ASCEND=OFF and WITH_ASCEND_CL=ON
 # to develop some acl related functionality on x86
 option(WITH_ASCEND_CL         "Compile PaddlePaddle with ASCEND CL"        ${WITH_ASCEND})
+option(WITH_HCCL        "Compile PaddlePaddle with HCCL in ASCEND platform"       ${WITH_ASCEND_CL})
+option(WITH_HIERARCHICAL_HCCL        "Compile PaddlePaddle with HIERARCHICAL HCCL in ASCEND platform"       OFF)
 option(WITH_ASCEND_CXX11         "Compile PaddlePaddle with ASCEND and CXX11 ABI"        OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)

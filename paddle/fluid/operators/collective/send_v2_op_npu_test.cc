@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
 #include "paddle/fluid/operators/collective/send_v2_op.h"
 
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif

@@ -32,7 +32,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#ifdef PADDLE_WITH_ASCEND_CL
+#ifdef PADDLE_WITH_HCCL
 
 class GenHCCLIdOp : public framework::OperatorBase {
  public:

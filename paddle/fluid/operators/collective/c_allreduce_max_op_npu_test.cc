@@ -36,7 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
 
-#if defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
@@ -131,8 +131,8 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
 
-  int num1 = 100;
-  int num2 = 100;
+  int num1 = 5;
+  int num2 = 5;
 
   for (int64_t i = 0; i < num1 * num2; ++i) {
     init.push_back(1.0 + rank_id * 3);
@@ -154,11 +154,12 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   f::AttributeMap attrs;
   attrs["tag"] = std::string("tagx");
   attrs["ring_id"] = 0;
+  attrs["use_calc_stream"] = 1;
 
   auto op = f::OpRegistry::CreateOp("c_allreduce_max", {{"X", {"Data"}}},
                                     {{"Out", {"OutData"}}}, attrs);
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 1; i++) {
     op->Run(*scope, place);
   }
   ctx.Wait();
