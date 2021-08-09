@@ -295,7 +295,8 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     bool global_stats = test_mode || use_global_stats;
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
@@ -350,12 +351,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         // we skip the batch norm calculation, let y = x.
         framework::TensorCopy(*x, ctx.GetPlace(), y);
         return;
-      }
-
-      // input dimension is 2 and the format is NCHW. The input can be regarded
-      // as NHWC format
-      if (x_dims.size() == 2 && data_layout == DataLayout::kNCHW) {
-        data_layout = DataLayout::kNHWC;
       }
 
       switch (data_layout) {
@@ -609,7 +604,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
-    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
 
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
@@ -732,12 +728,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 
     dy_sum_arr.setZero();
     dy_mul_x_sub_mean_mul_invstd_sum_arr.setZero();
-
-    // input dimension is 2 and the format is NCHW. The input can be regarded as
-    // NHWC format
-    if (x_dims.size() == 2 && data_layout == DataLayout::kNCHW) {
-      data_layout = DataLayout::kNHWC;
-    }
 
     // inplace calculation
     // Y:  ((x - est_mean) * (inv_var) * scale + bias
