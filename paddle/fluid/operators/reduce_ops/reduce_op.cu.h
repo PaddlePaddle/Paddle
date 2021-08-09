@@ -33,12 +33,15 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
 #define REDUCE_VEC_SIZE 4
+
+namespace kps = paddle::operators::kernel_primitives;
 
 namespace paddle {
 namespace operators {
@@ -504,73 +507,6 @@ struct ReduceConfig {
   dim3 grid;
 };
 
-static __device__ int SharedMemoryIndex(int index) {
-  return (threadIdx.y + index) * blockDim.x + threadIdx.x;
-}
-
-template <typename T, typename ReduceOp>
-static __device__ T WarpReduce(T val, ReduceOp reducer) {
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-  for (int stride = detail::kWarpSize / 2; stride > 0; stride >>= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
-    val = reducer(val, temp);
-  }
-  return val;
-}
-
-/* e.g.
- * |---------block---------|
- * |warp0|warp1|warp2|warp3|
- * |0~31|32~63|64~95|96~127|  ---->blockDim.x = 128
- *  \|/  \|/   \|/    \|/     ---->1. First WarpReduce in each warp
- * res0  res1  res2  res3     ---->2. Store result of each warp to shared memory
- *   \    \    /     /        ---->3. Load the result above from shared memory
- *        res                         to warp0 and process the second WarpReduce
- */
-template <typename T, typename ReduceOp>
-static __device__ T BlockXReduce(T val, ReduceOp reducer) {
-  using detail::kWarpSize;
-  __shared__ T shared[2 * kWarpSize];
-  int block_dim_x = blockDim.x;
-  if (blockDim.x > kWarpSize) {
-    block_dim_x = blockDim.x / kWarpSize;
-    int lane = threadIdx.x % kWarpSize;
-    int tid = threadIdx.y * blockDim.x + threadIdx.x;
-    int wid = tid / kWarpSize;
-    int bid = threadIdx.y;
-    val = WarpReduce(val, reducer);
-    if (lane == 0) {
-      shared[wid] = val;
-    }
-    __syncthreads();
-    val = shared[bid * block_dim_x + lane];
-  }
-
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-  for (int stride = 1; stride < block_dim_x; stride <<= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
-    val = reducer(val, temp);
-  }
-  return val;
-}
-
-template <typename T, typename ReduceOp>
-static __device__ T BlockYReduce(T val, ReduceOp reducer) {
-  __shared__ T shared_memory[detail::kMaxThread];
-  shared_memory[SharedMemoryIndex(0)] = val;
-  for (int stride = blockDim.y / 2; stride > 0; stride >>= 1) {
-    __syncthreads();
-    if (threadIdx.y < stride && threadIdx.y + stride < blockDim.y) {
-      T temp = shared_memory[SharedMemoryIndex(stride)];
-      val = reducer(val, temp);
-    }
-    shared_memory[SharedMemoryIndex(0)] = val;
-  }
-  return val;
-}
-
 // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
 // function will be used
 // eg: x_dim = {nz, ny, nx}, nx != 1, axis can be 0 or 1
@@ -580,23 +516,42 @@ template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
 __device__ void ReduceHigherDim(const Tx* x, Ty* y, ReduceOp reducer,
                                 TransformOp transformer, Ty init,
                                 int reduce_num, int left_num, int block_size) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  // NY = 4, NX = 1
+  const int NY = 4;
+  int idx = blockIdx.x * blockDim.x;
   int idy = blockIdx.y * block_size;
+  Ty reduce_var[NY];
+  kps::init<Ty, NY>(reduce_var, init);
+  Ty result = init;
 
-  Ty reduce_var = init;
+  int block_offset = idy * left_num + idx + blockIdx.z * reduce_num * left_num;
+  int store_offset =
+      blockIdx.y * left_num + blockIdx.z * gridDim.y * left_num + idx;
 
-  if (idx < left_num) {
-    int loop = reduce_num - idy;
-    loop = loop > block_size ? block_size : loop;
+  int size = left_num - idx;
+  size = size > 0 ? size : 0;
+  int loop = reduce_num - idy;
+  loop = loop > block_size ? block_size : loop;
+  int repeat = loop / NY;
+  int tail = loop - repeat * NY;
 
-    for (int iy = 0; iy < loop; iy++) {
-      int id = (idy + iy) * left_num + idx + blockIdx.z * reduce_num * left_num;
-      reduce_var = reducer(reduce_var, static_cast<Ty>(transformer(x[id])));
-    }
-
-    y[idx + blockIdx.y * left_num + blockIdx.z * gridDim.y * left_num] =
-        reduce_var;
+  for (int i = 0; i < repeat; ++i) {
+    kps::ReadDataStride<Tx, Ty, 1, NY, 1>(&reduce_var[0],
+                                          x + block_offset + i * NY * left_num,
+                                          size, NY, 1, left_num);
+    kps::Reduce<Ty, NY, 1, 1, ReduceOp, kps::ReduceMode::LocalMode>(
+        &result, &reduce_var[0], reducer, false);
   }
+
+  if (tail) {
+    kps::ReadDataStride<Tx, Ty, 1, NY, 1>(
+        &reduce_var[0], x + block_offset + repeat * NY * left_num, size, tail,
+        1, left_num);
+    kps::Reduce<Ty, NY, 1, 1, ReduceOp, kps::ReduceMode::LocalMode>(
+        &result, &reduce_var[0], reducer, false);
+  }
+
+  kps::WriteDataBase<Ty, 1, 1, 1>(y + store_offset, &result, size);
 }
 
 // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
@@ -669,13 +624,13 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
 
   // 2. reduce in block y
   if (!reduce_lastdim && blockDim.y > 1) {
-    reduce_var = BlockYReduce(reduce_var, reducer);
+    reduce_var = kps::BlockYReduce(reduce_var, reducer);
   }
   __syncthreads();
 
   if (reduce_lastdim) {
     // 3. reduce in block x
-    reduce_var = BlockXReduce(reduce_var, reducer);
+    reduce_var = kps::BlockXReduce(reduce_var, reducer);
     if (left_idx < left_num && threadIdx.x == 0) {
       y[blockIdx.y * left_num + left_idx] = reduce_var;
     }
