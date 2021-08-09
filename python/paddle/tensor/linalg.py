@@ -943,7 +943,7 @@ def mv(x, vec, name=None):
     return out
 
 
-def matrix_power(x, n):
+def matrix_power(x, n, name=None):
     r"""
     Computes the n-th power of a square matrix or a batch of square matrices.
 
@@ -959,6 +959,8 @@ def matrix_power(x, n):
         x (Tensor): A square matrix or a batch of square matrices to be raised
             to power(n). Its data type should be float or double.
         n (int): The exponent. It can be any positive, negative integer or zero.
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The n-th power of matrix (or batch of matrices) x. Its data type is
@@ -972,12 +974,29 @@ def matrix_power(x, n):
             x = paddle.to_tensor([[1, 2, 3],
                                   [1, 4, 9],
                                   [1, 8, 27]], dtype='float64')
-            n = -2
-            out = paddle.linalg.matrix_power(x, n)
-            print(out)
+            print(paddle.linalg.matrix_power(x, 2))
+            # [[6.  , 34. , 102.],
+            #  [14. , 90. , 282.],
+            #  [36. , 250., 804.]]
+
+            print(paddle.linalg.matrix_power(x, 0))
+            # [[1., 0., 0.],
+            #  [0., 1., 0.],
+            #  [0., 0., 1.]]
+
+            print(paddle.linalg.matrix_power(x, -2))
             # [[ 12.91666667, -12.75000000,  2.83333333 ],
             #  [-7.66666667 ,  8.         , -1.83333333 ],
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
+
+            print(paddle.linalg.matrix_power(paddle.expand(x, shape=[2, -1, -1]), -2))
+            # [[[ 12.91666667, -12.75000000,  2.83333333 ],
+            #   [-7.66666667 ,  8.         , -1.83333333 ],
+            #   [ 1.80555556 , -1.91666667 ,  0.44444444 ]],
+
+            #  [[ 12.91666667, -12.75000000,  2.83333333 ],
+            #   [-7.66666667 ,  8.         , -1.83333333 ],
+            #   [ 1.80555556 , -1.91666667 ,  0.44444444 ]]]
 
     """
     if in_dygraph_mode():
