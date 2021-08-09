@@ -55,7 +55,7 @@ class TestLeakyRelu(OpTest):
 
 #    TODO(HYX): Add grad test
 #    def test_check_grad(self):
-#        if self.dtype != np.float16:
+#        if self.dtype == np.float16:
 #            return
 #        self.check_grad_with_place(
 #            self.place, ['X'], 'Out')
