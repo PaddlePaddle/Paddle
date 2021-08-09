@@ -95,7 +95,7 @@ int Tree::load(std::string path) {
     ++linenum;
   }
   _head = _nodes + _total_node_num - 1;
-  LOG(INFO) << "all lines:" << linenum << ", all tree nodes:" << idx;
+  LOG(INFO) << "all lines:" << linenum << ", all tree nodes:" << idx << ", total_node_num:" << _total_node_num;
   return 0;
 }
 void Tree::print_tree() {
@@ -137,13 +137,17 @@ int Tree::dump_tree(const uint64_t table_id, int fea_value_dim,
   // pull sparse
   std::vector<uint64_t> fea_keys;
   std::vector<float*> pull_result_ptr;
+  LOG(INFO) << "dump total num:" << _total_node_num;
   fea_keys.reserve(_total_node_num);
   pull_result_ptr.reserve(_total_node_num);
+  
 
   for (size_t i = 0; i != _total_node_num; ++i) {
-    _nodes[i].embedding.resize(fea_value_dim);
+    //_nodes[i].embedding.resize(fea_value_dim);
+    _nodes[i].embedding_update.resize(fea_value_dim);
     fea_keys.push_back(_nodes[i].id);
-    pull_result_ptr.push_back(_nodes[i].embedding.data());
+    //pull_result_ptr.push_back(_nodes[i].embedding.data());
+    pull_result_ptr.push_back(_nodes[i].embedding_update.data());
   }
   std::vector<::std::future<int32_t>> pull_sparse_status;
   pull_sparse_status.resize(0);
@@ -161,7 +165,7 @@ int Tree::dump_tree(const uint64_t table_id, int fea_value_dim,
     }
   }
 
-  std::cout<< "\ndone pull_sparse";
+  std::cout<< "done pull_sparse";
   int ret;
   std::shared_ptr<FILE> fp =
       paddle::framework::fs_open(tree_path, "w", &ret, "");
@@ -171,16 +175,41 @@ int Tree::dump_tree(const uint64_t table_id, int fea_value_dim,
   fwrite(first_line.c_str(), first_line.length(), 1, &*fp);
   std::string line_break_str("\n");
   std::string line("");
+  int miss_num = 0;
   for (size_t i = 0; i != _total_node_num; ++i) {
     line = line_break_str;
+    bool sign_o = false;
     const Node& node = _nodes[i];
     line += boost::lexical_cast<std::string>(node.id) + "\t";
-    if (!node.embedding.empty()) {
-      for (size_t j = 0; j != node.embedding.size() - 1; ++j) {
-        line += boost::lexical_cast<std::string>(node.embedding[j]) + " ";
+    //if (!node.embedding.empty()) {
+    if (!node.embedding_update.empty()) {
+      // hard code: 
+      std::string first_emb = boost::lexical_cast<std::string>(node.embedding_update[3]);
+      std::string second_emb = boost::lexical_cast<std::string>(node.embedding_update[4]);
+      if (first_emb.compare("0") == 0 && second_emb.compare("0") == 0){
+        sign_o = true;
+        miss_num += 1;
+        //LOG(INFO) << node.embedding_update[3] << "::::" << node.embedding_update[4];
       }
-      line += boost::lexical_cast<std::string>(
-          node.embedding[node.embedding.size() - 1]);
+      if (sign_o) {
+        for (size_t j = 0; j != node.embedding.size() - 1; ++j) {
+          line += boost::lexical_cast<std::string>(node.embedding[j]) + " ";
+        }
+        line += boost::lexical_cast<std::string>(
+              node.embedding[node.embedding.size() - 1]);
+      } else{
+        for (size_t j = 3; j != node.embedding_update.size() - 1; ++j) {
+          line += boost::lexical_cast<std::string>(node.embedding_update[j]) + " ";
+        }
+        line += boost::lexical_cast<std::string>(
+              node.embedding_update[node.embedding_update.size() - 1]);
+      }
+      // hard code: delete first 3 values: show, click, lr
+      //for (size_t j = 3; j != node.embedding.size() - 1; ++j) {
+      //  line += boost::lexical_cast<std::string>(node.embedding[j]) + " ";
+      //}
+      //line += boost::lexical_cast<std::string>(
+      //    node.embedding[node.embedding.size() - 1]);
     } else {
       LOG(WARNING) << "node_idx[" << i << "], id[" << node.id << "] "
                    << "has no embeddings";
@@ -201,6 +230,7 @@ int Tree::dump_tree(const uint64_t table_id, int fea_value_dim,
     line += "\t" + boost::lexical_cast<std::string>(node.height);
     fwrite(line.c_str(), line.length(), 1, &*fp);
   }
+  LOG(INFO) << "emb all 0 miss num:" << miss_num;
   return 0;
 }
 

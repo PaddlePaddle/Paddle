@@ -935,6 +935,23 @@ void FleetWrapper::SaveMultiTableOnePath(const std::vector<int>& table_ids,
 #endif
 }
 
+void FleetWrapper::SaveSparseByOneSlot(const std::string& path,
+                                         const int mode, const int filter_slot) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->save_sparse_by_one_slot(
+      path, std::to_string(mode), std::to_string(filter_slot));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "Save Sparse By One Slot failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::SaveSparseByOneSlot  does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->save(path, std::to_string(mode));
@@ -1031,6 +1048,22 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
 #endif
 }
 
+void FleetWrapper::CommonSlotsShuffle(int table_id, const std::string& path,
+                                const int mode, const int filter_one_slot) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->common_slots_shuffle(
+      table_id, path, std::to_string(mode), std::to_string(filter_one_slot));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "common slots shuffle failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::CommonSlotsShuffle does nothing when no pslib";
+#endif
+}
 int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
                                 const int mode) {
 #ifdef PADDLE_WITH_PSLIB
@@ -1050,6 +1083,24 @@ int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
 #endif
 }
 
+int32_t FleetWrapper::SaveCommonSlots(int table_id, const std::string& path,
+                                const int mode, const int all_nodes) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret =
+      pslib_ptr_->_worker_ptr->save_common_slots(table_id, path, std::to_string(mode), std::to_string(all_nodes));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "table save common slots failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return feasign_cnt;
+#else
+  VLOG(0) << "FleetWrapper::SaveCommonSlots does nothing when no pslib";
+  return -1;
+#endif
+}
 int32_t FleetWrapper::SaveWithWhitelist(int table_id, const std::string& path,
                                         const int mode,
                                         const std::string& whitelist_path) {

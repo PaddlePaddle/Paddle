@@ -309,6 +309,42 @@ class HDFSClient(object):
                 hdfs_src_path, hdfs_dst_path))
             return True
 
+    def cp(self, hdfs_src_path, hdfs_dst_path, overwrite=False):
+        """
+        copy a file or folder on HDFS.
+
+        Args:
+        hdfs_path(str): HDFS path.
+        overwrite(bool|False): If the path already exists and overwrite is False, will return False.
+
+        Returns:
+            True or False
+        """
+        assert hdfs_src_path is not None
+        assert hdfs_dst_path is not None
+
+        if not self.is_exist(hdfs_src_path):
+            _logger.info("HDFS path do not exist: {}".format(hdfs_src_path))
+        if self.is_exist(hdfs_dst_path) and not overwrite:
+            _logger.error("HDFS path is exist: {} and overwrite=False".format(
+                hdfs_dst_path))
+        if self.is_exist(hdfs_dst_path) and overwrite:
+            self.delete(hdfs_dst_path)
+            
+
+        copy_command = ['-cp', hdfs_src_path, hdfs_dst_path]
+        returncode, output, errors = self.__run_hdfs_cmd(
+            copy_command, retry_times=1)
+
+        if returncode:
+            _logger.error("HDFS cp path: {} to {} failed".format(
+                hdfs_src_path, hdfs_dst_path))
+            return False
+        else:
+            _logger.info("HDFS cp path: {} to {} successfully".format(
+                hdfs_src_path, hdfs_dst_path))
+            return True
+
     @staticmethod
     def make_local_dirs(local_path):
         """

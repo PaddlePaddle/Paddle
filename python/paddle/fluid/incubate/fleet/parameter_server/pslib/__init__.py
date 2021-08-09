@@ -270,6 +270,35 @@ class PSLib(Fleet):
             self._fleet_ptr.print_table_stat(table_id)
         self._role_maker._barrier_worker()
 
+    def save_sparse_by_one_slot(self, executor, dirname, main_program=None, **kwargs):
+        """
+        save presistable parameters,
+        when using fleet, it will save sparse and dense feature
+
+        Args:
+            executor(Executor): fluid executor
+            dirname(str): save path. It can be hdfs/afs path or local path
+            main_program(Program): fluid program, default None
+            kwargs: use define property, current support following
+                mode(int): 0 means save all pserver model,
+                           1 means save delta pserver model (save diff),
+                           2 means save xbox base,
+                           3 means save batch model.
+
+        Example:
+            .. code-block:: python
+
+              fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
+
+        """
+        mode = kwargs.get("mode", 0)
+        filter_slot = kwargs.get("filter_slot", 1)
+        self._fleet_ptr.client_flush()
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_sparse_by_one_slot(dirname, mode, filter_slot)
+        self._role_maker._barrier_worker()
+
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
         save presistable parameters,
@@ -398,6 +427,48 @@ class PSLib(Fleet):
         feasign_num = -1
         if self._role_maker.is_first_worker():
             feasign_num = self._fleet_ptr.save_cache(table_id, dirname, mode)
+
+        self._role_maker._barrier_worker()
+        return feasign_num
+
+    def save_common_slots_model(self, executor, dirname, main_program=None, **kwargs):
+        """
+        save sparse cache table,
+        when using fleet, it will save sparse cache table
+
+        Args:
+            executor(Executor): fluid executor
+            dirname(str): save path. It can be hdfs/afs path or local path
+            main_program(Program): fluid program, default None
+            kwargs: use define property, current support following
+                mode(int): define for feature extension in the future,
+                           currently no use, will pass a default value 0
+                table_id(int): which table to save cache, default is 0
+
+        Returns:
+            feasign_num(int): cache feasign num
+
+        Example:
+            .. code-block:: python
+
+              fleet.save_cache_model(None, dirname="/you/path/to/model", mode = 0)
+
+        """
+        mode = kwargs.get("mode", 0)
+        table_id = kwargs.get("table_id", 0)
+        filter_one_slot = kwargs.get("filter_one_slot", 1)
+        all_nodes = kwargs.get("all_nodes", 1)
+        self._fleet_ptr.client_flush()
+        self._role_maker._barrier_worker()
+
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.common_slots_shuffle(table_id, dirname, mode, filter_one_slot)
+
+        self._role_maker._barrier_worker()
+
+        feasign_num = -1
+        if self._role_maker.is_first_worker():
+            feasign_num = self._fleet_ptr.save_common_slots(table_id, dirname, mode, all_nodes)
 
         self._role_maker._barrier_worker()
         return feasign_num

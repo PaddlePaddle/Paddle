@@ -33,6 +33,7 @@ struct Node {
   Node* parent_node;
   uint64_t id;
   std::vector<float> embedding;
+  std::vector<float> embedding_update;
   int16_t height;  //层级
 };
 
@@ -86,8 +87,11 @@ class TreeWrapper {
   void clear() { tree_map.clear(); }
 
   void insert(std::string name, std::string tree_path) {
+    // hard code: delete 
     if (tree_map.find(name) != tree_map.end()) {
-      return;
+      auto iter = tree_map.find(name); 
+      tree_map.erase(iter);
+      std::cout << "delete tree and insert new tree:" << tree_path;
     }
     TreePtr tree = std::make_shared<Tree>();
     tree->load(tree_path);
@@ -105,6 +109,7 @@ class TreeWrapper {
   void sample(const uint16_t sample_slot, const uint64_t type_slot,
               std::vector<Record>* src_datas,
               std::vector<Record>* sample_results, const uint64_t start_h) {
+    const uint64_t _leaf_high = 5;
     sample_results->clear();
     for (auto& data : *src_datas) {
       VLOG(1) << "src record";
@@ -147,19 +152,30 @@ class TreeWrapper {
             PADDLE_ENFORCE_EQ(trace_ids.size(), 0, "");
           }
         }
+        // node is not in tree
+        if (trace_ids.size() == 0){
+          Record instance(data);
+          instance.uint64_feasigns_[type_feasign_idx].sign().uint64_feasign_ = 10;
+          sample_results->push_back(instance);
+        }
         for (uint64_t i = 0; i < trace_ids.size(); i++) {
           Record instance(data);
           instance.uint64_feasigns_[sample_feasign_idx].sign().uint64_feasign_ =
               trace_ids[i].first;
           // for auc, fake node vertical id
           if (trace_ids[i].second > start_h){
-            instance.uint64_feasigns_[type_feasign_idx].sign().uint64_feasign_ =
-                (instance.uint64_feasigns_[type_feasign_idx]
-                     .sign()
-                     .uint64_feasign_ +
-                 1) *
-                    100 +
-                trace_ids[i].second;
+            // leaf = 10; non_leaf=11
+            if (trace_ids[i].second == _leaf_high){
+                instance.uint64_feasigns_[type_feasign_idx].sign().uint64_feasign_ = 10;
+            }else{
+                instance.uint64_feasigns_[type_feasign_idx].sign().uint64_feasign_ = 11;
+            }
+                //(instance.uint64_feasigns_[type_feasign_idx]
+                //     .sign()
+                //     .uint64_feasign_ +
+                // 1) *
+                //    100 +
+                //trace_ids[i].second;
             sample_results->push_back(instance);
           }
         }

@@ -232,6 +232,7 @@ class FleetWrapper {
   void SaveModel(const std::string& path, const int mode);
   void SaveMultiTableOnePath(const std::vector<int>& table_ids,
                              const std::string& path, const int mode);
+  void SaveSparseByOneSlot(const std::string& path, const int mode, const int filter_slot);
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
   void SaveModelOneTable(const uint64_t table_id, const std::string& path,
@@ -244,9 +245,12 @@ class FleetWrapper {
   // shuffle cache model between servers
   void CacheShuffle(int table_id, const std::string& path, const int mode,
                     const double cache_threshold);
+  void CommonSlotsShuffle(int table_id, const std::string& path, const int mode,
+                    const int filter_one_slot);
   // save cache model
   // cache model can speed up online predict
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
+  int32_t SaveCommonSlots(int table_id, const std::string& path, const int mode, const int all_nodes);
   // save sparse table filtered by user-defined whitelist
   int32_t SaveWithWhitelist(int table_id, const std::string& path,
                             const int mode, const std::string& whitelist_path);
