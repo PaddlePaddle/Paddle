@@ -18,6 +18,7 @@
 #include <iostream>
 #include <numeric>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "gflags/gflags.h"
@@ -117,5 +118,5 @@ void CompareRecord(std::map<std::string, Record> *truth_output_data,
   }
 }
 
-}  // namespace demo
+}  // namespace test
 }  // namespace paddle

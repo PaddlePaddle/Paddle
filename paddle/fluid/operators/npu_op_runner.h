@@ -71,6 +71,10 @@ class NpuOpRunner {
 
   NpuOpRunner &AddInput(std::vector<int64_t> &&dims);
 
+  NpuOpRunner &AddInput(std::vector<float> &&values);
+
+  NpuOpRunner &AddInput(std::vector<double> &&values);
+
   NpuOpRunner &AddOutput(const Tensor &tensor);
 
   NpuOpRunner &AddInputs(const std::vector<Tensor> &tensors);
