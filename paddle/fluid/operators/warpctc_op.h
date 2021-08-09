@@ -150,7 +150,7 @@ class WarpCTCFunctor {
     PADDLE_ENFORCE_EQ(
         CTC_STATUS_SUCCESS, status,
         platform::errors::PreconditionNotMet(
-            "warp-ctc [version %d] Error in get_workspace_size: %s",
+            "warp-ctc [version %d] Error in ComputeCtcLossFunctor: %s",
             warpctc_version_, platform::dynload::ctcGetStatusString(status)));
   }
 
