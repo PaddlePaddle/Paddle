@@ -600,6 +600,7 @@ void Reducer::AddDistHook(size_t var_index) {
                         "than %d, but it is %d",
                         variable_locators_.size(), var_index));
 
+  // gradient synchronization is not required when grad_need_hooks_ is false.
   if (!grad_need_hooks_) {
     return;
   }
@@ -912,6 +913,9 @@ void Reducer::ProcessUnusedDenseVars() {
 
       // 3. create grad var base or get grad var base
       auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
+      // NOTE(haohongxiang): Calling SetIsEmpty here is to make sure that 
+      // gradient accumulation can continue normally after clear_gradients()
+      // especiall in cases including complex control flow.
       grad_var_base_tmp->SharedVar()->SetIsEmpty(false);
 
       // 4. set grad tensor
