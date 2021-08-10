@@ -56,8 +56,8 @@ class Flatten2GradNPUKernel : public framework::OpKernel<T> {
 
 using Tensor = framework::Tensor;
 
-template <typename DeviceContext, typename T>
-class FlattenContiguousRangeNPUKernel : public framework::OpKernel<T> {
+template <typeame DeviceContext, typename T>
+class FlattenConntiguousRangeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *X = ctx.Input<Tensor>("X");
