@@ -75,9 +75,9 @@ class aligned_storage
     union dummy_u
     {
         char data[ sizeof(T) ];
-        type_with_alignment<
-          ::std::alignment_of<T>::value >::type aligner_;
-        std::aligned_storage<::std::alignment_of<T>::value >::type aligner_;
+        //type_with_alignment<
+        //  ::std::alignment_of<T>::value >::type aligner_;
+        typename std::aligned_storage<::std::alignment_of<T>::value >::type aligner_;
     } dummy_ ;
 
   public:
@@ -119,7 +119,7 @@ class optional_base : public optional_tag
     ::boost::detail::make_reference_content<T>::type internal_type ;
 
     //typedef std::aligned_storage<sizeof(internal_type)> storage_type ;
-    typedef aligned_storage<sizeof(internal_type)> storage_type ;
+    typedef aligned_storage<internal_type> storage_type ;
 
     typedef types_when_isnt_ref<T> types_when_not_ref ;
     typedef types_when_is_ref<T>   types_when_ref   ;
