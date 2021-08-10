@@ -5166,8 +5166,8 @@ class PipelineOptimizer(object):
 
             fp16_grad_var = block.var(fp16_grad_name)
             grad_var = block.var(grad_name)
+            grad_var.persistable = False
 
-            grad_name.persistable = False
             block._insert_op(
                 index=first_opt_op_idx,
                 type='cast',
@@ -5178,6 +5178,8 @@ class PipelineOptimizer(object):
                     'out_dtype': grad_var.dtype,
                     self._op_role_key: self._op_role.Optimize,
                 })
+
+        return merged_gradient_names
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
