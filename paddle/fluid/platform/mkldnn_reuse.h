@@ -106,7 +106,7 @@ class MKLDNNHandlerNoCachingT {
     PADDLE_ENFORCE_NOT_NULL(
         bwd_w_pd_,
         platform::errors::Unavailable(
-            "Error: BWD_W_PD should be set when getting BWD grad of weights."));
+            "BWD_W_PD should be set when getting BWD grad of weights."));
     T* ptr = diff_weights->mutable_data<T>(
         place_, bwd_w_pd_->diff_weights_desc().get_size());
     return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(),
@@ -118,7 +118,7 @@ class MKLDNNHandlerNoCachingT {
     PADDLE_ENFORCE_NOT_NULL(
         bwd_w_pd_,
         platform::errors::Unavailable(
-            "Error: BWD_W_PD should be set when getting BWD grad of weights."));
+            "BWD_W_PD should be set when getting BWD grad of weights."));
     return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc());
   }
 
@@ -284,7 +284,7 @@ class MKLDNNHandlerT {
         std::static_pointer_cast<TBackward_params>(dev_ctx_.GetBlob(key_p));
     if (backward_p == nullptr) {
       PADDLE_ENFORCE_NOT_NULL(bwd_w_pd_, platform::errors::Unavailable(
-                                             "Error: BWD_PD should be set when "
+                                             "BWD_PD should be set when "
                                              "getting BWD prim witk key: %s .",
                                              key_p));
       backward_p = std::make_shared<TBackward_params>(*bwd_w_pd_);
@@ -343,7 +343,7 @@ class MKLDNNHandlerT {
     PADDLE_ENFORCE_NOT_NULL(
         bwd_w_pd_,
         platform::errors::Unavailable(
-            "Error: BWD_W_PD should be set when getting BWD grad of weights."));
+            "BWD_W_PD should be set when getting BWD grad of weights."));
     T* ptr = diff_weights->mutable_data<T>(
         place_, bwd_w_pd_->diff_weights_desc().get_size());
     return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(), ptr,
@@ -355,7 +355,7 @@ class MKLDNNHandlerT {
     PADDLE_ENFORCE_NOT_NULL(
         bwd_w_pd_,
         platform::errors::Unavailable(
-            "Error: BWD_W_PD should be set when getting BWD grad of weights."));
+            "BWD_W_PD should be set when getting BWD grad of weights."));
     return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(),
                                             "@diff_wei_mem_p");
   }
@@ -804,17 +804,23 @@ class BinaryMKLDNNHandler
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
         x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+        platform::errors::InvalidArgument(
+            "Wrong layout set for X tensor. Expected: %d (kMKLDNN), Actual: %d",
+            DataLayout::kMKLDNN, x->layout()));
     PADDLE_ENFORCE_NE(
         x->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for X tensor."));
+        platform::errors::InvalidArgument(
+            "Wrong format set for X tensor : %d (undef)", x->format()));
 
     PADDLE_ENFORCE_EQ(
         y->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for Y tensor."));
+        platform::errors::InvalidArgument(
+            "Wrong layout set for Y tensor. Expected: %d (kMKLDNN), Actual: %d",
+            DataLayout::kMKLDNN, y->layout()));
     PADDLE_ENFORCE_NE(
         y->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for Y tensor."));
+        platform::errors::InvalidArgument(
+            "Wrong format set for Y tensor : %d (undef)", y->format()));
 
     const auto src_x_tz = framework::vectorize(x->dims());
     const auto src_y_tz = framework::vectorize(y->dims());

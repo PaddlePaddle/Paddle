@@ -62,10 +62,12 @@ class SoftmaxMKLDNNHandler
       : platform::MKLDNNHandlerNoCachingT<T, mkldnn::softmax_forward,
                                           mkldnn::softmax_backward>(
             mkldnn_engine, cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        out_grad->dims(), in_x_grad->dims(),
-        platform::errors::InvalidArgument("The shape of softmax_grad's input "
-                                          "and output must be identical."));
+    PADDLE_ENFORCE_EQ(out_grad->dims(), in_x_grad->dims(),
+                      platform::errors::InvalidArgument(
+                          "The shape of softmax_grad's input "
+                          "and output must be identical, but shapes differ, "
+                          "out_grad: %s in_grad: %s",
+                          out_grad->dims(), in_x_grad->dims()));
 
     auto dims = out_grad->dims();  // input and output share the same shape
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
