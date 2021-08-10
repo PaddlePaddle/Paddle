@@ -33,6 +33,7 @@ from ..fluid.layers import class_center_sample  # noqa: F401
 from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
+from paddle import _C_ops
 
 __all__ = []
 
@@ -152,7 +153,7 @@ def broadcast_tensors(input, name=None):
 
     num_inputs = len(input)
     if in_dygraph_mode():
-        return core.ops.broadcast_tensors(input, num_inputs)
+        return _C_ops.broadcast_tensors(input, num_inputs)
 
     check_type(input, 'input', (list, tuple), 'broadcast_tensors')
     if num_inputs < 1:
@@ -223,7 +224,7 @@ def flip(x, axis, name=None):
     Args:
         x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
-        axis (list|tuple): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
+        axis (list|tuple|int): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -240,10 +241,17 @@ def flip(x, axis, name=None):
           x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           x = x.astype('float32')
           img = paddle.to_tensor(x)
-          out = paddle.flip(img, [0,1])
+          tmp = paddle.flip(img, [0,1])
+          print(tmp) # [[[10,11],[8, 9]], [[6, 7],[4, 5]], [[2, 3],[0, 1]]]
 
-          print(out) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
+          out = paddle.flip(tmp,-1)
+          print(out) # [[[11,10],[9, 8]], [[7, 6],[5, 4]], [[3, 2],[1, 0]]]
     """
+    if isinstance(axis, int):
+        axis = [axis]
+    if in_dygraph_mode():
+        return core.ops.flip(x, "axis", axis)
+
     helper = LayerHelper("flip", **locals())
     check_type(x, 'X', (Variable), 'flip')
     dtype = helper.input_dtype('x')
@@ -362,8 +370,8 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         raise ValueError("The stop_axis should be larger than stat_axis")
 
     if in_dygraph_mode():
-        dy_out, _ = core.ops.flatten_contiguous_range(
-            x, 'start_axis', start_axis, 'stop_axis', stop_axis)
+        dy_out, _ = _C_ops.flatten_contiguous_range(x, 'start_axis', start_axis,
+                                                    'stop_axis', stop_axis)
         return dy_out
 
     helper = LayerHelper('flatten', **locals())
@@ -404,8 +412,8 @@ def flatten_(x, start_axis=0, stop_axis=-1, name=None):
     if start_axis > stop_axis:
         raise ValueError("The stop_axis should be larger than stat_axis")
 
-    dy_out, _ = core.ops.flatten_contiguous_range_(x, 'start_axis', start_axis,
-                                                   'stop_axis', stop_axis)
+    dy_out, _ = _C_ops.flatten_contiguous_range_(x, 'start_axis', start_axis,
+                                                 'stop_axis', stop_axis)
     return dy_out
 
 
@@ -461,7 +469,7 @@ def roll(x, shifts, axis=None, name=None):
         axis = []
 
     if in_dygraph_mode():
-        return core.ops.roll(x, 'axis', axis, 'shifts', shifts)
+        return _C_ops.roll(x, 'axis', axis, 'shifts', shifts)
 
     helper = LayerHelper("roll", **locals())
     check_type(axis, 'axis', (list, tuple), 'roll')
@@ -706,7 +714,7 @@ def squeeze_(x, axis=None, name=None):
     elif isinstance(axis, tuple):
         axis = list(axis)
 
-    out, _ = core.ops.squeeze2_(x, 'axes', axis)
+    out, _ = _C_ops.squeeze2_(x, 'axes', axis)
     return out
 
 
@@ -767,7 +775,7 @@ def unique(x,
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dygraph_mode():
-        out, inverse, indices, counts = core.ops.unique(
+        out, inverse, indices, counts = _C_ops.unique(
             x, 'dtype', attr_dtype, 'return_index', return_index,
             'return_inverse', return_inverse, 'return_counts', return_counts,
             'axis', axis, "is_sorted", True)
@@ -898,7 +906,7 @@ def unsqueeze_(x, axis, name=None):
             item.numpy().item(0) if isinstance(item, Variable) else item
             for item in axis
         ]
-    out, _ = core.ops.unsqueeze2_(x, 'axes', axis)
+    out, _ = _C_ops.unsqueeze2_(x, 'axes', axis)
     return out
 
 
@@ -952,7 +960,7 @@ def gather(x, index, axis=None, name=None):
 
     if in_dygraph_mode():
         axis = axis.item() if isinstance(axis, paddle.Tensor) else axis
-        return core.ops.gather(x, index, None, "axis", axis, "overwrite", False)
+        return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
@@ -1025,7 +1033,7 @@ def unbind(input, axis=0):
     axis_ = axis if axis >= 0 else len(input_shape) + axis
     num = input_shape[axis_]
     if in_dygraph_mode():
-        return core.ops.unbind(input, num, 'axis', axis)
+        return _C_ops.unbind(input, num, 'axis', axis)
 
     helper = LayerHelper("unbind", **locals())
     check_type(input, 'input', (Variable), 'unbind')
@@ -1117,7 +1125,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [1., 1.]]
     """
     if in_dygraph_mode():
-        return core.ops.scatter(x, index, updates, 'overwrite', overwrite)
+        return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'scatter')
     check_type(overwrite, 'overwrite', bool, 'scatter')
@@ -1139,7 +1147,7 @@ def scatter_(x, index, updates, overwrite=True, name=None):
     Inplace version of ``scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_scatter`.
     """
-    return core.ops.scatter_(x, index, updates, 'overwrite', overwrite)
+    return _C_ops.scatter_(x, index, updates, 'overwrite', overwrite)
 
 
 def scatter_nd_add(x, index, updates, name=None):
@@ -1294,7 +1302,7 @@ def tile(x, repeat_times, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return core.ops.tile(x, 'repeat_times', repeat_times)
+        return _C_ops.tile(x, 'repeat_times', repeat_times)
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
     if isinstance(repeat_times, Variable):
         assert len(repeat_times.shape) == 1, (
@@ -1377,7 +1385,7 @@ def expand_as(x, y, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return core.ops.expand_as_v2(x, 'target_shape', y.shape)
+        return _C_ops.expand_as_v2(x, 'target_shape', y.shape)
 
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
@@ -1431,7 +1439,7 @@ def broadcast_to(x, shape, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return core.ops.expand_v2(x, 'shape', shape)
+        return _C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')
@@ -1518,7 +1526,7 @@ def expand(x, shape, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
-        return core.ops.expand_v2(x, 'shape', shape)
+        return _C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')
@@ -1664,11 +1672,11 @@ def reshape_(x, shape, name=None):
             item.numpy().item(0) if isinstance(item, Variable) else item
             for item in shape
         ]
-        out, _ = core.ops.reshape2_(x, None, 'shape', shape)
+        out, _ = _C_ops.reshape2_(x, None, 'shape', shape)
         return out
     elif isinstance(shape, Variable):
         shape.stop_gradient = True
-        out, _ = core.ops.reshape2_(x, shape)
+        out, _ = _C_ops.reshape2_(x, shape)
         return out
 
 
