@@ -78,7 +78,7 @@ paddle::optional<T> HasAttribute(const Node& op, const std::string& attr) {
   if (op.Op()->HasAttr(attr))
     return BOOST_GET_CONST(T, op.Op()->GetAttr(attr));
   else
-    return boost::none;
+    return paddle::none;
 }
 
 ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {

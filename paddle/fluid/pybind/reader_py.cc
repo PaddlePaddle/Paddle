@@ -56,7 +56,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
     if (desc_shape.size() != 0) {  // Tensor rank = 0 but desc does not match
       return framework::vectorize<int64_t>(tensor_shape);
     } else {
-      return boost::none;
+      return paddle::none;
     }
   }
 
@@ -92,7 +92,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
     }
   }
 
-  return boost::none;
+  return paddle::none;
 }
 
 static const std::shared_ptr<reader::LoDTensorBlockingQueue> &GetQueue(

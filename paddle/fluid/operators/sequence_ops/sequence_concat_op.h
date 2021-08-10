@@ -145,7 +145,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
         if (dx) {
           sliced_dx.emplace_back(dx->Slice(prev_lod, next_lod));
         } else {
-          sliced_dx.emplace_back(boost::none);
+          sliced_dx.emplace_back(paddle::none);
         }
       }
     }
