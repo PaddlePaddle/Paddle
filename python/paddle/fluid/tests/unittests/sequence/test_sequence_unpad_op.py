@@ -79,7 +79,7 @@ class TestSequenceUnpadOp4(TestSequenceUnpadOp):
         self.dtype = "float64"
 
 
-class TestSequenceUnpadOp4(TestSequenceUnpadOp):
+class TestSequenceUnpadOp5(TestSequenceUnpadOp):
     def init(self):
         self.length = [0, 4, 3, 0]
         self.x_shape = (4, 5, 3, 3, 6)

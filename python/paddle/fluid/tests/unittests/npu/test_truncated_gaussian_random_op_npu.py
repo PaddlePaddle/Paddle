@@ -29,8 +29,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestTruncatedNormal(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

@@ -1,10 +1,10 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,10 +15,10 @@
 # TODO: define the common classes to build a neural network
 import paddle
 from ...fluid.dygraph import Flatten  # noqa: F401
-from ...fluid.dygraph import layers
 from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
+from paddle.nn import Layer
 
 __all__ = []
 
@@ -30,7 +30,50 @@ def _npairs(x, n):
     return x
 
 
-class Linear(layers.Layer):
+class Identity(Layer):
+    r"""
+
+    A placeholder identity operator that is argument-insensitive. For each input :math:`X` ,
+    the output :math:`Out` is:
+
+    .. math::
+
+        Out = X
+
+    Parameters:
+        args: any argument (unused)
+        kwargs: any keyword argument (unused)
+
+    Shape:
+        - input: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
+        - output: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+
+          input_tensor = paddle.randn(shape=[3, 2])
+          layer = paddle.nn.Identity()
+          out = layer(input_tensor)
+          # input_tensor: [[-0.32342386 -1.200079  ]
+          #                [ 0.7979031  -0.90978354]
+          #                [ 0.40597573  1.8095392 ]]
+          # out: [[-0.32342386 -1.200079  ]
+          #      [ 0.7979031  -0.90978354]
+          #      [ 0.40597573  1.8095392 ]]
+
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(Identity, self).__init__()
+
+    def forward(self, input):
+        return input
+
+
+class Linear(Layer):
     r"""
 
     Fully-connected linear transformation layer. For each input :math:`X` ,
@@ -135,7 +178,7 @@ class Linear(layers.Layer):
             self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
 
 
-class Upsample(layers.Layer):
+class Upsample(Layer):
     """
     This op resizes a batch of images.
 
@@ -385,7 +428,7 @@ class Upsample(layers.Layer):
             self.data_format, name_str)
 
 
-class UpsamplingNearest2D(layers.Layer):
+class UpsamplingNearest2D(Layer):
     """
     This op upsamples a batch of images, using nearest neighbours' pixel values.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w),
@@ -470,7 +513,7 @@ class UpsamplingNearest2D(layers.Layer):
                                              name_str)
 
 
-class UpsamplingBilinear2D(layers.Layer):
+class UpsamplingBilinear2D(Layer):
     """
     This op upsamples a batch of images, using bilinear' pixel values.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w),
@@ -556,7 +599,7 @@ class UpsamplingBilinear2D(layers.Layer):
                                              name_str)
 
 
-class Bilinear(layers.Layer):
+class Bilinear(Layer):
     r"""
 
     This layer performs bilinear on two inputs.
@@ -651,7 +694,7 @@ class Bilinear(layers.Layer):
             self._dtype, name_str)
 
 
-class Dropout(layers.Layer):
+class Dropout(Layer):
     """
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training as described in the paper:
@@ -725,7 +768,7 @@ class Dropout(layers.Layer):
                                                  name_str)
 
 
-class Dropout2D(layers.Layer):
+class Dropout2D(Layer):
     """
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
@@ -786,7 +829,7 @@ class Dropout2D(layers.Layer):
                                                name_str)
 
 
-class Dropout3D(layers.Layer):
+class Dropout3D(Layer):
     """
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
@@ -847,7 +890,7 @@ class Dropout3D(layers.Layer):
                                                name_str)
 
 
-class AlphaDropout(layers.Layer):
+class AlphaDropout(Layer):
     """
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
     zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
@@ -900,7 +943,7 @@ class AlphaDropout(layers.Layer):
         return 'p={}{}'.format(self.p, name_str)
 
 
-class Pad1D(layers.Layer):
+class Pad1D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad1D`` class.
     Pad tensor according to 'pad', 'mode' and 'value'.
@@ -981,7 +1024,7 @@ class Pad1D(layers.Layer):
             self._pad, self._mode, self._value, self._data_format, name_str)
 
 
-class Pad2D(layers.Layer):
+class Pad2D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad2D`` class.
     Pad tensor according to 'pad', 'mode' and 'value'.
@@ -1065,7 +1108,7 @@ class Pad2D(layers.Layer):
             self._pad, self._mode, self._value, self._data_format, name_str)
 
 
-class Pad3D(layers.Layer):
+class Pad3D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad3D`` class.
     Pad tensor according to 'pad', 'mode' and 'value'.
@@ -1149,7 +1192,7 @@ class Pad3D(layers.Layer):
             self._pad, self._mode, self._value, self._data_format, name_str)
 
 
-class CosineSimilarity(layers.Layer):
+class CosineSimilarity(Layer):
     """
     This interface is used to compute cosine similarity between x1 and x2 along axis.
 
@@ -1206,7 +1249,7 @@ class CosineSimilarity(layers.Layer):
         return 'axis={_axis}, eps={_eps}'.format(**self.__dict__)
 
 
-class Embedding(layers.Layer):
+class Embedding(Layer):
     r"""
     **Embedding Layer**
 
@@ -1367,7 +1410,7 @@ class Embedding(layers.Layer):
         return main_str.format(**self.__dict__)
 
 
-class Unfold(layers.Layer):
+class Unfold(Layer):
     """
     This op returns a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,
@@ -1428,8 +1471,13 @@ class Unfold(layers.Layer):
         self.name = name
 
     def forward(self, input):
-        return F.unfold(input, self.kernel_sizes, self.dilations, self.paddings,
-                        self.strides, self.name)
+        return F.unfold(
+            input,
+            kernel_sizes=self.kernel_sizes,
+            strides=self.strides,
+            paddings=self.paddings,
+            dilations=self.dilations,
+            name=self.name)
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''

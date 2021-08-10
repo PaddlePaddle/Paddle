@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-from paddle.fluid import core
+from paddle.fluid import core, unique_name
 from functools import reduce
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
@@ -333,26 +333,96 @@ def insert_allreduce_ops(block,
                          ring_id,
                          allreduce_vars,
                          op_role=OpRole.Backward,
-                         use_calc_stream=False):
+                         use_calc_stream=False,
+                         user_defined_strategy=None):
     """
     _add_allreduce_ops
     """
     if len(allreduce_vars) == 0:
         return
 
+    if user_defined_strategy and user_defined_strategy.fuse_all_reduce_ops:
+        insert_fused_allreduce_ops(block, insert_idx, ring_id, allreduce_vars,
+                                   op_role, use_calc_stream,
+                                   user_defined_strategy.fuse_grad_size_in_MB)
+    else:
+        for var in allreduce_vars:
+            block._insert_op_without_sync(
+                insert_idx,
+                type='c_allreduce_sum',
+                inputs={'X': var},
+                outputs={'Out': var},
+                attrs={
+                    'ring_id': ring_id,
+                    'use_calc_stream': use_calc_stream,
+                    OP_ROLE_KEY: op_role
+                })
+
+    return
+
+
+def insert_fused_allreduce_ops(block,
+                               insert_idx,
+                               ring_id,
+                               allreduce_vars,
+                               op_role=OpRole.Backward,
+                               use_calc_stream=False,
+                               fuse_grad_size_in_MB=32):
+    segments = []
+    cur_size = 0.
+    last_dtype = None
     for var in allreduce_vars:
+        real_var = block.var(var)
+        var_size = get_var_size(real_var)
+        if cur_size + var_size > fuse_grad_size_in_MB \
+                or len(segments) == 0 \
+                or real_var.dtype != last_dtype:
+            segments.append([real_var])
+            cur_size = var_size
+            last_dtype = real_var.dtype
+        else:
+            segments[-1].append(real_var)
+            cur_size += var_size
+
+    fused_vars = []
+    for segment in segments:
+        tmp_var = block.create_var(
+            name=unique_name.generate('FusedOutput_{}'.format(segment[0].name)),
+            dtype=segment[0].dtype,
+            persistable=False,
+            stop_gradient=True)
+        fused_vars.append(tmp_var)
         block._insert_op_without_sync(
             insert_idx,
+            type="coalesce_tensor",
+            inputs={"Input": segment},
+            outputs={"Output": segment,
+                     "FusedOutput": tmp_var},
+            attrs={
+                "copy_data": True,
+                "use_align": True,
+                "dtype": segment[0].dtype,
+                OP_ROLE_KEY: op_role
+            })
+
+    for fused_var in fused_vars:
+        block._insert_op_without_sync(
+            insert_idx + len(fused_vars),
             type='c_allreduce_sum',
-            inputs={'X': var},
-            outputs={'Out': var},
+            inputs={'X': fused_var},
+            outputs={'Out': fused_var},
             attrs={
                 'ring_id': ring_id,
                 'use_calc_stream': use_calc_stream,
                 OP_ROLE_KEY: op_role
             })
-
-    return
+        if not use_calc_stream:
+            block._insert_op_without_sync(
+                insert_idx + len(fused_vars),
+                type='c_sync_calc_stream',
+                inputs={'X': fused_var},
+                outputs={'Out': fused_var},
+                attrs={OP_ROLE_KEY: op_role})
 
 
 def insert_reduce_ops(block,
@@ -528,7 +598,7 @@ def add_sync_comm(program, sharding_ring_id):
     add the sync_comm op for the test prog.
 
     """
-    #NOTE (liangjianzhong): only support one comm stream by now, use more than one 
+    #NOTE (liangjianzhong): only support one comm stream by now, use more than one
     # comm streams will cause error. should be revise in future.
 
     assert sharding_ring_id >= 0, "sharding_ring_id should larger than zero"

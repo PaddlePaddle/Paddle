@@ -13,38 +13,83 @@
 # limitations under the License.
 
 from __future__ import print_function
+import paddle.fluid as fluid
+import paddle
+from op_test import OpTest
 
 import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-from op_test import OpTest
-import paddle
-import paddle.fluid as fluid
 
 paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestElementwiseMax(OpTest):
+def ref_relu6(x, threshold=6.0):
+    out = np.copy(x)
+    out[np.abs(x - threshold) < 0.005] = threshold + 0.02
+    out = np.minimum(np.maximum(x, 0), threshold)
+    return out
+
+
+class TestRelu6(OpTest):
     def setUp(self):
         self.set_npu()
-        self.op_type = "elementwise_max"
+        self.op_type = "relu6"
         self.place = paddle.NPUPlace(0)
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = np.maximum(x, y)
+        x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
+        x[np.abs(x) < 0.005] = 0.02
+        out = ref_relu6(x)
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
-        self.attrs = {}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {'threshold': 6.0}
+        self.outputs = {'Out': out}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(self.place, ['X'], 'Out')
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestRelu6Float16(TestRelu6):
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
+
+    def set_attrs(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+
+class TestReluNeg(TestRelu6):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "relu6"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(-10, -1, [10, 12]).astype(self.dtype)
+        x[np.abs(x) < 0.005] = 0.02
+        out = ref_relu6(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {'threshold': 6.0}
         self.outputs = {'Out': out}
 
     def set_npu(self):
@@ -54,51 +99,10 @@ class TestElementwiseMax(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
-
-    # TODO(ascendrc): Max grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
+        self.check_output_with_place(self.place)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestElementwiseMaxFp16(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "elementwise_max"
-        self.place = paddle.NPUPlace(0)
-
-        self.init_dtype()
-        np.random.seed(SEED)
-        x = np.random.uniform(1, 2, [3, 4]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [3, 4]).astype(self.dtype)
-        out = np.maximum(x, y)
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
-        self.attrs = {}
-        self.outputs = {'Out': out}
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.__class__.no_need_check_grad = True
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestElementwiseMaxNet(unittest.TestCase):
+class TestRelu6Net(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -116,9 +120,10 @@ class TestElementwiseMaxNet(unittest.TestCase):
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64')
 
-            c = paddle.maximum(a, b)
+            sum = paddle.add(a, b)
+            z = paddle.nn.functional.relu6(sum)
 
-            fc_1 = fluid.layers.fc(input=c, size=128)
+            fc_1 = fluid.layers.fc(input=z, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
