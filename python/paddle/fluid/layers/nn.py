@@ -7133,13 +7133,19 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
     """
     assert input.dtype in (paddle.float32, paddle.float64)
     assert label.dtype in (paddle.int32, paddle.int64)
-    assert len(input) == len(label), (
+    assert len(input.shape) >= 2, \
+        "The rank of input should be greater than or equal to 2."
+    assert len(input.shape) == len(label.shape), (
         "The rank of input and label should be equal, "
-        "but received input: %d, label: %d." % (len(input), len(label)))
+        "but received input: %d, label: %d." %
+        (len(input.shape), len(label.shape)))
     assert label.shape[-1] == 1, ("The last dimension of label should be 1, "
                                   "but received %d." % label.shape[-1])
     assert input.shape[:-1] == label.shape[:-1], (
         "All dimensions should be equal except the last one.")
+    assert input.numel() > 0 and label.numel() > 0, \
+        "Any dimension of input and label cannot be equal to 0."
+
     label = one_hot(label, depth=input.shape[-1])
     reduce_dim = list(range(1, len(input.shape)))
     inse = reduce_sum(input * label, dim=reduce_dim)
