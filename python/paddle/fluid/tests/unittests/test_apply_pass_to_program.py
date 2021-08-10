@@ -94,6 +94,8 @@ class TestIRPassBase(unittest.TestCase):
             'enable_addto': True,
             'fuse_all_optimizer_ops': True,
             'fuse_elewise_add_act_ops': True,
+            'fuse_relu_depthwise_conv': True,
+            'fuse_bn_act_ops': True,
         }
 
     def check_before_applied(self, main, startup):
@@ -110,7 +112,9 @@ class TestIRPassBase(unittest.TestCase):
 
     def check_after_applied(self, main, startup):
         self.assertTrue(global_block_contains_op(main, "share_buffer"))
-        self.assertTrue(global_block_contains_op(main, "coalesce_tensor"))
+        # fused all optimizer pass requires this
+        if paddle.is_compiled_with_cuda():
+            self.assertTrue(global_block_contains_op(main, "coalesce_tensor"))
         self.assertTrue(
             global_block_contains_op(main, "fused_elemwise_add_activation"))
 
@@ -136,11 +140,12 @@ class TestIRPassBase(unittest.TestCase):
             self.assertEqual(share_dims_cnt, 0)
         self.assertGreaterEqual(non_share_dims_cnt, 1)
 
-        adam_cnt = 0
-        for op in main.global_block().ops:
-            if op.type == "adam":
-                adam_cnt += 1
-        self.assertEqual(adam_cnt, 1)
+        if paddle.is_compiled_with_cuda():
+            adam_cnt = 0
+            for op in main.global_block().ops:
+                if op.type == "adam":
+                    adam_cnt += 1
+            self.assertEqual(adam_cnt, 1)
 
     def test_main(self):
         if self.use_cuda:
