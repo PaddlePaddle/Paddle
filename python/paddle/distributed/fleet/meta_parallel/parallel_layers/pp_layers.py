@@ -319,24 +319,6 @@ class PipelineLayer(Layer):
         return input
 
     def save_state_dict(self, path, save_rng=False):
-        # save rng state
-        dp_rank = self._topo.get_coord(self.global_rank).data
-        pp_rank = self._topo.get_coord(self.global_rank).pipe
-        mp_rank = self._topo.get_coord(self.global_rank).model
-
-        if save_rng:
-            rng_dict = {}
-            rng_dict['random_rng_state'] = random.getstate()
-            rng_dict['np_rng_state'] = np.random.get_state()
-            rng_dict['cuda_rng_state'] = paddle.get_cuda_rng_state()
-            rng_dict['rng_tracker_states'] \
-                = get_rng_state_tracker().get_states_tracker()
-            paddle.save(rng_dict,
-                        os.path.join(
-                            path,
-                            "dp{:0>2d}_pp{:0>2d}_mp{:0>2d}_rng.pdparams".format(
-                                dp_rank, pp_rank, mp_rank)))
-
         if self._topo.get_coord(self.global_rank).data != 0:
             return
 
@@ -380,20 +362,4 @@ class PipelineLayer(Layer):
             layer.set_state_dict(model_state_dict)
 
         self._synchronize_shared_weights()
-
-        # set rng
-        dp_rank = self._topo.get_coord(self.global_rank).data
-        pp_rank = self._topo.get_coord(self.global_rank).pipe
-        mp_rank = self._topo.get_coord(self.global_rank).model
-        rng_save_path = os.path.join(
-            path, "dp{:0>2d}_pp{:0>2d}_mp{:0>2d}_rng.pdparams".format(
-                dp_rank, pp_rank, mp_rank))
-        if os.path.exists(rng_save_path):
-            rng_dict = paddle.load(rng_save_path)
-            random.setstate(rng_dict['random_rng_state'])
-            np.random.set_state(rng_dict['np_rng_state'])
-            paddle.set_cuda_rng_state(rng_dict['cuda_rng_state'])
-            get_rng_state_tracker().set_states_tracker(rng_dict[
-                'cuda_rng_state'])
-
         logger.info("load model state successfully...")
