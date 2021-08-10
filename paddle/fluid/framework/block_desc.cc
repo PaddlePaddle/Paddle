@@ -261,10 +261,14 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
       *old_var_ptr = *var_ptr;
     }
   }
-  ops_ = std::move(block->ops_);
+  ops_.clear();
+  for (const auto &src_op : block->ops_) {
+    AppendOp()->CopyFrom(*src_op);
+  }
   need_update_ = true;
   Flush();
 
+  block->ops_.clear();
   block->vars_.clear();
   block->need_update_ = true;
   block->Flush();
