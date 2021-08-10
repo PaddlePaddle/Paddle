@@ -61,8 +61,8 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
     void *recv_buff = reinterpret_cast<void *>(out->data<T>());
 
     aclrtStream stream = nullptr;
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::NPUDeviceContext *>(dev_ctx)->stream();
     } else {
       stream = comm->stream();

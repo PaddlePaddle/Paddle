@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
 
+DECLARE_bool(sync_npu_calc_communication);
+
 namespace paddle {
 namespace operators {
 
