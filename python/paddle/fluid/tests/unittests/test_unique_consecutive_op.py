@@ -40,17 +40,16 @@ def reference_unique_consecutive(X,
     while i < len(X) - 1:
         if X[i] == X[i + 1]:
             if return_counts:
-                counts += 1
+                counts_vec[cnt] += 1
             del X[i]
         else:
-            counts = 1
             i += 1
+            cnt += 1
         if return_inverse:
             last += 1
             inverse_vec[last] = i
-        if return_counts:
-            counts_vec[cnt] = counts
-        cnt += 1
+    if return_counts:
+        counts_vec = counts_vec[:len(X)]
     if return_inverse and return_counts:
         return X, np.array(inverse_vec), np.array(counts_vec)
     elif return_counts:
