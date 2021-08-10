@@ -19,23 +19,17 @@ import unittest
 import paddle
 import numpy as np
 import random
+import os
+import shutil
+import tempfile
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.fluid import layers
-import paddle.nn.functional as F
-from paddle.distributed.fleet.meta_parallel import PipelineLayer, LayerDesc
-from paddle.fluid.dygraph.layers import Layer
-import paddle.nn as nn
 from hybrid_parallel_pp_transformer import ModelPipe, set_random_seed
-import os
 
 batch_size = 8
 length = 8
 micro_batch_size = 2
 vocab_size = 128
-hidden_size = 16
-d_model = hidden_size
-dim_feedforward = 4 * d_model
 
 
 class TestDistPPSaveLoadTraning(unittest.TestCase):
@@ -72,16 +66,16 @@ class TestDistPPSaveLoadTraning(unittest.TestCase):
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
+        output_dir = tempfile.mkdtemp()
 
-        output_dir = "./pp_save_load"
         # warmup step
-        for step_id in range(3):
+        for step_id in range(2):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
             loss = model.train_batch([x, x], optimizer, scheduler)
 
-        model._layers.save_state_dict(output_dir, save_rng=True)
+        model._layers.save_state_dict(output_dir)
         paddle.save(optimizer.state_dict(),
                     os.path.join(output_dir, "model_state.pdopt"))
 
@@ -96,7 +90,6 @@ class TestDistPPSaveLoadTraning(unittest.TestCase):
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
             loss = model.train_batch([x, x], optimizer, scheduler)
-            # print("loss: ", loss.numpy())   
             origin_loss.append(loss.numpy())
 
         # test step
@@ -112,6 +105,9 @@ class TestDistPPSaveLoadTraning(unittest.TestCase):
             print("origin loss: ", origin_loss[step_id], "current loss: ",
                   loss.numpy())
             np.testing.assert_allclose(loss.numpy(), origin_loss[step_id])
+
+        # finally, remove the model/optimizer path
+        shutil.rmtree(output_dir)
 
 
 if __name__ == "__main__":

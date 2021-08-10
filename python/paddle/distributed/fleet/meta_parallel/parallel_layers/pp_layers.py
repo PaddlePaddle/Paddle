@@ -318,7 +318,7 @@ class PipelineLayer(Layer):
             input = layer(input)
         return input
 
-    def save_state_dict(self, path, save_rng=False):
+    def save_state_dict(self, path):
         if self._topo.get_coord(self.global_rank).data != 0:
             return
 
