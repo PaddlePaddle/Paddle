@@ -344,8 +344,7 @@ struct ReduceConfig {
     if (rank == reduce_rank ||
         rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
-    } else if (reduce_rank == 1 &&
-               ((rank == 2 && is_large_enough) || rank != 2)) {
+    } else if (reduce_rank == 1) {
       // ReduceFirstDim and reduceSecondDim
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
     } else {
