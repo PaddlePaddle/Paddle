@@ -24,11 +24,15 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 
 
-def reference_unique_consecutive(X,
-                                 return_inverse=False,
-                                 return_counts=False,
-                                 dim=None):
-    """Reference unique_consecutive implementation using python."""
+def reference_unique_consecutive(X, return_inverse=False, return_counts=False):
+    """
+    Reference unique_consecutive implementation using python.
+    Args:
+        x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        return_inverse(bool, optional): If True, also return the indices for where elements in
+            the original input ended up in the returned unique consecutive tensor. Default is False.
+        return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
+    """
     X = list(X)
     counts_vec = [1] * len(X)
     i = 0
@@ -61,9 +65,7 @@ def reference_unique_consecutive(X,
 
 
 class TestUniqueConsecutiveOp(OpTest):
-    """
-    case 1
-    """
+    """case 1"""
 
     def config(self):
         self.x_size = 100
@@ -92,9 +94,7 @@ class TestUniqueConsecutiveOp(OpTest):
 
 
 class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
-    """
-    case 2
-    """
+    """case 2"""
 
     def config(self):
         self.x_size = 100
@@ -117,6 +117,60 @@ class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
             'dtype': int(core.VarDesc.VarType.INT32)
         }
         self.outputs = {'Out': result, 'Index': inverse}
+
+
+class TestUniqueConsecutiveOp3(TestUniqueConsecutiveOp):
+    """case 3"""
+
+    def config(self):
+        self.x_size = 100
+        self.x_range = 20
+        self.return_inverse = False
+        self.return_counts = True
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "unique_consecutive"
+        x = np.random.randint(self.x_range, size=self.x_size).astype(self.dtype)
+        result, counts = reference_unique_consecutive(x, self.return_inverse,
+                                                      self.return_counts)
+        result = np.array(result).astype(self.dtype)
+        counts = counts.astype(self.dtype)
+        self.inputs = {'X': x, }
+        self.attrs = {
+            'return_counts': self.return_counts,
+            'dtype': int(core.VarDesc.VarType.INT32)
+        }
+        self.outputs = {'Out': result, 'Counts': counts}
+
+
+class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
+    """case 4"""
+
+    def config(self):
+        self.x_size = 100
+        self.x_range = 20
+        self.return_inverse = True
+        self.return_counts = True
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "unique_consecutive"
+        x = np.random.randint(self.x_range, size=self.x_size).astype(self.dtype)
+        result, inverse, counts = reference_unique_consecutive(
+            x, self.return_inverse, self.return_counts)
+        result = np.array(result).astype(self.dtype)
+        inverse = inverse.astype(self.dtype)
+        counts = counts.astype(self.dtype)
+        self.inputs = {'X': x, }
+        self.attrs = {
+            'return_inverse': self.return_inverse,
+            'return_counts': self.return_counts,
+            'dtype': int(core.VarDesc.VarType.INT32)
+        }
+        self.outputs = {'Out': result, 'Index': inverse, 'Counts': counts}
 
 
 class TestUniqueConsecutiveAPI(unittest.TestCase):

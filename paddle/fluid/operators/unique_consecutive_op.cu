@@ -33,8 +33,10 @@ template <typename InT>
 struct BinaryEqual {
   int64_t col;
   const InT* in_trans_data;
+
   BinaryEqual(int64_t _col, const InT* _in_trans_data)
       : col(_col), in_trans_data(_in_trans_data) {}
+
   __device__ bool operator()(int64_t a, int64_t b) const {
     for (int64_t i = 0; i < col; ++i) {
       InT lhs = in_trans_data[i + a * col];
@@ -52,8 +54,10 @@ template <typename InT>
 struct BinaryNotEqual {
   int64_t col;
   const InT* in_trans_data;
+
   BinaryNotEqual(int64_t _col, const InT* _in_trans_data)
       : col(_col), in_trans_data(_in_trans_data) {}
+
   __device__ bool operator()(int64_t a, int64_t b) const {
     for (int64_t i = 0; i < col; ++i) {
       InT lhs = in_trans_data[i + a * col];
@@ -79,6 +83,7 @@ void IndexSelect(const framework::ExecutionContext& context,
   for (auto i = dim + 1; i < input_dim_size; i++) {
     slice_size *= input_dim[i];
   }
+
   auto input_width = slice_size * input_dim[dim];
   auto output_width = slice_size * output_dim[dim];
 
@@ -86,12 +91,15 @@ void IndexSelect(const framework::ExecutionContext& context,
   for (auto i = 0; i < dim; i++) {
     outer_nums *= input_dim[i];
   }
+
   auto index_size = index.dims()[0];
+
   std::vector<InT> input_vec;
   std::vector<IndexT> index_vec;
   TensorToVector(input, context.device_context(), &input_vec);
   TensorToVector(index, context.device_context(), &index_vec);
   std::vector<InT> out_vec(output->numel());
+
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
         index_vec[i], 0,
@@ -108,6 +116,7 @@ void IndexSelect(const framework::ExecutionContext& context,
             "value.",
             input_dim[dim], index_vec[i]));
   }
+
   for (auto i = 0; i < outer_nums; i++) {
     auto input_start_offset = i * input_width;
     auto output_start_offset = i * output_width;
@@ -135,6 +144,7 @@ static void UniqueConsecutiveFlattendCUDATensor(
   Tensor in_hat;
   framework::TensorCopy(in, context.GetPlace(), &in_hat);
   auto in_data_hat = in_hat.mutable_data<InT>(context.GetPlace());
+
   Tensor sorted_indices;
   sorted_indices.Resize(framework::make_ddim({num_input}));
   auto sorted_indices_data =
@@ -155,6 +165,7 @@ static void UniqueConsecutiveFlattendCUDATensor(
                 .first -
             out_data;
   out->Resize(framework::make_ddim({num_out}));
+
   // 2. Calculate inverse index: 'inverse'
   if (return_inverse) {
     Tensor* inverse = context.Output<Tensor>("Index");
@@ -211,6 +222,7 @@ static void ComputeUniqueConsecutiveDims(
                          inv_loc_data_ptr + row, inv_loc_data_ptr);
   thrust::scatter(thrust::device, inv_loc_data_ptr, inv_loc_data_ptr + row,
                   sorted_indices_data, inverse_data);
+
   // 2. sorted indices
   Tensor range;
   range.Resize(framework::make_ddim({row + 1}));
@@ -268,7 +280,6 @@ static void UniqueConsecutiveDimsCUDATensor(
   // now 'in_trans' is 2D
   int64_t col = in_trans.dims()[1];
   int64_t row = in_trans.dims()[0];
-
   const InT* in_trans_data = in_trans.data<InT>();
 
   Tensor sorted_indices;
