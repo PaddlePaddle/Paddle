@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,11 +69,27 @@ class TestTopkV2NPUOp(OpTest):
 
     def test_check_output(self):
         self.__class__.no_need_check_grad = True
-        self.check_output_with_place(self.place)
+        if self.dtype == np.float32:
+            self.check_output_with_place(self.place, atol=1e-3)
+        else:
+            self.check_output_with_place(self.place)
 
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
+
+
+class TestTopkV2OpFloat16(TestTopkV2NPUOp):
+    def set_attrs(self):
+        self.k = 3
+        self.axis = 1
+        self.largest = True
+
+    def set_dtype(self):
+        self.dtype = np.float32
+
+    def set_input_data(self):
+        self.input_data = np.random.rand(3, 4).astype(self.dtype)
 
 
 class TestTopkV2OP1Int32(TestTopkV2NPUOp):
@@ -83,18 +99,19 @@ class TestTopkV2OP1Int32(TestTopkV2NPUOp):
         self.largest = False
 
 
-'''
 class TestTopkV2OP2Int32(TestTopkV2NPUOp):
     def set_attrs(self):
         self.k = 4
         self.axis = 0
         self.largest = False
 
+
 class TestTopkV2OP3Int32(TestTopkV2NPUOp):
     def set_attrs(self):
         self.k = 6
         self.axis = 1
         self.largest = True
+
 
 class TestTopkV2OP4Int32(TestTopkV2NPUOp):
     def set_attrs(self):
@@ -107,22 +124,23 @@ class TestTopkV2Op1Int64(TestTopkV2OP1Int32):
     def set_dtype(self):
         self.dtype = np.int64
 
+
 class TestTopkV2Op2Int64(TestTopkV2OP2Int32):
     def set_dtype(self):
         self.dtype = np.int64
+
 
 class TestTopkV2Op3Int64(TestTopkV2OP3Int32):
     def set_dtype(self):
         self.dtype = np.int64
 
+
 class TestTopkV2Op4Int64(TestTopkV2OP4Int32):
     def set_dtype(self):
         self.dtype = np.int64
-'''
 
 
-# Error occurred in this test case
-class TestTopkOp1Float32(TestTopkV2OP1Int32):
+class TestTopkV2Op1Float32(TestTopkV2OP1Int32):
     def set_dtype(self):
         self.dtype = np.float32
 
@@ -130,28 +148,58 @@ class TestTopkOp1Float32(TestTopkV2OP1Int32):
         self.input_data = np.random.rand(10, 20).astype(self.dtype)
 
 
-'''
-class TestTopkOp1Float64(TestTopkV2OP1Int32):
+class TestTopkV2Op2Float32(TestTopkV2OP2Int32):
     def set_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.float32
+
     def set_input_data(self):
         self.input_data = np.random.rand(10, 20).astype(self.dtype)
 
-class TestTopkOp2Float64(TestTopkV2OP2Int32):
+
+class TestTopkV2Op3Float32(TestTopkV2OP3Int32):
     def set_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.float32
+
     def set_input_data(self):
         self.input_data = np.random.rand(10, 20).astype(self.dtype)
 
-class TestTopkOp3Float64(TestTopkV2OP3Int32):
+
+class TestTopkV2Op4Float32(TestTopkV2OP4Int32):
     def set_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.float32
+
     def set_input_data(self):
         self.input_data = np.random.rand(10, 20).astype(self.dtype)
 
-class TestTopkOp4Float64(TestTopkV2OP4Int32):
+
+class TestTopkV2Op1Float64(TestTopkV2OP1Int32):
     def set_dtype(self):
         self.dtype = np.float64
+
+    def set_input_data(self):
+        self.input_data = np.random.rand(10, 20).astype(self.dtype)
+
+
+class TestTopkV2Op2Float64(TestTopkV2OP2Int32):
+    def set_dtype(self):
+        self.dtype = np.float64
+
+    def set_input_data(self):
+        self.input_data = np.random.rand(10, 20).astype(self.dtype)
+
+
+class TestTopkV2Op3Float64(TestTopkV2OP3Int32):
+    def set_dtype(self):
+        self.dtype = np.float64
+
+    def set_input_data(self):
+        self.input_data = np.random.rand(10, 20).astype(self.dtype)
+
+
+class TestTopkV2Op4Float64(TestTopkV2OP4Int32):
+    def set_dtype(self):
+        self.dtype = np.float64
+
     def set_input_data(self):
         self.input_data = np.random.rand(10, 20).astype(self.dtype)
 
@@ -162,7 +210,6 @@ class TestTopKAPI(unittest.TestCase):
         self.place = paddle.NPUPlace(0)
         np.random.seed(123)
         self.input_data = np.random.rand(6, 7, 8)
-        #self.input_data = np.random.rand(2, 3, 4)
         self.large_input_data = np.random.rand(2, 1030)
 
     def run_dygraph(self, place):
@@ -213,14 +260,12 @@ class TestTopKAPI(unittest.TestCase):
         numpy_result = numpy_topk(self.input_data, k=2, axis=1)
         self.assertTrue(np.allclose(sort_paddle[0], numpy_result[0]))
 
-
     def run_static(self, place):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
             input_tensor = paddle.static.data(
                 name="x", shape=[6, 7, 8], dtype="float64")
-            #input_tensor = paddle.static.data(name="x", shape=[2, 3, 4], dtype="float64")
             large_input_tensor = paddle.static.data(
                 name="large_x", shape=[2, 1030], dtype="float64")
             k_tensor = paddle.static.data(name="k", shape=[1], dtype="int32")
@@ -229,8 +274,6 @@ class TestTopKAPI(unittest.TestCase):
             result3 = paddle.topk(input_tensor, k=k_tensor, axis=1)
             self.assertEqual(result3[0].shape, (6, -1, 8))
             self.assertEqual(result3[1].shape, (6, -1, 8))
-            #self.assertEqual(result3[0].shape, (2, -1, 4))
-            #self.assertEqual(result3[1].shape, (2, -1, 4))
             result4 = paddle.topk(input_tensor, k=2, axis=1, largest=False)
             result5 = paddle.topk(input_tensor, k=2, axis=-1, largest=False)
             result6 = paddle.topk(large_input_tensor, k=1, axis=-1)
@@ -278,10 +321,8 @@ class TestTopKAPI(unittest.TestCase):
             numpy_result = numpy_topk(self.input_data, k=2, axis=1)
             self.assertTrue(np.allclose(sort_paddle[0], numpy_result[0]))
 
-    def test_cases(self): 
+    def test_cases(self):
         places = [core.NPUPlace(0)]
-        #if core.is_compiled_with_cuda():
-        #    places.append(core.CUDAPlace(0))
         for place in places:
             self.run_dygraph(place)
             self.run_static(place)
@@ -296,7 +337,7 @@ class TestTopKAPI(unittest.TestCase):
 
         with self.assertRaises(BaseException):
             paddle.topk(x, k=0)
-'''
+
 
 if __name__ == "__main__":
     unittest.main()
