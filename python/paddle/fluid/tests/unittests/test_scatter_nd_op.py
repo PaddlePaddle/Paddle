@@ -294,7 +294,7 @@ class TestDygraph(unittest.TestCase):
             shape = [3, 5, 9, 10]
             output = paddle.scatter_nd(index, updates, shape)
 
-    def test_dygraph(self):
+    def test_dygraph_1(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             x = paddle.rand(shape=[3, 5, 9, 10], dtype='float32')
             updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
