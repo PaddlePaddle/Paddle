@@ -41,18 +41,6 @@ struct EyeFunctor {
   T* output_;
 };
 
-// template <typename DeviceContext, typename T>
-// struct ElementwiseInplaceAdd {
-//   void operator()(const DeviceContext& ctx,
-//                              const framework::Tensor& src,
-//                              framework::Tensor* dst) {
-//     auto in = framework::EigenVector<T>::Flatten(src);
-//     auto out = framework::EigenVector<T>::Flatten(*dst);
-//     auto& place = *(ctx.eigen_device());
-//     out.device(place) = out + in;
-//   }
-// };
-
 template <typename DeviceContext, typename T>
 void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
                          const paddle::framework::ExecutionContext& ctx) {
@@ -241,8 +229,6 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
       ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
   blas.MatMul(*dOut, no_trans_desc, *tensor_list[new_n - 2], trans_desc,
               static_cast<T>(1), &da_an_minus1, static_cast<T>(0));
-  // ElementwiseInplaceAdd<DeviceContext, T> add_functor;
-  // add_functor(dev_ctx, da_an_minus1, &dx_new);
   blas.AXPY(X->numel(), static_cast<T>(1), da_an_minus1.data<T>(),
             dx_new.data<T>());
   int start = 0;
@@ -253,7 +239,6 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
                 static_cast<T>(1), &a_da, static_cast<T>(0));
     blas.MatMul(a_da, no_trans_desc, *tensor_list[new_n - 3 - start],
                 trans_desc, static_cast<T>(1), &a_da_a, static_cast<T>(0));
-    // add_functor(dev_ctx, a_da_a, &dx_new);
     blas.AXPY(X->numel(), static_cast<T>(1), a_da_a.data<T>(),
               dx_new.data<T>());
     start++;
