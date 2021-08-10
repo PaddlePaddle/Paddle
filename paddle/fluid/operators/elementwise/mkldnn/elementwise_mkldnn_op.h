@@ -53,7 +53,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
-    // (jczaja) For Inplace src and and dst should be the same memory object.
+    // (jczaja) For Inplace src and dst should be the same memory object.
     // So x should share buffer with z. But UT mechanics is testing inplace
     // execution for this op not checking that x can be bradcasted to match in
     // shape y tensor.
