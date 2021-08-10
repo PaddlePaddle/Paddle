@@ -2,8 +2,6 @@ requests>=2.20.0
 numpy>=1.13 ; python_version>="3.5" and platform_system != "Windows"
 numpy>=1.13, <=1.19.3 ; python_version>="3.5" and platform_system == "Windows"
 protobuf>=3.1.0
-gast>=0.3.3, <=0.4.0 ; platform_system != "Windows"
-gast==0.3.3 ; platform_system == "Windows"
 Pillow
 six
 decorator

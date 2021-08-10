@@ -180,18 +180,18 @@ def binary_cross_entropy_with_logits(logit,
     First this operator calculate loss function as follows:
 
     .. math::
-           Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))
+           Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
 
-    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + e^{-Logit}}`. By substituting this we get:
+    We know that :math:`\sigma(Logit) = \frac{1}{1 + e^{-Logit}}`. By substituting this we get:
 
     .. math::
-           Out = Logit - Logit * Labels + \\log(1 + e^{-Logit})
+           Out = Logit - Logit * Labels + \log(1 + e^{-Logit})
 
     For stability and to prevent overflow of :math:`e^{-Logit}` when Logit < 0,
     we reformulate the loss as follows:
 
     .. math::
-           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + e^{-\|Logit\|})
+           Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
     Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
@@ -450,17 +450,17 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
 
     .. math::
 
-         loss(x,y) = \\frac{1}{n}\\sum_{i}z_i
+         loss(x,y) = \frac{1}{n}\sum_{i}z_i
 
 
     where z_i is given by:
 
     .. math::
 
-         \\mathop{z_i} = \\left\\{\\begin{array}{rcl}
-        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\\\
+        \mathop{z_i} = \left\{\begin{array}{rcl}
+        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\
         delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
-        \\end{array} \\right.
+        \end{array} \right.
 
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is
@@ -631,17 +631,17 @@ def l1_loss(input, label, reduction='mean', name=None):
     If `reduction` set to ``'none'``, the loss is:
 
     .. math::
-        Out = \\lvert input - label \\rvert
+        Out = \lvert input - label \rvert
 
     If `reduction` set to ``'mean'``, the loss is:
 
     .. math::
-        Out = MEAN(\\lvert input - label \\rvert)
+        Out = MEAN(\lvert input - label \rvert)
 
     If `reduction` set to ``'sum'``, the loss is:
 
     .. math::
-        Out = SUM(\\lvert input - label\\rvert)
+        Out = SUM(\lvert input - label \rvert)
 
 
     Parameters:
@@ -1563,15 +1563,15 @@ def sigmoid_focal_loss(logit,
     This operator measures focal loss function as follows: 
 
     .. math::
-           Out = -Labels * alpha * {(1 - \\sigma(Logit))}^{gamma}\\log(\\sigma(Logit)) - (1 - Labels) * (1 - alpha) * {\\sigma(Logit)}^{gamma}\\log(1 - \\sigma(Logit))
+           Out = -Labels * alpha * {(1 - \sigma(Logit))}^{gamma}\log(\sigma(Logit)) - (1 - Labels) * (1 - alpha) * {\sigma(Logit)}^{gamma}\log(1 - \sigma(Logit))
 
-    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\exp(-Logit)}`. 
+    We know that :math:`\sigma(Logit) = \frac{1}{1 + \exp(-Logit)}`. 
 
     Then, if :attr:`normalizer` is not None, this operator divides the
     normalizer tensor on the loss `Out`:
 
     .. math::
-           Out = \\frac{Out}{normalizer}
+           Out = \frac{Out}{normalizer}
 
     Finally, this operator applies reduce operation on the loss.
     If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.

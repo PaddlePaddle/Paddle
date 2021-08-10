@@ -2535,30 +2535,46 @@ class AdamOptimizer(Optimizer):
 
             with block.program._optimized_guard([]):
                 inputs = {"X": beta1_pow_acc}
+                outputs = {"Out": beta1_pow_acc}
                 attrs = {}
                 if isinstance(self._beta1, Variable):
-                    inputs['ScaleTensor'] = self._beta1
+                    inputs["Y"] = self._beta1
+                    # use elementwise_mul for better performance
+                    block.append_op(
+                        type="elementwise_mul",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
                 else:
                     attrs['scale'] = self._beta1
-                block.append_op(
-                    type="scale",
-                    inputs=inputs,
-                    outputs={"Out": beta1_pow_acc},
-                    attrs=attrs,
-                    stop_gradient=True)
+                    block.append_op(
+                        type="scale",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
 
                 inputs = {"X": beta2_pow_acc}
+                outputs = {"Out": beta2_pow_acc}
                 attrs = {}
                 if isinstance(self._beta2, Variable):
-                    inputs['ScaleTensor'] = self._beta2
+                    inputs["Y"] = self._beta2
+                    # use elementwise_mul for better performance
+                    block.append_op(
+                        type="elementwise_mul",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
                 else:
                     attrs['scale'] = self._beta2
-                block.append_op(
-                    type="scale",
-                    inputs=inputs,
-                    outputs={"Out": beta2_pow_acc},
-                    attrs=attrs,
-                    stop_gradient=True)
+                    block.append_op(
+                        type="scale",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
 
 
 class AdamaxOptimizer(Optimizer):
@@ -4637,7 +4653,7 @@ class PipelineOptimizer(object):
         elif self._is_weight_decay_op(op) and op.type == 'scale':
             # set AdamW decay_coeff to device:all
             op._set_attr(self._op_device_key, f"{self._device}:all")
-        elif op.type == "alloc_float_status":
+        elif op.type == "alloc_float_status" or op.type == "clear_float_status":
             op._set_attr(self._op_device_key, f"{self._device}:all")
         else:
             other_known_ops = [
@@ -6015,7 +6031,7 @@ class RecomputeOptimizer(Optimizer):
         self._main_program = loss.block.program
         self.block = loss.block
         if startup_program == None:
-            startup_program = fluid.default_startup_program()
+            startup_program = paddle.static.default_startup_program()
 
         with program_guard(self._main_program, startup_program):
             assert len(self.checkpoint_shape) > 0, (
