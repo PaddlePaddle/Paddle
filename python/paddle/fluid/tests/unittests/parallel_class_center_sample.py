@@ -95,7 +95,7 @@ class TestParallelClassCenterSampleOp(unittest.TestCase):
                 label = paddle.to_tensor(np_label, dtype=dtype)
                 np_remapped_label, np_sampled_class_center_per_device = class_center_sample_numpy(
                     np_label, classes_list, num_samples)
-                remapped_label, sampled_class_index = paddle.class_center_sample(
+                remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
                     label, classes_list[rank_id], num_samples)
                 np.testing.assert_allclose(remapped_label.numpy(),
                                            np_remapped_label)

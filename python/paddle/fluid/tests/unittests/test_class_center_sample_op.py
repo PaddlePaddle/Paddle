@@ -137,7 +137,7 @@ class TestClassCenterSampleV2(unittest.TestCase):
 
             label = paddle.static.data(
                 name='label', shape=[self.batch_size], dtype=self.dtype)
-            remapped_label, sampled_class_index = paddle.class_center_sample(
+            remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
                 label, self.num_classes, self.num_samples, seed=self.seed)
 
             remapped_label_np, sampled_class_center_np = class_center_sample_numpy(
@@ -162,7 +162,7 @@ class TestClassCenterSampleV2(unittest.TestCase):
                 0, self.num_classes, (self.batch_size, ), dtype=self.dtype)
             label = paddle.to_tensor(label_np, dtype=self.dtype)
 
-            remapped_label, sampled_class_index = paddle.class_center_sample(
+            remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
                 label, self.num_classes, self.num_samples, seed=self.seed)
 
             remapped_label_np, sampled_class_center_np = class_center_sample_numpy(
@@ -209,7 +209,7 @@ class TestClassCenterSampleAPIError(unittest.TestCase):
                         dtype=self.dtype)
                     label = paddle.to_tensor(label_np)
 
-                    remapped_label, sampled_class_index = paddle.class_center_sample(
+                    remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
                         label,
                         self.num_classes,
                         self.num_samples,

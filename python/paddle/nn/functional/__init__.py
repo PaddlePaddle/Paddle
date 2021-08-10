@@ -107,6 +107,7 @@ from .input import one_hot  # noqa: F401
 from .input import embedding  # noqa: F401
 from ...fluid.layers import gather_tree  # noqa: F401
 from ...fluid.layers import temporal_shift  # noqa: F401
+from ...fluid.layers import class_center_sample  # noqa: F401
 
 __all__ = [     #noqa
            'conv1d',
@@ -198,5 +199,6 @@ __all__ = [     #noqa
            'temporal_shift',
            'batch_norm',
            'layer_norm',
-           'instance_norm'
+           'instance_norm',
+           'class_center_sample',
 ]
