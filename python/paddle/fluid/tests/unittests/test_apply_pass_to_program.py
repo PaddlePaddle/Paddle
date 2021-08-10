@@ -150,10 +150,10 @@ class TestIRPassBase(unittest.TestCase):
     def test_main(self):
         if self.use_cuda:
             batch_num = 20
-            batch_size = 32
-        else:
-            batch_num = 5
             batch_size = 4
+        else:
+            batch_num = 3
+            batch_size = 2
 
         main1, startup1, image, label, loss1 = get_resnet50_model()
         main2, startup2, image, label, loss2 = get_resnet50_model()
