@@ -77,12 +77,25 @@ class TestExpandV2OpRank3_Corner(TestExpandV2NPUOpRank1):
         self.expand_times = (1, 1, 1)
 
 
-# CANN Op doesn't support shape = -1
-# class TestExpandV2OpRank4(TestExpandV2NPUOpRank1):
-#     def init_data(self):
-#         self.ori_shape = (2, 4, 5, 7)
-#         self.shape = (-1, -1, -1, -1)
-#         self.expand_times = (1, 1, 1, 1)
+class TestExpandV2OpRank4(TestExpandV2NPUOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 4, 5, 7)
+        self.shape = (-1, -1, -1, -1)
+        self.expand_times = (1, 1, 1, 1)
+
+
+class TestExpandV2OpRank5(TestExpandV2NPUOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 4, 1, 15)
+        self.shape = (2, -1, 4, -1)
+        self.expand_times = (1, 1, 4, 1)
+
+
+class TestExpandV2OpRank6(TestExpandV2NPUOpRank1):
+    def init_data(self):
+        self.ori_shape = (4, 1, 30)
+        self.shape = (2, -1, 4, 30)
+        self.expand_times = (2, 1, 4, 1)
 
 
 # Situation 2: shape is a list(with tensor)

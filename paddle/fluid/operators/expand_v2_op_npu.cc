@@ -11,39 +11,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/expand_v2_op.h"
-#include <memory>
-#include <string>
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-
-inline std::vector<int> get_expand_shape_npu(
-    const framework::ExecutionContext& ctx) {
-  std::vector<int> vec_expand_shape;
-  auto list_expand_shapes_tensor =
-      ctx.MultiInput<framework::Tensor>("expand_shapes_tensor");
-  if (ctx.HasInput("Shape")) {
-    auto* shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
-    std::vector<int> out_data;
-    TensorToVector(*shape_tensor, ctx.device_context(), &out_data);
-    for (int i = 0; i < static_cast<int>(out_data.size()); ++i) {
-      vec_expand_shape.push_back(out_data[i]);
-    }
-    return vec_expand_shape;
-  } else if (list_expand_shapes_tensor.size() > 0) {
-    // get tensor from
-    for (size_t i = 0; i < list_expand_shapes_tensor.size(); ++i) {
-      auto tensor = list_expand_shapes_tensor[i];
-      std::vector<int> out_data;
-      TensorToVector(*tensor, ctx.device_context(), &out_data);
-      vec_expand_shape.push_back(out_data[0]);
-    }
-    return vec_expand_shape;
-  } else {
-    return ctx.Attr<std::vector<int>>("shape");
-  }
-}
 
 using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
@@ -53,19 +24,55 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
     auto* X = ctx.Input<framework::Tensor>("X");
     auto* Out = ctx.Output<framework::Tensor>("Out");
 
-    std::vector<int> expand_shape = get_expand_shape_npu(ctx);
+    auto in_dims = X->dims();
+    auto expand_shape = get_expand_shape(ctx);
+    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto diff = expand_shape.size() - vec_in_dims.size();
+    vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
+    std::vector<int> final_expand_shape(vec_in_dims.size());
+    for (size_t i = 0; i < vec_in_dims.size(); ++i) {
+      PADDLE_ENFORCE_NE(expand_shape[i], 0,
+                        platform::errors::InvalidArgument(
+                            "The expanded size cannot be zero."));
+      if (i < diff) {  // expand_shape = [3,4,-1,-1], X = [10,2] -->
+                       // final_expand_shape = [3,4,10,2]
+        PADDLE_ENFORCE_GT(
+            expand_shape[i], 0,
+            platform::errors::InvalidArgument(
+                "The expanded size (%d) for non-existing dimensions must be "
+                "positive for expand_v2 op.",
+                expand_shape[i]));
+        final_expand_shape[i] = expand_shape[i];
+      } else if (expand_shape[i] > 0) {  // expand_shape = [3,4,10,4], X =
+                                         // [10,1] --> final_expand_shape =
+                                         // [3,4,10,4]
+        if (vec_in_dims[i] != 1) {
+          PADDLE_ENFORCE_EQ(
+              vec_in_dims[i], expand_shape[i],
+              platform::errors::InvalidArgument(
+                  "The value (%d) of the non-singleton dimension does not match"
+                  " the corresponding value (%d) in shape for expand_v2 op.",
+                  vec_in_dims[i], expand_shape[i]));
+          final_expand_shape[i] = expand_shape[i];
+        } else {
+          final_expand_shape[i] = expand_shape[i];
+        }
+      } else {  // expand_shape = [3,4,-1,-1], X = [10,2] --> final_expand_shape
+                // = [3,4,10,2]
+        PADDLE_ENFORCE_EQ(
+            expand_shape[i], -1,
+            platform::errors::InvalidArgument(
+                "When the value in shape is negative for expand_v2 op, "
+                "only -1 is supported, but the value received is %d.",
+                expand_shape[i]));
+        final_expand_shape[i] = vec_in_dims[i];
+      }
+    }
 
-    framework::NPUAttributeMap attr_input = {{"shape", expand_shape}};
+    framework::NPUAttributeMap attr_input = {{"shape", final_expand_shape}};
 
     auto rank = X->dims().size();
-    for (size_t i = 0; i < expand_shape.size(); ++i) {
-      PADDLE_ENFORCE_GT(
-          expand_shape[i], 0,
-          platform::errors::InvalidArgument(
-              "The %uth element of 'shape' for expand_v2_npu op must be "
-              "greater than 0, but the value given is %d.",
-              i, expand_shape[i]));
-    }
+
     PADDLE_ENFORCE_GE(
         rank, 1,
         platform::errors::InvalidArgument(
@@ -78,7 +85,7 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
             "The rank of the input 'X' for expand_v2_npu op must be less than "
             "or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED, rank));
-    auto shape_size = expand_shape.size();
+    auto shape_size = final_expand_shape.size();
     PADDLE_ENFORCE_GE(
         shape_size, rank,
         platform::errors::InvalidArgument(
@@ -93,7 +100,7 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
                           "less than or equal to %d.",
                           shape_size, MAX_RANK_SUPPORTED));
 
-    framework::DDim out_dims = framework::make_ddim(expand_shape);
+    framework::DDim out_dims = framework::make_ddim(final_expand_shape);
     Out->Resize(out_dims);
     Out->mutable_data<T>(ctx.GetPlace());
 
