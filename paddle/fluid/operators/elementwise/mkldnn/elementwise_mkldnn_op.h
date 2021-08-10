@@ -53,10 +53,15 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
-    // For Inplace src and and dst are the same memory object
-    // (jczaja) UT mechanics is testing inplace for this op
-    // regardless shapes, which is wrong when X is to be broadcasted as output
-    // is of bigger shape that X.
+    // (jczaja) For Inplace src and and dst should be the same memory object.
+    // So x should share buffer with z. But UT mechanics is testing inplace
+    // execution for this op not checking that x can be bradcasted to match in
+    // shape y tensor.
+    // This is wrong as when x is to be broadcasted then z(out) will match the
+    // shape of y which is bigger than x. Hence if x is smaller in shape than z
+    // and they share a buffer (of
+    // shape x) then this buffer is not big enough to hold result of elementwise
+    // operation.
     auto dst_memory = (x->numel() == z->numel() && x->IsSharedBufferWith(*z))
                           ? src_x_memory
                           : handler.AcquireDstMemory(z);
