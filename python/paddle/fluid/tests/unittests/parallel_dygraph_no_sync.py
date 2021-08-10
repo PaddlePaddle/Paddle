@@ -81,24 +81,28 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
             random.seed(seed)
             model, train_reader, opt = self.get_model()
 
-            dist.init_parallel_env()
-            print_to_err(
-                type(self).__name__,
-                "begin to prepare context in dygraph with nccl2")
-            if not args.find_unused_parameters:
-                model = paddle.DataParallel(model, find_unused_parameters=False)
-            else:
-                model = paddle.DataParallel(model, find_unused_parameters=True)
-            print_to_err(type(self).__name__, "model built in dygraph")
-            print_to_err(type(self).__name__, "begin to run dygraph training")
-
+            if args.update_method == "nccl2":
+                dist.init_parallel_env()
+                print_to_err(
+                    type(self).__name__,
+                    "begin to prepare context in dygraph with nccl2")
+                if not args.find_unused_parameters:
+                    model = paddle.DataParallel(model, find_unused_parameters=False)
+                else:
+                    model = paddle.DataParallel(model, find_unused_parameters=True)
+                print_to_err(type(self).__name__, "model built in dygraph")
             out_losses = []
+            print_to_err(type(self).__name__, "begin to run dygraph training")
             for step_id, data in enumerate(train_reader()):
                 data = self._get_data(data, args)
                 if step_id == RUN_STEP:
                     break
                 if step_id % 3 != 0:
-                    with model.no_sync():
+                    if args.update_method == "nccl2":
+                        with model.no_sync():
+                            loss = self.run_one_loop(model, opt, data)
+                            loss.backward()
+                    else:
                         loss = self.run_one_loop(model, opt, data)
                         loss.backward()
                 else:
@@ -119,14 +123,16 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
         fluid.default_main_program().random_seed = seed
         np.random.seed(seed)
         random.seed(seed)
-        args.trainer_id = paddle.distributed.get_rank()
+        args.trainer_id = dist.get_rank()
 
-        dist.init_parallel_env()
+        if args.update_method == "nccl2":
+            dist.init_parallel_env()   
         model, train_reader, opt = self.get_model()
-        if args.find_unused_parameters:
-            model = paddle.DataParallel(model, find_unused_parameters=True)
-        else:
-            model = paddle.DataParallel(model, find_unused_parameters=False)
+        if args.update_method == "nccl2":           
+            if args.find_unused_parameters:
+                model = paddle.DataParallel(model, find_unused_parameters=True)
+            else:
+                model = paddle.DataParallel(model, find_unused_parameters=False)
 
         out_losses = []
         for step_id, data in enumerate(train_reader()):
@@ -134,7 +140,11 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
             if step_id == RUN_STEP:
                 break
             if step_id % 3 != 0:
-                with model.no_sync():
+                if args.update_method == "nccl2":
+                    with model.no_sync():
+                        loss = self.run_one_loop(model, opt, data)
+                        loss.backward()
+                else:
                     loss = self.run_one_loop(model, opt, data)
                     loss.backward()
             else:
