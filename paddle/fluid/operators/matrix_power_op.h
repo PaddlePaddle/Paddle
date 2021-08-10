@@ -62,17 +62,11 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
   T* out_data = Out->mutable_data<T>(ctx.GetPlace());
 
   auto& dev_ctx = ctx.template device_context<DeviceContext>();
-  int batch_size = 1;
-  for (int i = 0; i < x_ndim - 2; i++) {
-    batch_size *= x_dims[i];
-  }
-  auto M = x_dims[x_ndim - 1];
-  auto stride = M * M;
-  platform::ForRange<DeviceContext> for_range(dev_ctx, batch_size * stride);
+  platform::ForRange<DeviceContext> for_range(dev_ctx, X->numel());
 
   if (n == 0) {
     // Out = I
-    EyeFunctor<T> functor(M, out_data);
+    EyeFunctor<T> functor(x_dims[x_ndim - 1], out_data);
     for_range(functor);
     return;
   }
@@ -186,13 +180,6 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   const auto& x_dims = X->dims();
   const int x_ndim = x_dims.size();
 
-  int batch_size = 1;
-  for (int i = 0; i < x_ndim - 2; i++) {
-    batch_size *= x_dims[i];
-  }
-  auto M = x_dims[x_ndim - 1];
-  auto stride = M * M;
-
   auto& dev_ctx = ctx.template device_context<DeviceContext>();
   auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
@@ -236,8 +223,8 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   // Use chain rule blow to compute \nabla newX^{n}
   // First, Get newX^{0}, newX^{1}, ..., newX^{n - 1}
   Tensor identity = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
-  EyeFunctor<T> functor(M, identity.data<T>());
-  platform::ForRange<DeviceContext> for_range(dev_ctx, batch_size * stride);
+  EyeFunctor<T> functor(x_dims[x_ndim - 1], identity.data<T>());
+  platform::ForRange<DeviceContext> for_range(dev_ctx, X->numel());
   for_range(functor);
 
   std::vector<std::shared_ptr<Tensor>> tensor_list(new_n);
