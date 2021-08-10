@@ -27,6 +27,7 @@ paddle.enable_static()
 class TestPnormOp(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
 
     def setUp(self):
         self.set_npu()
@@ -49,11 +50,6 @@ class TestPnormOp(OpTest):
             self.check_output_with_place(paddle.NPUPlace(0), atol=5e-3)
         else:
             self.check_output_with_place(paddle.NPUPlace(0))
-
-    def test_check_grad(self):
-        if self.dtype == "float16":
-            return
-        self.check_grad_with_place(paddle.NPUPlace(0), ['X'], 'Out')
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -113,12 +109,6 @@ class TestPnormOp3(TestPnormOp):
         self.porder = np.inf
         self.keepdim = True
         self.init_dtype()
-
-    def test_check_grad(self):
-        if self.dtype == "float16":
-            return
-        self.check_grad_with_place(
-            paddle.NPUPlace(0), ['X'], 'Out', user_defined_grads=self.gradient)
 
 
 class TestPnormOp4(TestPnormOp3):
