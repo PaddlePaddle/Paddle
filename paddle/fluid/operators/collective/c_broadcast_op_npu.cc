@@ -19,8 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
-DECLARE_bool(sync_npu_calc_communication);
-
 namespace paddle {
 namespace operators {
 
@@ -67,12 +65,6 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*static_cast<const framework::Tensor*>(x), place,
                             *platform::DeviceContextPool::Instance().Get(place),
                             static_cast<framework::Tensor*>(out));
-    }
-
-    if (ctx.Attr<bool>("use_calc_stream") &&
-        FLAGS_sync_npu_calc_communication) {
-      VLOG(4) << "sync_npu_calc_communication";
-      dev_ctx->Wait();
     }
 
     out->Resize(x->dims());
