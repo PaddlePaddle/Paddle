@@ -97,7 +97,6 @@ DEFINE_string(
     npu_config_path, "",
     "The absolute path of configuration json file, like: /tmp/config.json. "
     "If proveided, it will be passed to aclInit().");
-
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -198,7 +197,6 @@ DEFINE_bool(
     sync_nccl_allreduce, true,
     "If set true, will call `cudaStreamSynchronize(nccl_stream)`"
     "after allreduce, this mode can get better performance in some scenarios.");
-
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
