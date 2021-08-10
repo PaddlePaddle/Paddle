@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,24 +19,22 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-
+// Attention: the Ascend TopKV2 operator used in this kernel
+// may lead to large accuracy error for float32 data
 template <typename T>
 class TopkV2NPUKernel : public framework::OpKernel<T> {
  public:
-  // Use Ascend TopKV2 operator to implement paddle TopKV2Op
   void Compute(const framework::ExecutionContext& context) const override {
-    // Read message from context
     auto* input = context.Input<Tensor>("X");
     auto* k_tensor = context.Input<Tensor>("K");
     auto* out = context.Output<Tensor>("Out");
-    auto* indices = context.Output<Tensor>("Indices");  // type:INT64
+    auto* indices = context.Output<Tensor>("Indices");  // type: INT64
 
     int32_t k = static_cast<int32_t>(context.Attr<int>("k"));
     int axis = static_cast<int>(context.Attr<int>("axis"));
     const bool sorted = static_cast<bool>(context.Attr<bool>("sorted"));
     const bool largest = static_cast<bool>(context.Attr<bool>("largest"));
 
-    // Calculate the real value of axis and k
     if (axis < 0) {
       axis += input->dims().size();
     }
@@ -50,7 +48,6 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
       k = static_cast<int32_t>(v_tmp[0]);
     }
 
-    // Allocate space for output tensors of Paddle topKV2 operator
     framework::DDim output_dims = input->dims();
     output_dims[axis] = k;
 
@@ -60,38 +57,31 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     indices->mutable_data<int64_t>(context.GetPlace());
 
-    // Allocate space for output indices of Ascend topkV2 operator
-    framework::Tensor* indices_int32 =
-        new Tensor(framework::proto::VarType::INT32);
-    indices_int32->Resize(output_dims);
-    indices_int32->mutable_data<int32_t>(context.GetPlace());
-    VLOG(4) << "input:" << *input;
-    // Run Ascend TopKV2 operator
-    NpuOpRunner npu_op_runner_topkv2;
-    auto npu_stream_topkv2 =
+    framework::Tensor indices_int32(framework::proto::VarType::INT32);
+    indices_int32.Resize(output_dims);
+    indices_int32.mutable_data<int32_t>(context.GetPlace());
+
+    auto npu_stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
+
+    NpuOpRunner npu_op_runner_topkv2;
     npu_op_runner_topkv2.SetType("TopKV2")
         .AddInput(*input)
         .AddInput(std::vector<int32_t>{k})
         .AddOutput(*out)
-        .AddOutput(*indices_int32)
+        .AddOutput(indices_int32)
         .AddAttr("sorted", sorted)
         .AddAttr("dim", axis)
         .AddAttr("largest", largest)
-        .Run(npu_stream_topkv2);
-    VLOG(4) << "output:" << *out;
+        .Run(npu_stream);
+
     // Cast 'indices_int32' to 'indices', from INT32 to INT64
     auto dst_dtype = ConvertToNpuDtype(indices->type());
     const auto& npu_op_runner_cast =
-        NpuOpRunner("Cast", {*indices_int32}, {*indices},
+        NpuOpRunner("Cast", {indices_int32}, {*indices},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
-    auto npu_stream_cast =
-        context.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    npu_op_runner_cast.Run(npu_stream_cast);
-
-    VLOG(4) << "indices: " << *indices;
+    npu_op_runner_cast.Run(npu_stream);
   }
 };
 }  // namespace operators
