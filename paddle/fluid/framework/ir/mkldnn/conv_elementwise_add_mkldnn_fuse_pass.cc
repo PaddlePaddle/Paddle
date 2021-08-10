@@ -74,7 +74,7 @@ bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
 }
 
 template <typename T>
-boost::optional<T> HasAttribute(const Node& op, const std::string& attr) {
+paddle::optional<T> HasAttribute(const Node& op, const std::string& attr) {
   if (op.Op()->HasAttr(attr))
     return BOOST_GET_CONST(T, op.Op()->GetAttr(attr));
   else

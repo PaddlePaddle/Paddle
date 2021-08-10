@@ -26,7 +26,7 @@
 // #include "boost/type_traits/is_reference.hpp"
 // #include "boost/mpl/bool.hpp"
 // #include "boost/mpl/not.hpp"
-#include "boost/detail/reference_content.hpp"
+// #include "boost/detail/reference_content.hpp"
 #include "none.h"
 // #include "boost/utility/compare_pointees.hpp"
 

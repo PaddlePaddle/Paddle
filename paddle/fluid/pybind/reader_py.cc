@@ -44,7 +44,7 @@ namespace reader = operators::reader;
 
 // Check whether the tensor shape matches the VarDesc shape
 // Return the different shape if exists
-static boost::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
+static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
     const framework::LoDTensor &tensor, const framework::VarDesc &var_desc,
     size_t num_places) {
   auto tensor_shape = tensor.dims();
