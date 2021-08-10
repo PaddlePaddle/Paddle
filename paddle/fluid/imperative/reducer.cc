@@ -912,6 +912,7 @@ void Reducer::ProcessUnusedDenseVars() {
 
       // 3. create grad var base or get grad var base
       auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
+      grad_var_base_tmp->SharedVar()->SetIsEmpty(false);
 
       // 4. set grad tensor
       auto *dest_grad_tensor =

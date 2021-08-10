@@ -87,9 +87,11 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2")
                 if not args.find_unused_parameters:
-                    model = paddle.DataParallel(model, find_unused_parameters=False)
+                    model = paddle.DataParallel(
+                        model, find_unused_parameters=False)
                 else:
-                    model = paddle.DataParallel(model, find_unused_parameters=True)
+                    model = paddle.DataParallel(
+                        model, find_unused_parameters=True)
                 print_to_err(type(self).__name__, "model built in dygraph")
             out_losses = []
             print_to_err(type(self).__name__, "begin to run dygraph training")
@@ -126,9 +128,9 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
         args.trainer_id = dist.get_rank()
 
         if args.update_method == "nccl2":
-            dist.init_parallel_env()   
+            dist.init_parallel_env()
         model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2":           
+        if args.update_method == "nccl2":
             if args.find_unused_parameters:
                 model = paddle.DataParallel(model, find_unused_parameters=True)
             else:
