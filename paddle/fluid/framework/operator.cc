@@ -30,6 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_bool(sync_npu_communication);
+
 namespace paddle {
 namespace framework {
 class LoDTensor;
@@ -1165,6 +1167,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     // input when use_mkldnn=true;
     if (!(HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn"))) {
       CheckUnusedVar(*this, scope);
+    }
+  }
+
+  if (FLAGS_sync_npu_communication &&
+      BOOST_GET_CONST(bool, attrs_.at("use_calc_stream"))) {
+    auto type = Type();
+    if (type == "send_v2" || type == "recv_v2" || type == "partial_allgather" ||
+        type == "partial_send" || type == "partial_recv" ||
+        type.find("c_allreduce_") == 0 || type.find("c_broadcast") == 0) {
+      dev_ctx->Wait();
+      VLOG(4) << "Operator(" << Type() << " sync_npu_communication";
     }
   }
 
