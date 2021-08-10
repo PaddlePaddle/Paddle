@@ -49,10 +49,11 @@ class TestWhileOp(unittest.TestCase):
         i = layers.zeros(shape=[1], dtype='int32')
         i = layers.cast(i, 'int64')
         i.stop_gradient = True
-        array_len = layers.fill_constant(shape=[1], dtype='int32', value=1)
+        array_len = layers.fill_constant(shape=[1], dtype='int32', value=5)
         array_len = layers.cast(array_len, 'int64')
         array_len.stop_gradient = True
-        cond = layers.logical_or(x=i, y=array_len)
+        cond = layers.ones(shape=[1], dtype='int32')
+        cond = layers.cast(cond, 'bool')
         j = layers.fill_constant(shape=[1], dtype='int32', value=1)
         j = layers.cast(j, 'int64')
         j.stop_gradient = True
@@ -60,6 +61,8 @@ class TestWhileOp(unittest.TestCase):
         array_len2 = layers.cast(array_len2, 'int64')
         array_len2.stop_gradient = True
         cond2 = layers.logical_or(x=j, y=array_len2)
+        cond2 = layers.ones(shape=[1], dtype='int32')
+        cond2 = layers.cast(cond2, 'bool')
         while_op = layers.While(cond=cond)
         while_op2 = layers.While(cond=cond2)
         with while_op.block():
