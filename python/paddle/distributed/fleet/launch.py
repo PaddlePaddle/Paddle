@@ -279,14 +279,20 @@ def launch_collective(args):
         print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
 
     while True:
-        alive = watch_local_trainers(procs, cluster.trainers_nranks())
+        try:
+            alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
-        if not alive:
-            logger.info("Local processes completed.")
-            logger.debug("POD info:{}".format(pod))
-            break
+            if not alive:
+                logger.info("Local processes completed.")
+                logger.debug("POD info:{}".format(pod))
+                break
 
-        time.sleep(3)
+            time.sleep(3)
+
+        except:
+            logger.warning("Terminating... exit")
+            terminate_local_procs(procs)
+            exit(1)
 
     if os.path.exists(gloo_rendezvous_dir):
         shutil.rmtree(gloo_rendezvous_dir)
