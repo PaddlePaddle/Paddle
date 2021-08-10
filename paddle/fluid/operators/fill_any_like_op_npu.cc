@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,18 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-#include <cmath>
-#include <limits>
-#include <type_traits>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/fill_any_like_op.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
-class FillAnyLikeKernel : public framework::OpKernel<T> {
+template <typename T>
+class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
  public:
   using CommonType = typename std::common_type<
       float,
@@ -31,11 +27,11 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
                                 float, T>::type>::type;
 
   void Compute(const framework::ExecutionContext& context) const override {
+    auto data_type = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    // TODO(fangzeyang): Once context.Attribute supports double dtype, this
-    // kernel should be updated to support double dtype, too.
     float value = context.Attr<float>("value");
 
     auto common_type_value = static_cast<CommonType>(value);
@@ -58,11 +54,26 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
         std::isnan(value), false,
         platform::errors::InvalidArgument("The filled value is NaN."));
 
-    math::SetConstant<DeviceContext, T> setter;
-    setter(context.template device_context<DeviceContext>(), out,
-           static_cast<T>(value));
+    Tensor tensor_tmp(data_type);
+    tensor_tmp.mutable_data<T>({1}, context.GetPlace());
+    FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value));
+
+    auto stream =
+        context.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    auto shape = out->dims();
+    const auto& runner = NpuOpRunner("FillD", {tensor_tmp}, {*out},
+                                     {{"dims", framework::vectorize(shape)}});
+    runner.Run(stream);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
+
+REGISTER_OP_NPU_KERNEL(fill_any_like, ops::FillAnyLikeNPUKernel<int>,
+                       ops::FillAnyLikeNPUKernel<float>,
+                       ops::FillAnyLikeNPUKernel<paddle::platform::float16>);
