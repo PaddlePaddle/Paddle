@@ -338,11 +338,9 @@ struct ReduceConfig {
   void SetReduceType() {
     int rank = x_dim.size();
     int reduce_rank = reduce_dim.size();
-    bool is_large_enough = (reduce_num > REDUCE_SPLIT_BOUNDARY / 2) ||
-                           (left_num > REDUCE_SPLIT_BOUNDARY);
-
-    if (rank == reduce_rank ||
-        rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
+    bool is_last_dim =
+        (rank == 2) && (reduce_rank == 1) && (reduce_dim[0] == 1);
+    if (rank == reduce_rank || is_last_dim) {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
     } else if (reduce_rank == 1) {
       // ReduceFirstDim and reduceSecondDim
@@ -788,9 +786,9 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   }
 
   config.SetOutputData(y_data, x.place(), &tmp);
-  bool use_cub_Reduce = (config.left_num == 1) &&
+  bool use_cub_reduce = (config.left_num == 1) &&
                         (!std::is_same<Tx, paddle::platform::float16>::value);
-  if (use_cub_Reduce) {
+  if (use_cub_reduce) {
     // launch CUB::Reduce
     using TransformOp = typename ReduceOp<Tx, Ty>::Transformer;
     auto reducer = ReduceOp<Tx, Ty>();
