@@ -730,6 +730,9 @@ function generate_upstream_develop_api_spec() {
     cmake_gen $1
     build $2
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    echo "pr_whl_size: ${pr_whl_size}"
+    
 
     git checkout $cur_branch
     generate_api_spec "$1" "DEV"
@@ -740,6 +743,8 @@ function generate_upstream_develop_api_spec() {
     if [ ${cmake_change} ];then
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    echo "dev_whl_size: ${dev_whl_size}"
 }
 
 function generate_api_spec() {
