@@ -335,7 +335,10 @@ class PRChecker(object):
                         if f_judge.find('test_') != -1 or f_judge.find(
                                 '_test') != -1:
                             check_added_ut = True
-                        if file_dict[f] not in ['removed']:
+                        if file_dict[f] == 'added':
+                            ut_list.append('added_file_placeholder')
+                            filterFiles.append(f_judge)
+                        elif file_dict[f] not in ['removed']:
                             if self.is_only_comment(f):
                                 ut_list.append('comment_placeholder')
                                 onlyCommentsFilesOrXpu.append(f_judge)
