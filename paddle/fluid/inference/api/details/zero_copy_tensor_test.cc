@@ -137,6 +137,10 @@ TEST(Tensor, FillRandomDataAndCheck) {
   ASSERT_TRUE(FillRandomDataAndCheck(PlaceType::kNPU));
   ASSERT_TRUE(SetPlaceAndCheck(PlaceType::kNPU));
 #endif
+#ifdef PADDLE_WITH_XPU
+  ASSERT_TRUE(FillRandomDataAndCheck(PlaceType::kXPU));
+  ASSERT_TRUE(SetPlaceAndCheck(PlaceType::kXPU));
+#endif
 }
 
 }  // namespace paddle_infer
