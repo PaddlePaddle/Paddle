@@ -15,6 +15,8 @@
 from __future__ import print_function
 
 import unittest
+import functools
+import operator
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -25,17 +27,18 @@ import paddle.distributed as dist
 paddle.enable_static()
 
 
+def _flatten_nested_list(nested_list):
+    result = functools.reduce(operator.iconcat, nested_list, [])
+    return result
+
+
 def _append_attr_suffix(name):
     return name + core.kAutoParallelSuffix()
 
 
-def _remove_attr_suffix(name):
-    return name.strip(core.kAutoParallelSuffix())
-
-
 LAST_PP_STAGE = 3
-MASK = np.array([[0, 1], [1, 0], [1, 1]])
-MESH = dist.ProcessMesh(np.array([[0, 1, 2], [3, 4, 5]]))
+MASK = [[0, 1], [1, 0], [1, 1]]
+MESH = dist.ProcessMesh([[0, 1, 2], [3, 4, 5]])
 
 
 class SimpleNet(nn.Layer):
@@ -48,13 +51,13 @@ class SimpleNet(nn.Layer):
         self.dense2 = nn.Linear(hidden_size, hidden_size // 2)
 
     def forward(self, x, y):
-        x = dist.shard_tensor(x, self.mesh, dims_mapping=[0, -1])
+        x = dist.shard_tensor(x, self.mesh, dim_mapping=[0, -1])
         x = dist.set_shard_mask(x, MASK)
         emb_out = self.word_embeddings(x)
 
         dist.set_pipeline_stage(LAST_PP_STAGE)
 
-        y = dist.shard_tensor(y, self.mesh, dims_mapping=[0, -1])
+        y = dist.shard_tensor(y, self.mesh, dim_mapping=[0, -1])
         dist.set_offload_device(y, "gpu:3")
         linear1 = self.dense1(y)
         out = self.dense2(linear1)
@@ -79,8 +82,9 @@ class TestAutoParallelAPI(unittest.TestCase):
         allatts = x.attr_names
         self.assertEqual(x_mesh, mesh)
         shard_mask_attr = _append_attr_suffix('mask')
-        self.assertEqual(x._get_attr(shard_mask_attr), MASK.flatten().tolist())
-        self.assertEqual(x.shard_mask, MASK.flatten().tolist())
+        self.assertEqual(
+            x._get_attr(shard_mask_attr), _flatten_nested_list(MASK))
+        self.assertEqual(x.shard_mask, _flatten_nested_list(MASK))
         offload_attr = _append_attr_suffix('offload_device')
         self.assertEqual(y._get_attr(offload_attr), "gpu:3")
         self.assertEqual(y.desc.has_attr(offload_attr), True)
@@ -99,7 +103,7 @@ class TestAutoParallelAPI(unittest.TestCase):
         dist.shard_op(
             paddle.add,
             mesh=mesh,
-            dims_mapping_dict={
+            dim_mapping_dict={
                 data2.name: DIMS_MAPPING1,
                 data3.name: DIMS_MAPPING2
             },
@@ -108,14 +112,18 @@ class TestAutoParallelAPI(unittest.TestCase):
         last_op = ops[-1]
 
         self.assertEqual(last_op.process_mesh, mesh)
-        self.assertEqual(last_op.dims_mapping(data2.name), DIMS_MAPPING1)
-        self.assertEqual(last_op.dims_mapping(data3.name), DIMS_MAPPING2)
+        attr_name = "IN_" + data2.name
+        attr_name = _append_attr_suffix(attr_name)
+        self.assertEqual(last_op.attr(attr_name), DIMS_MAPPING1)
+        attr_name = "IN_" + data3.name
+        attr_name = _append_attr_suffix(attr_name)
+        self.assertEqual(last_op.attr(attr_name), DIMS_MAPPING2)
 
     def test_process_mesh(self):
-        mesh1 = dist.ProcessMesh(np.array([[0, 1, 2], [3, 4, 5]]), parent=MESH)
-        mesh2 = dist.ProcessMesh(np.array([[0, 1, 2], [3, 4, 5]]), parent=mesh1)
-        mesh3 = dist.ProcessMesh(np.array([[0, 1], [2, 3]]), parent=mesh1)
-        mesh4 = dist.ProcessMesh(np.array([[2, 3], [4, 5]]), parent=mesh1)
+        mesh1 = dist.ProcessMesh([[0, 1, 2], [3, 4, 5]], parent=MESH)
+        mesh2 = dist.ProcessMesh([[0, 1, 2], [3, 4, 5]], parent=mesh1)
+        mesh3 = dist.ProcessMesh([[0, 1], [2, 3]], parent=mesh1)
+        mesh4 = dist.ProcessMesh([[2, 3], [4, 5]], parent=mesh1)
 
         self.assertEqual(MESH.parent, None)
         self.assertEqual(mesh1.parent, MESH)
