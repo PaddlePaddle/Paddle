@@ -552,7 +552,7 @@ def pull_worker_log(tp, print_rank_no=False):
                 try:
                     new_line = line
                     if print_rank_no:
-                        new_line = "[rank:{}] {}".format(tp.local_rank, line)
+                        new_line = "[device:{}] {}".format(tp.local_rank, line)
                     sys.stdout.write(new_line)
                 except UnicodeEncodeError:
                     sys.stdout.write(
