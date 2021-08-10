@@ -86,7 +86,7 @@ class TransformerNet(Layer):
         product = layers.matmul(x=q, y=k, transpose_y=True, alpha=d_model**-0.5)
 
         weights = F.softmax(product + mask)
-        weights = F.dropout(weights, 0.2)
+        # weights = F.dropout(weights, 0.2)
         tgt = layers.matmul(weights, v)
         residual = tgt
         tgt = self.norm1(tgt)

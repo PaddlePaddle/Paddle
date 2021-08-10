@@ -315,7 +315,7 @@ class PipelineLayer(Layer):
             input = layer(input)
         return input
 
-    def save_state_dict(self, path):
+    def save_state_dict(self, path, save_rng=False):
         if self._topo.get_coord(self.global_rank).data != 0:
             return
 
@@ -335,6 +335,7 @@ class PipelineLayer(Layer):
                 continue
             paddle.save(layer.state_dict(), model_save_path)
 
+        # save rng state
         logger.info("save model state successfully...")
 
     def set_state_dir(self, path):
