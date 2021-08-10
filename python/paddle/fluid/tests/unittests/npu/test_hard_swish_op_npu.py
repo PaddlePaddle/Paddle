@@ -23,8 +23,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
 
-SEED = 2021
-
 
 def ref_hard_swish_grad(x, threshold=6.0, scale=6.0, offset=3.0):
     dout = np.full_like(x, fill_value=1. / x.size)
@@ -34,8 +32,6 @@ def ref_hard_swish_grad(x, threshold=6.0, scale=6.0, offset=3.0):
     return dx
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestHardSwishNPU(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -52,8 +48,8 @@ class TestHardSwishNPU(OpTest):
         #the same with TestAbs
         x[np.abs(x + offset) < 0.005] = 0.02
         x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
-        out = (x * np.minimum(np.maximum(x + offset, 0.), threshold) /
-               scale).astype(x.dtype)
+        out = (x * (np.minimum(np.maximum(x + offset, 0.), threshold) /
+                    scale)).astype(self.dtype)
         self.x_grad = ref_hard_swish_grad(x, threshold, scale, offset)
 
         self.inputs = {'X': x}
@@ -80,19 +76,15 @@ class TestHardSwishNPU(OpTest):
             self.place, ['X'], 'Out', user_defined_grads=[self.x_grad])
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestHardSwishNPUFp16(TestHardSwishNPU):
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=5e-3)
+        self.check_output_with_place(self.place)
 
     def init_dtype(self):
         self.dtype = np.float16
 
 
 # test the result of hard_swish and hard_swish_grad on CPU and NPU
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestHardSwishNPUWithCPU(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()

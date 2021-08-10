@@ -434,14 +434,24 @@ class HardSwishNPUKernel : public framework::OpKernel<T> {
         {clip_val});
     runner_clip.Run(stream);
 
-    Tensor mul_val(x->type());
-    mul_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_mul = NpuOpRunner("Mul", {*x, clip_val}, {mul_val});
-    runner_mul.Run(stream);
+    Tensor tensor_scale_tmp(x->type());
+    tensor_scale_tmp.mutable_data<T>({1}, place);
+    FillNpuTensorWithConstant<T>(&tensor_scale_tmp, static_cast<T>(scale));
+    Tensor tensor_scale(x->type());
+    tensor_scale.mutable_data<T>(x->dims(), place);
+    const auto& runner_fill =
+        NpuOpRunner("FillD", {tensor_scale_tmp}, {tensor_scale},
+                    {{"dims", framework::vectorize(x->dims())}});
+    runner_fill.Run(stream);
 
+    Tensor div_val(x->type());
+    div_val.mutable_data<T>(x->dims(), place);
     const auto& runner_div =
-        NpuOpRunner("Power", {mul_val}, {*out}, {{"scale", 1.0f / scale}});
+        NpuOpRunner("Div", {clip_val, tensor_scale}, {div_val});
     runner_div.Run(stream);
+
+    const auto& runner_mul = NpuOpRunner("Mul", {*x, div_val}, {*out});
+    runner_mul.Run(stream);
   }
 };
 
