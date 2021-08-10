@@ -18,6 +18,7 @@ import sys
 import unittest
 import numpy as np
 from op_test import OpTest
+from op_test import skip_check_grad_ci
 from test_softmax_op import stable_softmax
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -382,6 +383,90 @@ class TestWarpCTCOpFp64(OpTest):
         self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
         self.blank = self.num_classes - 1
         self.norm_by_times = False
+
+    def setUp(self):
+        self.op_type = "warpctc"
+        self.config()
+
+        logits = np.random.uniform(
+            0.1, 1.0,
+            [sum(self.logits_length), self.num_classes]).astype("float64")
+        softmax = np.apply_along_axis(stable_softmax, 1, logits)
+        # labels should not be blank
+        labels = np.random.randint(
+            0,
+            self.num_classes - 1, [sum(self.labels_length), 1],
+            dtype="int32")
+
+        ctc = CTCForward(softmax, self.logits_lod, labels, self.labels_lod,
+                         self.num_classes, self.batch_size, self.blank,
+                         self.norm_by_times)
+        loss = ctc.forward()
+
+        max_sequence_length = 0
+        for i in range(self.batch_size):
+            max_sequence_length = max(max_sequence_length,
+                                      self.logits_length[i])
+        # reshape logits to T*N*S
+        new_logits = np.zeros(
+            [max_sequence_length, self.batch_size, self.num_classes],
+            dtype=logits.dtype)
+
+        cur = 0
+        for batch_id in range(self.batch_size):
+            for i in range(self.logits_length[batch_id]):
+                for j in range(self.num_classes):
+                    new_logits[i, batch_id, j] = logits[cur + i, j]
+            cur = cur + self.logits_length[batch_id]
+
+        # reshape labels to N*S
+        max_target_seq_length = 0
+        for i in range(self.batch_size):
+            max_target_seq_length = max(max_target_seq_length,
+                                        self.labels_length[i])
+        new_labels = np.zeros(
+            [self.batch_size, max_target_seq_length], dtype="int32")
+
+        cur = 0
+        for batch_id in range(self.batch_size):
+            for i in range(self.labels_length[batch_id]):
+                new_labels[batch_id, i] = labels[cur + i]
+            cur = cur + self.labels_length[batch_id]
+
+        self.gradient = np.zeros(
+            [max_sequence_length, self.batch_size, self.num_classes],
+            dtype=logits.dtype)
+
+        self.inputs = {
+            "Logits": new_logits,
+            "Label": new_labels,
+            "LogitsLength": self.logits_length,
+            "LabelLength": self.labels_length
+        }
+        self.outputs = {"Loss": loss}
+        self.attrs = {
+            "blank": self.blank,
+            "norm_by_times": self.norm_by_times,
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.outputs['WarpCTCGrad'] = self.gradient
+        self.check_grad(["Logits"], "Loss")
+        
+
+class TestWarpCTCOpAttr(OpTest):
+    def config(self):
+        self.batch_size = 4
+        self.num_classes = 8
+        self.logits_lod = [[4, 1, 5, 5]]
+        self.labels_lod = [[3, 1, 4, 2]]
+        self.logits_length = np.array([4, 1, 5, 5], dtype=np.int64)
+        self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
+        self.blank = self.num_classes - 1
+        self.norm_by_times = False
         self.size_average = False
         self.length_average = False
 
@@ -454,13 +539,14 @@ class TestWarpCTCOpFp64(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
+        
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
         self.check_grad(["Logits"], "Loss")
 
 
-class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpFp64):
+@skip_check_grad_ci(reason="For warpctc, check_grad is only for coverage.")
+class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpAttr):
     def config(self):
         self.batch_size = 4
         self.num_classes = 8
@@ -473,8 +559,9 @@ class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpFp64):
         self.size_average = False
         self.length_average = False
 
-
-class TestWarpCTCOpFp64SizeAverage(TestWarpCTCOpFp64):
+        
+@skip_check_grad_ci(reason="For warpctc, check_grad is only for coverage.")
+class TestWarpCTCOpFp64SizeAverage(TestWarpCTCOpAttr):
     def config(self):
         self.batch_size = 4
         self.num_classes = 8
@@ -486,9 +573,10 @@ class TestWarpCTCOpFp64SizeAverage(TestWarpCTCOpFp64):
         self.norm_by_times = False
         self.size_average = True
         self.length_average = False
-
-
-class TestWarpCTCOpFp64LengthAverage(TestWarpCTCOpFp64):
+        
+        
+@skip_check_grad_ci(reason="For warpctc, check_grad is only for coverage.")
+class TestWarpCTCOpFp64LengthAverage(TestWarpCTCOpAttr):
     def config(self):
         self.batch_size = 4
         self.num_classes = 8
