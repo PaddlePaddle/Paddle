@@ -81,7 +81,7 @@ class TestDistPPSaveLoadTraning(unittest.TestCase):
             x.stop_gradient = True
             loss = model.train_batch([x, x], optimizer, scheduler)
 
-        model._layers.save_state_dict(output_dir)
+        model._layers.save_state_dict(output_dir, save_rng=True)
         paddle.save(optimizer.state_dict(),
                     os.path.join(output_dir, "model_state.pdopt"))
 
