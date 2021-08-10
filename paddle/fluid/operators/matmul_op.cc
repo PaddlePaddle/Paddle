@@ -90,16 +90,6 @@ class MatMulKernel : public framework::OpKernel<T> {
         mat_dim_a.batch_size_ = 0;
       }
     }
-    PADDLE_ENFORCE_GT(
-        product(x_dims), 0,
-        platform::errors::InvalidArgument(
-            "Tensor size of x should greater to 0, but received size = %d.",
-            product(x_dims)));
-    PADDLE_ENFORCE_GT(
-        product(y_dims), 0,
-        platform::errors::InvalidArgument(
-            "Tensor size of y should greater to 0, but received size = %d.",
-            product(y_dims)));
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
     bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
