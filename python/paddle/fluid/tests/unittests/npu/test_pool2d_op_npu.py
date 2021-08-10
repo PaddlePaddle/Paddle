@@ -30,8 +30,6 @@ paddle.enable_static()
 
 
 def create_test_padding_SAME_class(parent):
-    @unittest.skipIf(not paddle.is_compiled_with_npu(),
-                     "core is not compiled with NPU")
     class TestPaddingSMAECase(parent):
         def init_paddings(self):
             self.paddings = [0, 0]
@@ -43,8 +41,6 @@ def create_test_padding_SAME_class(parent):
 
 
 def create_test_use_ceil_class(parent):
-    @unittest.skipIf(not paddle.is_compiled_with_npu(),
-                     "core is not compiled with NPU")
     class TestPool2DUseCeilCase(parent):
         def init_ceil_mode(self):
             self.ceil_mode = True
@@ -55,8 +51,6 @@ def create_test_use_ceil_class(parent):
 
 
 def create_test_padding_VALID_class(parent):
-    @unittest.skipIf(not paddle.is_compiled_with_npu(),
-                     "core is not compiled with NPU")
     class TestPaddingVALIDCase(parent):
         def init_paddings(self):
             self.paddings = [1, 1]
@@ -65,6 +59,20 @@ def create_test_padding_VALID_class(parent):
     cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
+
+
+def create_test_fp16_class(parent):
+    class TestFp16Case(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = False
+            self.dtype = np.float16
+
+        def test_check_grad(self):
+            return
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    TestFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestFp16Case
 
 
 def pool2d_backward_navie(x,
@@ -162,6 +170,8 @@ def pool2d_backward_navie(x,
                             range(start_h, end_h), range(start_w, end_w))
                         x_grad[n, c, idx[0], idx[1]] += 1 / (
                             end_h - start_h) / (end_w - start_w)
+                        if is_adaptive:
+                            x_grad[n, c, idx[0], idx[1]] /= np.prod(strides)
 
     x_grad_new = np.zeros(x_old_shape)
     N, C, H, W = x_old_shape
@@ -177,8 +187,6 @@ def pool2d_backward_navie(x,
     return x_grad
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestPool2D_Op(OpTest):
     def setUp(self):
         self.set_npu()
@@ -280,8 +288,6 @@ class TestPool2D_Op(OpTest):
             user_defined_grads=[x_grad])
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase1(TestPool2D_Op):
     def init_test_case(self):
         self.ksize = [3, 3]
@@ -301,8 +307,6 @@ class TestCase1(TestPool2D_Op):
         self.shape = [2, 3, 7, 7]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase2(TestPool2D_Op):
     def init_test_case(self):
         self.ksize = [3, 3]
@@ -322,39 +326,29 @@ class TestCase2(TestPool2D_Op):
         self.shape = [2, 3, 7, 7]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase3(TestPool2D_Op):
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase4(TestCase1):
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase5(TestCase2):
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAvgInclude(TestCase2):
     def init_exclusive(self):
         self.exclusive = False
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAvgPoolAdaptive(TestCase1):
     def init_adaptive(self):
         self.adaptive = True
@@ -368,8 +362,6 @@ class TestAvgPoolAdaptive(TestCase1):
         self.paddings = [0, 0, 0, 0]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
     def init_adaptive(self):
         self.adaptive = True
@@ -379,15 +371,13 @@ class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
 
     def init_test_case(self):
         self.ksize = [2, 4]
-        self.strides = [2, 4]
+        # fixme: CANN AvgPoolGradV3 dose not support asymmetric strides
+        # self.strides = [2, 4]
+        self.strides = [4, 4]
         self.paddings = [0, 0, 0, 0]
 
 
 #-------test pool2d with asymmetric padding-----
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestPool2D_AsyPadding(TestPool2D_Op):
     def init_test_case(self):
         self.ksize = [3, 3]
@@ -398,8 +388,6 @@ class TestPool2D_AsyPadding(TestPool2D_Op):
         self.shape = [2, 3, 5, 5]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase1_AsyPadding(TestCase1):
     def init_test_case(self):
         self.ksize = [3, 3]
@@ -410,8 +398,6 @@ class TestCase1_AsyPadding(TestCase1):
         self.shape = [2, 3, 7, 7]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase2_AsyPadding(TestCase2):
     def init_test_case(self):
         self.ksize = [3, 3]
@@ -422,8 +408,6 @@ class TestCase2_AsyPadding(TestCase2):
         self.shape = [2, 3, 7, 7]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase3_AsyPadding(TestCase3):
     def init_test_case(self):
         self.ksize = [3, 3]
@@ -434,8 +418,6 @@ class TestCase3_AsyPadding(TestCase3):
         self.shape = [2, 3, 5, 5]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase4_AsyPadding(TestCase4):
     def init_test_case(self):
         self.ksize = [3, 3]
@@ -446,8 +428,6 @@ class TestCase4_AsyPadding(TestCase4):
         self.shape = [2, 3, 7, 7]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase5_AsyPadding((TestCase5)):
     def init_test_case(self):
         self.ksize = [3, 3]
@@ -458,8 +438,6 @@ class TestCase5_AsyPadding((TestCase5)):
         self.shape = [2, 3, 7, 7]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAvgInclude_AsyPadding(TestCase2):
     def init_exclusive(self):
         self.exclusive = False
@@ -473,22 +451,20 @@ class TestAvgInclude_AsyPadding(TestCase2):
         self.shape = [2, 3, 7, 7]
 
 
-# class TestAvgPoolAdaptive_AsyPadding(TestCase1):
-#     def init_adaptive(self):
-#         self.adaptive = True
+class TestAvgPoolAdaptive_AsyPadding(TestCase1):
+    def init_adaptive(self):
+        self.adaptive = True
 
-#     def init_test_case(self):
-#         self.ksize = [2, 2]
-#         self.strides = [2, 2]
-#         self.paddings = [0, 0, 0, 0]
+    def init_test_case(self):
+        self.ksize = [2, 2]
+        self.strides = [2, 2]
+        self.paddings = [1, 1, 0, 2]
 
-#     def init_shape(self):
-#         self.shape = [2, 3, 8, 8]
+    def init_shape(self):
+        self.shape = [2, 3, 8, 8]
 
 
 #----------- test channel_last --------------
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestPool2D_channel_last(TestPool2D_Op):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -497,8 +473,6 @@ class TestPool2D_channel_last(TestPool2D_Op):
         self.shape = [2, 5, 5, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase1_channel_last(TestCase1):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -507,8 +481,6 @@ class TestCase1_channel_last(TestCase1):
         self.shape = [2, 7, 7, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase2_channel_last(TestCase2):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -517,8 +489,6 @@ class TestCase2_channel_last(TestCase2):
         self.shape = [2, 7, 7, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase3_channel_last(TestCase3):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -527,8 +497,6 @@ class TestCase3_channel_last(TestCase3):
         self.shape = [2, 5, 5, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase4_channel_last(TestCase4):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -537,8 +505,6 @@ class TestCase4_channel_last(TestCase4):
         self.shape = [2, 7, 7, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase5_channel_last(TestCase5):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -547,15 +513,11 @@ class TestCase5_channel_last(TestCase5):
         self.shape = [2, 7, 7, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase5_Max(TestCase2):
     def init_pool_type(self):
         self.pool_type = "max"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase5_channel_last_Max(TestCase5_Max):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -564,22 +526,23 @@ class TestCase5_channel_last_Max(TestCase5_Max):
         self.shape = [2, 7, 7, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAvgInclude_channel_last(TestCase2_channel_last):
     def init_exclusive(self):
         self.exclusive = False
 
 
-# @unittest.skipIf(not paddle.is_compiled_with_npu(),
-#                  "core is not compiled with NPU")
-# class TestAvgPoolAdaptive_channel_last(TestCase1_channel_last):
-#     def init_adaptive(self):
-#         self.adaptive = True
+class TestAvgPoolAdaptive_channel_last(TestCase1_channel_last):
+    def init_adaptive(self):
+        self.adaptive = True
+
+    def init_shape(self):
+        self.shape = [2, 8, 8, 3]
+
+    def init_test_case(self):
+        self.ksize = [2, 2]
+        self.strides = [2, 2]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestPool2D_AsyPadding_channel_last(TestPool2D_AsyPadding):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -588,8 +551,6 @@ class TestPool2D_AsyPadding_channel_last(TestPool2D_AsyPadding):
         self.shape = [2, 5, 5, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase1_AsyPadding_channel_last(TestCase1_AsyPadding):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -598,8 +559,6 @@ class TestCase1_AsyPadding_channel_last(TestCase1_AsyPadding):
         self.shape = [2, 7, 7, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase2_AsyPadding_channel_last(TestCase2_AsyPadding):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -608,8 +567,6 @@ class TestCase2_AsyPadding_channel_last(TestCase2_AsyPadding):
         self.shape = [2, 7, 7, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase3_AsyPadding_channel_last(TestCase3_AsyPadding):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -618,8 +575,6 @@ class TestCase3_AsyPadding_channel_last(TestCase3_AsyPadding):
         self.shape = [2, 5, 5, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase4_AsyPadding_channel_last(TestCase4_AsyPadding):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -628,8 +583,6 @@ class TestCase4_AsyPadding_channel_last(TestCase4_AsyPadding):
         self.shape = [2, 7, 7, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase5_AsyPadding_channel_last(TestCase5_AsyPadding):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -638,8 +591,6 @@ class TestCase5_AsyPadding_channel_last(TestCase5_AsyPadding):
         self.shape = [2, 7, 7, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAvgInclude_AsyPadding_channel_last(TestAvgInclude_AsyPadding):
     def init_data_format(self):
         self.data_format = "NHWC"
@@ -648,23 +599,21 @@ class TestAvgInclude_AsyPadding_channel_last(TestAvgInclude_AsyPadding):
         self.shape = [2, 7, 7, 3]
 
 
-# @unittest.skipIf(not paddle.is_compiled_with_npu(),
-#                  "core is not compiled with NPU")
-# class TestAvgPoolAdaptive_AsyPadding_channel_last(
-#         TestAvgPoolAdaptive_AsyPadding):
-#     def init_data_format(self):
-#         self.data_format = "NHWC"
+class TestAvgPoolAdaptive_AsyPadding_channel_last(
+        TestAvgPoolAdaptive_AsyPadding):
+    def init_data_format(self):
+        self.data_format = "NHWC"
 
-#     def init_shape(self):
-#         self.shape = [2, 7, 7, 3]
+    def init_shape(self):
+        self.shape = [2, 8, 8, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCase1_strides(TestCase1):
     def init_test_case(self):
         self.ksize = [3, 3]
-        self.strides = [1, 2]
+        # fixme: CANN AvgPoolGradV3 dose not support asymmetric strides
+        # self.strides = [1, 2]
+        self.strides = [2, 2]
 
     def init_shape(self):
         self.shape = [2, 3, 4, 5]
@@ -705,6 +654,19 @@ create_test_use_ceil_class(TestCase1_channel_last)
 create_test_use_ceil_class(TestCase2_channel_last)
 create_test_use_ceil_class(TestCase1_AsyPadding_channel_last)
 create_test_use_ceil_class(TestCase2_AsyPadding_channel_last)
+
+create_test_fp16_class(TestPool2D_Op)
+create_test_fp16_class(TestCase1)
+create_test_fp16_class(TestCase2)
+create_test_fp16_class(TestCase3)
+create_test_fp16_class(TestCase4)
+create_test_fp16_class(TestCase5)
+create_test_fp16_class(TestPool2D_channel_last)
+create_test_fp16_class(TestCase1_channel_last)
+create_test_fp16_class(TestCase2_channel_last)
+create_test_fp16_class(TestCase3_channel_last)
+create_test_fp16_class(TestCase4_channel_last)
+create_test_fp16_class(TestCase5_channel_last)
 
 if __name__ == "__main__":
     unittest.main()
