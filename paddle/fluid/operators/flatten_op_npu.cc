@@ -89,7 +89,6 @@ REGISTER_OP_NPU_KERNEL(flatten2, ops::Flatten2NPUKernel<float>,
                        ops::Flatten2NPUKernel<int>,
                        ops::Flatten2NPUKernel<int8_t>,
                        ops::Flatten2NPUKernel<int64_t>);
-
 REGISTER_OP_NPU_KERNEL(flatten2_grad, ops::Flatten2GradNPUKernel<float>,
                        ops::Flatten2GradNPUKernel<double>,
                        ops::Flatten2GradNPUKernel<uint8_t>,
