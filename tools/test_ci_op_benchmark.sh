@@ -167,11 +167,7 @@ function compile_install_paddlepaddle {
   bash paddle/scripts/paddle_build.sh build_only $(nproc)
   [ $? -ne 0 ] && LOG "[FATAL] compile fail." && exit 7
   LOG "[INFO] Build fineshed"
-  set -x
-  mkdir build/${branch_name}
-  cp build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl build/${branch_name}/
-  set +x
-  ls build/
+  mkdir -p build_whl/${branch_name} && cp build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl build_whl/${branch_name}/
 }
 
 function build_whl {
@@ -203,7 +199,7 @@ function run_op_benchmark_test {
     LOG "[INFO] Uninstall Paddle ..."
     pip uninstall -y paddlepaddle paddlepaddle_gpu
     LOG "[INFO] Install Paddle ..."
-    pip install build/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    pip install build_whl/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null
