@@ -20,6 +20,9 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/npu_blacklist_op.h"
+#endif
 DECLARE_bool(check_nan_inf);
 
 namespace paddle {
@@ -144,7 +147,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
-      is_npu_place(expected_kernel_key.place_)) {
+          is_npu_place(expected_kernel_key.place_) ||
+      paddle::platform::is_in_npu_black_list(op.Type())) {
     VLOG(3) << "missing NPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
