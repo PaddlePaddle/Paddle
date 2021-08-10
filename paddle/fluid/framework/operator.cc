@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DECLARE_bool(sync_npu_communication);
+DECLARE_bool(sync_npu_calc_communication);
 
 namespace paddle {
 namespace framework {
@@ -1170,7 +1170,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     }
   }
 
-  if (FLAGS_sync_npu_communication &&
+  if (FLAGS_sync_npu_calc_communication &&
       BOOST_GET_CONST(bool, attrs_.at("use_calc_stream"))) {
     auto type = Type();
     if (type == "send_v2" || type == "recv_v2" || type == "partial_allgather" ||
