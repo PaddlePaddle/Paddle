@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class TopkV2NPUKernel : public framework::OpKernel<T> {
  public:
   // Use Ascend TopKV2 operator to implement paddle TopKV2Op
@@ -42,8 +42,6 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
     }
 
     if (k_tensor != nullptr) {
-      // seems complicated, but I really don't know
-      // how to assign a NPU value to a CPU variable by an elegant way
       std::vector<int> v_tmp(1);
       TensorToVector(
           *k_tensor,
@@ -62,36 +60,27 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     indices->mutable_data<int64_t>(context.GetPlace());
 
-    // Allocate space for input k and output indices of Ascend topkV2 operator
-    framework::Tensor* k_Ascend = new Tensor(framework::proto::VarType::INT32);
-    k_Ascend->mutable_data<int32_t>({1}, context.GetPlace());
-    FillNpuTensorWithConstant<int32_t>(k_Ascend, static_cast<int32_t>(k));
-
+    // Allocate space for output indices of Ascend topkV2 operator
     framework::Tensor* indices_int32 =
         new Tensor(framework::proto::VarType::INT32);
     indices_int32->Resize(output_dims);
     indices_int32->mutable_data<int32_t>(context.GetPlace());
-
-    VLOG(4) << "input: " << *input;
-    VLOG(4) << "k: " << *k_Ascend;
-    VLOG(4) << "sorted: " << sorted;
-    VLOG(4) << "dim: " << axis;
-    VLOG(4) << "largest: " << largest;
-    VLOG(4) << "output: " << *out;
-    VLOG(4) << "indices_int32: " << *indices_int32;
-
-    // Run CANN TopKV2 operator, error occurred when the dtype is 'float16'
-    const auto& npu_op_runner_topkv2 =
-        NpuOpRunner("TopKV2", {*input, *k_Ascend}, {*out, *indices_int32},
-                    {{"sorted", sorted}, {"dim", axis}, {"largest", largest}});
+    VLOG(4) << "input:" << *input;
+    // Run Ascend TopKV2 operator
+    NpuOpRunner npu_op_runner_topkv2;
     auto npu_stream_topkv2 =
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    npu_op_runner_topkv2.Run(npu_stream_topkv2);
-
-    VLOG(4) << "output: " << *out;
-    VLOG(4) << "indices_int32: " << *indices_int32;
-
+    npu_op_runner_topkv2.SetType("TopKV2")
+        .AddInput(*input)
+        .AddInput(std::vector<int32_t>{k})
+        .AddOutput(*out)
+        .AddOutput(*indices_int32)
+        .AddAttr("sorted", sorted)
+        .AddAttr("dim", axis)
+        .AddAttr("largest", largest)
+        .Run(npu_stream_topkv2);
+    VLOG(4) << "output:" << *out;
     // Cast 'indices_int32' to 'indices', from INT32 to INT64
     auto dst_dtype = ConvertToNpuDtype(indices->type());
     const auto& npu_op_runner_cast =
@@ -109,8 +98,7 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(
-    top_k_v2, ops::TopkV2NPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::TopkV2NPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::TopkV2NPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
-    ops::TopkV2NPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
+REGISTER_OP_NPU_KERNEL(top_k_v2, ops::TopkV2NPUKernel<float>,
+                       ops::TopkV2NPUKernel<double>,
+                       ops::TopkV2NPUKernel<int32_t>,
+                       ops::TopkV2NPUKernel<int64_t>);
