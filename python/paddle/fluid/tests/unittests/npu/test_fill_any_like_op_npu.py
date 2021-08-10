@@ -24,11 +24,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 
 paddle.enable_static()
-SEED = 2021
 
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestFillAnyLikeNPUOp(OpTest):
     def setUp(self):
         self.set_npu()
