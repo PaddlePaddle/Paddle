@@ -45,8 +45,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
-DECLARE_bool(sync_npu_calc_communication);
-
 namespace paddle {
 namespace operators {
 
@@ -262,12 +260,6 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
         sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
         reinterpret_cast<void*>(stream)));
-
-    if (ctx.Attr<bool>("use_calc_stream") &&
-        FLAGS_sync_npu_calc_communication) {
-      VLOG(4) << "sync_npu_calc_communication";
-      dev_ctx->Wait();
-    }
 
     out->Resize(in->dims());
 #else

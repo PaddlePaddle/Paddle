@@ -20,6 +20,19 @@ DEFINE_bool(benchmark, false,
             "Default cuda is asynchronous device, set to True will"
             "force op run in synchronous mode.");
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+/**
+ * NPU related FLAG
+ * Name: FLAGS_sync_npu_calc_communication
+ * Since Version: 2.2
+ * Value Range: bool, default=false
+ */
+
+DEFINE_bool(sync_npu_calc_communication, false,
+            "If set true, will call `aclrtSynchronizeStream` to sync NPU calc "
+            "stream to wait commnunication ends.");
+#endif
+
 namespace paddle {
 namespace platform {
 

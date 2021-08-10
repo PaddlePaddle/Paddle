@@ -98,17 +98,6 @@ DEFINE_string(
     "The absolute path of configuration json file, like: /tmp/config.json. "
     "If proveided, it will be passed to aclInit().");
 
-/**
- * NPU related FLAG
- * Name: FLAGS_sync_npu_calc_communication
- * Since Version: 2.2
- * Value Range: bool, default=false
- */
-
-DEFINE_bool(sync_npu_calc_communication, false,
-            "If set true, will call `aclrtSynchronizeStream` to sync NPU calc "
-            "stream to wait commnunication ends.");
-
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
