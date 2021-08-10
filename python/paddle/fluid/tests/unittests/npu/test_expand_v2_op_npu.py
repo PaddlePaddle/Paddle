@@ -52,8 +52,8 @@ class TestExpandV2NPUOpRank1(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
-    # def test_check_grad(self):
-    #     self.check_grad(['X'], 'Out')
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2NPUOpRank1):
@@ -118,8 +118,8 @@ class TestExpandV2OpNPURank1_tensor_attr(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
-    # def test_check_grad(self):
-    #     self.check_grad(['X'], 'Out')
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestExpandV2OpRank2_Corner_tensor_attr(
@@ -159,11 +159,12 @@ class TestExpandV2NPUOpRank1_tensor(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
-    # def test_check_grad(self):
-    #     self.check_grad(['X'], 'Out')
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
-    # Situation 4: input x is float16
+# Situation 4: input x is float16
+# don't support grad check for float16
 class TestExpandV2OpInteger(OpTest):
     def setUp(self):
         self.set_npu()
@@ -184,6 +185,7 @@ class TestExpandV2OpInteger(OpTest):
 
 
 # Situation 5: input x is int32
+# ReduceSumD CANN Op doesn't support grad check for int32
 class TestExpandV2OpInteger(OpTest):
     def setUp(self):
         self.set_npu()
@@ -240,7 +242,7 @@ class TestExpandV2API(unittest.TestCase):
             out_2 = paddle.expand(x, shape=[positive_2, 14])
             out_3 = paddle.expand(x, shape=expand_shape)
 
-            # g0 = fluid.backward.calc_gradient(out_2, x)
+            g0 = fluid.backward.calc_gradient(out_2, x)
 
             exe = fluid.Executor(place=paddle.NPUPlace(0))
             res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
