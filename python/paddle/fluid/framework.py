@@ -2121,6 +2121,11 @@ class Operator(object):
                 del op_attrs[role_var_name]
 
             if len(self.desc.type()) != 0:
+                # NOTE(Aurelius84): prog.clone() will lead that var.op is always None,
+                # we add this to fix the problem.
+                for arg in self.desc.output_arg_names():
+                    if block.has_var(arg) and block.var(arg).op is None:
+                        block.var(arg).op = self
                 return
             if type is None:
                 raise ValueError(
@@ -3348,6 +3353,22 @@ class Block(object):
         return ret_var
 
 
+def _apply_pass(main_program,
+                startup_program,
+                pass_name,
+                pass_attrs={},
+                pass_attr_types={}):
+    assert isinstance(pass_attrs, dict), "pass_attrs must be dict"
+    assert isinstance(pass_attr_types, dict), "pass_attr_types must be dict"
+    tmp_main_program = core.ProgramDesc(main_program.desc)
+    tmp_startup_program = core.ProgramDesc(startup_program.desc)
+    attrs = core.apply_pass(tmp_main_program, tmp_startup_program, pass_name,
+                            pass_attrs, pass_attr_types)
+    main_program._rebuild_from_desc(tmp_main_program)
+    startup_program._rebuild_from_desc(tmp_startup_program)
+    return attrs
+
+
 class IrNode(object):
     """
     Python IrNode. Beneath it is a core.Node, which is used for Ir Pass.
@@ -4263,6 +4284,91 @@ class Program(object):
 
         # compiled program, i.e. Graph
         self._graph = None
+
+    def _find_var_class_kwargs(self, new_desc):
+        old_desc = self.desc
+        all_new_vars = []
+        block_num = new_desc.num_blocks()
+        for idx in range(block_num):
+            new_block_desc = new_desc.block(idx)
+            all_new_vars.append([])
+            block_new_vars = all_new_vars[-1]
+            for new_var_desc in new_block_desc.all_vars():
+                if self.blocks[idx].has_var(new_var_desc.name()):
+                    old_var = self.blocks[idx].var(new_var_desc.name())
+                else:
+                    old_var = None
+
+                kwargs = {
+                    'type': new_var_desc.type(),
+                    'name': new_var_desc.name(),
+                    'shape': new_var_desc.shape(),
+                    'dtype': new_var_desc.dtype(),
+                    'lod_level': new_var_desc.lod_level(),
+                    'error_clip': old_var.error_clip
+                    if old_var is not None else None,
+                    'stop_gradient': old_var.stop_gradient
+                    if old_var is not None else False,
+                    'is_data': old_var.is_data
+                    if old_var is not None else False,
+                    'need_check_feed': new_var_desc.need_check_feed(),
+                    'belong_to_optimizer': old_var.belong_to_optimizer
+                    if old_var is not None else False,
+                }
+
+                if isinstance(old_var, Parameter):
+                    kwargs.update({
+                        'trainable': old_var.trainable,
+                        'optimize_attr': old_var.optimize_attr,
+                        'regularizer': old_var.regularizer,
+                        'do_model_average': old_var.do_model_average,
+                        'need_clip': old_var.need_clip,
+                        'is_distributed': old_var.is_distributed,
+                        'is_parameter': old_var.is_parameter,
+                    })
+                    block_new_vars.append({
+                        'class': Parameter,
+                        'kwargs': copy.deepcopy(kwargs),
+                    })
+                else:
+                    kwargs['persistable'] = new_var_desc.persistable()
+                    block_new_vars.append({
+                        'class': Variable,
+                        'kwargs': copy.deepcopy(kwargs),
+                    })
+
+        return all_new_vars
+
+    def _rebuild_from_desc(self, desc):
+        all_new_vars = self._find_var_class_kwargs(desc)
+        block_num = desc.num_blocks()
+        assert block_num == len(all_new_vars)
+
+        # clear old blocks and desc
+        self.blocks = []
+        self.desc = None
+
+        # create new blocks and set desc
+        self.desc = desc
+        self.blocks = [Block(self, idx) for idx in range(block_num)]
+
+        # add new vars first
+        for idx in range(block_num):
+            block = self.blocks[idx]
+            for new_var in all_new_vars[idx]:
+                clazz = new_var['class']
+                kwargs = new_var['kwargs']
+                kwargs['block'] = block
+                clazz(**kwargs)
+
+        # then append op
+        for idx in range(block_num):
+            block = self.blocks[idx]
+            block_desc = self.desc.block(idx)
+            for op_idx in range(block_desc.op_size()):
+                op_desc = block_desc.op(op_idx)
+                op = Operator(block=block, desc=op_desc)
+                block.ops.append(op)
 
     def global_seed(self, seed=0):
         """

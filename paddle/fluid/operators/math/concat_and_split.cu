@@ -352,6 +352,12 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
                   int axis, std::vector<framework::Tensor*>* outputs) {
+    // NOTE(zhiqiu): split a tensor of shape [0,3,4] at axis=1, result in 3
+    // tensors of shape [0,1,4]
+    if (input.numel() == 0) {
+      return;
+    }
+
     // TODO(zcd): Add input data validity checking
     int o_num = outputs->size();
     int64_t out_row = 1;

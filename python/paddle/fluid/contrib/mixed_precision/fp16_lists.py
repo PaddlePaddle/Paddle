@@ -150,6 +150,8 @@ gray_list = {
     'c_identity',
     'c_concat',
     'c_allreduce_sum',
+    'concat',
+    'split',
 }
 
 # The set of ops that don't support fp16 calculation

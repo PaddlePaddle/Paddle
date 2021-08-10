@@ -206,7 +206,6 @@ class Optimizer(object):
         self._param_device_map = dict()
         self.clear_gradients = self.clear_grad
         self._default_dict = {
-            'learning_rate': self._learning_rate,
             'weight_decay': self.regularization,
             'grad_clip': self._grad_clip
         }
@@ -1190,7 +1189,8 @@ class Optimizer(object):
             else:
                 regularization = weight_decay
             param.regularizer = regularization
-            param.optimize_attr['learning_rate'] = param_group['learning_rate']
+            param.optimize_attr['learning_rate'] = param_group.get(
+                'learning_rate', 1.)
 
         self._param_groups.append(param_group)
 
