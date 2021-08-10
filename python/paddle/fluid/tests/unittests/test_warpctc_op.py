@@ -545,8 +545,7 @@ class TestWarpCTCOpAttr(OpTest):
         self.check_grad(["Logits"], "Loss")
 
 
-@skip_check_grad_assert_ci(
-    reason="For warpctc, not do grad assert.")
+@skip_check_grad_assert_ci(reason="For warpctc, not do grad assert.")
 class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpAttr):
     def config(self):
         self.batch_size = 4
@@ -561,8 +560,7 @@ class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpAttr):
         self.length_average = False
 
 
-@skip_check_grad_assert_ci(
-    reason="For warpctc, not do grad assert.")
+@skip_check_grad_assert_ci(reason="For warpctc, not do grad assert.")
 class TestWarpCTCOpFp64SizeAverage(TestWarpCTCOpAttr):
     def config(self):
         self.batch_size = 4
@@ -577,8 +575,7 @@ class TestWarpCTCOpFp64SizeAverage(TestWarpCTCOpAttr):
         self.length_average = False
 
 
-@skip_check_grad_assert_ci(
-    reason="For warpctc, not do grad assert.")
+@skip_check_grad_assert_ci(reason="For warpctc, not do grad assert.")
 class TestWarpCTCOpFp64LengthAverage(TestWarpCTCOpAttr):
     def config(self):
         self.batch_size = 4
