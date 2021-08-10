@@ -563,14 +563,20 @@ def pull_worker_log(tp, print_rank_no=False):
 
 
 def watch_local_trainers(procs, nranks):
-    platform = os.environ.get('PADDLE_RUNNING_PLATFORM')
+    merge_log = os.environ.get('PADDLE_MERGE_LOG')
+    if merge_log is not None:
+        merge_log = merge_log.lower() in [
+            'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh'
+        ]
+    else:
+        merge_log = False
     try:
         error = False
         error_rank = []
         # wait all process finish or one error
         alive = False
         for p in procs:
-            if p.log_fn and platform == "ASCEND_MODELARTS":
+            if p.log_fn and merge_log:
                 pull_worker_log(p, print_rank_no=True)
             else:
                 if p.log_fn and p.local_rank == 0:
