@@ -49,11 +49,11 @@ elif [[ "$VERSION" == "11.0" ]];then
 elif [[ "$VERSION" == "10.2" && "$CUDNN_VERSION" == "7.6.5" ]];then
   wget https://paddle-ci.gz.bcebos.com/TRT/TensorRT-6.0.1.8.CentOS-7.6.x86_64-gnu.cuda-10.2.cudnn7.6.tar.gz --no-check-certificate
   tar -zxf TensorRT-6.0.1.8.CentOS-7.6.x86_64-gnu.cuda-10.2.cudnn7.6.tar.gz -C /usr/local
-  cp -rf /usr/local/TensorRT-6.0.1.8/include/* /usr/include/ && cp -rf /usr/local/TensorRT-6.0.1.8/lib/* /usr/lib/
-  rm -f TensorRT-6.0.1.8.CentOS-7.6.x86_64-gnu.cuda-10.2.cudnn7.6.tar.gz
   # trt6.0.1.8 should hack some code.
   sed -i "s/virtual int getConstantValue() const = 0;/&\nprotected:\nvirtual ~IDimensionExpr() {};/g" /usr/local/TensorRT-6.0.1.8/include/NvInferRuntime.h
   sed -i "s/virtual IPlugin\* createPlugin(const char\* layerName, const void\* serialData, size_t serialLength) TRTNOEXCEPT = 0;/&\nprotected:\nvirtual ~IPluginFactory() {}/g" /usr/local/TensorRT-6.0.1.8/include/NvInferRuntime.h
+  cp -rf /usr/local/TensorRT-6.0.1.8/include/* /usr/include/ && cp -rf /usr/local/TensorRT-6.0.1.8/lib/* /usr/lib/
+  rm -f TensorRT-6.0.1.8.CentOS-7.6.x86_64-gnu.cuda-10.2.cudnn7.6.tar.gz
 elif [[ "$VERSION" == "10.2" && "$CUDNN_VERSION" == "8.1.1" ]];then
   wget https://paddle-ci.gz.bcebos.com/TRT/TensorRT-7.2.3.4.CentOS-7.9.x86_64-gnu.cuda-10.2.cudnn8.1.tar.gz --no-check-certificate
   tar -zxf TensorRT-7.2.3.4.CentOS-7.9.x86_64-gnu.cuda-10.2.cudnn8.1.tar.gz -C /usr/local

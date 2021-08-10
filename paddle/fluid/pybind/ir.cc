@@ -23,7 +23,9 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "pybind11/stl.h"
@@ -31,6 +33,7 @@
 namespace py = pybind11;
 using paddle::framework::ir::Graph;
 using paddle::framework::ir::Node;
+using paddle::framework::ir::NodeComp;
 using paddle::framework::ir::GraphSafeRemoveNodes;
 using paddle::framework::ir::HasCircle;
 using paddle::framework::ir::GraphNum;
@@ -50,7 +53,7 @@ void BindGraph(py::module *m) {
   m->def("graph_num", GraphNum);
   m->def("topology_sort", TopologySortOperations,
          return_value_policy::reference);
-  m->def("build_adjacency_list", BuildOperationAdjList,
+  m->def("build_adjacency_list", BuildOperationAdjList<NodeComp>,
          return_value_policy::reference);
   py::class_<Graph, std::shared_ptr<Graph>>(
       *m, "Graph",
@@ -183,5 +186,150 @@ void BindNode(py::module *m) {
       .value("Variable", Node::Type::kVariable)
       .export_values();
 }
+
+class PYBIND11_HIDDEN PassAttrGetterSetterRegistry {
+ private:
+  PassAttrGetterSetterRegistry() = default;
+  DISABLE_COPY_AND_ASSIGN(PassAttrGetterSetterRegistry);
+
+  using Getter = std::function<py::object(const framework::ir::Pass & /*pass*/,
+                                          const std::string & /*attr_name*/)>;
+  using Setter = std::function<void(const std::string & /*attr_name*/,
+                                    const py::object & /*attr_value*/,
+                                    framework::ir::Pass * /*pass*/)>;
+
+  struct GetterSetter {
+    Getter getter;
+    Setter setter;
+  };
+
+ public:
+  static PassAttrGetterSetterRegistry &Instance() {
+    static PassAttrGetterSetterRegistry instance;
+    return instance;
+  }
+
+  void Register(const std::string &attr_type, Getter getter, Setter setter) {
+    PADDLE_ENFORCE_NOT_NULL(
+        getter, platform::errors::InvalidArgument(
+                    "getter of %s should not be nullptr", attr_type));
+    PADDLE_ENFORCE_NOT_NULL(
+        setter, platform::errors::InvalidArgument(
+                    "setter of %s should not be nullptr", attr_type));
+    GetterSetter getter_setter;
+    getter_setter.getter = std::move(getter);
+    getter_setter.setter = std::move(setter);
+    PADDLE_ENFORCE_EQ(
+        getter_setter_map_.emplace(attr_type, getter_setter).second, true,
+        platform::errors::InvalidArgument(
+            "getter and setter of %s have been set before", attr_type));
+  }
+
+  py::object Get(const framework::ir::Pass &pass, const std::string &attr_name,
+                 const std::string &attr_type) const {
+    auto iter = getter_setter_map_.find(attr_type);
+    PADDLE_ENFORCE_EQ(
+        iter != getter_setter_map_.end(), true,
+        platform::errors::InvalidArgument("unsupported attribute type %s of %s",
+                                          attr_type, attr_name));
+    const auto &getter = iter->second.getter;
+    return getter(pass, attr_name);
+  }
+
+  void Set(const std::string &attr_name, const std::string &attr_type,
+           const py::object &attr_value, framework::ir::Pass *pass) const {
+    auto iter = getter_setter_map_.find(attr_type);
+    PADDLE_ENFORCE_EQ(
+        iter != getter_setter_map_.end(), true,
+        platform::errors::InvalidArgument("unsupported attribute type %s of %s",
+                                          attr_type, attr_name));
+    const auto &setter = iter->second.setter;
+    setter(attr_name, attr_value, pass);
+  }
+
+ private:
+  std::unordered_map<std::string, GetterSetter> getter_setter_map_;
+};
+
+#define REGISTER_PASS_ATTR_GETTER_SETTER(attr_type_name, cpp_type)             \
+  do {                                                                         \
+    auto getter = [](const framework::ir::Pass &pass,                          \
+                     const std::string &attr_name) -> py::object {             \
+      auto attr_value = pass.Get<cpp_type>(attr_name);                         \
+      return py::cast(attr_value);                                             \
+    };                                                                         \
+    auto setter = [](const std::string &attr_name,                             \
+                     const py::object &attr_value,                             \
+                     framework::ir::Pass *pass) {                              \
+      PADDLE_ENFORCE_NOT_NULL(                                                 \
+          pass, platform::errors::InvalidArgument("pass should be provided")); \
+      try {                                                                    \
+        const auto &cpp_attr_value = py::cast<cpp_type>(attr_value);           \
+        pass->Set(attr_name, new cpp_type(cpp_attr_value));                    \
+      } catch (py::cast_error &) {                                             \
+        PADDLE_THROW(platform::errors::InvalidArgument(                        \
+            "type error of attribute %s, expected to be %s", attr_name,        \
+            attr_type_name));                                                  \
+      }                                                                        \
+    };                                                                         \
+    PassAttrGetterSetterRegistry::Instance().Register(attr_type_name, getter,  \
+                                                      setter);                 \
+  } while (0)
+
+// NOTE: attr_types may be changed
+static void SetAttrsToPass(
+    const std::unordered_map<std::string, py::object> &attrs,
+    std::unordered_map<std::string, std::string> *attr_types,
+    framework::ir::Pass *pass) {
+  for (const auto &name_and_value : attrs) {
+    const auto &attr_name = name_and_value.first;
+    const auto &attr_value = name_and_value.second;
+    auto &attr_type = (*attr_types)[attr_name];
+    if (attr_type.empty()) {
+      attr_type = py::cast<std::string>(attr_value.get_type().attr("__name__"));
+    }
+    PassAttrGetterSetterRegistry::Instance().Set(attr_name, attr_type,
+                                                 attr_value, pass);
+  }
+}
+
+void BindPass(py::module *m) {
+  // NOTE: pass_attr_types is a dict to indicate the type of each attribute.
+  // Python has only one integral type "int", but C++ has many integral types.
+  // If pass_attrs = {"nranks": 1} in Python, we cannot know whether the type
+  // of "nranks" is size_t or int in C++. Therefore, users can set
+  // pass_attr_types to indicate the type of "nranks" explicitly,
+  // i.e. pass_attr_types = {"nranks": "size_t"} means that the type of
+  // "nranks" is size_t in C++.
+  REGISTER_PASS_ATTR_GETTER_SETTER("int", int64_t);
+  REGISTER_PASS_ATTR_GETTER_SETTER("long", int64_t);
+  REGISTER_PASS_ATTR_GETTER_SETTER("size_t", size_t);
+  REGISTER_PASS_ATTR_GETTER_SETTER("float32", float);
+  // Python float is C++ double
+  REGISTER_PASS_ATTR_GETTER_SETTER("float", double);
+  REGISTER_PASS_ATTR_GETTER_SETTER("bytes", std::string);
+  REGISTER_PASS_ATTR_GETTER_SETTER("str", std::string);
+
+  m->def(
+      "apply_pass",
+      [](framework::ProgramDesc *main_program,
+         framework::ProgramDesc *startup_program, const std::string &pass_name,
+         const std::unordered_map<std::string, py::object> &pass_attrs,
+         std::unordered_map<std::string, std::string> pass_attr_types) {
+        auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
+        SetAttrsToPass(pass_attrs, &pass_attr_types, pass.get());
+        pass->Apply(main_program, startup_program);
+        std::unordered_map<std::string, py::object> result_attrs;
+        for (const auto &name_and_value : pass_attrs) {
+          const auto &attr_name = name_and_value.first;
+          const auto &attr_type = pass_attr_types.at(attr_name);
+          result_attrs[attr_name] =
+              PassAttrGetterSetterRegistry::Instance().Get(*pass, attr_name,
+                                                           attr_type);
+        }
+        return result_attrs;
+      });
+}
+
 }  // namespace pybind
 }  // namespace paddle
