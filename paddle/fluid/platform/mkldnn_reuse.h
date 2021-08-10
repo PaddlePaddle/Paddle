@@ -53,9 +53,9 @@ class MKLDNNHandlerNoCachingT {
   }
 
   std::shared_ptr<TBackward_params> AcquireBackwardWeightsPrimitive() {
-    PADDLE_ENFORCE_NOT_NULL(bwd_w_pd_, platform::errors::Unavailable(
-                                           "Error: BWD_PD should be set when "
-                                           "getting BWD prim ."));
+    PADDLE_ENFORCE_NOT_NULL(
+        bwd_w_pd_, platform::errors::Unavailable("BWD_PD should be set when "
+                                                 "getting BWD prim ."));
     return std::make_shared<TBackward_params>(*bwd_w_pd_);
   }
 
