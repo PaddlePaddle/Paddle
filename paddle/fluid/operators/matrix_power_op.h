@@ -41,24 +41,23 @@ struct EyeFunctor {
   T* output_;
 };
 
-template <typename DeviceContext, typename T>
-struct ElementwiseInplaceAdd {
-  HOSTDEVICE void operator()(const DeviceContext& ctx,
-                             const framework::Tensor& src,
-                             framework::Tensor* dst) {
-    auto in = framework::EigenVector<T>::Flatten(src);
-    auto out = framework::EigenVector<T>::Flatten(*dst);
-    auto& place = *(ctx.eigen_device());
-    out.device(place) = out + in;
-  }
-};
+// template <typename DeviceContext, typename T>
+// struct ElementwiseInplaceAdd {
+//   void operator()(const DeviceContext& ctx,
+//                              const framework::Tensor& src,
+//                              framework::Tensor* dst) {
+//     auto in = framework::EigenVector<T>::Flatten(src);
+//     auto out = framework::EigenVector<T>::Flatten(*dst);
+//     auto& place = *(ctx.eigen_device());
+//     out.device(place) = out + in;
+//   }
+// };
 
 template <typename DeviceContext, typename T>
 void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
                          const paddle::framework::ExecutionContext& ctx) {
   const auto& x_dims = X->dims();
   const int x_ndim = x_dims.size();
-
   T* out_data = Out->mutable_data<T>(ctx.GetPlace());
 
   auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -176,9 +175,7 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
                              const Tensor* dOut, const int n, Tensor* dX,
                              const paddle::framework::ExecutionContext& ctx) {
   dX->mutable_data<T>(ctx.GetPlace());
-
   const auto& x_dims = X->dims();
-  const int x_ndim = x_dims.size();
 
   auto& dev_ctx = ctx.template device_context<DeviceContext>();
   auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
@@ -221,17 +218,12 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   }
 
   // Use chain rule blow to compute \nabla newX^{n}
-  // First, Get newX^{0}, newX^{1}, ..., newX^{n - 1}
-  Tensor identity = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
-  EyeFunctor<T> functor(x_dims[x_ndim - 1], identity.data<T>());
-  platform::ForRange<DeviceContext> for_range(dev_ctx, X->numel());
-  for_range(functor);
-
-  std::vector<std::shared_ptr<Tensor>> tensor_list(new_n);
-  tensor_list[0] = std::make_shared<Tensor>(identity);
-  tensor_list[1] = std::make_shared<Tensor>(new_x);
-  int index = 2;
-  while (index < new_n) {
+  // First, Get newX^{0}, newX^{1}, ..., newX^{n - 1},
+  // Note that newX^{0} can be omitted
+  std::vector<std::shared_ptr<Tensor>> tensor_list(new_n - 1);
+  tensor_list[0] = std::make_shared<Tensor>(new_x);
+  int index = 1;
+  while (index < new_n - 1) {
     tensor_list[index] = std::make_shared<Tensor>(
         ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx));
     blas.MatMul(*tensor_list[index - 1], no_trans_desc, new_x, no_trans_desc,
@@ -243,23 +235,27 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   //                      \times \nabla Out
   //                      \times (newX^{T}^{n - i - 1})
   Tensor dx_new = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
-  blas.MatMul(*tensor_list[new_n - 1], trans_desc, *dOut, no_trans_desc,
+  blas.MatMul(*tensor_list[new_n - 2], trans_desc, *dOut, no_trans_desc,
               static_cast<T>(1), &dx_new, static_cast<T>(0));
   Tensor da_an_minus1 =
       ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
-  blas.MatMul(*dOut, no_trans_desc, *tensor_list[new_n - 1], trans_desc,
+  blas.MatMul(*dOut, no_trans_desc, *tensor_list[new_n - 2], trans_desc,
               static_cast<T>(1), &da_an_minus1, static_cast<T>(0));
-  ElementwiseInplaceAdd<DeviceContext, T> add_functor;
-  add_functor(dev_ctx, da_an_minus1, &dx_new);
-  int start = 1;
-  while (start < new_n - 1) {
+  // ElementwiseInplaceAdd<DeviceContext, T> add_functor;
+  // add_functor(dev_ctx, da_an_minus1, &dx_new);
+  blas.AXPY(X->numel(), static_cast<T>(1), da_an_minus1.data<T>(),
+            dx_new.data<T>());
+  int start = 0;
+  while (start < new_n - 2) {
     Tensor a_da = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
     Tensor a_da_a = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
     blas.MatMul(*tensor_list[start], trans_desc, *dOut, no_trans_desc,
                 static_cast<T>(1), &a_da, static_cast<T>(0));
-    blas.MatMul(a_da, no_trans_desc, *tensor_list[new_n - 1 - start],
+    blas.MatMul(a_da, no_trans_desc, *tensor_list[new_n - 3 - start],
                 trans_desc, static_cast<T>(1), &a_da_a, static_cast<T>(0));
-    add_functor(dev_ctx, a_da_a, &dx_new);
+    // add_functor(dev_ctx, a_da_a, &dx_new);
+    blas.AXPY(X->numel(), static_cast<T>(1), a_da_a.data<T>(),
+              dx_new.data<T>());
     start++;
   }
 

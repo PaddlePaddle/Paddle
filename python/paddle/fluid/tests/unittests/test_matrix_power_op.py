@@ -163,9 +163,16 @@ class TestMatrixPowerOpBatched1(TestMatrixPowerOp):
 
 class TestMatrixPowerOpBatched2(TestMatrixPowerOp):
     def config(self):
-        self.matrix_shape = [2, 8, 4, 4]
+        self.matrix_shape = [2, 6, 4, 4]
         self.dtype = "float64"
         self.n = 4
+
+
+class TestMatrixPowerOpBatched3(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 6, 4, 4]
+        self.dtype = "float64"
+        self.n = 0
 
 
 class TestMatrixPowerOpBatchedLong(TestMatrixPowerOp):
