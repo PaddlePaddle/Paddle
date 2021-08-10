@@ -327,6 +327,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_allreduce_in_optimize:
             logger.info("Pipeline Persistable grad is {}".format(
                 accumulated_grad_names))
+            # FIXME(wangxi): accumulated_grad get from pipeline is not
+            #  include sharding's param@BroadCast grad when
+            #  pp_allreduce_in_optimize
             accumulated_grad_names = insert_reduce_ops(
                 main_block,
                 first_optimize_op_index,

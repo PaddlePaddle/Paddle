@@ -463,14 +463,15 @@ def get_grad_device(grad_name, shard):
     assert "@GRAD" in grad_name, "[{}] should be a grad variable.".format(
         grad_name)
     base_name = None
-    # mind the traversal order 
+    # NOTE: mind the traversal order
     possible_suffixes = [
+        # sharding gm
         '.cast_fp16@GRAD@MERGED',
         '.cast_fp16@GRAD',
-        '@GRAD',
-        # for pipeline
+        # pipeline
+        '@GRAD@MERGED@FP16',
         '@GRAD@MERGED',
-        '@GRAD@MERGED@FP16'
+        '@GRAD',
     ]
     for suffix in possible_suffixes:
         if suffix in grad_name:
@@ -689,23 +690,6 @@ def save_persistables(exe, dirname, main_program, filename=None):
             filename=None)
 
     return
-
-
-def get_grad_device(grad_name, shard):
-    assert "@GRAD" in grad_name, "[{}] should be a grad variable.".format(
-        grad_name)
-    base_name = None
-    # mind the traversal order 
-    possible_suffixes = ['.cast_fp16@GRAD', '@GRAD']
-    for suffix in possible_suffixes:
-        if suffix in grad_name:
-            base_name = re.sub(suffix, '', grad_name)
-            break
-
-    assert base_name in shard.global_param2device, "[{}] should be a param variable.".format(
-        base_name)
-
-    return shard.global_param2device[base_name]
 
 
 def append_naive_sync(block, sync_var, ring_id):

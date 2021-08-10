@@ -694,7 +694,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
 
-    def test_hybrid_with_pp_dp_amp_gclip_fp16allreduce(self):
+    def test_hybrid_with_pp_dp_amp_fp16allreduce(self):
         train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
@@ -785,6 +785,79 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
+
+    def test_hybrid_with_sharding_pp_amp_fp16allreduce_in_optimize(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.pp_net(train_prog, startup_prog)
+        strategy.amp = True
+        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "segment_broadcast_MB": 0.1,
+            "sharding_degree": 2,
+            "mp_degree": 1,
+            "pp_degree": 2,
+            "dp_degree": 1,
+            'pp_allreduce_in_optimize': True,
+        }
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "schedule_mode": "1F1B",
+            "micro_batch_size": 2,
+            "accumulate_steps": 4,
+        }
+        strategy.fp16_allreduce = True
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        train_prog = train_prog._pipeline_opt['section_program']
+        startup_prog = startup_prog._pipeline_opt['startup_program']
+
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check program
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+        main_prog_op_types = [op.type for op in main_prog_ops]
+
+        # ring: sharding, pp_group, pp_pair, pp_pair
+        self.assertEqual(startup_prog_op_types, [
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init'
+        ])
+
+        # FIXME(wangxi): some bug in sharding+pp with pp_allreduce_in_optimize
+        # self.assertEqual(main_prog_op_types, [])
+
+        # amp check_finite_and_unscale, allreduce(pp)
+        self.assertEqual(main_prog_op_types.count('c_allreduce_max'), 2)
+
+        # should has ring id for pp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(self.sharding_ring_id, created_ring_ids)
+        self.assertIn(self.pp_pair_ring_id, created_ring_ids)
+
+        # check correctness of sharding group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_0":
+                sharding_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of pp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_1":
+                pp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
 
 
 if __name__ == "__main__":
