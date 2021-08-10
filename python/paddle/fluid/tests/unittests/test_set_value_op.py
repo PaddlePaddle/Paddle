@@ -1086,8 +1086,11 @@ class TestGradientTruncated(unittest.TestCase):
         paddle.enable_static()
 
         to_string = lambda x, i, : x + '_' + str(i)
+        numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
 
         def op1(x):
+            # value.stop_gradient = True
+            # x.stop_gradient = False
             value = paddle.fluid.layers.fill_constant([1], "float32", 1)
             start = paddle.fluid.layers.fill_constant(
                 [1], "int32", 5, force_cpu=True)
@@ -1113,9 +1116,11 @@ class TestGradientTruncated(unittest.TestCase):
                 outputs={'Out': y},
                 attrs={'axes': [0]})
 
-            return y
+            return y, value
 
         def op2(x):
+            # value.stop_gradient = False
+            # x.stop_gradient = False
             value = paddle.fluid.layers.fill_constant([1, 3, 2], "float32", 1)
             value.stop_gradient = False
             attrs = {
@@ -1138,16 +1143,47 @@ class TestGradientTruncated(unittest.TestCase):
                 outputs={'Out': y},
                 attrs=attrs)
 
-            return y
+            return y, value
+
+        def op3(x):
+            # x.stop_gradient = True
+            # value.stop_gradient = False
+            x.stop_gradient = True
+            value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+            value.stop_gradient = False
+            start = paddle.fluid.layers.fill_constant(
+                [1], "int32", 0, force_cpu=True)
+            end = paddle.fluid.layers.fill_constant(
+                [1], "int32", 5, force_cpu=True)
+            step = paddle.fluid.layers.fill_constant(
+                [1], "int32", 3, force_cpu=True)
+
+            inputs = {
+                'Input': x,
+                'ValueTensor': value,
+                'StartsTensorList': [start, ],
+                'EndsTensorList': [end, ],
+                'StepsTensorList': [step, ]
+            }
+
+            helper = LayerHelper("set_value")
+            y = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+            helper.append_op(
+                type="set_value",
+                inputs=inputs,
+                outputs={'Out': y},
+                attrs={'axes': [0]})
+
+            return y, value
 
         def set_value(array, i, op):
             name_x = to_string('x', i)
-
             x = paddle.static.data(
                 name=name_x, shape=array.shape, dtype='float32')
             x.stop_gradient = False
 
-            y = op(x)
+            y, value = op(x)
             y2 = y + 1
             loss = paddle.fluid.layers.reduce_sum(y2)
             sgd = paddle.optimizer.Adam()
@@ -1159,24 +1195,35 @@ class TestGradientTruncated(unittest.TestCase):
             prog = paddle.static.default_main_program()
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
-            out = exe.run(prog, feed={x.name: array}, fetch_list=[x.grad_name])
+            fetch_list = []
+            if not x.stop_gradient:
+                fetch_list.append(x.grad_name)
+            if not value.stop_gradient:
+                fetch_list.append(value.grad_name)
+            out = exe.run(prog, feed={x.name: array}, fetch_list=fetch_list)
             return out
 
         input_shape = [7, 6, 5, 4, 3, 2]
-        numel = reduce(lambda x, y: x * y, input_shape)
-        array = np.arange(0, numel, dtype="float32").reshape(input_shape)
+
+        array = np.arange(
+            0, numel(input_shape), dtype="float32").reshape(input_shape)
 
         for i in range(len(input_shape)):
             program = paddle.static.Program()
             with paddle.static.program_guard(program):
-                out = set_value(array, i, op1)
-                self.assertTrue((out[0][5:0:-2] == 0).all())
+                out1 = set_value(array, i, op1)
+                self.assertTrue((out1[0][5:0:-2] == 0).all())
 
             if len(array.shape) > 2:
                 program2 = paddle.static.Program()
                 with paddle.static.program_guard(program2):
-                    out = set_value(array, i, op2)
-                    self.assertTrue((out[0][6:0:-4] == 0).all())
+                    out2 = set_value(array, i, op2)
+                    self.assertTrue((out2[0][6:0:-4] == 0).all())
+
+            program3 = paddle.static.Program()
+            with paddle.static.program_guard(program3):
+                out3 = set_value(array, i, op3)
+                self.assertTrue((numel(out1[0][0:5:3].shape) == out3[0]).all())
 
             array = array[0]
 
