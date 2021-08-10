@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-import operator
+import numpy
 import paddle.fluid.core as core
 import paddle
 from paddle.fluid.framework import Variable
@@ -64,7 +63,7 @@ def _flatten_nested_list(nested_list):
     Get a list of all items in a nested_list.
     Ref: https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
     """
-    result = functools.reduce(operator.iconcat, nested_list, [])
+    result = numpy.array(nested_list).flatten().tolist()
     return result
 
 
