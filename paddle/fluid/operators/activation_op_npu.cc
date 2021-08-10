@@ -527,6 +527,39 @@ class CosGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class AtanNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+    auto place = ctx.GetPlace();
+    out->mutable_data<T>(place);
+    const auto& runner = NpuOpRunner("Atan", {*x}, {*out}, {});
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class AtanGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto place = ctx.GetPlace();
+    dx->mutable_data<T>(place);
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    const auto& runner_dx = NpuOpRunner("AtanGrad", {*x, *dout}, {*dx}, {});
+    runner_dx.Run(stream);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -648,3 +681,14 @@ REGISTER_OP_NPU_KERNEL(
     cos_grad, ops::CosGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::CosGradNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    atan, ops::AtanNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::AtanNPUKernel<paddle::platform::NPUDeviceContext,
+                       paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    atan_grad,
+    ops::AtanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::AtanGradNPUKernel<paddle::platform::NPUDeviceContext,
+                           paddle::platform::float16>);

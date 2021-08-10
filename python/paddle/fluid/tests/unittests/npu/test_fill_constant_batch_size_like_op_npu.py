@@ -99,22 +99,6 @@ class TestFillConstantBatchSizeLike3(TestFillConstantBatchSizeLike):
         self.output_value = 4.5
 
 
-class TestFillConstantBatchSizeLike4(TestFillConstantBatchSizeLike):
-    def init_value(self):
-        # str_value = 'inf'
-        self.value = 3.8
-        self.str_value = 'inf'
-        self.output_value = float('inf')
-
-
-class TestFillConstantBatchSizeLike5(TestFillConstantBatchSizeLike):
-    def init_value(self):
-        # str_value = '-inf'
-        self.value = 3.8
-        self.str_value = '-inf'
-        self.output_value = -float('inf')
-
-
 class TestFillConstantBatchSizeLike6(TestFillConstantBatchSizeLike):
     def init_dtype(self):
         self.dtype = core.VarDesc.VarType.FP16

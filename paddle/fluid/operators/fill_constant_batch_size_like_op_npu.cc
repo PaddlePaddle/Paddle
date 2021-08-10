@@ -12,9 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include <string>
-
 #include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/utils.h"
@@ -36,12 +33,12 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
 
     auto *out = ctx.Output<Tensor>("Out");
     auto *input = ctx.Input<Tensor>("Input");
-    if (ctx.Attr<int>("input_dim_idx") == 0) {
+    if (&ctx.Attr<int>("input_dim_idx") == 0) {
       // set the correct batch size.
       auto odims = out->dims();
-      auto idims = input->dims();
+      int input_dim_idx = ctx.Attr<int>("input_dim_idx");
       int output_dim_idx = ctx.Attr<int>("output_dim_idx");
-      odims[output_dim_idx] = static_cast<int>(idims[0]);
+      odims[output_dim_idx] = input->dims()[input_dim_idx];
       out->mutable_data<T>(odims, ctx.GetPlace());
     }
 
@@ -49,30 +46,22 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     if (str_value.empty()) {
       value = static_cast<T>(float_value);
     } else {
-      // handle NaN/Inf first, which cannot be read from stream.
-      if (str_value == "inf") {
-        value = static_cast<T>(std::numeric_limits<double>::infinity());
-      } else if (str_value == "-inf") {
-        value = static_cast<T>(-std::numeric_limits<double>::infinity());
-      } else if (str_value == "nan") {
-        value = static_cast<T>(std::numeric_limits<double>::quiet_NaN());
+      std::stringstream convert_stream(str_value);
+      if (std::is_same<int64_t, T>::value) {
+        int64_t tmp_value;
+        convert_stream >> tmp_value;
+        value = static_cast<T>(tmp_value);
       } else {
-        std::stringstream convert_stream(str_value);
-        if (std::is_same<int64_t, T>::value) {
-          int64_t tmp_value;
-          convert_stream >> tmp_value;
-          value = static_cast<T>(tmp_value);
-        } else {
-          double tmp_value;
-          convert_stream >> tmp_value;
-          value = static_cast<T>(tmp_value);
-        }
+        double tmp_value;
+        convert_stream >> tmp_value;
+        value = static_cast<T>(tmp_value);
       }
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
-    if (force_cpu) {
+    bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
+    if (cpu_place) {
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       out->mutable_data(platform::CPUPlace(), data_type);
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
