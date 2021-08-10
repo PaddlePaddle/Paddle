@@ -79,6 +79,8 @@ endif()
 
 if(WITH_ASCEND_CL)
     cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor ascendcl acl_op_compiler)
+    cc_library(npu_blacklist_op SRCS npu_blacklist_op.cc)
+    cc_test(npu_blacklist_op_test SRCS npu_blacklist_op_test.cc DEPS npu_blacklist_op)
 endif()
 
 add_subdirectory(dynload)

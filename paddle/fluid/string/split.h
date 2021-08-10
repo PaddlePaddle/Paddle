@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace paddle {
@@ -28,6 +29,19 @@ static inline std::vector<std::string> Split(std::string const& original,
   while (std::getline(is, token, separator)) {
     if (!token.empty()) {
       results.push_back(token);
+    }
+  }
+  return results;
+}
+
+static inline std::unordered_set<std::string> SplitToSet(
+    std::string const& original, char separator) {
+  std::unordered_set<std::string> results;
+  std::string token;
+  std::istringstream is(original);
+  while (std::getline(is, token, separator)) {
+    if (!token.empty()) {
+      results.insert(token);
     }
   }
   return results;

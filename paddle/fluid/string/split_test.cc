@@ -26,3 +26,11 @@ TEST(StringSplit, StringSplit) {
     i++;
   }
 }
+
+TEST(StringSplitToSet, StringSplitToSet) {
+  std::string to_split = "0,1,2,3,0";
+  std::unordered_set<std::string> result =
+      paddle::string::SplitToSet(to_split, ',');
+  std::unordered_set<std::string> expected = {"0", "1", "2", "3"};
+  EXPECT_EQ(result, expected);
+}

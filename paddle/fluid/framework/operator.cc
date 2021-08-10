@@ -44,6 +44,10 @@ class LoDTensor;
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/npu_blacklist_op.h"
+#endif
+
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
@@ -1267,7 +1271,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
-      is_npu_place(expected_kernel_key.place_)) {
+      is_npu_place(expected_kernel_key.place_) ||
+      paddle::platform::is_in_npu_black_list(type_)) {
     VLOG(3) << "missing NPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
