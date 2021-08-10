@@ -23,7 +23,6 @@ from functools import partial
 import paddle
 from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
-from .random import get_rng_state_tracker
 
 __all__ = []
 
