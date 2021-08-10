@@ -72,7 +72,7 @@ class TestMarginCrossEntropyOp(OpTest):
     def initParams(self):
         self.op_type = "margin_cross_entropy"
         self.axis = -1
-        self.batch_dim = 10
+        self.batch_dim = 5
         self.feat_dim = 41
         self.num_class = 37
 
@@ -204,7 +204,7 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
     def initParams(self):
         self.seed = 2021
         self.axis = -1
-        self.batch_dim = 10
+        self.batch_dim = 5
         self.feat_dim = 41
         self.num_class = 37
         self.init_loss_params()
