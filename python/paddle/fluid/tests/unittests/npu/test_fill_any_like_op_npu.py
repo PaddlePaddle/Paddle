@@ -25,6 +25,7 @@ from paddle.fluid import core
 
 paddle.enable_static()
 
+
 class TestFillAnyLikeNPUOp(OpTest):
     def setUp(self):
         self.set_npu()
