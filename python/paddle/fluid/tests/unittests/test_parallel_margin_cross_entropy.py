@@ -21,8 +21,8 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestParallelMarginSoftmaxWithCrossEntropy(TestMultipleGpus):
-    def test_parallel_margin_softmax_with_cross_entropy(self):
-        self.run_mnist_2gpu('parallel_margin_softmax_with_cross_entropy.py')
+    def test_parallel_margin_cross_entropy(self):
+        self.run_mnist_2gpu('parallel_margin_cross_entropy.py')
 
 
 if __name__ == "__main__":

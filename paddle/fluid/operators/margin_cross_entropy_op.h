@@ -28,11 +28,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class MarginSoftmaxWithCrossEntropyOpCPUKernel : public framework::OpKernel<T> {
+class MarginCrossEntropyOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Do not support margin_softmax_with_cross_entropy for cpu kernel "
+        "Do not support margin_cross_entropy for cpu kernel "
         "now."));
   }
 };

@@ -21,7 +21,7 @@ namespace cub = hipcub;
 
 #include <vector>
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/margin_softmax_with_cross_entropy_op.h"
+#include "paddle/fluid/operators/margin_cross_entropy_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
@@ -245,8 +245,7 @@ __global__ void CalculateGrad(T* logits_grad, const T* loss_grad,
 }
 
 template <typename T>
-class MarginSoftmaxWithCrossEntropyOpCUDAKernel
-    : public framework::OpKernel<T> {
+class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* logits = ctx.Input<Tensor>("Logits");
@@ -404,8 +403,7 @@ class MarginSoftmaxWithCrossEntropyOpCUDAKernel
 };
 
 template <typename T>
-class MarginSoftmaxWithCrossEntropyGradCUDAKernel
-    : public framework::OpKernel<T> {
+class MarginCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* labels = context.Input<Tensor>("Label");
@@ -474,14 +472,12 @@ class MarginSoftmaxWithCrossEntropyGradCUDAKernel
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    margin_softmax_with_cross_entropy,
-    ops::MarginSoftmaxWithCrossEntropyOpCUDAKernel<float>,
-    ops::MarginSoftmaxWithCrossEntropyOpCUDAKernel<double>,
-    ops::MarginSoftmaxWithCrossEntropyOpCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(margin_cross_entropy,
+                        ops::MarginCrossEntropyOpCUDAKernel<float>,
+                        ops::MarginCrossEntropyOpCUDAKernel<double>,
+                        ops::MarginCrossEntropyOpCUDAKernel<plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(
-    margin_softmax_with_cross_entropy_grad,
-    ops::MarginSoftmaxWithCrossEntropyGradCUDAKernel<float>,
-    ops::MarginSoftmaxWithCrossEntropyGradCUDAKernel<double>,
-    ops::MarginSoftmaxWithCrossEntropyGradCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(margin_cross_entropy_grad,
+                        ops::MarginCrossEntropyGradCUDAKernel<float>,
+                        ops::MarginCrossEntropyGradCUDAKernel<double>,
+                        ops::MarginCrossEntropyGradCUDAKernel<plat::float16>);

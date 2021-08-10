@@ -32,14 +32,14 @@ def stable_softmax_comm(x):
     return comm
 
 
-def margin_softmax_with_cross_entropy(logits,
-                                      label,
-                                      axis,
-                                      margin1,
-                                      margin2,
-                                      margin3,
-                                      scale,
-                                      reduction=None):
+def margin_cross_entropy(logits,
+                         label,
+                         axis,
+                         margin1,
+                         margin2,
+                         margin3,
+                         scale,
+                         reduction=None):
     one_hot_label = np.zeros_like(logits, dtype=logits.dtype)
     for i, lb in enumerate(label):
         one_hot_label[i, lb] = 1.0
@@ -68,11 +68,11 @@ def margin_softmax_with_cross_entropy(logits,
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMarginSoftmaxWithCrossEntropyOp(OpTest):
+class TestMarginCrossEntropyOp(OpTest):
     def initParams(self):
-        self.op_type = "margin_softmax_with_cross_entropy"
+        self.op_type = "margin_cross_entropy"
         self.axis = -1
-        self.batch_dim = 20
+        self.batch_dim = 10
         self.feat_dim = 41
         self.num_class = 37
 
@@ -102,9 +102,9 @@ class TestMarginSoftmaxWithCrossEntropyOp(OpTest):
         labels = np.random.randint(
             0, self.num_class, (self.batch_dim, ), dtype="int64")
 
-        loss, softmax = margin_softmax_with_cross_entropy(
-            logits, labels, self.axis, self.margin1, self.margin2, self.margin3,
-            self.scale)
+        loss, softmax = margin_cross_entropy(logits, labels, self.axis,
+                                             self.margin1, self.margin2,
+                                             self.margin3, self.scale)
 
         self.inputs = {"Logits": logits, "Label": labels}
         self.outputs = {
@@ -127,8 +127,7 @@ class TestMarginSoftmaxWithCrossEntropyOp(OpTest):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMarginSoftmaxWithCrossEntropyOpFP32(
-        TestMarginSoftmaxWithCrossEntropyOp):
+class TestMarginCrossEntropyOpFP32(TestMarginCrossEntropyOp):
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -142,8 +141,7 @@ class TestMarginSoftmaxWithCrossEntropyOpFP32(
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMarginSoftmaxWithCrossEntropyOpFP16(
-        TestMarginSoftmaxWithCrossEntropyOp):
+class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -160,8 +158,7 @@ class TestMarginSoftmaxWithCrossEntropyOpFP16(
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMarginSoftmaxWithCrossEntropyOpCosFace(
-        TestMarginSoftmaxWithCrossEntropyOp):
+class TestMarginCrossEntropyOpCosFace(TestMarginCrossEntropyOp):
     def init_loss_params(self):
         self.margin1 = 1.0
         self.margin2 = 0.0
@@ -171,8 +168,7 @@ class TestMarginSoftmaxWithCrossEntropyOpCosFace(
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMarginSoftmaxWithCrossEntropyOpSphereFace(
-        TestMarginSoftmaxWithCrossEntropyOp):
+class TestMarginCrossEntropyOpSphereFace(TestMarginCrossEntropyOp):
     def init_loss_params(self):
         self.margin1 = 1.35
         self.margin2 = 0.0
@@ -180,8 +176,7 @@ class TestMarginSoftmaxWithCrossEntropyOpSphereFace(
         self.scale = 2.0
 
 
-class TestMarginSoftmaxWithCrossEntropyOpCPU(
-        TestMarginSoftmaxWithCrossEntropyOp):
+class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
     def test_check_output(self):
         try:
             self.check_output_with_place(core.CPUPlace(), atol=1e-5)
@@ -197,7 +192,7 @@ class TestMarginSoftmaxWithCrossEntropyOpCPU(
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMarginSoftmaxWithCrossEntropyOpV2(unittest.TestCase):
+class TestMarginCrossEntropyOpV2(unittest.TestCase):
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
@@ -209,7 +204,7 @@ class TestMarginSoftmaxWithCrossEntropyOpV2(unittest.TestCase):
     def initParams(self):
         self.seed = 2021
         self.axis = -1
-        self.batch_dim = 20
+        self.batch_dim = 10
         self.feat_dim = 41
         self.num_class = 37
         self.init_loss_params()
@@ -247,7 +242,7 @@ class TestMarginSoftmaxWithCrossEntropyOpV2(unittest.TestCase):
             labels_np = np.random.randint(
                 0, self.num_class, (self.batch_dim, ), dtype="int64")
 
-            loss_np, softmax_np = margin_softmax_with_cross_entropy(
+            loss_np, softmax_np = margin_cross_entropy(
                 logits_np, labels_np, self.axis, self.margin1, self.margin2,
                 self.margin3, self.scale, self.reduction)
 
@@ -257,7 +252,7 @@ class TestMarginSoftmaxWithCrossEntropyOpV2(unittest.TestCase):
                 dtype=self.dtype)
             label = paddle.static.data(
                 name='label', shape=[self.batch_dim], dtype="int64")
-            loss, softmax = paddle.nn.functional.margin_softmax_with_cross_entropy(
+            loss, softmax = paddle.nn.functional.margin_cross_entropy(
                 logits,
                 label,
                 margin1=self.margin1,
@@ -295,14 +290,14 @@ class TestMarginSoftmaxWithCrossEntropyOpV2(unittest.TestCase):
             labels_np = np.random.randint(
                 0, self.num_class, (self.batch_dim, ), dtype="int64")
 
-            loss_np, softmax_np = margin_softmax_with_cross_entropy(
+            loss_np, softmax_np = margin_cross_entropy(
                 logits_np, labels_np, self.axis, self.margin1, self.margin2,
                 self.margin3, self.scale, self.reduction)
 
             logits = paddle.to_tensor(logits_np, dtype=self.dtype)
             labels = paddle.to_tensor(labels_np, dtype="int64")
 
-            loss, softmax = paddle.nn.functional.margin_softmax_with_cross_entropy(
+            loss, softmax = paddle.nn.functional.margin_cross_entropy(
                 logits,
                 labels,
                 margin1=self.margin1,
@@ -320,23 +315,21 @@ class TestMarginSoftmaxWithCrossEntropyOpV2(unittest.TestCase):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMarginSoftmaxWithCrossEntropyOpV3(
-        TestMarginSoftmaxWithCrossEntropyOpV2):
+class TestMarginCrossEntropyOpV3(TestMarginCrossEntropyOpV2):
     def init_reduction(self):
         self.reduction = 'mean'
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMarginSoftmaxWithCrossEntropyOpV4(
-        TestMarginSoftmaxWithCrossEntropyOpV2):
+class TestMarginCrossEntropyOpV4(TestMarginCrossEntropyOpV2):
     def init_reduction(self):
         self.reduction = 'sum'
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMarginSoftmaxWithCrossEntropyOpAPIError(unittest.TestCase):
+class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
@@ -348,7 +341,7 @@ class TestMarginSoftmaxWithCrossEntropyOpAPIError(unittest.TestCase):
     def initParams(self):
         self.seed = 2021
         self.axis = -1
-        self.batch_dim = 20
+        self.batch_dim = 10
         self.feat_dim = 41
         self.num_class = 37
         self.init_loss_params()
@@ -375,7 +368,7 @@ class TestMarginSoftmaxWithCrossEntropyOpAPIError(unittest.TestCase):
                     labels = paddle.to_tensor(labels_np)
                     logits = paddle.to_tensor(logits_np)
 
-                    loss, softmax = paddle.nn.functional.margin_softmax_with_cross_entropy(
+                    loss, softmax = paddle.nn.functional.margin_cross_entropy(
                         logits,
                         labels,
                         margin1=self.margin1,

@@ -1092,15 +1092,15 @@ def ctc_loss(log_probs,
     return loss_out
 
 
-def margin_softmax_with_cross_entropy(logits,
-                                      label,
-                                      margin1=1.0,
-                                      margin2=0.5,
-                                      margin3=0.0,
-                                      scale=64.0,
-                                      group=None,
-                                      return_softmax=False,
-                                      reduction='mean'):
+def margin_cross_entropy(logits,
+                         label,
+                         margin1=1.0,
+                         margin2=0.5,
+                         margin3=0.0,
+                         scale=64.0,
+                         group=None,
+                         return_softmax=False,
+                         reduction='mean'):
     """
     .. math::
 
@@ -1162,7 +1162,7 @@ def margin_softmax_with_cross_entropy(logits,
         W = paddle.divide(W, W_l2)
 
         logits = paddle.matmul(X, W)
-        loss, softmax = paddle.nn.functional.margin_softmax_with_cross_entropy(
+        loss, softmax = paddle.nn.functional.margin_cross_entropy(
             logits, label, margin1=m1, margin2=m2, margin3=m3, scale=s, return_softmax=True, reduction=None)
 
         print(logits)
@@ -1182,7 +1182,7 @@ def margin_softmax_with_cross_entropy(logits,
         #       [[0.99978819, 0.00000000, 0.00000000, 0.00021181],
         #        [0.99992995, 0.00006468, 0.00000000, 0.00000537]])
 
-        ## for multi GPU, test_margin_softmax_with_cross_entropy.py
+        ## for multi GPU, test_margin_cross_entropy.py
         #import paddle
         #import paddle.distributed as dist
         #import numpy as np
@@ -1220,7 +1220,7 @@ def margin_softmax_with_cross_entropy(logits,
         #W = paddle.divide(W, W_l2)
 
         #logits = paddle.matmul(X, W)
-        #loss, softmax = paddle.nn.functional.margin_softmax_with_cross_entropy(
+        #loss, softmax = paddle.nn.functional.margin_cross_entropy(
         #    logits, label, margin1=m1, margin2=m2, margin3=m3, scale=s, return_softmax=True, reduction=None)
 
         #print(logits)
@@ -1228,7 +1228,7 @@ def margin_softmax_with_cross_entropy(logits,
         #print(loss)
         #print(softmax)
 
-        #python -m paddle.distributed.launch --gpus=0,1 test_margin_softmax_with_cross_entropy.py 
+        #python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py 
         ## for rank0 input
         #Tensor(shape=[4, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #       [[ 0.32888934,  0.02408748, -0.02763289,  0.18173063],
@@ -1295,7 +1295,7 @@ def margin_softmax_with_cross_entropy(logits,
         label = paddle.unsqueeze(label, axis=-1)
 
     if in_dygraph_mode():
-        softmax, loss = core.ops.margin_softmax_with_cross_entropy(
+        softmax, loss = core.ops.margin_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
             'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',
             scale, 'return_softmax', return_softmax)
@@ -1308,16 +1308,16 @@ def margin_softmax_with_cross_entropy(logits,
         else:
             return loss, softmax
 
-    op_type = 'margin_softmax_with_cross_entropy'
+    op_type = 'margin_cross_entropy'
     helper = LayerHelper(op_type, **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
 
     check_variable_and_dtype(logits, 'logits',
                              ['float16', 'float32', 'float64'],
-                             'margin_softmax_with_cross_entropy')
+                             'margin_cross_entropy')
     check_variable_and_dtype(label, 'label', ['int32', 'int64'],
-                             'margin_softmax_with_cross_entropy')
+                             'margin_cross_entropy')
 
     helper.append_op(
         type=op_type,

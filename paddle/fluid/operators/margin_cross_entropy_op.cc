@@ -12,25 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/margin_softmax_with_cross_entropy_op.h"
+#include "paddle/fluid/operators/margin_cross_entropy_op.h"
 
 namespace paddle {
 namespace operators {
 
-class MarginSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
+class MarginCrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Logits"), "Input", "Logits",
-                   "MarginSoftmaxWithCrossEntropyOp");
+                   "MarginCrossEntropyOp");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
-                   "MarginSoftmaxWithCrossEntropyOp");
+                   "MarginCrossEntropyOp");
 
     OP_INOUT_CHECK(ctx->HasOutput("Softmax"), "Output", "Softmax",
-                   "MarginSoftmaxWithCrossEntropyOp");
+                   "MarginCrossEntropyOp");
     OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss",
-                   "MarginSoftmaxWithCrossEntropyOp");
+                   "MarginCrossEntropyOp");
 
     auto logits_dims = ctx->GetInputDim("Logits");
     auto labels_dims = ctx->GetInputDim("Label");
@@ -76,8 +76,7 @@ class MarginSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
   }
 };
 
-class MarginSoftmaxWithCrossEntropyOpMaker
-    : public framework::OpProtoAndCheckerMaker {
+class MarginCrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("Logits",
@@ -106,11 +105,9 @@ class MarginSoftmaxWithCrossEntropyOpMaker
         .SetDefault(false);
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
-    AddAttr<int>("rank",
-                 "(int default 0) rank id for MarginSoftmaxWithCrossEntropy.")
+    AddAttr<int>("rank", "(int default 0) rank id for MarginCrossEntropy.")
         .SetDefault(0);
-    AddAttr<int>("nranks",
-                 "(int default 1) nranks id for MarginSoftmaxWithCrossEntropy.")
+    AddAttr<int>("nranks", "(int default 1) nranks id for MarginCrossEntropy.")
         .SetDefault(1);
     AddAttr<float>("margin1", "(float default 1.0) margin1 for MarginLoss.")
         .SetDefault(1.0);
@@ -121,7 +118,7 @@ class MarginSoftmaxWithCrossEntropyOpMaker
     AddAttr<float>("scale", "(float default 64.0) scale for MarginLoss.")
         .SetDefault(64.0);
     AddComment(R"DOC(
-MarginSoftmaxWithCrossEntropy Operator
+MarginCrossEntropy Operator
 .. math::
 
     L=-\frac{1}{N}\sum^N_{i=1}\log\frac{e^{s(cos(m_{1}\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\neq y_i} e^{scos\theta_{y_i}}}
@@ -136,8 +133,7 @@ Note that the Op supports model parallel and single GPU. And Logits.shape[-1] ca
   }
 };
 
-class MarginSoftmaxWithCrossEntropyOpGrad
-    : public framework::OperatorWithKernel {
+class MarginCrossEntropyOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -170,14 +166,13 @@ class MarginSoftmaxWithCrossEntropyOpGrad
 };
 
 template <typename T>
-class MarginSoftmaxWithCrossEntropyOpGradMaker
-    : public framework::SingleGradOpMaker<T> {
+class MarginCrossEntropyOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("margin_softmax_with_cross_entropy_grad");
+    op->SetType("margin_cross_entropy_grad");
 
     op->SetInput("Softmax", this->Output("Softmax"));
     op->SetInput("Logits", this->Input("Logits"));
@@ -195,16 +190,14 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(
-    margin_softmax_with_cross_entropy, ops::MarginSoftmaxWithCrossEntropyOp,
-    ops::MarginSoftmaxWithCrossEntropyOpMaker,
-    ops::MarginSoftmaxWithCrossEntropyOpGradMaker<paddle::framework::OpDesc>,
-    ops::MarginSoftmaxWithCrossEntropyOpGradMaker<paddle::imperative::OpBase>);
+    margin_cross_entropy, ops::MarginCrossEntropyOp,
+    ops::MarginCrossEntropyOpMaker,
+    ops::MarginCrossEntropyOpGradMaker<paddle::framework::OpDesc>,
+    ops::MarginCrossEntropyOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(margin_softmax_with_cross_entropy_grad,
-                  ops::MarginSoftmaxWithCrossEntropyOpGrad);
+REGISTER_OPERATOR(margin_cross_entropy_grad, ops::MarginCrossEntropyOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    margin_softmax_with_cross_entropy,
-    ops::MarginSoftmaxWithCrossEntropyOpCPUKernel<float>,
-    ops::MarginSoftmaxWithCrossEntropyOpCPUKernel<double>,
-    ops::MarginSoftmaxWithCrossEntropyOpCPUKernel<plat::float16>);
+REGISTER_OP_CPU_KERNEL(margin_cross_entropy,
+                       ops::MarginCrossEntropyOpCPUKernel<float>,
+                       ops::MarginCrossEntropyOpCPUKernel<double>,
+                       ops::MarginCrossEntropyOpCPUKernel<plat::float16>);

@@ -126,7 +126,7 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                         diff = one_hot_label * (margin_cos - integral_data)
                         arc_data = (integral_data + diff) * scale
 
-                        loss_a, softmax_a = paddle.nn.functional.margin_softmax_with_cross_entropy(
+                        loss_a, softmax_a = paddle.nn.functional.margin_cross_entropy(
                             data,
                             label,
                             margin1=margin1,
