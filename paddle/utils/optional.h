@@ -15,6 +15,8 @@
 #include<new>
 #include<algorithm>
 #include <type_traits>
+#include<functional>
+
 
 // #include "boost/config.hpp"
 // #include "boost/assert.hpp"
@@ -24,8 +26,8 @@
 // #include "boost/type_traits/is_reference.hpp"
 // #include "boost/mpl/bool.hpp"
 // #include "boost/mpl/not.hpp"
-// #include "boost/detail/reference_content.hpp"
-#include "none.hpp"
+#include "boost/detail/reference_content.hpp"
+#include "none.h"
 // #include "boost/utility/compare_pointees.hpp"
 
 // #include "boost/optional/optional_fwd.hpp"
@@ -48,19 +50,112 @@ namespace paddle {
   template <typename T>
   class optional;
 
-    namespace mpl
-    {
-        /// INTERNAL ONLY
-        ///
-        struct true_ {};
-        /// INTERNAL ONLY
-        ///
-        struct false_ {};
-    }
 
 class in_place_factory_base {} ;
 class typed_in_place_factory_base {} ;
 
+// template<class OP> bool equal_pointees(OP const& x, OP const& y);
+// template<class OP> struct equal_pointees_t;
+//
+// Being OP a model of OptionalPointee (either a pointer or an optional):
+//
+// If both x and y have valid pointees, returns the result of (*x == *y)
+// If only one has a valid pointee, returns false.
+// If none have valid pointees, returns true.
+// No-throw
+template<class OptionalPointee>
+inline
+bool equal_pointees ( OptionalPointee const& x, OptionalPointee const& y )
+{
+  return (!x) != (!y) ? false : ( !x ? true : (*x) == (*y) ) ;
+}
+
+template<class OptionalPointee>
+struct equal_pointees_t : std::binary_function<OptionalPointee,OptionalPointee,bool>
+{
+  bool operator() ( OptionalPointee const& x, OptionalPointee const& y ) const
+    { return equal_pointees(x,y) ; }
+} ;
+
+// template<class OP> bool less_pointees(OP const& x, OP const& y);
+// template<class OP> struct less_pointees_t;
+//
+// Being OP a model of OptionalPointee (either a pointer or an optional):
+//
+// If y has not a valid pointee, returns false.
+// ElseIf x has not a valid pointee, returns true.
+// ElseIf both x and y have valid pointees, returns the result of (*x < *y)
+// No-throw
+template<class OptionalPointee>
+inline
+bool less_pointees ( OptionalPointee const& x, OptionalPointee const& y )
+{
+  return !y ? false : ( !x ? true : (*x) < (*y) ) ;
+}
+
+template<class OptionalPointee>
+struct less_pointees_t : std::binary_function<OptionalPointee,OptionalPointee,bool>
+{
+  bool operator() ( OptionalPointee const& x, OptionalPointee const& y ) const
+    { return less_pointees(x,y) ; }
+} ;
+
+
+
+namespace detail {
+
+template <typename RefT>
+class reference_content
+{
+private: // representation
+
+    RefT content_;
+
+public: // structors
+
+    ~reference_content()
+    {
+    }
+
+    reference_content(RefT r)
+        : content_( r )
+    {
+    }
+
+    reference_content(const reference_content& operand)
+        : content_( operand.content_ )
+    {
+    }
+
+private: // non-Assignable
+
+    reference_content& operator=(const reference_content&);
+
+public: // queries
+
+    RefT get() const
+    {
+        return content_;
+    }
+
+};
+
+
+
+template <typename T>
+struct make_reference_content
+{
+    typedef T type;
+};
+
+template <typename T>
+struct make_reference_content< T& >
+{
+    typedef reference_content<T&> type;
+};
+
+
+} //namespace detail
 
 namespace optional_detail {
 
@@ -116,7 +211,7 @@ class optional_base : public optional_tag
 
     typedef
     typename
-    ::boost::detail::make_reference_content<T>::type internal_type ;
+    ::paddle::detail::make_reference_content<T>::type internal_type ;
 
     //typedef std::aligned_storage<sizeof(internal_type)> storage_type ;
     typedef aligned_storage<internal_type> storage_type ;
@@ -130,8 +225,10 @@ class optional_base : public optional_tag
 
     typedef T value_type ;
 
-    typedef mpl::true_  is_reference_tag ;
-    typedef mpl::false_ is_not_reference_tag ;
+    //typedef mpl::true_  is_reference_tag ;
+    //typedef mpl::false_ is_not_reference_tag ;
+    typedef std::true_type is_reference_tag ;
+    typedef std::false_type is_not_reference_tag ;
 
     typedef typename std::is_reference<T>::type is_reference_predicate ;
 
