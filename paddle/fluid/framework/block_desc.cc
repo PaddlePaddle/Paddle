@@ -240,7 +240,7 @@ BlockDesc *BlockDesc::ForwardBlock() const {
 
 void BlockDesc::MoveFrom(BlockDesc *block) {
   PADDLE_ENFORCE_NOT_NULL(
-      block, platform::errors::InvalidArgument("block must be provided"));
+      block, platform::errors::InvalidArgument("Block must be provided."));
   if (this == block) {
     return;
   }

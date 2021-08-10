@@ -167,14 +167,14 @@ static std::vector<std::vector<std::pair<std::string, std::string>>>
 GetInplaceVars(const BlockDesc &block, bool use_cuda,
                const std::vector<std::string> &skip_vars) {
   PADDLE_ENFORCE_EQ(block.ID(), 0, platform::errors::Unimplemented(
-                                       "Inplace can only perform in block 0"));
+                                       "Inplace can only perform in block 0."));
   // only take block 0 gc_vars
   const auto all_gc_vars =
       GetEagerDeletionCleanVars(*block.Program(), skip_vars)[0];
   const auto all_ops = block.AllOps();
   PADDLE_ENFORCE_EQ(all_gc_vars.size(), all_ops.size(),
                     platform::errors::PermissionDenied(
-                        "GC analysis error: op number not match"));
+                        "GC analysis error: op number not match."));
   size_t n = all_ops.size();
   std::unordered_set<std::string> visited_vars;
   std::unordered_set<std::string> reused_in_vars(skip_vars.begin(),
@@ -267,7 +267,7 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
   auto inplace_vars = GetInplaceVars(*block, use_cuda, skip_vars);
   PADDLE_ENFORCE_EQ(inplace_vars.size(), block->OpSize(),
                     platform::errors::PermissionDenied(
-                        "Inplace analysis error: op number not match"));
+                        "Inplace analysis error: op number not match."));
   int64_t n = static_cast<int64_t>(inplace_vars.size());
   for (int64_t i = n - 1; i >= 0; --i) {
     if (inplace_vars[i].empty()) continue;

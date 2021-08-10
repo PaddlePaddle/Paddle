@@ -28,13 +28,13 @@ class ShareBufferOpKernel : public framework::OpKernel<T> {
     auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
     size_t n = inputs.size();
     PADDLE_ENFORCE_EQ(n, outputs.size(), platform::errors::PermissionDenied(
-                                             "Variable number not match"));
+                                             "Variable number not match."));
     const auto &share_dims = ctx.Attr<std::vector<bool>>("share_dims");
     if (!share_dims.empty()) {
       PADDLE_ENFORCE_EQ(
           n, share_dims.size(),
           platform::errors::PermissionDenied(
-              "Attribute share_dims number not match input variable number"));
+              "Attribute share_dims number not match input variable number."));
     }
 
     const std::vector<std::string> *input_args = nullptr,

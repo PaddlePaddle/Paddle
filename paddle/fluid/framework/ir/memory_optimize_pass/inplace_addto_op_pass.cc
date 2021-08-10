@@ -331,7 +331,7 @@ GetAllVersionVarsMap(const Graph &graph) {
 
   PADDLE_ENFORCE_EQ(
       sorted_nodes.size(), nodes.size(),
-      platform::errors::PermissionDenied("wrong toplogical sort algorithm"));
+      platform::errors::PermissionDenied("Wrong toplogical sort algorithm."));
   std::unordered_map<std::string, std::vector<Node *>> result;
   for (auto *node : sorted_nodes) {
     if (node->IsVar() && !node->IsCtrlVar()) {
@@ -366,7 +366,7 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
       }
       PADDLE_ENFORCE_LT(input_vars.size(), 2,
                         platform::errors::InvalidArgument(
-                            "The size of inputs of grad_add should be 2"));
+                            "The size of inputs of grad_add should be 2."));
       input_vars.push_back(in);
     }
 
@@ -390,7 +390,7 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
     std::string output_var_name = node->Op()->Output("Out")[0];
     PADDLE_ENFORCE_NE(output_var_name, kEmptyVarName,
                       platform::errors::InvalidArgument(
-                          "output of grad_add should be provided"));
+                          "Output of grad_add should be provided."));
     for (auto *out : node->outputs) {
       if (output_var_name == out->Name()) {
         output_var = out;
@@ -399,7 +399,7 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
     }
     PADDLE_ENFORCE_NOT_NULL(output_var,
                             platform::errors::InvalidArgument(
-                                "output of grad_add should be provided"));
+                                "Output of grad_add should be provided."));
 
     VLOG(10) << "Check inplace chain: " << input_vars[0]->Name() << " -> "
              << input_vars[1]->Name() << " -> " << output_var->Name();
@@ -428,15 +428,15 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
     // version and last version, and output_var must be the 1st version.
     auto iter = all_ver_vars.find(input_vars[0]->Name());
     PADDLE_ENFORCE_EQ(iter != all_ver_vars.end(), true,
-                      platform::errors::InvalidArgument("Variable %s not found",
-                                                        input_vars[0]->Name()));
+                      platform::errors::InvalidArgument(
+                          "Variable %s not found.", input_vars[0]->Name()));
     if (iter->second[iter->second.size() - 1] != input_vars[0]) continue;
 
     iter = all_ver_vars.find(input_vars[1]->Name());
     if (iter->second.size() != 1) continue;
     PADDLE_ENFORCE_EQ(iter->second[0], input_vars[1],
-                      platform::errors::InvalidArgument("Variable %s not found",
-                                                        input_vars[1]->Name()));
+                      platform::errors::InvalidArgument(
+                          "Variable %s not found.", input_vars[1]->Name()));
     iter = all_ver_vars.find(output_var->Name());
     if (iter->second[0] != output_var) continue;
 
