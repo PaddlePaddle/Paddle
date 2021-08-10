@@ -369,23 +369,14 @@ class SetValueGradKernel : public framework::OpKernel<T> {
 
     if (list_new_starts_tensor.size() > 0) {
       starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
-    } else if (context.HasInput("StartsTensor")) {
-      auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
-      starts = GetDataFromTensor<int64_t>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(list_new_ends_tensor);
-    } else if (context.HasInput("EndsTensor")) {
-      auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
-      ends = GetDataFromTensor<int64_t>(ends_tensor);
     }
 
     if (list_new_steps_tensor.size() > 0) {
       steps = GetDataFromTensorList<int64_t>(list_new_steps_tensor);
-    } else if (context.HasInput("StepsTensor")) {
-      auto* steps_tensor = context.Input<framework::Tensor>("StepsTensor");
-      steps = GetDataFromTensor<int64_t>(steps_tensor);
     }
 
     auto in = context.Input<framework::Tensor>(framework::GradVarName("Out"));

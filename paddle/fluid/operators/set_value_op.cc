@@ -201,68 +201,6 @@ class SetValueGrad : public framework::OperatorWithKernel {
             "than 7, but received dimension is %d.",
             in_dims.size()));
 
-    auto starts = ctx->Attrs().Get<std::vector<int64_t>>("starts");
-    auto ends = ctx->Attrs().Get<std::vector<int64_t>>("ends");
-    auto steps = ctx->Attrs().Get<std::vector<int64_t>>("steps");
-
-    auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
-
-    auto starts_size = starts.size();
-    auto ends_size = ends.size();
-    auto steps_size = steps.size();
-
-    if (ctx->HasInputs("StartsTensorList")) {
-      auto StartsTensorList = ctx->Inputs("StartsTensorList");
-      PADDLE_ENFORCE_GT(
-          StartsTensorList.size(), 0,
-          platform::errors::InvalidArgument(
-              "set_value_grad operator's StartsTensorList is empty."));
-      starts_size = StartsTensorList.size();
-    }
-    if (ctx->HasInputs("EndsTensorList")) {
-      auto EndsTensorList = ctx->Inputs("EndsTensorList");
-      PADDLE_ENFORCE_GT(
-          EndsTensorList.size(), 0,
-          platform::errors::InvalidArgument(
-              "set_value_grad operator's EndsTensorList is empty."));
-      ends_size = EndsTensorList.size();
-    }
-    if (ctx->HasInputs("StepsTensorList")) {
-      auto StepsTensorList = ctx->Inputs("StepsTensorList");
-      PADDLE_ENFORCE_GT(
-          StepsTensorList.size(), 0,
-          platform::errors::InvalidArgument(
-              "set_value_grad operator's StepsTensorList is empty."));
-      steps_size = StepsTensorList.size();
-    }
-
-    if (!ctx->HasInput("EndsTensor")) {
-      PADDLE_ENFORCE_EQ(
-          ends_size, axes.size(),
-          platform::errors::InvalidArgument(
-              "The size of ends attribute in set_value_grad operator is not "
-              "equal to the size of axes attribute. The ends attribute's size "
-              "is %d, axes attribute's size is %d.",
-              ends_size, axes.size()));
-    }
-    if (!ctx->HasInput("StartsTensor")) {
-      PADDLE_ENFORCE_EQ(
-          starts_size, axes.size(),
-          platform::errors::InvalidArgument(
-              "The size of starts attribute in set_value_grad operator is not "
-              "equal to the size of axes attribute. The starts attribute's "
-              "size is %d, axes attribute's size is %d.",
-              starts_size, axes.size()));
-    }
-    if (!ctx->HasInput("StepsTensorList")) {
-      PADDLE_ENFORCE_EQ(
-          steps_size, axes.size(),
-          platform::errors::InvalidArgument(
-              "The size of steps attribute in set_value_grad operator is not "
-              "equal to the size of axes attribute. The steps attribute's "
-              "size is %d, axes attribute's size is %d.",
-              steps_size, axes.size()));
-    }
     if (ctx->HasOutput(framework::GradVarName("ValueTensor"))) {
       ctx->ShareDim("ValueTensor",
                     /*->*/ framework::GradVarName("ValueTensor"));
@@ -275,9 +213,6 @@ class SetValueGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto in_tensor = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    if (platform::is_cuda_pinned_place(in_tensor->place())) {
-      return framework::OpKernelType(in_tensor->type(), ctx.device_context());
-    }
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Out")),
                                    in_tensor->place());
@@ -285,10 +220,6 @@ class SetValueGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
-        var_name == "StepsTensorList") {
-      return expected_kernel_type;
-    }
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StepsTensorList") {
       return expected_kernel_type;

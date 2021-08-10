@@ -1082,69 +1082,103 @@ class TestGradientTruncated(unittest.TestCase):
             msg="The gradient of input should be \n{},\n but reveived {}".
             format(value_grad, value.grad.numpy()))
 
-        def test_static_graph(self):
-            paddle.enable_static()
+    def test_static_graph(self):
+        paddle.enable_static()
 
-            to_string = lambda x, i, : x + '_' + str(i)
+        to_string = lambda x, i, : x + '_' + str(i)
 
-            def set_value(array, i):
-                name_x = to_string('x', i)
+        def op1(x):
+            value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+            start = paddle.fluid.layers.fill_constant(
+                [1], "int32", 5, force_cpu=True)
+            end = paddle.fluid.layers.fill_constant(
+                [1], "int32", 0, force_cpu=True)
+            step = paddle.fluid.layers.fill_constant(
+                [1], "int32", -2, force_cpu=True)
 
-                x = paddle.static.data(
-                    name=name_x, shape=array.shape, dtype='float32')
-                x.stop_gradient = False
+            inputs = {
+                'Input': x,
+                'ValueTensor': value,
+                'StartsTensorList': [start, ],
+                'EndsTensorList': [end, ],
+                'StepsTensorList': [step, ]
+            }
 
-                value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+            helper = LayerHelper("set_value")
+            y = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-                start = paddle.fluid.layers.fill_constant(
-                    [1], "int32", 5, force_cpu=True)
-                end = paddle.fluid.layers.fill_constant(
-                    [1], "int32", 0, force_cpu=True)
-                step = paddle.fluid.layers.fill_constant(
-                    [1], "int32", -2, force_cpu=True)
+            helper.append_op(
+                type="set_value",
+                inputs=inputs,
+                outputs={'Out': y},
+                attrs={'axes': [0]})
 
-                inputs = {
-                    'Input': x,
-                    'ValueTensor': value,
-                    'StartsTensorList': [start],
-                    'EndsTensorList': [end],
-                    'StepsTensorList': [step]
-                }
+            return y
 
-                helper = LayerHelper("set_value")
-                y = helper.create_variable_for_type_inference(dtype=x.dtype)
+        def op2(x):
+            value = paddle.fluid.layers.fill_constant([1, 3, 2], "float32", 1)
+            value.stop_gradient = False
+            attrs = {
+                'axes': [0],
+                'starts': [6],
+                'ends': [0],
+                'steps': [-4],
+                'decrease_axes': [],
+                'none_axes': [],
+                'dtype': paddle.float32
+            }
+            inputs = {'Input': x, 'ValueTensor': value}
 
-                helper.append_op(
-                    type="set_value",
-                    inputs=inputs,
-                    outputs={'Out': y},
-                    attrs={'axes': [0]})
+            helper = LayerHelper("set_value")
+            y = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-                y2 = y + 1
-                loss = paddle.fluid.layers.reduce_sum(y2)
-                sgd = paddle.optimizer.Adam()
-                sgd.minimize(loss)
-                place = paddle.fluid.CPUPlace(
-                ) if not paddle.fluid.core.is_compiled_with_cuda(
-                ) else paddle.fluid.CUDAPlace(0)
+            helper.append_op(
+                type="set_value",
+                inputs=inputs,
+                outputs={'Out': y},
+                attrs=attrs)
 
-                prog = paddle.static.default_main_program()
-                exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
-                out = exe.run(prog,
-                              feed={x.name: array},
-                              fetch_list=[x.grad_name])
+            return y
+
+        def set_value(array, i, op):
+            name_x = to_string('x', i)
+
+            x = paddle.static.data(
+                name=name_x, shape=array.shape, dtype='float32')
+            x.stop_gradient = False
+
+            y = op(x)
+            y2 = y + 1
+            loss = paddle.fluid.layers.reduce_sum(y2)
+            sgd = paddle.optimizer.Adam()
+            sgd.minimize(loss)
+            place = paddle.fluid.CPUPlace(
+            ) if not paddle.fluid.core.is_compiled_with_cuda(
+            ) else paddle.fluid.CUDAPlace(0)
+
+            prog = paddle.static.default_main_program()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            out = exe.run(prog, feed={x.name: array}, fetch_list=[x.grad_name])
+            return out
+
+        input_shape = [7, 6, 5, 4, 3, 2]
+        numel = reduce(lambda x, y: x * y, input_shape)
+        array = np.arange(0, numel, dtype="float32").reshape(input_shape)
+
+        for i in range(len(input_shape)):
+            program = paddle.static.Program()
+            with paddle.static.program_guard(program):
+                out = set_value(array, i, op1)
                 self.assertTrue((out[0][5:0:-2] == 0).all())
 
-            input_shape = [7, 6, 5, 4, 3, 2]
-            numel = reduce(lambda x, y: x * y, input_shape)
-            array = np.arange(0, numel, dtype="float32").reshape(input_shape)
+            if len(array.shape) > 2:
+                program2 = paddle.static.Program()
+                with paddle.static.program_guard(program2):
+                    out = set_value(array, i, op2)
+                    self.assertTrue((out[0][6:0:-4] == 0).all())
 
-            for i in range(len(input_shape)):
-                program = paddle.static.Program()
-                with paddle.static.program_guard(program):
-                    set_value(array, i)
-                    array = array[0]
+            array = array[0]
 
 
 if __name__ == '__main__':
