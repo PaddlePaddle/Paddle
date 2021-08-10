@@ -46,6 +46,11 @@ class PnormNPUKernel : public framework::OpKernel<T> {
       p = INT_MIN;
     } else {
       p = static_cast<int>(porder);
+      float t = 0;
+      float diff = abs(std::modf(porder, &t));
+      if (diff < 1e-5) {
+        combine_op = false;
+      }
     }
 
     if (!combine_op) {
