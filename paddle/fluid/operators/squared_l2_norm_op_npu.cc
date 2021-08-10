@@ -32,20 +32,14 @@ class SquaredL2NormNPUKernel : public framework::OpKernel<T> {
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    Tensor squared_x;
-    squared_x.mutable_data<T>(x->dims(), place);
-    const auto &square_runner = NpuOpRunner("Square", {*x}, {squared_x}, {});
-    square_runner.Run(stream);
-
-    std::vector<int> axes;
+    std::vector<int> axis;
     for (int i = 0; i < x->dims().size(); ++i) {
-      axes.push_back(i);
+      axis.push_back(i);
     }
     out->mutable_data<T>(place);
-    const auto &reduce_sum_runner =
-        NpuOpRunner("ReduceSumD", {squared_x}, {*out},
-                    {{"axes", axes}, {"keep_dims", false}});
-    reduce_sum_runner.Run(stream);
+    const auto &runner = NpuOpRunner("SquareSumV1", {*x}, {*out},
+                                     {{"axis", axis}, {"keep_dims", false}});
+    runner.Run(stream);
   }
 };
 
