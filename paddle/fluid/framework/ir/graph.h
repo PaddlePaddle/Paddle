@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/utils/any.h"
 
 DECLARE_bool(convert_all_blocks);
 
@@ -147,8 +148,8 @@ class Graph {
         platform::errors::PreconditionNotMet(
             "%s attribute not registered for current graph.", attr_name));
     try {
-      return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
-    } catch (boost::bad_any_cast &) {
+      return *paddle::any_cast<AttrType *>(attrs_.at(attr_name));
+    } catch (paddle::bad_any_cast &) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Invalid attribute type of %s, expected: %s, received: %s.",
           attr_name, platform::demangle(typeid(AttrType *).name()),  // NOLINT
@@ -426,7 +427,7 @@ class Graph {
   const Graph *main_graph_;  // not owned.
   std::vector<std::unique_ptr<Graph>> sub_graphs_;
 
-  std::map<std::string, boost::any> attrs_;
+  std::map<std::string, paddle::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
