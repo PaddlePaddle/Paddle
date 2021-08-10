@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-// Attention: the Ascend TopKV2 operator used in this kernel
+// NOTE(Ruibiao): the Ascend TopKV2 operator used in this kernel
 // may lead to large accuracy error for float32 data
 template <typename T>
 class TopkV2NPUKernel : public framework::OpKernel<T> {
