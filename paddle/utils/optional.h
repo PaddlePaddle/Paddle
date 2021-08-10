@@ -25,7 +25,7 @@
 // #include "boost/mpl/bool.hpp"
 // #include "boost/mpl/not.hpp"
 // #include "boost/detail/reference_content.hpp"
-#include "none.hpp"
+#include "none.h"
 // #include "boost/utility/compare_pointees.hpp"
 
 // #include "boost/optional/optional_fwd.hpp"
