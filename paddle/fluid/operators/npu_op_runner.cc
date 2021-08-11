@@ -33,6 +33,7 @@ static std::map<framework::proto::VarType::Type, aclDataType>
     DTYPE_2_ACL_DTYPE = {
         {framework::proto::VarType::BOOL, ACL_BOOL},
         {framework::proto::VarType::UINT8, ACL_UINT8},
+        {framework::proto::VarType::INT8, ACL_INT8},
         {framework::proto::VarType::INT16, ACL_INT16},
         {framework::proto::VarType::INT32, ACL_INT32},
         {framework::proto::VarType::INT64, ACL_INT64},
