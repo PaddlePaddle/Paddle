@@ -67,14 +67,6 @@ message OpDesc {
     repeated double float64s = 16;
   };
 
-  message DistributedAttr {
-    required string name = 1;
-    required AttrType type = 2;
-    optional int32 i = 3;
-    optional string s = 5;
-    repeated int32 ints = 6;
-  };
-
   message Var {
     required string parameter = 1;
     repeated string arguments = 2;
@@ -85,7 +77,6 @@ message OpDesc {
   repeated Var outputs = 2;
   repeated Attr attrs = 4;
   optional bool is_target = 5 [ default = false ];
-  repeated DistributedAttr dist_attrs = 6;
 };
 
 // OpProto describes a C++ framework::OperatorBase derived class.
