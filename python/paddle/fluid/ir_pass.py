@@ -142,7 +142,7 @@ class DescribeFunctionHelper(object):
     def Vars(self):
         return list(map(lambda var: var.Name(), self._vars))
 
-    def Build(self):
+    def Build(self, input_specs):
         arg_specs = inspect.getfullargspec(self._func)
         self._vars = list(map(Var, arg_specs.args))
         ops = self._func(*self._vars)
@@ -176,30 +176,29 @@ class APIFunctionHelper(object):
             vars.append(var.name)
         return vars
 
-    def _get_args_from_func(self, func):
+    def _get_args_from_func(self, func, input_specs):
         args = list()
         arg_specs = inspect.getfullargspec(self._func)
-        annotations = arg_specs.annotations
         for arg_name in arg_specs.args:
-            annotation = annotations.get(arg_name)
-            if isinstance(annotation, paddle.static.InputSpec):
+            input_spec = input_specs.get(arg_name)
+            if isinstance(input_spec, paddle.static.InputSpec):
                 args.append(
-                    paddle.static.data(arg_name, annotation.shape,
-                                       annotation.dtype))
-            elif isinstance(annotation, (list, tuple)):
-                args.append(paddle.static.data(arg_name, annotation))
+                    paddle.static.data(arg_name, input_spec.shape,
+                                       input_spec.dtype))
+            elif isinstance(input_spec, paddle.ParamAttr):
+                args.append(paddle.ParamAttr(arg_name))
             else:
                 args.append(paddle.static.data(arg_name, [-1]))
         return args
 
-    def Build(self):
+    def Build(self, input_specs):
         switch_static_mode = paddle.in_dynamic_mode()
         if switch_static_mode:
             paddle.enable_static()
         self._program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(self._program, startup_program):
-            self._vars = self._get_args_from_func(self._func)
+            self._vars = self._get_args_from_func(self._func, input_specs)
             self._vars.append(self._func(*self._vars))
         if switch_static_mode:
             paddle.disable_static()
@@ -213,9 +212,14 @@ class RegisterPassHelper(object):
     def __init__(self, pass_name):
         self._name = pass_name
         self._pass_pairs = None
+        self._input_specs = dict()
 
     def SetPassPairs(self, pass_pairs):
         self._pass_pairs = pass_pairs
+
+    def SetInputSpecs(self, input_specs):
+        if isinstance(input_specs, dict):
+            self._input_specs.update(input_specs)
 
     def GetMultiPassDesc(self):
         assert self._pass_pairs
@@ -224,9 +228,9 @@ class RegisterPassHelper(object):
         for (pattern, replace) in self._pass_pairs:
             pass_desc = multi_pass_desc.pass_descs.add()
             # pattern
-            pattern.Build().ToProgramDesc(pass_desc.pattern)
+            pattern.Build(self._input_specs).ToProgramDesc(pass_desc.pattern)
             # replace
-            replace.Build().ToProgramDesc(pass_desc.replace)
+            replace.Build(self._input_specs).ToProgramDesc(pass_desc.replace)
             # var map
             pattern_vars = pattern.Vars()
             replace_vars = replace.Vars()
@@ -241,22 +245,38 @@ class RegisterPassHelper(object):
         return multi_pass_desc
 
 
-def DescribeFunction(func):
-    return DescribeFunctionHelper(func)
+def RegisterPass(pass_name,
+                 pattern_use_api=True,
+                 replace_use_api=True,
+                 input_specs=None):
+    pattern_helper_class = APIFunctionHelper if pattern_use_api else DescribeFunctionHelper
+    replace_helper_class = APIFunctionHelper if replace_use_api else DescribeFunctionHelper
 
+    def _func_to_helper(pass_pair_func):
+        pattern, replace = pass_pair_func
+        return pattern_helper_class(pattern), replace_helper_class(replace)
 
-def APIFunction(func):
-    return APIFunctionHelper(func)
+    def _is_pass_pair(check_pair):
+        if isinstance(check_pair, (list, tuple)):
+            if len(check_pair) == 2:
+                if all(map(inspect.isfunction, check_pair)):
+                    return True
+        return False
 
+    def _register_pass_warpper(func):
+        register_helper = RegisterPassHelper(pass_name)
+        pass_pairs = list()
+        pass_pair_funcs = func()
+        if _is_pass_pair(pass_pair_funcs):
+            pass_pairs.append(_func_to_helper(pass_pair_funcs))
+        elif all(map(_is_pass_pair, pass_pair_funcs)):
+            pass_pairs.extend(map(_func_to_helper, pass_pair_funcs))
+        else:
+            raise ValueError("Error Pass Pair functions.")
+        register_helper.SetPassPairs(pass_pairs)
+        register_helper.SetInputSpecs(input_specs)
+        desc = register_helper.GetMultiPassDesc()
+        register_pass(pass_name, desc.SerializeToString())
+        return func
 
-def RegisterPass(func):
-    pass_name = func.__name__
-    pass_pairs = func()
-    register_helper = RegisterPassHelper(pass_name)
-    register_helper.SetPassPairs(pass_pairs)
-    ALL_REGISTER_PASS[pass_name] = register_helper
-
-
-def UsePass(pass_name):
-    desc = ALL_REGISTER_PASS[pass_name].GetMultiPassDesc()
-    register_pass(pass_name, desc.SerializeToString())
+    return _register_pass_warpper

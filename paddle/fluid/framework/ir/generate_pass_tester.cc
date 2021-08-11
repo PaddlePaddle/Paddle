@@ -20,24 +20,20 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void init_test_pass_desc(proto::PassDesc* pass_desc) {
+REGISTER_GENERATE_PASS(test_generate_pass) {
+  // inputs/outputs
+  Var x, w, b, out;
   // pattern
-  ADD_PATTERN_OP(pass_desc, mul);
-  PATTERN_OP_ADD_INPUT(mul, X);
-  PATTERN_OP_ADD_INPUT(mul, Y);
-  PATTERN_OP_VAR(mul, Y)->set_persistable(true);
-  PATTERN_OP_ADD_OUTPUT(mul, out);
-  ADD_PATTERN_OP(pass_desc, elementwise_add);
-  PATTERN_OP_ADD_INPUT_FROM(elementwise_add, X, mul, out);
-  PATTERN_OP_ADD_INPUT(elementwise_add, bias);
-  PATTERN_OP_VAR(elementwise_add, bias)->set_persistable(true);
-  PATTERN_OP_ADD_OUTPUT(elementwise_add, out);
-  // algebra
-  ADD_ALGEBRA_OP(pass_desc, fc);
-  ALGEBRA_OP_ADD_INPUT_FROM(fc, Input, mul, X);
-  ALGEBRA_OP_ADD_INPUT_FROM(fc, W, mul, Y);
-  ALGEBRA_OP_ADD_INPUT_FROM(fc, Bias, elementwise_add, bias);
-  ALGEBRA_OP_ADD_OUTPUT_FROM(fc, Out, elementwise_add, out);
+  Op mul("matmul_v2");
+  mul.SetInput({{"X", x}, {"Y", w}}).SetOutput({"out", Var()});
+  mul.Attr("use_mkldnn").Set(false);
+  Op ewadd("elementwise_add");
+  ewadd.SetInput({{"X", mul.Output("out")}, {"bias", b}})
+      .SetOutput({"out", out});
+  // replace
+  Op fc("fc");
+  fc.SetInput({{"Input", x}, {"W", w}, {"Bias", b}}).SetOutput({"Out", out});
+  return {{mul, ewadd}, {fc}};
 }
 
 void AddVarToScope(Scope* param_scope, const std::string& name,
@@ -55,12 +51,7 @@ Scope* CreateParamScope() {
 }
 
 TEST(GeneatePass, basic) {
-  proto::MultiPassDesc multi_pass_desc;
-  multi_pass_desc.set_name("test_generate_pass");
-  proto::PassDesc* pass_desc = multi_pass_desc.add_pass_desc();
-  init_test_pass_desc(pass_desc);
-
-  GeneratePass pass(multi_pass_desc);
+  auto pass = PassRegistry::Instance().Get("test_generate_pass");
   Layers layers;
   auto* a = layers.data("a");
   auto* relu_out_0 = layers.relu(a);
@@ -75,7 +66,7 @@ TEST(GeneatePass, basic) {
   int num_mul_nodes_before = GetNumOpNodes(graph, "mul");
   VLOG(3) << DebugString(graph);
 
-  graph.reset(pass.Apply(graph.release()));
+  graph.reset(pass->Apply(graph.release()));
   int num_nodes_after = graph->Nodes().size();
   int num_fc_nodes_after = GetNumOpNodes(graph, "fc");
   VLOG(3) << DebugString(graph);

@@ -54,7 +54,9 @@ class SequentialExecutionPass : public ir::Pass {
     for (ir::Node *node : graph->Nodes()) {
       if (!node->IsOp()) continue;
       std::unordered_set<ir::Node *> preceding_ops;
+      VLOG(1) << node->Op()->Type();
       for (auto *in : node->inputs) {
+        VLOG(1) << " in: " << in->Name() << ", size: " << in->inputs.size();
         PADDLE_ENFORCE_EQ(
             in->IsVar(), true,
             platform::errors::InvalidArgument(
@@ -65,16 +67,19 @@ class SequentialExecutionPass : public ir::Pass {
                           true,
                           platform::errors::InvalidArgument(
                               "Preceding Op Node of Var Node must be unique."));
+        VLOG(1) << "   dep: " << in->inputs[0]->Op()->Type();
         preceding_ops.insert(in->inputs[0]);
         pending_ops[in->inputs[0]].insert(node);
       }
       op_deps[node] = preceding_ops.size();
       if (preceding_ops.empty()) {
+        VLOG(1) << "ready_ops.insert(" << node->Name() << ")";
         ready_ops.insert(node);
       }
     }
 
     for (auto *op_desc : ops) {
+      VLOG(1) << op_desc->Type();
       ir::Node *found_node = nullptr;
       for (auto *node : ready_ops) {
         if (IsSameOpDesc(op_desc, node->Op())) {

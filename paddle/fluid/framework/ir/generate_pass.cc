@@ -93,26 +93,34 @@ GraphPatternDetector::handle_t GeneratePass::Substitute(
       OpDesc op_desc;
       op_desc.SetType(op.type());
       for (const proto::OpDesc::Var& in : op.inputs()) {
-        Node* in_node = nullptr;
-        auto iter = var_node_map.find(in.arguments(0));
-        if (iter != var_node_map.end()) {
-          in_node = iter->second;
-          op_desc.SetInput(in.parameter(), {in_node->Name()});
+        std::vector<std::string> args;
+        for (const std::string& argument : in.arguments()) {
+          Node* in_node = nullptr;
+          auto iter = var_node_map.find(argument);
+          if (iter != var_node_map.end()) {
+            in_node = iter->second;
+          } else {
+            // create node
+          }
           in_nodes.push_back(in_node);
-        } else {
-          // create node
+          args.push_back(in_node->Name());
         }
+        op_desc.SetInput(in.parameter(), args);
       }
       for (const proto::OpDesc::Var& out : op.outputs()) {
-        Node* out_node = nullptr;
-        auto iter = var_node_map.find(out.arguments(0));
-        if (iter != var_node_map.end()) {
-          out_node = iter->second;
-          op_desc.SetOutput(out.parameter(), {out_node->Name()});
+        std::vector<std::string> args;
+        for (const std::string& argument : out.arguments()) {
+          Node* out_node = nullptr;
+          auto iter = var_node_map.find(argument);
+          if (iter != var_node_map.end()) {
+            out_node = iter->second;
+          } else {
+            // create node
+          }
           out_nodes.push_back(out_node);
-        } else {
-          // create node
+          args.push_back(out_node->Name());
         }
+        op_desc.SetOutput(out.parameter(), args);
       }
       Node* op_node = graph->CreateOpNode(&op_desc);
       for (Node* node : in_nodes) {
