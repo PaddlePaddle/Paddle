@@ -736,7 +736,7 @@ def unique_consecutive(x,
         return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
             Default is False.
         axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
-            Default: None.
+            Default is None.
 
     Returns:
         tuple, (out, inverse, counts). `out` is the unique consecutive tensor for `x`.`inverse` is
