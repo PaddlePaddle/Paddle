@@ -367,13 +367,15 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
 
     logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
-    bool size_average = ctx.Attr<bool>("size_average");
-    bool length_average = ctx.Attr<bool>("length_average");
+    bool norm_by_batchsize = ctx.Attr<bool>("norm_by_batchsize");
+    bool norm_by_total_logits_len = ctx.Attr<bool>("norm_by_total_logits_len");
 
-    if ((norm_by_times && size_average) || (norm_by_times && length_average) ||
-        (size_average && length_average)) {
+    if ((norm_by_times && norm_by_batchsize) ||
+        (norm_by_times && norm_by_total_logits_len) ||
+        (norm_by_batchsize && norm_by_total_logits_len)) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "[warpctc grad] norm_by_times, size_average and length_average "
+          "[warpctc grad] norm_by_times, norm_by_batchsize and "
+          "norm_by_total_logits_len "
           "should one be true."));
     }
 
@@ -394,15 +396,15 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
         total_length += length_ptr[i];
       }
       VLOG(3) << "[warpctc grad] total logits length: " << total_length;
-      if (length_average) {
+      if (norm_by_total_logits_len) {
         T scale = 1.0;
         scale = 1.0 / static_cast<T>(total_length);
-        VLOG(3) << "[warpctc grad][length_average] scale: " << scale
+        VLOG(3) << "[warpctc grad][norm_by_total_logits_len] scale: " << scale
                 << "total logits len: " << total_length;
-      } else if (size_average) {
+      } else if (norm_by_batchsize) {
         T scale = 1.0;
         scale = 1.0 / static_cast<T>(B);
-        VLOG(3) << "[warpctc grad][size_average] scale: " << scale
+        VLOG(3) << "[warpctc grad][norm_by_batchsize] scale: " << scale
                 << "Batchsize: " << B;
       }
 
@@ -428,11 +430,11 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < Tmax; ++i) {
         for (size_t j = 0; j < B; ++j) {
           T scale = 1.0;
-          if (length_average) {
+          if (norm_by_total_logits_len) {
             // Compute the avg. log-probability per batch sample and frame.
             // https://github.com/espnet/warp-ctc/blob/pytorch_bindings/pytorch_binding/warpctc_pytorch/__init__.py#L42
             scale = 1.0 / static_cast<T>(total_length);
-          } else if (size_average) {
+          } else if (norm_by_batchsize) {
             // Compute the avg. log-probability per batch sample.
             // https://github.com/espnet/warp-ctc/blob/pytorch_bindings/pytorch_binding/warpctc_pytorch/__init__.py#L46
             scale = 1.0 / static_cast<T>(B);
@@ -451,8 +453,8 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
     } else {
       math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(), *warpctc_grad,
-          logits_grad, -1, 0, norm_by_times, size_average, length_average,
-          math::kLengthBatchWidth);
+          logits_grad, -1, 0, norm_by_times, norm_by_batchsize,
+          norm_by_total_logits_len, math::kLengthBatchWidth);
 
       const T* loss_grad_data = loss_grad->data<T>();
       math::ScaleLoDTensorFunctor<DeviceContext, T>()(

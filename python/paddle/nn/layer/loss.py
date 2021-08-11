@@ -1117,8 +1117,8 @@ class CTCLoss(Layer):
                 input_lengths,
                 label_lengths,
                 norm_by_times=False,
-                size_average=False,
-                length_average=False):
+                norm_by_batchsize=False,
+                norm_by_total_logits_len=False):
         return paddle.nn.functional.ctc_loss(
             log_probs,
             labels,
@@ -1127,8 +1127,8 @@ class CTCLoss(Layer):
             self.blank,
             self.reduction,
             norm_by_times=norm_by_times,
-            size_average=size_average,
-            length_average=length_average)
+            norm_by_batchsize=norm_by_batchsize,
+            norm_by_total_logits_len=norm_by_total_logits_len)
 
 
 class SmoothL1Loss(Layer):

@@ -467,7 +467,7 @@ class TestWarpCTCOpAttr(OpTest):
         self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
         self.blank = self.num_classes - 1
         self.norm_by_times = False
-        self.size_average = False
+        self.norm_by_batchsize = False
         self.length_average = False
 
     def setUp(self):
@@ -533,7 +533,7 @@ class TestWarpCTCOpAttr(OpTest):
         self.attrs = {
             "blank": self.blank,
             "norm_by_times": self.norm_by_times,
-            "size_average": self.size_average,
+            "norm_by_batchsize": self.norm_by_batchsize,
             "length_average": self.length_average,
         }
 
@@ -556,7 +556,7 @@ class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpAttr):
         self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
         self.blank = self.num_classes - 1
         self.norm_by_times = True
-        self.size_average = False
+        self.norm_by_batchsize = False
         self.length_average = False
 
 
@@ -571,7 +571,7 @@ class TestWarpCTCOpFp64SizeAverage(TestWarpCTCOpAttr):
         self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
         self.blank = self.num_classes - 1
         self.norm_by_times = False
-        self.size_average = True
+        self.norm_by_batchsize = True
         self.length_average = False
 
 
@@ -586,7 +586,7 @@ class TestWarpCTCOpFp64LengthAverage(TestWarpCTCOpAttr):
         self.labels_length = np.array([3, 1, 4, 2], dtype=np.int64)
         self.blank = self.num_classes - 1
         self.norm_by_times = False
-        self.size_average = False
+        self.norm_by_batchsize = False
         self.length_average = True
 
 
@@ -625,7 +625,7 @@ class TestWarpCTCOpDygraph(unittest.TestCase):
                                           input_lengths,
                                           label_lengths,
                                           norm_by_times=False,
-                                          size_average=False,
+                                          norm_by_batchsize=False,
                                           length_average=False)
             self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
             loss.backward()
@@ -637,7 +637,7 @@ class TestWarpCTCOpDygraph(unittest.TestCase):
                                           input_lengths,
                                           label_lengths,
                                           norm_by_times=True,
-                                          size_average=False,
+                                          norm_by_batchsize=False,
                                           length_average=False)
             self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
             loss.backward()
@@ -649,7 +649,7 @@ class TestWarpCTCOpDygraph(unittest.TestCase):
                                           input_lengths,
                                           label_lengths,
                                           norm_by_times=False,
-                                          size_average=True,
+                                          norm_by_batchsize=True,
                                           length_average=False)
             self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
             loss.backward()
@@ -661,7 +661,7 @@ class TestWarpCTCOpDygraph(unittest.TestCase):
                                           input_lengths,
                                           label_lengths,
                                           norm_by_times=False,
-                                          size_average=False,
+                                          norm_by_batchsize=False,
                                           length_average=True)
             self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
             loss.backward()

@@ -126,15 +126,15 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "which is also the sequence's length.")
         .SetDefault(false);
     AddAttr<bool>(
-        "size_average",
+        "norm_by_batchsize",
         "(bool, default: false), normalize the loss by the batch size."
         "If True, supersedes norm_by_times")
         .SetDefault(false);
     AddAttr<bool>(
-        "length_average",
+        "norm_by_total_logits_len",
         "(bool, default: false), normalize the loss by the total number of "
         "frames"
-        "in the batch. If True, supersedes size_average and norm_by_times")
+        "in the batch. If True, supersedes norm_by_batchsize and norm_by_times")
         .SetDefault(false);
     AddComment(R"DOC(
 An operator integrating the open-source
@@ -221,17 +221,17 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_VERSION(warpctc)
     .AddCheckpoint(
         R"ROC(
-              Upgrade warpctc add a new attribute [size_average] and [length_average])ROC",
+              Upgrade warpctc add a new attribute [norm_by_batchsize] and [norm_by_total_logits_len])ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewAttr(
-                "size_average",
+                "norm_by_batchsize",
                 "(bool, default: false), normalize the loss by the batch size."
                 "If True, supersedes norm_by_times",
                 false)
-            .NewAttr("length_average",
+            .NewAttr("norm_by_total_logits_len",
                      "(bool, default: false), normalize the loss by the total "
                      "number of "
                      "frames"
-                     "in the batch. If True, supersedes size_average and "
+                     "in the batch. If True, supersedes norm_by_batchsize and "
                      "norm_by_times",
                      false));
