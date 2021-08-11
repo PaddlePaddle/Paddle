@@ -133,7 +133,7 @@ class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
     for (auto i = 0; i < reduce_ndim; ++i) {
       axes.push_back(i);
     }
-    // Tensor* tmp_dout = const_cast<Tensor*>(dout);
+
     Tensor tmp_dout(dout->type());
     Tensor reduced_dout(dx->type());
     tmp_dout.ShareDataWith(*dout);
