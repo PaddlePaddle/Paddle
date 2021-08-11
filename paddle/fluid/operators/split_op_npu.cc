@@ -44,12 +44,6 @@ class SplitNPUKernel : public framework::OpKernel<T> {
           "The SectionsTensorList is not supported on NPU now."));
     }
 
-    PADDLE_ENFORCE_EQ(
-        axis >= 0 && axis < in->dims().size(), true,
-        platform::errors::InvalidArgument(
-            "axis(%d) must satisfy 0 <= axis < input.dims(%d) and ", axis,
-            static_cast<int>(in->dims().size())));
-
     std::vector<Tensor> outputs;
     auto place = ctx.GetPlace();
     for (size_t j = 0; j < outs.size(); ++j) {
