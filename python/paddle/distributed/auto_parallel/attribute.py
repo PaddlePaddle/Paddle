@@ -149,6 +149,7 @@ class OperatorDistributedAttribute:
         self._shapes = {}
         self._is_annotated = {}
         self._is_parameters = {}
+        self._pipeline_stage = None
         self._impl_idx = None
 
     def get_owner_op(self):
@@ -180,6 +181,12 @@ class OperatorDistributedAttribute:
 
     def set_impl_idx(self, impl_idx):
         self._impl_idx = impl_idx
+
+    def get_pipeline_stage(self):
+        return self._pipeline_stage
+
+    def set_pipeline_stage(self, pipeline_stage):
+        self._pipeline_stage = pipeline_stage
 
     def get_input_shape(self, name):
         return self._shapes.get("IN_" + name, None)
@@ -280,6 +287,8 @@ class OperatorDistributedAttribute:
                 is_parameter_str = "non-parameter"
             str += ", {}'s dims_mapping (output, {}, {}): {}".format(
                 arg_name, annotated_str, is_parameter_str, dims_mapping)
+
+        str += ", pipeline stage: {}".format(self._pipeline_stage)
 
         str += ", dist_impl idx: {} }}".format(self._impl_idx)
 

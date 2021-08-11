@@ -117,8 +117,8 @@ class TestMLPAutoCompletion(unittest.TestCase):
                                                             start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))
@@ -137,8 +137,8 @@ class TestMLPAutoCompletion(unittest.TestCase):
                                                             start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))
@@ -157,8 +157,8 @@ class TestMLPAutoCompletion(unittest.TestCase):
                                                             start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))
@@ -306,8 +306,8 @@ class TestAttentionAutoCompletion(unittest.TestCase):
                                                              start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))
@@ -326,8 +326,8 @@ class TestAttentionAutoCompletion(unittest.TestCase):
                                                              start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))
@@ -346,8 +346,8 @@ class TestAttentionAutoCompletion(unittest.TestCase):
                                                              start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))
@@ -579,8 +579,8 @@ class TestDecoderLayerAutoCompletion(unittest.TestCase):
                                                                 start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))
@@ -599,8 +599,8 @@ class TestDecoderLayerAutoCompletion(unittest.TestCase):
                                                                 start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))
@@ -619,8 +619,8 @@ class TestDecoderLayerAutoCompletion(unittest.TestCase):
                                                                 start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))

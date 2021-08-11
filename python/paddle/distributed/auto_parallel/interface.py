@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy
 import copy
-import functools
-import operator
 import paddle.fluid.core as core
 import paddle
 import numpy as np
@@ -66,7 +65,7 @@ def _flatten_nested_list(nested_list):
     Get a list of all items in a nested_list.
     Ref: https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
     """
-    result = functools.reduce(operator.iconcat, nested_list, [])
+    result = numpy.array(nested_list).flatten().tolist()
     return result
 
 
@@ -119,11 +118,11 @@ class ProcessMesh(object):
         if mesh is None or not isinstance(mesh, list):
             raise ValueError('mesh must be an instance of list.')
 
-        # self._topology = _get_nested_list_shape(mesh)
-        # self._processes = _flatten_nested_list(mesh)
-        np_mesh = np.array(mesh)
-        self._topology = list(np_mesh.shape)
-        self._processes = np_mesh.flatten().tolist()
+        self._topology = _get_nested_list_shape(mesh)
+        self._processes = _flatten_nested_list(mesh)
+        # np_mesh = np.array(mesh)
+        # self._topology = list(np_mesh.shape)
+        # self._processes = np_mesh.flatten().tolist()
 
         # Every element of mesh must be >= 0.
         assert min(self._processes) >= 0, ('All elements of mesh must be >= 0.')

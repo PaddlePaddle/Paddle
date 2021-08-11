@@ -835,8 +835,8 @@ class TestGPTAutoCompletion(unittest.TestCase):
                                                             start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))
@@ -855,8 +855,8 @@ class TestGPTAutoCompletion(unittest.TestCase):
                                                             start_program)
         complete_train_program = auto.complete_annotation(train_program,
                                                           dist_context)
-        print_program_with_distributed_attr(complete_train_program,
-                                            dist_context)
+        # print_program_with_distributed_attr(complete_train_program,
+        #                                     dist_context)
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))

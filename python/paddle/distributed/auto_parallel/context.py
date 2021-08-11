@@ -171,6 +171,22 @@ class DistributedContext:
                         op_dist_attr.mark_as_parameter(tensor_name)
         self._is_initialized_for_program = True
 
+    def finalize_distributed_attr_for_program(self, program):
+        assert self._is_initialized_for_program, \
+            "The program must initialize its distributed attribute before finalization."
+        for block in program.blocks:
+            for tensor in block.vars.values():
+                tensor_dist_attr = self.get_tensor_distributed_attr_for_program(
+                    tensor)
+                if tensor_dist_attr is not None:
+                    self._store_distributed_attr_to_tensor_desc(
+                        tensor.desc, tensor_dist_attr)
+            for op in block.ops:
+                op_dist_attr = self.get_op_distributed_attr_for_program(op)
+                if op_dist_attr is not None:
+                    self._store_distributed_attr_to_op_desc(op.desc,
+                                                            op_dist_attr)
+
     def _copy_distributed_attr_from_tensor_desc(self, desc, dist_attr):
         from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
         attr_name = append_distributed_attr_suffix("mesh_id")
@@ -221,7 +237,7 @@ class DistributedContext:
         if desc.has_attr(attr_name):
             pipeline_stage = desc.attr(attr_name)
             copied_pipeline_stage = copy.deepcopy(pipeline_stage)
-            dist_attr.set_dims_mapping(copied_pipeline_stage)
+            dist_attr.set_pipeline_stage(copied_pipeline_stage)
 
     def _store_distributed_attr_to_tensor_desc(self, desc, dist_attr):
         process_mesh = dist_attr.get_process_mesh()
