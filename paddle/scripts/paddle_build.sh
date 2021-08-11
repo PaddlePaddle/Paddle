@@ -724,7 +724,7 @@ function fetch_upstream_develop_if_not_exist() {
 
 function check_whl_size() {
     if [ ! "${pr_whl_size}" ];then
-        echo "pr whl size not found"         
+        echo "pr whl size not found "         
         exit 1
     fi
 
