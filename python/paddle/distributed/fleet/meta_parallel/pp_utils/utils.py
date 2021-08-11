@@ -267,7 +267,6 @@ class _HPRecomputeFunction(PyLayer):
             assert len(outputs) == len(args)
 
             forward_outputs_with_grad = []
-            # backward_inputs = list(args)
             backward_inputs = []
 
             for i in range(len(outputs)):
@@ -281,11 +280,6 @@ class _HPRecomputeFunction(PyLayer):
                     "none of output has stop_gradient=False, this recompute() is not necessary"
                 )
 
-            # assert len(backward_inputs) == len(
-            #     forward_outputs_with_grad
-            # ), "number of forward outputs is [{}], but the backward got [{}] inputs".format(
-            #     len(forward_outputs_with_grad), len(backward_inputs))
-
             # actually backward            
             paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
             grads = list(inp._grad_ivar() for inp in detached_inputs
@@ -294,9 +288,20 @@ class _HPRecomputeFunction(PyLayer):
 
 
 def _hp_recompute(function, *args):
+    # NODTE(shenliang03)The current hybrid parallel recompute has limitations. 
+    # It cannot handle the following situations:
+    # 1. The calculation output of recompute, there are tensors that do not require gradients.
+    # 2. The forward output tensor has no gradient. This problem can be solved temporarily by detach().
+    # 3. Here, we only use float dtype to distinguish whether a gradient is needed in output tensor
+
     all_outputs = []
     _HPRecomputeFunction.apply(function, all_outputs, *args)
+
     if len(all_outputs) == 1:
         return all_outputs[0]
     else:
+        for output in all_outputs:
+            if paddle.is_tensor(output) and not is_float_tensor(output):
+                output.stop_gradient = True
+
         return tuple(all_outputs)
