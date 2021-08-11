@@ -1,8 +1,8 @@
-//This file copy from boost/none_t.hpp and boost/none.hpp and boost version: 1.41.0
-//Modified the following points:
-//1. modify namespace from boost::none to paddle::none
-//2. modify namespace from boost::none_t to paddle::none_t
-
+// This file copy from boost/none_t.hpp and boost/none.hpp and boost version:
+// 1.41.0
+// Modified the following points:
+// 1. modify namespace from boost::none to paddle::none
+// 2. modify namespace from boost::none_t to paddle::none_t
 
 // Copyright (C) 2003, Fernando Luis Cacciola Carballal.
 //
@@ -20,21 +20,23 @@
 
 namespace paddle {
 
-namespace detail { struct none_helper{}; }
+namespace detail {
+struct none_helper {};
+}
 
-typedef int detail::none_helper::*none_t ;
+typedef int detail::none_helper::*none_t;
 
-} // namespace boost
+}  // namespace boost
 
-// NOTE: Borland users have to include this header outside any precompiled headers
+// NOTE: Borland users have to include this header outside any precompiled
+// headers
 // (bcc<=5.64 cannot include instance data in a precompiled header)
 //  -- * To be verified, now that there's no unnamed namespace
 
 namespace paddle {
 
-none_t const none = ((none_t)0) ;
+none_t const none = ((none_t)0);
 
-} // namespace boost
+}  // namespace boost
 
 #endif
-
