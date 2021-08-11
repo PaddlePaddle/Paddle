@@ -37,6 +37,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/pybind/pybind.h"
 
 namespace paddle {
 namespace framework {
@@ -100,7 +101,9 @@ struct Instruction {
   std::vector<size_t> gc_check_var_list;
   NextInstruction next_instruction_;
   std::vector<EventInter> vec_event_list_;
+#if defined(PADDLE_WITH_CUDA)
   gpuEvent_t gc_event_{nullptr};
+#endif
 };
 
 struct OpFuncNode {
@@ -556,10 +559,12 @@ class InterpreterCore {
     }
 
     for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+#if defined(PADDLE_WITH_CUDA)
       platform::CUDADeviceGuard guard(
           BOOST_GET_CONST(platform::CUDAPlace, place_).device);
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventCreateWithFlags(
           &vec_instruction_[i].gc_event_, cudaEventDisableTiming));
+#endif
 
       std::vector<size_t> vec_temp;
       for (auto& item : vec_instruction_[i].output_index_) {
@@ -710,6 +715,7 @@ class InterpreterCore {
 
       if (!garbages_->empty()) {
         if (max_memory_size_ <= 1) {
+#if defined(PADDLE_WITH_CUDA)
           auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
               platform::DeviceContextPool::Instance().Get(place));
           auto compute_stream = dev_ctx->stream();
@@ -719,7 +725,12 @@ class InterpreterCore {
               cudaEventSynchronize(vec_instruction_[instr_id].gc_event_));
           delete garbages_.release();
           garbages_.reset(new GarbageQueue());
+#else
+          delete garbages_.release();
+          garbages_.reset(new GarbageQueue());
+#endif
         } else if (cur_memory_size_ >= max_memory_size_) {
+#if defined(PADDLE_WITH_CUDA)
           auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
               platform::DeviceContextPool::Instance().Get(place));
           auto compute_stream = dev_ctx->stream();
@@ -730,6 +741,11 @@ class InterpreterCore {
           delete garbages_.release();
           garbages_.reset(new GarbageQueue());
           cur_memory_size_ = 0;
+#else
+          delete garbages_.release();
+          garbages_.reset(new GarbageQueue());
+          cur_memory_size_ = 0;
+#endif
         }
       }
     }
