@@ -202,6 +202,37 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
                 result = paddle.unique_consecutive(x)
 
 
+class TestUniqueConsecutiveCase2API(unittest.TestCase):
+    def setUp(self):
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            paddle.enable_static()
+            input_x = fluid.data(name="input_x", shape=[100, ], dtype="float32")
+            result, inverse, counts = paddle.unique_consecutive(
+                input_x, return_inverse=True, return_counts=True)
+            x_np = np.random.randint(20, size=100).astype("float32")
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input_x": x_np},
+                              fetch_list=[result])
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input_x = np.random.randint(20, size=100).astype("float64")
+                x = paddle.to_tensor(input_x)
+                result, inverse, counts = paddle.unique_consecutive(
+                    x, return_inverse=True, return_counts=True)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
