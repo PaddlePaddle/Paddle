@@ -51,19 +51,10 @@ class EmbeddingNet(Layer):
         self.position_embeddings = nn.Embedding(vocab_size, hidden_size)
 
     def forward(self, x):
-        mask = paddle.ones((length, length), dtype="int32")
-
-        # attention_mask = paddle.tensor.triu(
-        #    (paddle.ones(
-        #        (length, length), dtype="float32") * -1e9), 1)
-
         w_emb = self.word_embeddings(x)
         p_emb = self.position_embeddings(x)
         w_emb = w_emb + p_emb
-
-        # mask = mask.detach()
-        # attention_mask.stop_gradient = True
-        return w_emb, mask.detach()
+        return w_emb
 
 
 class TransformerNet(Layer):
@@ -78,16 +69,12 @@ class TransformerNet(Layer):
 
         self.norm1 = nn.LayerNorm(d_model, epsilon=1e-5)
 
-    def forward(self, x, mask):
+    def forward(self, x):
         q = self.q_proj(x)
         k = self.k_proj(x)
         v = self.v_proj(x)
         product = layers.matmul(x=q, y=k, transpose_y=True, alpha=d_model**-0.5)
-
-        attention_mask = paddle.tensor.triu((mask * -1e9), 1)
-
-        weights = F.softmax(product + attention_mask)
-        # weights = F.softmax(product)
+        weights = F.softmax(product)
 
         weights = F.dropout(weights, 0.2)
         tgt = layers.matmul(weights, v)
@@ -105,13 +92,9 @@ class EmbeddingPipe(EmbeddingNet):
 
 
 class TransformerNetPipe(TransformerNet):
-    def forward(self, args):
-        x, mask = args[0], args[1]
-        output = super().forward(x, mask)
-
-        # mask = mask.detach()
-        # mask.stop_gradient = True
-        return output, mask.detach()
+    def forward(self, x):
+        output = super().forward(x)
+        return output
 
 
 class CriterionPipe(Layer):
@@ -119,8 +102,7 @@ class CriterionPipe(Layer):
         super(CriterionPipe, self).__init__()
 
     def forward(self, out, label):
-        # print("out.stop_gradient: ", out.stop_gradient)
-        loss = out[0].mean()
+        loss = out.mean()
         return loss
 
 
@@ -131,8 +113,6 @@ class ModelPipe(PipelineLayer):
 
         for x in range(2):
             self.descs.append(LayerDesc(TransformerNetPipe))
-
-        # self.descs.append(lambda x: x[0])
 
         super().__init__(
             layers=self.descs,
@@ -185,7 +165,6 @@ class TestDistPPTraning(unittest.TestCase):
             x.stop_gradient = True
             loss = model.train_batch([x, x], optimizer, scheduler)
             # TODO(shenliang03) add utest for loss
-
             print("loss: ", loss)
 
 
