@@ -65,10 +65,13 @@ T *Tensor::mutable_data(PlaceType place) {
     case static_cast<int>(PlaceType::kXPU): {
       return tensor->mutable_data<T>(paddle::platform::XPUPlace(device_));
     }
+    case static_cast<int>(PlaceType::kNPU): {
+      return tensor->mutable_data<T>(paddle::platform::NPUPlace(device_));
+    }
     default:
       PADDLE_THROW(paddle::platform::errors::Unavailable(
-          "Only CPU / CUDA / XPU places is supported. The place `%d` is not "
-          "supported.",
+          "Only CPU / CUDA / XPU / NPU places is supported. The place `%d` is "
+          "not supported.",
           static_cast<int>(place)));
       break;
   }
@@ -86,6 +89,8 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kGPU;
   } else if (paddle::platform::is_xpu_place(tensor->place())) {
     *place = PlaceType::kXPU;
+  } else if (paddle::platform::is_npu_place(tensor->place())) {
+    *place = PlaceType::kNPU;
   } else {
     *place = PlaceType::kUNK;
   }

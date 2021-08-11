@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/operators/reduce_ops/logsumexp_op.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {

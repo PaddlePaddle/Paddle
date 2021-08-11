@@ -28,7 +28,7 @@ class XavierNormal(XavierInitializer):
 
     .. math::
 
-        \sqrt{\\frac{2.0}{fan\_in + fan\_out}}
+        \sqrt{\frac{2.0}{fan\_in + fan\_out}}
 
 
     Args:
@@ -83,7 +83,7 @@ class XavierUniform(XavierInitializer):
 
     .. math::
 
-        x = \sqrt{\\frac{6.0}{fan\_in + fan\_out}}
+        x = \sqrt{\frac{6.0}{fan\_in + fan\_out}}
 
     Args:
         fan_in (float, optional): fan_in for Xavier initialization, it is
