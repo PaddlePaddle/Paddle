@@ -174,5 +174,5 @@ private:
     std::condition_variable _cv;
 };
 
-} // pslib
+} // distributed
 } // paddle 

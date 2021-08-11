@@ -56,5 +56,5 @@ namespace distributed {
     };
     typedef ThreadPool<void> WorkerPool;
 
-} //ps
+} //distributed
 } //paddle 

@@ -7,11 +7,10 @@
 
 namespace paddle {
 namespace distributed {
-
     struct CostProfilerNode {
         std::shared_ptr<bvar::LatencyRecorder> recorder;
     };
-
+    
     class CostProfiler {
     public:
         ~CostProfiler() {}
@@ -28,7 +27,11 @@ namespace distributed {
             profiler_node->recorder.reset(new bvar::LatencyRecorder("cost_profiler", label));
             _cost_profiler_map[label] = profiler_node; 
         }
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> xf_test_psc
         CostProfilerNode* profiler(const std::string& label) {
             auto itr = _cost_profiler_map.find(label);
             if (itr != _cost_profiler_map.end()) {
@@ -36,12 +39,20 @@ namespace distributed {
             }
             return NULL;
         }
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> xf_test_psc
     private:
         CostProfiler() {}
         std::unordered_map<std::string, std::shared_ptr<CostProfilerNode>> _cost_profiler_map;
     };
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> xf_test_psc
     class CostTimer {
     public:
         CostTimer(const std::string& label) {
@@ -51,7 +62,11 @@ namespace distributed {
             //如果不在profiler中，则使用log输出耗时信息
             _is_print_cost = _profiler_node == NULL;
             _start_time_ms = butil::gettimeofday_ms();
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> xf_test_psc
         }
         CostTimer(CostProfilerNode& profiler_node) {
             _is_print_cost = false;
@@ -74,4 +89,8 @@ namespace distributed {
         CostProfilerNode* _profiler_node;
     };
 }
+<<<<<<< HEAD
 } 
+=======
+}
+>>>>>>> xf_test_psc

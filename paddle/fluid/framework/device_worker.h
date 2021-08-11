@@ -548,6 +548,7 @@ class SectionWorker : public DeviceWorker {
   ~SectionWorker() override {}
 
   void Initialize(const TrainerDesc& desc) override;
+  void PrepareUnusedVar();
 
   void BindingDataFeedMemory() override {}
   void CreateDeviceResource(const ProgramDesc& main_prog) override{};
@@ -581,7 +582,8 @@ class SectionWorker : public DeviceWorker {
   void RunUpdate(
       std::unique_ptr<GarbageCollector>&,
       std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
-  void PrepareUnusedVar();
+  void RunFThenB(std::unique_ptr<GarbageCollector>&);
+  void Run1F1B(std::unique_ptr<GarbageCollector>&);
 
  protected:
   int section_id_;
@@ -591,8 +593,11 @@ class SectionWorker : public DeviceWorker {
   int pipeline_stage_;
   int schedule_mode_;  // 0 for F-then-B and 1 for 1F1B
   std::vector<Scope*> microbatch_scopes_;
-  std::vector<std::string> skip_vars_;
   const Scope* minibatch_scope_;
+
+  // skip&backward vars are only used in 1F1B
+  std::vector<std::string> skip_vars_;
+  std::vector<std::string> backward_send_vars_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   std::shared_ptr<framework::ProgramDesc> program_;

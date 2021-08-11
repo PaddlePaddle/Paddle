@@ -62,7 +62,7 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
   std::unique_lock<std::mutex> lock(mutex_);
 
   std::string ip_port = ip + ":" + std::to_string(port);
-  VLOG(0) << "running server with rank id: " << _rank
+  VLOG(0) << "yxf::running server with rank id: " << _rank
           << ", endpoint: " << ip_port;
   brpc::ServerOptions options;
 
