@@ -1102,40 +1102,52 @@ def margin_cross_entropy(logits,
                          return_softmax=False,
                          reduction='mean'):
     """
+    Margin Loss from ArcFace,
+
     .. math::
 
-        L=-\frac{1}{N}\sum^N_{i=1}\log\frac{e^{s(cos(m_{1}\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\neq y_i} e^{scos\theta_{y_i}}}
+        L=-\\frac{1}{N}\sum^N_{i=1}\log\\frac{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\\neq y_i} e^{scos\\theta_{y_i}}}
 
-    where the :math: `\theta_{y_i}` is the angle between the feature :math: `x` and
+    where the :math: `\\theta_{y_i}` is the angle between the feature :math: `x` and
     the representation of class :math: `i`. The details of ArcFace loss
     could be referred to https://arxiv.org/abs/1801.07698.
 
-    Note that the API supports model parallel and single GPU. And logits.shape[-1] can be different each rank.
+    .. hint::
+        Note that the API supports model parallel and single GPU. And logits.shape[-1] can be different each rank.
 
     Args:
     	logits (Tensor): shape[N, local_num_classes], the output of the normalized X multiply the normalized W.
                 The logits is shard_logits when using model parallel.
     	label (Tensor): shape[N] or shape[N, 1], the groud truth label.
-    	margin1 (float): (1.0), m1 of margin loss.
-    	margin2 (float): (0.5), m2 of margin loss.
-    	margin3 (float): (0.0), m3 of margin loss.
-    	scale (float): (64.0), s of margin loss.
-        group (Group): The abstract representation of group, see paddle.distributed.collective.Group
-        return_softmax (bool): (False), whether return softmax probability.
-        reduction (str): ('mean'), The candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+    	margin1 (float, optional): m1 of margin loss, default value is `1.0`.
+    	margin2 (float, optional): m2 of margin loss, default value is `0.5`.
+    	margin3 (float, optional): m3 of margin loss, default value is `0.0`.
+    	scale (float, optional): s of margin loss, default value is `64.0`.
+        group (Group, optional): The abstract representation of group, see paddle.distributed.collective.Group.
+            Default `None`.
+        return_softmax (bool, optional): Whether return softmax probability. Default value is `False`.
+        reduction (str, optional): The candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
                     If :attr:`reduction` is ``'mean'``, return the average of loss;
                     If :attr:`reduction` is ``'sum'``, return the sum of loss;
                     If :attr:`reduction` is ``'none'``, no reduction will be applied.
+                    Default value is `'mean'`.
 
-    Return:
+    Returns:
     	loss (Tensor or Scalar): if reduction==None, shape[N, 1], else shape[1], the cross entropy loss.
     	softmax (Tensor): softmax probability. The softmax is shard_softmax when using model parallel.
+        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
+            `return_softmax` is False, otherwise the tuple \
+            (loss, softmax), softmax is shard_softmax when \
+            using model parallel, otherwise softmax is in \
+            the same shape with input logits.
 
     Examples:
+
     .. code-block:: python
+        :linenos:
+        :caption: for single GPU
 
         # required: gpu
-        # for single GPU
         import paddle
         import numpy as np
         m1 = 1.0
@@ -1182,53 +1194,57 @@ def margin_cross_entropy(logits,
         #       [[0.99978819, 0.00000000, 0.00000000, 0.00021181],
         #        [0.99992995, 0.00006468, 0.00000000, 0.00000537]])
 
-        ## for multi GPU, test_margin_cross_entropy.py
-        #import paddle
-        #import paddle.distributed as dist
-        #import numpy as np
-        #strategy = dist.fleet.DistributedStrategy()
-        #dist.fleet.init(is_collective=True, strategy=strategy)
-        #rank_id = dist.get_rank()
-        #m1 = 1.0
-        #m2 = 0.5
-        #m3 = 0.0
-        #s = 64.0
-        #batch_size = 2
-        #feature_length = 4
-        #num_class_per_card = [4, 8]
-        #num_classes = np.sum(num_class_per_card)
+    .. code-block:: python
+        :linenos:
+        :caption: for multi GPU, test_margin_cross_entropy.py
 
-        #np_label = np.random.randint(0, num_classes, (batch_size,))
-        #label = paddle.to_tensor(np_label, dtype="int64")
-        #label_list = []
-        #dist.all_gather(label_list, label)
-        #label = paddle.concat(label_list, axis=0)
+        # required: distributed
+        import paddle
+        import paddle.distributed as dist
+        import numpy as np
+        strategy = dist.fleet.DistributedStrategy()
+        dist.fleet.init(is_collective=True, strategy=strategy)
+        rank_id = dist.get_rank()
+        m1 = 1.0
+        m2 = 0.5
+        m3 = 0.0
+        s = 64.0
+        batch_size = 2
+        feature_length = 4
+        num_class_per_card = [4, 8]
+        num_classes = np.sum(num_class_per_card)
 
-        #X = paddle.randn(
-        #    shape=[batch_size, feature_length],
-        #    dtype='float64')
-        #X_list = []
-        #dist.all_gather(X_list, X)
-        #X = paddle.concat(X_list, axis=0)
-        #X_l2 = paddle.sqrt(paddle.sum(paddle.square(X), axis=1, keepdim=True))
-        #X = paddle.divide(X, X_l2)
+        np_label = np.random.randint(0, num_classes, (batch_size,))
+        label = paddle.to_tensor(np_label, dtype="int64")
+        label_list = []
+        dist.all_gather(label_list, label)
+        label = paddle.concat(label_list, axis=0)
 
-        #W = paddle.randn(
-        #    shape=[feature_length, num_class_per_card[rank_id]],
-        #    dtype='float64')
-        #W_l2 = paddle.sqrt(paddle.sum(paddle.square(W), axis=0, keepdim=True))
-        #W = paddle.divide(W, W_l2)
+        X = paddle.randn(
+            shape=[batch_size, feature_length],
+            dtype='float64')
+        X_list = []
+        dist.all_gather(X_list, X)
+        X = paddle.concat(X_list, axis=0)
+        X_l2 = paddle.sqrt(paddle.sum(paddle.square(X), axis=1, keepdim=True))
+        X = paddle.divide(X, X_l2)
 
-        #logits = paddle.matmul(X, W)
-        #loss, softmax = paddle.nn.functional.margin_cross_entropy(
-        #    logits, label, margin1=m1, margin2=m2, margin3=m3, scale=s, return_softmax=True, reduction=None)
+        W = paddle.randn(
+            shape=[feature_length, num_class_per_card[rank_id]],
+            dtype='float64')
+        W_l2 = paddle.sqrt(paddle.sum(paddle.square(W), axis=0, keepdim=True))
+        W = paddle.divide(W, W_l2)
 
-        #print(logits)
-        #print(label)
-        #print(loss)
-        #print(softmax)
+        logits = paddle.matmul(X, W)
+        loss, softmax = paddle.nn.functional.margin_cross_entropy(
+            logits, label, margin1=m1, margin2=m2, margin3=m3, scale=s, return_softmax=True, reduction=None)
 
-        #python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py 
+        print(logits)
+        print(label)
+        print(loss)
+        print(softmax)
+
+        # python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py 
         ## for rank0 input
         #Tensor(shape=[4, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #       [[ 0.32888934,  0.02408748, -0.02763289,  0.18173063],
