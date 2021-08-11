@@ -785,6 +785,29 @@ def cholesky(x, upper=False, name=None):
     return out
 
 
+def matrix_rank(x, tol=None, hermitian=False, name=None):
+    r"""
+    matrix_rank
+    """
+    if in_dygraph_mode():
+        if tol:
+            return _C_ops.matrix_rank(x, "tol", tol, 'hermitian', hermitian)
+        return _C_ops.matrix_rank(x, 'hermitian', hermitian)
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_rank')
+    check_type(tol, 'tol', float, 'matrix_rank')
+    check_type(hermitian, 'hermitian', bool, 'matrix_rank')
+
+    helper = LayerHelper('matrix_rank', **locals())
+    out = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type='matrix_rank',
+        inputs={'X': [x]},
+        outputs={'Out': out},
+        attrs={'tol': tol,
+               'hermitian': hermitian})
+    return out
+
+
 def bmm(x, y, name=None):
     """
     Applies batched matrix multiplication to two tensors.

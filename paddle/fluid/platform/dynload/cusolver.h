@@ -60,6 +60,18 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
 CUSOLVER_ROUTINE_EACH_R1(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
 #endif
 
+#if CUDA_VERSION >= 9020
+#define CUSOLVER_ROUTINE_EACH_R2(__macro) \
+  __macro(cusolverDnCreateGesvdjInfo);    \
+  __macro(cusolverDnSgesvdj_bufferSize);  \
+  __macro(cusolverDnDgesvdj_bufferSize);  \
+  __macro(cusolverDnSgesvdj);             \
+  __macro(cusolverDnDgesvdj);             \
+  __macro(cusolverDnDestroyGesvdjInfo);
+
+CUSOLVER_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
+#endif
+
 #undef DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP
 }  // namespace dynload
 }  // namespace platform
