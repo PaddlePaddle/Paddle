@@ -33,7 +33,9 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/init.h"
