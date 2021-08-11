@@ -432,8 +432,7 @@ class InterpreterCore {
       : place_(place), prog_(prog), outer_scope_(scope) {
     paddle::framework::InitDevices();
     garbages_.reset(new GarbageQueue());
-    max_memory_size_ =
-        99999999;  // static_cast<size_t>(GetEagerDeletionThreshold());
+    max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
     cur_memory_size_ = 0;
 
     is_build_ = false;
