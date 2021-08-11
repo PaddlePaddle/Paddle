@@ -354,9 +354,8 @@ class PipelineLayer(Layer):
             mp_rank = self._topo.get_coord(self.global_rank).model
             mp_world_size = self._topo.get_dim('model')
             num_files = len(model_files)
-            assert num_files == mp_world_size, "Currently, only support num_files({}) is equal to mp_world_size({})".format(
-                num_files, mp_world_size)
-            load_param_path = model_files[mp_rank]
+
+            load_param_path = model_files[mp_rank * num_files // mp_world_size]
             model_state_dict = paddle.load(load_param_path)
             layer.set_state_dict(model_state_dict)
 
