@@ -1144,7 +1144,6 @@ def margin_cross_entropy(logits,
     Examples:
 
     .. code-block:: python
-        :linenos:
         :caption: for single GPU
 
         # required: gpu
@@ -1195,7 +1194,6 @@ def margin_cross_entropy(logits,
         #        [0.99992995, 0.00006468, 0.00000000, 0.00000537]])
 
     .. code-block:: python
-        :linenos:
         :caption: for multi GPU, test_margin_cross_entropy.py
 
         # required: distributed
