@@ -137,8 +137,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
-PYBIND11_MAKE_OPAQUE(paddle::framework::STRINGS);
-// PYBIND11_MAKE_OPAQUE(paddle::framework::STRING_MAP);
+// PYBIND11_MAKE_OPAQUE(paddle::framework::STRINGS);
 
 namespace paddle {
 namespace pybind {

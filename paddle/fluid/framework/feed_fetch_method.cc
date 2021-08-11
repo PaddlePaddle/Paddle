@@ -40,6 +40,20 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
   feed_inputs[index].set_lod(input.lod());
 }
 
+void SetFeedVariable(Scope* scope, const STRINGS& input,
+                     const std::string& var_name, size_t index) {
+  // If var_name Variable is not found in GlobalScope, a new variable will
+  // be created.
+  VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
+  Variable* g_feed_value = scope->Var(var_name);
+  auto& feed_inputs = *(g_feed_value->GetMutable<STRINGS>());
+  if (index >= feed_inputs.size()) {
+    feed_inputs.resize(index + 1);
+  }
+  // shared data with input tensor
+  feed_inputs[index] = input[index];
+}
+
 FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
                             size_t index) {
   // Since we want to fetch FetchType from a variable, the variable must

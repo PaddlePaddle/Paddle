@@ -46,6 +46,8 @@ def convert_dtype(dtype):
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+        elif dtype == core.VarDesc.VarType.STRINGS:
+            return dtype
     elif isinstance(dtype, type):
         if dtype in [
                 np.bool, np.float16, np.uint16, np.float32, np.float64, np.int8,

@@ -13,28 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #include <string>
-
-#include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/scope.h"
+#include <vector>
 
 namespace paddle {
 namespace framework {
 
-class LoDTensor;
-class Scope;
-
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index);
-
-void SetFeedVariable(Scope* scope, const STRINGS& input,
-                     const std::string& var_name, size_t index);
-
-FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
-                            size_t index);
-
-LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name);
+using STRINGS = std::vector<std::wstring>;
 
 }  // namespace framework
 }  // namespace paddle
