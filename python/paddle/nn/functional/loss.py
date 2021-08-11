@@ -1102,18 +1102,16 @@ def margin_cross_entropy(logits,
                          return_softmax=False,
                          reduction='mean'):
     """
-    Margin Loss from ArcFace,
-
     .. math::
 
         L=-\\frac{1}{N}\sum^N_{i=1}\log\\frac{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\\neq y_i} e^{scos\\theta_{y_i}}}
 
-    where the :math: `\\theta_{y_i}` is the angle between the feature :math: `x` and
-    the representation of class :math: `i`. The details of ArcFace loss
+    where the :math:`\\theta_{y_i}` is the angle between the feature :math:`x` and
+    the representation of class :math:`i`. The details of ArcFace loss
     could be referred to https://arxiv.org/abs/1801.07698.
 
     .. hint::
-        Note that the API supports model parallel and single GPU. And logits.shape[-1] can be different each rank.
+        The API supports model parallel and single GPU. And logits.shape[-1] can be different at each rank.
 
     Args:
     	logits (Tensor): shape[N, local_num_classes], the output of the normalized X multiply the normalized W.
@@ -1133,18 +1131,17 @@ def margin_cross_entropy(logits,
                     Default value is `'mean'`.
 
     Returns:
-    	loss (Tensor or Scalar): if reduction==None, shape[N, 1], else shape[1], the cross entropy loss.
-    	softmax (Tensor): softmax probability. The softmax is shard_softmax when using model parallel.
         ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
             `return_softmax` is False, otherwise the tuple \
             (loss, softmax), softmax is shard_softmax when \
             using model parallel, otherwise softmax is in \
-            the same shape with input logits.
+            the same shape with input logits. If ``reduction == None``, \
+            the shape of loss is ``[N, 1]``, otherwise the shape is ``[1]``.
 
     Examples:
 
     .. code-block:: python
-        :caption: for single GPU
+        :caption: Single GPU
 
         # required: gpu
         import paddle
@@ -1194,7 +1191,7 @@ def margin_cross_entropy(logits,
         #        [0.99992995, 0.00006468, 0.00000000, 0.00000537]])
 
     .. code-block:: python
-        :caption: for multi GPU, test_margin_cross_entropy.py
+        :caption: Multi GPU, test_margin_cross_entropy.py
 
         # required: distributed
         import paddle
