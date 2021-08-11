@@ -14867,8 +14867,8 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
             Note that num_classes of each GPU can be different.
     	num_samples (int): A positive integer to specify the number of class center to sample.
         group (Group, optional): The abstract representation of group.
-            See paddle.distributed.collective.Group. Default is ``'None'``.
-        seed (int, optional): Random seed. Default is ``'None'``.
+            See paddle.distributed.collective.Group. Default is ``None``.
+        seed (int, optional): Random seed. Default is ``None``.
 
     Returns:
         Tuple of two ``Tensor`` : (remapped_label, sampled_class_center), remapped label using sampled class center,
@@ -14877,7 +14877,6 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     Examples:
 
     .. code-block:: python
-        :linenos:
         :caption: for CPU or single GPU
 
         import os
@@ -14890,7 +14889,7 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
         np_label = np.random.randint(0, num_classes, (batch_size,), dtype=np.int64)
         label = paddle.to_tensor(np_label, dtype="int64")
         print(label)
-        remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes, num_samples)
+        remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(label, num_classes, num_samples)
 
         print(remapped_label)
         print(sampled_class_index)
@@ -14904,7 +14903,6 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
         #       [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
 
     .. code-block:: python
-        :linenos:
         :caption: for multi GPU, test_class_center_sample.py
 
         # required: distributed
@@ -14924,7 +14922,7 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
         label_list = []
         dist.all_gather(label_list, label)
         label = paddle.concat(label_list, axis=0)
-        remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes_list[rank_id], num_samples)
+        remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(label, num_classes_list[rank_id], num_samples)
 
         print(label)
         print(remapped_label)
