@@ -86,10 +86,9 @@ class RefNode(nodes.Inline, nodes.TextElement):
     def __init__(self, data, rawsource=''):
         """The raw text from which this element was constructed."""
         self.rawsource = rawsource
-        print(self.rawsource)
 
     def astext(self):
-        return f':ref:`${self.rawsource}`'
+        return f':ref:`{self.rawsource}`'
 
 
 def ref_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
@@ -136,7 +135,6 @@ class MyArgsVisitor(nodes.NodeVisitor):
                 if mo:
                     arg_name = mo.group(1)
                     self.args_names.append(arg_name)
-                    print(f'###arg_name={arg_name}###')
                     if arg_name.startswith('**'):
                         self.varkw = arg_name[2:].strip()
                     elif arg_name.startswith('*'):
@@ -151,16 +149,79 @@ parser_settings = OptionParser(
     components=(Parser, ), defaults={'report_level': 5}).get_default_values()
 
 
+class ArgsDescResult:
+    def __init__(self) -> None:
+        self.args = []
+        self.varargs = None
+        self.varkw = None
+        self.defaults = None
+        self.kwonlyargs = []
+        self.kwonlydefaults = None
+        self.annotations = {}
+        self.text = None
+
+
+def extract_args_desc_from_docstr(docstr):
+    docstr = inspect.cleandoc(docstr.replace("\t", '    '))
+    lines = docstr.split('\n')
+    args_started = False
+    indent = None
+    args_desc_lines = []
+    args_desc_lines_indent = []
+    find_indent_pat = re.compile(r'\S')
+    for line in lines:
+        if not args_started:
+            if line.strip(
+            ) in ['Args:', 'Parameters:', 'Parameter:', 'Params:', 'Param:']:
+                args_started = True
+                indent = find_indent_pat.search(line).start()
+        else:
+            mo = find_indent_pat.search(line)
+            if mo:
+                if mo.start() > indent:
+                    args_desc_lines.append(line)
+                    args_desc_lines_indent.append(mo.start())
+                else:
+                    break
+    args_line_merged = []
+    if args_desc_lines:
+        for i, line in enumerate(args_desc_lines):
+            if args_desc_lines_indent[i] == args_desc_lines_indent[0]:
+                args_line_merged.append(line)
+            else:
+                args_line_merged[-1] += ' ' + line.strip()
+    res = ArgsDescResult()
+    res.text = '\n'.join(args_desc_lines)
+    for line in args_line_merged:
+        mo = arg_pat.search(line)
+        if not mo:
+            logger.debug('try another pattern')
+            mo = arg_pat_no_type_desc.search(line)
+        if mo:
+            arg_name = mo.group(1)
+            if arg_name.startswith('**'):
+                res.varkw = arg_name[2:].strip()
+            elif arg_name.startswith('*'):
+                res.varargs = arg_name[1:].strip()
+            else:
+                res.args.append(arg_name)
+        else:
+            logger.error(f'arg desc not found in line: {line}')
+    return res
+
+
 def check_api_args_doc(fullargspec, docstr):
     """
     check the name and order of the args.
 
     The Default value has so many formats.
     """
-    document = new_document('~', parser_settings)
-    parser.parse(docstr, document)
-    v = MyArgsVisitor(document)
-    document.walkabout(v)
+    #document = new_document('~', parser_settings)
+    #parser.parse(docstr, document)
+    #v = MyArgsVisitor(document)
+    #document.walkabout(v)
+
+    v = extract_args_desc_from_docstr(docstr)
 
     if v.args != fullargspec.args:
         logger.error(f'v.text={v.text}')
