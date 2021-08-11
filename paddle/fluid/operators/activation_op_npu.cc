@@ -485,6 +485,25 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
         NpuOpRunner("AddV2", {*x, tensor_offset}, {add_offset_val});
     runner_add.Run(stream);
 
+    Tensor tmp1(x->type());
+    tmp1.mutable_data<T>(x->dims(), place);
+    const auto& runner_pow1 = NpuOpRunner("Power", {*x}, {tmp1},
+                                          {{"scale", 2.0f}, {"shift", offset}});
+    runner_pow1.Run(stream);
+
+    Tensor tmp2(x->type());
+    tmp2.mutable_data<T>(x->dims(), place);
+    const auto& runner_ht_grad =
+        NpuOpRunner("HardtanhGrad", {add_offset_val, tmp1}, {tmp2},
+                    {{"min_val", 0.0f}, {"max_val", threshold}});
+    runner_ht_grad.Run(stream);
+
+    Tensor tmp3(x->type());
+    tmp3.mutable_data<T>(x->dims(), place);
+    const auto& runner_pow2 = NpuOpRunner(
+        "Power", {tmp2}, {tmp3}, {{"scale", 1.0f / scale}, {"shift", 1.0f}});
+    runner_pow2.Run(stream);
+
     Tensor tensor_threshold_tmp(x->type());
     tensor_threshold_tmp.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&tensor_threshold_tmp,
@@ -496,63 +515,25 @@ class HardSwishGradNPUKernel : public framework::OpKernel<T> {
                     {{"dims", framework::vectorize(x->dims())}});
     runner_fill.Run(stream);
 
-    Tensor tmp_bool1(framework::proto::VarType::BOOL);
-    tmp_bool1.mutable_data<bool>(x->dims(), place);
+    Tensor tmp_bool(framework::proto::VarType::BOOL);
+    tmp_bool.mutable_data<bool>(x->dims(), place);
     const auto& runner_less =
-        NpuOpRunner("Less", {add_offset_val, tensor_threshold}, {tmp_bool1});
+        NpuOpRunner("Less", {add_offset_val, tensor_threshold}, {tmp_bool});
     runner_less.Run(stream);
-    Tensor tmp1(x->type());
-    tmp1.mutable_data<T>(x->dims(), place);
-    auto dst_dtype = ConvertToNpuDtype(x->type());
-    const auto& runner_cast1 =
-        NpuOpRunner("Cast", {tmp_bool1}, {tmp1},
-                    {{"dst_type", static_cast<int>(dst_dtype)}});
-    runner_cast1.Run(stream);
-
-    Tensor zero_val(x->type());
-    zero_val.mutable_data<T>(x->dims(), place);
-    const auto& runner_zero = NpuOpRunner("ZerosLike", {*x}, {zero_val});
-    runner_zero.Run(stream);
-
-    Tensor tmp_bool2(framework::proto::VarType::BOOL);
-    tmp_bool2.mutable_data<bool>(x->dims(), place);
-    const auto& runner_greater =
-        NpuOpRunner("Greater", {add_offset_val, zero_val}, {tmp_bool2});
-    runner_greater.Run(stream);
-    Tensor tmp2(x->type());
-    tmp2.mutable_data<T>(x->dims(), place);
-    const auto& runner_cast2 =
-        NpuOpRunner("Cast", {tmp_bool2}, {tmp2},
-                    {{"dst_type", static_cast<int>(dst_dtype)}});
-    runner_cast2.Run(stream);
-
-    Tensor tmp3(x->type());
-    tmp3.mutable_data<T>(x->dims(), place);
-    const auto& runner_pow1 = NpuOpRunner("Power", {*x}, {tmp3},
-                                          {{"scale", 2.0f}, {"shift", offset}});
-    runner_pow1.Run(stream);
-
     Tensor tmp4(x->type());
     tmp4.mutable_data<T>(x->dims(), place);
-    const auto& runner_mul1 = NpuOpRunner("Mul", {tmp1, tmp2}, {tmp4});
-    runner_mul1.Run(stream);
+    auto dst_dtype = ConvertToNpuDtype(x->type());
+    const auto& runner_cast =
+        NpuOpRunner("Cast", {tmp_bool}, {tmp4},
+                    {{"dst_type", static_cast<int>(dst_dtype)}});
+    runner_cast.Run(stream);
+
     Tensor tmp5(x->type());
     tmp5.mutable_data<T>(x->dims(), place);
-    const auto& runner_mul2 = NpuOpRunner("Mul", {tmp3, tmp4}, {tmp5});
-    runner_mul2.Run(stream);
-
-    Tensor tmp6(x->type());
-    tmp6.mutable_data<T>(x->dims(), place);
-    const auto& runner_pow2 = NpuOpRunner(
-        "Power", {tmp5}, {tmp6}, {{"scale", 1.0f / scale}, {"shift", 1.0f}});
-    runner_pow2.Run(stream);
-
-    Tensor tmp7(x->type());
-    tmp7.mutable_data<T>(x->dims(), place);
-    const auto& runner_sub = NpuOpRunner("Sub", {tmp6, tmp1}, {tmp7});
+    const auto& runner_sub = NpuOpRunner("Sub", {tmp3, tmp4}, {tmp5});
     runner_sub.Run(stream);
 
-    const auto& runner_final = NpuOpRunner("Mul", {tmp7, *dout}, {*dx});
+    const auto& runner_final = NpuOpRunner("Mul", {tmp5, *dout}, {*dx});
     runner_final.Run(stream);
   }
 };
