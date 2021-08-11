@@ -39,14 +39,11 @@ class DistributedReshape2Impl0(DistributedOperatorImpl):
         self._name = name
 
     def is_process_mesh_compatible(self, op_dist_attr):
-        process_mesh = op_dist_attr.get_process_mesh()
-        if process_mesh.get_ndim() in [1, 2]:
-            return True
-        else:
-            False
+        """ No restriction for now. """
+        return True
 
     def is_input_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_desc()
+        op_desc = op_dist_attr.get_owner_op().desc
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -58,7 +55,7 @@ class DistributedReshape2Impl0(DistributedOperatorImpl):
         return True
 
     def is_output_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_desc()
+        op_desc = op_dist_attr.get_owner_op().desc
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -74,7 +71,7 @@ class DistributedReshape2Impl0(DistributedOperatorImpl):
 
     def update_dims_mapping(self, op_dist_attr):
         changed = False
-        op_desc = op_dist_attr.get_desc()
+        op_desc = op_dist_attr.get_owner_op().desc
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_shape_name = op_desc.output('XShape')[0]
@@ -101,14 +98,11 @@ class DistributedReshape2Impl1(DistributedOperatorImpl):
         self._name = name
 
     def is_process_mesh_compatible(self, op_dist_attr):
-        process_mesh = op_dist_attr.get_process_mesh()
-        if process_mesh.get_ndim() in [1, 2]:
-            return True
-        else:
-            False
+        """ No restriction for now. """
+        return True
 
     def is_input_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_desc()
+        op_desc = op_dist_attr.get_owner_op().desc
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -123,7 +117,7 @@ class DistributedReshape2Impl1(DistributedOperatorImpl):
         return True
 
     def is_output_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_desc()
+        op_desc = op_dist_attr.get_owner_op().desc
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
@@ -136,7 +130,7 @@ class DistributedReshape2Impl1(DistributedOperatorImpl):
 
     def update_dims_mapping(self, op_dist_attr):
         changed = False
-        op_desc = op_dist_attr.get_desc()
+        op_desc = op_dist_attr.get_owner_op().desc
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_shape_name = op_desc.output('XShape')[0]

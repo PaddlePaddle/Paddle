@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -151,11 +152,18 @@ class OpDesc {
 
   const BlockDesc *Block() const { return this->block_; }
 
-  int32_t GetDistributedAttrUid() const { return distributed_attr_uid_; }
-
-  void SetDistributedAttrUid(int32_t distributed_attr_uid) {
-    distributed_attr_uid_ = distributed_attr_uid;
+  // This thread-safe implementation seems to be redudent since the neural
+  // networks
+  // are usually constructed in a single thread
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> id{0};
+    return ++id;
   }
+
+  // Giving each operator an identity can help us map related properties to it.
+  // For example, the identity can be used as a key for referring to its
+  // distributed attribute.
+  uint64_t Id() { return id_; }
 
  private:
   template <typename MapType>
@@ -176,10 +184,11 @@ class OpDesc {
   VariableNameMap outputs_;
   AttributeMap attrs_;
 
-  int32_t distributed_attr_uid_{-1};
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.
   bool need_update_{false};
+
+  uint64_t id_ = GenerateId();
 };
 }  // namespace framework
 }  // namespace paddle

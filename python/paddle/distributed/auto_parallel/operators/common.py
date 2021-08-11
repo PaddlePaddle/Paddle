@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from enum import IntEnum
-from collections import defaultdict
-
 DISTRIBUTED_OPERATORS = {}
 
 
@@ -89,6 +86,10 @@ def get_distributed_operator_impl(name, impl_idx):
 
 def find_best_compatible_distributed_operator_impl(name, op_dist_attr,
                                                    fwd=True):
+    """
+    Here just return the first compatible implemention. 
+    This will be improved by cost model in the future.
+    """
     dist_op = get_distributed_operator(name)
     if dist_op is None:
         return None, -1

@@ -24,72 +24,64 @@ from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 
 
-class DistributedSoftmax(DistributedOperator):
+class DistributedTranspose2(DistributedOperator):
     def __init__(self, name):
-        super(DistributedSoftmax, self).__init__()
+        super(DistributedTranspose2, self).__init__()
         self._name = name
 
 
-register_distributed_operator("softmax", DistributedSoftmax("softmax"))
+register_distributed_operator("transpose2", DistributedTranspose2("transpose2"))
 
 
-class DistributedSoftmaxImpl0(DistributedOperatorImpl):
+class DistributedTranspose2Impl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedSoftmaxImpl0, self).__init__()
+        super(DistributedTranspose2Impl0, self).__init__()
         self._name = name
 
     def is_process_mesh_compatible(self, op_dist_attr):
-        process_mesh = op_dist_attr.get_process_mesh()
-        if process_mesh.get_ndim() in [1, 2]:
-            return True
-        else:
-            False
+        """ No restriction for now. """
+        return True
 
     def is_input_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_desc()
-        x_name = op_desc.input('X')[0]
-        axis = op_desc.attr('axis')
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        # print("softmax axis", axis)
-
-        if axis != -1 and axis != len(x_dims_mapping) - 1:
-            return False
-
-        if is_dim_shard(x_dims_mapping[axis]):
-            return False
-
         return True
 
     def is_output_compatible(self, op_dist_attr):
-        op_desc = op_dist_attr.get_desc()
-        out_name = op_desc.output('Out')[0]
-        axis = op_desc.attr('axis')
-        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-
-        if axis != -1 and axis != len(out_dims_mapping) - 1:
-            return False
-
-        if is_dim_shard(out_dims_mapping[axis]):
-            return False
-
         return True
 
     def update_dims_mapping(self, op_dist_attr):
         changed = False
-        op_desc = op_dist_attr.get_desc()
+        op_desc = op_dist_attr.get_owner_op().desc
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
+        x_shape_name = op_desc.output('XShape')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            x_shape_name)
+        perm = op_desc.attr('axis')
 
+        assert len(x_dims_mapping) == len(perm)
+
+        new_dims_mapping = [-1 for i in range(len(x_dims_mapping))]
         for i in range(len(x_dims_mapping)):
+            new_dims_mapping[i] = x_dims_mapping[perm[i]]
+
+        for i in range(len(out_dims_mapping)):
             dim_changed = compute_compatible_and_update_dim_mapping(
-                [x_dims_mapping, out_dims_mapping], [i, i])
+                [new_dims_mapping, out_dims_mapping], [i, i])
             if dim_changed:
                 changed = True
+
+        for i in range(len(x_dims_mapping)):
+            if x_dims_mapping[perm[i]] != new_dims_mapping[i]:
+                x_dims_mapping[perm[i]] = new_dims_mapping[i]
+                changed = True
+
+        for i in range(len(x_dims_mapping)):
+            x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
         return changed
 
 
 register_distributed_operator_impl(
-    "softmax", DistributedSoftmaxImpl0("replicate_last_axis"))
+    "transpose2", DistributedTranspose2Impl0("same_mapping_transpose"))

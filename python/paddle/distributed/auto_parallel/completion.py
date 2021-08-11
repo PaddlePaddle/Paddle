@@ -16,12 +16,13 @@ from copy import deepcopy
 
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.fluid.distributed_attribute import get_default_distributed_config
 
-from .distributed_operators import find_best_compatible_distributed_operator_impl
 from .utils import compute_compatible_process_mesh
 from .utils import compute_compatible_dim_mapping
 from .utils import compute_compatible_dims_mapping
+from .utils import print_program_with_distributed_attr
+from .context import get_default_distributed_context
+from .operators import find_best_compatible_distributed_operator_impl
 
 ELEMENTWISE_LIKIE_OP_LIST = ["elementwise_add", "gelu", "dropout", "cast"]
 
@@ -33,9 +34,14 @@ def is_elementwise_like_op(op_type):
         return False
 
 
-def update_tensor_node_process_mesh(dist_config, tensor_node, fwd=True):
+def update_tensor_node_process_mesh(dist_context, tensor_node, fwd=True):
+    """
+    Update tensor's process mesh by using its predecessor's process mesh if in the forward direction, 
+    and by using its successor's process mesh if in the backward direction. Note: only the equal 
+    process meshes are compatible for now.
+    """
     changed = False
-    tensor_dist_attr = dist_config.get_tensor_distributed_attr_graph(
+    tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_graph(
         tensor_node)
     if tensor_dist_attr.is_annotated("process_mesh"):
         return changed
@@ -44,7 +50,7 @@ def update_tensor_node_process_mesh(dist_config, tensor_node, fwd=True):
         inputs_process_meshes = []
         for pred_op_node in tensor_node.inputs:
             if pred_op_node.op() is not None:
-                op_dist_attr = dist_config.get_op_distributed_attr_graph(
+                op_dist_attr = dist_context.get_op_distributed_attr_for_graph(
                     pred_op_node)
                 op_process_mesh = op_dist_attr.get_process_mesh()
                 inputs_process_meshes.append(op_process_mesh)
@@ -57,7 +63,7 @@ def update_tensor_node_process_mesh(dist_config, tensor_node, fwd=True):
         outputs_process_meshes = []
         for succ_op_node in tensor_node.outputs:
             if succ_op_node.op() is not None:
-                op_dist_attr = dist_config.get_op_distributed_attr_graph(
+                op_dist_attr = dist_context.get_op_distributed_attr_for_graph(
                     succ_op_node)
                 op_process_mesh = op_dist_attr.get_process_mesh()
                 outputs_process_meshes.append(op_process_mesh)
@@ -69,9 +75,14 @@ def update_tensor_node_process_mesh(dist_config, tensor_node, fwd=True):
     return changed
 
 
-def update_op_node_process_mesh(dist_config, op_node, fwd=True):
+def update_op_node_process_mesh(dist_context, op_node, fwd=True):
+    """
+    Update op's process mesh by using its predecessor's process mesh if in the forward direction, 
+    and by using its successor's process mesh if in the backward direction. Note: only the equal 
+    process meshes are compatible for now.
+    """
     changed = False
-    op_dist_attr = dist_config.get_op_distributed_attr_graph(op_node)
+    op_dist_attr = dist_context.get_op_distributed_attr_for_graph(op_node)
     if op_dist_attr.is_annotated("process_mesh"):
         return changed
     op_process_mesh = op_dist_attr.get_process_mesh()
@@ -79,7 +90,7 @@ def update_op_node_process_mesh(dist_config, op_node, fwd=True):
         inputs_process_meshes = []
         for tensor_node in op_node.inputs:
             if tensor_node.var() is not None:
-                tensor_dist_attr = dist_config.get_tensor_distributed_attr_graph(
+                tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_graph(
                     tensor_node)
                 tensor_process_mesh = tensor_dist_attr.get_process_mesh()
                 inputs_process_meshes.append(tensor_process_mesh)
@@ -92,7 +103,7 @@ def update_op_node_process_mesh(dist_config, op_node, fwd=True):
         outputs_process_meshes = []
         for tensor_node in op_node.outputs:
             if tensor_node.var() is not None:
-                tensor_dist_attr = dist_config.get_tensor_distributed_attr_graph(
+                tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_graph(
                     tensor_node)
                 tensor_process_mesh = tensor_dist_attr.get_process_mesh()
                 outputs_process_meshes.append(tensor_process_mesh)
@@ -105,9 +116,9 @@ def update_op_node_process_mesh(dist_config, op_node, fwd=True):
 
 
 def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
-    """Each operator has a default distributed operator, only allowed to be sharded in batch dimension. """
+    """Each operator has a default distributed operator, only allowed to be sharded in batch dimension."""
     changed = False
-    op_desc = op_dist_attr.get_desc()
+    op_desc = op_dist_attr.get_owner_op().desc
     # The following statement will be replaced by a more elegent way
     if op_desc.type() == "shape" or op_desc.type() == "slice":
         return False
@@ -120,14 +131,12 @@ def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
         if op_dist_attr.is_parameter(arg_name):
             continue
         dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
-        # print(op_desc.type(), arg_name, dims_mapping, op_dist_attr)
         if len(dims_mapping) > 1:
             for idx, mapping in enumerate(dims_mapping[1:]):
                 assert mapping == -1, \
                     "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part."\
                         .format(op_desc.type(), idx, mapping)
-        batch_dim_mappings.append(
-            op_dist_attr.get_input_dim_mapping(arg_name, 0))
+        batch_dim_mappings.append(dims_mapping[0])
     for arg_name in op_desc.output_arg_names():
         if op_dist_attr.is_parameter(arg_name):
             continue
@@ -138,8 +147,7 @@ def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
                     assert mapping == -1, \
                         "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part."\
                             .format(op_desc.type(), idx, mapping)
-            batch_dim_mappings.append(
-                op_dist_attr.get_output_dim_mapping(arg_name, 0))
+            batch_dim_mappings.append(dims_mapping[0])
         else:
             assert dims_mapping[0] == -1, \
                 "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension 0 is sharded by {} part."\
@@ -149,41 +157,37 @@ def update_op_dims_mapping_by_default_dist_impl(op_dist_attr):
                     assert mapping == -1, \
                         "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension {} is sharded by {} part."\
                             .format(op_desc.type(), idx, mapping)
-            batch_dim_mappings.append(
-                op_dist_attr.get_output_dim_mapping(arg_name, 1))
+            batch_dim_mappings.append(dims_mapping[1])
 
     compatible_dim_mapping = compute_compatible_dim_mapping(batch_dim_mappings)
     assert compatible_dim_mapping is not None, "There is no compatible dim mapping."
     for arg_name in op_desc.input_arg_names():
         if op_dist_attr.is_parameter(arg_name):
             continue
-        if compatible_dim_mapping != op_dist_attr.get_input_dim_mapping(
-                arg_name, 0):
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        if compatible_dim_mapping != dims_mapping[0]:
+            dims_mapping[0] = compatible_dim_mapping
             changed = True
-        op_dist_attr.set_input_dim_mapping(arg_name, 0, compatible_dim_mapping)
     for arg_name in op_desc.output_arg_names():
         if op_dist_attr.is_parameter(arg_name):
             continue
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
         if arg_name not in xshape_arg_names:
-            if compatible_dim_mapping != op_dist_attr.get_output_dim_mapping(
-                    arg_name, 0):
+            if compatible_dim_mapping != dims_mapping[0]:
+                dims_mapping[0] = compatible_dim_mapping
                 changed = True
-            op_dist_attr.set_output_dim_mapping(arg_name, 0,
-                                                compatible_dim_mapping)
         else:
-            if compatible_dim_mapping != op_dist_attr.get_output_dim_mapping(
-                    arg_name, 1):
+            if compatible_dim_mapping != dims_mapping[1]:
+                dims_mapping[1] = compatible_dim_mapping
                 changed = True
-            op_dist_attr.set_output_dim_mapping(arg_name, 1,
-                                                compatible_dim_mapping)
 
     return changed
 
 
 def update_op_dims_mapping_by_elementwise_like_dist_impl(op_dist_attr):
-    """Element-wise operator can be sharded in any way (and take care of broadcasting)."""
+    """Element-wise operator can be sharded in any way (but should take care of broadcasting)."""
     changed = False
-    op_desc = op_dist_attr.get_desc()
+    op_desc = op_dist_attr.get_owner_op().desc
 
     input_arg_names = op_desc.input_arg_names()
     input_dims_mapping_dict = {}
@@ -244,12 +248,12 @@ def update_op_dims_mapping_by_elementwise_like_dist_impl(op_dist_attr):
     return changed
 
 
-def update_tensor_node_dims_mapping(dist_config, tensor_node, fwd=True):
+def update_tensor_node_dims_mapping(dist_context, tensor_node, fwd=True):
     changed = False
     if (not tensor_node.is_var()) or (tensor_node.var() is None):
         return False
     tensor_desc = tensor_node.var()
-    tensor_dist_attr = dist_config.get_tensor_distributed_attr_graph(
+    tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_graph(
         tensor_node)
     assert tensor_dist_attr is not None
     if tensor_dist_attr.is_annotated("dims_mapping"):
@@ -259,7 +263,7 @@ def update_tensor_node_dims_mapping(dist_config, tensor_node, fwd=True):
         dims_mapping_list = []
         for pred_op_node in tensor_node.inputs:
             if pred_op_node.op() is not None:
-                op_dist_attr = dist_config.get_op_distributed_attr_graph(
+                op_dist_attr = dist_context.get_op_distributed_attr_for_graph(
                     pred_op_node)
                 op_dims_mapping = op_dist_attr.get_output_dims_mapping(
                     tensor_desc.name())
@@ -275,7 +279,7 @@ def update_tensor_node_dims_mapping(dist_config, tensor_node, fwd=True):
         dims_mapping_list = []
         for succ_op_node in tensor_node.outputs:
             if succ_op_node.op() is not None:
-                op_dist_attr = dist_config.get_op_distributed_attr_graph(
+                op_dist_attr = dist_context.get_op_distributed_attr_for_graph(
                     succ_op_node)
                 op_dims_mapping = op_dist_attr.get_input_dims_mapping(
                     tensor_desc.name())
@@ -290,12 +294,12 @@ def update_tensor_node_dims_mapping(dist_config, tensor_node, fwd=True):
     return changed
 
 
-def update_op_node_dims_mapping(dist_config, op_node, fwd=True):
+def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
     changed = False
     if (not op_node.is_op()) or (op_node.op() is None):
         return False
     op_desc = op_node.op()
-    op_dist_attr = dist_config.get_op_distributed_attr_graph(op_node)
+    op_dist_attr = dist_context.get_op_distributed_attr_for_graph(op_node)
     if fwd:
         for tensor_node in op_node.inputs:
             if tensor_node.var() is not None:
@@ -303,24 +307,21 @@ def update_op_node_dims_mapping(dist_config, op_node, fwd=True):
                 if op_dist_attr.is_annotated_input_dims_mapping(
                         tensor_desc.name()):
                     continue
-                tensor_dist_attr = dist_config.get_tensor_distributed_attr_graph(
+                tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_graph(
                     tensor_node)
                 tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
                 op_dims_mapping = op_dist_attr.get_input_dims_mapping(
                     tensor_desc.name())
                 compatible_dims_mapping = compute_compatible_dims_mapping(
                     [op_dims_mapping, tensor_dims_mapping])
-                # print("fwd0", tensor_desc.name(), op_dims_mapping, tensor_dims_mapping, compatible_dims_mapping)
                 if (compatible_dims_mapping is not None) and \
                     (compatible_dims_mapping != op_dims_mapping):
                     op_dist_attr.set_input_dims_mapping(tensor_desc.name(),
                                                         compatible_dims_mapping)
                     changed = True
         # Find the most compatible implemenetations from the distributed operator
-        # print("fwd1", op_desc.type(), op_dist_attr)
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), op_dist_attr, fwd=True)
-        # print("fwd2", op_desc.type(), op_dist_impl_idx)
         if op_dist_impl is not None:
             dim_changed = op_dist_impl.update_dims_mapping(op_dist_attr)
             if dim_changed:
@@ -328,8 +329,6 @@ def update_op_node_dims_mapping(dist_config, op_node, fwd=True):
             # This statement will be replaced by a good way
             if op_dist_impl.is_compatible(op_dist_attr):
                 op_dist_attr.set_impl_idx(op_dist_impl_idx)
-                # print("fwd3", op_dist_impl.get_name(), op_dist_impl_idx)
-            # print("fwd4", op_dist_impl.get_name(), op_dist_impl_idx, op_dist_attr)
         elif is_elementwise_like_op(op_desc.type()):
             dim_changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
                 op_dist_attr)
@@ -349,24 +348,21 @@ def update_op_node_dims_mapping(dist_config, op_node, fwd=True):
                 if op_dist_attr.is_annotated_output_dims_mapping(
                         tensor_desc.name()):
                     continue
-                tensor_dist_attr = dist_config.get_tensor_distributed_attr_graph(
+                tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_graph(
                     tensor_node)
                 tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
                 op_dims_mapping = op_dist_attr.get_output_dims_mapping(
                     tensor_desc.name())
                 compatible_dims_mapping = compute_compatible_dims_mapping(
                     [op_dims_mapping, tensor_dims_mapping])
-                # print("bwd0", tensor_desc.name(), op_dims_mapping, tensor_dims_mapping, compatible_dims_mapping)
                 if (compatible_dims_mapping is not None) and \
                     (compatible_dims_mapping != op_dims_mapping):
                     op_dist_attr.set_output_dims_mapping(
                         tensor_desc.name(), compatible_dims_mapping)
                     changed = True
         # Find the most compatible implemenetations from the distributed operator
-        # print("bwd1", op_desc.type(), op_dist_attr)
         op_dist_impl, op_dist_impl_idx = find_best_compatible_distributed_operator_impl(
             op_desc.type(), op_dist_attr, fwd=False)
-        # print("bwd2", op_desc.type(), op_dist_impl_idx)
         if op_dist_impl is not None:
             dim_changed = op_dist_impl.update_dims_mapping(op_dist_attr)
             if dim_changed:
@@ -374,8 +370,6 @@ def update_op_node_dims_mapping(dist_config, op_node, fwd=True):
             # This statement will be replaced by a good way
             if op_dist_impl.is_compatible(op_dist_attr):
                 op_dist_attr.set_impl_idx(op_dist_impl_idx)
-                # print("bwd3", op_dist_impl.get_name(), op_dist_impl_idx)
-            # print("bwd4", op_dist_impl.get_name(), op_dist_impl_idx, op_dist_attr)
         elif is_elementwise_like_op(op_desc.type()):
             dim_changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
                 op_dist_attr)
@@ -391,27 +385,30 @@ def update_op_node_dims_mapping(dist_config, op_node, fwd=True):
     return changed
 
 
-def complete_annotation(program, dist_config=None):
+def complete_annotation(program, dist_context=None):
     """ Complete annotation for the partial annotated program.
 
     Arguments:
         program: partial annotated program.
-
+        dist_context: the distributed context is used to store distributed attributes for program.
+            If not provided, the default one will be used.
     Returns:
         program: completed annotated program.
     """
 
-    if dist_config is None:
-        dist_config = get_default_distributed_config()
+    # Use the default distribted context for completeion if there is no one
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
+
     # Initialize distributed attributes for all var and op node in program 
-    dist_config.initialize_distributed_attr_for_program(program)
-    print(program)
+    dist_context.initialize_distributed_attr_for_program(program)
+    # print_program_with_distributed_attr(program, dist_context)
 
     # Convert program to graph
     graph = framework.IrGraph(core.Graph(program.desc))
 
     # Initialize distributed attributes for all var and op node in graph
-    dist_config.initialize_distributed_attr_for_graph(graph)
+    dist_context.initialize_distributed_attr_for_graph(graph)
 
     # # Complete process mesh for each node
     all_nodes = list(graph.all_nodes())
@@ -421,23 +418,23 @@ def complete_annotation(program, dist_config=None):
         for node in all_nodes:
             if node.is_var() and node.var() is not None:
                 tensor_changed = update_tensor_node_process_mesh(
-                    dist_config, node, fwd=True)
+                    dist_context, node, fwd=True)
                 if tensor_changed:
                     changed = True
             if node.is_op() and node.op() is not None:
                 op_changed = update_op_node_process_mesh(
-                    dist_config, node, fwd=True)
+                    dist_context, node, fwd=True)
                 if op_changed:
                     changed = True
         for node in reversed(all_nodes):
             if node.is_var() and node.var() is not None:
                 tensor_changed = update_tensor_node_process_mesh(
-                    dist_config, node, fwd=False)
+                    dist_context, node, fwd=False)
                 if tensor_changed:
                     changed = True
             if node.is_op() and node.op() is not None:
                 op_changed = update_op_node_process_mesh(
-                    dist_config, node, fwd=False)
+                    dist_context, node, fwd=False)
                 if op_changed:
                     changed = True
         if changed:
@@ -452,23 +449,23 @@ def complete_annotation(program, dist_config=None):
         for node in all_nodes:
             if node.is_var() and node.var() is not None:
                 tensor_changed = update_tensor_node_dims_mapping(
-                    dist_config, node, fwd=True)
+                    dist_context, node, fwd=True)
                 if tensor_changed:
                     changed = True
             if node.is_op() and node.op() is not None:
                 op_changed = update_op_node_dims_mapping(
-                    dist_config, node, fwd=True)
+                    dist_context, node, fwd=True)
                 if op_changed:
                     changed = True
         for node in reversed(all_nodes):
             if node.is_var() and node.var() is not None:
                 tensor_changed = update_tensor_node_dims_mapping(
-                    dist_config, node, fwd=False)
+                    dist_context, node, fwd=False)
                 if tensor_changed:
                     changed = True
             if node.is_op() and node.op() is not None:
                 op_changed = update_op_node_dims_mapping(
-                    dist_config, node, fwd=False)
+                    dist_context, node, fwd=False)
                 if op_changed:
                     changed = True
         if changed:
@@ -477,10 +474,10 @@ def complete_annotation(program, dist_config=None):
             reach_fix_point = True
 
     # Copy the corresponding distributed attribute from graph to program
-    dist_config.copy_distribute_attr_from_graph_to_program(graph, program)
-    dist_config.clear_distributed_attr_for_graph()
+    dist_context.copy_distribute_attr_from_graph_to_program(graph, program)
+    dist_context.clear_distributed_attr_for_graph()
 
     # Do the validation check and amend some completion
-    dist_config.validate_distributed_attr_for_program()
+    dist_context.amend_distributed_attr_for_program()
 
     return program

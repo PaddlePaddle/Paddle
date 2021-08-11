@@ -120,6 +120,7 @@ class TestAutoParallelAPI(unittest.TestCase):
         self.assertEqual(last_op.attr(attr_name), DIMS_MAPPING2)
 
     def test_process_mesh(self):
+        mesh0 = dist.ProcessMesh([0, 1, 2], parent=MESH)
         mesh1 = dist.ProcessMesh([[0, 1, 2], [3, 4, 5]], parent=MESH)
         mesh2 = dist.ProcessMesh([[0, 1, 2], [3, 4, 5]], parent=mesh1)
         mesh3 = dist.ProcessMesh([[0, 1], [2, 3]], parent=mesh1)

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import threading
+import paddle.fluid.core as core
+
 
 def is_valid_list_index(list, index):
     if index >= -len(list) and index < len(list):
@@ -98,3 +101,57 @@ def compute_compatible_and_update_dim_mapping(dims_mapping_list, index_list):
             dims_mapping_list[i][index_list[i]] = compatible_dim_mapping
             changed = True
     return changed
+
+
+def append_distributed_attr_suffix(name):
+    """
+    Append auto parallel suffix for distributed attribute name.
+    """
+    return name + core.kAutoParallelSuffix()
+
+
+def remove_distributed_attr_suffix(name):
+    """
+    Remove auto parallel suffix from distributed attribute name.
+    """
+    return name.strip(core.kAutoParallelSuffix())
+
+
+def check_distributed_attr_for_program(program, dist_context=None):
+    from .context import get_default_distributed_context
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
+    assert dist_context.is_initialized_for_program(), \
+        "Distributed attributes must be initialized before check."
+    for block in program.blocks:
+        for tensor in block.vars.values():
+            tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+                tensor)
+            if (tensor_dist_attr is not None) and (
+                    not tensor_dist_attr.is_valid()):
+                return False
+        for op in block.ops:
+            op_dist_attr = dist_context.get_op_distributed_attr_for_program(op)
+            if (op_dist_attr is not None) and (not op_dist_attr.is_valid()):
+                return False
+    return True
+
+
+def print_program_with_distributed_attr(program, dist_context=None):
+    """
+    This function reuses the original program output ability with a distributed context.
+    Using lock can avoid multiple threads change the default distributed context simultaneously.
+    """
+    lock = threading.Lock()
+    lock.acquire()
+    from .context import get_default_distributed_context
+    from .context import set_default_distributed_context
+    if dist_context is None:
+        dist_context = get_default_distributed_context()
+        print(program)
+    else:
+        original_default_context = get_default_distributed_context()
+        set_default_distributed_context(dist_context)
+        print(program)
+        set_default_distributed_context(original_default_context)
+    lock.release()

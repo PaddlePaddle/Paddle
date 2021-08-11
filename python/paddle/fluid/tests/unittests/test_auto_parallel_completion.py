@@ -22,709 +22,608 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.tensor as tensor
-import paddle.distributed.auto_parallel as auto
 from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
+import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
+from paddle.distributed.auto_parallel.utils import print_program_with_distributed_attr
+from paddle.distributed.auto_parallel.context import DistributedContext
 
 paddle.enable_static()
+_global_parallel_stratergy = None
+_global_process_mesh = None
+ROOT_MESH = auto.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]])
 
 
-def compare_program(src_prog, dst_prog):
-    """Compare program to check whether they are same."""
+class MLPLayer(nn.Layer):
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
+            mean=0.0, std=initializer_range))
+        bias_attr = None
 
-    if src_prog.num_blocks != dst_prog.num_blocks:
-        print(
-            "Block number of src_program {} is not equal to that of dst_program {}."
-            .format(src_prog.num_blocks, dst_prog.num_blocks))
-        return False
+        self.linear0 = nn.Linear(
+            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
+        self.linear1 = nn.Linear(
+            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
+        self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
+        self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
 
-    for src_block, dst_block in zip(src_prog.blocks, dst_prog.blocks):
-        # compare vars from src_block and dst_block
-        if len(src_block.vars) != len(dst_block.vars):
-            print(
-                "The number of variables in src_block {} is not equal to that in dst_block {}."
-                .format(src_block.idx, dst_block.idx))
-            return False
-        for src_var_name, src_var_value in src_block.vars.items():
-            dst_var_value = dst_block.vars.get(src_var_name)
-            if dst_var_value is None:
-                print(
-                    "The variable {} from src_block doesn't exist in dst_block.".
-                    format(src_var_name))
-                return False
-            if src_var_value.to_string(True, True) != dst_var_value.to_string(
-                    True, True):
-                print(
-                    "The variable {} of src_block is not equal to variable {} of dst_block."
-                    .format(src_var_name, src_var_name))
-                return False
+    def forward(self, input):
+        if _global_parallel_stratergy == "mp":
+            auto.shard_tensor(
+                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 0])
+            auto.shard_tensor(
+                self.linear1.weight, _global_process_mesh, dim_mapping=[0, -1])
+        elif _global_parallel_stratergy == "dp_mp":
+            auto.shard_tensor(
+                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 1])
+            auto.shard_tensor(
+                self.linear1.weight, _global_process_mesh, dim_mapping=[1, -1])
 
-        # compare ops from src_block and dst_block
-        if len(src_block.ops) != len(dst_block.ops):
-            print(
-                "The number of operators in src_block {} is not equal to that in dst_block {}."
-                .format(src_block.idx, dst_block.idx))
-        for src_op, dst_op in zip(src_block.ops, dst_block.ops):
-            if src_op.type != dst_op.type:
-                print(
-                    "The operator's type {} of src_block is not equal to the operator'type {} of dst_block."
-                    .format(src_op.type, dst_op.type))
-            src_op_callstack = src_op.attr("op_callstack")
-            dst_op_callstack = dst_op.attr("op_callstack")
-            # print(src_op_callstack, dst_op_callstack)
-            src_op._remove_attr("op_callstack")
-            dst_op._remove_attr("op_callstack")
-            if src_op.to_string(True) != dst_op.to_string(True):
-                print(
-                    "The operator {}'s content of src_block is not equal to the operator {}'s content of dst_block."
-                    .format(src_op.type, dst_op.type))
-                # print(src_op.to_string(True), dst_op.to_string(True))
-                return False
-            else:
-                src_op._set_attr("op_callstack", src_op_callstack)
-                dst_op._set_attr("op_callstack", dst_op_callstack)
+        out = self.norm(input)
+        out = self.linear0(out)
+        out = F.gelu(out, approximate=True)
+        out = self.linear1(out)
+        out = self.dropout(out)
 
-        return True
+        return out
+
+
+def mlp_pretrain_forward(train_program, start_program):
+    with static.program_guard(train_program,
+                              start_program), utils.unique_name.guard():
+        batch_size = 4
+        hidden_size = 1024
+        sequence_len = 512
+        input = static.data(
+            name="input",
+            shape=[batch_size, sequence_len, hidden_size],
+            dtype='float32')
+
+        if _global_parallel_stratergy == "dp":
+            auto.shard_tensor(
+                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+        elif _global_parallel_stratergy == "dp_mp":
+            auto.shard_tensor(
+                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+
+        mlp = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02)
+        out = mlp(input)
+    return train_program, start_program
 
 
 class TestMLPAutoCompletion(unittest.TestCase):
-    def setUp(self):
-        self.batch_size = 4
-        self.hidden_size = 1024
-        self.sequence_len = 128
-        self.dropout_ratio = 0.1
-        self.initializer_range = 0.02
-
-        self.train_prog = static.Program()
-        self.start_prog = static.Program()
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            intermediate_size = 4 * self.hidden_size
-            d_model = self.hidden_size
-            dim_feedforward = intermediate_size
-            weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-                mean=0.0, std=self.initializer_range))
-            bias_attr = None
-
-            self.linear3 = nn.Linear(
-                d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
-            self.linear4 = nn.Linear(
-                dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
-            self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
-            self.dropout = nn.Dropout(
-                self.dropout_ratio, mode="upscale_in_train")
-
     def test_mlp_dp(self):
-        proc_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
-        assert proc_mesh.get_ndim(
-        ) == 1, "The number dimension of process mesh must to be 1"
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            input = static.data(
-                name="input",
-                shape=[self.batch_size, self.sequence_len, self.hidden_size],
-                dtype='float32')
-            out0 = self.norm(input)
-            out1 = self.linear3(out0)
-            out2 = F.gelu(out1, approximate=True)
-            out3 = self.linear4(out2)
-            out4 = self.dropout(out3)
-            auto.shard_tensor(out4, proc_mesh, dims_mapping=[0, -1, -1])
-        print(self.train_prog)
-        complete_prog = auto.complete_annotation(self.train_prog)
-        print(complete_prog)
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "dp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        train_program = static.Program()
+        start_program = static.Program()
+        dist_context = DistributedContext()
+        train_program, start_program = mlp_pretrain_forward(train_program,
+                                                            start_program)
+        complete_train_program = auto.complete_annotation(train_program,
+                                                          dist_context)
+        print_program_with_distributed_attr(complete_train_program,
+                                            dist_context)
+        self.assertTrue(
+            check_distributed_attr_for_program(complete_train_program,
+                                               dist_context))
 
     def test_mlp_mp(self):
-        proc_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
-        assert proc_mesh.get_ndim(
-        ) == 1, "The number dimension of process mesh must to be 1"
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            input = static.data(
-                name="input",
-                shape=[self.batch_size, self.sequence_len, self.hidden_size],
-                dtype='float32')
-            out0 = self.norm(input)
-            out1 = self.linear3(out0)
-            auto.shard_tensor(
-                self.linear3.weight, proc_mesh, dims_mapping=[-1, 0])
-            out2 = F.gelu(out1, approximate=True)
-            out3 = self.linear4(out2)
-            auto.shard_tensor(
-                self.linear4.weight, proc_mesh, dims_mapping=[0, -1])
-            out4 = self.dropout(out3)
-        print(self.train_prog)
-        complete_prog = auto.complete_annotation(self.train_prog)
-        print(complete_prog)
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "mp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+
+        train_program = static.Program()
+        start_program = static.Program()
+        dist_context = DistributedContext()
+        train_program, start_program = mlp_pretrain_forward(train_program,
+                                                            start_program)
+        complete_train_program = auto.complete_annotation(train_program,
+                                                          dist_context)
+        print_program_with_distributed_attr(complete_train_program,
+                                            dist_context)
+        self.assertTrue(
+            check_distributed_attr_for_program(complete_train_program,
+                                               dist_context))
 
     def test_mlp_dp_mp(self):
-        proc_mesh = auto.ProcessMesh(
-            shape=[2, 4], process_group=[0, 1, 2, 3, 4, 5, 6, 7])
-        assert proc_mesh.get_ndim(
-        ) == 2, "The number dimension of process mesh must to be 2"
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            input = static.data(
-                name="input",
-                shape=[self.batch_size, self.sequence_len, self.hidden_size],
-                dtype='float32')
-            out0 = self.norm(input)
-            auto.shard_tensor(out0, proc_mesh, dims_mapping=[0, -1, -1])
-            out1 = self.linear3(out0)
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "dp_mp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+
+        train_program = static.Program()
+        start_program = static.Program()
+        dist_context = DistributedContext()
+        train_program, start_program = mlp_pretrain_forward(train_program,
+                                                            start_program)
+        complete_train_program = auto.complete_annotation(train_program,
+                                                          dist_context)
+        print_program_with_distributed_attr(complete_train_program,
+                                            dist_context)
+        self.assertTrue(
+            check_distributed_attr_for_program(complete_train_program,
+                                               dist_context))
+
+
+class AttentionLayer(nn.Layer):
+    def __init__(self,
+                 hidden_size=1024,
+                 sequence_len=512,
+                 intermediate_size=4 * 1024,
+                 num_heads=16,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(AttentionLayer, self).__init__()
+        self.hidden_size = hidden_size
+        self.sequence_len = sequence_len
+        self.embed_dim = self.hidden_size
+        self.kdim = self.embed_dim
+        self.vdim = self.embed_dim
+        self.num_heads = num_heads
+        self.head_dim = self.embed_dim // self.num_heads
+        assert self.head_dim * self.num_heads == self.embed_dim, \
+            "embed_dim must be divisible by num_heads"
+        self.dropout_ratio = dropout_ratio
+        self.initializer_range = initializer_range
+        self.training = True
+        self.attn_mask = None
+        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
+            mean=0.0, std=initializer_range))
+        bias_attr = None
+
+        self.q_proj = nn.Linear(
+            self.embed_dim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+        self.k_proj = nn.Linear(
+            self.kdim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+        self.v_proj = nn.Linear(
+            self.vdim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+        self.out_proj = nn.Linear(
+            self.embed_dim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+
+    def forward(self, input):
+        if _global_parallel_stratergy == "dp":
             auto.shard_tensor(
-                self.linear3.weight, proc_mesh, dims_mapping=[-1, 1])
-            out2 = F.gelu(out1, approximate=True)
-            out3 = self.linear4(out2)
+                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+        elif _global_parallel_stratergy == "dp_mp":
             auto.shard_tensor(
-                self.linear4.weight, proc_mesh, dims_mapping=[1, -1])
-            out4 = self.dropout(out3)
-        print(self.train_prog)
-        complete_prog = auto.complete_annotation(self.train_prog)
-        print(complete_prog)
+                input, _global_process_mesh, dim_mapping=[0, -1, -1])
+
+        q = self.q_proj(input)
+        q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
+        q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
+
+        k = self.k_proj(input)
+        v = self.v_proj(input)
+
+        if _global_parallel_stratergy == "mp":
+            auto.shard_tensor(
+                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+            auto.shard_tensor(
+                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+            auto.shard_tensor(
+                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+        elif _global_parallel_stratergy == "dp_mp":
+            auto.shard_tensor(
+                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+            auto.shard_tensor(
+                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+            auto.shard_tensor(
+                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+
+        k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
+        k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
+        v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
+        v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+
+        # scale dot product attention
+        product = layers.matmul(
+            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
+
+        if self.attn_mask is not None:
+            product = product + self.attn_mask
+
+        weights = F.softmax(product)
+
+        if self.dropout_ratio:
+            weights = F.dropout(
+                weights,
+                self.dropout_ratio,
+                training=self.training,
+                mode="upscale_in_train")
+
+        out = tensor.matmul(weights, v)
+
+        # combine heads
+        out = tensor.transpose(out, perm=[0, 2, 1, 3])
+        out = tensor.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+
+        # project to output
+        out = self.out_proj(out)
+        if _global_parallel_stratergy == "mp":
+            auto.shard_tensor(
+                self.out_proj.weight, _global_process_mesh,
+                dim_mapping=[0, -1])
+        elif _global_parallel_stratergy == "dp_mp":
+            auto.shard_tensor(
+                self.out_proj.weight, _global_process_mesh,
+                dim_mapping=[1, -1])
+
+        return out
+
+
+def attn_pretrain_forward(train_program, start_program):
+    with static.program_guard(train_program,
+                              start_program), utils.unique_name.guard():
+        batch_size = 4
+        hidden_size = 1024
+        sequence_len = 512
+        input = static.data(
+            name="query",
+            shape=[batch_size, sequence_len, hidden_size],
+            dtype='float32')
+        attn = AttentionLayer(
+            hidden_size=hidden_size,
+            sequence_len=sequence_len,
+            intermediate_size=4 * hidden_size,
+            num_heads=16,
+            dropout_ratio=0.1,
+            initializer_range=0.02)
+        out = attn(input)
+
+    return train_program, start_program
 
 
 class TestAttentionAutoCompletion(unittest.TestCase):
-    def setUp(self):
-        self.batch_size = 4
-        self.hidden_size = 1024
-        self.sequence_len = 128
-        self.embed_dim = self.hidden_size
-        self.kdim = self.embed_dim
-        self.vdim = self.embed_dim
-        self.num_heads = 8
-        self.dropout_ratio = 0.1
-        self.initializer_range = 0.02
-        self.training = True
-        self.attn_mask = None
-
-        self.head_dim = self.embed_dim // self.num_heads
-        assert self.head_dim * self.num_heads == self.embed_dim, \
-            "embed_dim must be divisible by num_heads"
-
-        self.train_prog = static.Program()
-        self.start_prog = static.Program()
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            self.input = static.data(
-                name="query",
-                shape=[self.batch_size, self.sequence_len, self.hidden_size],
-                dtype='float32')
-            weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-                mean=0.0, std=self.initializer_range))
-            bias_attr = None
-            self.q_proj = nn.Linear(
-                self.embed_dim,
-                self.embed_dim,
-                weight_attr,
-                bias_attr=bias_attr)
-            self.k_proj = nn.Linear(
-                self.kdim, self.embed_dim, weight_attr, bias_attr=bias_attr)
-            self.v_proj = nn.Linear(
-                self.vdim, self.embed_dim, weight_attr, bias_attr=bias_attr)
-            self.out_proj = nn.Linear(
-                self.embed_dim,
-                self.embed_dim,
-                weight_attr,
-                bias_attr=bias_attr)
-
     def test_attn_dp(self):
-        proc_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
-        assert proc_mesh.get_ndim(
-        ) == 1, "The number dimension of process mesh must to be 1"
-
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
-            q = self.q_proj(self.input)
-            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
-            q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
-
-            k = self.k_proj(self.input)
-            v = self.v_proj(self.input)
-            k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
-            k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
-            v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
-            v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
-
-            # scale dot product attention
-            product = layers.matmul(
-                x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
-
-            if self.attn_mask is not None:
-                product = product + self.attn_mask
-
-            weights = F.softmax(product)
-
-            if self.dropout_ratio:
-                weights = F.dropout(
-                    weights,
-                    self.dropout_ratio,
-                    training=self.training,
-                    mode="upscale_in_train")
-
-            out = tensor.matmul(weights, v)
-
-            # combine heads
-            out = tensor.transpose(out, perm=[0, 2, 1, 3])
-            out = tensor.reshape(
-                x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
-
-            # project to output
-            out = self.out_proj(out)
-
-        print(self.train_prog)
-        complete_prog = auto.complete_annotation(self.train_prog)
-        print(complete_prog)
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "dp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        train_program = static.Program()
+        start_program = static.Program()
+        dist_context = DistributedContext()
+        train_program, start_program = attn_pretrain_forward(train_program,
+                                                             start_program)
+        complete_train_program = auto.complete_annotation(train_program,
+                                                          dist_context)
+        print_program_with_distributed_attr(complete_train_program,
+                                            dist_context)
+        self.assertTrue(
+            check_distributed_attr_for_program(complete_train_program,
+                                               dist_context))
 
     def test_attn_mp(self):
-        proc_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
-        assert proc_mesh.get_ndim(
-        ) == 1, "The number dimension of process mesh must to be 1"
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "mp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
 
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            q = self.q_proj(self.input)
-            auto.shard_tensor(
-                self.q_proj.weight, proc_mesh, dims_mapping=[-1, 0])
-            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
-            q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
-
-            k = self.k_proj(self.input)
-            auto.shard_tensor(
-                self.k_proj.weight, proc_mesh, dims_mapping=[-1, 0])
-            v = self.v_proj(self.input)
-            auto.shard_tensor(
-                self.v_proj.weight, proc_mesh, dims_mapping=[-1, 0])
-            k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
-            k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
-            v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
-            v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
-
-            # scale dot product attention
-            product = layers.matmul(
-                x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
-
-            if self.attn_mask is not None:
-                product = product + self.attn_mask
-
-            weights = F.softmax(product)
-
-            if self.dropout_ratio:
-                weights = F.dropout(
-                    weights,
-                    self.dropout_ratio,
-                    training=self.training,
-                    mode="upscale_in_train")
-
-            out = tensor.matmul(weights, v)
-
-            # combine heads
-            out = tensor.transpose(out, perm=[0, 2, 1, 3])
-            out = tensor.reshape(
-                x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
-
-            # project to output
-            out = self.out_proj(out)
-            auto.shard_tensor(
-                self.out_proj.weight, proc_mesh, dims_mapping=[0, -1])
-
-        print(self.train_prog)
-        complete_prog = auto.complete_annotation(self.train_prog)
-        print(complete_prog)
+        train_program = static.Program()
+        start_program = static.Program()
+        dist_context = DistributedContext()
+        train_program, start_program = attn_pretrain_forward(train_program,
+                                                             start_program)
+        complete_train_program = auto.complete_annotation(train_program,
+                                                          dist_context)
+        print_program_with_distributed_attr(complete_train_program,
+                                            dist_context)
+        self.assertTrue(
+            check_distributed_attr_for_program(complete_train_program,
+                                               dist_context))
 
     def test_attn_dp_mp(self):
-        proc_mesh = auto.ProcessMesh(
-            shape=[2, 4], process_group=[0, 1, 2, 3, 4, 5, 6, 7])
-        assert proc_mesh.get_ndim(
-        ) == 2, "The number dimension of process mesh must to be 2"
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "dp_mp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
 
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            auto.shard_tensor(self.input, proc_mesh, dims_mapping=[0, -1, -1])
-            q = self.q_proj(self.input)
-            auto.shard_tensor(
-                self.q_proj.weight, proc_mesh, dims_mapping=[-1, 1])
-            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
-            q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
-
-            k = self.k_proj(self.input)
-            auto.shard_tensor(
-                self.k_proj.weight, proc_mesh, dims_mapping=[-1, 1])
-            v = self.v_proj(self.input)
-            auto.shard_tensor(
-                self.v_proj.weight, proc_mesh, dims_mapping=[-1, 1])
-            k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
-            k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
-            v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
-            v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
-
-            # scale dot product attention
-            product = layers.matmul(
-                x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
-
-            if self.attn_mask is not None:
-                product = product + self.attn_mask
-
-            weights = F.softmax(product)
-
-            if self.dropout_ratio:
-                weights = F.dropout(
-                    weights,
-                    self.dropout_ratio,
-                    training=self.training,
-                    mode="upscale_in_train")
-
-            out = tensor.matmul(weights, v)
-
-            # combine heads
-            out = tensor.transpose(out, perm=[0, 2, 1, 3])
-            out = tensor.reshape(
-                x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
-
-            # project to output
-            out = self.out_proj(out)
-            auto.shard_tensor(
-                self.out_proj.weight, proc_mesh, dims_mapping=[1, -1])
-
-        print(self.train_prog)
-        complete_prog = auto.complete_annotation(self.train_prog)
-        print(complete_prog)
+        train_program = static.Program()
+        start_program = static.Program()
+        dist_context = DistributedContext()
+        train_program, start_program = attn_pretrain_forward(train_program,
+                                                             start_program)
+        complete_train_program = auto.complete_annotation(train_program,
+                                                          dist_context)
+        print_program_with_distributed_attr(complete_train_program,
+                                            dist_context)
+        self.assertTrue(
+            check_distributed_attr_for_program(complete_train_program,
+                                               dist_context))
 
 
-class TestTransformerDecoderLayerAutoCompletion(unittest.TestCase):
-    def setUp(self):
-        self.batch_size = 4
-        self.vocab_size = 32768
-        self.hidden_size = 1024
-        self.max_position_embeddings = 1024
-        self.sequence_len = 128
+class DecoderLayer(nn.Layer):
+    def __init__(self,
+                 vocab_size=32768,
+                 hidden_size=1024,
+                 sequence_len=512,
+                 max_position_embeddings=512,
+                 intermediate_size=4 * 1024,
+                 num_heads=16,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(DecoderLayer, self).__init__()
+        self.vocab_size = vocab_size
+        self.hidden_size = hidden_size
+        self.max_position_embeddings = max_position_embeddings
+        self.sequence_len = sequence_len
         self.embed_dim = self.hidden_size
         self.kdim = self.embed_dim
         self.vdim = self.embed_dim
-        self.num_heads = 8
-        self.dropout_ratio = 0.1
-        self.initializer_range = 0.02
+        self.num_heads = num_heads
+        self.dropout_ratio = dropout_ratio
+        self.initializer_range = initializer_range
         self.training = True
         self.attn_mask = None
 
         self.head_dim = self.embed_dim // self.num_heads
         assert self.head_dim * self.num_heads == self.embed_dim, \
             "embed_dim must be divisible by num_heads"
+        self.word_embeddings = nn.Embedding(
+            self.vocab_size,
+            self.hidden_size,
+            weight_attr=paddle.ParamAttr(
+                name="word_embeddings",
+                initializer=nn.initializer.Normal(
+                    mean=0.0, std=self.initializer_range)))
+        self.position_embeddings = nn.Embedding(
+            self.max_position_embeddings,
+            self.hidden_size,
+            weight_attr=paddle.ParamAttr(
+                name="pos_embeddings",
+                initializer=nn.initializer.Normal(
+                    mean=0.0, std=self.initializer_range)))
 
-        self.train_prog = static.Program()
-        self.start_prog = static.Program()
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            self.input_ids = static.data(
-                name="input_ids",
-                shape=[self.batch_size, self.sequence_len],
-                dtype='int64')
-            self.position_ids = static.data(
-                name="position_ids",
-                shape=[self.batch_size, self.sequence_len],
-                dtype='int64')
+        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
+            mean=0.0, std=self.initializer_range))
+        bias_attr = None
+        self.q_proj = nn.Linear(
+            self.embed_dim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+        self.k_proj = nn.Linear(
+            self.kdim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+        self.v_proj = nn.Linear(
+            self.vdim, self.embed_dim, weight_attr, bias_attr=bias_attr)
+        self.out_proj = nn.Linear(
+            self.embed_dim, self.embed_dim, weight_attr, bias_attr=bias_attr)
 
-            self.word_embeddings = nn.Embedding(
-                self.vocab_size,
-                self.hidden_size,
-                weight_attr=paddle.ParamAttr(
-                    name="word_embeddings",
-                    initializer=nn.initializer.Normal(
-                        mean=0.0, std=self.initializer_range)))
-            self.position_embeddings = nn.Embedding(
-                self.max_position_embeddings,
-                self.hidden_size,
-                weight_attr=paddle.ParamAttr(
-                    name="pos_embeddings",
-                    initializer=nn.initializer.Normal(
-                        mean=0.0, std=self.initializer_range)))
+        intermediate_size = 4 * self.hidden_size
+        d_model = self.hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
+            mean=0.0, std=self.initializer_range))
+        bias_attr = None
+        self.linear0 = nn.Linear(
+            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
+        self.linear1 = nn.Linear(
+            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
+        self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
+        self.dropout1 = nn.Dropout(self.dropout_ratio)
+        self.dropout2 = nn.Dropout(self.dropout_ratio, mode="upscale_in_train")
+        self.dropout3 = nn.Dropout(self.dropout_ratio, mode="upscale_in_train")
 
-            weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-                mean=0.0, std=self.initializer_range))
-            bias_attr = None
-            self.q_proj = nn.Linear(
-                self.embed_dim,
-                self.embed_dim,
-                weight_attr,
-                bias_attr=bias_attr)
-            self.k_proj = nn.Linear(
-                self.kdim, self.embed_dim, weight_attr, bias_attr=bias_attr)
-            self.v_proj = nn.Linear(
-                self.vdim, self.embed_dim, weight_attr, bias_attr=bias_attr)
-            self.out_proj = nn.Linear(
-                self.embed_dim,
-                self.embed_dim,
-                weight_attr,
-                bias_attr=bias_attr)
+    def forward(self, input_ids, position_ids):
+        if _global_parallel_stratergy == "dp":
+            auto.shard_tensor(
+                input_ids, _global_process_mesh, dim_mapping=[0, -1])
+        elif _global_parallel_stratergy == "dp_mp":
+            auto.shard_tensor(
+                input_ids, _global_process_mesh, dim_mapping=[0, -1])
 
-            intermediate_size = 4 * self.hidden_size
-            d_model = self.hidden_size
-            dim_feedforward = intermediate_size
-            weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-                mean=0.0, std=self.initializer_range))
-            bias_attr = None
-            weight_attrs = _convert_param_attr_to_list(weight_attr, 3)
-            bias_attrs = _convert_param_attr_to_list(bias_attr, 3)
+        input_embeddings = self.word_embeddings(input_ids)
+        position_embeddings = self.position_embeddings(position_ids)
 
-            self.linear0 = nn.Linear(
-                d_model,
-                dim_feedforward,
-                weight_attrs[2],
-                bias_attr=bias_attrs[2])
-            self.linear1 = nn.Linear(
-                dim_feedforward,
-                d_model,
-                weight_attrs[2],
-                bias_attr=bias_attrs[2])
-            self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
+        if _global_parallel_stratergy == "mp":
+            auto.shard_tensor(
+                self.word_embeddings.weight,
+                _global_process_mesh,
+                dim_mapping=[0, -1])
+        elif _global_parallel_stratergy == "dp_mp":
+            auto.shard_tensor(
+                self.word_embeddings.weight,
+                _global_process_mesh,
+                dim_mapping=[1, -1])
 
-            self.dropout1 = nn.Dropout(self.dropout_ratio)
-            self.dropout2 = nn.Dropout(
-                self.dropout_ratio, mode="upscale_in_train")
-            self.dropout3 = nn.Dropout(
-                self.dropout_ratio, mode="upscale_in_train")
+        embeddings = input_embeddings + position_embeddings
+        embeddings = self.dropout1(embeddings)
 
+        # Pre-norm
+        target = self.norm(embeddings)
+
+        # The following is the attention part
+        q = self.q_proj(target)
+        q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
+        q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
+
+        k = self.k_proj(target)
+        v = self.v_proj(target)
+
+        if _global_parallel_stratergy == "mp":
+            auto.shard_tensor(
+                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+            auto.shard_tensor(
+                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+            auto.shard_tensor(
+                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
+        elif _global_parallel_stratergy == "dp_mp":
+            auto.shard_tensor(
+                self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+            auto.shard_tensor(
+                self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+            auto.shard_tensor(
+                self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
+
+        k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
+        k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
+        v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
+        v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+
+        # scale dot product attention
+        product = layers.matmul(
+            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
+
+        if self.attn_mask is not None:
+            product = product + self.attn_mask
+
+        weights = F.softmax(product)
+
+        if self.dropout_ratio:
+            weights = F.dropout(
+                weights,
+                self.dropout_ratio,
+                training=self.training,
+                mode="upscale_in_train")
+
+        out = tensor.matmul(weights, v)
+
+        # combine heads
+        out = tensor.transpose(out, perm=[0, 2, 1, 3])
+        out = tensor.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+
+        # project to output
+        out = self.out_proj(out)
+
+        if _global_parallel_stratergy == "mp":
+            auto.shard_tensor(
+                self.out_proj.weight, _global_process_mesh,
+                dim_mapping=[0, -1])
+        elif _global_parallel_stratergy == "dp_mp":
+            auto.shard_tensor(
+                self.out_proj.weight, _global_process_mesh,
+                dim_mapping=[1, -1])
+
+        # Add residual
+        residual = embeddings + self.dropout2(out)
+
+        # Pre-norm
+        out0 = self.norm(residual)
+
+        # The following is the MLP part
+        out1 = self.linear0(out0)
+        out2 = F.gelu(out1, approximate=True)
+        out3 = self.linear1(out2)
+
+        if _global_parallel_stratergy == "mp":
+            auto.shard_tensor(
+                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 0])
+            auto.shard_tensor(
+                self.linear1.weight, _global_process_mesh, dim_mapping=[0, -1])
+        elif _global_parallel_stratergy == "dp_mp":
+            auto.shard_tensor(
+                self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 1])
+            auto.shard_tensor(
+                self.linear1.weight, _global_process_mesh, dim_mapping=[1, -1])
+
+        # Add residual
+        final = residual + self.dropout3(out3)
+        return final
+
+
+def decoder_pretrain_forward(train_program, start_program):
+    with static.program_guard(train_program,
+                              start_program), utils.unique_name.guard():
+        batch_size = 4
+        hidden_size = 1024
+        sequence_len = 512
+        input_ids = static.data(
+            name="input_ids", shape=[batch_size, sequence_len], dtype='int64')
+        position_ids = static.data(
+            name="position_ids",
+            shape=[batch_size, sequence_len],
+            dtype='int64')
+        decoder = DecoderLayer(
+            vocab_size=32768,
+            hidden_size=hidden_size,
+            sequence_len=sequence_len,
+            max_position_embeddings=512,
+            intermediate_size=4 * hidden_size,
+            num_heads=16,
+            dropout_ratio=0.1,
+            initializer_range=0.02)
+        out = decoder(input_ids, position_ids)
+
+    return train_program, start_program
+
+
+class TestDecoderLayerAutoCompletion(unittest.TestCase):
     def test_decoder_dp(self):
-        proc_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
-        assert proc_mesh.get_ndim(
-        ) == 1, "The number dimension of process mesh must to be 1"
-
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            auto.shard_tensor(self.input_ids, proc_mesh, dims_mapping=[0, -1])
-            input_embedings = self.word_embeddings(self.input_ids)
-            position_embeddings = self.position_embeddings(self.position_ids)
-            embeddings = input_embedings + position_embeddings
-            embeddings = self.dropout1(embeddings)
-
-            # Pre-norm
-            target = self.norm(embeddings)
-
-            # The following is the attention part
-            q = self.q_proj(target)
-            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
-            q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
-
-            k = self.k_proj(target)
-            v = self.v_proj(target)
-            k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
-            k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
-            v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
-            v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
-
-            # scale dot product attention
-            product = layers.matmul(
-                x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
-
-            if self.attn_mask is not None:
-                product = product + self.attn_mask
-
-            weights = F.softmax(product)
-
-            if self.dropout_ratio:
-                weights = F.dropout(
-                    weights,
-                    self.dropout_ratio,
-                    training=self.training,
-                    mode="upscale_in_train")
-
-            out = tensor.matmul(weights, v)
-
-            # combine heads
-            out = tensor.transpose(out, perm=[0, 2, 1, 3])
-            out = tensor.reshape(
-                x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
-
-            # project to output
-            out = self.out_proj(out)
-
-            # Add residual
-            residual = embeddings + self.dropout2(out)
-
-            # Pre-norm
-            out0 = self.norm(residual)
-
-            # The following is the MLP part
-            out1 = self.linear0(out0)
-            out2 = F.gelu(out1, approximate=True)
-            out3 = self.linear1(out2)
-
-            # Add residual
-            final = residual + self.dropout3(out3)
-
-        print(self.train_prog)
-        complete_prog = auto.complete_annotation(self.train_prog)
-        print(complete_prog)
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "dp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
+        train_program = static.Program()
+        start_program = static.Program()
+        dist_context = DistributedContext()
+        train_program, start_program = decoder_pretrain_forward(train_program,
+                                                                start_program)
+        complete_train_program = auto.complete_annotation(train_program,
+                                                          dist_context)
+        print_program_with_distributed_attr(complete_train_program,
+                                            dist_context)
+        self.assertTrue(
+            check_distributed_attr_for_program(complete_train_program,
+                                               dist_context))
 
     def test_decoder_mp(self):
-        proc_mesh = auto.ProcessMesh(shape=[4], process_group=[0, 1, 2, 3])
-        assert proc_mesh.get_ndim(
-        ) == 1, "The number dimension of process mesh must to be 1"
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "mp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], parent=ROOT_MESH)
 
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            input_embedings = self.word_embeddings(self.input_ids)
-            auto.shard_tensor(
-                self.word_embeddings.weight, proc_mesh, dims_mapping=[0, -1])
-            position_embeddings = self.position_embeddings(self.position_ids)
-            embeddings = input_embedings + position_embeddings
-            embeddings = self.dropout1(embeddings)
-            # Pre-norm
-            target = self.norm(embeddings)
-
-            # The following is the attention part
-            q = self.q_proj(target)
-            auto.shard_tensor(
-                self.q_proj.weight, proc_mesh, dims_mapping=[-1, 0])
-            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
-            q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
-
-            k = self.k_proj(target)
-            auto.shard_tensor(
-                self.k_proj.weight, proc_mesh, dims_mapping=[-1, 0])
-            v = self.v_proj(target)
-            auto.shard_tensor(
-                self.v_proj.weight, proc_mesh, dims_mapping=[-1, 0])
-            k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
-            k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
-            v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
-            v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
-
-            # scale dot product attention
-            product = layers.matmul(
-                x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
-
-            if self.attn_mask is not None:
-                product = product + self.attn_mask
-
-            weights = F.softmax(product)
-
-            if self.dropout_ratio:
-                weights = F.dropout(
-                    weights,
-                    self.dropout_ratio,
-                    training=self.training,
-                    mode="upscale_in_train")
-
-            out = tensor.matmul(weights, v)
-
-            # combine heads
-            out = tensor.transpose(out, perm=[0, 2, 1, 3])
-            out = tensor.reshape(
-                x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
-
-            # project to output
-            out = self.out_proj(out)
-            auto.shard_tensor(
-                self.out_proj.weight, proc_mesh, dims_mapping=[0, -1])
-
-            # Add residual
-            residual = embeddings + self.dropout2(out)
-
-            # Pre-norm
-            out0 = self.norm(residual)
-
-            # The following is the MLP part
-            out1 = self.linear0(out0)
-            auto.shard_tensor(
-                self.linear0.weight, proc_mesh, dims_mapping=[-1, 0])
-            out2 = F.gelu(out1, approximate=True)
-            out3 = self.linear1(out2)
-            auto.shard_tensor(
-                self.linear1.weight, proc_mesh, dims_mapping=[0, -1])
-
-            # Add residual
-            final = residual + self.dropout3(out3)
-
-        print(self.train_prog)
-        complete_prog = auto.complete_annotation(self.train_prog)
-        print(complete_prog)
+        train_program = static.Program()
+        start_program = static.Program()
+        dist_context = DistributedContext()
+        train_program, start_program = decoder_pretrain_forward(train_program,
+                                                                start_program)
+        complete_train_program = auto.complete_annotation(train_program,
+                                                          dist_context)
+        print_program_with_distributed_attr(complete_train_program,
+                                            dist_context)
+        self.assertTrue(
+            check_distributed_attr_for_program(complete_train_program,
+                                               dist_context))
 
     def test_decoder_dp_mp(self):
-        proc_mesh = auto.ProcessMesh(
-            shape=[2, 4], process_group=[0, 1, 2, 3, 4, 5, 6, 7])
-        assert proc_mesh.get_ndim(
-        ) == 2, "The number dimension of process mesh must to be 2"
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "dp_mp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
 
-        with static.program_guard(self.train_prog,
-                                  self.start_prog), utils.unique_name.guard():
-            auto.shard_tensor(self.input_ids, proc_mesh, dims_mapping=[0, -1])
-            input_embedings = self.word_embeddings(self.input_ids)
-            auto.shard_tensor(
-                self.word_embeddings.weight, proc_mesh, dims_mapping=[1, -1])
-            position_embeddings = self.position_embeddings(self.position_ids)
-            embeddings = input_embedings + position_embeddings
-            embeddings = self.dropout1(embeddings)
-            # Pre-norm
-            target = self.norm(embeddings)
-
-            # The following is the attention part
-            q = self.q_proj(target)
-            auto.shard_tensor(
-                self.q_proj.weight, proc_mesh, dims_mapping=[-1, 1])
-            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
-            q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
-
-            k = self.k_proj(target)
-            auto.shard_tensor(
-                self.k_proj.weight, proc_mesh, dims_mapping=[-1, 1])
-            v = self.v_proj(target)
-            auto.shard_tensor(
-                self.v_proj.weight, proc_mesh, dims_mapping=[-1, 1])
-            k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
-            k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
-            v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
-            v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
-
-            # scale dot product attention
-            product = layers.matmul(
-                x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
-
-            if self.attn_mask is not None:
-                product = product + self.attn_mask
-
-            weights = F.softmax(product)
-
-            if self.dropout_ratio:
-                weights = F.dropout(
-                    weights,
-                    self.dropout_ratio,
-                    training=self.training,
-                    mode="upscale_in_train")
-
-            out = tensor.matmul(weights, v)
-
-            # combine heads
-            out = tensor.transpose(out, perm=[0, 2, 1, 3])
-            out = tensor.reshape(
-                x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
-
-            # project to output
-            out = self.out_proj(out)
-            auto.shard_tensor(
-                self.out_proj.weight, proc_mesh, dims_mapping=[1, -1])
-
-            # Add residual
-            residual = embeddings + self.dropout2(out)
-
-            # Pre-norm
-            out0 = self.norm(residual)
-
-            # The following is the MLP part
-            out1 = self.linear0(out0)
-            auto.shard_tensor(
-                self.linear0.weight, proc_mesh, dims_mapping=[-1, 1])
-            out2 = F.gelu(out1, approximate=True)
-            out3 = self.linear1(out2)
-            auto.shard_tensor(
-                self.linear1.weight, proc_mesh, dims_mapping=[1, -1])
-
-            # Add residual
-            final = residual + self.dropout3(out3)
-
-        print(self.train_prog)
-        complete_prog = auto.complete_annotation(self.train_prog)
-        print(complete_prog)
+        train_program = static.Program()
+        start_program = static.Program()
+        dist_context = DistributedContext()
+        train_program, start_program = decoder_pretrain_forward(train_program,
+                                                                start_program)
+        complete_train_program = auto.complete_annotation(train_program,
+                                                          dist_context)
+        print_program_with_distributed_attr(complete_train_program,
+                                            dist_context)
+        self.assertTrue(
+            check_distributed_attr_for_program(complete_train_program,
+                                               dist_context))
 
 
 if __name__ == "__main__":
