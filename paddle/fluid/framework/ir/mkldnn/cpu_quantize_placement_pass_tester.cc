@@ -131,13 +131,13 @@ TEST(QuantizerPlacementPass, enabled_conv_excluded_one) {
 }
 
 TEST(QuantizerPlacementPass, empty_list) {
-  // all operators quantized
-  MainTest({}, {}, 6);
+  // all quantized operators, except relu
+  MainTest({}, {}, 5);
 }
 
 TEST(QuantizerPlacementPass, default_attr_value) {
-  //  all operators quantized
-  DefaultAttrTest(6);
+  //  all quantized operators, except relu
+  DefaultAttrTest(5);
 }
 
 }  // namespace ir
