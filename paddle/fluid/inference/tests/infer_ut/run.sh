@@ -72,7 +72,7 @@ for model_name in $ocr_download_list; do
 done
 
 clas_download_list='LeViT'
-for model_name in $ocr_download_list; do
+for model_name in $clas_download_list; do
     url_prefix="https://paddle-qa.bj.bcebos.com/inference_model/2.1.1/class"
     download $url_prefix $model_name
 done
