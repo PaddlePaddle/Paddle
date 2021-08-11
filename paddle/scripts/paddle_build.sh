@@ -723,9 +723,9 @@ function fetch_upstream_develop_if_not_exist() {
 }
 
 function check_whl_size() {
-    if [ "${pr_whl_size}" ];then
+    if [ ! "${pr_whl_size}" ];then
         echo "pr whl size not found"         
-        return
+        exit 1
     fi
 
     dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
