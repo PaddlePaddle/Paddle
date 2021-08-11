@@ -739,7 +739,7 @@ def unique_consecutive(x,
             Default is None.
 
     Returns:
-        tuple, (out, inverse, counts). `out` is the unique consecutive tensor for `x`.`inverse` is
+        tuple(out, inverse, counts): `out` is the unique consecutive tensor for `x`.`inverse` is
             provided only if `return_inverse` is True. `counts` is provided only if `return_counts`
             is True.
 
