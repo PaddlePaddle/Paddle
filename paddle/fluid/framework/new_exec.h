@@ -292,15 +292,16 @@ void ParseDirectAndEventRunOps(
     }
   }
 #ifdef PADDLE_WITH_CUDA
-  // Create event for these cross-stream vars
+  // Create events for these cross-stream vars
   VLOG(3) << instruction->kernel_func_.operator_base_->Type()
           << " event_var_ids.size: " << event_var_ids.size();
   for (auto var_id : event_var_ids) {
     if (var_id2event->find(var_id) == var_id2event->end()) {
-      // Specific cudaEventDisableTiming to get best performance.
+      // Specify cudaEventDisableTiming to get best performance.
       VLOG(3) << "create event for " << var_id;
-      var_id2event->emplace(var_id,
-                            platform::get_cuda_flags(false, false, false));
+      var_id2event->emplace(
+          var_id,
+          platform::CudaEvent(platform::get_cuda_flags(false, false, false)));
     }
   }
 #endif
@@ -389,7 +390,10 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
                 ExecutionContext(*op_base, scope, *dev_ctx, runtime_context));
 
     // consider device_guard context
-    if (op_base->HasAttr("op_device")) {
+    bool need_change_place =
+        (op_base->HasAttr("op_device") &&
+         (op_base->Attr<std::string>("op_device").length() > 0));
+    if (need_change_place) {
       auto& op_device = op_base->Attr<std::string>("op_device");
       if (op_device == "cpu" || platform::is_cpu_place(place)) {
         VLOG(3) << "Switch into CPUPlace by device_guard.";
