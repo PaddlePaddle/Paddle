@@ -722,6 +722,31 @@ function fetch_upstream_develop_if_not_exist() {
     fi
 }
 
+function check_whl_size() {
+    if [ "${pr_whl_size}" ];then
+        echo "pr whl size not found"         
+        return
+    fi
+
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    echo "dev_whl_size: ${dev_whl_size}"
+
+    apt-get install -y bc
+    whldiffSize=`${pr_whl_size} - ${dev_whl_size}`
+    if [ `echo "10 < $whldiffSize"|bc` -eq 1 ] ; then
+       approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22334008 22361972`
+       echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+       if [ "${APPROVALS}" == "FALSE" ]; then
+           echo "=========================================================================================="
+           echo "This PR make the release paddlepaddle whl size growth exceeds 10 M."
+           echo "Then you must have one RD (jim19930609 (Recommend) or JiabinYang) approval for this PR\n"
+           echo "=========================================================================================="
+           exit 6
+       fi
+    fi
+}
+
 function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
@@ -743,8 +768,6 @@ function generate_upstream_develop_api_spec() {
     if [ ${cmake_change} ];then
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi
-    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
-    echo "dev_whl_size: ${dev_whl_size}"
 }
 
 function generate_api_spec() {
