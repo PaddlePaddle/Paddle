@@ -38,7 +38,8 @@
 #include "paddle/fluid/framework/new_exec.h"
 #include "paddle/fluid/platform/init.h"
 
-int main() {
+int main(int argc, char* argv[]) {
+  int64_t batch_size = std::stoi(argv[1]);
   paddle::framework::InitDevices();
   paddle::framework::VariableScope global_scope;
   auto place = paddle::platform::CUDAPlace(0);
@@ -48,41 +49,62 @@ int main() {
 
     std::vector<paddle::framework::OpFuncNode> vec_func_list;
     std::vector<paddle::framework::OperatorBase*> op_list;
-    paddle::framework::build_op_func_list(test_prog, op_list, vec_func_list,
+    paddle::framework::build_op_func_list(test_prog, &op_list, &vec_func_list,
                                           &global_scope, place);
 
     // paddle::framework::exec_op_func_list( vec_func_list, op_list,
     // global_scope, place );
   }
 
-  cerr << "run main" << endl;
+  std::cout << "run main" << std::endl;
   auto main_prog = paddle::framework::load_from_file("lm_main_program");
 
-  paddle::framework::build_variable_scope(main_prog, &global_scope);
+  auto& global_block = main_prog.Block(0);
+  auto& op = global_block.AllOps()[0];
+  auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
+  shape[0] = batch_size;
+  op->SetAttr("shape", shape);
 
-  std::vector<paddle::framework::OpFuncNode> vec_main_func_list;
-  std::vector<paddle::framework::OperatorBase*> op_main_list;
-  paddle::framework::build_op_func_list(
-      main_prog, op_main_list, vec_main_func_list, &global_scope, place);
+  auto& op1 = global_block.AllOps()[1];
+  auto shape1 = BOOST_GET_CONST(std::vector<int64_t>, op1->GetAttr("shape"));
+  shape1[0] = batch_size * 20;
+  op1->SetAttr("shape", shape1);
+
+  auto& op2 = global_block.AllOps()[2];
+  auto shape2 = BOOST_GET_CONST(std::vector<int64_t>, op2->GetAttr("shape"));
+  shape2[0] = batch_size;
+  op2->SetAttr("shape", shape2);
+
+  auto& op3 = global_block.AllOps()[3];
+  auto shape3 = BOOST_GET_CONST(std::vector<int64_t>, op3->GetAttr("shape"));
+  shape3[0] = batch_size;
+  op3->SetAttr("shape", shape3);
+
+  // paddle::framework::build_variable_scope(main_prog, &global_scope);
+
+  // std::vector<paddle::framework::OpFuncNode> vec_main_func_list;
+  // std::vector<paddle::framework::OperatorBase*> op_main_list;
+  // paddle::framework::build_op_func_list(
+  //     main_prog, &op_main_list, &vec_main_func_list, &global_scope, place);
   paddle::framework::Scope scope;
   paddle::framework::InterpreterCore interp_core(place, main_prog, test_prog,
                                                  &scope);
   auto start = std::chrono::steady_clock::now();
-  ProfilerStart("new_executor.prof");
+  // ProfilerStart("new_executor.prof");
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
-      cerr << i << endl;
+      std::cout << i << std::endl;
     }
     // paddle::framework::exec_op_func_list( vec_main_func_list, op_main_list,
     // global_scope, place );
     std::vector<paddle::framework::Tensor> vec_out;
-    interp_core.run({}, {}, {}, vec_out);
+    interp_core.run({}, {}, {}, &vec_out);
   }
-  ProfilerStop();
+  // ProfilerStop();
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 
-  cerr << "time cost " << diff.count() << endl;
+  std::cout << "time cost " << diff.count() << std::endl;
 
   return 1;
 }
