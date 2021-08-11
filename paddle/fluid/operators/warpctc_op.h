@@ -380,9 +380,9 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("LogitsLength")) {
-      size_t Tmax = warpctc_grad->dims()[0];
-      size_t B = warpctc_grad->dims()[1];
-      size_t D = warpctc_grad->dims()[2];
+      size_t max_seq_length = warpctc_grad->dims()[0];  // Tmax
+      size_t num_sequences = warpctc_grad->dims()[1];   // B
+      size_t seq_width = warpctc_grad->dims()[2];       // D
 
       auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
       framework::Tensor logits_length_cpu;
@@ -409,9 +409,10 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
       }
 
       LoDTensor logits_grad_with_lod;
-      auto logits_grad_dims = framework::make_ddim({static_cast<int64_t>(Tmax),
-                                                    static_cast<int64_t>(B),
-                                                    static_cast<int64_t>(D)});
+      auto logits_grad_dims =
+          framework::make_ddim({static_cast<int64_t>(max_seq_length),
+                                static_cast<int64_t>(num_sequences),
+                                static_cast<int64_t>(seq_width)});
       T* logits_grad_cpu_data = logits_grad_with_lod.mutable_data<T>(
           logits_grad_dims, platform::CPUPlace());
 
@@ -427,8 +428,8 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
           scaled_logits.mutable_data<T>(logits_grad_dims, platform::CPUPlace());
 
       const T* loss_grad_data = loss_grad_cpu.data<T>();
-      for (size_t i = 0; i < Tmax; ++i) {
-        for (size_t j = 0; j < B; ++j) {
+      for (size_t i = 0; i < max_seq_length; ++i) {
+        for (size_t j = 0; j < num_sequences; ++j) {
           T scale = 1.0;
           if (norm_by_total_logits_len) {
             // Compute the avg. log-probability per batch sample and frame.
@@ -443,7 +444,7 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
             scale = 1.0 / len;
           }
           for (size_t k = 0; k < D; ++k) {
-            size_t idx = i * (B * D) + j * D + k;
+            size_t idx = i * (num_sequences * seq_width) + j * seq_width + k;
             scaled_logits_data[idx] =
                 logits_grad_cpu_data[idx] * loss_grad_data[j] * scale;
           }
