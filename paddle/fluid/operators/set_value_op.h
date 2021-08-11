@@ -35,18 +35,18 @@ namespace operators {
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
-inline void get_offsets(const DDim& big_dim, const DDim& small_dim,
-                        DDim start_offset, int cur_dim,
-                        std::vector<DDim>* offsets) {
+inline void GetOffsets(const DDim& big_dim, const DDim& small_dim,
+                       DDim start_offset, int cur_dim,
+                       std::vector<DDim>* offsets) {
   if (cur_dim == big_dim.size()) {
     offsets->push_back(start_offset);
     return;
   }
   if (small_dim[cur_dim] == big_dim[cur_dim]) {
-    get_offsets(big_dim, small_dim, start_offset, cur_dim + 1, offsets);
+    GetOffsets(big_dim, small_dim, start_offset, cur_dim + 1, offsets);
   } else {
     for (int i = 0; i < big_dim[cur_dim]; i++) {
-      get_offsets(big_dim, small_dim, start_offset, cur_dim + 1, offsets);
+      GetOffsets(big_dim, small_dim, start_offset, cur_dim + 1, offsets);
       start_offset[cur_dim] += 1;
     }
   }
@@ -436,9 +436,6 @@ class SetValueGradKernel : public framework::OpKernel<T> {
         *context.template device_context<DeviceContext>().eigen_device();
     math::SetConstant<DeviceContext, T> set_zero;
 
-    if ((grad_value) && (!grad_value->IsInitialized())) {
-      grad_value->mutable_data<T>(context.GetPlace());
-    }
     if (grad_input) {
       // Set gradient of `Input`
       TensorCopy(*in, context.GetPlace(), grad_input);
@@ -457,6 +454,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
           .device(place) = tmp_t;
     }
     if (grad_value) {
+      grad_value->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, grad_value, static_cast<T>(0));
 
       auto in_t = framework::EigenTensor<T, D, Eigen::RowMajor,
@@ -527,7 +525,7 @@ class SetValueGradKernel : public framework::OpKernel<T> {
           extent[i] = fake_grad_value_dims[i];
         }
         std::vector<DDim> offsets;
-        get_offsets(out_dims, fake_grad_value_dims, offset, 0, &offsets);
+        GetOffsets(out_dims, fake_grad_value_dims, offset, 0, &offsets);
 
         auto grad_value_t =
             framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::

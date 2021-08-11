@@ -1089,9 +1089,10 @@ class TestGradientTruncated(unittest.TestCase):
         numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
 
         def op1(x):
-            # value.stop_gradient = True
-            # x.stop_gradient = False
             value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+            # test stop_gradient 
+            value.stop_gradient = True
+            x.stop_gradient = False
             start = paddle.fluid.layers.fill_constant(
                 [1], "int32", 5, force_cpu=True)
             end = paddle.fluid.layers.fill_constant(
@@ -1119,10 +1120,10 @@ class TestGradientTruncated(unittest.TestCase):
             return y, value
 
         def op2(x):
-            # value.stop_gradient = False
-            # x.stop_gradient = False
             value = paddle.fluid.layers.fill_constant([1, 3, 2], "float32", 1)
+            # test stop_gradient 
             value.stop_gradient = False
+            x.stop_gradient = False
             attrs = {
                 'axes': [0],
                 'starts': [6],
@@ -1146,10 +1147,8 @@ class TestGradientTruncated(unittest.TestCase):
             return y, value
 
         def op3(x):
-            # x.stop_gradient = True
-            # value.stop_gradient = False
-            x.stop_gradient = True
             value = paddle.fluid.layers.fill_constant([1], "float32", 1)
+            x.stop_gradient = True
             value.stop_gradient = False
             start = paddle.fluid.layers.fill_constant(
                 [1], "int32", 0, force_cpu=True)
@@ -1181,9 +1180,12 @@ class TestGradientTruncated(unittest.TestCase):
             name_x = to_string('x', i)
             x = paddle.static.data(
                 name=name_x, shape=array.shape, dtype='float32')
-            x.stop_gradient = False
 
+            # set_value_op in __get/setitem__ is an inplace operation. 
+            # When `input.stop_gradient = True` and `value.stop_gradient = False`, 
+            # set_value_grad_op will not be run during backward.
             y, value = op(x)
+
             y2 = y + 1
             loss = paddle.fluid.layers.reduce_sum(y2)
             sgd = paddle.optimizer.Adam()
