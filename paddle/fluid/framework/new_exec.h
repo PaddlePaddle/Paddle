@@ -39,7 +39,6 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/pybind/pybind.h"
 
 namespace paddle {
 namespace framework {
