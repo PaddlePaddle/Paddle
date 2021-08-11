@@ -392,7 +392,7 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
       // total logits length
       int total_length = 0;
       auto* length_ptr = logits_length_cpu.data<int64_t>();
-      for (size_t i = 0; i < B; i++) {
+      for (size_t i = 0; i < num_sequences; i++) {
         total_length += length_ptr[i];
       }
       VLOG(3) << "[warpctc grad] total logits length: " << total_length;
@@ -403,9 +403,9 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
                 << "total logits len: " << total_length;
       } else if (norm_by_batchsize) {
         T scale = 1.0;
-        scale = 1.0 / static_cast<T>(B);
+        scale = 1.0 / static_cast<T>(num_sequences);
         VLOG(3) << "[warpctc grad][norm_by_batchsize] scale: " << scale
-                << "Batchsize: " << B;
+                << "Batchsize: " << num_sequences;
       }
 
       LoDTensor logits_grad_with_lod;
@@ -438,12 +438,12 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
           } else if (norm_by_batchsize) {
             // Compute the avg. log-probability per batch sample.
             // https://github.com/espnet/warp-ctc/blob/pytorch_bindings/pytorch_binding/warpctc_pytorch/__init__.py#L46
-            scale = 1.0 / static_cast<T>(B);
+            scale = 1.0 / static_cast<T>(num_sequences);
           } else if (norm_by_times) {
             auto len = static_cast<T>(logits_length_cpu.data<int64_t>()[j]);
             scale = 1.0 / len;
           }
-          for (size_t k = 0; k < D; ++k) {
+          for (size_t k = 0; k < seq_width; ++k) {
             size_t idx = i * (num_sequences * seq_width) + j * seq_width + k;
             scaled_logits_data[idx] =
                 logits_grad_cpu_data[idx] * loss_grad_data[j] * scale;
