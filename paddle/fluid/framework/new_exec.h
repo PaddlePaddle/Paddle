@@ -207,7 +207,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     ops.push_back(op_base);
   }
 
-  auto unused_var_map = GetUnusedVars(global_block, ops);
+  auto unused_var_map = get_unused_vars(global_block, ops);
 
   size_t ops_index = 0;
   for (auto& op : global_block.AllOps()) {

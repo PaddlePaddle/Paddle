@@ -19,56 +19,14 @@
 #include <vector>
 
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/new_exec_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 
-struct OpInOutInfo {
- public:
-  void Build(const OperatorBase *op) {
-    is_built_ = true;
-    auto &inferer = op->Info().NoNeedBufferVarsInferer();
-    if (inferer) {
-      no_need_buffer_ins_ = inferer(op->Inputs(), op->Outputs(), op->Attrs());
-
-      if (no_need_buffer_ins_.empty()) return;
-
-      for (auto &in_name_pair : op->Inputs()) {
-        if (no_need_buffer_ins_.count(in_name_pair.first) != 0) {
-          continue;
-        }
-
-        for (auto &in_arg_name : in_name_pair.second) {
-          other_args_set_.insert(in_arg_name);
-        }
-      }
-
-      for (auto &out_name_pair : op->Outputs()) {
-        for (auto &out_arg_name : out_name_pair.second) {
-          other_args_set_.insert(out_arg_name);
-        }
-      }
-    }
-  }
-
-  bool IsBuilt() const { return is_built_; }
-
-  bool IsInArgBufferNeeded(const std::string &in_arg_name) const {
-    return no_need_buffer_ins_.empty() ||
-           other_args_set_.count(in_arg_name) != 0;
-  }
-
- private:
-  // A set to record unused buffer input vars of op
-  std::unordered_set<std::string> no_need_buffer_ins_;
-  // A set to record other args of op (including in, out)
-  std::unordered_set<std::string> other_args_set_;
-  bool is_built_{false};
-};
-
-bool VarCanBeDeleted(const std::string &name, const BlockDesc &block) {
+bool var_can_be_deleted(const std::string &name, const BlockDesc &block) {
   auto *var_desc = block.FindVar(name);
   if (var_desc == nullptr || var_desc->Persistable()) {
     return false;
@@ -83,7 +41,8 @@ bool VarCanBeDeleted(const std::string &name, const BlockDesc &block) {
 
 std::unordered_map<const paddle::framework::OperatorBase *,
                    std::vector<std::string>>
-GetUnusedVars(const BlockDesc &block, const std::vector<OperatorBase *> &ops) {
+get_unused_vars(const BlockDesc &block,
+                const std::vector<OperatorBase *> &ops) {
   std::unordered_map<std::string, size_t> var_op_idx_map;
 
   for (size_t i = 0; i < ops.size(); ++i) {
@@ -92,7 +51,7 @@ GetUnusedVars(const BlockDesc &block, const std::vector<OperatorBase *> &ops) {
     OpInOutInfo info;
     for (auto &name_pair : op->Inputs()) {
       for (auto &name : name_pair.second) {
-        if (!VarCanBeDeleted(name, block)) {
+        if (!var_can_be_deleted(name, block)) {
           continue;
         }
 
@@ -114,7 +73,7 @@ GetUnusedVars(const BlockDesc &block, const std::vector<OperatorBase *> &ops) {
 
     for (auto &name_pair : op->Outputs()) {
       for (auto &name : name_pair.second) {
-        if (VarCanBeDeleted(name, block)) {
+        if (var_can_be_deleted(name, block)) {
           // Update the last living op of variable to current op
           var_op_idx_map[name] = i;
         }
