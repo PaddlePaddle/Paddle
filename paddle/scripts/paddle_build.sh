@@ -689,18 +689,18 @@ function get_precision_ut_mac() {
         on_precision=1
         re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
         UT_list_prec_1='ut_list_prec2'
-        for case in $UT_list; do
-            flag=$(echo $case|grep -oE $re)
+        for ut_case in $UT_list; do
+            flag=$(echo $ut_case|grep -oE $re)
             if [ -n "$flag" ];then
                 if [ -z "$UT_list_prec" ];then
-                    UT_list_prec="^$case$"
+                    UT_list_prec="^$ut_case$"
                 elif [[ "${#UT_list_prec}" -gt 10000 ]];then
-                    UT_list_prec_1="$UT_list_prec_1|^$case$"
+                    UT_list_prec_1="$UT_list_prec_1|^$ut_case$"
                 else
-                    UT_list_prec="$UT_list_prec|^$case$"
+                    UT_list_prec="$UT_list_prec|^$ut_case$"
                 fi
             else
-                echo ${case} "won't run in PRECISION_TEST mode."
+                echo ${ut_case} "won't run in PRECISION_TEST mode."
             fi
         done
     fi
@@ -731,7 +731,6 @@ function check_whl_size() {
     dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
 
-    apt-get install -y bc
     whldiffSize=`${pr_whl_size} - ${dev_whl_size}`
     if [ `echo "10 < $whldiffSize"|bc` -eq 1 ] ; then
        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -2262,6 +2261,7 @@ function main() {
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
+        check_whl_size
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
