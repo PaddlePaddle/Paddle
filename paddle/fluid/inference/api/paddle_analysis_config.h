@@ -368,6 +368,49 @@ struct PD_INFER_DECL AnalysisConfig {
       bool disable_trt_plugin_fp16 = false);
 
   ///
+  /// \brief Enable tuned tensorrt dynamic shape.
+  ///
+  /// \param shape_info_path the path to shape_info file got in CollectShapeInfo
+  /// mode.
+  /// \param allow_build_at_runtime allow build trt engine at runtime.
+  ///
+  void EnableTunedTensorRtDynamicShape(const std::string& shape_info_path,
+                                       bool allow_build_at_runtime = true);
+
+  ///
+  /// \brief A boolean state telling whether to use tuned tensorrt dynamic
+  /// shape.
+  ///
+  bool tuned_tensorrt_dynamic_shape();
+
+  ///
+  /// \brief A boolean state telling whether to allow building trt engine at
+  /// runtime.
+  ///
+  bool trt_allow_build_at_runtime();
+
+  ///
+  /// \brief Collect shape info of all tensors in compute graph.
+  ///
+  /// \param shape_info_path the path to save shape info.
+  ///
+  void CollectShapeInfo(const std::string& shape_info_path);
+
+  ///
+  /// \brief the shape info path in CollectShapeInfo mode.
+  ///
+  /// \return the shape info path.
+  ///
+  std::string shape_info_path();
+
+  ///
+  /// \brief A boolean state telling whether to collect shape info.
+  ///
+  /// \return bool Whether to collect shape info.
+  ///
+  bool shape_info_collected();
+
+  ///
   /// \brief Prevent ops running in Paddle-TRT
   /// NOTE: just experimental, not an official stable API, easy to be broken.
   ///
@@ -560,7 +603,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Turn on memory optimize
   /// NOTE still in development.
   ///
-  void EnableMemoryOptim();
+  /// \param x Whether to enable memory optimize.
+  ///
+  void EnableMemoryOptim(bool x = true);
   ///
   /// \brief A boolean state telling whether the memory optimization is
   /// activated.
@@ -680,6 +725,15 @@ struct PD_INFER_DECL AnalysisConfig {
   std::map<std::string, std::vector<int>> optim_input_shape_{};
   std::vector<std::string> trt_disabled_ops_{};
   bool disable_trt_plugin_fp16_{false};
+  bool trt_allow_build_at_runtime_;
+  // tune to get dynamic_shape info.
+  bool trt_tuned_dynamic_shape_{false};
+
+  // In CollectShapeInfo mode, we will collect the shape information of
+  // all intermediate tensors in the compute graph and calculate the
+  // min_shape, max_shape and opt_shape and save in shape_info_path_;
+  bool collect_shape_info_{false};
+  std::string shape_info_path_;
 
   // dlnne related.
   bool use_dlnne_{false};

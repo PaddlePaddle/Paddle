@@ -13,7 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/utils/io_utils.h"
+
+#include <fcntl.h>
+
+#include <utility>
+
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/text_format.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/utils/shape_info.pb.h"
 
 namespace paddle {
 namespace inference {
@@ -155,6 +163,67 @@ void DeserializePDTensorsToFile(const std::string &path,
   std::ifstream fin(path, std::ios::binary);
   DeserializePDTensorsToStream(fin, tensors);
   fin.close();
+}
+
+void SerializeShapeInfo(const std::string &path,
+                        const paddle::inference::proto::ShapeInfos &info) {
+  int out_fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+  google::protobuf::io::FileOutputStream os(out_fd);
+  google::protobuf::TextFormat::Print(info, &os);
+}
+
+void SerializeShapeInfo(
+    const std::string &path,
+    const std::map<std::string, std::vector<int32_t>> &min_shape,
+    const std::map<std::string, std::vector<int32_t>> &max_shape,
+    const std::map<std::string, std::vector<int32_t>> &opt_shape) {
+  paddle::inference::proto::ShapeInfos shape_infos;
+  for (auto it : min_shape) {
+    auto *s = shape_infos.add_shape_info();
+    s->set_name(it.first);
+    for (size_t i = 0; i < it.second.size(); ++i) {
+      s->add_min_shape(it.second[i]);
+      s->add_max_shape(max_shape.at(it.first)[i]);
+      s->add_opt_shape(opt_shape.at(it.first)[i]);
+    }
+  }
+
+  inference::SerializeShapeInfo(path, shape_infos);
+}
+void DeserializeShapeInfo(const std::string &path,
+                          paddle::inference::proto::ShapeInfos *info) {
+  int fd = open(path.c_str(), O_RDONLY);
+  google::protobuf::io::FileInputStream is(fd);
+  google::protobuf::TextFormat::Parse(&is, info);
+}
+
+void DeserializeShapeInfo(
+    const std::string &path,
+    std::map<std::string, std::vector<int32_t>> *min_shape,
+    std::map<std::string, std::vector<int32_t>> *max_shape,
+    std::map<std::string, std::vector<int32_t>> *opt_shape) {
+  paddle::inference::proto::ShapeInfos shape_infos;
+  DeserializeShapeInfo(path, &shape_infos);
+  for (int i = 0; i < shape_infos.shape_info_size(); ++i) {
+    auto info = shape_infos.shape_info(i);
+    auto name = info.name();
+    if (min_shape->count(name) || max_shape->count(name) ||
+        opt_shape->count(name)) {
+      continue;
+    } else {
+      std::vector<int32_t> tmp(info.min_shape_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_shape(k);
+      min_shape->insert(std::make_pair(name, tmp));
+
+      tmp.resize(info.max_shape_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_shape(k);
+      max_shape->insert(std::make_pair(name, tmp));
+
+      tmp.resize(info.opt_shape_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_shape(k);
+      opt_shape->insert(std::make_pair(name, tmp));
+    }
+  }
 }
 
 }  // namespace inference

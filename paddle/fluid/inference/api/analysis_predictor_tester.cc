@@ -34,7 +34,10 @@ TEST(AnalysisPredictor, analysis_off) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(false);
+  config.CollectShapeInfo("test_shape_info.pbtxt");
   LOG(INFO) << config.Summary();
+  LOG(INFO) << "Shape Info collected: " << config.shape_info_collected()
+            << ", path: " << config.shape_info_path();
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());

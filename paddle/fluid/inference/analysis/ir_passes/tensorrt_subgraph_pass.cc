@@ -22,6 +22,7 @@
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/inference/utils/io_utils.h"
 
 namespace paddle {
 namespace inference {
@@ -197,6 +198,23 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto opt_input_shape =
       Get<std::map<std::string, std::vector<int>>>("optim_input_shape");
 
+  auto allow_build_at_runtime = Get<bool>("trt_allow_build_at_runtime");
+  auto shape_info_path = Get<std::string>("trt_shape_info_path");
+  auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
+  int max_batch_size = Get<int>("max_batch_size");
+  if (trt_tuned_dynamic_shape) {
+    VLOG(1) << "trt dynamic_shape deserialize from " << shape_info_path;
+    inference::DeserializeShapeInfo(shape_info_path, &min_input_shape,
+                                    &max_input_shape, &opt_input_shape);
+    // We should refactor max_input_shape batch to max_batch_size.
+    for (auto it : max_input_shape) {
+      // if have batch dimension, then we set batch dimension equal to
+      // max_batch_size.
+      if (max_input_shape[it.first].size() > 1)
+        max_input_shape[it.first][0] = max_batch_size;
+    }
+  }
+
   // The following procedure is used to rename all the intermediate
   // variables and the output variables of the subgraph.
   // Why we do this?
@@ -242,12 +260,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   op_desc->SetBlockAttr("sub_block", new_block);
   op_desc->SetAttr("subgraph", block_desc.Proto()->SerializeAsString());
-  op_desc->SetAttr("max_batch_size", Get<int>("max_batch_size"));
+  op_desc->SetAttr("max_batch_size", max_batch_size);
   op_desc->SetAttr("workspace_size", Get<int>("workspace_size"));
   op_desc->SetAttr("gpu_id", Get<int>("gpu_device_id"));
   op_desc->SetAttr("output_name_mapping", output_mapping);
   op_desc->SetAttr("origin_output_dims", renamed_output_dims);
   op_desc->SetAttr("parameters", params);
+  op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -266,12 +285,12 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // So we use seperate engine keys in serialization and calibration.
   auto engine_key = GenerateEngineKey(
       input_names_with_id, output_names_with_id, std::to_string(0),
-      std::to_string(Get<int>("max_batch_size")),
+      std::to_string(max_batch_size),
       std::to_string(static_cast<int>(precision_mode)), false);
-  auto calibration_engine_key = GenerateEngineKey(
-      input_names_with_id, output_names_with_id, std::to_string(0),
-      std::to_string(Get<int>("max_batch_size")),
-      std::to_string(static_cast<int>(precision_mode)), true);
+  auto calibration_engine_key =
+      GenerateEngineKey(input_names_with_id, output_names_with_id,
+                        std::to_string(0), std::to_string(max_batch_size),
+                        std::to_string(static_cast<int>(precision_mode)), true);
   auto predictor_id = Get<int>("predictor_id");
 
   // Get "" when there is no cached calibration table data.
@@ -345,11 +364,10 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   bool disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-          .Create(engine_key + std::to_string(predictor_id),
-                  Get<int>("max_batch_size"), Get<int>("workspace_size"),
-                  precision_mode, calibrator.get(), Get<int>("gpu_device_id"),
-                  min_input_shape, max_input_shape, opt_input_shape,
-                  disable_trt_plugin_fp16);
+          .Create(engine_key + std::to_string(predictor_id), max_batch_size,
+                  Get<int>("workspace_size"), precision_mode, calibrator.get(),
+                  Get<int>("gpu_device_id"), min_input_shape, max_input_shape,
+                  opt_input_shape, disable_trt_plugin_fp16);
   trt_engine->SetUseOSS(Get<bool>("use_oss"));
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));

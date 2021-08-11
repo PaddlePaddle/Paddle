@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/utils/shape_info.pb.h"
 
 namespace paddle {
 namespace inference {
@@ -92,4 +93,28 @@ TEST(infer_io_utils, tensors) {
     ASSERT_TRUE(
         paddle::inference::pd_tensor_equal(tensors_in[i], tensors_out[i]));
   }
+}
+
+TEST(shape_info_io, read_and_write) {
+  proto::ShapeInfos shape_infos;
+  auto* s = shape_infos.add_shape_info();
+  s->set_name("test1");
+  s->add_min_shape(1);
+  s->add_min_shape(3);
+  s->add_min_shape(112);
+  s->add_min_shape(112);
+  s->add_max_shape(1);
+  s->add_max_shape(3);
+  s->add_max_shape(224);
+  s->add_max_shape(224);
+  s->add_opt_shape(1);
+  s->add_opt_shape(3);
+  s->add_opt_shape(224);
+  s->add_opt_shape(224);
+
+  const std::string path = "test_shape_info_io";
+  SerializeShapeInfo(path, s);
+
+  proto::ShapeInfos shape_infos2;
+  DeserializeShapeInfo(path, &shape_infos2);
 }
