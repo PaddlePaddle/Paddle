@@ -152,8 +152,7 @@ class VarDesc {
   Attribute GetAttr(const std::string &name) const;
 
   // This thread-safe implementation seems to be redudent since the neural
-  // networks
-  // are usually constructed in a single thread.
+  // networks are usually constructed in a single thread.
   static uint64_t GenerateId() {
     static std::atomic<std::uint64_t> uid{0};
     return ++uid;

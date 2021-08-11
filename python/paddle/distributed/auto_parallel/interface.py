@@ -14,9 +14,8 @@
 
 import numpy
 import copy
-import paddle.fluid.core as core
 import paddle
-import numpy as np
+import paddle.fluid.core as core
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import in_dygraph_mode
 
@@ -120,9 +119,6 @@ class ProcessMesh(object):
 
         self._topology = _get_nested_list_shape(mesh)
         self._processes = _flatten_nested_list(mesh)
-        # np_mesh = np.array(mesh)
-        # self._topology = list(np_mesh.shape)
-        # self._processes = np_mesh.flatten().tolist()
 
         # Every element of mesh must be >= 0.
         assert min(self._processes) >= 0, ('All elements of mesh must be >= 0.')
