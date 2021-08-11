@@ -291,6 +291,7 @@ void ParseDirectAndEventRunOps(
       }
     }
   }
+#ifdef PADDLE_WITH_CUDA
   // Create event for these cross-stream vars
   VLOG(3) << instruction->kernel_func_.operator_base_->Type()
           << " event_var_ids.size: " << event_var_ids.size();
@@ -302,6 +303,7 @@ void ParseDirectAndEventRunOps(
                             platform::get_cuda_flags(false, false, false));
     }
   }
+#endif
 }
 
 void build_op_func_list(const framework::ProgramDesc& pdesc,
@@ -398,7 +400,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
         expected_kernel_key.place_ = place;
       } else {
         PADDLE_THROW(
-            platform::errors::Fatal("Unsupported current place %s", place));
+            platform::errors::Fatal("Unsupported current place %s", op_device));
       }
     }
     VLOG(3) << "expected_kernel_key : " << expected_kernel_key;
@@ -516,8 +518,8 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     } else if (platform::is_cpu_place(expected_kernel_key.place_)) {
       op_func_node.type_ = OpFuncType::kSync;
     } else {
-      PADDLE_THROW(
-          platform::errors::Fatal("Unsupported current place %s", place));
+      PADDLE_THROW(platform::errors::Fatal("Unsupported current place %s",
+                                           expected_kernel_key.place_));
     }
 
     if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
@@ -819,6 +821,7 @@ class InterpreterCore {
     // If InterpreterCore in on CPUPlace, do nothing.
     if (platform::is_cpu_place(place_)) return;
 
+#ifdef PADDLE_WITH_CUDA
     const platform::CUDADeviceContext* dev_ctx =
         reinterpret_cast<const platform::CUDADeviceContext*>(
             op_func_node.dev_ctx_);
@@ -830,10 +833,12 @@ class InterpreterCore {
         }
       }
     }
+#endif
   }
 
   void WaitOrSync(const Instruction& instruction,
                   const platform::DeviceContext* dev_ctx, bool is_sync) {
+#ifdef PADDLE_WITH_CUDA
     auto* cuda_dev_ctx =
         reinterpret_cast<const platform::CUDADeviceContext*>(dev_ctx);
 
@@ -854,6 +859,7 @@ class InterpreterCore {
         }
       }
     }
+#endif
   }
 
   void StreamWaitEventOrSync(const Instruction& instruction,
