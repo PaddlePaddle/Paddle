@@ -37,7 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
-#include "paddle/fluid/utils/flat_hash_map.hpp"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace paddle {
 namespace framework {

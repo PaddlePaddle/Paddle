@@ -14,7 +14,7 @@
 #include <iterator>
 #include <utility>
 #include <type_traits>
-#include "flat_hash_map.hpp"
+#include "flat_hash_map.h"
 
 namespace ska
 {
