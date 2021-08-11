@@ -47,7 +47,7 @@ constexpr int NPY_UINT16_ = 4;
 // paddle::platform::float16 as numpy.float16.
 // Ref: https://github.com/pybind/pybind11/issues/1776
 template <>
-struct npy_format_descriptor<paddle::platform::float16> {
+struct npy_format_descriptor<paddle_infer::float16> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT16_);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -157,7 +157,7 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
       dt = py::dtype::of<uint8_t>();
       break;
     case PaddleDType::FLOAT16:
-      dt = py::dtype("e");
+      dt = py::dtype::of<paddle_infer::float16>();
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -683,7 +683,7 @@ void BindZeroCopyTensor(py::module *m) {
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int32_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int64_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<float>)
-      .def("copy_from_cpu", &ZeroCopyTensorCreate<paddle::platform::float16>)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<paddle_infer::float16>)
       .def("copy_to_cpu", &ZeroCopyTensorToNumpy)
       .def("shape", &ZeroCopyTensor::shape)
       .def("set_lod", &ZeroCopyTensor::SetLoD)
@@ -697,7 +697,7 @@ void BindPaddleInferTensor(py::module *m) {
       .def("copy_from_cpu", &PaddleInferTensorCreate<int32_t>)
       .def("copy_from_cpu", &PaddleInferTensorCreate<int64_t>)
       .def("copy_from_cpu", &PaddleInferTensorCreate<float>)
-      .def("copy_from_cpu", &PaddleInferTensorCreate<paddle::platform::float16>)
+      .def("copy_from_cpu", &PaddleInferTensorCreate<paddle_infer::float16>)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)

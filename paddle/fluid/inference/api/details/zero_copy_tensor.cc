@@ -19,8 +19,11 @@
 #include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle_infer {
+
+using float16 = paddle::platform::float16;
 
 void Tensor::Reshape(const std::vector<int> &shape) {
   PADDLE_ENFORCE_EQ(
@@ -263,16 +266,14 @@ template PD_INFER_DECL void Tensor::CopyFromCpu<int64_t>(const int64_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
-template PD_INFER_DECL void Tensor::CopyFromCpu<paddle::platform::float16>(
-    const paddle::platform::float16 *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<float16>(const float16 *data);
 
 template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<uint8_t>(uint8_t *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<int8_t>(int8_t *data);
-template PD_INFER_DECL void Tensor::CopyToCpu<paddle::platform::float16>(
-    paddle::platform::float16 *data);
+template PD_INFER_DECL void Tensor::CopyToCpu<float16>(float16 *data);
 
 template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
                                                   int *size) const;
