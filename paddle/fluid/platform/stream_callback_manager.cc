@@ -92,7 +92,7 @@ void StreamCallbackManager<Stream>::Wait() const {
   t.Start();
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_));
   t.Pause();
-  VLOG(5) << "sync stream elapsed " << t.ElapsedMS();
+  VLOG(5) << "sync stream elapsed " << t.ElapsedUS();
 #endif
   {
     std::lock_guard<std::mutex> lock(mtx_);

@@ -86,7 +86,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     t.Start();
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
     t.Pause();
-    VLOG(5) << "sync stream elapsed " << t.ElapsedMS();
+    VLOG(5) << "sync stream elapsed " << t.ElapsedUS();
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

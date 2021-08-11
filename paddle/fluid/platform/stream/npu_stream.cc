@@ -48,7 +48,7 @@ void NPUStream::Wait() const {
   t.Start();
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_));
   t.Pause();
-  VLOG(5) << "sync stream elapsed " << t.ElapsedMS();
+  VLOG(5) << "sync stream elapsed " << t.ElapsedUS();
 }
 
 }  // namespace stream

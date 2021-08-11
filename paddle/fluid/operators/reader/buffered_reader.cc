@@ -265,7 +265,7 @@ void BufferedReader::ReadAsync(size_t i) {
           t.Start();
           PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_.get()));
           t.Pause();
-          VLOG(5) << "sync stream elapsed " << t.ElapsedMS();
+          VLOG(5) << "sync stream elapsed " << t.ElapsedUS();
         }
         npu[i].set_lod(cpu[i].lod());
       }

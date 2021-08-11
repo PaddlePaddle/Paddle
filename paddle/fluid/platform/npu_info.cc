@@ -228,7 +228,7 @@ void NPUStreamSync(aclrtStream stream) {
   t.Start();
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
   t.Pause();
-  VLOG(5) << "sync stream elapsed " << t.ElapsedMS();
+  VLOG(5) << "sync stream elapsed " << t.ElapsedUS();
 }
 
 static void RaiseNonOutOfMemoryError(aclError *status) {
