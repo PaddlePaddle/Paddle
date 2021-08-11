@@ -149,6 +149,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             # ):
             #     wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
+        with open("test_main_program.pbtxt", "w") as fout:
+            print(_main, file=fout)
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
@@ -314,6 +316,17 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         compiled_config = public.CompileTimeStrategy(_origin_main_program,
                                                      _origin_startup_program,
                                                      strategy, self.role_maker)
+        print("yxf::origin_sparse_pairs: {}".format(compiled_config.origin_sparse_pairs))
+        print("yxf::origin_dense_pairs: {}".format(compiled_config.origin_dense_pairs))
+        print("yxf::merged_variables_pairs: {}".format(compiled_config.merged_variables_pairs))
+        print("yxf::merged_dense_pairs: {}".format(compiled_config.merged_dense_pairs))
+        print("yxf::merged_sparse_pairs: {}".format(compiled_config.merged_sparse_pairs))
+        print("yxf::merged_variable_map: {}".format(compiled_config.merged_variable_map))
+        print("yxf::param_name_to_grad_name: {}".format(compiled_config.param_name_to_grad_name))
+        print("yxf::grad_name_to_param_name: {}".format(compiled_config.grad_name_to_param_name))
+        print("yxf::param_grad_ep_mapping: {}".format(compiled_config.param_grad_ep_mapping))
+        print("yxf::grad_param_mapping: {}".format(compiled_config.grad_param_mapping))
+
         compiled_config.strategy = strategy
 
         if self.role_maker._is_worker() or self.role_maker._is_heter_worker():

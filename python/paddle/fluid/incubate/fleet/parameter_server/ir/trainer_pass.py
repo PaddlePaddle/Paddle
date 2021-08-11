@@ -43,6 +43,7 @@ OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+SPARSE_GRAD_OP_TYPE_DICT = {"lookup_table_grad": "W", "lookup_table_v2_grad": "W"}
 DEVICE_LIST = ["cpu", "gpu", "xpu"]
 COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
 DEFAULT_DEVICE = 'cpu'
@@ -98,9 +99,13 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
     trainer_id = config.get_role_id()
     send_ctx = config.get_the_one_send_context(
         split_dense_table=config.is_heter_ps_mode)
+    w_2_table_id = {}
+    emb_size = {}
 
     def _get_pull_sparse_ops(_program):
         pull_sparse_ops = {}
+        pull_sparse_ids = {}
+        push_sparse_ops = {}
         for op in _program.global_block().ops:
             if op.type in SPARSE_OP_TYPE_DICT.keys() \
                     and op.attr('remote_prefetch') is True:
@@ -108,7 +113,21 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                 ops = pull_sparse_ops.get(param_name, [])
                 ops.append(op)
                 pull_sparse_ops[param_name] = ops
-        return pull_sparse_ops
+                ids = pull_sparse_ids.get(param_name, [])
+                ids.append(op.input("Ids")[0])
+                pull_sparse_ids[param_name] = ids
+        for op in _program.global_block().ops:
+            if op.type in SPARSE_GRAD_OP_TYPE_DICT.keys():
+                param_name = op.input(SPARSE_GRAD_OP_TYPE_DICT[op.type])[0]
+                if op.input("Ids")[0] in pull_sparse_ids[param_name]:
+                    ops = push_sparse_ops.get(param_name, [])
+                    ops.append(op)
+                    push_sparse_ops[param_name] = ops
+        print("yxf::ops: {}".format(ops))
+        print("yxf:pull_sparse:ops: {}".format(pull_sparse_ops))
+        print("yxf:pull_sparse:ids: {}".format(pull_sparse_ids))
+        print("yxf:push_sparse:ids: {}".format(push_sparse_ops))
+        return pull_sparse_ops, push_sparse_ops
 
     def _pull_sparse_fuse(_program, pull_sparse_ops, use_ps_gpu):
         for param, ops in pull_sparse_ops.items():
@@ -118,6 +137,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                 program.global_block().vars[op.input("Ids")[0]] for op in ops
             ]
             w = program.global_block().vars[ops[0].input("W")[0]]
+            emb_size[param] = w.shape[1]    
 
             grad_name = config.param_name_to_grad_name[w.name]
 
@@ -131,6 +151,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                 raise ValueError(
                     "can not find suitable sparse table, please check")
 
+            w_2_table_id[param] = table_id
             padding_idx = ops[0].attr("padding_idx")
             is_distributed = ops[0].attr("is_distributed")
             op_type = ops[0].type
@@ -155,11 +176,18 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     ins = op.input(op.input_names[i])
                     for out_id, out_var in enumerate(outputs):
                         if out_var.name in ins:
+                            print("idx: {} ||| op:: {} ||||| op_input names: {} ||||| ins: {} ||||| out var: {} |||| out id: {}".format(idx, op, op.input_names, ins, out_var.name, out_id))
                             outputs_idxs[out_id] = idx
 
+            print("yxf::inputs: {}".format(inputs))
+            print("yxf::outputs: {}".format(outputs))
+            print("yxf::inputs_idx: {}".format(inputs_idxs))
+            print("yxf::outputs_idx: {}".format(outputs_idxs))
             if min(outputs_idxs) - max(inputs_idxs) >= 1:
                 distributed_idx = max(inputs_idxs) + 1
-
+                distributed_push_idx = max(outputs_idxs) + 1
+                print("yxf::case111")
+                print("yxf::distributed_push_idx: {}".format(distributed_push_idx))
                 if use_ps_gpu:
                     program.global_block()._insert_op(
                         index=distributed_idx,
@@ -186,6 +214,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                             "lookup_table_version": op_type
                         })
             else:
+                print("yxf::case222")
                 for i in range(len(inputs_idxs)):
                     distributed_idx = op_idxs[i] + 1
 
@@ -202,8 +231,68 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                             "lookup_table_version": op_type
                         })
 
-    pull_sparse_ops = _get_pull_sparse_ops(program)
+    def _push_sparse_fuse(_program, push_sparse_ops, use_ps_gpu):
+        for param, ops in push_sparse_ops.items():
+            all_ops = program.global_block().ops
+            op_idxs = [all_ops.index(op) for op in ops]
+            inputs = [
+                program.global_block().vars[op.input("Ids")[0]] for op in ops
+            ]
+            w = program.global_block().vars[ops[0].output("W@GRAD")[0]]
+
+            table_id = w_2_table_id[param]
+
+            padding_idx = ops[0].attr("padding_idx")
+            is_distributed = ops[0].attr("is_distributed")
+            op_type = ops[0].type
+
+            outputs = [
+                program.global_block().vars[op.input("Out@GRAD")[0]] for op in ops
+            ]
+ 
+            for idx in op_idxs[::-1]:
+                program.global_block()._remove_op(idx)
+
+
+            print("yxf::pushfuse::inputs: {}".format(inputs))
+            print("yxf::pushfuse::outputs: {}".format(outputs))
+            print("yxf::pushfuse::emb_size: {}".format(emb_size[param]))
+
+            if use_ps_gpu:
+                program.global_block().append_op(
+                    type="push_box_sparse",
+                    inputs={"Ids": inputs,
+                            'Out': outputs},
+                    outputs={"Out": outputs},
+                    attrs={
+                        "size": w.shape[1],
+                        "is_distributed": True,
+                        "is_sparse": True
+                    })
+            else:
+                program.global_block().append_op(
+                    type="distributed_push_sparse",
+                    inputs={"Ids": inputs,
+                            'W': w,
+                            "Outputs": outputs},
+                    outputs={"Outputs": outputs},
+                    attrs={
+                        "is_distributed": is_distributed,
+                        "padding_idx": padding_idx,
+                        "table_id": table_id,
+                        "size": emb_size[param]
+                    })
+
+    def _push_dense_fuse(program)
+        int cur_table = -1
+        for i in w_2_table_id.values():
+            if (i >= cur_table):
+                cur_table = i
+        cur_table += 1
+    pull_sparse_ops, push_sparse_ops = _get_pull_sparse_ops(program)
     _pull_sparse_fuse(program, pull_sparse_ops, use_ps_gpu)
+    print("yxf::pushfuse::w_2_table_id: {}".format(w_2_table_id))
+    _push_sparse_fuse(program, push_sparse_ops, use_ps_gpu)
     return program
 
 
@@ -255,6 +344,7 @@ def append_send_ops_pass(program, config):
     sends = config.get_the_one_trainer_send_context(
         split_dense_table=config.is_heter_ps_mode)
 
+    print("yxf::sends: {}".format(sends))
     for merged_name, send in sends.items():
         is_sparse = 1 if send.is_sparse() else 0
         is_sparse = 2 if send.is_distributed() else is_sparse

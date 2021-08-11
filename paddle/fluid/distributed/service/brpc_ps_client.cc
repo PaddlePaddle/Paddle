@@ -1029,7 +1029,7 @@ int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
 std::future<int32_t> BrpcPsClient::push_sparse(
   size_t table_id, const uint64_t* keys, const float** update_values, size_t num) {
   
-  auto push_timer = std::make_shared<CostTimer>("pslib_downpour_client_push_sparse");
+  auto push_timer = std::make_shared<CostTimer>("pslib_downpour_client_push_sparse_parse");
   int push_sparse_async_num = _push_sparse_task_queue_map[table_id]->size();
   while (push_sparse_async_num > FLAGS_pslib_max_async_call_num) {
     //LOG(INFO) << "push_sparse Waiting for async_call_num comsume, task_num:"

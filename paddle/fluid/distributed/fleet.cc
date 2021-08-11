@@ -417,6 +417,76 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   return;
 }
 
+void FleetWrapper::PushSparseFromTensorAsync(
+    const uint64_t table_id, int fea_dim,
+    uint64_t padding_id,
+    platform::Place place,
+    std::vector<const LoDTensor*>* inputs,
+    std::vector<LoDTensor*>* outputs) {
+  
+  int batch_size = -1;
+  for (auto* input : *inputs) {
+    int cur_batch_size =
+        input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
+    if (batch_size == -1) {
+      batch_size = cur_batch_size;
+    } else {
+      CHECK(batch_size == cur_batch_size);  // NOLINT
+    }
+  }
+  CHECK(batch_size > 0);  // NOLINT
+
+  std::vector<float> g;
+  for (const framework::LoDTensor* g_tensor : *outputs) {
+    size_t origin = g.size();
+    size_t add = g_tensor->numel();
+    g.resize(origin + add);
+    memcpy(g.data() + origin, g_tensor->data<float>(), add);
+  }
+  std::vector<uint64_t> push_keys;
+  push_keys.reserve(MAX_FEASIGN_NUM / 100);
+  std::vector<std::vector<float>> push_values;
+  push_values.reserve(MAX_FEASIGN_NUM / 100);
+  size_t output_len = 0;
+  size_t input_idx = 0;
+
+  VLOG(0) << "yxf::fleet.cc::emb_dim: " << fea_dim;
+  for (size_t index = 0; index < inputs->size(); ++index) {
+    const framework::LoDTensor* tensor = inputs->at(index);
+    const int64_t* ids = tensor->data<int64_t>();
+    size_t len = tensor->numel();
+    for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
+      if (static_cast<uint64_t>(ids[i]) == padding_id) {
+        continue;
+      }
+      push_keys.emplace_back(ids[i]);
+      push_values.emplace_back(fea_dim);
+      float* data = push_values.back().data();
+      
+      memcpy(data, g.data() + output_len,
+               sizeof(float) * fea_dim);
+      
+      ++input_idx;
+    }
+  }
+  VLOG(0) << "output_len: " << output_len << " g.size(): " << g.size();
+  CHECK(output_len == g.size());
+
+  std::vector<float*> push_g_vec(input_idx, nullptr);
+  for (auto i = 0u; i < push_keys.size(); ++i) {
+    push_g_vec[i] = push_values.at(i).data();
+  }
+  auto* communicator = Communicator::GetInstance();
+  PADDLE_ENFORCE_EQ(
+      communicator->Check(table_id), true,
+      platform::errors::InvalidArgument(
+          "can not find table: %s, please check your config", table_id));
+  auto status = communicator->_worker_ptr->push_sparse(
+      table_id, push_keys.data(), (const float**)push_g_vec.data(),
+      push_keys.size());
+
+}
+
 void FleetWrapper::LoadModel(const std::string& path, const std::string& mode) {
   auto* communicator = Communicator::GetInstance();
   auto ret = communicator->_worker_ptr->load(path, mode);
