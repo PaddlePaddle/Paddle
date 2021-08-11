@@ -5157,8 +5157,8 @@ class PipelineOptimizer(object):
         # FIXME(wangxi): maybe put in sharding is better, for some grad
         #                is not in sharding device.
         for fp16_grad_name in merged_gradient_names:
-            grad_name = fp16_grad_name.strip('@FP16')
-            param_name = fp16_grad_name.strip('@GRAD@MERGED@FP16')
+            grad_name = fp16_grad_name.replace('@FP16', '')
+            param_name = fp16_grad_name.replace('@GRAD@MERGED@FP16', '')
 
             if not block.has_var(grad_name):
                 self._create_var(block, block.vars[param_name], grad_name)
