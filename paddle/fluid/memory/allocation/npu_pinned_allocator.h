@@ -42,6 +42,7 @@ class NPUPinnedAllocator : public Allocator {
 
  private:
   std::unordered_map<Allocation *, aclrtEvent> npu_events_;
+  mutable std::mutex mtx_;
 };
 
 }  // namespace allocation
