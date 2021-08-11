@@ -132,6 +132,9 @@ class TestExpandV2OpNPURank1_tensor_attr(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
@@ -177,28 +180,29 @@ class TestExpandV2NPUOpRank1_tensor(OpTest):
 
 
 # Situation 4: input x is float16
-# don't support grad check for float16
-class TestExpandV2OpInteger(OpTest):
+# skip grad check for float16
+class TestExpandV2OpFloat(OpTest):
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
         self.op_type = "expand_v2"
         self.dtype = np.float16
-        self.ori_shape = (2, 4, 5)
+        self.ori_shape = (2, 4, 20)
         self.inputs = {'X': np.random.random(self.ori_shape).astype(self.dtype)}
-        self.attrs = {'shape': [2, 4, 5]}
+        self.attrs = {'shape': [2, 4, 20]}
         output = np.tile(self.inputs['X'], (1, 1, 1))
         self.outputs = {'Out': output}
 
     def set_npu(self):
         self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
 
 # Situation 5: input x is int32
-# ReduceSumD CANN Op doesn't support grad check for int32
+# skip grad check for int32
 class TestExpandV2OpInteger(OpTest):
     def setUp(self):
         self.set_npu()
@@ -206,14 +210,15 @@ class TestExpandV2OpInteger(OpTest):
         self.op_type = "expand_v2"
         self.inputs = {
             'X': np.random.randint(
-                10, size=(2, 4, 5)).astype("int32")
+                10, size=(2, 4, 20)).astype("int32")
         }
-        self.attrs = {'shape': [2, 4, 5]}
+        self.attrs = {'shape': [2, 4, 20]}
         output = np.tile(self.inputs['X'], (1, 1, 1))
         self.outputs = {'Out': output}
 
     def set_npu(self):
         self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
