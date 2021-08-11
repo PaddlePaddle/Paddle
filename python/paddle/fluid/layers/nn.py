@@ -14845,8 +14845,9 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     """
     Class center sample method is proposed from the paper PartialFC that only sample a subset of the class centers.
     The process of sampling subset class centers is straightforward: 
-    1) First select the positive class centers;
-    2) Randomly sample negative class centers.
+
+    1. First select the positive class centers;
+    2. Then randomly sample negative class centers.
 
     Specifically, given a label tensor, shape [batch_size], select all the positive class centers and randomly 
     sample negative class centers, then remap the input label tensor using the sampled class centers.
@@ -14854,11 +14855,11 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     For more information, Partial FC: Training 10 Million Identities on a Single Machine
     arxiv: https://arxiv.org/abs/2010.05222
     
-    .. note::
+    .. hint::
         If the number of the positive class centers is greater than the input num_samples, it keeps all the positive 
         class centers and the shape of sampled_class_center will be [num_positive_class_centers].
     
-    The API supports CPU, single GPU and multi GPU.
+        The API supports CPU, single GPU and multi GPU.
 
     Args:
     	label (Tensor): 1-D tensor with shape [N], each label in [0, num_classes)
@@ -14876,8 +14877,9 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     Examples:
 
     .. code-block:: python
+        :linenos:
+        :caption: for CPU or single GPU
 
-        # for CPU or single GPU
         import os
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
         import paddle
@@ -14902,9 +14904,10 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
         #       [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
 
     .. code-block:: python
+        :linenos:
+        :caption: for multi GPU, test_class_center_sample.py
 
         # required: distributed
-        # for multi GPU, test_class_center_sample.py
         import paddle
         import paddle.distributed as dist
         import numpy as np
