@@ -101,7 +101,7 @@ TEST(test_det_mv3_db, analysis_gpu_bz4) {
   SingleThreadPrediction(pred_pool.Retrive(0), &my_input_data_map,
                          &infer_output_data);
   // check outputs
-  CompareRecord(&truth_output_data, &infer_output_data, 1e-4));
+  CompareRecord(&truth_output_data, &infer_output_data, 1e-4);
   std::cout << "finish test" << std::endl;
 }
 
