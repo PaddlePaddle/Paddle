@@ -14844,91 +14844,105 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
 def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     """
     Class center sample method is proposed from the paper PartialFC that only sample a subset of the class centers.
-    The process of sampling subset class centers is straightforward: 1) First select the positive class centers;
-    2) Randomly sample negative class centers. Specifically, given a label tensor, shape [batch_size], select all
-    the positive class centers and randomly sample negative class centers, then remap the input label tensor using
-    the sampled class centers. Note that if the number of the positive class centers is greater than the input 
-    num_samples, it keeps all the positive class centers and the shape of sampled_class_center will be 
-    [num_positive_class_centers]. The API supports CPU, single GPU and multi GPU.
+    The process of sampling subset class centers is straightforward: 
+        1) First select the positive class centers;
+        2) Randomly sample negative class centers.
+
+    Specifically, given a label tensor, shape [batch_size], select all the positive class centers and randomly 
+    sample negative class centers, then remap the input label tensor using the sampled class centers.
 
     For more information, Partial FC: Training 10 Million Identities on a Single Machine
     arxiv: https://arxiv.org/abs/2010.05222
+    
+    .. note::
+    If the number of the positive class centers is greater than the input num_samples, it keeps all the positive 
+    class centers and the shape of sampled_class_center will be [num_positive_class_centers].
+    
+    The API supports CPU, single GPU and multi GPU.
 
     Args:
-    	label (list): each label in [0, num_classes)
+    	label (Tensor): 1-D tensor with shape [N], each label in [0, num_classes)
     	num_classes (int): A positive integer to specify the number of classes at local rank.
-                     Note that num_classes of each GPU can be different.
-    	num_samples (int): A positive integer to specify the number of class center to sample
-        group (Group): The abstract representation of group, see paddle.distributed.collective.Group
-        seed (int): random seed
+            Note that num_classes of each GPU can be different.
+    	num_samples (int): A positive integer to specify the number of class center to sample.
+        group (Group, optional): The abstract representation of group.
+            See paddle.distributed.collective.Group. Default is ``'None'``.
+        seed (int, optional): Random seed. Default is ``'None'``.
 
-    Return:
-    	remapped_label (list): remapped label using sampled class center
-    	sampled_class_center (list): sampled class center from [0, num_classes)
+    Returns:
+    	remapped_label (Tensor): Remapped label using sampled class center.
+    	sampled_class_center (Tensor): Sampled class center from [0, num_classes).
 
     Examples:
+
     .. code-block:: python
 
-      # for CPU or single GPU
-      import os
-      os.environ["CUDA_VISIBLE_DEVICES"] = ""
-      import paddle
-      import numpy as np
-      num_classes = 20
-      batch_size = 10
-      num_samples = 6
-      np_label = np.random.randint(0, num_classes, (batch_size,), dtype=np.int64)
-      label = paddle.to_tensor(np_label, dtype="int64")
-      print(label)
-      remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes, num_samples)
-      print(remapped_label)
-      print(sampled_class_index)
-      # the output is
-      #Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
-      #       [11, 5 , 1 , 3 , 12, 2 , 15, 19, 18, 19])
-      #Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
-      #       [4, 3, 0, 2, 5, 1, 6, 8, 7, 8])
-      #Tensor(shape=[9], dtype=int64, place=CPUPlace, stop_gradient=True,
-      #       [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
+        # for CPU or single GPU
+        import os
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+        import paddle
+        import numpy as np
+        num_classes = 20
+        batch_size = 10
+        num_samples = 6
+        np_label = np.random.randint(0, num_classes, (batch_size,), dtype=np.int64)
+        label = paddle.to_tensor(np_label, dtype="int64")
+        print(label)
+        remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes, num_samples)
 
-      # for multi GPU, test_class_center_sample.py
-      #import paddle
-      #import paddle.distributed as dist
-      #import numpy as np
-      #strategy = dist.fleet.DistributedStrategy()
-      #dist.fleet.init(is_collective=True, strategy=strategy)
-      #batch_size = 10
-      #num_samples = 6
-      #rank_id = dist.get_rank()
-      ## num_classes of each GPU can be different, e.g num_classes_list = [10, 8]
-      #num_classes_list = [10, 10]
-      #num_classes = np.sum(num_classes_list)
-      #np_label = np.random.randint(0, num_classes, (batch_size,), dtype=np.int64)
-      #label = paddle.to_tensor(np_label, dtype="int64")
-      #label_list = []
-      #dist.all_gather(label_list, label)
-      #label = paddle.concat(label_list, axis=0)
-      #print(label)
-      #remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes_list[rank_id], num_samples)
-      #print(remapped_label)
-      #print(sampled_class_index)
+        print(remapped_label)
+        print(sampled_class_index)
 
-      #python -m paddle.distributed.launch --gpus=0,1 test_class_center_sample.py
-      # rank 0 output:
-      #Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-      #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
-      #Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-      #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
-      #Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-      #       [0, 2, 4, 8, 9, 3])
-      
-      # rank 1 output:
-      #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
-      #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
-      #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
-      #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
-      #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
-      #       [0, 1, 2, 3, 5, 7, 8])
+        # the output is
+        #Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #       [11, 5 , 1 , 3 , 12, 2 , 15, 19, 18, 19])
+        #Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #       [4, 3, 0, 2, 5, 1, 6, 8, 7, 8])
+        #Tensor(shape=[9], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #       [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
+
+    .. code-block:: python
+
+        # required: distributed
+        # for multi GPU, test_class_center_sample.py
+        import paddle
+        import paddle.distributed as dist
+        import numpy as np
+        strategy = dist.fleet.DistributedStrategy()
+        dist.fleet.init(is_collective=True, strategy=strategy)
+        batch_size = 10
+        num_samples = 6
+        rank_id = dist.get_rank()
+        # num_classes of each GPU can be different, e.g num_classes_list = [10, 8]
+        num_classes_list = [10, 10]
+        num_classes = np.sum(num_classes_list)
+        np_label = np.random.randint(0, num_classes, (batch_size,), dtype=np.int64)
+        label = paddle.to_tensor(np_label, dtype="int64")
+        label_list = []
+        dist.all_gather(label_list, label)
+        label = paddle.concat(label_list, axis=0)
+        remapped_label, sampled_class_index = paddle.class_center_sample(label, num_classes_list[rank_id], num_samples)
+
+        print(label)
+        print(remapped_label)
+        print(sampled_class_index)
+
+        #python -m paddle.distributed.launch --gpus=0,1 test_class_center_sample.py
+        # rank 0 output:
+        #Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
+        #Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
+        #Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #       [0, 2, 4, 8, 9, 3])
+        
+        # rank 1 output:
+        #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+        #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
+        #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+        #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
+        #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+        #       [0, 1, 2, 3, 5, 7, 8])
     """
     if group is not None and not group.is_member():
         return
