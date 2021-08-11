@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
+#include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/split.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -223,7 +224,11 @@ void NPUMemsetAsync(void *dst, int value, size_t count, aclrtStream stream,
 }
 
 void NPUStreamSync(aclrtStream stream) {
+  Timer t;
+  t.Start();
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+  t.Pause();
+  VLOG(5) << "sync stream elapsed " << t.ElapsedMS();
 }
 
 static void RaiseNonOutOfMemoryError(aclError *status) {

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/platform/stream_callback_manager.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace platform {
@@ -87,7 +88,11 @@ void StreamCallbackManager<Stream>::Wait() const {
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
+  platform::Timer t;
+  t.Start();
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_));
+  t.Pause();
+  VLOG(5) << "sync stream elapsed " << t.ElapsedMS();
 #endif
   {
     std::lock_guard<std::mutex> lock(mtx_);

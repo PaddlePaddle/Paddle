@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace operators {
@@ -260,7 +261,11 @@ void BufferedReader::ReadAsync(size_t i) {
           memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place_), npu_ptr,
                        BOOST_GET_CONST(platform::CPUPlace, cpu_place), cpu_ptr,
                        size, stream_.get());
+          platform::Timer t;
+          t.Start();
           PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_.get()));
+          t.Pause();
+          VLOG(5) << "sync stream elapsed " << t.ElapsedMS();
         }
         npu[i].set_lod(cpu[i].lod());
       }

@@ -78,7 +78,8 @@ if(WITH_ASCEND)
 endif()
 
 if(WITH_ASCEND_CL)
-    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor ascendcl acl_op_compiler)
+    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor ascendcl acl_op_compiler
+        timer)
 endif()
 
 add_subdirectory(dynload)

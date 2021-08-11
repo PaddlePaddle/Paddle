@@ -14,6 +14,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace operators {
@@ -69,8 +70,12 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
 
     auto dev_ctx = static_cast<platform::NPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(dev_ctx->stream()));
 
+    platform::Timer t;
+    t.Start();
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(dev_ctx->stream()));
+    t.Pause();
+    VLOG(5) << "sync stream elapsed " << t.ElapsedMS();
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

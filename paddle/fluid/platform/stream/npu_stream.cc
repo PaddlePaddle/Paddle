@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/npu_stream.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace platform {
@@ -43,7 +44,11 @@ void NPUStream::Destroy() {
 }
 
 void NPUStream::Wait() const {
+  platform::Timer t;
+  t.Start();
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_));
+  t.Pause();
+  VLOG(5) << "sync stream elapsed " << t.ElapsedMS();
 }
 
 }  // namespace stream
