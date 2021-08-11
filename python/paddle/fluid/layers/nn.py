@@ -14877,7 +14877,7 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     Examples:
 
     .. code-block:: python
-        :caption: for CPU or single GPU
+        :caption: CPU or single GPU
 
         import os
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -14903,7 +14903,7 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
         #       [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
 
     .. code-block:: python
-        :caption: for multi GPU, test_class_center_sample.py
+        :caption: Multi GPU, test_class_center_sample.py
 
         # required: distributed
         import paddle
