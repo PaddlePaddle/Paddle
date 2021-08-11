@@ -21,16 +21,22 @@ sample lines from API_DEV.spec:
     paddle.autograd.PyLayer (paddle.autograd.py_layer.PyLayer, ('document', 'c26adbbf5f1eb43d16d4a399242c979e'))
     paddle.autograd.PyLayer.apply (ArgSpec(args=['cls'], varargs=args, keywords=kwargs, defaults=None), ('document', 'cb78696dc032fb8af2cba8504153154d'))
 """
+import inspect
 import unittest
 import hashlib
 import functools
 from print_signatures import md5
 from print_signatures import is_primitive
+from print_signatures import check_api_args_doc
 
 
 def func_example(param_a, param_b):
     """
     example function
+
+    Parameters:
+        param_a : param a
+        param_b (int|string) : param b
     """
     pass
 
@@ -82,6 +88,55 @@ class Test_is_primitive(unittest.TestCase):
         self.assertFalse(is_primitive(range(3)))  # True for python2
         self.assertFalse(is_primitive({}))
         self.assertFalse(is_primitive([1, 1j]))
+
+
+def func_no_args():
+    """
+    example function
+    """
+    pass
+
+
+def func_no_args_2():
+    """
+    example function
+
+    Args:
+        None
+    """
+    pass
+
+
+def func_varargs(param_a, *param_b, **param_c):
+    """
+    example function
+
+    Args:
+        param_a (string): param a
+        *param_b : param b
+        ** param_c: param c
+    """
+    pass
+
+
+class Test_check_api_args_doc(unittest.TestCase):
+    def test_no_args_func(self):
+        func = func_no_args
+        self.assertTrue(
+            check_api_args_doc(inspect.getfullargspec(func), func.__doc__))
+        func = func_no_args_2
+        self.assertTrue(
+            check_api_args_doc(inspect.getfullargspec(func), func.__doc__))
+
+    def test_args_func_only(self):
+        func = func_example
+        self.assertTrue(
+            check_api_args_doc(inspect.getfullargspec(func), func.__doc__))
+
+    def test_varargs(self):
+        func = func_varargs
+        self.assertTrue(
+            check_api_args_doc(inspect.getfullargspec(func), func.__doc__))
 
 
 if __name__ == '__main__':

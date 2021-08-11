@@ -25,6 +25,12 @@ import hashlib
 import pkgutil
 import logging
 import argparse
+import re
+import docutils
+from docutils import nodes
+from docutils.parsers.rst import Directive, directives, roles, Parser
+from docutils.frontend import OptionParser
+from docutils.utils import new_document
 
 member_dict = collections.OrderedDict()
 
@@ -70,6 +76,109 @@ def is_primitive(instance):
         return True
     else:
         return False
+
+
+class RefNode(nodes.Inline, nodes.TextElement):
+    tagname = 'ref'
+    attributes = {}
+    children = tuple()
+
+    def __init__(self, data, rawsource=''):
+        """The raw text from which this element was constructed."""
+        self.rawsource = rawsource
+        print(self.rawsource)
+
+    def astext(self):
+        return f':ref:`${self.rawsource}`'
+
+
+def ref_role(role, rawtext, text, lineno, inliner, options={}, content=[]):
+    roles.set_classes(options)
+    text = rawtext.split('`')[1]
+    node = RefNode(rawtext, text, **options)
+    return [node], []
+
+
+arg_pat = re.compile(r'^\s*(\*{0,2}\s*\w*)\b\s*\([^\)]*\)\s*:.*')
+arg_pat_no_type_desc = re.compile(r'^\s*(\*{0,2}\s*\w*)\b\s*:.*')
+
+
+class MyArgsVisitor(nodes.NodeVisitor):
+    def __init__(self, document):
+        nodes.NodeVisitor.__init__(self, document)
+        self.body = []
+        self.text = None
+        self.args = []
+        self.varargs = None
+        self.varkw = None
+        self.defaults = None
+        self.kwonlyargs = []
+        self.kwonlydefaults = None
+        self.annotations = {}
+
+    def unknown_visit(self, node):
+        pass
+
+    def unknown_departure(self, node):
+        pass
+
+    def visit_definition_list_item(self, node):
+        if node[0].astext(
+        ) in ['Args:', 'Parameters:', 'Parameter:', 'Params:', 'Param:']:
+            # print('Args: found')
+            self.text = node[1].astext()
+            self.args_names = []
+            for line in self.text.split('\n'):
+                mo = arg_pat.search(line)
+                if not mo:
+                    logger.debug('try another pattern')
+                    mo = arg_pat_no_type_desc.search(line)
+                if mo:
+                    arg_name = mo.group(1)
+                    self.args_names.append(arg_name)
+                    print(f'###arg_name={arg_name}###')
+                    if arg_name.startswith('**'):
+                        self.varkw = arg_name[2:].strip()
+                    elif arg_name.startswith('*'):
+                        self.varargs = arg_name[1:].strip()
+                    else:
+                        self.args.append(arg_name)
+
+
+roles.register_local_role('ref', ref_role)
+parser = Parser()
+parser_settings = OptionParser(
+    components=(Parser, ), defaults={'report_level': 5}).get_default_values()
+
+
+def check_api_args_doc(fullargspec, docstr):
+    """
+    check the name and order of the args.
+
+    The Default value has so many formats.
+    """
+    document = new_document('~', parser_settings)
+    parser.parse(docstr, document)
+    v = MyArgsVisitor(document)
+    document.walkabout(v)
+
+    if v.args != fullargspec.args:
+        logger.error(f'v.text={v.text}')
+        logger.error('v.args is %s, not equal to FullArgSpec.args %s',
+                     str(v.args), str(fullargspec.args))
+        return False
+    if v.varargs != fullargspec.varargs:
+        logger.error(f'v.text={v.text}')
+        logger.error('v.varargs is %s, not equal to FullArgSpec.varargs %s',
+                     str(v.varargs), str(fullargspec.varargs))
+        return False
+    if v.varkw != fullargspec.varkw:
+        logger.error(f'v.text={v.text}')
+        logger.error('v.varkw is %s, not equal to FullArgSpec.varkw %s',
+                     str(v.varkw), str(fullargspec.varkw))
+        return False
+
+    return True
 
 
 ErrorSet = set()
