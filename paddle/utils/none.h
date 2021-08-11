@@ -1,3 +1,9 @@
+//This file copy from boost/none_t.hpp and boost/none.hpp and boost version: 1.41.0
+//Modified the following points:
+//1. modify namespace from boost::none to paddle::none
+//2. modify namespace from boost::none_t to paddle::none_t
+
+
 // Copyright (C) 2003, Fernando Luis Cacciola Carballal.
 //
 // Distributed under the Boost Software License, Version 1.0.
