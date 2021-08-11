@@ -144,15 +144,18 @@ int convert(const platform::Place& place) {
 
 std::pair<MemcpyType, std::string> GetMemcpyType(
     const platform::Place& src_place, const platform::Place& dst_place) {
-  PADDLE_ENFORCE_EQ(
-      platform::is_same_place(src_place, dst_place), false,
-      platform::errors::PreconditionNotMet("src_place is same as dst_place"));
+  PADDLE_ENFORCE_EQ(platform::is_same_place(src_place, dst_place), false,
+                    platform::errors::PreconditionNotMet(
+                        "Required src_place shall be different with dst_place, "
+                        "but received same place: %s",
+                        src_place));
   if (platform::is_gpu_place(dst_place)) {
     return {MemcpyType::kH2D, "memcpy_h2d"};
   } else if (platform::is_gpu_place(src_place)) {
     return {MemcpyType::kD2H, "memcpy_d2h"};
   } else {
-    PADDLE_THROW("Not support current memcpy type.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Not support Memcpy typ : %s -> %s", src_place, dst_place));
   }
 }
 
@@ -201,16 +204,25 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
     if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
       var_scope->name2id[var->Name()] = var_scope->var_list.size();
     }
-    VLOG(3) << "insert var " << var->Name() << " with id "
-            << var_scope->name2id[var->Name()];
+    VLOG(3) << "Insert var " << var->Name()
+            << " with id: " << var_scope->name2id[var->Name()];
 
-    VLOG(3) << "create var " << var->Name() << " from main_prog";
     auto v = new Variable();
     InitializeVariable(v, var->GetType());
     var_scope->var_list.push_back(v);
   }
 }
 
+/*
+ * Parse the var_ids that need to be associated with an event.
+ * The caller should guarantee front_op and back_op satisfy the
+ * following conditions:
+ *   1. kAsync -> kEvent
+ *   2. kEvent -> kAsync
+ *
+ * For example: matmul(gpu) -> out_var -> memcpy_d2h
+ * out_var should be associated with an event.
+ */
 void UpdateEventVarId(
     const std::map<std::string, std::vector<int>>& front_op_out_vars,
     const std::map<std::string, std::vector<int>>& back_op_in_vars,
@@ -229,11 +241,11 @@ void UpdateEventVarId(
   }
 }
 
-void parse_direct_and_event_run_ops(
-    Instruction* instruction,
-    std::map<size_t, platform::CudaEvent>* var_id2event, size_t op_index,
+void ParseDirectAndEventRunOps(
     const std::vector<OpFuncNode>& op_func_nodes,
-    const std::vector<size_t>& downstream_ops) {
+    const std::vector<size_t>& downstream_ops, size_t op_index,
+    std::map<size_t, platform::CudaEvent>* var_id2event,
+    Instruction* instruction) {
   // In build_op_func_list:
   // 1. all memcpy_op is kEvent
   // 2. all CPU Kernel is kSync
@@ -241,41 +253,41 @@ void parse_direct_and_event_run_ops(
 
   auto& op_func_type = op_func_nodes[op_index].type_;
   auto& next_instruction = instruction->next_instruction_;
-  // out_var_ids that need to associate with an event;
   std::vector<size_t> event_var_ids;
 
-  // all downstream ops of CPU can directly run.
   if (op_func_type == OpFuncType::kSync) {
+    // all downstream ops of CPU can directly run.
     next_instruction.direct_run_ = downstream_ops;
   } else if (op_func_type == OpFuncType::kAsync) {
     for (auto next_op_id : downstream_ops) {
-      // GPU -> GPU, then next_op can directly run.
       if (op_func_nodes[next_op_id].type_ == OpFuncType::kAsync) {
+        // GPU -> GPU, then next_op can directly run.
         next_instruction.direct_run_.emplace_back(next_op_id);
-        // GPU -> D2H, then D2H should stream_wait_event
       } else if (op_func_nodes[next_op_id].type_ == OpFuncType::kEvent) {
+        // GPU -> D2H, then should be as stream_wait_event
         UpdateEventVarId(op_func_nodes[op_index].output_index,
                          op_func_nodes[next_op_id].input_index, &event_var_ids);
         next_instruction.event_wait_run_.emplace_back(next_op_id);
       } else {
-        PADDLE_THROW("Unsupported  AyncOp -> SyncOp.");
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "Unsupported  AyncOp -> SyncOp."));
       }
     }
   } else {  // kEvent;
     for (auto next_op_id : downstream_ops) {
-      // H2D -> GPU Kernel, then stream_wait_event
       if (op_func_nodes[next_op_id].type_ == OpFuncType::kAsync) {
+        // H2D -> GPU Kernel, then should be as stream_wait_event
         UpdateEventVarId(op_func_nodes[op_index].output_index,
                          op_func_nodes[next_op_id].input_index, &event_var_ids);
         next_instruction.event_wait_run_.emplace_back(next_op_id);
-        // D2H -> CPU Kernel, then synchronize
       } else if (op_func_nodes[next_op_id].type_ == OpFuncType::kSync) {
-        // for event_wait_sync
+        // // D2H -> CPU Kernel, then should be as synchronize
         UpdateEventVarId(op_func_nodes[op_index].output_index,
                          op_func_nodes[next_op_id].input_index, &event_var_ids);
         next_instruction.synchronize_run_.emplace_back(next_op_id);
       } else {
-        PADDLE_THROW("Unsupported  EventOp -> EventOp.");
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "Unsupported  EventOp -> EventOp."));
       }
     }
   }
@@ -293,18 +305,15 @@ void parse_direct_and_event_run_ops(
 }
 
 void build_op_func_list(const framework::ProgramDesc& pdesc,
+                        const platform::Place& place,
                         std::vector<OperatorBase*>* op_list,
                         std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* var_scope,
-                        platform::DeviceContextPool* d2h_pool,
-                        platform::DeviceContextPool* h2d_pool,
-                        const platform::Place& place) {
+                        VariableScope* var_scope) {
   auto& global_block = pdesc.Block(0);
+  auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
 
   for (auto& op : global_block.AllOps()) {
-    VLOG(3) << "Build op: " << op->Type();
-    // << op->Type() << endl;
-
+    VLOG(3) << "Build OpFuncNode from : " << op->Type();
     auto& info = OpInfoMap::Instance().Get(op->Type());
 
     const VariableNameMap& inputs_names = op->Inputs();
@@ -316,9 +325,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     }
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
-
-    OpFuncNode op_func_node;
-
+    // step 1. Prepare VariableValueMap of input/output
     VariableValueMap ins_map;
     std::map<std::string, std::vector<int>> ins_name2id;
     for (auto& var_name_item : inputs_names) {
@@ -351,15 +358,17 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
       outs_name2id[var_name_item.first] = vec_ids;
     }
 
+    OpFuncNode op_func_node;
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
+
+    // step 2: construct RuntimeContext and analysis KernelType
     RuntimeContext runtime_context({}, {});
     runtime_context.inputs.swap(ins_map);
     runtime_context.outputs.swap(outs_map);
     RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
     static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
         &infer_shape_ctx);
-    auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
     auto kernels_iter = all_op_kernels.find(op->Type());
     PADDLE_ENFORCE_NE(
         kernels_iter, all_op_kernels.end(),
@@ -379,25 +388,30 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
 
     // consider device_guard context
     if (op_base->HasAttr("op_device")) {
-      if (op_base->Attr<std::string>("op_device") == "cpu") {
+      auto& op_device = op_base->Attr<std::string>("op_device");
+      if (op_device == "cpu" || platform::is_cpu_place(place)) {
+        VLOG(3) << "Switch into CPUPlace by device_guard.";
         expected_kernel_key.place_ = platform::CPUPlace();
-        VLOG(3) << "switch into CPUPlace because device_guard.";
-      } else if (op_base->Attr<std::string>("op_device").find("gpu") !=
-                 std::string::npos) {
+      } else if (op_device.find("gpu") != std::string::npos &&
+                 platform::is_gpu_place(place)) {
+        VLOG(3) << "Switch into " << place << " by device_guard.";
         expected_kernel_key.place_ = place;
-        VLOG(3) << "switch into " << place << " because device_guard.";
+      } else {
+        PADDLE_THROW(
+            platform::errors::Fatal("Unsupported current place %s", place));
       }
     }
     VLOG(3) << "expected_kernel_key : " << expected_kernel_key;
 
     VariableValueMap& ins_map_temp = runtime_context.inputs;
 
+    // step 3. Insert memcpy_op if needed
     for (auto& var_name_item : ins_map_temp) {
       for (size_t i = 0; i < var_name_item.second.size(); ++i) {
         auto var = var_name_item.second[i];
         auto tensor_in = static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
         if (!tensor_in->IsInitialized()) {
-          VLOG(3) << "skip " << var_name_item.first
+          VLOG(3) << "Skip " << var_name_item.first
                   << ", because it's not initialized.";
           continue;
         }
@@ -406,8 +420,6 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
             static_cast<const framework::OperatorWithKernel*>(op_base)
                 ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                       expected_kernel_key);
-        VLOG(3) << "kernel_type_for_var : " << kernel_type_for_var;
-        VLOG(3) << "expected_kernel_key : " << expected_kernel_key;
         if (!platform::is_same_place(kernel_type_for_var.place_,
                                      expected_kernel_key.place_)) {
           // need trans place
@@ -444,8 +456,10 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           // memcpy_d2h, memcpy_h2d
           auto memcpy_op_type = GetMemcpyType(kernel_type_for_var.place_,
                                               expected_kernel_key.place_);
-          VLOG(3) << "insert " << memcpy_op_type.second
-                  << ", type: " << static_cast<int>(memcpy_op_type.first);
+          VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).",
+                                     memcpy_op_type.second, x_iter->second[i],
+                                     kernel_type_for_var.place_, new_var_name,
+                                     expected_kernel_key.place_);
           auto& copy_info = OpInfoMap::Instance().Get(memcpy_op_type.second);
           auto copy_op = copy_info.Creator()(memcpy_op_type.second, copy_in_map,
                                              copy_out_map, attr_map);
@@ -460,7 +474,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
                                                         copy_runtime_context);
           static_cast<const framework::OperatorWithKernel*>(copy_op)
               ->InferShape(&copy_infer_shape_ctx);
-          auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
+
           auto kernels_iter = all_op_kernels.find(memcpy_op_type.second);
           PADDLE_ENFORCE_NE(kernels_iter, all_op_kernels.end(),
                             platform::errors::Unavailable(
@@ -468,19 +482,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
                                 "the memcpy operator."));
 
           OpKernelMap& kernels = kernels_iter->second;
-          // platform::DeviceContext* dev_ctx = nullptr;
           platform::DeviceContext* dev_ctx = pool.Get(place);
-          // if(memcpy_op_type.first == MemcpyType::kD2H){
-          //   PADDLE_ENFORCE_NE(d2h_pool,  nullptr,
-          //   platform::errors::Unavailable("d2h_pool shall not be nullptr"));
-          //   dev_ctx = d2h_pool->Get(place);
-          // }else if (memcpy_op_type.first == MemcpyType::kH2D){
-          //   PADDLE_ENFORCE_NE(h2d_pool,  nullptr,
-          //   platform::errors::Unavailable("h2d_pool shall not be nullptr"));
-          //   dev_ctx = h2d_pool->Get(place);
-          // }else{
-          //   PADDLE_THROW("Not support current MemcpyType");
-          // }
 
           Scope scope;
           auto copy_exec_ctx =
@@ -492,7 +494,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           copy_op_func_node.kernel_func_ =
               OpKernelComputeFunc(kernel_iter->second);
           copy_op_func_node.kernel_func_(copy_exec_ctx);
-          VLOG(3) << "run " << memcpy_op_type.second << " done.";
+          VLOG(3) << "Run " << memcpy_op_type.second << " done.";
           copy_op_func_node.type_ = OpFuncType::kEvent;
           copy_op_func_node.dev_ctx_ = dev_ctx;
           op_list->push_back(copy_op);
@@ -503,24 +505,28 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
       }
     }
 
+    // step 4. Run op kernel
     op_list->push_back(op_base);
     VLOG(3) << op_base->Type()
             << " : expected_kernel_key : " << expected_kernel_key;
 
     if (platform::is_gpu_place(expected_kernel_key.place_)) {
-      // we will update this.
+      // It will be updated in ParseDirectAndEventRunOps.
       op_func_node.type_ = OpFuncType::kAsync;
-    } else {
+    } else if (platform::is_cpu_place(expected_kernel_key.place_)) {
       op_func_node.type_ = OpFuncType::kSync;
+    } else {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unsupported current place %s", place));
     }
 
     if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
       dev_ctx = pool.Get(expected_kernel_key.place_);
     }
+    op_func_node.dev_ctx_ = dev_ctx;
+
     auto exec_ctx =
         ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
-
-    op_func_node.dev_ctx_ = dev_ctx;
 
     auto kernel_iter = kernels.find(expected_kernel_key);
     PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
@@ -529,10 +535,9 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
                           op->Type(), KernelTypeToString(expected_kernel_key)));
 
     op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
-    // execute the kernel
     op_func_node.kernel_func_(exec_ctx);
-    VLOG(3) << "run " << op_base->Type() << " done.";
     vec_func_list->push_back(op_func_node);
+    VLOG(3) << "run " << op_base->Type() << " done.";
   }
 }
 
@@ -566,10 +571,8 @@ class InterpreterCore {
 
     std::vector<paddle::framework::OpFuncNode> vec_func_list;
     std::vector<paddle::framework::OperatorBase*> op_list;
-    paddle::framework::build_op_func_list(
-        startup_prog, &op_list, &vec_func_list, &global_scope,
-        &d2h_context_pool_, &h2d_context_pool_, place_);
-    // add variable to outer_scope
+    paddle::framework::build_op_func_list(startup_prog, place_, &op_list,
+                                          &vec_func_list, &global_scope);
   }
   void run(const std::vector<std::string>& vec_name,
            const std::vector<framework::Tensor>& vec_tensor,
@@ -588,9 +591,8 @@ class InterpreterCore {
     }
 
     if (is_build_ == false) {
-      paddle::framework::build_op_func_list(prog_, &op_list, &vec_func_list,
-                                            &global_scope, &d2h_context_pool_,
-                                            &h2d_context_pool_, place_);
+      paddle::framework::build_op_func_list(prog_, place_, &op_list,
+                                            &vec_func_list, &global_scope);
       is_build_ = true;
       // convert vec func_list to graph
       convert();
@@ -610,7 +612,8 @@ class InterpreterCore {
           global_scope.var_list[it->second]->GetMutable<framework::LoDTensor>();
 
       if (platform::is_gpu_place(fetch_tensor->place())) {
-        VLOG(3) << vec_fetch_name[i] << " is one GPU, should wait....";
+        VLOG(3) << vec_fetch_name[i]
+                << " is one GPU, should wait stream finished.";
         Tensor out;
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
@@ -619,14 +622,12 @@ class InterpreterCore {
         TensorCopySync(*fetch_tensor, platform::CPUPlace(), &out);
         dev_ctx->Wait();
         vec_out->push_back(out);
-        VLOG(3) << "data is: " << out.data<float>()[0];
       } else {
         Tensor out;
         TensorCopySync(*fetch_tensor, platform::CPUPlace(), &out);
         vec_out->push_back(out);
       }
     }
-    VLOG(3) << "->run() is done";
   }
 
   platform::DeviceContextPool& D2HContextPool() { return d2h_context_pool_; }
@@ -634,18 +635,34 @@ class InterpreterCore {
   platform::DeviceContextPool& H2DContextPool() { return h2d_context_pool_; }
 
  private:
+  platform::DeviceContext* ParseDeviceContextForInstruction(
+      const OpFuncNode& op_func_node, const OperatorBase& op_base) {
+    auto& op_type = op_base.Type();
+    auto* dev_ctx = op_func_node.dev_ctx_;
+    if (op_type == "memcpy_d2h") {
+      VLOG(3) << "Get dev_ctx from d2h_context_pool_";
+      dev_ctx = d2h_context_pool_.Get(place_);
+    } else if (op_type == "memcpy_h2d") {
+      VLOG(3) << "Get dev_ctx from h2d_context_pool_";
+      dev_ctx = h2d_context_pool_.Get(place_);
+    }
+
+    return dev_ctx;
+  }
+
   void convert() {
     input_var2op_info_.resize(global_scope.var_list.size());
 
     vec_instruction_.reserve(vec_func_list.size());
     dependecy_count_.resize(vec_func_list.size());
     global_scope.vec_meta_info_.resize(global_scope.var_list.size());
-
     for (size_t i = 0; i < vec_func_list.size(); ++i) {
       Instruction temp_inst;
-      temp_inst.dev_ctx_ = vec_func_list[i].dev_ctx_;
+      auto* op_base = op_list[i];
+      temp_inst.dev_ctx_ =
+          ParseDeviceContextForInstruction(vec_func_list[i], *op_base);
       temp_inst.kernel_func_.compute_func_ = vec_func_list[i].kernel_func_;
-      temp_inst.kernel_func_.operator_base_ = op_list[i];
+      temp_inst.kernel_func_.operator_base_ = op_base;
       temp_inst.input_index_ = vec_func_list[i].input_index;
       temp_inst.output_index_ = vec_func_list[i].output_index;
 
@@ -678,8 +695,8 @@ class InterpreterCore {
         }
       }
 
-      // In Program, op order is a very import information.
-      // Op can noly add op after it as next as next ops.
+      // In Program, op order is a very important information.
+      // Op can only add op after it as next as next ops.
       std::vector<size_t> filter_next;
       filter_next.reserve(vec_temp.size());
       for (auto item : vec_temp) {
@@ -688,9 +705,8 @@ class InterpreterCore {
         }
       }
 
-      parse_direct_and_event_run_ops(&vec_instruction_[i], &var_id2event_, i,
-                                     vec_func_list, filter_next);
-      // vec_instruction_[i].next_instruction_.direct_run_ = filter_next;
+      ParseDirectAndEventRunOps(vec_func_list, filter_next, i, &var_id2event_,
+                                &vec_instruction_[i]);
 
       for (auto inst_id : filter_next) {
         dependecy_count_[inst_id]++;
@@ -704,6 +720,7 @@ class InterpreterCore {
   void run_instr(const Instruction& instr_node, const VariableScope& var_scope,
                  const platform::Place& place) {
     auto op_base = instr_node.kernel_func_.operator_base_;
+    VLOG(3) << "start  run_instr : " << op_base->Type();
     // build runtime cost
     VariableValueMap ins_map;
     for (auto& var_name_item : instr_node.input_index_) {
@@ -736,18 +753,7 @@ class InterpreterCore {
     static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
         &infer_shape_ctx);
 
-    // platform::DeviceContextPool& pool =
-    // platform::DeviceContextPool::Instance();
-    // auto* dev_ctx = pool.Get(place);
     auto* dev_ctx = instr_node.dev_ctx_;
-    if (op_base->Type() == "memcpy_d2h") {
-      VLOG(3) << "Get dev_ctx from d2h_context_pool_";
-      dev_ctx = d2h_context_pool_.Get(place);
-    } else if (op_base->Type() == "memcpy_h2d") {
-      VLOG(3) << "Get dev_ctx from h2d_context_pool_";
-      dev_ctx = d2h_context_pool_.Get(place);
-    }
-
     Scope scope;
 
     auto exec_context =
@@ -774,18 +780,14 @@ class InterpreterCore {
       auto instr_id = working_queue.front();
       working_queue.pop();
       auto& instr_node = vec_instr[instr_id];
-      VLOG(3) << "stream_wait_or_sync for inputs";
       // step1 : stream_wait (non-block host) or sync (block host)
-      stream_wait_or_sync(instr_node, vec_func_list[instr_id]);
+      StreamWaitEventOrSync(instr_node, vec_func_list[instr_id]);
 
-      VLOG(3) << "start  run_instr : "
-              << instr_node.kernel_func_.operator_base_->Type();
       // step2: run instruction
       run_instr(instr_node, var_scope, place);
       ++run_op_number;
 
-      VLOG(3) << "RecordEventInstruction for outputs";
-      // step3: insert event after current stream
+      // step3: insert event for out_vars if needed
       RecordEventInstruction(instr_node, vec_func_list[instr_id]);
 
       // step4: update working_queue
@@ -823,15 +825,15 @@ class InterpreterCore {
     for (auto& item : instruction.output_index_) {
       for (auto out_var_id : item.second) {
         if (var_id2event_.count(out_var_id) != 0) {
-          VLOG(3) << "insert event in out_var_id: " << out_var_id;
+          VLOG(3) << "Record event in out_var_id: " << out_var_id;
           var_id2event_[out_var_id].Record(*(dev_ctx->context()->Stream()));
         }
       }
     }
   }
 
-  void wait_or_sync(const Instruction& instruction,
-                    const platform::DeviceContext* dev_ctx, bool is_sync) {
+  void WaitOrSync(const Instruction& instruction,
+                  const platform::DeviceContext* dev_ctx, bool is_sync) {
     auto* cuda_dev_ctx =
         reinterpret_cast<const platform::CUDADeviceContext*>(dev_ctx);
 
@@ -840,12 +842,12 @@ class InterpreterCore {
         if (var_id2event_.count(in_var_id) != 0) {
           if (is_sync) {
             // block host until event is done
-            VLOG(3) << "kernel hot sync wait in_var_id " << in_var_id;
+            VLOG(3) << "host sync wait in_var_id " << in_var_id;
             var_id2event_[in_var_id].Synchronize();
           } else {
             // non-block host, just add dependency in dev_ctx.stream to wait
             // event.
-            VLOG(3) << "kernel steam aync wait in_var_id " << in_var_id;
+            VLOG(3) << "stream async wait in_var_id " << in_var_id;
             cuda_dev_ctx->context()->Stream()->WaitEvent(
                 var_id2event_[in_var_id].GetRawCudaEvent());
           }
@@ -854,27 +856,25 @@ class InterpreterCore {
     }
   }
 
-  void stream_wait_or_sync(const Instruction& instruction,
-                           const OpFuncNode& op_func_node) {
+  void StreamWaitEventOrSync(const Instruction& instruction,
+                             const OpFuncNode& op_func_node) {
     // If InterpreterCore in on CPUPlace, do nothing.
     if (platform::is_cpu_place(place_)) return;
 
-    // The dev_ctx where op exectues.
-    VLOG(3) << "deal wait for "
+    VLOG(3) << "Deal StreamWaitEventOrSync for "
             << instruction.kernel_func_.operator_base_->Type()
             << " type: " << static_cast<int>(op_func_node.type_);
     auto* dev_ctx = op_func_node.dev_ctx_;
     auto& op_func_type = op_func_node.type_;
 
     if (op_func_type == OpFuncType::kAsync) {
-      // only need stream_wait_event if needed
-      wait_or_sync(instruction, dev_ctx, false);
+      WaitOrSync(instruction, dev_ctx, /*is_sync=*/false);
     } else if (op_func_type == OpFuncType::kEvent) {
       if (instruction.kernel_func_.operator_base_->Type() != "memcpy_h2d") {
-        wait_or_sync(instruction, dev_ctx, false);
+        WaitOrSync(instruction, dev_ctx, /*is_sync=*/false);
       }
     } else {  // kSync
-      wait_or_sync(instruction, dev_ctx, true);
+      WaitOrSync(instruction, dev_ctx, /*is_sync=*/true);
     }
   }
 

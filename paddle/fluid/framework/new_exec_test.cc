@@ -50,9 +50,8 @@ int main() {
     std::vector<paddle::framework::OpFuncNode> vec_func_list;
     std::vector<paddle::framework::OperatorBase*> op_list;
     std::cerr << "build_op_func_list";
-    paddle::framework::build_op_func_list(test_prog, &op_list, &vec_func_list,
-                                          &global_scope, nullptr, nullptr,
-                                          place);
+    paddle::framework::build_op_func_list(test_prog, place, &op_list,
+                                          &vec_func_list, &global_scope);
 
     // paddle::framework::exec_op_func_list( vec_func_list, op_list,
     // global_scope, place );
@@ -67,9 +66,8 @@ int main() {
   std::vector<paddle::framework::OperatorBase*> op_main_list;
   paddle::framework::InterpreterCore interp_core(place, main_prog, test_prog,
                                                  &scope);
-  paddle::framework::build_op_func_list(
-      main_prog, &op_main_list, &vec_main_func_list, &global_scope,
-      &(interp_core.D2HContextPool()), &(interp_core.H2DContextPool()), place);
+  paddle::framework::build_op_func_list(main_prog, place, &op_main_list,
+                                        &vec_main_func_list, &global_scope);
 
   auto start = std::chrono::steady_clock::now();
   ProfilerStart("new_executor.prof");
