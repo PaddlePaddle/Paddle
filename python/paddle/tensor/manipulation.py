@@ -743,7 +743,7 @@ def unique_consecutive(x,
             :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        tuple: (out, inverse, counts). `out` is the unique consecutive tensor for `x`. `inverse` is \
+        (out, inverse, counts), Tuple type. `out` is the unique consecutive tensor for `x`. `inverse` is \
             provided only if `return_inverse` is True. `counts` is provided only if `return_counts` \
             is True.
 
