@@ -468,7 +468,7 @@ class TestWarpCTCOpAttr(OpTest):
         self.blank = self.num_classes - 1
         self.norm_by_times = False
         self.norm_by_batchsize = False
-        self.length_average = False
+        self.norm_by_total_logits_len = False
 
     def setUp(self):
         self.op_type = "warpctc"
@@ -534,7 +534,7 @@ class TestWarpCTCOpAttr(OpTest):
             "blank": self.blank,
             "norm_by_times": self.norm_by_times,
             "norm_by_batchsize": self.norm_by_batchsize,
-            "length_average": self.length_average,
+            "norm_by_total_logits_len": self.norm_by_total_logits_len,
         }
 
     def test_check_output(self):
@@ -557,7 +557,7 @@ class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpAttr):
         self.blank = self.num_classes - 1
         self.norm_by_times = True
         self.norm_by_batchsize = False
-        self.length_average = False
+        self.norm_by_total_logits_len = False
 
 
 @skip_check_grad_assert_ci(reason="For warpctc, not do grad assert.")
@@ -572,7 +572,7 @@ class TestWarpCTCOpFp64SizeAverage(TestWarpCTCOpAttr):
         self.blank = self.num_classes - 1
         self.norm_by_times = False
         self.norm_by_batchsize = True
-        self.length_average = False
+        self.norm_by_total_logits_len = False
 
 
 @skip_check_grad_assert_ci(reason="For warpctc, not do grad assert.")
@@ -587,87 +587,85 @@ class TestWarpCTCOpFp64LengthAverage(TestWarpCTCOpAttr):
         self.blank = self.num_classes - 1
         self.norm_by_times = False
         self.norm_by_batchsize = False
-        self.length_average = True
+        self.norm_by_total_logits_len = True
 
 
 class TestWarpCTCOpDygraph(unittest.TestCase):
     def test_dygraph(self):
-        for device in ['gpu', 'cpu']:
-            paddle.disable_static()
-            paddle.seed(1)
-            np.random.seed(1)
-            paddle.set_device(device)
-            #(B=2)
-            log_probs = np.array(
-                [[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
-                  [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
-                 [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
-                  [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
-                 [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
-                  [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
-                 [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
-                  [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]], [
-                      [8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
-                      [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]
-                  ]]).astype("float32")
-            labels = np.array([[1, 2, 2], [1, 2, 2]]).astype("int32")
-            input_lengths = np.array([5, 5]).astype("int64")
-            label_lengths = np.array([3, 3]).astype("int64")
+        paddle.disable_static()
+        paddle.seed(1)
+        np.random.seed(1)
+        #(B=2)
+        log_probs = np.array(
+            [[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
+                [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
+                [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
+                [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
+                [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
+                [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
+                [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
+                [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]], [
+                    [8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
+                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]
+                ]]).astype("float32")
+        labels = np.array([[1, 2, 2], [1, 2, 2]]).astype("int32")
+        input_lengths = np.array([5, 5]).astype("int64")
+        label_lengths = np.array([3, 3]).astype("int64")
 
-            log_probs = paddle.to_tensor(log_probs, stop_gradient=False)
-            labels = paddle.to_tensor(labels)
-            input_lengths = paddle.to_tensor(input_lengths)
-            label_lengths = paddle.to_tensor(label_lengths)
+        log_probs = paddle.to_tensor(log_probs, stop_gradient=False)
+        labels = paddle.to_tensor(labels)
+        input_lengths = paddle.to_tensor(input_lengths)
+        label_lengths = paddle.to_tensor(label_lengths)
 
-            loss = paddle.nn.CTCLoss(
-                blank=0, reduction='sum')(log_probs,
-                                          labels,
-                                          input_lengths,
-                                          label_lengths,
-                                          norm_by_times=False,
-                                          norm_by_batchsize=False,
-                                          length_average=False)
-            self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
-            loss.backward()
-            log_probs.clear_gradient()
+        loss = paddle.nn.CTCLoss(
+            blank=0, reduction='sum')(log_probs,
+                                        labels,
+                                        input_lengths,
+                                        label_lengths,
+                                        norm_by_times=False,
+                                        norm_by_batchsize=False,
+                                        norm_by_total_logits_len=False)
+        self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
+        loss.backward()
+        log_probs.clear_gradient()
 
-            loss = paddle.nn.CTCLoss(
-                blank=0, reduction='sum')(log_probs,
-                                          labels,
-                                          input_lengths,
-                                          label_lengths,
-                                          norm_by_times=True,
-                                          norm_by_batchsize=False,
-                                          length_average=False)
-            self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
-            loss.backward()
-            log_probs.clear_gradient()
+        loss = paddle.nn.CTCLoss(
+            blank=0, reduction='sum')(log_probs,
+                                        labels,
+                                        input_lengths,
+                                        label_lengths,
+                                        norm_by_times=True,
+                                        norm_by_batchsize=False,
+                                        norm_by_total_logits_len=False)
+        self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
+        loss.backward()
+        log_probs.clear_gradient()
 
-            loss = paddle.nn.CTCLoss(
-                blank=0, reduction='sum')(log_probs,
-                                          labels,
-                                          input_lengths,
-                                          label_lengths,
-                                          norm_by_times=False,
-                                          norm_by_batchsize=True,
-                                          length_average=False)
-            self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
-            loss.backward()
-            log_probs.clear_gradient()
+        loss = paddle.nn.CTCLoss(
+            blank=0, reduction='sum')(log_probs,
+                                        labels,
+                                        input_lengths,
+                                        label_lengths,
+                                        norm_by_times=False,
+                                        norm_by_batchsize=True,
+                                        norm_by_total_logits_len=False)
+        self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
+        loss.backward()
+        log_probs.clear_gradient()
 
-            loss = paddle.nn.CTCLoss(
-                blank=0, reduction='sum')(log_probs,
-                                          labels,
-                                          input_lengths,
-                                          label_lengths,
-                                          norm_by_times=False,
-                                          norm_by_batchsize=False,
-                                          length_average=True)
-            self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
-            loss.backward()
-            log_probs.clear_gradient()
+        loss = paddle.nn.CTCLoss(
+            blank=0, reduction='sum')(log_probs,
+                                        labels,
+                                        input_lengths,
+                                        label_lengths,
+                                        norm_by_times=False,
+                                        norm_by_batchsize=False,
+                                        norm_by_total_logits_len=True)
+        self.assertTrue(np.allclose(loss, [6.82563686], atol=1))
+        loss.backward()
+        log_probs.clear_gradient()
 
-            paddle.enable_static()
+        paddle.enable_static()
 
 
 class TestWarpCTCOpError(unittest.TestCase):
