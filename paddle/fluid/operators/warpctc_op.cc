@@ -217,3 +217,21 @@ REGISTER_OP_CPU_KERNEL(
     warpctc_grad,
     ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(warpctc)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade warpctc add a new attribute [size_average] and [length_average])ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr(
+                "size_average",
+                "(bool, default: false), normalize the loss by the batch size."
+                "If True, supersedes norm_by_times",
+                false)
+            .NewAttr("length_average",
+                     "(bool, default: false), normalize the loss by the total "
+                     "number of "
+                     "frames"
+                     "in the batch. If True, supersedes size_average and "
+                     "norm_by_times",
+                     false));
