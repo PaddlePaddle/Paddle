@@ -96,7 +96,7 @@ TEST(infer_io_utils, tensors) {
 }
 
 TEST(shape_info_io, read_and_write) {
-  proto::ShapeInfos shape_infos;
+  paddle::inference::proto::ShapeInfos shape_infos;
   auto* s = shape_infos.add_shape_info();
   s->set_name("test1");
   s->add_min_shape(1);
@@ -113,8 +113,8 @@ TEST(shape_info_io, read_and_write) {
   s->add_opt_shape(224);
 
   const std::string path = "test_shape_info_io";
-  SerializeShapeInfo(path, s);
+  paddle::inference::SerializeShapeInfo(path, shape_infos);
 
-  proto::ShapeInfos shape_infos2;
-  DeserializeShapeInfo(path, &shape_infos2);
+  paddle::inference::proto::ShapeInfos shape_infos2;
+  paddle::inference::DeserializeShapeInfo(path, &shape_infos2);
 }
