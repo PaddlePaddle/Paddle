@@ -560,6 +560,37 @@ class AtanGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class ExpNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+    const auto& runner = NpuOpRunner("Exp", {*x}, {*out}, {});
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ExpGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    const auto& runner = NpuOpRunner("Mul", {*dout, *out}, {*dx}, {});
+    runner.Run(stream);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -692,3 +723,11 @@ REGISTER_OP_NPU_KERNEL(
     ops::AtanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AtanGradNPUKernel<paddle::platform::NPUDeviceContext,
                            paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    exp, ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, double>);
+
+REGISTER_OP_NPU_KERNEL(
+    exp_grad, ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, double>);
