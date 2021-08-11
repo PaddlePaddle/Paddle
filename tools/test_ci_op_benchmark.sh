@@ -88,7 +88,9 @@ function load_CHANGE_OP_FILES {
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
-  #[ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && exit 0
+  [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci."
+  echo "cpu_benchmark=ON" >${cfs_dir}/op_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt
+  exit 0
 }
 
 # Clone benchmark repo
@@ -278,6 +280,7 @@ function summary_problems {
 
 function cpu_op_benchmark {
   LOG "[INFO] Start run op benchmark cpu test ..."
+  load_CHANGE_OP_FILES
   build_whl
   LOG "[INFO] Op benchmark run success and no error!"
   exit 0
