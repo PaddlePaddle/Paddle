@@ -1,14 +1,16 @@
-
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the License. */
+limitations under the Licnse. */
 
 #include "paddle/fluid/operators/expand_v2_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
@@ -131,19 +133,22 @@ class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
     for (auto i = 0; i < reduce_ndim; ++i) {
       axes.push_back(i);
     }
-    Tensor* tmp_dout = const_cast<Tensor*>(dout);
+    // Tensor* tmp_dout = const_cast<Tensor*>(dout);
+    Tensor tmp_dout(dout->type());
     Tensor reduced_dout(dx->type());
+    tmp_dout.ShareDataWith(*dout);
     if (axes.size() != 0) {
       std::vector<int64_t> reduced_dout_dims;
       for (auto i = reduce_ndim; i < dout->dims().size(); ++i) {
         reduced_dout_dims.push_back(dout->dims()[i]);
       }
+      tmp_dout.Resize(framework::make_ddim(reduced_dout_dims));
       reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
       reduced_dout.mutable_data<T>(ctx.GetPlace());
       const auto& runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
                                        {{"axes", axes}, {"keep_dims", false}});
       runner.Run(stream);
-      tmp_dout = &reduced_dout;
+      tmp_dout = reduced_dout;
     }
 
     // case 2: reduce axis of dout in which dim is 1
@@ -158,11 +163,11 @@ class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
       }
     }
     if (axes.size() != 0) {
-      const auto& runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {*dx},
+      const auto& runner = NpuOpRunner("ReduceSumD", {tmp_dout}, {*dx},
                                        {{"axes", axes}, {"keep_dims", true}});
       runner.Run(stream);
     } else {
-      framework::TensorCopySync(*tmp_dout, ctx.GetPlace(), dx);
+      framework::TensorCopySync(tmp_dout, ctx.GetPlace(), dx);
     }
   }
 };
@@ -181,4 +186,6 @@ REGISTER_OP_NPU_KERNEL(
 REGISTER_OP_NPU_KERNEL(
     expand_v2_grad,
     ops::ExpandV2NPUGradKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ExpandV2NPUGradKernel<paddle::platform::NPUDeviceContext,
+                               paddle::platform::float16>,
     ops::ExpandV2NPUGradKernel<paddle::platform::NPUDeviceContext, int>);
