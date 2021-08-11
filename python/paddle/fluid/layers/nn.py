@@ -14845,8 +14845,8 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     """
     Class center sample method is proposed from the paper PartialFC that only sample a subset of the class centers.
     The process of sampling subset class centers is straightforward: 
-        1) First select the positive class centers;
-        2) Randomly sample negative class centers.
+    1) First select the positive class centers;
+    2) Randomly sample negative class centers.
 
     Specifically, given a label tensor, shape [batch_size], select all the positive class centers and randomly 
     sample negative class centers, then remap the input label tensor using the sampled class centers.
@@ -14855,8 +14855,8 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     arxiv: https://arxiv.org/abs/2010.05222
     
     .. note::
-    If the number of the positive class centers is greater than the input num_samples, it keeps all the positive 
-    class centers and the shape of sampled_class_center will be [num_positive_class_centers].
+        If the number of the positive class centers is greater than the input num_samples, it keeps all the positive 
+        class centers and the shape of sampled_class_center will be [num_positive_class_centers].
     
     The API supports CPU, single GPU and multi GPU.
 
@@ -14870,8 +14870,8 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
         seed (int, optional): Random seed. Default is ``'None'``.
 
     Returns:
-    	remapped_label (Tensor): Remapped label using sampled class center.
-    	sampled_class_center (Tensor): Sampled class center from [0, num_classes).
+        Tuple of two ``Tensor`` : (remapped_label, sampled_class_center), remapped label using sampled class center,
+        sampled class center from [0, num_classes).
 
     Examples:
 
