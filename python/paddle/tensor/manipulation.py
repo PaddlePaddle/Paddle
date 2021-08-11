@@ -737,10 +737,14 @@ def unique_consecutive(x,
             Default is False.
         axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
             Default is None.
+        dtype(np.dtype|str, optional): The data type `inverse` tensor: int32 or int64.
+            Default: int64.
+        name(str, optional): Name for the operation. For more information, please refer to
+            :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        tuple(out, inverse, counts): `out` is the unique consecutive tensor for `x`.`inverse` is
-            provided only if `return_inverse` is True. `counts` is provided only if `return_counts`
+        tuple: (out, inverse, counts). `out` is the unique consecutive tensor for `x`. `inverse` is \
+            provided only if `return_inverse` is True. `counts` is provided only if `return_counts` \
             is True.
 
     Example:
