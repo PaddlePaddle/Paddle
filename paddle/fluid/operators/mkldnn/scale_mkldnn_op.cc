@@ -29,7 +29,6 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
@@ -37,12 +36,11 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
     bool is_inplaced = x->IsSharedBufferWith(*out);
 
     platform::ActivationMKLDNNHandler<T> handler(
-        mkldnn::algorithm::eltwise_linear, ctx, mkldnn_engine, ctx.GetPlace(),
-        x);
+        mkldnn::algorithm::eltwise_linear, ctx, dev_ctx, ctx.GetPlace(), x,
+        ctx.InputName("X"), is_inplaced);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
-    auto dst_memory_p =
-        is_inplaced ? src_memory_p : handler.AcquireDstMemory(out);
+    auto dst_memory_p = handler.AcquireDstMemory(out);
     auto activation_p = handler.AcquireForwardPrimitive();
 
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
