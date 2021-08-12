@@ -714,6 +714,17 @@ class InterpreterCore {
       ParseDirectAndEventRunOps(vec_func_list, filter_next, i, &var_id2event_,
                                 &vec_instruction_[i]);
 
+      // checkout ouput
+      for (auto& item : vec_instruction_[i].output_index_) {
+        for (auto id : item.second) {
+          if (input_var2op_info_[id].size() == 0) {
+            // output var not be used by any kernel
+            vec_instruction_[i].gc_check_var_list.push_back(id);
+            global_scope.vec_meta_info_[id].var_ref_count_++;
+          }
+        }
+      }
+
       for (auto inst_id : filter_next) {
         dependecy_count_[inst_id]++;
       }
