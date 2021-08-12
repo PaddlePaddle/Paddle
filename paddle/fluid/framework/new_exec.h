@@ -828,7 +828,7 @@ class InterpreterCore {
 #ifdef PADDLE_WITH_CUDA
     const platform::CUDADeviceContext* dev_ctx =
         reinterpret_cast<const platform::CUDADeviceContext*>(
-            op_func_node.dev_ctx_);
+            instruction.dev_ctx_);
     for (auto& item : instruction.output_index_) {
       for (auto out_var_id : item.second) {
         if (var_id2event_.count(out_var_id) != 0) {
@@ -874,7 +874,7 @@ class InterpreterCore {
     VLOG(3) << "Deal StreamWaitEventOrSync for "
             << instruction.kernel_func_.operator_base_->Type()
             << " type: " << static_cast<int>(op_func_node.type_);
-    auto* dev_ctx = op_func_node.dev_ctx_;
+    auto* dev_ctx = instruction.dev_ctx_;
     auto& op_func_type = op_func_node.type_;
 
     if (op_func_type == OpFuncType::kAsync) {
