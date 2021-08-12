@@ -128,7 +128,7 @@ def extract_code_blocks_from_docstr(docstr):
     lastlineindex = len(ds_list) - 1
 
     cb_start_pat = re.compile(r"code-block::\s*python")
-    cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\S*)\s*$")
+    cb_param_pat = re.compile(r"^\s*:(\w+):\s*(.*)\s*$")
     cb_required_pat = re.compile(r"^\s*#\s*require[s|d]\s*:\s*(\S+)\s*$")
 
     cb_info = {}

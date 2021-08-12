@@ -296,7 +296,7 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
             if gen_doc_anno:
                 api_info_dict[fc_id]["gen_doc_anno"] = gen_doc_anno
             if inspect.isfunction(obj):
-                argspec = inspect.getfullargspec(obj)
+                argspec = inspect.getfullargspec(inspect.unwrap(obj))
                 api_info_dict[fc_id]["signature"] = repr(argspec).replace(
                     'FullArgSpec', 'ArgSpec', 1)
                 if docstr:
