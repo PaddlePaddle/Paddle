@@ -770,8 +770,8 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
                               elementwise_add_pattern);
 
-    if (!AreScalesPresentForNodes({elementwise_add_x, elementwise_add_y}) ||
-        !AreScalesPresentForNodes({elementwise_add_out})) {
+    if (!AreScalesPresentForNodes(
+            {elementwise_add_x, elementwise_add_y, elementwise_add_out})) {
       LogCannotQuantizeOp(elementwise_add_op);
       return;
     }

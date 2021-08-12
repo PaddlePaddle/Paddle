@@ -131,12 +131,12 @@ TEST(QuantizerPlacementPass, enabled_conv_excluded_one) {
 }
 
 TEST(QuantizerPlacementPass, empty_list) {
-  // all quantized operators, except relu
+  // all operators except relu should be quantized
   MainTest({}, {}, 5);
 }
 
 TEST(QuantizerPlacementPass, default_attr_value) {
-  //  all quantized operators, except relu
+  // all operators except relu should be quantized
   DefaultAttrTest(5);
 }
 
