@@ -56,7 +56,7 @@ function load_CHANGE_OP_FILES_by_header_file {
       match_cu_file_directory $change_file || continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\"."
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
-      echo 1111,${CHANGE_OP_FILES}
+      echo 1111,${#CHANGE_OP_FILES[@]}
     elif [[ "$change_file" =~ ".h" ]]
     then
       [ -n "${INCLUDE_SEARCH_MAP[$change_file]}" ] && continue
@@ -89,6 +89,7 @@ function load_CHANGE_OP_FILES {
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
+  echo 2222,${#CHANGE_OP_FILES[@]}
   [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci."
   echo "cpu_benchmark=ON" >${cfs_dir}/op_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt
   exit 0
