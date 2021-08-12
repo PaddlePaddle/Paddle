@@ -1141,9 +1141,9 @@ def margin_cross_entropy(logits,
     Examples:
 
     .. code-block:: python
-        :caption: Single GPU
 
         # required: gpu
+        # Single GPU
         import paddle
         import numpy as np
         m1 = 1.0
@@ -1191,9 +1191,9 @@ def margin_cross_entropy(logits,
         #        [0.99992995, 0.00006468, 0.00000000, 0.00000537]])
 
     .. code-block:: python
-        :caption: Multi GPU, test_margin_cross_entropy.py
 
         # required: distributed
+        # Multi GPU, test_margin_cross_entropy.py
         import paddle
         import paddle.distributed as dist
         import numpy as np
