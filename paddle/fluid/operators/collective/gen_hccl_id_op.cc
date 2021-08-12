@@ -29,6 +29,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
 
+DECLARE_bool(avoid_hccl_port_conflict);
+
 namespace paddle {
 namespace operators {
 
@@ -101,6 +103,8 @@ class GenHCCLIdOp : public framework::OperatorBase {
 
     int server_fd = -1;
 
+    std::vector<int> local_sockets;
+
     /// 1. init flat
     std::function<std::string(size_t)> func = platform::GetFlatHCCLVarName;
     if (trainer_id == 0) {
@@ -108,7 +112,9 @@ class GenHCCLIdOp : public framework::OperatorBase {
       std::vector<std::string> flat_endpoints;
       flat_endpoints.insert(flat_endpoints.begin(), trainers.begin() + 1,
                             trainers.end());
-      SendBroadCastHCCLID(flat_endpoints, hccl_comm_num, func, scope);
+      auto sockets =
+          SendBroadCastHCCLID(flat_endpoints, hccl_comm_num, func, scope);
+      local_sockets.insert(local_sockets.ends(), sockets.begin(), socket.end());
     } else {
       server_fd = CreateListenSocket(endpoint);
       RecvBroadCastHCCLID(server_fd, endpoint, hccl_comm_num, func, scope);
@@ -129,7 +135,9 @@ class GenHCCLIdOp : public framework::OperatorBase {
       }
       VLOG(1) << "Hierarchical inter ring endpoints:" << ss.str();
 
-      SendBroadCastHCCLID(inter_endpoints, hccl_comm_num, func, scope);
+      auto sockets =
+          SendBroadCastHCCLID(inter_endpoints, hccl_comm_num, func, scope);
+      local_sockets.insert(local_sockets.ends(), sockets.begin(), socket.end());
     } else if (inter_trainer_id > 0) {
       VLOG(1) << "Hierarchical inter ring";
       RecvBroadCastHCCLID(server_fd, endpoint, hccl_comm_num, func, scope);
@@ -148,7 +156,9 @@ class GenHCCLIdOp : public framework::OperatorBase {
       }
       VLOG(1) << "Hierarchical exter ring endpoints:" << ss.str();
 
-      SendBroadCastHCCLID(exter_endpoints, hccl_comm_num, func, scope);
+      auto sockets =
+          SendBroadCastHCCLID(exter_endpoints, hccl_comm_num, func, scope);
+      local_sockets.insert(local_sockets.ends(), sockets.begin(), socket.end());
     } else if (exter_trainer_id > 0) {
       VLOG(1) << "Hierarchical exter ring";
       RecvBroadCastHCCLID(server_fd, endpoint, hccl_comm_num, func, scope);
@@ -157,6 +167,19 @@ class GenHCCLIdOp : public framework::OperatorBase {
     // close socket server
     if (trainer_id != 0) {
       CloseSocket(server_fd);
+    }
+
+    if (FLAGS_avoid_hccl_port_conflict) {
+      bool conflict = false;
+      for (auto s : local_sockets) {
+        if (s >= 60000 && s <= 60015) {
+          conflict = true;
+        }
+      }
+      if (conflict) {
+        LOG(INFO) << "find local conflict port so wait 2MSL time";
+        std::this_thread::sleep_for(std::chrono::seconds(123));
+      }
     }
   }
 };

@@ -280,9 +280,10 @@ static void SendHCCLID(int conn, HcclRootInfo* hccl_id) {
                  "send hccl id");
 }
 
-void SendBroadCastHCCLID(std::vector<std::string> servers, int hccl_comm_num,
-                         std::function<std::string(size_t)> func,
-                         const framework::Scope& scope) {
+std::vector<int> SendBroadCastHCCLID(std::vector<std::string> servers,
+                                     int hccl_comm_num,
+                                     std::function<std::string(size_t)> func,
+                                     const framework::Scope& scope) {
   // connect with server
   std::vector<int> connects;
   for (auto server : servers) {
@@ -315,6 +316,8 @@ void SendBroadCastHCCLID(std::vector<std::string> servers, int hccl_comm_num,
   for (auto conn : connects) {
     CloseSocket(conn);
   }
+
+  return connects;
 }
 
 void RecvBroadCastHCCLID(std::string endpoint, int hccl_comm_num,
