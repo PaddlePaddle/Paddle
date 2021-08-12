@@ -90,6 +90,15 @@ class ArgsDescResult:
 
 
 def extract_args_desc_from_docstr(docstr):
+    """
+    extract args description from the docstring.
+
+    Args:
+        docstr (string): the docstring of the api. all the `tab` charactor will replaced by 4 spaces.
+    
+    Returns:
+        ArgsDescResult, a simple object similar to the result of the `inpect.getfullargspec`.
+    """
     docstr = inspect.cleandoc(docstr.replace("\t", '    '))
     lines = docstr.split('\n')
     args_started = False
@@ -151,13 +160,7 @@ def check_api_args_doc(fullargspec, docstr):
     Returns:
         boolean, check result
     """
-    #document = new_document('~', parser_settings)
-    #parser.parse(docstr, document)
-    #v = MyArgsVisitor(document)
-    #document.walkabout(v)
-
     v = extract_args_desc_from_docstr(docstr)
-
     if v.args != fullargspec.args and not (fullargspec.args and
                                            fullargspec.args[0] == 'self' and
                                            v.args == fullargspec.args[1:]):
@@ -218,6 +221,7 @@ def get_all_api(root_path='paddle', attr="__all__"):
 def insert_api_into_dict(full_name, gen_doc_anno=None):
     """
     insert add api into the api_info_dict
+
     Return:
         api_info object or None
     """
@@ -391,10 +395,6 @@ def parse_args():
         help="0 - don't report; 1 - all the exposed apis; 2 - all the apis.")
     parser.add_argument(
         'module', type=str, help='module', default='paddle')  # not used
-    parser.add_argument(
-        '--skip-api-args-doc-check',
-        dest='skip_api_args_doc_check',
-        action="store_true")
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['paddle'])
@@ -441,7 +441,7 @@ if __name__ == '__main__':
             api_args_check_failed.append(api_name)
 
     exit_value = 0
-    if (not args.skip_api_args_doc_check) and api_args_check_failed:
+    if api_args_check_failed:
         exit_value = 1
         logger.error("some apis' args check failed: %s",
                      str(api_args_check_failed))
