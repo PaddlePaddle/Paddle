@@ -119,11 +119,6 @@ def TestHuberLossOp2(TestHuberLossOp):
         return (6, 6, 1)
 
 
-def TestHuberLossOpFP64(TestHuberLossOp):
-    def init_dtype(self):
-        self.dtype = np.float64
-
-
 def TestHuberLossOpFP16(TestHuberLossOp):
     def init_dtype(self):
         self.dtype = np.float16

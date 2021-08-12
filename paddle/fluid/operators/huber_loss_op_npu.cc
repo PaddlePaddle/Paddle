@@ -53,31 +53,6 @@ void HuberLossSmoothL1Loss(const platform::Place& place,
   runner.Run(stream);
 }
 
-template <>
-void HuberLossSmoothL1Loss<double>(const platform::Place& place,
-                                   const aclrtStream& stream, const Tensor* x,
-                                   const Tensor* y, float delta, Tensor* z) {
-  z->mutable_data<double>(x->dims(), place);
-  Tensor x_fp32, y_fp32, z_fp32;
-  x_fp32.mutable_data<float>(x->dims(), place);
-  y_fp32.mutable_data<float>(y->dims(), place);
-  z_fp32.mutable_data<float>(z->dims(), place);
-  auto fp32_dtype = static_cast<int>(ConvertToNpuDtype(x_fp32.type()));
-  auto fp64_dtype = static_cast<int>(ConvertToNpuDtype(z->type()));
-  const auto& runner_cast_x =
-      NpuOpRunner("Cast", {*x}, {x_fp32}, {{"dst_type", fp32_dtype}});
-  runner_cast_x.Run(stream);
-  const auto& runner_cast_y =
-      NpuOpRunner("Cast", {*y}, {y_fp32}, {{"dst_type", fp32_dtype}});
-  runner_cast_y.Run(stream);
-  const auto& runner = NpuOpRunner("SmoothL1Loss", {x_fp32, y_fp32}, {z_fp32},
-                                   {{"sigma", delta}});
-  runner.Run(stream);
-  const auto& runner_cast_z =
-      NpuOpRunner("Cast", {z_fp32}, {*z}, {{"dst_type", fp64_dtype}});
-  runner_cast_z.Run(stream);
-}
-
 template <typename T>
 void HuberLossSmoothL1LossGrad(const platform::Place& place,
                                const aclrtStream& stream, const Tensor* pred,
@@ -87,37 +62,6 @@ void HuberLossSmoothL1LossGrad(const platform::Place& place,
   const auto& runner = NpuOpRunner("SmoothL1LossGrad", {*pred, *lab, *dout},
                                    {*grad}, {{"sigma", sigma}});
   runner.Run(stream);
-}
-
-template <>
-void HuberLossSmoothL1LossGrad<double>(const platform::Place& place,
-                                       const aclrtStream& stream,
-                                       const Tensor* pred, const Tensor* lab,
-                                       const Tensor* dout, float sigma,
-                                       Tensor* grad) {
-  grad->mutable_data<double>(pred->dims(), place);
-  Tensor pred_fp32, lab_fp32, dout_fp32, grad_fp32;
-  pred_fp32.mutable_data<float>(pred->dims(), place);
-  lab_fp32.mutable_data<float>(lab->dims(), place);
-  dout_fp32.mutable_data<float>(dout->dims(), place);
-  auto fp32_dtype = static_cast<int>(ConvertToNpuDtype(pred_fp32.type()));
-  auto fp64_dtype = static_cast<int>(ConvertToNpuDtype(grad->type()));
-  const auto& runner_cast_pred =
-      NpuOpRunner("Cast", {*pred}, {pred_fp32}, {{"dst_type", fp32_dtype}});
-  runner_cast_pred.Run(stream);
-  const auto& runner_cast_lab =
-      NpuOpRunner("Cast", {*lab}, {lab_fp32}, {{"dst_type", fp32_dtype}});
-  runner_cast_lab.Run(stream);
-  const auto& runner_cast_dout =
-      NpuOpRunner("Cast", {*dout}, {dout_fp32}, {{"dst_type", fp32_dtype}});
-  runner_cast_dout.Run(stream);
-  const auto& runner =
-      NpuOpRunner("SmoothL1LossGrad", {pred_fp32, lab_fp32, dout_fp32},
-                  {grad_fp32}, {{"sigma", sigma}});
-  runner.Run(stream);
-  const auto& runner_cast_grad =
-      NpuOpRunner("Cast", {grad_fp32}, {*grad}, {{"dst_type", fp64_dtype}});
-  runner_cast_grad.Run(stream);
 }
 
 template <typename T>
@@ -179,8 +123,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(huber_loss, ops::HuberLossNPUKernel<float>,
-                       ops::HuberLossNPUKernel<double>,
                        ops::HuberLossNPUKernel<plat::float16>);
 REGISTER_OP_NPU_KERNEL(huber_loss_grad, ops::HuberLossGradNPUKernel<float>,
-                       ops::HuberLossGradNPUKernel<double>,
                        ops::HuberLossGradNPUKernel<plat::float16>);
