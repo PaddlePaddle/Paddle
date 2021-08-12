@@ -68,7 +68,7 @@ math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)
 math_library(softmax DEPS math_function jit_kernel_helper)
-math_library(beam_search DEPS math_function)
+math_library(beam_search DEPS math_function bean_search_npu)
 math_library(fc DEPS blas)
 
 math_library(matrix_bit_code)
