@@ -158,7 +158,8 @@ def check_api_args_doc(fullargspec, docstr):
 
     v = extract_args_desc_from_docstr(docstr)
 
-    if v.args != fullargspec.args and not (fullargspec.args[0] == 'self' and
+    if v.args != fullargspec.args and not (fullargspec.args and
+                                           fullargspec.args[0] == 'self' and
                                            v.args == fullargspec.args[1:]):
         logger.error(f'v.text={v.text}')
         logger.error('v.args is %s, not equal to FullArgSpec.args %s',
