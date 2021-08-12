@@ -730,6 +730,7 @@ function check_whl_size() {
 
     dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
+    pr_whl_size=196
 
     whldiffSize=`expr ${pr_whl_size} - ${dev_whl_size}`
     if [ ${whldiffSize} -gt 10 ] ; then
