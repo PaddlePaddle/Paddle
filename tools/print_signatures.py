@@ -287,9 +287,12 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
             if gen_doc_anno:
                 api_info_dict[fc_id]["gen_doc_anno"] = gen_doc_anno
             if inspect.isfunction(obj):
-                api_info_dict[fc_id]["signature"] = repr(
-                    inspect.getfullargspec(obj)).replace('FullArgSpec',
-                                                         'ArgSpec', 1)
+                argspec = inspect.getfullargspec(obj)
+                api_info_dict[fc_id]["signature"] = repr(argspec).replace(
+                    'FullArgSpec', 'ArgSpec', 1)
+                if docstr:
+                    api_info_dict[fc_id]["argsdoc_check"] = check_api_args_doc(
+                        argspec, api_info_dict[fc_id]["docstring"])
         return api_info_dict[fc_id]
 
 
@@ -419,6 +422,8 @@ def parse_args():
         help="using get_all_api or from_modulelist")
     parser.add_argument(
         'module', type=str, help='module', default='paddle')  # not used
+    parser.add_argument(
+        '--check-api-args', dest='check_api_args', action="store_true")
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['paddle'])
@@ -432,6 +437,7 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
+    api_args_check_failed = []
     check_allmodule_callable()
     if args.method == 'from_modulelist':
         check_public_api()
@@ -452,12 +458,18 @@ if __name__ == '__main__':
                 api_name,
                 md5(api_info['docstring']), api_info['signature']
                 if 'signature' in api_info else 'ArgSpec()'))
+            if 'argsdoc_check' in api_info and (not api_info['argsdoc_check']):
+                api_args_check_failed.append(api_name)
 
-    if len(ErrorSet) == 0:
-        sys.exit(0)
-    else:
+    exit_value = 0
+    if len(ErrorSet):
+        exit_value = 1
         for erroritem in ErrorSet:
             print(
                 "Error, new function {} is unreachable".format(erroritem),
                 file=sys.stderr)
-        sys.exit(1)
+    if args.check_api_args and api_args_check_failed:
+        exit_value = 1
+        logger.error("some apis' args check failed: %s",
+                     str(api_args_check_failed))
+    sys.exit(exit_value)
