@@ -112,18 +112,7 @@ DataType Tensor::type() const {
 }
 
 PlaceType Tensor::place() const {
-  EAGER_GET_TENSOR;
-  PlaceType place = PlaceType::kUNK;
-
-  if (paddle::platform::is_cpu_place(tensor->place())) {
-    place = PlaceType::kCPU;
-  } else if (paddle::platform::is_gpu_place(tensor->place())) {
-    place = PlaceType::kGPU;
-  } else if (paddle::platform::is_xpu_place(tensor->place())) {
-    place = PlaceType::kXPU;
-  }
-
-  return place;
+  return place_;
 }
 
 template <typename T>
@@ -266,6 +255,19 @@ void Tensor::CopyToCpu(T *data) {
         "The analysis predictor supports CPU, GPU, NPU and XPU now."));
   }
 }
+
+template <typename T>
+void Tensor::CopyToCpuAsync(T *data, void *exec_stream) {
+  (void)data;
+  (void)exec_stream;
+}
+
+template <typename T>
+void Tensor::CopyToCpuAsync(T *data, contrib::CallBackFunc cb, void* cb_params) {
+  (void)data;
+  cb(cb_params);
+}
+
 template PD_INFER_DECL void Tensor::CopyFromCpu<float>(const float *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int64_t>(const int64_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
@@ -277,6 +279,11 @@ template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<uint8_t>(uint8_t *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<int8_t>(int8_t *data);
+
+template PD_INFER_DECL void Tensor::CopyToCpuAsync<float>(float *data, void *exec_stream);
+
+template PD_INFER_DECL void Tensor::CopyToCpuAsync<float>(float *data,
+		contrib::CallBackFunc cb, void* cb_params);
 
 template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
                                                   int *size) const;

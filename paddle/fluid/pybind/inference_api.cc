@@ -26,6 +26,8 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <chrono>
+#include <thread>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -161,50 +163,39 @@ void PaddleInferTensorCreate(
 }
 
 void PaddleInferTensorCopyFromTensor (
-    paddle_infer::Tensor &tensor,  // NOLINT
+    paddle_infer::Tensor &to_tensor,  // NOLINT
     const paddle_infer::Tensor &from_tensor  // NOLINT
     ) {
   auto from_place = from_tensor.place();
-  
   int out_numel = 0;
-  size_t element_size = 0;
-  void *from_ptr = nullptr;
-  void *to_ptr = nullptr;
-
-  tensor.Reshape(from_tensor.shape());
-  auto to_place = tensor.place();
-
-  switch (from_tensor.type()) {
-    case PaddleDType::INT32:
-      from_ptr = static_cast<void *>(from_tensor.data<int32_t>(&from_place, &out_numel));
-      to_ptr = static_cast<void *>(tensor.mutable_data<int32_t>(to_place));
-      element_size = sizeof(int32_t);
-      break;
-    case PaddleDType::INT64:
-      from_ptr = static_cast<void *>(from_tensor.data<int64_t>(&from_place, &out_numel));
-      to_ptr = static_cast<void *>(tensor.mutable_data<int64_t>(to_place));
-      element_size = sizeof(int64_t);
-      break;
-    case PaddleDType::FLOAT32:
-      from_ptr = static_cast<void *>(from_tensor.data<float>(&from_place, &out_numel));
-      to_ptr = static_cast<void *>(tensor.mutable_data<float>(to_place));
-      element_size = sizeof(float);
-      break;
-    case PaddleDType::UINT8:
-      from_ptr = static_cast<void *>(from_tensor.data<uint8_t>(&from_place, &out_numel));
-      to_ptr = static_cast<void *>(tensor.mutable_data<uint8_t>(to_place));
-      element_size = sizeof(uint8_t);
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported data type. Now only supports INT32, INT64, UINT8 and "
-          "FLOAT32."));
-  }
-
-  if (from_place == paddle_infer::PlaceType::kGPU && from_place == to_place) {
-    cudaMemcpy(to_ptr, from_ptr, out_numel * element_size, cudaMemcpyDeviceToDevice);
-  } else if (from_place == paddle_infer::PlaceType::kCPU && from_place == to_place) {
-    cudaMemcpy(to_ptr, from_ptr, out_numel * element_size, cudaMemcpyDeviceToDevice);
+  to_tensor.Reshape(from_tensor.shape());
+  if (from_place == paddle_infer::PlaceType::kGPU) {
+    std::cout << " ===> copy from gpu" << std::endl;
+    PADDLE_THROW(platform::errors::Unimplemented(
+          "not implements"));
+  } else if (from_place == paddle_infer::PlaceType::kCPU) {
+    std::cout << " ===> copy from cpu" << std::endl;
+    switch (from_tensor.type()) {
+      case PaddleDType::INT32:
+	to_tensor.CopyFromCpu(from_tensor.data<int32_t>(&from_place, &out_numel));
+        break;
+      case PaddleDType::INT64:
+	to_tensor.CopyFromCpu(from_tensor.data<int64_t>(&from_place, &out_numel));
+        break;
+      case PaddleDType::FLOAT32:
+	to_tensor.CopyFromCpu(from_tensor.data<float>(&from_place, &out_numel));
+        break;
+      case PaddleDType::UINT8:
+	to_tensor.CopyFromCpu(from_tensor.data<uint8_t>(&from_place, &out_numel));
+        break;
+      case PaddleDType::INT8:
+	to_tensor.CopyFromCpu(from_tensor.data<int8_t>(&from_place, &out_numel));
+        break;
+      default:
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported data type. Now only supports INT32, INT64, UINT8, INT8 and "
+            "FLOAT32."));
+    }
   }
 }
 
@@ -315,6 +306,22 @@ void BindInferenceApi(py::module *m) {
 #endif
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<AnalysisConfig>, py::arg("config"));
+  m->def("test_callback", [](const py::object &cb){ 
+		  for (int i = 0; i < 10; i++) {
+		    std::cout << i << " sleep 1s..." << std::endl;
+		    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		  }
+		  std::cout << "begin call back" << std::endl;
+		  return cb(); });
+  m->def("test_callback", [](){ 
+		  for (int i = 0; i < 10; i++) {
+		    std::cout << i << " sleep 1s..." << std::endl;
+		    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		  }
+		  std::cout << "no call back" << std::endl;
+		});
+  m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
+  m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<NativeConfig>, py::arg("config"));
   m->def("create_predictor", [](const paddle_infer::Config &config)

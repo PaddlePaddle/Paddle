@@ -17,7 +17,6 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
-list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer_with_recompute)
 list(APPEND DIST_TEST_OPS test_fleet_raw_program_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
@@ -57,7 +56,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_recompute_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer_with_recompute)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_raw_program_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_init)
@@ -192,7 +190,6 @@ if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sharding_parallel)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mp_layers)
     LIST(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
-    LIST(REMOVE_ITEM TEST_OPS test_mixed_precision)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_base_single)
     LIST(REMOVE_ITEM TEST_OPS test_dygraph_recompute)
 elseif(WITH_GPU)
@@ -413,7 +410,6 @@ list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable test_cumsum_op temporaily
 # list(REMOVE_ITEM TEST_OPS test_cumsum_op)
-list(REMOVE_ITEM TEST_OPS test_dataloader_dataset)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -495,9 +491,6 @@ py_test_modules(test_imperative_static_runner_while MODULES test_imperative_stat
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -911,7 +904,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_sendrecv_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
+    #set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
     if(WITH_DISTRIBUTE)
         set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
         set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
@@ -931,20 +924,20 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_collective_split_embedding
-        test_collective_split_embedding_none_divisible
-        test_collective_split_row_linear
-        test_collective_split_col_linear
-        test_collective_scatter_api
-        test_collective_barrier_api
-        test_collective_reduce_api
-        test_pipeline_parallel
-        test_collective_allreduce_api
-        test_new_group_api
-        test_collective_broadcast_api
-        test_collective_allgather_api
-        test_collective_alltoall_api
-        PROPERTIES LABELS "RUN_TYPE=DIST")
+    #set_tests_properties(test_collective_split_embedding
+    #    test_collective_split_embedding_none_divisible
+    #    test_collective_split_row_linear
+    #    test_collective_split_col_linear
+    #    test_collective_scatter_api
+    #    test_collective_barrier_api
+    #    test_collective_reduce_api
+    #    test_pipeline_parallel
+    #    test_collective_allreduce_api
+    #    test_new_group_api
+    #    test_collective_broadcast_api
+    #    test_collective_allgather_api
+    #    test_collective_alltoall_api
+    #    PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_GPU OR WITH_ROCM)
     set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT 120)

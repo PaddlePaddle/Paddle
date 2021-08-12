@@ -19,6 +19,7 @@ from ..fluid.inference import PrecisionType  # noqa: F401
 from ..fluid.inference import Tensor  # noqa: F401
 from ..fluid.inference import Predictor  # noqa: F401
 from ..fluid.inference import create_predictor  # noqa: F401
+from ..fluid.inference import test_callback # noqa: F401
 from ..fluid.inference import get_version  # noqa: F401
 from ..fluid.inference import get_num_bytes_of_data_type  # noqa: F401
 from ..fluid.inference import PredictorPool  # noqa: F401
@@ -31,6 +32,7 @@ __all__ = [  # noqa
     'Tensor',
     'Predictor',
     'create_predictor',
+    'test_callback',
     'get_version',
     'get_num_bytes_of_data_type',
     'PredictorPool'

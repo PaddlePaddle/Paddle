@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle_infer_declare.h"  // NOLINT
+#include "paddle_infer_contrib.h"  // NOLINT
 
 namespace paddle_infer {
 
@@ -72,6 +73,19 @@ class PD_INFER_DECL Tensor {
   /// \param[out] data The tensor will copy the data to the address.
   template <typename T>
   void CopyToCpu(T* data);
+
+  /// \brief Copy the tensor data to the host memory asynchronously.
+  /// \param[out] data The tensor will copy the data to the address.
+  /// \param[out] exec_stream The tensor will excute copy in this stream(Only GPU CUDA stream suppported now).
+  template <typename T>
+  void CopyToCpuAsync(T* data, void* exec_stream);
+
+  /// \brief Copy the tensor data to the host memory asynchronously.
+  /// \param[out] data The tensor will copy the data to the address.
+  /// \param[out] cb Callback function cb(cb_params) will be executed on the host after all
+  ///                currently enqueued items in the stream have completed .
+  template <typename T>
+  void CopyToCpuAsync(T* data, contrib::CallBackFunc cb, void* cb_params);
 
   /// \brief Return the shape of the Tensor.
   std::vector<int> shape() const;
