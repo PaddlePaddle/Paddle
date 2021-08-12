@@ -89,7 +89,6 @@ function load_CHANGE_OP_FILES {
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
-  echo 2222,${#CHANGE_OP_FILES[@]}
   [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && \
   echo "cpu_benchmark=ON" >${cfs_dir}/op_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt && \
   exit 0
