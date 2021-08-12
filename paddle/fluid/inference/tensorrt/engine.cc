@@ -89,7 +89,6 @@ void TensorRTEngine::FreezeNetwork() {
   if (enable_int8) {
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
-    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
 
     if (calibrator_) {
       infer_builder_config_->setInt8Calibrator(calibrator_);
@@ -217,8 +216,17 @@ void TensorRTEngine::FreezeNetwork() {
     }
 #endif
   }
+
+#if IS_TRT_VERSION_LT(8000)
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
+#else
+  infer_ptr<nvinfer1::IHostMemory> plan(infer_builder_->buildSerializedNetwork(
+      *network(), *infer_builder_config_));
+  infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
+  infer_engine_.reset(
+      runtime->deserializeCudaEngine(plan->data(), plan->size()));
+#endif
 
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_, platform::errors::Fatal(

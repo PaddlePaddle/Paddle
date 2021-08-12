@@ -72,10 +72,17 @@ class TestVarBase(unittest.TestCase):
                 if core.is_compiled_with_cuda():
                     y = x.pin_memory()
                     self.assertEqual(y.place.__repr__(), "CUDAPinnedPlace")
+                    y = x.cuda()
+                    y = x.cuda(None)
+                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    y = x.cuda(device_id=0)
+                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
                     y = x.cuda(blocking=False)
                     self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
                     y = x.cuda(blocking=True)
                     self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    with self.assertRaises(ValueError):
+                        y = x.cuda("test")
 
                 # support 'dtype' is core.VarType
                 x = paddle.rand((2, 2))
