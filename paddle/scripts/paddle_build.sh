@@ -728,9 +728,9 @@ function check_whl_size() {
         exit 1
     fi
 
+    set +x
     dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
-    pr_whl_size=196
 
     whldiffSize=`expr ${pr_whl_size} - ${dev_whl_size}`
     if [ ${whldiffSize} -gt 10 ] ; then
@@ -745,6 +745,7 @@ function check_whl_size() {
            exit 6
        fi
     fi
+    set -x
 }
 
 function generate_upstream_develop_api_spec() {
