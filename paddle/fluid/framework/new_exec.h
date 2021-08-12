@@ -310,6 +310,11 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           var_scope->name2id[new_var_name] = var_scope->var_list.size();
           var_scope->var_list.push_back(v);
 
+          VariableMetaInfo info;
+          info.var_ref_count_ = 0;
+          info.vardesc_ = nullptr;
+          var_scope->vec_meta_info_.push_back(info);
+
           VariableNameMap copy_in_map;
           auto x_iter = inputs_names.find(var_name_item.first);
           copy_in_map["X"] = {x_iter->second[i]};
@@ -450,6 +455,11 @@ class InterpreterCore {
         }
 
         global_scope.var_list.push_back(v);
+
+        VariableMetaInfo info;
+        info.var_ref_count_ = 0;
+        info.vardesc_ = nullptr;
+        global_scope.vec_meta_info_.push_back(info);
       }
     }
 
@@ -540,8 +550,12 @@ class InterpreterCore {
           if (!info.IsBuilt()) {
             info.Build(op_list[i]);
           }
-          if (info.IsInArgBufferNeeded(
-                  global_scope.vec_meta_info_[id].vardesc_->Name())) {
+          if (global_scope.vec_meta_info_[id].vardesc_) {
+            if (info.IsInArgBufferNeeded(
+                    global_scope.vec_meta_info_[id].vardesc_->Name())) {
+              gc_check_input_list.push_back(id);
+            }
+          } else {
             gc_check_input_list.push_back(id);
           }
         }
