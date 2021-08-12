@@ -34,6 +34,10 @@ class ElementwiseMaxNPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
 
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
     bool direct_compute = false;
     auto x_dims = x->dims();
     auto y_dims = y->dims();
@@ -46,21 +50,17 @@ class ElementwiseMaxNPUKernel : public framework::OpKernel<T> {
           x_dims == framework::slice_ddim(y_dims, axis, y_dims.size());
     }
 
-    Tensor transformed_x, transformed_y;
     if (direct_compute) {
-      transformed_x.ShareDataWith(*x);
-      transformed_y.ShareDataWith(*y);
+      const auto& runner = NpuOpRunner("Maximum", {*x, *y}, {*out}, {});
+      runner.Run(stream);
     } else {
+      Tensor transformed_x, transformed_y;
       NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
                                    &transformed_y);
+      const auto& runner =
+          NpuOpRunner("Maximum", {transformed_x, transformed_y}, {*out}, {});
+      runner.Run(stream);
     }
-
-    const auto& runner =
-        NpuOpRunner("Maximum", {transformed_x, transformed_y}, {*out}, {});
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
   }
 };
 
