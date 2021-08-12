@@ -43,7 +43,7 @@ using OpAttrVariantT =
                    std::vector<int32_t>,     /* AttrType::INTS */
                    std::vector<int64_t>,     /* AttrType::LONGS */
                    std::vector<std::string>, /* AttrType::STRINGS */
-                   paddle::none_t             /* None */
+                   paddle::none_t            /* None */
                    >;
 
 struct OpUpdateInfo {

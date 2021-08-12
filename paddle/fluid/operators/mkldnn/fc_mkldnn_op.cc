@@ -89,7 +89,8 @@ class FCPrimitiveFactory {
     // descriptor has been divided into separate cases, based on the number
     // of input dimensions.
     size_t input_dim_num = input->dims().size();
-    paddle::optional<mkldnn::inner_product_forward::primitive_desc> fc_prim_desc;
+    paddle::optional<mkldnn::inner_product_forward::primitive_desc>
+        fc_prim_desc;
     memory::desc usr_weights_desc = {};
     switch (input_dim_num) {
       case 2:

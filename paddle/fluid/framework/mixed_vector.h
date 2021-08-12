@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/utils/optional.h"
 #include "paddle/utils/none.h"
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace framework {
