@@ -282,8 +282,9 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
         try:
             if init_fn is not None:
                 init_fn(worker_id)
-            fetcher = _DatasetKind.create_fetcher(
-                dataset_kind, dataset, auto_collate_batch, collate_fn, drop_last)
+            fetcher = _DatasetKind.create_fetcher(dataset_kind, dataset,
+                                                  auto_collate_batch,
+                                                  collate_fn, drop_last)
         except:
             init_exception = _WorkerException(worker_id)
 

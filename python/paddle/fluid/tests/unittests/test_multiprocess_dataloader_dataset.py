@@ -403,10 +403,11 @@ class TestDatasetWithDropLast(unittest.TestCase):
             for drop_last in [True, False]:
                 steps = (num_samples + (1 - int(drop_last)) * \
                         (batch_size - 1)) // batch_size
-                dataloader = DataLoader(dataset,
-                                        batch_size=batch_size,
-                                        drop_last=drop_last,
-                                        num_workers=num_workers)
+                dataloader = DataLoader(
+                    dataset,
+                    batch_size=batch_size,
+                    drop_last=drop_last,
+                    num_workers=num_workers)
                 datas = []
                 for data in dataloader:
                     datas.append(data)
