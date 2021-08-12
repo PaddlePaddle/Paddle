@@ -164,7 +164,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
     engine_key_ = Attr<std::string>("engine_key");
     calibration_engine_key_ = Attr<std::string>("calibration_engine_key");
     predictor_id_ = Attr<int>("predictor_id");
-    allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
+    allow_build_at_runtime_ = false;
+    if (HasAttr("allow_build_at_runtime")) {
+      allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
+    }
 
     auto params = Attr<std::vector<std::string>>("parameters");
     for (const auto &param : params) {

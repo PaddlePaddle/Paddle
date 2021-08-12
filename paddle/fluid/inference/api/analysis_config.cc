@@ -787,7 +787,7 @@ std::string AnalysisConfig::Summary() {
       // dynamic_shape
       os.InsertRow({"tensorrt_enable_dynamic_shape",
                     min_input_shape_.empty() ? "false" : "true"});
-      os.InsertRow({"tuned_dynamic_shape",
+      os.InsertRow({"tensorrt_tuned_dynamic_shape",
                     trt_tuned_dynamic_shape_ ? "shape_info_path_" : "false"});
 
       os.InsertRow({"tensorrt_use_oss", trt_use_oss_ ? "true" : "false"});

@@ -28,6 +28,7 @@
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
@@ -489,7 +490,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("switch_ir_optim", &AnalysisConfig::SwitchIrOptim,
            py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
-      .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim)
+      .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim,
+           py::arg("x") = true)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
@@ -517,6 +519,15 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
+      .def("collect_shape_range_info", &AnalysisConfig::CollectShapeInfo)
+      .def("shape_info_path", &AnalysisConfig::shape_info_path)
+      .def("shape_range_info_collected", &AnalysisConfig::shape_info_collected)
+      .def("enable_tuned_tensorrt_dynamic_shape",
+           &AnalysisConfig::EnableTunedTensorRtDynamicShape)
+      .def("tuned_tensorrt_dynamic_shape",
+           &AnalysisConfig::tuned_tensorrt_dynamic_shape)
+      .def("trt_allow_build_at_runtime",
+           &AnalysisConfig::trt_allow_build_at_runtime)
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
       .def("enable_tensorrt_dla", &AnalysisConfig::EnableTensorRtDLA,
            py::arg("dla_core") = 0)
