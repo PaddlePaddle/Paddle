@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#ifdef PADDLE_WITH_HCCL
+#ifdef PADDLE_WITH_ASCEND_CL
 
 static void GenHCCLID(std::vector<HcclRootInfo>* hccl_ids) {
   constexpr int timeout = 2 * 60 + 10;  // 2MSL+10s

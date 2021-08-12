@@ -66,7 +66,7 @@ void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx) {
   attrs["ring_id"] = 0;
   attrs["srTag"] = 0;
   attrs["use_calc_stream"] = 1;
-  
+
   auto op = f::OpRegistry::CreateOp("send_v2", {{"X", {"Data"}}}, {}, attrs);
 
   for (int i = 0; i < 10; i++) {

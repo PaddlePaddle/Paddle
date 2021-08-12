@@ -59,7 +59,7 @@ void HierarchicalHCCLReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   int root_id = 0;
   attrs["root_id"] = root_id;
   attrs["use_calc_stream"] = 1;
-  
+
   auto op = f::OpRegistry::CreateOp("c_reduce_sum", {{"X", {"Data"}}},
                                     {{"Out", {"OutData"}}}, attrs);
 

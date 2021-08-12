@@ -257,7 +257,8 @@ class HierarchicalHcclComm {
   virtual ~HierarchicalHcclComm() = default;
 };
 
-// A singleton Hierarchical Hccl  communicator context reserves communication ring ids
+// A singleton Hierarchical Hccl  communicator context reserves communication
+// ring ids
 class HierarchicalHcclCommContext {
  public:
   static HierarchicalHcclCommContext& Instance() {
@@ -265,12 +266,14 @@ class HierarchicalHcclCommContext {
     return comm_ctx;
   }
 
-  HierarchicalHcclComm* CreateHierarchicalHcclComm(HierarchicalHcclCommGroupIdType hierarchical_hccl_id, int nranks,
-                           int rank, int dev_id, int ring_id);
+  HierarchicalHcclComm* CreateHierarchicalHcclComm(
+      HierarchicalHcclCommGroupIdType hierarchical_hccl_id, int nranks,
+      int rank, int dev_id, int ring_id);
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
-  HierarchicalHcclComm* AssignHierarchicalHcclComm(HierarchicalHcclCommGroupIdType comm, int nranks, int rank,
-                           int dev_id, int ring_id);
+  HierarchicalHcclComm* AssignHierarchicalHcclComm(
+      HierarchicalHcclCommGroupIdType comm, int nranks, int rank, int dev_id,
+      int ring_id);
 
   // retrieve a communicator by the ring id in multiprocessing mode
   HierarchicalHcclComm* Get(int ring_id) const {

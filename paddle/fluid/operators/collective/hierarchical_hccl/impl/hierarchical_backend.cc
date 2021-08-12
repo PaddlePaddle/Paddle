@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/hierarchical_hccl/impl/hierarchical_backend.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include <iostream>
+
 #include "paddle/fluid/operators/collective/hierarchical_hccl/impl/factory.h"
 #include "paddle/fluid/operators/collective/hierarchical_hccl/impl/rendezvous/brpc_store.h"
-
-#include <iostream>
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -57,9 +57,10 @@ HierarchicalHcclResult HierarchicalBackend::init_comm_global(
           layer, _brpc_store));
       impl->set_level(layer.level);
       HierarchicalHcclUniqueId id;
-      PADDLE_ENFORCE_NPU_SUCCESS(impl->gen_unique_id(&id, std::to_string(i).c_str(), local_rank,
-                                _brpc_store));
-      PADDLE_ENFORCE_NPU_SUCCESS(impl->init_comm_global(&id, local_count, local_rank, local_rank));
+      PADDLE_ENFORCE_NPU_SUCCESS(impl->gen_unique_id(
+          &id, std::to_string(i).c_str(), local_rank, _brpc_store));
+      PADDLE_ENFORCE_NPU_SUCCESS(
+          impl->init_comm_global(&id, local_count, local_rank, local_rank));
       VLOG(1) << "successfully initialized comm";
       _layered_comm_map[layer.level] = impl;
       _layer_index_map[layer.level] = i;
@@ -107,9 +108,8 @@ HierarchicalHcclResult HierarchicalBackend::all_reduce(
       std::shared_ptr<paddle::operators::HierarchicalHccl> impl =
           _layered_comm_map[layer];
       if (layer == 0) {
-        PADDLE_ENFORCE_NPU_SUCCESS(impl->all_reduce(sendbuff, recvbuff, count, data_type, op,
-                               group_id,
-                               stream));
+        PADDLE_ENFORCE_NPU_SUCCESS(impl->all_reduce(
+            sendbuff, recvbuff, count, data_type, op, group_id, stream));
         // TODO(liuwei88) : we may need to remove this in the future.
         // PADDLE_ENFORCE_NPU_SUCCESS(impl->sync_stream(group_id, stream) ==
         // HierarchicalHcclResult::SUCCESS);
@@ -117,10 +117,10 @@ HierarchicalHcclResult HierarchicalBackend::all_reduce(
         // TODO(liuwei88) : if we use different backend and have
         // differen mem type, we
         //        have to tackle this situation in the furture
-        PADDLE_ENFORCE_NPU_SUCCESS(impl->all_reduce(reinterpret_cast<void *>(recvbuff),
-                               reinterpret_cast<void *>(recvbuff), count,
-                               data_type, op, group_id,
-                               stream));
+        PADDLE_ENFORCE_NPU_SUCCESS(
+            impl->all_reduce(reinterpret_cast<void *>(recvbuff),
+                             reinterpret_cast<void *>(recvbuff), count,
+                             data_type, op, group_id, stream));
       }
     }
   }
@@ -132,8 +132,8 @@ HierarchicalHcclResult HierarchicalBackend::all_reduce(
       std::shared_ptr<paddle::operators::HierarchicalHccl> impl =
           _layered_comm_map[layer];
       // note we broadcast in-place
-      PADDLE_ENFORCE_NPU_SUCCESS(impl->broadcast(recvbuff, recvbuff, count, data_type, 0, group_id,
-                            stream));
+      PADDLE_ENFORCE_NPU_SUCCESS(impl->broadcast(
+          recvbuff, recvbuff, count, data_type, 0, group_id, stream));
       // TODO(liuwei88) : we may need to remove this in the future.
       // PADDLE_ENFORCE_NPU_SUCCESS(impl->sync_stream(group_id, stream) ==
       // HierarchicalHcclResult::SUCCESS);
@@ -190,9 +190,9 @@ HierarchicalHcclResult HierarchicalBackend::broadcast(
       VLOG(3) << "perform broadcast on layer[" << layer << "], from root["
               << root << "], with local rank[" << root_local_rank_map[layer]
               << "]";
-      PADDLE_ENFORCE_NPU_SUCCESS(impl->broadcast(sendbuff, recvbuff, count, data_type,
-                            root_local_rank_map[layer], group_id,
-                            stream));
+      PADDLE_ENFORCE_NPU_SUCCESS(
+          impl->broadcast(sendbuff, recvbuff, count, data_type,
+                          root_local_rank_map[layer], group_id, stream));
       PADDLE_ENFORCE_NPU_SUCCESS(impl->sync_stream(group_id, stream));
     } else {
       VLOG(3) << "no need to perform forward pass for layer " << layer;
@@ -211,10 +211,9 @@ HierarchicalHcclResult HierarchicalBackend::broadcast(
     // TODO(liuwei88) : if we use different backend and have differen mem
     // type, we
     //        have to tackle this situation in the furture
-    PADDLE_ENFORCE_NPU_SUCCESS(impl->broadcast(reinterpret_cast<void *>(recvbuff),
-                          reinterpret_cast<void *>(recvbuff), count, data_type,
-                          root_local_rank_map[layer], group_id,
-                          stream) );
+    PADDLE_ENFORCE_NPU_SUCCESS(impl->broadcast(
+        reinterpret_cast<void *>(recvbuff), reinterpret_cast<void *>(recvbuff),
+        count, data_type, root_local_rank_map[layer], group_id, stream));
     PADDLE_ENFORCE_NPU_SUCCESS(impl->sync_stream(group_id, stream));
   } else {
     VLOG(3) << "no need to perform broadcast for top-most layer " << layer;
@@ -230,8 +229,8 @@ HierarchicalHcclResult HierarchicalBackend::broadcast(
       // from lower level group
       VLOG(3) << "perform broadcast on layer[" << layer << "], from root["
               << root << "], with local rank[0]";
-      PADDLE_ENFORCE_NPU_SUCCESS(impl->broadcast(recvbuff, recvbuff, count, data_type, 0, group_id,
-                            stream));
+      PADDLE_ENFORCE_NPU_SUCCESS(impl->broadcast(
+          recvbuff, recvbuff, count, data_type, 0, group_id, stream));
       PADDLE_ENFORCE_NPU_SUCCESS(impl->sync_stream(group_id, stream));
     } else {
       VLOG(3) << "no need to perform backward pass for layer " << layer;
@@ -271,7 +270,8 @@ HierarchicalHcclResult HierarchicalBackend::all_gather(
   size_t send_bytes_size = 0;
 
   PADDLE_ENFORCE_NPU_SUCCESS(to_HcclDataTypeSize(data_type, &data_type_size));
-  PADDLE_ENFORCE_NPU_SUCCESS(count_to_bytes(data_type, send_count, &send_bytes_size));
+  PADDLE_ENFORCE_NPU_SUCCESS(
+      count_to_bytes(data_type, send_count, &send_bytes_size));
 
   size_t maxCount = send_bytes_size * _rank_count;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemset(recvbuff, maxCount, 0, maxCount));
@@ -286,8 +286,9 @@ HierarchicalHcclResult HierarchicalBackend::all_gather(
   // gather
   VLOG(3) << "Second, we should conduct allreduce sum opratiton in place to "
              "achieve all gather";
-  PADDLE_ENFORCE_NPU_SUCCESS(all_reduce(recvbuff, recvbuff, _rank_count * send_count, data_type, HCCL_REDUCE_SUM,
-                   group_id, stream) );
+  PADDLE_ENFORCE_NPU_SUCCESS(all_reduce(recvbuff, recvbuff,
+                                        _rank_count * send_count, data_type,
+                                        HCCL_REDUCE_SUM, group_id, stream));
   return HierarchicalHcclResult::SUCCESS;
 }
 

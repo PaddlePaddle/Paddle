@@ -23,10 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
-    defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_XPU_BKCL) || \
-    defined(PADDLE_WITH_HIERARCHICAL_HCCL)
-
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -203,32 +201,32 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    HcclReduceOp paddle_red_type = HCCL_REDUCE_SUM;
+    HcclReduceOp hccl_red_type = HCCL_REDUCE_SUM;
     switch (red_type) {
       case kRedSum:
-        paddle_red_type = HCCL_REDUCE_SUM;
+        hccl_red_type = HCCL_REDUCE_SUM;
         break;
 
       case kRedMax:
-        paddle_red_type = HCCL_REDUCE_MAX;
+        hccl_red_type = HCCL_REDUCE_MAX;
         break;
 
       case kRedMin:
-        paddle_red_type = HCCL_REDUCE_MIN;
+        hccl_red_type = HCCL_REDUCE_MIN;
         break;
 
       case kRedProd:
-        paddle_red_type = HCCL_REDUCE_PROD;
+        hccl_red_type = HCCL_REDUCE_PROD;
         break;
 
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", paddle_red_type));
+            "Invalid reduce type: %d", red_type));
     }
 
     VLOG(3) << "ascend allreduce, parameter is: "
             << "input num: " << in->dims() << ", dtype: " << dtype
-            << ", red_type: " << paddle_red_type << ", group is: " << group
+            << ", red_type: " << red_type << ", group is: " << group
             << ", sendbuff:" << sendbuff << ", recvbuff:" << recvbuff
             << ", out_size:" << out->memory_size()
             << ", use_calc_stream:" << ctx.Attr<bool>("use_calc_stream")
@@ -265,11 +263,11 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_HCCL)
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-        sendbuff, recvbuff, numel, dtype, paddle_red_type, comm->comm(),
+        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
         reinterpret_cast<void*>(stream)));
 #elif defined(PADDLE_WITH_HIERARCHICAL_HCCL)
     PADDLE_ENFORCE_NPU_SUCCESS(paddle::operators::hierarchical_hccl_all_reduce(
-        sendbuff, recvbuff, numel, dtype, paddle_red_type, comm->comm().c_str(),
+        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm().c_str(),
         reinterpret_cast<void*>(stream)));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -411,7 +409,7 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the allreduced result.");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_HIERARCHICAL_HCCL)
+#if defined(PADDLE_WITH_ASCEND_CL)
     AddAttr<std::string>("tag", "(string default tag) tag for all reduce.")
         .SetDefault("tag");
 #endif

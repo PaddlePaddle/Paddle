@@ -16,10 +16,7 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/platform/collective_helper.h"
-
-#if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/hccl_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {

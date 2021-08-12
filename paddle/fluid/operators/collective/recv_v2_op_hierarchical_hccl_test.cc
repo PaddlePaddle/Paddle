@@ -54,7 +54,7 @@ void TestHcomRecvOp(f::Scope* scope, const p::DeviceContext& ctx) {
   attrs["ring_id"] = 0;
   attrs["srTag"] = 0;
   attrs["use_calc_stream"] = 1;
-  
+
   std::vector<int> out_shape;
   out_shape.push_back(num);
   out_shape.push_back(num);

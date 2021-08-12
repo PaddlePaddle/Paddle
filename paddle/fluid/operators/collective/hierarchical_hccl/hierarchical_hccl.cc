@@ -24,7 +24,8 @@ namespace paddle {
 namespace operators {
 
 void new_string_split(const std::string &str, char sep,
-                  std::vector<std::string> *pieces, bool ignore_null = true) {
+                      std::vector<std::string> *pieces,
+                      bool ignore_null = true) {
   pieces->clear();
   if (str.empty()) {
     if (!ignore_null) {
@@ -61,8 +62,8 @@ static std::unordered_map<std::string,
                           std::shared_ptr<HierarchicalHcclUniqueId>>
     unique_id_map;
 // an unordered map to store hierarchical hccl instance by group id
-static std::unordered_map<
-    std::string, std::shared_ptr<paddle::operators::HierarchicalHccl>>
+static std::unordered_map<std::string,
+                          std::shared_ptr<paddle::operators::HierarchicalHccl>>
     hierarchical_hccl_instance_map;
 // an unordered map to store brpc store instance by group id
 static std::unordered_map<
@@ -291,8 +292,8 @@ HierarchicalHcclResult construct_hierarchical_hccl_group(
         hierarchical_hccl_instance_map.end())
       << "repeated group_id " << comm_group_id;
   std::shared_ptr<paddle::operators::HierarchicalHccl> instance;
-  instance.reset(
-      paddle::operators::HierarchicalHcclFactory::create(init_config, brpc_store));
+  instance.reset(paddle::operators::HierarchicalHcclFactory::create(
+      init_config, brpc_store));
   hierarchical_hccl_instance_map[comm_group_id] = instance;
   VLOG(1) << "HierarchicalHccl instance has been constructed ...";
 
@@ -344,10 +345,10 @@ HierarchicalHcclResult destroy_hierarchical_hccl_group(
   return SUCCESS;
 }
 
-HierarchicalHcclResult init_hierarchical_hccl_comm(
-    const int rank_count, const int my_rank,
-    int my_device_id,
-    std::string comm_group_id) {
+HierarchicalHcclResult init_hierarchical_hccl_comm(const int rank_count,
+                                                   const int my_rank,
+                                                   int my_device_id,
+                                                   std::string comm_group_id) {
   VLOG(1) << "Begin Init global comm in group [" << std::string(comm_group_id)
           << "]!";
 
@@ -356,8 +357,7 @@ HierarchicalHcclResult init_hierarchical_hccl_comm(
 
   CHECK(get_instance(comm_group_id.c_str())
             ->init_comm_global(unique_id_map[comm_group_id].get(), rank_count,
-                               my_rank,
-                               my_device_id) == SUCCESS);
+                               my_rank, my_device_id) == SUCCESS);
 
   VLOG(1) << "Successful: Init global comm in group ["
           << std::string(comm_group_id) << "]!";
@@ -400,8 +400,7 @@ HierarchicalHcclResult hierarchical_hccl_gen_unique_id(
 }
 
 HierarchicalHcclResult hierarchical_hccl_init_comm_global(
-    const int rank_count, const int my_rank,
-    int my_device_id,
+    const int rank_count, const int my_rank, int my_device_id,
     HierarchicalHcclCommGroupIdType group_id) {
   std::string comm_group_id = std::string(group_id);
   PADDLE_ENFORCE_NPU_SUCCESS(init_hierarchical_hccl_comm(
@@ -410,9 +409,8 @@ HierarchicalHcclResult hierarchical_hccl_init_comm_global(
   std::string global_comm_group_id = gen_global_group_id(comm_group_id);
   if (hierarchical_hccl_instance_map.find(global_comm_group_id) !=
       hierarchical_hccl_instance_map.end()) {
-    PADDLE_ENFORCE_NPU_SUCCESS(
-        init_hierarchical_hccl_comm(rank_count, my_rank,
-                                    my_device_id, global_comm_group_id));
+    PADDLE_ENFORCE_NPU_SUCCESS(init_hierarchical_hccl_comm(
+        rank_count, my_rank, my_device_id, global_comm_group_id));
   }
   return SUCCESS;
 }
@@ -438,8 +436,8 @@ HierarchicalHcclResult hierarchical_hccl_all_reduce(
     HierarchicalHcclDataType data_type, HierarchicalHcclReductionOp op,
     HierarchicalHcclCommGroupIdType group_id,
     HierarchicalHcclRuntimeStream stream) {
-  return get_instance(group_id)->all_reduce(
-      sendbuff, recvbuff, count, data_type, op, group_id, stream);
+  return get_instance(group_id)->all_reduce(sendbuff, recvbuff, count,
+                                            data_type, op, group_id, stream);
 }
 
 HierarchicalHcclResult hierarchical_hccl_broadcast(

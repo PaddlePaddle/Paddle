@@ -27,7 +27,7 @@ DECLARE_string(selected_npus);
 void HierarchicalHCCLAllGatherOp(f::Scope* scope, const p::DeviceContext& ctx) {
   int rank_id = atoi(getenv("RANK_ID"));
   int rank_count = atoi(getenv("RANK_COUNT"));
-  
+
   // init
   auto x = scope->Var("Data");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
@@ -76,9 +76,9 @@ void HierarchicalHCCLAllGatherOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   EXPECT_EQ(out_vec.size(), init.size() * rank_count);
 
-  for (int i = 0; i < rank_count; i ++) {
+  for (int i = 0; i < rank_count; i++) {
     int offset = total_size * i;
-    for (int j =0; j < total_size; j ++){
+    for (int j = 0; j < total_size; j++) {
       EXPECT_EQ(out_vec[offset + j], i);
     }
   }

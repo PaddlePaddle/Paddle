@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_reduce_op.h"
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
 
-#if defined(PADDLE_WITH_HCCL)
+#if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
@@ -154,7 +154,7 @@ void TestHCCLReduceOp(f::Scope* scope, const p::DeviceContext& ctx, int iter) {
   int root_id = 0;
   attrs["root_id"] = root_id;
   attrs["use_calc_stream"] = 1;
-  
+
   auto op = f::OpRegistry::CreateOp("c_reduce_sum", {{"X", {"Data"}}},
                                     {{"Out", {"OutData"}}}, attrs);
 

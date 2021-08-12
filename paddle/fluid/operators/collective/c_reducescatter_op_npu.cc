@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
-#include "paddle/fluid/platform/collective_helper.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
@@ -83,8 +83,8 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
 #elif defined(PADDLE_WITH_HIERARCHICAL_HCCL)
     PADDLE_ENFORCE_NPU_SUCCESS(
         paddle::operators::hierarchical_hccl_reduce_scatter(
-            inputPtr, outputPtr, recv_numel, dtype, HCCL_REDUCE_SUM, comm->comm().c_str(),
-            reinterpret_cast<void*>(stream)));
+            inputPtr, outputPtr, recv_numel, dtype, HCCL_REDUCE_SUM,
+            comm->comm().c_str(), reinterpret_cast<void*>(stream)));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle collective should compile with hierarchical hccl or "

@@ -55,7 +55,7 @@ void HierarchicalHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   attrs["root"] = root;
   attrs["ring_id"] = 0;
   attrs["use_calc_stream"] = 1;
-  
+
   auto op = f::OpRegistry::CreateOp("c_broadcast", {{"X", {"Data"}}},
                                     {{"Out", {"OutData"}}}, attrs);
 

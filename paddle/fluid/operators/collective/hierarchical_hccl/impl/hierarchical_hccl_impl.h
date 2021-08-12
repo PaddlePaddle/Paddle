@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/operators/collective/hierarchical_hccl/hierarchical_hccl.h"
 #include "paddle/fluid/operators/collective/hierarchical_hccl/hierarchical_hccl_types.h"
 #include "paddle/fluid/operators/collective/hierarchical_hccl/impl/rendezvous/brpc_store.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -36,8 +36,9 @@ class HierarchicalHccl {
 
   HierarchicalHcclResult gen_unique_id(
       HierarchicalHcclUniqueId *unique_id, std::string prefix,
-      const int my_rank, std::shared_ptr<paddle::operators::rendezvous::BRPCStore>
-                             brpc_store) noexcept {
+      const int my_rank,
+      std::shared_ptr<paddle::operators::rendezvous::BRPCStore>
+          brpc_store) noexcept {
     HierarchicalHcclResult result = HierarchicalHcclResult::SUCCESS;
     std::string unique_id_key =
         "unique_id-" + name() + "-" + prefix + "-" + std::to_string(level());
@@ -92,16 +93,16 @@ class HierarchicalHccl {
   virtual HierarchicalHcclResult count_to_bytes(
       HierarchicalHcclDataType data_type, size_t count, size_t *bytes_size) {
     size_t data_type_size;
-        PADDLE_ENFORCE_NPU_SUCCESS(to_HcclDataTypeSize(data_type, &data_type_size));
-        *bytes_size = count * data_type_size;
-        return SUCCESS;
+    PADDLE_ENFORCE_NPU_SUCCESS(to_HcclDataTypeSize(data_type, &data_type_size));
+    *bytes_size = count * data_type_size;
+    return SUCCESS;
   }
 
-    HierarchicalHcclResult sync_stream(HierarchicalHcclCommGroupIdType group_id,
-                                   HierarchicalHcclRuntimeStream stream) {
-        PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-        return SUCCESS;
-    }
+  HierarchicalHcclResult sync_stream(HierarchicalHcclCommGroupIdType group_id,
+                                     HierarchicalHcclRuntimeStream stream) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+    return SUCCESS;
+  }
 
  protected:
   HierarchicalHcclResult to_HcclDataTypeSize(HierarchicalHcclDataType data_type,

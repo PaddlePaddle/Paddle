@@ -29,8 +29,7 @@ HierarchicalHcclResult hierarchical_hccl_gen_unique_id(
 
 // Initialize HierarchicalHccl for rank
 HierarchicalHcclResult hierarchical_hccl_init_comm_global(
-    const int rank_count, const int my_rank,
-    int my_device_id,
+    const int rank_count, const int my_rank, int my_device_id,
     HierarchicalHcclCommGroupIdType comm_group_id);
 
 // Destroy the HierarchicalHccl world communicator

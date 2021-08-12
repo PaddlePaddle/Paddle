@@ -47,11 +47,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "acl/acl.h"
-#endif  // PADDLE_WITH_ASCEND_CL
-
-#ifdef PADDLE_WITH_HCCL
 #include "hccl/hccl_types.h"
-#endif  // PADDLE_WITH_HCCL
+#endif  // PADDLE_WITH_ASCEND_CL
 
 #ifdef PADDLE_WITH_HIERARCHICAL_HCCL
 #include "paddle/fluid/operators/collective/hierarchical_hccl/hierarchical_hccl_types.h"
