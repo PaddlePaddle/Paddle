@@ -290,7 +290,7 @@ inline std::string GetCurrentTraceBackString(bool for_signal = false) {
   // obtaining the error stack trace when the signal error occurred,
   // that is not related to the signal error self, remove it to
   // avoid misleading users and developers
-  int end_idx = 0 ? for_signal : 2;
+  int end_idx = for_signal ? 2 : 0;
   for (int i = size - 1; i >= end_idx; --i) {
     if (dladdr(call_stack[i], &info) && info.dli_sname) {
       auto demangled = demangle(info.dli_sname);
