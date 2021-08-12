@@ -294,7 +294,17 @@ void SignalHandle(const char *data, int size) {
       // Here does not throw an exception,
       // otherwise it will casue "terminate called recursively"
       std::ostringstream sout;
-      sout << platform::GetCurrentTraceBackString();
+      sout << "\n\n--------------------------------------\n";
+      sout << "C++ Traceback (most recent call last):";
+      sout << "\n--------------------------------------\n";
+      auto traceback = platform::GetCurrentTraceBackString(/*for_signal=*/true);
+      if (traceback.empty()) {
+        sout
+            << "No stack trace in paddle, may be caused by external reasons.\n";
+      } else {
+        sout << traceback;
+      }
+
       sout << "\n----------------------\nError Message "
               "Summary:\n----------------------\n";
       sout << platform::errors::Fatal(
