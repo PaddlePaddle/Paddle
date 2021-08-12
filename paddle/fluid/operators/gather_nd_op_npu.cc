@@ -66,42 +66,34 @@ template <typename DeviceContext, typename T>
 class GatherNdGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *index = ctx.Input<Tensor>("Index");
-    const auto *x = ctx.Input<Tensor>("X");
-    const auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *index = ctx.Input<Tensor>("Index");
+    auto *x = ctx.Input<Tensor>("X");
+    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto p2 = dx->mutable_data<T>(x->dims(), ctx.GetPlace());
+    auto *p2 = dx->mutable_data<T>(ctx.GetPlace());
 
     if (index->numel() == 0) {
       *dx = *dout;
       return;
     }
 
-    const auto &index_type = index->type();
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Index holds the wrong type, it holds [%s],"
-                          "but desires to be [%s] or [%s]",
-                          paddle::framework::DataTypeToString(index_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
-
+    // step1: Unsqueeze index
+    framework::Tensor tmp_tensor(index->type());
+    framework::Tensor tmp_tensor2(dout->type());
     const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
+      tmp_tensor.ShareDataWith(*index);
       std::vector<int64_t> new_dim = {1, index_dims[0]};
-      const_cast<framework::Tensor *>(index)->Resize(
-          framework::make_ddim(new_dim));
+      tmp_tensor.Resize(framework::make_ddim(new_dim));
+      index = &tmp_tensor;
 
+      tmp_tensor2.ShareDataWith(*dout);
       std::vector<int64_t> new_dim2{1};
       for (int i = index->numel(); i < x->dims().size(); i++) {
         new_dim2.push_back(x->dims()[i]);
       }
-      const_cast<framework::Tensor *>(dout)->Resize(
-          framework::make_ddim(new_dim2));
+      tmp_tensor2.Resize(framework::make_ddim(new_dim2));
+      dout = &tmp_tensor2;
     }
 
     auto stream =
