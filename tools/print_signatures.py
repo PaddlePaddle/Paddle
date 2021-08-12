@@ -179,52 +179,6 @@ def check_api_args_doc(fullargspec, docstr):
     return True
 
 
-ErrorSet = set()
-IdSet = set()
-skiplist = []
-
-
-def visit_all_module(mod):
-    mod_name = mod.__name__
-    if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
-        return
-
-    if mod_name.startswith('paddle.fluid.core'):
-        return
-
-    if mod in visited_modules:
-        return
-    visited_modules.add(mod)
-
-    member_names = dir(mod)
-    if hasattr(mod, "__all__"):
-        member_names += mod.__all__
-    for member_name in member_names:
-        if member_name.startswith('_'):
-            continue
-        cur_name = mod_name + '.' + member_name
-        if cur_name in skiplist:
-            continue
-        try:
-            instance = getattr(mod, member_name)
-            if inspect.ismodule(instance):
-                visit_all_module(instance)
-            else:
-                instance_id = id(instance)
-                if instance_id in IdSet:
-                    continue
-                IdSet.add(instance_id)
-                if hasattr(instance,
-                           '__name__') and member_name != instance.__name__:
-                    print(
-                        "Found alias API, alias name is: {}, original name is: {}".
-                        format(member_name, instance.__name__),
-                        file=sys.stderr)
-        except:
-            if not cur_name in ErrorSet and not cur_name in skiplist:
-                ErrorSet.add(cur_name)
-
-
 # all from gen_doc.py
 api_info_dict = {}  # used by get_all_api
 
@@ -332,9 +286,13 @@ def process_module(m, attr="__all__"):
     return api_counter
 
 
-def check_public_api():
+def set_api_sketch():
+    """
+    set the in_api_sktech attr.
+    """
     import paddle
-    modulelist = [  #npqa
+    global api_info_dict
+    modulelist = [  #noqa
         paddle,
         paddle.amp,
         paddle.nn,
@@ -355,6 +313,7 @@ def check_public_api():
         paddle.utils.download,
         paddle.utils.profiler,
         paddle.utils.cpp_extension,
+        paddle.utils.unique_name,
         paddle.sysconfig,
         paddle.vision,
         paddle.vision.datasets,
@@ -375,7 +334,6 @@ def check_public_api():
         paddle.device
     ]
 
-    apinum = 0
     alldict = {}
     for module in modulelist:
         if hasattr(module, '__all__'):
@@ -387,7 +345,6 @@ def check_public_api():
                 if item.startswith('__'):
                     continue
                 old_all.append(item)
-        apinum += len(old_all)
         alldict.update({module.__name__: old_all})
 
     old_all = []
@@ -396,25 +353,28 @@ def check_public_api():
         if item.startswith('_'):
             continue
         old_all.append(item)
-    apinum += len(old_all)
     alldict.update({'paddle.Tensor': old_all})
 
-    for module, allapi in alldict.items():
-        for member_name in allapi:
-            cur_name = module + '.' + member_name
-            instance = eval(cur_name)
-            doc_md5 = md5(instance.__doc__)
-            member_dict[cur_name] = "({}, ('document', '{}'))".format(cur_name,
-                                                                      doc_md5)
+    all_api_found = {}
+    for m, apis in alldict.items():
+        for api in apis:
+            all_api_found['{}.{}'.format(m, api)] = False
 
+    for api in all_api_found.keys():
+        for id_api in api_info_dict.keys():
+            if ('all_names' in api_info_dict[id_api]) and (
+                    api in api_info_dict[id_api]['all_names']):
+                all_api_found[api] = True
+                api_info_dict[id_api]['in_api_sketch'] = True
+                if 'api_sketch_names' not in api_info_dict[id_api]:
+                    api_info_dict[id_api]['api_sketch_names'] = []
+                api_info_dict[id_api]['api_sketch_names'].append(api)
+                break
 
-def check_allmodule_callable():
-    import paddle
-    modulelist = [paddle]
-    for m in modulelist:
-        visit_all_module(m)
-
-    return member_dict
+    api_not_in_dict = [api for api in all_api_found if not all_api_found[api]]
+    if api_not_in_dict:
+        logger.warning("some apis are not in api_info_dict: %s",
+                       str(api_not_in_dict))
 
 
 def parse_args():
@@ -424,11 +384,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Print Apis Signatures')
     parser.add_argument('--debug', dest='debug', action="store_true")
     parser.add_argument(
-        '--method',
-        dest='method',
-        type=str,
-        default='get_all_api',
-        help="using get_all_api or from_modulelist")
+        '--level',
+        dest='level',
+        type=int,
+        default=1,
+        help="0 - don't report; 1 - all the exposed apis; 2 - all the apis.")
     parser.add_argument(
         'module', type=str, help='module', default='paddle')  # not used
     parser.add_argument(
@@ -449,36 +409,38 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     api_args_check_failed = []
-    check_allmodule_callable()
-    if args.method == 'from_modulelist':
-        check_public_api()
-        for name in member_dict:
-            print(name, member_dict[name])
-    elif args.method == 'get_all_api':
-        get_all_api()
-        all_api_names_to_k = {}
-        for k, api_info in api_info_dict.items():
-            # 1. the shortest suggested_name may be renamed;
-            # 2. some api's fullname is not accessable, the module name of it is overrided by the function with the same name;
-            api_name = sorted(list(api_info['all_names']))[0]
-            all_api_names_to_k[api_name] = k
-        all_api_names_sorted = sorted(all_api_names_to_k.keys())
-        for api_name in all_api_names_sorted:
-            api_info = api_info_dict[all_api_names_to_k[api_name]]
+
+    get_all_api()
+    all_api_names_to_k = {}
+    for k, api_info in api_info_dict.items():
+        # 1. the shortest suggested_name may be renamed;
+        # 2. some api's fullname is not accessable, the module name of it is overrided by the function with the same name;
+        api_name = sorted(list(api_info['all_names']))[0]
+        all_api_names_to_k[api_name] = k
+    all_api_names_sorted = sorted(all_api_names_to_k.keys())
+    for api_name in all_api_names_sorted:
+        api_info = api_info_dict[all_api_names_to_k[api_name]]
+        printit = True
+        argcheckit = False
+        if args.level == 0:
+            printit = api_info.get('in_api_sketch', False)
+            argcheckit = False
+        elif args.level == 1:
+            printit = api_info.get('in_api_sketch', False)
+            argcheckit = printit
+        else:
+            printit = True
+            argcheckit = True
+        if printit:
             print("{0} ({2}, ('document', '{1}'))".format(
                 api_name,
                 md5(api_info['docstring']), api_info['signature']
                 if 'signature' in api_info else 'ArgSpec()'))
-            if 'argsdoc_check' in api_info and (not api_info['argsdoc_check']):
-                api_args_check_failed.append(api_name)
+        if argcheckit and 'argsdoc_check' in api_info and (
+                not api_info['argsdoc_check']):
+            api_args_check_failed.append(api_name)
 
     exit_value = 0
-    if len(ErrorSet):
-        exit_value = 1
-        for erroritem in ErrorSet:
-            print(
-                "Error, new function {} is unreachable".format(erroritem),
-                file=sys.stderr)
     if (not args.skip_api_args_doc_check) and api_args_check_failed:
         exit_value = 1
         logger.error("some apis' args check failed: %s",
