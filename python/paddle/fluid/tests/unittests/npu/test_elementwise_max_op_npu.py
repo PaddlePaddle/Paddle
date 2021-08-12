@@ -18,7 +18,7 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 
@@ -148,8 +148,6 @@ class TestElementwiseMaxOp_int32(TestElementwiseMaxOp):
         pass
 
 
-@skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseMaxOp_scalar(TestElementwiseMaxOp):
     def init_input_output(self):
         self.x = np.random.random_integers(-5, 5, [2, 3, 20]).astype(self.dtype)
