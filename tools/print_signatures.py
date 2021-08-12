@@ -143,6 +143,13 @@ def check_api_args_doc(fullargspec, docstr):
     check the name and order of the args.
 
     The Default value has so many formats.
+
+    Args:
+        fullargspec: the inpect.FullArgSpec object
+        docstr: the docstring of the function
+    
+    Returns:
+        boolean, check result
     """
     #document = new_document('~', parser_settings)
     #parser.parse(docstr, document)
@@ -423,7 +430,9 @@ def parse_args():
     parser.add_argument(
         'module', type=str, help='module', default='paddle')  # not used
     parser.add_argument(
-        '--check-api-args', dest='check_api_args', action="store_true")
+        '--skip-api-args-doc-check',
+        dest='skip_api_args_doc_check',
+        action="store_true")
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['paddle'])
@@ -468,7 +477,7 @@ if __name__ == '__main__':
             print(
                 "Error, new function {} is unreachable".format(erroritem),
                 file=sys.stderr)
-    if args.check_api_args and api_args_check_failed:
+    if (not args.skip_api_args_doc_check) and api_args_check_failed:
         exit_value = 1
         logger.error("some apis' args check failed: %s",
                      str(api_args_check_failed))
