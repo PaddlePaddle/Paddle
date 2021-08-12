@@ -145,47 +145,6 @@ class ReluGradNPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class Relu6NPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
-
-    out->mutable_data<T>(ctx.GetPlace());
-
-    const auto& runner = NpuOpRunner("Relu6",
-                                     {
-                                         *x,
-                                     },
-                                     {*out}, {});
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class Relu6GradNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<Tensor>("Out");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-
-    dx->mutable_data<T>(ctx.GetPlace());
-    const auto& runner = NpuOpRunner("Relu6Grad", {*dout, *out}, {*dx}, {});
-
-    runner.Run(stream);
-  }
-};
-
-template <typename DeviceContext, typename T>
 class SqrtNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -324,6 +283,27 @@ class TanhGradNPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
+class SinNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+
+    auto* out = ctx.Output<Tensor>("Out");
+
+    auto place = ctx.GetPlace();
+
+    out->mutable_data<T>(place);
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner = NpuOpRunner("Sin", {*x}, {*out}, {});
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
 class SquareNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -438,159 +418,6 @@ class HardSigmoidGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
-class ReciprocalNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
-    auto place = ctx.GetPlace();
-    out->mutable_data<T>(place);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    const auto& runner = NpuOpRunner("Reciprocal", {*x}, {*out}, {});
-    runner.Run(stream);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class ReciprocalGradNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<Tensor>("Out");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto place = ctx.GetPlace();
-    dx->mutable_data<T>(place);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    const auto& runner_dx =
-        NpuOpRunner("ReciprocalGrad", {*out, *dout}, {*dx}, {});
-    runner_dx.Run(stream);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class CosNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
-
-    auto place = ctx.GetPlace();
-    out->mutable_data<T>(place);
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-
-    const auto& runner = NpuOpRunner("Cos", {*x}, {*out}, {});
-    runner.Run(stream);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class CosGradNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* x = ctx.Input<Tensor>("X");
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-
-    auto place = ctx.GetPlace();
-    dx->mutable_data<T>(place);
-
-    Tensor sin_out(x->type());  // Temporary Tensor
-    sin_out.Resize(x->dims());
-    sin_out.mutable_data<T>(place);
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    const auto& runner = NpuOpRunner("Sin", {*x}, {sin_out}, {});
-    runner.Run(stream);
-
-    const auto& runner_dx = NpuOpRunner("Mul", {*dout, sin_out}, {*dx}, {});
-    runner_dx.Run(stream);
-
-    Tensor tmp(x->type());  // Temporary Tensor
-    tmp.Resize(framework::make_ddim({1, 1}));
-    tmp.mutable_data<T>(place);
-    float factor = -1.;
-    FillNpuTensorWithConstant<T>(&tmp, static_cast<T>(factor));
-
-    const auto& runner_dx_ = NpuOpRunner("Xdivy", {*dx, tmp}, {*dx}, {});
-    runner_dx_.Run(stream);
-    // dx = -dout * Sine(x);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class AtanNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
-    auto place = ctx.GetPlace();
-    out->mutable_data<T>(place);
-    const auto& runner = NpuOpRunner("Atan", {*x}, {*out}, {});
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class AtanGradNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* x = ctx.Input<Tensor>("X");
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto place = ctx.GetPlace();
-    dx->mutable_data<T>(place);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    const auto& runner_dx = NpuOpRunner("AtanGrad", {*x, *dout}, {*dx}, {});
-    runner_dx.Run(stream);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class ExpNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
-    const auto& runner = NpuOpRunner("Exp", {*x}, {*out}, {});
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class ExpGradNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<Tensor>("Out");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    dx->mutable_data<T>(ctx.GetPlace());
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    const auto& runner = NpuOpRunner("Mul", {*dout, *out}, {*dx}, {});
-    runner.Run(stream);
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -618,17 +445,6 @@ REGISTER_OP_NPU_KERNEL(
                            paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    relu6, ops::Relu6NPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::Relu6NPUKernel<paddle::platform::NPUDeviceContext,
-                        paddle::platform::float16>);
-
-REGISTER_OP_NPU_KERNEL(
-    relu6_grad,
-    ops::Relu6GradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::Relu6GradNPUKernel<paddle::platform::NPUDeviceContext,
-                            paddle::platform::float16>);
-
-REGISTER_OP_NPU_KERNEL(
     sqrt, ops::SqrtNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SqrtNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
@@ -653,6 +469,14 @@ REGISTER_OP_NPU_KERNEL(
     tanh, ops::TanhNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::TanhNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    sin, ops::SinNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SinNPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
+    ops::SinNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+    ops::SinNPUKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::SinNPUKernel<paddle::platform::NPUDeviceContext,
+                      paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     tanh_grad,
@@ -688,46 +512,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::HardSigmoidGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::HardSigmoidGradNPUKernel<paddle::platform::NPUDeviceContext,
                                   paddle::platform::float16>);
-
-REGISTER_OP_NPU_KERNEL(
-    reciprocal,
-    ops::ReciprocalNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ReciprocalNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::ReciprocalNPUKernel<paddle::platform::NPUDeviceContext,
-                             paddle::platform::float16>);
-
-REGISTER_OP_NPU_KERNEL(
-    reciprocal_grad,
-    ops::ReciprocalGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ReciprocalGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::ReciprocalGradNPUKernel<paddle::platform::NPUDeviceContext,
-                                 paddle::platform::float16>);
-
-REGISTER_OP_NPU_KERNEL(
-    cos, ops::CosNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::CosNPUKernel<paddle::platform::NPUDeviceContext,
-                      paddle::platform::float16>);
-
-REGISTER_OP_NPU_KERNEL(
-    cos_grad, ops::CosGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::CosGradNPUKernel<paddle::platform::NPUDeviceContext,
-                          paddle::platform::float16>);
-
-REGISTER_OP_NPU_KERNEL(
-    atan, ops::AtanNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::AtanNPUKernel<paddle::platform::NPUDeviceContext,
-                       paddle::platform::float16>);
-
-REGISTER_OP_NPU_KERNEL(
-    atan_grad,
-    ops::AtanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::AtanGradNPUKernel<paddle::platform::NPUDeviceContext,
-                           paddle::platform::float16>);
-
-REGISTER_OP_NPU_KERNEL(
-    exp, ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, double>);
-
-REGISTER_OP_NPU_KERNEL(
-    exp_grad, ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, double>);
