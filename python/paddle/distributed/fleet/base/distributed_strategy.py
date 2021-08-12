@@ -1117,6 +1117,7 @@ class DistributedStrategy(object):
                                     This value should be an integer greater than 0.
                                     If it is not set, or set to -1, its value will be inferred 
                                     based on the total number of cards.
+
             mp_degree(int): set number of GPUs in a model parallel group. Default 1
             pp_degree(int): set number of GPUs in a pipeline parallel group. Default 1
 
@@ -1232,6 +1233,7 @@ class DistributedStrategy(object):
             init_k_steps(int) The initial steps for training before adaptive localsgd.
                               Then, the adaptive localsgd method will modify init_k_steps automatically.
                               Default 1.
+
             begin_step(int) The step of begining training by adaptive localsgd. Default 1.
 
         Examples:

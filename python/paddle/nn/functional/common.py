@@ -499,6 +499,7 @@ def upsample(x,
         'trilinear' : Trilinear interpolation
         'nearest' : Nearest neighbor interpolation
         'bicubic' : Bicubic interpolation
+
     Linear interpolation is the method of using a line connecting two known quantities 
     to determine the value of an unknown quantity between the two known quantities. 
     
@@ -532,6 +533,7 @@ def upsample(x,
 
     Example:
     .. code-block:: text
+
         For scale_factor:
             if align_corners = True && out_size > 1 :
               scale_factor = (in_size-1.0)/(out_size-1.0)
@@ -599,6 +601,7 @@ def upsample(x,
               D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
+
     https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
     

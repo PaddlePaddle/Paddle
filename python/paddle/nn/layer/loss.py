@@ -82,7 +82,7 @@ class BCEWithLogitsLoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shapes:
-        logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
+        logit (Tensor): The input predications tensor. 2-D tensor with shape: `[N, *]`,
             N is batch_size, `*` means number of additional dimensions. The ``logit``
             is usually the output of Linear layer. Available dtype is float32, float64.
         label (Tensor): The target labels tensor. 2-D tensor with the same shape as
@@ -639,11 +639,15 @@ class L1Loss(Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
-        label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
-        output (Tensor): The L1 Loss of ``input`` and ``label``.
-            If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
-            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+        - input (Tensor): The input tensor. The shapes is `[N, *]`, where N is batch size and `*`
+          means any number of additional dimensions. It's data type should be float32, float64,
+          int32, int64.
+        - label (Tensor): label. The shapes is `[N, *]`, same shape as ``input`` . It's data type
+          should be float32, float64, int32, int64.
+        - output (Tensor): The L1 Loss of ``input`` and ``label``.
+          If `reduction` is ``'none'``, the shape of output loss is `[N, *]`, the same as
+          ``input`` .
+          If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
         .. code-block:: python
@@ -701,7 +705,8 @@ class BCELoss(Layer):
     If :attr:`weight` is None, the loss is:
 
     .. math::
-        Out = -1 * (label * log(input) + (1 - label) * log(1 - input))
+        Out = -1 * (label * log(input)
+     + (1 - label) * log(1 - input))
 
     If :attr:`reduction` set to ``'none'``, the interface will return the original loss `Out`.
 
@@ -732,14 +737,14 @@ class BCELoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input (Tensor): 2-D tensor with shape: [N, *], N is batch_size, `*` means
-            number of additional dimensions. The input ``input`` should always
-            be the output of sigmod.  Available dtype is float32, float64.
-        label (Tensor): 2-D tensor with the same shape as ``input``. The target
-            labels which values should be numbers between 0 and 1. Available
-            dtype is float32, float64.
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is scalar.
+        - input (Tensor): 2-D tensor with shape: `[N, *]`, N is batch_size, `*` means
+          number of additional dimensions. The input ``input`` should always
+          be the output of sigmod.  Available dtype is float32, float64.
+        - label (Tensor): 2-D tensor with the same shape as ``input``. The target
+          labels which values should be numbers between 0 and 1. Available
+          dtype is float32, float64.
+        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``input`` , else the shape of output is scalar.
 
     Returns:
         A callable object of BCELoss.
@@ -909,12 +914,11 @@ class KLDivLoss(Layer):
              Default is ``'mean'``.
 
     Shape:
+        - input(Tensor): `(N, *)`, where `*` means, any number of additional dimensions.
 
-        - input (Tensor): (N, *), where * means, any number of additional dimensions.
+        - label(Tensor): `(N, *)`, same shape as input.
 
-        - label (Tensor): (N, *), same shape as input.
-
-        - output (Tensor): tensor with shape: [1] by default.
+        - output(Tensor): tensor with shape: [1] by default.
 
 
     Examples:

@@ -45,11 +45,11 @@ class PairwiseDistance(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        x: :math:`[N, D]` where `D` is the dimension of vector, available dtype
-            is float32, float64.
-        y: :math:`[N, D]`, y have the same shape and dtype as x.
-        out: :math:`[N]`. If :attr:`keepdim` is ``True``, the out shape is :math:`[N, 1]`.
-            The same dtype as input tensor.
+        - x:`[N, D]` where `D` is the dimension of vector, available dtype
+          is float32, float64.
+        - y:`[N, D]`, y have the same shape and dtype as x.
+        - out:`[N]`. If :attr:`keepdim` is ``True``, the out shape is `[N, 1]`.
+          The same dtype as input tensor.
 
     Examples:
         .. code-block:: python

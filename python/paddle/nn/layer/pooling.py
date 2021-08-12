@@ -266,6 +266,7 @@ class AvgPool3D(Layer):
           The data type can be float32, float64.
         - output(Tensor): The output tensor of avg pool3d  operator, which is a 5-D tensor.
           The data type is same as input x.
+
     Examples:
         .. code-block:: python
 

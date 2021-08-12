@@ -657,7 +657,7 @@ def l1_loss(input, label, reduction='mean', name=None):
 
     Returns:
         Tensor, the L1 Loss of Tensor ``input`` and ``label``.
-            If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
+            If `reduction` is ``'none'``, the shape of output loss is `[N, *]`, the same as ``input`` .
             If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
