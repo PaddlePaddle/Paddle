@@ -244,7 +244,7 @@ void UpdateEventVarId(
 void ParseDirectAndEventRunOps(
     const std::vector<OpFuncNode>& op_func_nodes,
     const std::vector<size_t>& downstream_ops, size_t op_index,
-    std::map<size_t, platform::CudaEvent>* var_id2event,
+    std::map<size_t, std::unique_ptr<platform::CudaEvent>>* var_id2event,
     Instruction* instruction) {
   // In build_op_func_list:
   // 1. all memcpy_op is kEvent
@@ -299,9 +299,9 @@ void ParseDirectAndEventRunOps(
     if (var_id2event->find(var_id) == var_id2event->end()) {
       // Specify cudaEventDisableTiming to get best performance.
       VLOG(3) << "create event for " << var_id;
-      var_id2event->emplace(
-          var_id,
-          platform::CudaEvent(platform::get_cuda_flags(false, false, false)));
+      auto cuda_event = std::make_unique<platform::CudaEvent>(
+          platform::get_cuda_flags(false, false, false));
+      var_id2event->emplace(var_id, std::move(cuda_event));
     }
   }
 #endif
@@ -844,7 +844,7 @@ class InterpreterCore {
       for (auto out_var_id : item.second) {
         if (var_id2event_.count(out_var_id) != 0) {
           VLOG(3) << "Record event in out_var_id: " << out_var_id;
-          var_id2event_[out_var_id].Record(*(dev_ctx->context()->Stream()));
+          var_id2event_[out_var_id]->Record(*(dev_ctx->context()->Stream()));
         }
       }
     }
@@ -863,13 +863,13 @@ class InterpreterCore {
           if (is_sync) {
             // block host until event is done
             VLOG(3) << "host sync wait in_var_id " << in_var_id;
-            var_id2event_[in_var_id].Synchronize();
+            var_id2event_[in_var_id]->Synchronize();
           } else {
             // non-block host, just add dependency in dev_ctx.stream to wait
             // event.
             VLOG(3) << "stream async wait in_var_id " << in_var_id;
             cuda_dev_ctx->context()->Stream()->WaitEvent(
-                var_id2event_[in_var_id].GetRawCudaEvent());
+                var_id2event_[in_var_id]->GetRawCudaEvent());
           }
         }
       }
@@ -918,7 +918,7 @@ class InterpreterCore {
   std::vector<VariableMetaInfo> ref_coun_info;
   std::vector<std::vector<size_t>> input_var2op_info_;
 
-  std::map<size_t, platform::CudaEvent> var_id2event_;
+  std::map<size_t, std::unique_ptr<platform::CudaEvent>> var_id2event_;
 
   Scope* outer_scope_;
 };
