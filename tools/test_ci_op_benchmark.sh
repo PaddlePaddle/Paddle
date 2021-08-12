@@ -50,13 +50,13 @@ function load_CHANGE_OP_FILES_by_header_file {
   local change_file
   for change_file in $(grep -rl "${1}" paddle/fluid/operators)
   do
-    echo $change_file
     if [[ "$change_file" =~ "_op.cu" ]]
     then
       # match cu file directory limit
       match_cu_file_directory $change_file || continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\"."
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
+      echo 1111,${CHANGE_OP_FILES}
     elif [[ "$change_file" =~ ".h" ]]
     then
       [ -n "${INCLUDE_SEARCH_MAP[$change_file]}" ] && continue
