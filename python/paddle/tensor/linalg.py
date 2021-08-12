@@ -947,24 +947,33 @@ def matrix_power(x, n, name=None):
     r"""
     Computes the n-th power of a square matrix or a batch of square matrices.
 
-    If `n > 0`, it returns the matrix or each matrices in the batch being raised
-    to power of `n`.
-    
-    If `n = 0`, it returns an identity matrix or batch of identity matrices.
+    Mark :math:`X` as a sqaure matrix or a batch of square matrices, :math:`n` as
+    the exponent, the equation should be:
 
-    If `n < 0`, it returns the inverse of each matrix (if invertible) raised to
-    the power of `-n`.
+    .. math::
+        Out = X ^ {n}
+    
+    Specifically,
+
+    - If `n > 0`, it returns the matrix or a batch of matrices raised to the power
+    of `n`.
+    
+    - If `n = 0`, it returns the identity matrix or a batch of identity matrices.
+
+    - If `n < 0`, it returns the inverse of each matrix (if invertible) raised to
+    the power of `abs(n)`.
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices to be raised
-            to power(n). Its data type should be float or double.
+            to power `n`. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
         n (int): The exponent. It can be any positive, negative integer or zero.
         name (str, optional): Name for the operation (optional, default is None). 
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The n-th power of matrix (or batch of matrices) x. Its data type is
-            the same with the data type of x.
+        Tensor: The n-th power of the matrix (or the batch of matrices) `x`. Its
+            data type should be the same as that of `x`.
 
     Examples:
         .. code-block:: python
