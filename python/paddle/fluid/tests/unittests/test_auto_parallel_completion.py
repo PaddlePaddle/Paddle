@@ -15,6 +15,8 @@
 from __future__ import print_function
 
 import unittest
+import unittest.mock
+from io import StringIO
 
 import paddle
 import paddle.nn as nn
@@ -27,6 +29,7 @@ from paddle.nn.layer.transformer import _convert_param_attr_to_list
 import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
 from paddle.distributed.auto_parallel.utils import print_program_with_distributed_attr
+from paddle.distributed.auto_parallel.utils import append_distributed_attr_suffix
 from paddle.distributed.auto_parallel.context import DistributedContext
 
 paddle.enable_static()
@@ -162,6 +165,47 @@ class TestMLPAutoCompletion(unittest.TestCase):
         self.assertTrue(
             check_distributed_attr_for_program(complete_train_program,
                                                dist_context))
+
+    def test_mlp_misc(self):
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "dp_mp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+
+        train_program = static.Program()
+        start_program = static.Program()
+        dist_context = DistributedContext()
+        train_program, start_program = mlp_pretrain_forward(train_program,
+                                                            start_program)
+        complete_train_program = auto.complete_annotation(train_program,
+                                                          dist_context)
+        dist_context.finalize_distributed_attr_for_program(
+            complete_train_program)
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+        for block in complete_train_program.blocks:
+            for tensor in block.vars.values():
+                desc = tensor.desc
+                attr_name = append_distributed_attr_suffix("mesh_id")
+                self.assertIsNotNone(desc.has_attr(attr_name))
+                attr_name = append_distributed_attr_suffix("dim_mapping")
+                self.assertIsNotNone(desc.has_attr(attr_name))
+            for op in block.ops:
+                desc = op.desc
+                attr_name = append_distributed_attr_suffix("mesh_id")
+                self.assertIsNotNone(desc.has_attr(attr_name))
+                for tensor_name in desc.input_arg_names():
+                    attr_name = append_distributed_attr_suffix("IN_" +
+                                                               tensor_name)
+                    self.assertIsNotNone(desc.has_attr(attr_name))
+                for tensor_name in desc.output_arg_names():
+                    attr_name = append_distributed_attr_suffix("OUT_" +
+                                                               tensor_name)
+                    self.assertIsNotNone(desc.has_attr(attr_name))
+        with unittest.mock.patch(
+                "sys.stdout", new_callable=StringIO) as mock_stdout:
+            print_program_with_distributed_attr(complete_train_program)
+            self.assertIsNotNone(mock_stdout.getvalue())
 
 
 class AttentionLayer(nn.Layer):
