@@ -39,6 +39,9 @@ class TestHybridPipeParallel(TestMultipleGpus):
     def test_hybrid_parallel_transformer(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_save_load.py')
 
+    def test_hybrid_parallel_transformer(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_recompute.py')
+
 
 if __name__ == "__main__":
     unittest.main()
