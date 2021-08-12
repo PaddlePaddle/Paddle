@@ -58,12 +58,11 @@ class Pad3dNPUKernel : public framework::OpKernel<T> {
                           "Ascend npu only support constant_values=0 right now,"
                           "but received constant_value is %f .",
                           value));
-    int constant_value = 0;
 
     PADDLE_ENFORCE_EQ(mode, "constant",
                       platform::errors::Unimplemented(
                           "Ascend npu only support mode=constant right now,"
-                          "but received constant_value is %s .",
+                          "but received mode is %s .",
                           mode));
 
     std::vector<int> paddings(
@@ -84,7 +83,8 @@ class Pad3dNPUKernel : public framework::OpKernel<T> {
     runner.SetType("PadV3")
         .AddInput(*x)
         .AddInput(std::move(paddings))
-        .AddInput(std::vector<int>({constant_value}))
+        .AddInput(
+            std::vector<int>({0}))  // npu only support constant_value=0 now
         .AddOutput(*out)
         .AddAttr("mode", mode);
 

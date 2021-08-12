@@ -111,40 +111,8 @@ class TestCase3(TestPad3dNPUOp):
 
 class TestPadAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [paddle.CPUPlace()]
-        if fluid.core.is_compiled_with_npu():
-            self.places.append(fluid.NPUPlace(0))
-
-    def check_static_result(self, place):
-        paddle.enable_static()
-        with program_guard(Program(), Program()):
-            input_shape = (1, 2, 3, 4, 5)
-            pad = [1, 2, 1, 1, 3, 4]
-            mode = "constant"
-            value = 0
-            input_data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
-            result1 = F.pad(x=x,
-                            pad=pad,
-                            value=value,
-                            mode=mode,
-                            data_format="NCDHW")
-            result2 = F.pad(x=x,
-                            pad=pad,
-                            value=value,
-                            mode=mode,
-                            data_format="NDHWC")
-            exe = Executor(place)
-            fetches = exe.run(default_main_program(),
-                              feed={"x": input_data},
-                              fetch_list=[result1, result2])
-
-            np_out1 = self._get_numpy_out(
-                input_data, pad, mode, value, data_format="NCDHW")
-            np_out2 = self._get_numpy_out(
-                input_data, pad, mode, value, data_format="NDHWC")
-            self.assertTrue(np.allclose(fetches[0], np_out1))
-            self.assertTrue(np.allclose(fetches[1], np_out2))
+        self.place = fluid.NPUPlace(0) if fluid.core.is_compiled_with_npu(
+        ) else fluid.CPUPlace()
 
     def _get_numpy_out(self,
                        input_data,
@@ -201,8 +169,35 @@ class TestPadAPI(unittest.TestCase):
         return out
 
     def test_static(self):
-        for place in self.places:
-            self.check_static_result(place=place)
+        paddle.enable_static()
+        with program_guard(Program(), Program()):
+            input_shape = (1, 2, 3, 4, 5)
+            pad = [1, 2, 1, 1, 3, 4]
+            mode = "constant"
+            value = 0
+            input_data = np.random.rand(*input_shape).astype(np.float32)
+            x = paddle.fluid.data(name="x", shape=input_shape)
+            result1 = F.pad(x=x,
+                            pad=pad,
+                            value=value,
+                            mode=mode,
+                            data_format="NCDHW")
+            result2 = F.pad(x=x,
+                            pad=pad,
+                            value=value,
+                            mode=mode,
+                            data_format="NDHWC")
+            exe = Executor(self.place)
+            fetches = exe.run(default_main_program(),
+                              feed={"x": input_data},
+                              fetch_list=[result1, result2])
+
+            np_out1 = self._get_numpy_out(
+                input_data, pad, mode, value, data_format="NCDHW")
+            np_out2 = self._get_numpy_out(
+                input_data, pad, mode, value, data_format="NDHWC")
+            self.assertTrue(np.allclose(fetches[0], np_out1))
+            self.assertTrue(np.allclose(fetches[1], np_out2))
 
     def test_dygraph_1(self):
         paddle.disable_static()
@@ -339,38 +334,32 @@ class TestPad1dAPI(unittest.TestCase):
         out = np.pad(input_data, pad, mode=mode, constant_values=value)
         return out
 
-    def setUp(self):
-        self.places = [paddle.CPUPlace()]
-        if fluid.core.is_compiled_with_npu():
-            self.places.append(fluid.NPUPlace(0))
-
     def test_class(self):
         paddle.disable_static()
-        for place in self.places:
-            input_shape = (3, 4, 5)
-            pad = [1, 2]
-            pad_int = 1
-            value = 0
-            input_data = np.random.rand(*input_shape).astype(np.float32)
+        input_shape = (3, 4, 5)
+        pad = [1, 2]
+        pad_int = 1
+        value = 0
+        input_data = np.random.rand(*input_shape).astype(np.float32)
 
-            pad_constant = nn.Pad1D(padding=pad, mode="constant", value=value)
-            pad_constant_int = nn.Pad1D(
-                padding=pad_int, mode="constant", value=value)
+        pad_constant = nn.Pad1D(padding=pad, mode="constant", value=value)
+        pad_constant_int = nn.Pad1D(
+            padding=pad_int, mode="constant", value=value)
 
-            data = paddle.to_tensor(input_data)
+        data = paddle.to_tensor(input_data)
 
-            output = pad_constant(data)
-            np_out = self._get_numpy_out(
-                input_data, pad, "constant", value=value, data_format="NCL")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+        output = pad_constant(data)
+        np_out = self._get_numpy_out(
+            input_data, pad, "constant", value=value, data_format="NCL")
+        self.assertTrue(np.allclose(output.numpy(), np_out))
 
-            output = pad_constant_int(data)
-            np_out = self._get_numpy_out(
-                input_data, [pad_int] * 2,
-                "constant",
-                value=value,
-                data_format="NCL")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+        output = pad_constant_int(data)
+        np_out = self._get_numpy_out(
+            input_data, [pad_int] * 2,
+            "constant",
+            value=value,
+            data_format="NCL")
+        self.assertTrue(np.allclose(output.numpy(), np_out))
 
 
 class TestPad2dAPI(unittest.TestCase):
@@ -398,38 +387,33 @@ class TestPad2dAPI(unittest.TestCase):
         out = np.pad(input_data, pad, mode=mode, constant_values=value)
         return out
 
-    def setUp(self):
-        self.places = [paddle.CPUPlace()]
-        if fluid.core.is_compiled_with_npu():
-            self.places.append(fluid.NPUPlace(0))
-
     def test_class(self):
         paddle.disable_static()
-        for place in self.places:
-            input_shape = (3, 4, 5, 6)
-            pad = [1, 2, 2, 1]
-            pad_int = 1
-            value = 0
-            input_data = np.random.rand(*input_shape).astype(np.float32)
 
-            pad_constant = nn.Pad2D(padding=pad, mode="constant", value=value)
-            pad_constant_int = nn.Pad2D(
-                padding=pad_int, mode="constant", value=value)
+        input_shape = (3, 4, 5, 6)
+        pad = [1, 2, 2, 1]
+        pad_int = 1
+        value = 0
+        input_data = np.random.rand(*input_shape).astype(np.float32)
 
-            data = paddle.to_tensor(input_data)
+        pad_constant = nn.Pad2D(padding=pad, mode="constant", value=value)
+        pad_constant_int = nn.Pad2D(
+            padding=pad_int, mode="constant", value=value)
 
-            output = pad_constant(data)
-            np_out = self._get_numpy_out(
-                input_data, pad, "constant", value=value, data_format="NCHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+        data = paddle.to_tensor(input_data)
 
-            output = pad_constant_int(data)
-            np_out = self._get_numpy_out(
-                input_data, [pad_int] * 4,
-                "constant",
-                value=value,
-                data_format="NCHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+        output = pad_constant(data)
+        np_out = self._get_numpy_out(
+            input_data, pad, "constant", value=value, data_format="NCHW")
+        self.assertTrue(np.allclose(output.numpy(), np_out))
+
+        output = pad_constant_int(data)
+        np_out = self._get_numpy_out(
+            input_data, [pad_int] * 4,
+            "constant",
+            value=value,
+            data_format="NCHW")
+        self.assertTrue(np.allclose(output.numpy(), np_out))
 
 
 class TestPad3dAPI(unittest.TestCase):
@@ -459,38 +443,32 @@ class TestPad3dAPI(unittest.TestCase):
         out = np.pad(input_data, pad, mode=mode, constant_values=value)
         return out
 
-    def setUp(self):
-        self.places = [paddle.CPUPlace()]
-        if fluid.core.is_compiled_with_npu():
-            self.places.append(fluid.NPUPlace(0))
-
     def test_class(self):
         paddle.disable_static()
-        for place in self.places:
-            input_shape = (3, 4, 5, 6, 7)
-            pad = [1, 2, 2, 1, 1, 0]
-            pad_int = 1
-            value = 0
-            input_data = np.random.rand(*input_shape).astype(np.float32)
+        input_shape = (3, 4, 5, 6, 7)
+        pad = [1, 2, 2, 1, 1, 0]
+        pad_int = 1
+        value = 0
+        input_data = np.random.rand(*input_shape).astype(np.float32)
 
-            pad_constant = nn.Pad3D(padding=pad, mode="constant", value=value)
-            pad_constant_int = nn.Pad3D(
-                padding=pad_int, mode="constant", value=value)
+        pad_constant = nn.Pad3D(padding=pad, mode="constant", value=value)
+        pad_constant_int = nn.Pad3D(
+            padding=pad_int, mode="constant", value=value)
 
-            data = paddle.to_tensor(input_data)
+        data = paddle.to_tensor(input_data)
 
-            output = pad_constant(data)
-            np_out = self._get_numpy_out(
-                input_data, pad, "constant", value=value, data_format="NCDHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+        output = pad_constant(data)
+        np_out = self._get_numpy_out(
+            input_data, pad, "constant", value=value, data_format="NCDHW")
+        self.assertTrue(np.allclose(output.numpy(), np_out))
 
-            output = pad_constant_int(data)
-            np_out = self._get_numpy_out(
-                input_data, [pad_int] * 6,
-                "constant",
-                value=value,
-                data_format="NCDHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+        output = pad_constant_int(data)
+        np_out = self._get_numpy_out(
+            input_data, [pad_int] * 6,
+            "constant",
+            value=value,
+            data_format="NCDHW")
+        self.assertTrue(np.allclose(output.numpy(), np_out))
 
 
 class TestPad3dOpNpuError(unittest.TestCase):
