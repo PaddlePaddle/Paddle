@@ -1145,7 +1145,6 @@ def margin_cross_entropy(logits,
         # required: gpu
         # Single GPU
         import paddle
-        import numpy as np
         m1 = 1.0
         m2 = 0.5
         m3 = 0.0
@@ -1154,8 +1153,7 @@ def margin_cross_entropy(logits,
         feature_length = 4
         num_classes = 4
 
-        np_label = np.random.randint(0, num_classes, (batch_size,))
-        label = paddle.to_tensor(np_label, dtype="int64")
+        label = paddle.randint(low=0, high=num_classes, shape=[batch_size], dtype='int64')
 
         X = paddle.randn(
             shape=[batch_size, feature_length],
@@ -1196,7 +1194,6 @@ def margin_cross_entropy(logits,
         # Multi GPU, test_margin_cross_entropy.py
         import paddle
         import paddle.distributed as dist
-        import numpy as np
         strategy = dist.fleet.DistributedStrategy()
         dist.fleet.init(is_collective=True, strategy=strategy)
         rank_id = dist.get_rank()
@@ -1207,10 +1204,9 @@ def margin_cross_entropy(logits,
         batch_size = 2
         feature_length = 4
         num_class_per_card = [4, 8]
-        num_classes = np.sum(num_class_per_card)
+        num_classes = paddle.sum(paddle.to_tensor(num_class_per_card))
 
-        np_label = np.random.randint(0, num_classes, (batch_size,))
-        label = paddle.to_tensor(np_label, dtype="int64")
+        label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')
         label_list = []
         dist.all_gather(label_list, label)
         label = paddle.concat(label_list, axis=0)
