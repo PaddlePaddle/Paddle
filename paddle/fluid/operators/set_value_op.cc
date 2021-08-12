@@ -157,44 +157,75 @@ class SetValueGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     if (this->HasInput("ValueTensor")) {
-      op->SetType("slice");
-      op->SetInput("Input", this->OutputGrad("Out"));
+      op->SetType("set_value_grad");
+
+      op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+      op->SetInput("ValueTensor", this->Input("ValueTensor"));
       if (this->HasInput("StartsTensorList")) {
         op->SetInput("StartsTensorList", this->Input("StartsTensorList"));
       }
       if (this->HasInput("EndsTensorList")) {
         op->SetInput("EndsTensorList", this->Input("EndsTensorList"));
       }
+      if (this->HasInput("StepsTensorList")) {
+        op->SetInput("StepsTensorList", this->Input("StepsTensorList"));
+      }
 
-      // convert std::vector<int64_t > to std::vector<int >
-      std::vector<int64_t> axes_int64 = static_cast<std::vector<int64_t>>(
-          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("axes")));
-      std::vector<int64_t> starts_int64 = static_cast<std::vector<int64_t>>(
-          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("starts")));
-      std::vector<int64_t> ends_int64 = static_cast<std::vector<int64_t>>(
-          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("ends")));
-      std::vector<int64_t> decrease_axes_int64 =
-          static_cast<std::vector<int64_t>>(BOOST_GET_CONST(
-              std::vector<int64_t>, this->GetAttr("decrease_axes")));
+      op->SetAttrMap(this->Attrs());
 
-      std::vector<int> axes(axes_int64.begin(), axes_int64.end());
-      std::vector<int> starts(starts_int64.begin(), starts_int64.end());
-      std::vector<int> ends(ends_int64.begin(), ends_int64.end());
-      std::vector<int> decrease_axes(decrease_axes_int64.begin(),
-                                     decrease_axes_int64.end());
+      op->SetOutput(framework::GradVarName("ValueTensor"),
+                    this->InputGrad("ValueTensor"));
+      op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
 
-      op->SetAttr("axes", axes);
-      op->SetAttr("starts", starts);
-      op->SetAttr("ends", ends);
-      op->SetAttr("decrease_axis", decrease_axes);
-      op->SetAttr("infer_flags", std::vector<int>({}));
-
-      op->SetOutput("Out", this->InputGrad("ValueTensor"));
     } else {
       op->SetType("assign");
       op->SetInput("X", this->OutputGrad("Out"));
       op->SetOutput("Out", this->InputGrad("Input"));
     }
+  }
+};
+
+class SetValueGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "set_value_grad");
+
+    auto in_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    PADDLE_ENFORCE_LT(
+        in_dims.size(), 7,
+        platform::errors::InvalidArgument(
+            "The dimension of set_value_grad operator's input should be less "
+            "than 7, but received dimension is %d.",
+            in_dims.size()));
+
+    if (ctx->HasOutput(framework::GradVarName("ValueTensor"))) {
+      ctx->ShareDim("ValueTensor",
+                    /*->*/ framework::GradVarName("ValueTensor"));
+      ctx->ShareLoD("ValueTensor",
+                    /*->*/ framework::GradVarName("ValueTensor"));
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto in_tensor = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   in_tensor->place());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
+        var_name == "StepsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -217,6 +248,16 @@ REGISTER_OP_CPU_KERNEL(
     ops::SetValueKernel<plat::CPUDeviceContext, float>,
     ops::SetValueKernel<plat::CPUDeviceContext, double>,
     ops::SetValueKernel<plat::CPUDeviceContext, bool>);
+
+REGISTER_OPERATOR(set_value_grad, ops::SetValueGrad);
+
+REGISTER_OP_CPU_KERNEL(
+    set_value_grad,
+    ops::SetValueGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SetValueGradKernel<plat::CPUDeviceContext, int64_t>,
+    ops::SetValueGradKernel<plat::CPUDeviceContext, float>,
+    ops::SetValueGradKernel<plat::CPUDeviceContext, double>,
+    ops::SetValueGradKernel<plat::CPUDeviceContext, bool>);
 
 REGISTER_OP_VERSION(set_value)
     .AddCheckpoint(
