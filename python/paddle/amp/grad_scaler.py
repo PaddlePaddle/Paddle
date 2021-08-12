@@ -47,7 +47,7 @@ class GradScaler(AmpScaler):
     Examples:
 
         .. code-block:: python
-
+            
             import paddle
 
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
@@ -91,7 +91,7 @@ class GradScaler(AmpScaler):
         Examples:
 
             .. code-block:: python
-
+                
                 import paddle
 
                 model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
@@ -156,6 +156,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -178,7 +179,8 @@ class GradScaler(AmpScaler):
         
         Examples:
             .. code-block:: python
-            
+
+                # required: gpu,xpu         
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -202,6 +204,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -220,11 +223,12 @@ class GradScaler(AmpScaler):
         Set the initial loss scaling factor by `new_init_loss_scaling`.
 
         Args:
-            new_init_loss_scaling(int):  The new_init_loss_scaling used to update initial loss scaling factor.
+            new_init_loss_scaling(float):  The new_init_loss_scaling used to update initial loss scaling factor.
         
         Examples:
             .. code-block:: python
-
+                
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -250,6 +254,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -273,6 +278,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -298,6 +304,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -321,6 +328,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -346,6 +354,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -369,6 +378,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -394,6 +404,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -417,6 +428,7 @@ class GradScaler(AmpScaler):
         Examples:
             .. code-block:: python
 
+                # required: gpu,xpu
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -432,3 +444,59 @@ class GradScaler(AmpScaler):
         """
         super(GradScaler,
               self).set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
+
+    def state_dict(self):
+        """
+        Returns the state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
+
+        Reurns:
+            A dict of scaler includes:
+            init_loss_scaling (float, optional): The initial loss scaling factor.
+            incr_ratio(float, optional): The multiplier to use when increasing the loss scaling.
+            decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing the loss scaling.
+            incr_every_n_steps(int, optional): Increases loss scaling every n consecutive steps with finite gradients.
+            decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n accumulated steps with nan or inf gradients.
+        
+        Examples:
+
+            .. code-block:: python
+
+                # required: gpu,xpu
+                import paddle
+
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                scaler_state = scaler.state_dict()
+        """
+        return super(GradScaler, self).state_dict()
+
+    def load_state_dict(self, state_dict):
+        """
+        Loads the scaler state.
+        
+        Args:
+           state_dict(dict): scaler state.  Should be an object returned from a call to `GradScaler.state_dict()`.
+                
+        Examples:
+
+            .. code-block:: python
+
+                # required: gpu,xpu
+                import paddle
+
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                scaler_state = scaler.state_dict()
+                scaler.load_state_dict(scaler_state)
+        """
+        super(GradScaler, self).load_state_dict(state_dict)
