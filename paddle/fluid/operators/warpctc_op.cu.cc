@@ -20,5 +20,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::WarpCTCKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     warpctc_grad,
-    ops::WarpCTCGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::WarpCTCGradKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::WarpCTCGradCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::WarpCTCGradCUDAKernel<paddle::platform::CUDADeviceContext, double>);

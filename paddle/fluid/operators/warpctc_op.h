@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -357,8 +358,101 @@ class WarpCTCKernel : public framework::OpKernel<T> {
   }
 };
 
+
+
+
 template <typename DeviceContext, typename T>
 class WarpCTCGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const Tensor* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
+    auto* warpctc_grad = ctx.Input<LoDTensor>("WarpCTCGrad");
+    auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
+
+    logits_grad->mutable_data<T>(ctx.GetPlace());
+    bool norm_by_times = ctx.Attr<bool>("norm_by_times");
+    bool norm_by_batchsize = ctx.Attr<bool>("norm_by_batchsize");
+    bool norm_by_total_logits_len = ctx.Attr<bool>("norm_by_total_logits_len");
+
+    if ((norm_by_times && norm_by_batchsize) ||
+        (norm_by_times && norm_by_total_logits_len) ||
+        (norm_by_batchsize && norm_by_total_logits_len)) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "[warpctc grad] norm_by_times, norm_by_batchsize and "
+          "norm_by_total_logits_len "
+          "should one be true."));
+    }
+
+    if (ctx.HasInput("LogitsLength")) {
+      int max_seq_length = warpctc_grad->dims()[0];  // Tmax
+      int num_sequences = warpctc_grad->dims()[1];   // B
+      int seq_width = warpctc_grad->dims()[2];       // D
+      
+      auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
+      // B
+      auto logits_len_e = framework::EigenTensor<int64_t, 1>::From(*logits_length);
+      // (B, 1)
+      auto loss_grad_e = framework::EigenTensor<T, 2>::From(*loss_grad);
+      // (T, B, D)
+      auto warpctc_grad_e = framework::EigenTensor<T, 3>::From(*warpctc_grad);
+
+      auto logits_grad_e = framework::EigenTensor<T, 3>::From(*logits_grad);
+
+      Eigen::DSizes<int, 3> grad_shape(1, num_sequences, 1);
+      Eigen::DSizes<int, 3> bcast(max_seq_length, 1, seq_width);
+      auto logits_g = warpctc_grad_e * loss_grad_e.reshape(grad_shape).broadcast(bcast).eval();
+      VLOG(3) << "[warpctc grad] before scale: " << logits_g;
+
+      auto* place = ctx.template device_context<DeviceContext>().eigen_device();
+
+      if (norm_by_total_logits_len) {
+            // Compute the avg. log-probability per batch sample and frame.
+            // https://github.com/espnet/warp-ctc/blob/pytorch_bindings/pytorch_binding/warpctc_pytorch/__init__.py#L42
+            framework::Tensor rsum;
+            rsum.mutable_data<T>({1}, ctx.GetPlace());
+            auto inv_len = framework::EigenTensor<T, 1>::From(rsum);
+
+            // Rank is 1
+            inv_len = logits_len_e.sum().cast<T>().inverse().eval();
+            VLOG(3) << "[warpctc grad][norm_by_total_logits_len] scale: " << inv_len << " Rank: " << inv_len.NumDimensions
+                << " total logits len: " << logits_len_e.sum();
+
+            logits_grad_e.device(*place) = logits_g * rsum.data<T>()[0];
+      } else if (norm_by_batchsize) {
+            // Compute the avg. log-probability per batch sample.
+            // https://github.com/espnet/warp-ctc/blob/pytorch_bindings/pytorch_binding/warpctc_pytorch/__init__.py#L46
+            T scale = 1.0 / static_cast<T>(num_sequences);
+            VLOG(3) << "[warpctc grad][norm_by_batchsize] scale: " << scale
+                << " Batchsize: " << num_sequences;
+            logits_grad_e.device(*place) = logits_g * scale;
+      } else if (norm_by_times) {
+            auto scales = logits_len_e.cast<T>().inverse().reshape(grad_shape).broadcast(bcast).eval();
+            VLOG(3) << "[warpctc grad][norm_by_times] scale: " << scales;
+            logits_grad_e.device(*place) = logits_g * scales;
+      }else {
+           VLOG(3) << "[warpctc grad][] ";
+            logits_grad_e.device(*place) = logits_g;
+      }
+
+      VLOG(3) <<  "[warpctc grad] before scale: " << logits_grad_e;
+    } else {
+      math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
+          ctx.template device_context<DeviceContext>(), *warpctc_grad,
+          logits_grad, -1, 0, norm_by_times, norm_by_batchsize,
+          norm_by_total_logits_len, math::kLengthBatchWidth);
+
+      const T* loss_grad_data = loss_grad->data<T>();
+      math::ScaleLoDTensorFunctor<DeviceContext, T>()(
+          ctx.template device_context<DeviceContext>(), loss_grad_data,
+          logits_grad);
+    }
+  }
+};
+
+
+
+template <typename DeviceContext, typename T>
+class WarpCTCGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* warpctc_grad = ctx.Input<LoDTensor>("WarpCTCGrad");
@@ -464,6 +558,7 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
     }
   }
 };
+
 
 }  // namespace operators
 }  // namespace paddle
