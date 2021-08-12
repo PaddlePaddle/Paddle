@@ -68,6 +68,7 @@ function load_CHANGE_OP_FILES_by_header_file {
 
 # Load op files that PR changes
 function load_CHANGE_OP_FILES {
+  set +x
   local sub_dir change_file
   # TODO(Avin0323): Need to filter the files added by the new OP.
   for change_file in $(git diff --name-only origin/develop)
@@ -90,6 +91,7 @@ function load_CHANGE_OP_FILES {
   done
   [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci."
   echo "cpu_benchmark=ON" >${cfs_dir}/op_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt
+  set -x
   exit 0
 }
 
