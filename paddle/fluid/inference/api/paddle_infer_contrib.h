@@ -14,12 +14,11 @@
 
 #pragma once
 
-#include <functional>
 
 namespace paddle_infer {
 namespace contrib {
 
-using CallBackFunc = std::function<void(void*)>;
+typedef void(*CallbackFunc)(void *);
 
 } // namespace contrib
 } // namespace paddle_infer

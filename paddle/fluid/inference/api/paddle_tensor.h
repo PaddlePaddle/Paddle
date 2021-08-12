@@ -86,7 +86,7 @@ class PD_INFER_DECL Tensor {
   /// \param[out] cb Callback function cb(cb_params) will be executed on the host after all
   ///                currently enqueued items in the stream have completed .
   template <typename T>
-  void CopyToCpuAsync(T* data, contrib::CallBackFunc cb, void* cb_params);
+  void CopyToCpuAsync(T* data, contrib::CallbackFunc cb, void* cb_params);
 
   /// \brief Return the shape of the Tensor.
   std::vector<int> shape() const;
@@ -115,6 +115,10 @@ class PD_INFER_DECL Tensor {
   void* FindTensor() const;
   void SetPlace(PlaceType place, int device = -1);
   void SetName(const std::string& name);
+
+  template <typename T>
+  void CopyToCpuImp(T* data, void* stream = nullptr,
+		  contrib::CallbackFunc cb = nullptr, void* cb_params = nullptr);
 
   std::string name_;
   // The corresponding tensor pointer inside Paddle workspace is cached for
