@@ -913,7 +913,7 @@ void Reducer::ProcessUnusedDenseVars() {
 
       // 3. create grad var base or get grad var base
       auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
-      // NOTE(haohongxiang): Calling SetIsEmpty here is to make sure that 
+      // NOTE(haohongxiang): Calling SetIsEmpty here is to make sure that
       // gradient accumulation can continue normally after clear_gradients()
       // especiall in cases including complex control flow.
       grad_var_base_tmp->SharedVar()->SetIsEmpty(false);
