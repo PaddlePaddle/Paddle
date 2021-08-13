@@ -27,6 +27,12 @@ void GlooParallelContext::Init() {
                          strategy_.scope);
   gloo_ptr->Init();
 }
+
+void GlooParallelContext::Barrier() {
+  auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
+  CHECK_EQ(gloo_ptr->IsInitialized(), true);
+  gloo_ptr->Barrier();
+}
 #endif
 
 }  //  namespace platform

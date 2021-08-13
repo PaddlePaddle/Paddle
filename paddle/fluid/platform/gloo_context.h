@@ -41,6 +41,8 @@ class GlooParallelContext {
 
   virtual void Init();
 
+  virtual void Barrier();
+
  protected:
   GlooParallelStrategy strategy_;
 };
