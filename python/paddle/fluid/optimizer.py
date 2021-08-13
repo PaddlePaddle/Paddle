@@ -4865,9 +4865,9 @@ class PipelineOptimizer(object):
                         var_shape[0] = self.micro_batch_size if var_shape[
                             0] < 0 else var_shape[0]
 
-                        numel = np.prod(var.shape)
-                        assert numel % self.mp_degree == 0, \
-                            "The numel={} must be divisible by mp_degree={}".format(numel, self.mp_degree)
+                        numel = np.prod(var_shape)
+                        use_mp = (self.mp_degree > 1) and (
+                            numel % self.mp_degree == 0)
 
                         if 'subprog' in var.name:
                             # For recompute, if the checkpoints var is layer_norm_6.tmp_2
@@ -4906,8 +4906,7 @@ class PipelineOptimizer(object):
                         extra_index_info['index'] += 1
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='send_v2'
-                            if self.mp_degree == 1 else 'partial_send',
+                            type='send_v2' if not use_mp else 'partial_send',
                             inputs={'X': var},
                             attrs={
                                 self._op_device_key: prev_dev,
@@ -4943,8 +4942,7 @@ class PipelineOptimizer(object):
                             extra_index_info['index'] += 1
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='recv_v2'
-                            if self.mp_degree == 1 else 'partial_recv',
+                            type='recv_v2' if not use_mp else 'partial_recv',
                             outputs={'Out': [var]},
                             attrs={
                                 'out_shape': var_shape,
@@ -4959,7 +4957,7 @@ class PipelineOptimizer(object):
                                 'id': self.mp_rank,
                             })
                         extra_index_info['index'] += 1
-                        if self.mp_degree > 1:
+                        if use_mp:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
                                 type='partial_allgather',
