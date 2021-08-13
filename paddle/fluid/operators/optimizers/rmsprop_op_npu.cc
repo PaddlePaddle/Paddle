@@ -9,9 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include <string>
-
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/optimizers/rmsprop_op.h"
 
@@ -90,31 +87,12 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
             {*param_out, *mean_square_out, *moment_out}, {attr_input});
         runner_applyrmsprop.Run(stream);
       }
-      // NOTE(liurui25): ApplyRMSProp updates params, moment_out and
-      // mean_square_out inplace, so
-      // if they are not same, we need to do copy.
-      if (param_out->data<T>() != p_tensor->data<T>()) {
-        framework::TensorCopy(
-            *p_tensor, ctx.GetPlace(),
-            ctx.template device_context<platform::DeviceContext>(), param_out);
-      }
-      if (moment_out->data<T>() != mom_tensor->data<T>()) {
-        framework::TensorCopy(
-            *mom_tensor, ctx.GetPlace(),
-            ctx.template device_context<platform::DeviceContext>(), moment_out);
-      }
-      if (mean_square_out->data<T>() != ms_tensor->data<T>()) {
-        framework::TensorCopy(
-            *ms_tensor, ctx.GetPlace(),
-            ctx.template device_context<platform::DeviceContext>(),
-            mean_square_out);
-      }
     } else {
       PADDLE_ENFORCE_EQ(false, true,
                         platform::errors::PermissionDenied(
                             "Unsupported Variable Type of Grad "
-                            "in RmspropOp. Excepted LodTensor "
-                            "or SelectedRows, But received [%s]",
+                            "in RmspropOp. Excepted LodTensor, "
+                            "But received [%s]",
                             paddle::framework::ToTypeName(grad_var->Type())));
     }
   }
