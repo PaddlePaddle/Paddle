@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/any.h"
 
 namespace paddle {
 namespace framework {
@@ -149,7 +150,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     }
   }
 
-  std::vector<boost::any> custom_attrs;
+  std::vector<paddle::any> custom_attrs;
   for (auto& attr_str : attrs) {
     auto attr_name_and_type = detail::ParseAttrStr(attr_str);
     auto attr_name = attr_name_and_type[0];
@@ -610,7 +611,7 @@ void RegisterOperatorWithMetaInfo(
         }
       }
 
-      std::vector<boost::any> custom_attrs;
+      std::vector<paddle::any> custom_attrs;
       for (auto& attr_str : op_attrs) {
         auto attr_name_and_type = detail::ParseAttrStr(attr_str);
         auto attr_name = attr_name_and_type[0];
