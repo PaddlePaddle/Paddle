@@ -345,6 +345,62 @@ class SquareNPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
+class SquareGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    auto factor = static_cast<float>(2.0);
+    auto x_dims = x->dims();
+
+    auto place = ctx.GetPlace();
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    // NOTE(liym27): dx = dout * factor * x.pow(factor-1)
+
+    // Step1: Compute x_pow = x.pow(factor-1)
+    Tensor x_pow(x->type());
+    x_pow.mutable_data<T>(x->dims(), place);
+    const auto& runner_pow = NpuOpRunner(
+        "Power", {*x}, {x_pow}, {{"power", factor - static_cast<float>(1)}});
+    runner_pow.Run(stream);
+
+    // Step 2: Construct a broadcast factor, which has the same shape with x.
+
+    // 2.1 Get a factor tensor with shape [1].
+    Tensor factor_tensor(framework::proto::VarType::FP32);
+    factor_tensor.mutable_data<float>({1}, place);
+    FillNpuTensorWithConstant<float>(&factor_tensor, factor);
+
+    // 2.2 Get the factor which has the shape with x and the same value with
+    // factor.
+    Tensor factor_bc_tensor(framework::proto::VarType::FP32);
+    factor_bc_tensor.mutable_data<float>(x_dims, place);
+    const auto& runner_bc =
+        NpuOpRunner("FillD", {factor_tensor}, {factor_bc_tensor},
+                    {{"dims", framework::vectorize(x_dims)}});
+    runner_bc.Run(stream);
+
+    // Step 3: Compute x_power_mul_factor = factor * x.pow(factor-1)
+    Tensor x_power_mul_factor(x->type());
+    x_power_mul_factor.mutable_data<T>(x->dims(), place);
+    const auto& runner_mul_1 =
+        NpuOpRunner("Mul", {factor_bc_tensor, x_pow}, {x_power_mul_factor}, {});
+    runner_mul_1.Run(stream);
+
+    // Step 4: Compute dx = dout * factor * x.pow(factor-1)
+    dx->mutable_data<T>(place);
+    const auto& runner_mul_2 =
+        NpuOpRunner("Mul", {*dout, x_power_mul_factor}, {*dx}, {});
+    runner_mul_2.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
 class SigmoidNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -665,6 +721,12 @@ REGISTER_OP_NPU_KERNEL(
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>,
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, int>);
+
+REGISTER_OP_NPU_KERNEL(
+    square_grad,
+    ops::SquareGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
+                         paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     sigmoid, ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext, float>,
