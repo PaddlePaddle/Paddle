@@ -988,13 +988,6 @@ void AnalysisPredictor::StatisticShapeInfo() {
     auto name = it.first;
     auto shapes = it.second;
 
-    // the reshape2 op's outputs are {Out, XShape}, the XShape tensor dims size
-    // is 5,
-    // which is not supported in trt.
-    if (shapes[0].size() > 4) {
-      continue;
-    }
-
     std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
     std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
     std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());

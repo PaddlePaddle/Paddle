@@ -34,7 +34,6 @@ TEST(AnalysisPredictor, analysis_off) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(false);
-  config.CollectShapeInfo("test_shape_info.pbtxt");
   LOG(INFO) << config.Summary();
   LOG(INFO) << "Shape Info collected: " << config.shape_info_collected()
             << ", path: " << config.shape_info_path();
@@ -103,6 +102,47 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_TRUE(naive_predictor->Run(inputs, &naive_outputs));
   ASSERT_EQ(naive_outputs.size(), 1UL);
   inference::CompareTensor(outputs.front(), naive_outputs.front());
+}
+
+TEST(AnalysisPredictor, CollectShapeRangeInfo) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchUseFeedFetchOps(false);
+  config.CollectShapeInfo("shape_range_info.pbtxt");
+  LOG(INFO) << config.Summary();
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+
+  auto w0 = predictor->GetInputTensor("firstw");
+  auto w1 = predictor->GetInputTensor("secondw");
+  auto w2 = predictor->GetInputTensor("thirdw");
+  auto w3 = predictor->GetInputTensor("forthw");
+
+  w0->Reshape({4, 1});
+  w1->Reshape({4, 1});
+  w2->Reshape({4, 1});
+  w3->Reshape({4, 1});
+
+  auto* w0_data = w0->mutable_data<int64_t>(PaddlePlace::kCPU);
+  auto* w1_data = w1->mutable_data<int64_t>(PaddlePlace::kCPU);
+  auto* w2_data = w2->mutable_data<int64_t>(PaddlePlace::kCPU);
+  auto* w3_data = w3->mutable_data<int64_t>(PaddlePlace::kCPU);
+
+  for (int i = 0; i < 4; i++) {
+    w0_data[i] = i;
+    w1_data[i] = i;
+    w2_data[i] = i;
+    w3_data[i] = i;
+  }
+
+  predictor->ZeroCopyRun();
+
+  auto out = predictor->GetOutputTensor("fc_1.tmp_2");
+  PaddlePlace place;
+  int size = 0;
+  auto* out_data = out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
+  LOG(INFO) << "output_data: " << out_data;
+  predictor->TryShrinkMemory();
 }
 
 TEST(AnalysisPredictor, ZeroCopy) {

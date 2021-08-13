@@ -206,13 +206,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     VLOG(1) << "trt dynamic_shape deserialize from " << shape_info_path;
     inference::DeserializeShapeInfo(shape_info_path, &min_input_shape,
                                     &max_input_shape, &opt_input_shape);
-    // We should refactor max_input_shape batch to max_batch_size.
-    for (auto it : max_input_shape) {
-      // if have batch dimension, then we set batch dimension equal to
-      // max_batch_size.
-      if (max_input_shape[it.first].size() > 1)
-        max_input_shape[it.first][0] = max_batch_size;
-    }
   }
 
   // The following procedure is used to rename all the intermediate

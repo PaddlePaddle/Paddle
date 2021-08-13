@@ -78,11 +78,6 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
                         "TensorRT's tensor input requires at least 1 "
                         "dimensions, but input %s has %d dims.",
                         input, shape.size()));
-  PADDLE_ENFORCE_LE(shape.size(), 4UL,
-                    platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at most 4 "
-                        "dimensions, but input %s has %d dims.",
-                        input, shape.size()));
   auto ShapeStr = [](const std::vector<T>& shape) {
     std::ostringstream os;
     os << "[";

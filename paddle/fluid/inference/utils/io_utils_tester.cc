@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <utility>
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/utils/shape_info.pb.h"
 
@@ -96,25 +97,15 @@ TEST(infer_io_utils, tensors) {
 }
 
 TEST(shape_info_io, read_and_write) {
-  paddle::inference::proto::ShapeInfos shape_infos;
-  auto* s = shape_infos.add_shape_info();
-  s->set_name("test1");
-  s->add_min_shape(1);
-  s->add_min_shape(3);
-  s->add_min_shape(112);
-  s->add_min_shape(112);
-  s->add_max_shape(1);
-  s->add_max_shape(3);
-  s->add_max_shape(224);
-  s->add_max_shape(224);
-  s->add_opt_shape(1);
-  s->add_opt_shape(3);
-  s->add_opt_shape(224);
-  s->add_opt_shape(224);
-
   const std::string path = "test_shape_info_io";
-  paddle::inference::SerializeShapeInfo(path, shape_infos);
-
-  paddle::inference::proto::ShapeInfos shape_infos2;
-  paddle::inference::DeserializeShapeInfo(path, &shape_infos2);
+  std::map<std::string, std::vector<int32_t>> min_shape, max_shape, opt_shape;
+  min_shape.insert(
+      std::make_pair("test1", std::vector<int32_t>{1, 3, 112, 112}));
+  max_shape.insert(
+      std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
+  opt_shape.insert(
+      std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
+  paddle::inference::SerializeShapeInfo(path, min_shape, max_shape, opt_shape);
+  paddle::inference::DeserializeShapeInfo(path, &min_shape, &max_shape,
+                                          &opt_shape);
 }
