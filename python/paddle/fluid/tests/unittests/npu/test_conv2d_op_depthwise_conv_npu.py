@@ -117,7 +117,7 @@ class TestDepthwiseConvNPU(OpTest):
         self.filter_size = [3, f_c, 3, 3]
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def init_data_format(self):
         self.data_format = "NCHW"
@@ -218,7 +218,7 @@ class TestDepthwiseConvNPU_Padding(OpTest):
         self.filter_size = [3, f_c, 3, 3]
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def init_data_format(self):
         self.data_format = "NCHW"
