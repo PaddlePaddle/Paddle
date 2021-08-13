@@ -71,23 +71,19 @@ def test_class(op_type, typename):
                 np_x = np.array([0.1])
                 data = fluid.layers.data(name="X", shape=[1])
                 out = eval("paddle.%s(data, name='Y')" % self.op_type)
-                place = fluid.CPUPlace()
+                place = fluid.NPUPlace(0)
                 exe = fluid.Executor(place)
                 result, = exe.run(feed={"X": np_x}, fetch_list=[out])
                 expected = eval("np.%s(np_x)" % self.op_type)
                 self.assertEqual(result, expected)
 
         def test_dygraph(self):
-            with fluid.dygraph.guard():
+            with fluid.dygraph.guard(paddle.NPUPlace(0)):
                 np_x = np.array([0.1])
                 x = fluid.dygraph.to_variable(np_x)
                 z = eval("paddle.%s(x).numpy()" % self.op_type)
                 z_expected = eval("np.%s(np_x)" % self.op_type)
-                # ROCM platform will fail in assertEqual
-                if core.is_compiled_with_rocm():
-                    self.assertTrue(np.allclose(z, z_expected))
-                else:
-                    self.assertEqual(z, z_expected)
+                self.assertEqual(z, z_expected)
 
     cls_name = "{0}_{1}_1".format(op_type, typename)
     TestSin.__name__ = cls_name
@@ -96,28 +92,6 @@ def test_class(op_type, typename):
 
 for _typename in {'float16', 'float32', 'float64'}:
     test_class("sin", _typename)
-
-
-#------------------ Test Error Activation----------------------
-def create_test_error_class(op_type):
-    class TestOpErrors(unittest.TestCase):
-        def test_errors(self):
-            with program_guard(Program(), Program()):
-                op = getattr(fluid.layers, op_type)
-                # The input dtype of op_type must be float32, float64.
-                in1 = fluid.layers.data(
-                    name='input2', shape=[12, 10], dtype="int32")
-                in2 = fluid.layers.data(
-                    name='input3', shape=[12, 10], dtype="int64")
-                self.assertRaises(TypeError, op, in1)
-                self.assertRaises(TypeError, op, in2)
-
-    cls_name = "{0}_{1}".format(op_type, "test_errors")
-    TestOpErrors.__name__ = cls_name
-    globals()[cls_name] = TestOpErrors
-
-
-create_test_error_class('sin')
 
 if __name__ == "__main__":
     unittest.main()
