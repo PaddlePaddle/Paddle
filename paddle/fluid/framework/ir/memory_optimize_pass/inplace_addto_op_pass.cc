@@ -220,7 +220,7 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
   }
 }
 
-static bool IsConv2DGradDataGradNode(const Node &node) {
+static bool IsValidConv2DGradDataGradNode(const Node &node) {
   if (node.inputs.empty()) return false;
   auto *generated_op = node.inputs[0];
   auto *op_desc = generated_op->Op();
@@ -230,7 +230,8 @@ static bool IsConv2DGradDataGradNode(const Node &node) {
   const auto &outputs = op_desc->Outputs();
   auto iter = outputs.find(GradVarName("Input"));
   return iter != outputs.end() && !iter->second.empty() &&
-         iter->second[0] == node.Name();
+         iter->second[0] == node.Name() &&
+         !op_desc->GetAttrIfExists<bool>("use_addto");
 }
 
 static bool IsDownstreamNode(const Node &upstream, const Node &downstream) {
@@ -349,6 +350,8 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
   auto all_ver_vars = GetAllVersionVarsMap(graph);
 
   const auto all_nodes = graph.Nodes();  // Deep copy
+  std::unordered_set<std::string> reused_in_vars;
+  std::unordered_set<std::string> reused_out_vars;
   for (auto *node : all_nodes) {
     if (!node->IsOp() || node->Op() == nullptr ||
         node->Op()->Type() != "grad_add") {
@@ -374,11 +377,14 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
       continue;
     }
 
-    bool is_first_var_valid = IsConv2DGradDataGradNode(*input_vars[0]);
-    bool is_second_var_valid = IsConv2DGradDataGradNode(*input_vars[1]);
-    if (is_first_var_valid == is_second_var_valid) {
+    bool is_first_var_valid = IsValidConv2DGradDataGradNode(*input_vars[0]);
+    bool is_second_var_valid = IsValidConv2DGradDataGradNode(*input_vars[1]);
+    if (!is_first_var_valid && !is_second_var_valid) {
       continue;
     }
+
+    VLOG(10) << "validation " << is_first_var_valid << " "
+             << is_second_var_valid;
 
     // make sure that input_vars[1] is always the Input@GRAD of conv2d_grad op
     if (is_first_var_valid) {
@@ -447,10 +453,22 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
       continue;
     }
 
+    // Step 7: check whether the var has been reused
+    if (reused_in_vars.count(input_vars[0]->Name()) > 0 ||
+        reused_in_vars.count(input_vars[1]->Name()) > 0 ||
+        reused_out_vars.count(input_vars[1]->Name()) > 0 ||
+        reused_out_vars.count(output_var->Name()) > 0) {
+      continue;
+    }
+
     VLOG(10) << "inplace occurs at " << input_vars[0]->Name() << " -> "
              << input_vars[1]->Name() << " -> " << output_var->Name();
-    // Step 7: inplace addto can be performed now!
+    // Step 8: inplace addto can be performed now!
     BuildInplaceAddToGraph(input_vars[0], input_vars[1], output_var, &graph);
+    reused_in_vars.insert(input_vars[0]->Name());
+    reused_in_vars.insert(input_vars[1]->Name());
+    reused_out_vars.insert(input_vars[1]->Name());
+    reused_out_vars.insert(output_var->Name());
   }
 
   // Convert Graph to main_program

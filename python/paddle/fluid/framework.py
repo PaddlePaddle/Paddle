@@ -3237,6 +3237,12 @@ class Block(object):
         return ret_var
 
 
+# NOTE(zjl): you should be careful that after you call this method,
+# some Python Variable and all Python Operators should not be used
+# again. Because all Python Variables and all Python Operators are
+# re-constructed inside this method. The underlying VarDesc(OpDesc)
+# of some old Python Variables(all old Python Operators) may have 
+# been destructed.
 def _apply_pass(main_program,
                 startup_program,
                 pass_name,
