@@ -519,6 +519,7 @@ void RegisterOperatorWithMetaInfo(
   auto op_name = OpMetaInfoHelper::GetOpName(base_op_meta);
 
   if (OpInfoMap::Instance().Has(op_name)) {
+    LOG(WARNING) << "Operator (" << op_name << ")has been registered.";
     return;
   }
 
