@@ -13327,7 +13327,7 @@ def shuffle_channel(x, group, name=None):
                           [[0.7, 0.8],
                            [0.8, 0.9]]]]
             Given group: 2
-            then we get a 4-D tensor out whth the same shape of input:
+            then we get a 4-D tensor out with the same shape of input:
             out.shape = (1, 4, 2, 2)
             out.data = [[[[0.1, 0.2],
                           [0.2, 0.3]],
