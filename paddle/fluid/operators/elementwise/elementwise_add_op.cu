@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -114,11 +113,7 @@ default_elementwise_add_grad(const framework::ExecutionContext& ctx,
         dx->clear();
         dx->mutable_data<T>(x->dims(), ctx.GetPlace());
       }
-      std::vector<int> dims =
-          GetOriginalReduceDim(x->dims(), out->dims(), axis);
-      bool reduce_all = x->numel() == 1 ? true : false;
-      std::vector<int> reduce_dims =
-          GetReduceDim(dims, dout->dims().size(), reduce_all);
+      std::vector<int> reduce_dims = GetReduceDim(x->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
       TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dx, reduce_dims, stream);
     }
@@ -133,11 +128,7 @@ default_elementwise_add_grad(const framework::ExecutionContext& ctx,
             ctx.template device_context<platform::DeviceContext>(), dy);
       }
     } else {
-      std::vector<int> dims =
-          GetOriginalReduceDim(y->dims(), out->dims(), axis);
-      bool reduce_all = y->numel() == 1 ? true : false;
-      std::vector<int> reduce_dims =
-          GetReduceDim(dims, dout->dims().size(), reduce_all);
+      std::vector<int> reduce_dims = GetReduceDim(y->dims(), out->dims(), axis);
       gpuStream_t stream = ctx.cuda_device_context().stream();
       TensorReduceFunctorImpl<T, T, CustomSum>(*dout, dy, reduce_dims, stream);
     }
