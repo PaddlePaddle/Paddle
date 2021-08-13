@@ -191,6 +191,13 @@ class AdamW(Adam):
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
+        param, grad = param_and_grad
+
+        # Whether we should do weight decay for the parameter.
+        is_scale = True
+        if self._apply_decay_param_fun is not None \
+                and not self._apply_decay_param_fun(param.name):
+            is_scale = False
 
         moment1 = self._get_accumulator(self._moment1_acc_str,
                                         param_and_grad[0])
