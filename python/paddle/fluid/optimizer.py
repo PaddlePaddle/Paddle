@@ -5036,12 +5036,20 @@ class PipelineOptimizer(object):
 
     def _accumulate_gradients(self,
                               block,
+                              startup_block,
                               pp_allreduce_in_optimize=False,
-                              fp16_allreduce=False):
+                              fp16_allreduce=False,
+                              user_defined_strategy=None):
         """
         Create a new merged gradient for each parameter and accumulate the
         corresponding gradient to it.
         """
+        if user_defined_strategy.fuse_param_grad:
+            fused_gradient_names, fused_param_names = self._accumulate_gradients_with_fuse(
+                block, startup_block, fp16_allreduce,
+                user_defined_strategy.fuse_grad_size_in_MB)
+            return fused_gradient_names
+
         merged_gradient_names = []
         first_opt_op_idx = None
 
@@ -5170,6 +5178,542 @@ class PipelineOptimizer(object):
                 })
 
         return merged_gradient_names
+
+    def _accumulate_gradients_with_fuse(self, main_block, startup_block, fp16,
+                                        fused_size):
+        first_opt_op_idx = None
+        grad_param_pairs = []
+        # obtain all param/grad pairs that needed to be fused
+        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
+            # remove the cast op of fp16 grad to fp32 grad
+            if self._is_optimize_op(op) and op.type == 'cast':
+                in_name = op.input_arg_names[0]
+                out_name = op.output_arg_names[0]
+                if out_name.strip('@GRAD') in self._param_device_map:
+                    assert in_name.replace('.cast_fp16', '') == out_name
+                    main_block._remove_op(index)
+                    continue
+
+            if self._is_backward_op(op) and first_opt_op_idx is None:
+                first_opt_op_idx = index + 1
+                # no optimize phase
+                if first_opt_op_idx == len(main_block.ops):
+                    return
+
+            if self._is_backward_op(op) and (
+                    self._op_role_var_key in op.attr_names):
+                op_role_var = op.attr(self._op_role_var_key)
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0
+                for i in range(0, len(op_role_var), 2):
+                    param_name = op_role_var[i]
+                    if not main_block.has_var(param_name):
+                        continue
+                    if '@BroadCast' in param_name:
+                        continue
+                    grad_param_pairs.append(
+                        (op_role_var[i + 1], op_role_var[i]))
+
+        if len(grad_param_pairs) == 0:
+            return
+
+        # allocate each gard/param paris in different segments
+        # structure of grad_param_segments is
+        # [([grad0, grad1], [param0, param1]), ([grad2, grad3], [param2, param3])]
+        # each entry of the list is a tuple stores the grads segment list and
+        # the corresponding params segment list
+        # Two strategy determine create new segment:
+        # 1. current segment's size is reach the limits (defined by fuse_grad_size_in_MB)
+        # 2. new grad has different weight decay performance
+        grad_param_segments = []
+        cur_size = 0.
+        last_dtype = None
+        # split the grad based on dtype and fused size
+        for grad, param in grad_param_pairs:
+            real_grad = main_block.var(grad)
+            real_param = main_block.var(param)
+            tmp_size = self._get_var_size(real_grad)
+            if len(grad_param_segments) == 0 \
+                    or cur_size + tmp_size > fused_size \
+                    or real_grad.dtype != last_dtype:
+                grad_param_segments.append(([real_grad], [real_param]))
+                last_dtype = real_grad.dtype
+                cur_size = 0.
+            else:
+                grad_param_segments[-1][0].append(real_grad)
+                grad_param_segments[-1][1].append(real_param)
+                cur_size += tmp_size
+
+        merged_gradients = []
+        merged_params = []
+        # create fused vars for grad and param
+        for grad_param_segment in grad_param_segments:
+            grad_segment = grad_param_segment[0]
+            param_segment = grad_param_segment[1]
+            shape = 0
+            for i in range(len(grad_segment)):
+                assert grad_segment[i].shape == param_segment[i].shape
+                shape += reduce((lambda x, y: x * y), grad_segment[i].shape)
+            grad_fused = main_block.create_var(
+                name='FusedOutput_{}'.format(grad_segment[0].name),
+                dtype=grad_segment[0].dtype,
+                shape=[shape],
+                persistable=True,
+                stop_gradient=True)
+            param_fused_startup = startup_block.create_var(
+                name='FusedInput_{}'.format(param_segment[0].name),
+                dtype=param_segment[0].dtype,
+                shape=[shape],
+                persistable=True,
+                stop_gradient=True)
+            param_fused_main = main_block.create_var(
+                name='FusedInput_{}'.format(param_segment[0].name),
+                dtype=param_segment[0].dtype,
+                shape=[shape],
+                persistable=True,
+                stop_gradient=True)
+            merged_gradients.append(grad_fused)
+            merged_params.append(param_fused_startup)
+
+        assert len(merged_gradients) == len(grad_param_segments)
+        assert len(merged_params) == len(grad_param_segments)
+
+        # insert coalesce op to init fused values
+        first_opt_op_idx = None
+        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
+            if self._is_backward_op(op) and first_opt_op_idx is None:
+                first_opt_op_idx = index + 1
+                break
+        assert first_opt_op_idx is not None
+        offset = 0
+        fuse_param_pos = len(startup_block.ops)
+        for i in range(len(grad_param_segments)):
+            fused_grad = merged_gradients[i]
+            fused_param = merged_params[i]
+            grads = grad_param_segments[i][0]
+            params = grad_param_segments[i][1]
+            main_block._insert_op_without_sync(
+                first_opt_op_idx + offset,
+                type="coalesce_tensor",
+                inputs={"Input": grads},
+                outputs={"Output": grads,
+                         "FusedOutput": fused_grad},
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "dtype": grads[0].dtype,
+                    self._op_role_key: self._op_role.Backward
+                })
+            startup_block._insert_op_without_sync(
+                fuse_param_pos + offset,
+                type="coalesce_tensor",
+                inputs={"Input": params},
+                outputs={"Output": params,
+                         "FusedOutput": fused_param},
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "dtype": params[0].dtype,
+                    self._op_role_key: self._op_role.Forward
+                })
+            offset += 1
+
+        first_opt_op_idx += offset
+        offset = 0
+        merged_suffix = '@MERGED@FP16' if fp16 else '@MERGED'
+        dtype = paddle.float16 if fp16 else None
+        merged_gradients_tmp = []
+        for i in range(len(merged_gradients)):
+            param = merged_params[i]
+            grad_var = merged_gradients[i]
+            assert param.shape == grad_var.shape
+            grad_name = grad_var.name
+            param_grad_name = param.name + core.grad_var_suffix()
+            merged_param_grad_name = param_grad_name + merged_suffix
+            merged_param_grad_var = main_block.create_var(
+                name=merged_param_grad_name,
+                dtype=dtype if dtype else param.dtype,
+                shape=param.shape,
+                persistable=True,
+                stop_gradient=True)
+
+            main_block._insert_op(
+                index=first_opt_op_idx + offset,
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [merged_param_grad_var]},
+                attrs={
+                    'shape': merged_param_grad_var.shape,
+                    'dtype': merged_param_grad_var.dtype,
+                    'value': float(0),
+                    self._op_role_key: self._op_role.Optimize.LRSched,
+                })
+            offset += 1
+
+            is_fp16_grad = 'cast_fp16' in grad_name
+            need_cast = (is_fp16_grad is not fp16)
+
+            if need_cast:
+                cast_grad_var_name = param_grad_name + '@TMP'
+                cast_grad_var = main_block.create_var(
+                    name=cast_grad_var_name,
+                    dtype=dtype if dtype else merged_param_grad_var.dtype,
+                    shape=grad_var.shape,
+                    persistable=False,
+                    stop_gradient=True)
+                main_block._insert_op(
+                    index=first_opt_op_idx + offset,
+                    type='cast',
+                    inputs={'X': grad_var},
+                    outputs={'Out': cast_grad_var},
+                    attrs={
+                        'in_dtype': grad_var.dtype,
+                        'out_dtype': cast_grad_var.dtype,
+                        self._op_role_key: self._op_role.Backward,
+                    })
+                offset += 1
+                grad_var = cast_grad_var
+
+            assert merged_param_grad_var.shape == grad_var.shape
+            main_block._insert_op(
+                index=first_opt_op_idx + offset,
+                type='sum',
+                inputs={'X': [merged_param_grad_var, grad_var]},
+                outputs={'Out': merged_param_grad_var},
+                attrs={self._op_role_key: self._op_role.Backward, })
+            offset += 1
+            merged_gradients_tmp.append(merged_param_grad_var)
+        merged_gradients = merged_gradients_tmp
+
+        # insert the fused grad to check_finite_and_unscale and update_loss_scaling
+        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
+            if op.type == 'check_finite_and_unscale':
+                extend_x = []
+                for grad in merged_gradients:
+                    extend_x.append(grad.name)
+                op.desc.set_input('X', extend_x)
+                op.desc.set_output('Out', extend_x)
+
+            if op.type == 'update_loss_scaling':
+                extend_x = []
+                for grad in merged_gradients:
+                    extend_x.append(grad.name)
+                op.desc.set_input('X', extend_x)
+                op.desc.set_output('Out', extend_x)
+
+        fp32_gradients = None
+        if fp16:
+            # if using fp16 allreduce, the optimizer needs fp32 grads, cast them back to fp32
+            fp32_gradients = []
+            for fp16_grad in merged_gradients:
+                fp32_grad = main_block.create_var(
+                    name=fp16_grad.name + '@BACK@FP32',
+                    dtype=paddle.float32,
+                    shape=fp16_grad.shape,
+                    persistable=False,
+                    stop_gradient=True)
+                main_block._insert_op(
+                    index=first_opt_op_idx + offset,
+                    type='cast',
+                    inputs={'X': fp16_grad},
+                    outputs={'Out': fp32_grad},
+                    attrs={
+                        'in_dtype': paddle.float16,
+                        'out_dtype': paddle.float32,
+                        self._op_role_key: self._op_role.Optimize,
+                    })
+                offset += 1
+                fp32_gradients.append(fp32_grad)
+
+        # prune the grad clip ops and adam optimizer opds
+        self._prune_grad_clip(main_block, merged_gradients
+                              if not fp32_gradients else fp32_gradients)
+        self._prune_adam_optimizer(main_block, startup_block, merged_params,
+                                   merged_gradients
+                                   if not fp32_gradients else fp32_gradients)
+
+        # repalce the var with it's name
+        for i in range(len(merged_gradients)):
+            merged_gradients[i] = merged_gradients[i].name
+            merged_params[i] = merged_params[i].name
+
+        return merged_gradients, merged_params
+
+    def _prune_adam_optimizer(self, main_block, startup_block, merged_params,
+                              merged_gradients):
+        # remove adam op then reinsert them with fused param and grad
+        removed_idx = []
+        insert_idx = None
+        lr = None
+        beta1 = None
+        beta2 = None
+        epsilon = None
+        for idx, op in enumerate(main_block.ops):
+            if op.type == 'adam':
+                if insert_idx is None:
+                    lr = op.input('LearningRate')[0]
+                    beta1 = op.attr('beta1')
+                    beta2 = op.attr('beta2')
+                    epsilon = op.attr('epsilon')
+                    insert_idx = idx
+                removed_idx.append(idx)
+        if len(removed_idx) == 0:
+            return
+        assert insert_idx is not None
+        removed_idx = sorted(removed_idx, reverse=True)
+        for idx in removed_idx:
+            main_block._remove_op(idx, sync=False)
+
+        beta1_suffix = '_beta1_pow_acc_0'
+        beta2_suffix = '_beta2_pow_acc_0'
+        moment1_suffix = '_moment1_0'
+        moment2_suffix = '_moment2_0'
+        offset = 0
+        for i in range(len(merged_gradients)):
+            grad = merged_gradients[i]
+            param = merged_params[i]
+            moment1 = self._insert_adam_var_helper(main_block, startup_block,
+                                                   grad.name + moment1_suffix,
+                                                   grad.dtype, grad.shape)
+            moment2 = self._insert_adam_var_helper(main_block, startup_block,
+                                                   grad.name + moment2_suffix,
+                                                   grad.dtype, grad.shape)
+            beta1_pow_acc = self._insert_adam_var_helper(
+                main_block, startup_block, grad.name + beta1_suffix, grad.dtype,
+                [1], 0.9)
+            beta2_pow_acc = self._insert_adam_var_helper(
+                main_block, startup_block, grad.name + beta2_suffix, grad.dtype,
+                [1], 0.999)
+            inputs = {
+                "Param": [param],
+                "Grad": [grad],
+                "LearningRate": [lr],
+                "Moment1": [moment1],
+                "Moment2": [moment2],
+                "Beta1Pow": [beta1_pow_acc],
+                "Beta2Pow": [beta2_pow_acc]
+            }
+
+            outputs = {
+                "ParamOut": [param],
+                "Moment1Out": [moment1],
+                "Moment2Out": [moment2],
+                "Beta1PowOut": [beta1_pow_acc],
+                "Beta2PowOut": [beta2_pow_acc],
+            }
+            attrs = {
+                "lazy_mode": False,
+                "min_row_size_to_use_multithread": 1000,
+                'use_global_beta_pow': False,
+                'beta1': beta1,
+                'beta2': beta2,
+                'epsilon': epsilon,
+                self._op_role_key: self._op_role.Optimize
+            }
+            main_block._insert_op(
+                index=insert_idx + offset,
+                type='adam',
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs)
+        return
+
+    def _insert_adam_var_helper(self,
+                                main_block,
+                                startup_block,
+                                name,
+                                dtype,
+                                shape,
+                                value=0.):
+        startup_block.create_var(
+            name=name,
+            dtype=dtype,
+            shape=shape,
+            persistable=True,
+            stop_gradient=False,
+            initializer=Constant(value=float(value)))
+        return main_block.create_var(
+            name=name,
+            dtype=dtype,
+            shape=shape,
+            persistable=True,
+            stop_gradient=False)
+
+    def _prune_grad_clip(self, main_block, merged_gradients):
+        # remove ops related with ClipGradByGlobalNorm
+        # squared_l2_norm, sum, sqrt, fill_constant, elementwise_{max/div/mul}
+        removed_idx = []
+        removed_list = [
+            'squared_l2_norm', 'sum', 'sqrt', 'fill_constant',
+            'elementwise_max', 'elementwise_div', 'elementwise_mul'
+        ]
+        insert_idx = None
+        for idx, op in enumerate(main_block.ops):
+            if op.type == 'update_loss_scaling' and insert_idx is None:
+                insert_idx = idx + 1
+                continue
+            if op.type in removed_list and insert_idx is not None and idx >= insert_idx:
+                removed_idx.append(idx)
+        if len(removed_idx) == 0:
+            return
+        assert insert_idx is not None
+        removed_idx = sorted(removed_idx, reverse=True)
+        for idx in removed_idx:
+            main_block._remove_op(idx, sync=False)
+
+        with framework.name_scope('gradient_clip'):
+            # namespace for gradient clip
+            squared_l2_norm_tmp = []
+            offset = 0
+            l2_norm_prefix = 'squared_l2_norm_'
+            # insert squared l2 norm op
+            for idx, grad in enumerate(merged_gradients):
+                squared_l2_norm_var = main_block.create_var(
+                    name=l2_norm_prefix + str(idx),
+                    dtype=grad.dtype,
+                    shape=[1],
+                    persistable=False,
+                    stop_gradient=False)
+                main_block._insert_op(
+                    index=insert_idx + offset,
+                    type='squared_l2_norm',
+                    inputs={'X': grad},
+                    outputs={'Out': squared_l2_norm_var},
+                    attrs={self._op_role_key: self._op_role.Optimize, })
+                offset += 1
+                squared_l2_norm_tmp.append(squared_l2_norm_var)
+
+            # insert sum op
+            sum_rst = main_block.create_var(
+                name=unique_name.generate('gradient_clip_sum'),
+                dtype=squared_l2_norm_tmp[0].dtype,
+                shape=[1],
+                persistable=False,
+                stop_gradient=False)
+            main_block._insert_op(
+                index=insert_idx + offset,
+                type='sum',
+                inputs={'X': squared_l2_norm_tmp},
+                outputs={'Out': sum_rst},
+                attrs={
+                    self._op_role_key: self._op_role.Optimize,
+                    'use_mkldnn': False
+                })
+            offset += 1
+
+            # insert sqrt op
+            sqrt_rst = main_block.create_var(
+                name=unique_name.generate('gradient_clip_sqrt'),
+                dtype=sum_rst.dtype,
+                shape=[1],
+                persistable=False,
+                stop_gradient=False)
+            main_block._insert_op(
+                index=insert_idx + offset,
+                type='sqrt',
+                inputs={'X': sum_rst},
+                outputs={'Out': sqrt_rst},
+                attrs={
+                    self._op_role_key: self._op_role.Optimize,
+                    'use_mkldnn': False,
+                    'use_cudnn': False
+                })
+            offset += 1
+
+            # insert fill constant op
+            fill_constant_rst = main_block.create_var(
+                name=unique_name.generate('gradient_clip_fill_constant'),
+                dtype=sqrt_rst.dtype,
+                shape=[1],
+                persistable=False,
+                stop_gradient=False)
+            main_block._insert_op(
+                index=insert_idx + offset,
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [fill_constant_rst]},
+                attrs={
+                    'shape': fill_constant_rst.shape,
+                    'dtype': fill_constant_rst.dtype,
+                    'value': float(1.0),
+                    self._op_role_key: self._op_role.Optimize,
+                })
+            offset += 1
+
+            # insert elementwise_max op
+            elementwise_max_rst = main_block.create_var(
+                name=unique_name.generate('gradient_clip_elementwise_max'),
+                dtype=fill_constant_rst.dtype,
+                shape=[1],
+                persistable=False,
+                stop_gradient=False)
+            main_block._insert_op(
+                index=insert_idx + offset,
+                type='elementwise_max',
+                inputs={'X': sqrt_rst,
+                        'Y': fill_constant_rst},
+                outputs={'Out': [elementwise_max_rst]},
+                attrs={
+                    self._op_role_key: self._op_role.Optimize,
+                    'use_mkldnn': False,
+                    'use_quantizer': False,
+                    'axis': -1
+                })
+            offset += 1
+
+            # insert elementwise_div op
+            elementwise_div_rst = main_block.create_var(
+                name=unique_name.generate('gradient_clip_elementwise_div'),
+                dtype=elementwise_max_rst.dtype,
+                shape=[1],
+                persistable=False,
+                stop_gradient=False)
+            main_block._insert_op(
+                index=insert_idx + offset,
+                type='elementwise_div',
+                inputs={'X': fill_constant_rst,
+                        'Y': elementwise_max_rst},
+                outputs={'Out': [elementwise_div_rst]},
+                attrs={
+                    self._op_role_key: self._op_role.Optimize,
+                    'use_mkldnn': False,
+                    'use_quantizer': False,
+                    'axis': -1
+                })
+            offset += 1
+
+            # insert elementwise_mul op
+            for idx, grad in enumerate(merged_gradients):
+                main_block._insert_op(
+                    index=insert_idx + offset,
+                    type='elementwise_mul',
+                    inputs={'X': grad,
+                            'Y': elementwise_div_rst},
+                    outputs={'Out': grad},
+                    attrs={
+                        self._op_role_key: self._op_role.Optimize,
+                        'use_mkldnn': False,
+                        'use_quantizer': False,
+                        'axis': -1
+                    })
+                offset += 1
+        return
+
+    def _get_var_size(self, var):
+        dtype_to_size = {
+            core.VarDesc.VarType.FP16: 2,
+            core.VarDesc.VarType.FP32: 4,
+            core.VarDesc.VarType.FP64: 8,
+            core.VarDesc.VarType.INT16: 2,
+            core.VarDesc.VarType.INT32: 4,
+            core.VarDesc.VarType.INT64: 8,
+            core.VarDesc.VarType.BOOL: 1,
+            core.VarDesc.VarType.UINT8: 1,
+        }
+        assert -1 not in var.shape
+        return reduce(lambda x, y: x * y,
+                      var.shape) * dtype_to_size[var.dtype] / 1024.0 / 1024.0
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program

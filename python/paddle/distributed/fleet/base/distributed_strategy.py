@@ -968,6 +968,28 @@ class DistributedStrategy(object):
             )
 
     @property
+    def fuse_param_grad(self):
+        """
+        Set whether fuse the param and grad.
+        Note: this flag only supports adam optimizer with GlobalGradClip
+        The default value for the fuse_param_grad is False
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_param_grad = True
+        """
+        return self.strategy.fuse_param_grad
+
+    @fuse_param_grad.setter
+    @is_strict_auto
+    def fuse_param_grad(self, fuse_param_grad):
+        if isinstance(fuse_param_grad, bool):
+            self.strategy.fuse_param_grad = fuse_param_grad
+        else:
+            print("WARNING: fuse_param_grad should have value of boolean type")
+
+    @property
     def fuse_grad_size_in_num(self):
         """
         This based on raw_program_optimizer program and allreduce the num of the fused op

@@ -341,7 +341,9 @@ def insert_allreduce_ops(block,
     if len(allreduce_vars) == 0:
         return
 
-    if user_defined_strategy and user_defined_strategy.fuse_all_reduce_ops:
+    if user_defined_strategy and \
+            user_defined_strategy.fuse_all_reduce_ops and \
+            not user_defined_strategy.fuse_param_grad:
         insert_fused_allreduce_ops(block, insert_idx, ring_id, allreduce_vars,
                                    op_role, use_calc_stream,
                                    user_defined_strategy.fuse_grad_size_in_MB)
