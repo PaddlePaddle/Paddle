@@ -150,7 +150,8 @@ int GetSocketPort(int fd) {
     return -1;
   }
 
-  return local.sin_port;
+  auto port = htons(local.sin_port);
+  return port;
 }
 
 void WaitPortClosed(const std::vector<int>& ports) {
