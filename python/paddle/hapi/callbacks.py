@@ -597,10 +597,11 @@ class ModelCheckpoint(Callback):
 
 class LRScheduler(Callback):
     """Lr scheduler callback function
+    
     Args:
-        by_step(bool, optional): whether to update learning rate scheduler 
+        by_step(bool, optional): whether to update learning rate scheduler
             by step. Default: True.
-        by_epoch(bool, optional): whether to update learning rate scheduler 
+        by_epoch(bool, optional): whether to update learning rate scheduler
             by epoch. Default: False.
 
     Examples:
@@ -688,6 +689,7 @@ class LRScheduler(Callback):
 class EarlyStopping(Callback):
     """Stop training when the given monitor stopped improving during evaluation
     by setting `model.stop_training=True`.
+    
     Args:
         monitor(str): Quantity to be monitored. Default: 'loss'.
         mode(str|None): Mode should be one of 'auto', 'min' or 'max'. In 'min'
