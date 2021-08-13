@@ -28,7 +28,6 @@ repos:
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
         exclude: |
             (?x)^(
-                paddle/fluid/distributed/thirdparty/.* |
                 paddle/utils/.*
             )$
 -   repo: local
@@ -41,7 +40,6 @@ repos:
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
         exclude: |
             (?x)^(
-                paddle/fluid/distributed/thirdparty/.* |
                 paddle/utils/.*
             )$
 -   repo: local
@@ -61,6 +59,5 @@ repos:
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|py|sh)$
         exclude: |
             (?x)^(
-                paddle/fluid/distributed/thirdparty/.* |
                 paddle/utils/.*
             )$
