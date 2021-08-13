@@ -917,7 +917,6 @@ class Silu(Layer):
     Silu Activation.
 
     .. math::
-
         Silu(x) = \frac{x}{1 + e^{-x}}
 
     Parameters:

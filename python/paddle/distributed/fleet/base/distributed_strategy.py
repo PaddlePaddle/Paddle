@@ -259,9 +259,11 @@ class DistributedStrategy(object):
     def gradient_scale_configs(self):
         """
         Set the strategy of gradient scale
+
         Examples:
 
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.gradient_scale_configs = {'scale_strategy': 'avg'}
@@ -968,8 +970,11 @@ class DistributedStrategy(object):
     def fuse_grad_size_in_num(self):
         """
         This based on raw_program_optimizer program and allreduce the num of the fused op
+
         Examples:
+
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.fuse_grad_size_in_num = 2
@@ -1123,7 +1128,9 @@ class DistributedStrategy(object):
 
 
         Examples:
+
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.hybrid_configs = {

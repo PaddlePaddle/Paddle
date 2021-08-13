@@ -628,7 +628,7 @@ def max_pool2d(x,
     This API implements max pooling 2d operation.
     See more details in :ref:`api_nn_pooling_MaxPool2d` .
 
-    Args:
+   Args:
         - x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
           shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
           `"NHWC"`, where `N` is batch size, `C` is the number of channels,
@@ -766,30 +766,31 @@ def max_pool3d(x,
     This API implements max pooling 2d operation.
     See more details in :ref:`api_nn_pooling_MaxPool3d` .
     Args:
-        x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
-            shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"` or `"NDHWC"`, where N represents batch size, C represents the number of channels, D, H and W represent the depth, height and width of the feature respectively.
-        kernel_size (int|list|tuple): The pool kernel size. If the kernel size
-            is a tuple or list, it must contain three integers,
-            (kernel_size_Depth, kernel_size_Height, kernel_size_Width).
-            Otherwise, the pool kernel size will be the cube of an int.
-        stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
-            it must contain three integers, [stride_Depth, stride_Height, stride_Width).
-            Otherwise, the pool stride size will be a cube of an int.
-        padding (string|int|list|tuple): The padding size. Padding could be in one of the following forms.
-            1. A string in ['valid', 'same'].
-            2. An int, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 3, [pad_depth, pad_height, pad_weight] whose value means the padding size of each dimension.
-            4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
-            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
-            The default value is 0.
-        ceil_mode (bool): ${ceil_mode_comment}
-        return_mask (bool): Whether to return the max indices along with the outputs. Default False. Only support "NDCHW" data_format.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
-                        The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
-                        `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+        - x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
+          shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"` or `"NDHWC"`,
+          where N represents batch size, C represents the number of channels, D, H and W represent the depth, height and width of the feature respectively.
+        - kernel_size (int|list|tuple): The pool kernel size. If the kernel size
+          is a tuple or list, it must contain three integers,
+          (kernel_size_Depth, kernel_size_Height, kernel_size_Width).
+          Otherwise, the pool kernel size will be the cube of an int.
+        - stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
+          it must contain three integers, [stride_Depth, stride_Height, stride_Width).
+          Otherwise, the pool stride size will be a cube of an int.
+        - padding (string|int|list|tuple): The padding size. Padding could be in one of the following forms.
+          1. A string in ['valid', 'same'].
+          2. An int, which means the feature map is zero padded by size of `padding` on every sides.
+          3. A list[int] or tuple(int) whose length is 3, [pad_depth, pad_height, pad_weight] whose value means the padding size of each dimension.
+          4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+          5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+          the default value is 0.
+        - ceil_mode (bool): ${ceil_mode_comment}
+        - return_mask (bool): Whether to return the max indices along with the outputs. Default False. Only support "NDCHW" data_format.
+        - data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
+          The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+          `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        - name(str, optional): For detailed information, please refer
+          to :ref:`api_guide_Name`. Usually name is no need to set and
+          None by default.
     
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
