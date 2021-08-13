@@ -399,7 +399,9 @@ class OptimizerWithMixedPrecision(object):
                         self._decr_ratio,
                         name="update_loss_scaling")
         # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
-        if isinstance(self._optimizer, paddle.fluid.optimizer.Adam):
+        if isinstance(self._optimizer,
+                      paddle.fluid.optimizer.Adam) or isinstance(
+                          self._optimizer, paddle.optimizer.AdamW):
             # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we 
             # copy it in advance to avoid multiple time copies.
             found_inf = paddle.tensor.creation._memcpy(found_inf,
