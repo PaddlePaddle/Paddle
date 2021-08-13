@@ -8,14 +8,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/platform/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
 
 #include <algorithm>
 #include <cstdlib>
 #include <string>
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
 #include "paddle/fluid/string/split.h"
 
 DEFINE_string(selected_xpus, "",
@@ -101,6 +101,22 @@ void SetXPUDeviceId(int id) {
                         "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
+}
+
+XPUVersion get_xpu_version(int dev_id) {
+  uint64_t v = 0;
+  int ret = xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "xpu_device_get_attr return wrong value[%d]", ret));
+
+  if (v == K100 || v == K200) {
+    VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";
+    return XPU1;
+  } else {
+    VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
+    return XPU2;
+  }
 }
 
 }  // namespace platform

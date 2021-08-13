@@ -184,6 +184,12 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
   auto data_type = src_tensor.type();
   auto place = src_tensor.place();
 
+  PADDLE_ENFORCE_EQ(dst_tensor->type(), data_type,
+                    platform::errors::PreconditionNotMet(
+                        "The data type of source tensor and destination tensor "
+                        "should be equal, Otherwise, the calculation results "
+                        "will be incorrect."));
+
 #define PADDLE_TENSOR_ADD(cpp_type)                                  \
   if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
     TensorAddFunctor<cpp_type> func(                                 \
@@ -422,9 +428,9 @@ void GradientAccumulator::AccumulateGrad() {
   auto* src = inner_var_->MutableVar();
   auto* dst = var_->MutableVar();
   if (!var_->IsEmpty()) {
-    VLOG(6) << "Leaf Gradient Var(" << var_->Name()
-            << ") has been calculated by previous graph, will accumulate on "
-               "previous graph.";
+    VLOG(6) << "Leaf Var(" << var_->Name()
+            << ")'s Gradient has been initizlized, will accumulate on "
+               "previous gradient.";
     if (dst->IsType<framework::LoDTensor>()) {
       if (src->IsType<framework::LoDTensor>()) {
         TensorAdd(*src, dst);
@@ -444,8 +450,9 @@ void GradientAccumulator::AccumulateGrad() {
           "Only support LoDTensor and SelectedRows for gradient var"));
     }
   } else {
-    VLOG(6) << "Leaf Gradient Var(" << var_->Name()
-            << ") has not been initialized, not accumulate. Just move";
+    VLOG(6)
+        << "Leaf Var(" << var_->Name()
+        << ")'s Gradient has not been initialized, not accumulate. Just move";
     *(dst) = std::move(*src);
     var_->SetType(inner_var_->Type());
     var_->SetDataType(inner_var_->DataType());

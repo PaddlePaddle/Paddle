@@ -55,6 +55,7 @@ from .layer.common import Pad3D  # noqa: F401
 from .layer.common import CosineSimilarity  # noqa: F401
 from .layer.common import Embedding  # noqa: F401
 from .layer.common import Linear  # noqa: F401
+from .layer.common import Identity  # noqa: F401
 from .layer.common import Flatten  # noqa: F401
 from .layer.common import Upsample  # noqa: F401
 from .layer.common import UpsamplingNearest2D  # noqa: F401
