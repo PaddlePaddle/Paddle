@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/collective_helper.h"
 #include <utility>
 
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/cuda_resource_pool.h"
 
 namespace paddle {

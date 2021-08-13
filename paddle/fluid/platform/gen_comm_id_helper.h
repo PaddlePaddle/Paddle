@@ -30,8 +30,9 @@ int CreateListenSocket(const std::string& ep);
 void CloseSocket(int fd);
 
 template <typename CommUniqueId>
-void SendBroadCastCommID(std::vector<std::string> servers,
-                         std::vector<CommUniqueId>* nccl_ids, int ring_id = 0);
+std::vector<int> SendBroadCastCommID(std::vector<std::string> servers,
+                                     std::vector<CommUniqueId>* nccl_ids,
+                                     int ring_id = 0);
 
 template <typename CommUniqueId>
 void RecvBroadCastCommID(std::string endpoint,

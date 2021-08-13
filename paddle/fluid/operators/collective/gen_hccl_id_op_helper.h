@@ -45,5 +45,7 @@ void RecvBroadCastHCCLID(std::string endpoint, int nccl_comm_num,
 void RecvBroadCastHCCLID(int server_fd, std::string endpoint, int nccl_comm_num,
                          std::function<std::string(size_t)> func,
                          const framework::Scope& scope);
+
+void WaitPortClosed(const std::vector<int>& ports);
 }  // namespace operators
 }  // namespace paddle

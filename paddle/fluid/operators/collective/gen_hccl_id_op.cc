@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hccl_helper.h"
@@ -28,8 +29,6 @@ limitations under the License. */
 #include "paddle/fluid/string/split.h"
 
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
-
-DECLARE_bool(avoid_hccl_port_conflict);
 
 namespace paddle {
 namespace operators {
@@ -169,22 +168,7 @@ class GenHCCLIdOp : public framework::OperatorBase {
       CloseSocket(server_fd);
     }
 
-    if (FLAGS_avoid_hccl_port_conflict) {
-      bool conflict = false;
-      int port = 0;
-      for (auto s : local_ports) {
-        VLOG(10) << "use local port:" << s;
-        if ((s >= 60000 && s <= 60015) || s < 0) {
-          conflict = true;
-          port = s;
-        }
-      }
-      if (conflict) {
-        LOG(INFO) << "find local conflict port so wait 2MSL time, port:"
-                  << port;
-        std::this_thread::sleep_for(std::chrono::seconds(123));
-      }
-    }
+    platform::WaitPortClosed(local_ports);
   }
 };
 

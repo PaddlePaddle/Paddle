@@ -14,7 +14,10 @@
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
+#include <arpa/inet.h>
 #include <utility>
+
+DECLARE_bool(avoid_hccl_port_conflict);
 
 namespace paddle {
 namespace platform {
@@ -137,6 +140,38 @@ void HCCLCommContext::ReleaseHCCLComms() {
     for (auto& q : p.second) {
       q.second.reset();
     }
+  }
+}
+
+int GetSocketPort(int fd) {
+  struct sockaddr_in local;
+  socklen_t size = sizeof(local);
+  if (0 != getsockname(fd, (struct sockaddr*)&local, &size)) {  // NOLINT
+    return -1;
+  }
+
+  return local.sin_port;
+}
+
+void WaitPortClosed(const std::vector<int>& ports) {
+  if (!FLAGS_avoid_hccl_port_conflict) {
+    return;
+  }
+
+  VLOG(10) << "check local port";
+  bool conflict = false;
+  int port = 0;
+  for (auto s : ports) {
+    VLOG(10) << "use local port:" << s;
+    if ((s >= 60000 && s <= 60015) || s < 0) {
+      conflict = true;
+      port = s;
+    }
+  }
+
+  if (conflict) {
+    LOG(INFO) << "find local conflict port so wait 2MSL time, port:" << port;
+    std::this_thread::sleep_for(std::chrono::seconds(123));
   }
 }
 

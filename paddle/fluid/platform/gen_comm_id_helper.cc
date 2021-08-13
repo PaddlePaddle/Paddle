@@ -319,8 +319,9 @@ static void SendCommID(int conn, CommUniqueId* nccl_id) {
 }
 
 template <typename CommUniqueId>
-void SendBroadCastCommID(std::vector<std::string> servers,
-                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
+std::vector<int> SendBroadCastCommID(std::vector<std::string> servers,
+                                     std::vector<CommUniqueId>* nccl_ids,
+                                     int ring_id) {
   CommHead head;
   head.ring_id = ring_id;
 
@@ -342,10 +343,18 @@ void SendBroadCastCommID(std::vector<std::string> servers,
     }
   }
 
+  std::vector<int> ports;
+  for (auto conn : connects) {
+    int port = GetSocketPort(conn);
+    ports.push_back(port);
+  }
+
   // close client
   for (auto conn : connects) {
     CloseSocket(conn);
   }
+
+  return ports;
 }
 
 template <typename CommUniqueId>
@@ -391,9 +400,9 @@ SocketServer& SocketServer::GetInstance(const std::string& end_point) {
 
 /// template instantiation
 #define INSTANT_TEMPLATE(Type)                                                 \
-  template void SendBroadCastCommID<Type>(std::vector<std::string> servers,    \
-                                          std::vector<Type> * nccl_ids,        \
-                                          int ring_id = 0);                    \
+  template std::vector<int> SendBroadCastCommID<Type>(                         \
+      std::vector<std::string> servers, std::vector<Type> * nccl_ids,          \
+      int ring_id = 0);                                                        \
   template void RecvBroadCastCommID<Type>(                                     \
       std::string endpoint, std::vector<Type> * nccl_ids, int ring_id = 0);    \
   template void RecvBroadCastCommID<Type>(int server_fd, std::string endpoint, \

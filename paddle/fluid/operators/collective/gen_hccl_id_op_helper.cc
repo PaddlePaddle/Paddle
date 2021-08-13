@@ -34,6 +34,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
+DECLARE_bool(avoid_hccl_port_conflict);
+
 namespace paddle {
 namespace operators {
 
@@ -280,17 +282,6 @@ static void SendHCCLID(int conn, HcclRootInfo* hccl_id) {
                  "send hccl id");
 }
 
-inline int GetSocketPort(int fd) {
-  struct sockaddr_in local;
-  socklen_t size = sizeof(local);
-  if (0 != getsockname(fd, (struct sockaddr*)&local, &size)) {  // NOLINT
-    return -1;
-  }
-
-  auto port = htons(local.sin_port);
-  return port;
-}
-
 std::vector<int> SendBroadCastHCCLID(std::vector<std::string> servers,
                                      int hccl_comm_num,
                                      std::function<std::string(size_t)> func,
@@ -325,7 +316,7 @@ std::vector<int> SendBroadCastHCCLID(std::vector<std::string> servers,
 
   std::vector<int> ports;
   for (auto conn : connects) {
-    int port = GetSocketPort(conn);
+    int port = platform::GetSocketPort(conn);
     ports.push_back(port);
   }
 

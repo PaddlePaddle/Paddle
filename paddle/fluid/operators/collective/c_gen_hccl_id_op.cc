@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -75,16 +76,21 @@ class CGenHCCLIdOp : public framework::OperatorBase {
     std::vector<HcclRootInfo> hccl_ids;
     hccl_ids.resize(1);
 
+    std::vector<int> local_ports;
+
     if (rank == 0) {
       GenHCCLID(&hccl_ids);
       std::vector<std::string> endpoint_list =
           Attr<std::vector<std::string>>("other_endpoints");
-      platform::SendBroadCastCommID(endpoint_list, &hccl_ids, ring_id);
+      auto ports =
+          platform::SendBroadCastCommID(endpoint_list, &hccl_ids, ring_id);
+      local_ports.insert(local_ports.end(), ports.begin(), ports.end());
     } else {
       platform::RecvBroadCastCommID(server_fd, endpoint, &hccl_ids, ring_id);
     }
 
     CopyHCCLIDToVar(hccl_ids, func, scope);
+    platform::WaitPortClosed(local_ports);
   }
 };
 

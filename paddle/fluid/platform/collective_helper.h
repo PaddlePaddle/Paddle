@@ -327,6 +327,12 @@ class BKCLCommContext {
   BKCLCommContext() = default;
   DISABLE_COPY_AND_ASSIGN(BKCLCommContext);
 };
+
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+int GetSocketPort(int fd);
+void WaitPortClosed(const std::vector<int>& ports);
 #endif
 
 }  // namespace platform
