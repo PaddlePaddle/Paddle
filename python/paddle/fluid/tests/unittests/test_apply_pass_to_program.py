@@ -74,8 +74,6 @@ class TestApplyPassToProgram(unittest.TestCase):
 class TestIRPassBase(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
-        paddle.seed(1)
-        paddle.framework.random._manual_program_seed(1)
         if paddle.is_compiled_with_cuda():
             fluid.set_flags({
                 'FLAGS_cudnn_deterministic': 1,
@@ -87,6 +85,7 @@ class TestIRPassBase(unittest.TestCase):
         self.use_cuda = isinstance(self.place, paddle.CUDAPlace)
         self.executor = paddle.static.Executor(self.place)
         self.num_classes = 1000
+        self.seed = 1
 
     def get_strategy(self):
         return {
@@ -155,6 +154,7 @@ class TestIRPassBase(unittest.TestCase):
             batch_num = 3
             batch_size = 2
 
+        paddle.seed(self.seed)
         main1, startup1, image, label, loss1 = get_resnet50_model()
         main2, startup2, image, label, loss2 = get_resnet50_model()
 
@@ -169,10 +169,12 @@ class TestIRPassBase(unittest.TestCase):
         image_shape = [batch_size] + list(image.shape)[1:]
         label_shape = [batch_size] + list(label.shape)[1:]
 
+        paddle.seed(self.seed)
         scope1 = paddle.static.Scope()
         with paddle.static.scope_guard(scope1):
             self.executor.run(startup1)
 
+        paddle.seed(self.seed)
         scope2 = paddle.static.Scope()
         with paddle.static.scope_guard(scope2):
             self.executor.run(startup2)

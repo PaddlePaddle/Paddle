@@ -4176,6 +4176,14 @@ class Program(object):
         self._graph = None
 
     def _find_var_class_kwargs(self, new_desc):
+        # NOTE: not all variables support shape/dtype/lod_level methods.
+        # For example: RAW, STEP_SCOPES, etc.
+        def get_var_desc_attr_or_none(var_desc, attr_name, allowed_types):
+            if var_desc.type() in allowed_types:
+                return getattr(var_desc, attr_name)()
+            else:
+                return None
+
         old_desc = self.desc
         all_new_vars = []
         block_num = new_desc.num_blocks()
@@ -4192,9 +4200,21 @@ class Program(object):
                 kwargs = {
                     'type': new_var_desc.type(),
                     'name': new_var_desc.name(),
-                    'shape': new_var_desc.shape(),
-                    'dtype': new_var_desc.dtype(),
-                    'lod_level': new_var_desc.lod_level(),
+                    'shape': get_var_desc_attr_or_none(new_var_desc, "shape", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.SELECTED_ROWS,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
+                    'dtype': get_var_desc_attr_or_none(new_var_desc, "dtype", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.SELECTED_ROWS,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
+                    'lod_level':
+                    get_var_desc_attr_or_none(new_var_desc, "lod_level", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
                     'error_clip': old_var.error_clip
                     if old_var is not None else None,
                     'stop_gradient': old_var.stop_gradient
