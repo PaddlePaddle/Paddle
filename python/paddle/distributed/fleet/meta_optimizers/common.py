@@ -98,6 +98,7 @@ class CollectiveHelper(object):
                 for s in ports:
                     if s >= 60000 and s <= 60015:
                         find = True
+                        break
                 if find:
                     print("find conflict ports so wait 2MSL", flush=True)
                     time.sleep(123)
