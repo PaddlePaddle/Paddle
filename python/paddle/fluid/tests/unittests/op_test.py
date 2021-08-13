@@ -241,30 +241,6 @@ def skip_check_grad_ci(reason=None):
     return wrapper
 
 
-def skip_check_grad_assert_ci(reason=None):
-    """Decorator to skip check_grad assert CI.
-
-       Check_grad is required for Op test cases. However, there are some special
-       cases that do not need to do check_grad_assert. This decorator is used to skip the
-       check_grad_assert of the above cases.
-
-       Note: the execution of unit test will not be skipped. It just avoids check_grad_assert
-       checking in tearDownClass method by setting a `no_need_check_grad_assert` flag.
-
-       Example:
-           @skip_check_grad_assert_ci(reason="For inference, check_grad is not required.")
-           class TestInference(OpTest):
-    """
-    if not isinstance(reason, str):
-        raise AssertionError("The reason for skipping check_grad is required.")
-
-    def wrapper(cls):
-        cls.no_need_check_grad_assert = True
-        return cls
-
-    return wrapper
-
-
 def copy_bits_from_float_to_uint16(f):
     return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
 
@@ -1393,10 +1369,6 @@ class OpTest(unittest.TestCase):
 
     def _assert_is_close(self, numeric_grads, analytic_grads, names,
                          max_relative_error, msg_prefix):
-        if hasattr(self.__class__, 'no_need_check_grad_assert'
-                   ) and self.__class__.no_need_check_grad_assert:
-            return
-
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
             # max_relative_error is 1e-7. According to the value of np.abs(a), we
