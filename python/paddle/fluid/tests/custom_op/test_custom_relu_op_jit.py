@@ -130,6 +130,12 @@ class TestJITLoad(unittest.TestCase):
                 str(e))
         self.assertTrue(caught_exception)
 
+    def test_load_multiple_module(self):
+        custom_module = load(
+            name='custom_conj_jit', sources=['custom_conj_op.cc'])
+        custom_conj = custom_module.custom_conj
+        self.assertIsNotNone(custom_conj)
+
 
 if __name__ == '__main__':
     unittest.main()
