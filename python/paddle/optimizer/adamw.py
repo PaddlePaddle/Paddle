@@ -187,8 +187,6 @@ class AdamW(Adam):
             return None
 
     def _append_optimize_op(self, block, param_and_grad):
-        is_scale, decay_coeff = self._get_weight_decay_info(param_and_grad)
-        #return super(AdamW, self)._append_optimize_op(block, param_and_grad)
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
@@ -206,8 +204,8 @@ class AdamW(Adam):
         master_weight = (self._master_weights[param_and_grad[0].name]
                          if find_master else None)
         lr = self._create_param_lr(param_and_grad)
-        # create the adam optimize op
 
+        # create the adam optimize op
         if framework.in_dygraph_mode():
 
             _beta1 = self._beta1 if not isinstance(
@@ -271,14 +269,14 @@ class AdamW(Adam):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
-        adam_op = block.append_op(
+        adamw_op = block.append_op(
             type=self.type,
             inputs=inputs,
             outputs=outputs,
             attrs=attrs,
             stop_gradient=True)
 
-        return adam_op
+        return adamw_op
 
     def _create_optimization_pass(self, parameters_and_grads):
         optimize_ops = super(
