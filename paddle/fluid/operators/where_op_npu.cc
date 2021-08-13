@@ -59,27 +59,20 @@ class WhereGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    framework::Tensor* zero_t = const_cast<Tensor*>(dout_t);
-    framework::Tensor zeros(dout_t->type());
-    std::vector<int> zeros_dims;
-    for (auto i = 0; i < dout_t->dims().size(); ++i) {
-      zeros_dims.push_back(dout_t->dims()[i]);
-    }
-    zeros.Resize(framework::make_ddim(zeros_dims));
-    zeros.mutable_data<T>(ctx.GetPlace());
-
-    const auto& runner = NpuOpRunner("ZerosLike", {*dout_t}, {zeros}, {});
+    framework::Tensor tensor_zeros(dout_t->type());
+    tensor_zeros.mutable_data<T>(dout_t->dims(), ctx.GetPlace());
+    const auto& runner =
+        NpuOpRunner("ZerosLike", {*dout_t}, {tensor_zeros}, {});
     runner.Run(stream);
-    zero_t = &zeros;
 
     if (dx_t != nullptr) {
-      const auto& runner =
-          NpuOpRunner("Select", {*condition, *dout_t, *zero_t}, {*dx_t}, {});
+      const auto& runner = NpuOpRunner(
+          "Select", {*condition, *dout_t, tensor_zeros}, {*dx_t}, {});
       runner.Run(stream);
     }
     if (dy_t != nullptr) {
-      const auto& runner =
-          NpuOpRunner("Select", {*condition, *zero_t, *dout_t}, {*dy_t}, {});
+      const auto& runner = NpuOpRunner(
+          "Select", {*condition, tensor_zeros, *dout_t}, {*dy_t}, {});
       runner.Run(stream);
     }
   }
@@ -88,21 +81,17 @@ class WhereGradNPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+
 REGISTER_OP_NPU_KERNEL(
-    where, paddle::operators::WhereNPUKernel<paddle::platform::NPUDeviceContext,
-                                             float>,
-    paddle::operators::WhereNPUKernel<paddle::platform::NPUDeviceContext,
-                                      double>,
-    paddle::operators::WhereNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    paddle::operators::WhereNPUKernel<paddle::platform::NPUDeviceContext,
-                                      int64_t>);
+    where, ops::WhereNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::WhereNPUKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::WhereNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::WhereNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
+
 REGISTER_OP_NPU_KERNEL(
     where_grad,
-    paddle::operators::WhereGradNPUKernel<paddle::platform::NPUDeviceContext,
-                                          float>,
-    paddle::operators::WhereGradNPUKernel<paddle::platform::NPUDeviceContext,
-                                          double>,
-    paddle::operators::WhereGradNPUKernel<paddle::platform::NPUDeviceContext,
-                                          int>,
-    paddle::operators::WhereGradNPUKernel<paddle::platform::NPUDeviceContext,
-                                          int64_t>);
+    ops::WhereGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::WhereGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::WhereGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::WhereGradNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);

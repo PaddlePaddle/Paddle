@@ -23,7 +23,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.backward import append_backward
-from paddle.fluid.tests.unittests.white_list import no_grad_set_white_list
 
 paddle.enable_static()
 
@@ -49,24 +48,7 @@ class TestNPUWhereOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(
-            self.place, ['X', 'Y'], 'Out', check_dygraph=False)
-
-    def test_check_grad_ingore_x(self):
-        if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
-            ) and (self.op_type not in no_grad_set_white_list.NOT_CHECK_OP_LIST
-                   ) and (not self.is_bfloat16_op()):
-            return
-        self.check_grad_with_place(
-            self.place, ['Y'], 'Out', no_grad_set=set("X"), check_dygraph=False)
-
-    def test_check_grad_ingore_y(self):
-        if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
-            ) and (self.op_type not in no_grad_set_white_list.NOT_CHECK_OP_LIST
-                   ) and (not self.is_bfloat16_op()):
-            return
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', no_grad_set=set("Y"), check_dygraph=False)
+        self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
 
 class TestNPUWhereOp2(TestNPUWhereOp):
