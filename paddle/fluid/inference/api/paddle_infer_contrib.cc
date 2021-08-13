@@ -12,24 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle_tensor.h"
+#include "paddle_infer_contrib.h"
 
 namespace paddle_infer {
 namespace contrib {
 
-class PD_INFER_DECL Utils {
- public:
-  void CopyTensor(Tensor& dst, const Tensor& src);
-  void CopyTensorAsync(Tensor& dst, const Tensor& src, void* exec_stream);
-  void CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
-                       void* cb_params);
+void Utils::CopyTensor(Tensor& dst, const Tensor& src) {
+  CopyTensorImp(dst, src, nullptr, nullptr, nullptr);
+}
 
- private:
-  void CopyTensorImp(Tensor& dst, const Tensor& src,
-                     void* exec_stream = nullptr, CallbackFunc cb = nullptr,
-                     void* cb_params = nullptr);
+void Utils::CopyTensorAsync(Tensor& dst, const Tensor& src, void* exec_stream) {
+  CopyTensorImp(dst, src, exec_stream, nullptr, nullptr);
+}
+
+void Utils::CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
+                            void* cb_params) {
+  CopyTensorImp(dst, src, nullptr, cb, cb_params);
+}
+
+void CopyTensorImp(Tensor& dst, const Tensor& src, void* exec_stream = nullptr,
+                   CallbackFunc cb = nullptr, void* cb_params = nullptr) {
+  (void)dst;
+  (void)src;
+  (void)exec_stream;
+  (void)cb;
+  (void)cb_params;
 }
 
 }  // namespace contrib

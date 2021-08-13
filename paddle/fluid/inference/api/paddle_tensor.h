@@ -15,9 +15,10 @@
 #pragma once
 
 #include "paddle_infer_declare.h"  // NOLINT
-#include "paddle_infer_contrib.h"  // NOLINT
 
 namespace paddle_infer {
+
+typedef void (*CallbackFunc)(void*);
 
 /// \brief Paddle data type.
 enum DataType {
@@ -77,16 +78,18 @@ class PD_INFER_DECL Tensor {
 
   /// \brief Copy the tensor data to the host memory asynchronously.
   /// \param[out] data The tensor will copy the data to the address.
-  /// \param[out] exec_stream The tensor will excute copy in this stream(Only GPU CUDA stream suppported now).
+  /// \param[out] exec_stream The tensor will excute copy in this stream(Only
+  /// GPU CUDA stream suppported now).
   template <typename T>
   void CopyToCpuAsync(T* data, void* exec_stream);
 
   /// \brief Copy the tensor data to the host memory asynchronously.
   /// \param[out] data The tensor will copy the data to the address.
-  /// \param[out] cb Callback function cb(cb_params) will be executed on the host after all
+  /// \param[out] cb Callback function cb(cb_params) will be executed on the
+  /// host after all
   ///                currently enqueued items in the stream have completed .
   template <typename T>
-  void CopyToCpuAsync(T* data, contrib::CallbackFunc cb, void* cb_params);
+  void CopyToCpuAsync(T* data, CallbackFunc cb, void* cb_params);
 
   /// \brief Return the shape of the Tensor.
   std::vector<int> shape() const;
@@ -117,8 +120,8 @@ class PD_INFER_DECL Tensor {
   void SetName(const std::string& name);
 
   template <typename T>
-  void CopyToCpuImp(T* data, void* stream = nullptr,
-		  contrib::CallbackFunc cb = nullptr, void* cb_params = nullptr);
+  void CopyToCpuImp(T* data, void* stream = nullptr, CallbackFunc cb = nullptr,
+                    void* cb_params = nullptr);
 
   std::string name_;
   // The corresponding tensor pointer inside Paddle workspace is cached for
