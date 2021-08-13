@@ -60,7 +60,6 @@ __all__ = [
     'device_guard',
     'set_flags',
     'get_flags',
-    'disable_signal_handler',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -403,6 +402,12 @@ def disable_signal_handler():
     Paddle installs signal handlers at C++ level to log debug information upon failing.
     However, conflicts can happen if another python module is making use of such signal.
     Such being the case, one may disblae paddle signal handler via this interface.
+    
+    Known frameworks that require disabling signal handler includes:
+    1. TVM
+    2. ADLIK
+
+    Make sure you called paddle.disable_signal_handler() before using above mentioned frameworks.
 
     Returns: None 
 
