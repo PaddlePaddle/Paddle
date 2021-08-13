@@ -16,6 +16,7 @@ from .optimizer import Optimizer
 from .adam import Adam
 from ..fluid import core
 from ..fluid import framework
+from ..fluid.framework import Variable
 from ..fluid.dygraph import base as imperative_base
 import paddle
 
@@ -190,6 +191,13 @@ class AdamW(Adam):
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
+        param, grad = param_and_grad
+
+        # Whether we should do weight decay for the parameter.
+        with_decay = True
+        if self._apply_decay_param_fun is not None \
+                and not self._apply_decay_param_fun(param.name):
+            with_decay = False
 
         moment1 = self._get_accumulator(self._moment1_acc_str,
                                         param_and_grad[0])
@@ -248,7 +256,7 @@ class AdamW(Adam):
             "lazy_mode": self._lazy_mode,
             "min_row_size_to_use_multithread": 1000,
             "multi_precision": find_master,
-            "is_scale": is_scale,
+            "with_decay": with_decay,
             "coeff": self._coeff,
         }
 
