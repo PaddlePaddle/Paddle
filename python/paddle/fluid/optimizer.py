@@ -4750,15 +4750,17 @@ class PipelineOptimizer(object):
             if not in_optimize:
                 if pre_stage_id is not None:
                     interval = stage_id - pre_stage_id
-                    assert abs(interval) <= 1, \
-                        "The stage interval of two consecutive ops in the pipeline must be < = 1," \
-                        "but the interval of op={} and prev op is {}".format(op, interval)
+                    # assert abs(interval) <= 1, \
+                    #     "The stage interval of two consecutive ops in the pipeline must be < = 1," \
+                    #     "but the interval of op={} and prev op is {}".format(op, interval)
+
                     # stage must be in order, such as Forward(0 1 2 3 4), Backward(4 3 2 1 0)
                     # if stage is unordered, such as Forward(0 1 2 3 4 3 4), will report error
                     if in_forward:
-                        assert interval >= 0, \
-                            "Pipeline stage must be sequential increment in Forward, prev_stage={}, " \
-                            "please check the stage of op={}".format(pre_stage_id, op)
+                        pass
+                        # assert interval >= 0, \
+                        #     "Pipeline stage must be sequential increment in Forward, prev_stage={}, " \
+                        #     "please check the stage of op={}".format(pre_stage_id, op)
                     else:
                         # FIXME(wangxi): recompute check failed
                         pass
