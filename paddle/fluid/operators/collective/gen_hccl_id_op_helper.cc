@@ -280,6 +280,17 @@ static void SendHCCLID(int conn, HcclRootInfo* hccl_id) {
                  "send hccl id");
 }
 
+inline int GetSocketPort(int fd) {
+  struct sockaddr_in local;
+  socklen_t size = sizeof(local);
+  if (0 != getsockname(fd, (struct sockaddr*)&local, &size)) {  // NOLINT
+    return -1;
+  }
+
+  auto port = htons(local.sin_port);
+  return port;
+}
+
 std::vector<int> SendBroadCastHCCLID(std::vector<std::string> servers,
                                      int hccl_comm_num,
                                      std::function<std::string(size_t)> func,
@@ -312,12 +323,18 @@ std::vector<int> SendBroadCastHCCLID(std::vector<std::string> servers,
     VLOG(3) << "sending completed...";
   }
 
+  std::vector<int> ports;
+  for (auto conn : connects) {
+    int port = GetSocketPort(conn);
+    ports.push_back(port);
+  }
+
   // close client
   for (auto conn : connects) {
     CloseSocket(conn);
   }
 
-  return connects;
+  return ports;
 }
 
 void RecvBroadCastHCCLID(std::string endpoint, int hccl_comm_num,

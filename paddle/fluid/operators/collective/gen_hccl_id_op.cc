@@ -103,7 +103,7 @@ class GenHCCLIdOp : public framework::OperatorBase {
 
     int server_fd = -1;
 
-    std::vector<int> local_sockets;
+    std::vector<int> local_ports;
 
     /// 1. init flat
     std::function<std::string(size_t)> func = platform::GetFlatHCCLVarName;
@@ -114,7 +114,7 @@ class GenHCCLIdOp : public framework::OperatorBase {
                             trainers.end());
       auto sockets =
           SendBroadCastHCCLID(flat_endpoints, hccl_comm_num, func, scope);
-      local_sockets.insert(local_sockets.ends(), sockets.begin(), socket.end());
+      local_ports.insert(local_ports.end(), sockets.begin(), socket.end());
     } else {
       server_fd = CreateListenSocket(endpoint);
       RecvBroadCastHCCLID(server_fd, endpoint, hccl_comm_num, func, scope);
@@ -137,7 +137,7 @@ class GenHCCLIdOp : public framework::OperatorBase {
 
       auto sockets =
           SendBroadCastHCCLID(inter_endpoints, hccl_comm_num, func, scope);
-      local_sockets.insert(local_sockets.ends(), sockets.begin(), socket.end());
+      local_ports.insert(local_ports.end(), sockets.begin(), socket.end());
     } else if (inter_trainer_id > 0) {
       VLOG(1) << "Hierarchical inter ring";
       RecvBroadCastHCCLID(server_fd, endpoint, hccl_comm_num, func, scope);
@@ -158,7 +158,7 @@ class GenHCCLIdOp : public framework::OperatorBase {
 
       auto sockets =
           SendBroadCastHCCLID(exter_endpoints, hccl_comm_num, func, scope);
-      local_sockets.insert(local_sockets.ends(), sockets.begin(), socket.end());
+      local_ports.insert(local_ports.end(), sockets.begin(), socket.end());
     } else if (exter_trainer_id > 0) {
       VLOG(1) << "Hierarchical exter ring";
       RecvBroadCastHCCLID(server_fd, endpoint, hccl_comm_num, func, scope);
@@ -171,13 +171,17 @@ class GenHCCLIdOp : public framework::OperatorBase {
 
     if (FLAGS_avoid_hccl_port_conflict) {
       bool conflict = false;
-      for (auto s : local_sockets) {
-        if (s >= 60000 && s <= 60015) {
+      int port = 0;
+      for (auto s : local_ports) {
+        VLOG(10) << "use local port:" << s;
+        if ((s >= 60000 && s <= 60015) || s < 0) {
           conflict = true;
+          port = s;
         }
       }
       if (conflict) {
-        LOG(INFO) << "find local conflict port so wait 2MSL time";
+        LOG(INFO) << "find local conflict port so wait 2MSL time, port:"
+                  << port;
         std::this_thread::sleep_for(std::chrono::seconds(123));
       }
     }

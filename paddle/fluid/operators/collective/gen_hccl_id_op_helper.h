@@ -31,9 +31,10 @@ int CreateListenSocket(const std::string& ep);
 
 void CloseSocket(int fd);
 
-void SendBroadCastHCCLID(std::vector<std::string> servers, int nccl_comm_num,
-                         std::function<std::string(size_t)> func,
-                         const framework::Scope& scope);
+std::vector<int> SendBroadCastHCCLID(std::vector<std::string> servers,
+                                     int nccl_comm_num,
+                                     std::function<std::string(size_t)> func,
+                                     const framework::Scope& scope);
 
 // server listen on endpoint, then recv nccl id
 void RecvBroadCastHCCLID(std::string endpoint, int nccl_comm_num,

@@ -319,9 +319,8 @@ static void SendCommID(int conn, CommUniqueId* nccl_id) {
 }
 
 template <typename CommUniqueId>
-std::vector<int> SendBroadCastCommID(std::vector<std::string> servers,
-                                     std::vector<CommUniqueId>* nccl_ids,
-                                     int ring_id) {
+void SendBroadCastCommID(std::vector<std::string> servers,
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
   CommHead head;
   head.ring_id = ring_id;
 
@@ -347,8 +346,6 @@ std::vector<int> SendBroadCastCommID(std::vector<std::string> servers,
   for (auto conn : connects) {
     CloseSocket(conn);
   }
-
-  return connects;
 }
 
 template <typename CommUniqueId>
