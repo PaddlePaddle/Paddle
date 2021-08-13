@@ -57,7 +57,7 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     auto* mom2_out = ctx.Output<LoDTensor>("Moment2Out");
     auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
     auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
-      
+
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
       auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
