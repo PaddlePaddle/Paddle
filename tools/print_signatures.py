@@ -401,6 +401,10 @@ def parse_args():
         default=1,
         help="0 - don't report; 1 - all the exposed apis; 2 - all the apis.")
     parser.add_argument(
+        '--skip-api-args-doc-check',
+        dest='skip_api_args_doc_check',
+        action="store_true")
+    parser.add_argument(
         'module', type=str, help='module', default='paddle')  # not used
 
     if len(sys.argv) == 1:
@@ -449,7 +453,7 @@ if __name__ == '__main__':
             api_args_check_failed.append(api_name)
 
     exit_value = 0
-    if api_args_check_failed:
+    if (not args.skip_api_args_doc_check) and api_args_check_failed:
         exit_value = 1
         logger.error("some apis' args check failed: %s",
                      str(api_args_check_failed))

@@ -1003,7 +1003,11 @@ function generate_api_spec() {
     fi
     pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
+    if [ "$spec_kind" == "DEV" ]; then
+        python ${PADDLE_ROOT}/tools/print_signatures.py --skip-api-args-doc-check paddle > $spec_path
+    else
+        python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
+    fi
 
     # used to log op_register data_type
     op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
