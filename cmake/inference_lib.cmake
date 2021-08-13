@@ -94,8 +94,12 @@ function(copy_part_of_thrid_party TARGET DST)
                     DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
         else()
             copy(${TARGET}
-                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_SHARED_LIB_1} ${MKLDNN_SHARED_LIB_2}
-                    DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib)
+                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+                    DSTS ${dst_dir} ${dst_dir}/lib)
+            add_custom_command(TARGET ${TARGET} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink ${dst_dir}/lib/libmkldnn.so.0 ${dst_dir}/lib/libdnnl.so.1
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink ${dst_dir}/lib/libmkldnn.so.0 ${dst_dir}/lib/libdnnl.so.2
+                    COMMENT "Make a symbol link of libmkldnn.so.0")
         endif()
     endif()
 
@@ -224,6 +228,13 @@ endif(WIN32)
 copy(inference_lib_dist
       SRCS  ${src_dir}/inference/capi_exp/pd_*.h  ${paddle_inference_c_lib}
       DSTS  ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib)
+
+if(WITH_STRIP AND NOT WIN32)
+        add_custom_command(TARGET inference_lib_dist POST_BUILD
+                COMMAND strip -s ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib/libpaddle_inference_c.so
+                COMMAND strip -s ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib/libpaddle_inference.so
+                COMMENT "striping libpaddle_inference_c.so\nstriping libpaddle_inference.so")
+endif()
 
 # fluid library for both train and inference
 set(fluid_lib_deps inference_lib_dist)
