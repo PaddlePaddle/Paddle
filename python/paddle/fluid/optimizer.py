@@ -4795,6 +4795,25 @@ class PipelineOptimizer(object):
 
                 device_type = cur_device.split(':')[0] + ':'
 
+                def _check_stage(cur_id, prev_id):
+                    # check send/recv stage valid
+                    is_forward = self._is_forward_op(op)
+                    is_backward = self._is_backward_op(op)
+                    assert is_forward or is_backward, \
+                        'send/recv in pipeline should only be inserted in forward or backward,' \
+                        'please check the op_role of op={}'.format(op)
+
+                    if is_forward:
+                        assert prev_id < cur_id, \
+                            "In forward, send/recv can only be passed forward, but now " \
+                            "prev_stage={} great than cur_stage={}, please check op_device of op={}".format(
+                                prev_id, cur_id, op)
+                    elif is_backward:
+                        assert prev_id > cur_id, \
+                            "In backward, send/recv can only be passed backward, but now " \
+                            "prev_stage={} less than cur_stage={}, please check op_device of op={}".format(
+                                prev_id, cur_id, op)
+
                 def _insert_send_recv(cur_id, prev_id):
                     cur_dev = device_type + str(cur_id)
                     prev_dev = device_type + str(prev_id)
@@ -4894,6 +4913,8 @@ class PipelineOptimizer(object):
                             extra_index_info['index'] += 1
                             return
 
+                        _check_stage(cur_id, prev_id)
+
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='c_sync_calc_stream',
@@ -4978,25 +4999,9 @@ class PipelineOptimizer(object):
                             "Now only 'F-then-B' and '1F1B' are supported."
                             "The given value is {}.".format(self.schedule_mode))
 
-                cur_stage = int(cur_device.split(':')[1])
-                prev_stage = int(prev_device.split(':')[1])
-
-                is_forward = self._is_forward_op(op)
-                is_backward = self._is_backward_op(op)
-                assert is_forward or is_backward, \
-                    'send/recv in pipeline should only be inserted in forward or backward,' \
-                    'please check the op_role of op={}'.format(op)
-
-                if is_forward:
-                    assert prev_stage < cur_stage, \
-                        "In forward, send/recv can only be passed forward, but now " \
-                        "prev_stage={} great than cur_stage={}, please check op_device of op={}".format(prev_stage, cur_stage, op)
-                elif is_backward:
-                    assert prev_stage > cur_stage, \
-                        "In backward, send/recv can only be passed backward, but now " \
-                        "prev_stage={} less than cur_stage={}, please check op_device of op={}".format(prev_stage, cur_stage, op)
-
-                _insert_send_recv(cur_stage, prev_stage)
+                _insert_send_recv(
+                    int(cur_device.split(':')[1]),
+                    int(prev_device.split(':')[1]))
         block._sync_with_cpp()
 
     def _insert_loss_scale(self, block):
