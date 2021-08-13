@@ -112,9 +112,9 @@ class GenHCCLIdOp : public framework::OperatorBase {
       std::vector<std::string> flat_endpoints;
       flat_endpoints.insert(flat_endpoints.begin(), trainers.begin() + 1,
                             trainers.end());
-      auto sockets =
+      auto ports =
           SendBroadCastHCCLID(flat_endpoints, hccl_comm_num, func, scope);
-      local_ports.insert(local_ports.end(), sockets.begin(), socket.end());
+      local_ports.insert(local_ports.end(), ports.begin(), ports.end());
     } else {
       server_fd = CreateListenSocket(endpoint);
       RecvBroadCastHCCLID(server_fd, endpoint, hccl_comm_num, func, scope);
@@ -135,9 +135,9 @@ class GenHCCLIdOp : public framework::OperatorBase {
       }
       VLOG(1) << "Hierarchical inter ring endpoints:" << ss.str();
 
-      auto sockets =
+      auto ports =
           SendBroadCastHCCLID(inter_endpoints, hccl_comm_num, func, scope);
-      local_ports.insert(local_ports.end(), sockets.begin(), socket.end());
+      local_ports.insert(local_ports.end(), ports.begin(), ports.end());
     } else if (inter_trainer_id > 0) {
       VLOG(1) << "Hierarchical inter ring";
       RecvBroadCastHCCLID(server_fd, endpoint, hccl_comm_num, func, scope);
@@ -156,9 +156,9 @@ class GenHCCLIdOp : public framework::OperatorBase {
       }
       VLOG(1) << "Hierarchical exter ring endpoints:" << ss.str();
 
-      auto sockets =
+      auto ports =
           SendBroadCastHCCLID(exter_endpoints, hccl_comm_num, func, scope);
-      local_ports.insert(local_ports.end(), sockets.begin(), socket.end());
+      local_ports.insert(local_ports.end(), ports.begin(), ports.end());
     } else if (exter_trainer_id > 0) {
       VLOG(1) << "Hierarchical exter ring";
       RecvBroadCastHCCLID(server_fd, endpoint, hccl_comm_num, func, scope);
