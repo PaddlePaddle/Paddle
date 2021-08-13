@@ -147,7 +147,7 @@ def extract_args_desc_from_docstr(docstr):
     return res
 
 
-def check_api_args_doc(fullargspec, docstr):
+def check_api_args_doc(fullargspec, docstr, api_name=''):
     """
     check the name and order of the args.
 
@@ -156,27 +156,34 @@ def check_api_args_doc(fullargspec, docstr):
     Args:
         fullargspec: the inpect.FullArgSpec object
         docstr: the docstring of the function
+        api_name: api name
     
     Returns:
         boolean, check result
     """
     v = extract_args_desc_from_docstr(docstr)
+    haserror = False
+    errormsg = []
     if v.args != fullargspec.args and not (fullargspec.args and
                                            fullargspec.args[0] == 'self' and
                                            v.args == fullargspec.args[1:]):
-        logger.error(f'v.text={v.text}')
-        logger.error('v.args is %s, not equal to FullArgSpec.args %s',
-                     str(v.args), str(fullargspec.args))
-        return False
+        haserror = True
+        errormsg.append(
+            'args in docstring is {}, not equal to FullArgSpec.args {}'.format(
+                v.args, fullargspec.args))
     if v.varargs != fullargspec.varargs:
-        logger.error(f'v.text={v.text}')
-        logger.error('v.varargs is %s, not equal to FullArgSpec.varargs %s',
-                     str(v.varargs), str(fullargspec.varargs))
-        return False
+        haserror = True
+        errormsg.append(
+            'varargs in docstring is {}, not equal to FullArgSpec.varargs {}'.
+            format(v.varargs, fullargspec.varargs))
     if v.varkw != fullargspec.varkw:
-        logger.error(f'v.text={v.text}')
-        logger.error('v.varkw is %s, not equal to FullArgSpec.varkw %s',
-                     str(v.varkw), str(fullargspec.varkw))
+        haserror = True
+        errormsg.append(
+            'varkw in docstring is {}, not equal to FullArgSpec.varkw {}'.
+            format(v.varkw, fullargspec.varkw))
+    if haserror:
+        logger.error(f'api: {api_name}, its docstring is:\n{v.text}')
+        logger.error(str(errormsg))
         return False
 
     return True
@@ -259,7 +266,7 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
                     'FullArgSpec', 'ArgSpec', 1)
                 if docstr:
                     api_info_dict[fc_id]["argsdoc_check"] = check_api_args_doc(
-                        argspec, api_info_dict[fc_id]["docstring"])
+                        argspec, api_info_dict[fc_id]["docstring"], full_name)
         return api_info_dict[fc_id]
 
 
@@ -411,6 +418,7 @@ if __name__ == '__main__':
     api_args_check_failed = []
 
     get_all_api()
+    set_api_sketch()
     all_api_names_to_k = {}
     for k, api_info in api_info_dict.items():
         # 1. the shortest suggested_name may be renamed;
