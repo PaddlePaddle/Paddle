@@ -947,8 +947,8 @@ def matrix_power(x, n, name=None):
     r"""
     Computes the n-th power of a square matrix or a batch of square matrices.
 
-    Mark :math:`X` as a sqaure matrix or a batch of square matrices, :math:`n` as
-    the exponent, the equation should be:
+    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
+    an exponent, the equation should be:
 
     .. math::
         Out = X ^ {n}
@@ -983,17 +983,17 @@ def matrix_power(x, n, name=None):
             x = paddle.to_tensor([[1, 2, 3],
                                   [1, 4, 9],
                                   [1, 8, 27]], dtype='float64')
-            print(paddle.linalg.matrix_power(x, 2))
+            print(paddle.matrix_power(x, 2))
             # [[6.  , 34. , 102.],
             #  [14. , 90. , 282.],
             #  [36. , 250., 804.]]
 
-            print(paddle.linalg.matrix_power(x, 0))
+            print(paddle.matrix_power(x, 0))
             # [[1., 0., 0.],
             #  [0., 1., 0.],
             #  [0., 0., 1.]]
 
-            print(paddle.linalg.matrix_power(x, -2))
+            print(paddle.matrix_power(x, -2))
             # [[ 12.91666667, -12.75000000,  2.83333333 ],
             #  [-7.66666667 ,  8.         , -1.83333333 ],
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]

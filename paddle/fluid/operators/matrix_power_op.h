@@ -28,8 +28,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-struct EyeFunctor {
-  EyeFunctor(const int m, T* output) : m_(m), output_(output) {}
+struct IdentityMatrixFunctor {
+  IdentityMatrixFunctor(const int m, T* output) : m_(m), output_(output) {}
 
   HOSTDEVICE void operator()(size_t index) const {
     const int row = index / m_ % m_;
@@ -52,8 +52,8 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
   platform::ForRange<DeviceContext> for_range(dev_ctx, X->numel());
 
   if (n == 0) {
-    // Out = I
-    EyeFunctor<T> functor(x_dims[x_ndim - 1], out_data);
+    // Out = Identity Matrix
+    IdentityMatrixFunctor<T> functor(x_dims[x_ndim - 1], out_data);
     for_range(functor);
     return;
   }
@@ -80,13 +80,13 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
   auto no_trans_desc = math::CreateMatrixDescriptor(x_dims, 0, false);
 
   if (new_n == 2) {
-    // Out = newX \times newX
+    // Out = newX * newX
     Out->mutable_data<T>(ctx.GetPlace());
     blas.MatMul(new_x, no_trans_desc, new_x, no_trans_desc, static_cast<T>(1),
                 Out, static_cast<T>(0));
     return;
   } else if (new_n == 3) {
-    // Out = (newX \times newX) \times newX
+    // Out = (newX * newX) * newX
     // Note: C[i] matrices in MatMul must not overlap, i.e. the individual
     // gemm operations must be computable independently; otherwise,
     // undefined behavior is expected.
@@ -97,7 +97,7 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
                 Out, static_cast<T>(0));
     return;
   } else if (new_n == 4) {
-    // Out = (newX \times newX) \times (newX \times newX)
+    // Out = (newX * newX) * (newX * newX)
     Tensor temp = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
     blas.MatMul(new_x, no_trans_desc, new_x, no_trans_desc, static_cast<T>(1),
                 &temp, static_cast<T>(0));
@@ -183,7 +183,7 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   auto no_trans_desc = math::CreateMatrixDescriptor(x_dims, 0, false);
 
   if (n == -1) {
-    // \nabla X = Out^{T} \times \nabla Out \times Out^{T}
+    // \nabla X = Out^{T} * \nabla Out * Out^{T}
     Tensor temp_dx =
         ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
     blas.MatMul(*Out, trans_desc, *dOut, no_trans_desc, static_cast<T>(-1),
@@ -220,8 +220,8 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
   }
 
   // Second, \nabla newX = \sum_{i = 0}^{n - 1} (newX^{T}^{i}
-  //                      \times \nabla Out
-  //                      \times (newX^{T}^{n - i - 1})
+  //                      * \nabla Out
+  //                      * (newX^{T}^{n - i - 1})
   Tensor dx_new = ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
   blas.MatMul(*tensor_list[new_n - 2], trans_desc, *dOut, no_trans_desc,
               static_cast<T>(1), &dx_new, static_cast<T>(0));
@@ -248,7 +248,7 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
     // \nabla X = \nabla newX
     framework::TensorCopy(dx_new, ctx.GetPlace(), dev_ctx, dX);
   } else {
-    // \nabla X = newX^{T} \times \nabla newX \times newX^{T}
+    // \nabla X = newX^{T} * \nabla newX * newX^{T}
     Tensor temp_dx =
         ctx.AllocateTmpTensor<T, DeviceContext>(X->dims(), dev_ctx);
     blas.MatMul(new_x, trans_desc, dx_new, no_trans_desc, static_cast<T>(-1),
