@@ -35,6 +35,22 @@ def _complex_to_real_dtype(dtype):
         return dtype
 
 
+def is_complex(x):
+    dtype = x.dtype
+    is_complex_dtype = (dtype == core.VarDesc.VarType.COMPLEX64 or
+                        dtype == core.VarDesc.VarType.COMPLEX128)
+    return is_complex_dtype
+
+
+def is_floating_point(x):
+    dtype = x.dtype
+    is_fp_dtype = (dtype == core.VarDesc.VarType.FP32 or
+                   dtype == core.VarDesc.VarType.FP64 or
+                   dtype == core.VarDesc.VarType.FP16 or
+                   dtype == core.VarDesc.VarType.BF16)
+    return is_fp_dtype
+
+
 def real(x, name=None):
     """
     Returns a new tensor containing real values of the input tensor.
