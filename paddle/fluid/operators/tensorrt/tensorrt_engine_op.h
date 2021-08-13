@@ -82,11 +82,12 @@ static void RuntimeDynamicShapeCheck(
     const std::string &x, const std::vector<int32_t> &runtime_input_shape,
     const std::vector<int32_t> &min_input_shape,
     const std::vector<int32_t> &max_input_shape) {
-  PADDLE_ENFORCE_EQ(runtime_input_shape.size(), min_input_shape.size(),
-                    platform::errors::InvalidArgument(
-                        "TRT engine runtime input dims size(%d) inconsistent "
-                        "with the dynamic shape size(%d)",
-                        runtime_input_shape.size(), min_input_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      runtime_input_shape.size(), min_input_shape.size(),
+      platform::errors::InvalidArgument(
+          "TRT engine runtime input %s dims size(%d) inconsistent "
+          "with the dynamic shape size(%d)",
+          x, runtime_input_shape.size(), min_input_shape.size()));
   auto is_input_shape_valid = [&](
       const std::vector<int32_t> &runtime_input_shape,
       const std::vector<int32_t> &min_input_shape,
@@ -228,6 +229,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
       for (auto name : runtime_input_names_) {
         auto &t = inference::analysis::GetFromScope<framework::LoDTensor>(scope,
                                                                           name);
+        VLOG(4) << "trt engine runtime input name(" << name << "), dims("
+                << t.dims() << ")";
         auto t_shape = framework::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
       }

@@ -725,7 +725,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::map<std::string, std::vector<int>> optim_input_shape_{};
   std::vector<std::string> trt_disabled_ops_{};
   bool disable_trt_plugin_fp16_{false};
-  bool trt_allow_build_at_runtime_;
+  bool trt_allow_build_at_runtime_{false};
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
 
