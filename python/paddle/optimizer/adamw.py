@@ -194,10 +194,10 @@ class AdamW(Adam):
         param, grad = param_and_grad
 
         # Whether we should do weight decay for the parameter.
-        is_scale = True
+        with_decay = True
         if self._apply_decay_param_fun is not None \
                 and not self._apply_decay_param_fun(param.name):
-            is_scale = False
+            with_decay = False
 
         moment1 = self._get_accumulator(self._moment1_acc_str,
                                         param_and_grad[0])
@@ -256,7 +256,7 @@ class AdamW(Adam):
             "lazy_mode": self._lazy_mode,
             "min_row_size_to_use_multithread": 1000,
             "multi_precision": find_master,
-            "is_scale": is_scale,
+            "with_decay": with_decay,
             "coeff": self._coeff,
         }
 
