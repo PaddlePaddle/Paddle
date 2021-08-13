@@ -146,10 +146,11 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
         ctx->template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     for (long unsigned int i = 0; i < steps.size(); ++i) {
-      PADDLE_ENFORCE_GT(
-          steps[i], 0,
-          platform::errors::InvalidArgument(
-              "currently NPU set_value operator don't support negative steps"));
+      PADDLE_ENFORCE_GT(steps[i], 0,
+                        platform::errors::InvalidArgument(
+                            "currently NPU set_value operator don't support "
+                            "negative steps, but got %d as step",
+                            steps[i]));
     }
     vec_vec64 npu_slice(3);
     GetNPUStartEndSteps(npu_slice, start, end, steps, axes, lefthand->dims());
@@ -276,8 +277,9 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
       auto it = find(dec_axes.begin(), dec_axes.end(), rank - 1 - i);
       if (it != dec_axes.end()) {
         // found, insert one dim ;
-        PADDLE_ENFORCE_EQ(xsize, 1,
-                          platform::errors::InvalidArgument("Bugs Here!"));
+        PADDLE_ENFORCE_EQ(xsize, 1, platform::errors::InvalidArgument(
+                                        "The dims refered by decrease axes is "
+                                        "not equal to 1, some wrongs happen"));
         new_value_dim.push_back(1);
         continue;
       }
