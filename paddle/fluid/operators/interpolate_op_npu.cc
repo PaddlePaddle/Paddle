@@ -157,9 +157,8 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
     // this kernel only support nearest interpolotion for 2D images
     // the Ascend 'ResizeNearestNeighborV2' used in this kernle has diff
     // when 'align_corners' is 'true' or data type is 'double'
-    VLOG(4) << "Before Check Argument";
     CheckArgument(ctx);
-    VLOG(4) << "After Check Argument";
+
     auto* input = ctx.Input<Tensor>("X");
     framework::DDim input_dims = input->dims();
 
@@ -171,8 +170,7 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
     int32_t n, c, h, w, out_h, out_w;
     ExtractNCHW(input_dims, data_layout, &n, &c, &h, &w);
     CalcOutSize(ctx, h, w, &out_h, &out_w);
-    VLOG(4) << "out_h: " << out_h;
-    VLOG(4) << "out_w: " << out_w;
+
     // the 'output_grad' tensor may has no set (or wrong set) of the layout
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     Tensor output_grad_tmp(output_grad->type());
@@ -183,13 +181,11 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
     input_grad->set_layout(data_layout);
     framework::DDim input_grad_dims;
     if (data_layout == DataLayout::kNCHW) {
-      input_grad_dims = {n, c, out_h, out_w};
+      input_grad_dims = {n, c, h, w};
     } else {
-      input_grad_dims = {n, out_h, out_w, c};
+      input_grad_dims = {n, h, w, c};
     }
     input_grad->mutable_data<T>(input_grad_dims, ctx.GetPlace());
-
-    VLOG(4) << "output_grad_tmp" << output_grad_tmp;
 
     NpuOpRunner npu_op_runner;
     auto npu_stream =
@@ -197,13 +193,11 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
             .stream();
     npu_op_runner.SetType("ResizeNearestNeighborV2Grad")
         .AddInput(output_grad_tmp)
-        .AddInput(std::vector<int32_t>{out_h, out_w})
+        .AddInput(std::vector<int32_t>{h, w})
         .AddOutput(*input_grad)
         .AddAttr("align_corners", false)
         .AddAttr("half_pixel_centers", false)
         .Run(npu_stream);
-
-    VLOG(4) << "input_grad: " << *input_grad;
   }
 };
 
@@ -213,5 +207,5 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(nearest_interp, ops::InterpolateNPUKernel<float>,
                        ops::InterpolateNPUKernel<uint8_t>);
-REGISTER_OP_NPU_KERNEL(nearest_interp_grad, ops::InterpolateNPUKernel<float>,
-                       ops::InterpolateNPUKernel<uint8_t>);
+REGISTER_OP_NPU_KERNEL(nearest_interp_grad,
+                       ops::InterpolateGradNPUKernel<float>);

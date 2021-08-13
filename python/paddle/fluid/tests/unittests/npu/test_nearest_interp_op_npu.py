@@ -74,10 +74,8 @@ class TestNearestInterpOp(OpTest):
         self.__class__.no_need_check_grad = True
         self.check_output_with_place(self.place)
 
-    # "Segmentation fault" when test nearest_interp_grad op
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', in_place=True, max_relative_error=0.006)
+        self.check_grad_with_place(self.place, ['X'], 'Out', in_place=True)
 
     def init_test_case(self):
         self.interp_method = 'nearest'
@@ -89,7 +87,6 @@ class TestNearestInterpOp(OpTest):
         self.align_corners = False
 
 
-'''
 class TestNearestNeighborInterpCase1(TestNearestInterpOp):
     def init_test_case(self):
         self.interp_method = 'nearest'
@@ -98,7 +95,7 @@ class TestNearestNeighborInterpCase1(TestNearestInterpOp):
         self.out_w = 1
         self.scale = 0.
         self.align_corners = False
-        
+
 
 class TestNearestNeighborInterpCase2(TestNearestInterpOp):
     def init_test_case(self):
@@ -108,7 +105,11 @@ class TestNearestNeighborInterpCase2(TestNearestInterpOp):
         self.out_w = 12
         self.scale = 0.
         self.align_corners = False
-      
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', in_place=True, max_relative_error=0.006)
+
 
 class TestNearestNeighborInterpCase3(TestNearestInterpOp):
     def init_test_case(self):
@@ -118,7 +119,7 @@ class TestNearestNeighborInterpCase3(TestNearestInterpOp):
         self.out_w = 32
         self.scale = 0.
         self.align_corners = False
-        
+
 
 class TestNearestNeighborInterpCase4(TestNearestInterpOp):
     def init_test_case(self):
@@ -129,7 +130,7 @@ class TestNearestNeighborInterpCase4(TestNearestInterpOp):
         self.scale = 0.
         self.out_size = np.array([2, 2]).astype("int32")
         self.align_corners = False
-      
+
 
 class TestNearestNeighborInterpCase5(TestNearestInterpOp):
     def init_test_case(self):
@@ -140,7 +141,7 @@ class TestNearestNeighborInterpCase5(TestNearestInterpOp):
         self.scale = 0.
         self.out_size = np.array([11, 11]).astype("int32")
         self.align_corners = False
-       
+
 
 class TestNearestNeighborInterpCase6(TestNearestInterpOp):
     def init_test_case(self):
@@ -184,7 +185,6 @@ class TestNearestNeighborInterpDataLayout(TestNearestInterpOp):
         self.out_size = np.array([3, 8]).astype("int32")
         self.align_corners = False
         self.data_layout = "NHWC"
-
 
 
 class TestNearestInterpOpUint8(OpTest):
@@ -254,7 +254,6 @@ class TestNearestNeighborInterpCase2Uint8(TestNearestInterpOpUint8):
         self.align_corners = False
 
 
-
 class TestNearestNeighborInterpScale1(TestNearestInterpOp):
     def init_test_case(self):
         self.interp_method = 'nearest'
@@ -286,7 +285,6 @@ class TestNearestNeighborInterpScale3(TestNearestInterpOp):
         self.scale = 1.
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = False
-
 
 
 class TestNearestInterpOp_attr_tensor(OpTest):
@@ -401,11 +399,14 @@ class TestNearestAPI(unittest.TestCase):
 
         out1 = fluid.layers.resize_nearest(
             y, out_shape=[12, 12], data_format='NHWC', align_corners=False)
-        out2 = fluid.layers.resize_nearest(x, out_shape=[12, dim], align_corners=False)
-        out3 = fluid.layers.resize_nearest(x, out_shape=shape_tensor, align_corners=False)
+        out2 = fluid.layers.resize_nearest(
+            x, out_shape=[12, dim], align_corners=False)
+        out3 = fluid.layers.resize_nearest(
+            x, out_shape=shape_tensor, align_corners=False)
         out4 = fluid.layers.resize_nearest(
             x, out_shape=[4, 4], actual_shape=actual_size, align_corners=False)
-        out5 = fluid.layers.resize_nearest(x, scale=scale_tensor, align_corners=False)
+        out5 = fluid.layers.resize_nearest(
+            x, scale=scale_tensor, align_corners=False)
 
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")
@@ -454,7 +455,7 @@ class TestNearestInterpException(unittest.TestCase):
         self.assertRaises(ValueError, attr_data_format)
         self.assertRaises(TypeError, attr_scale_type)
         self.assertRaises(ValueError, attr_scale_value)
-'''
+
 
 if __name__ == "__main__":
     unittest.main()
