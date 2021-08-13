@@ -230,11 +230,23 @@ $$
 )DOC");
   }
 };
+
+class AdamWOpMaker : public AdamOpMaker {
+ public:
+  void Make() {
+    AdamOpMaker::Make();
+    AddAttr<float>("coeff",
+                   "(float, default 0.01) "
+                   "weight decay ")
+        .SetDefault(0.01f);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adam, ops::AdamOp, ops::AdamOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(adamw, ops::AdamWOp, ops::AdamWOpMaker);
 REGISTER_OP_CPU_KERNEL(
     adam, ops::AdamOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AdamOpKernel<paddle::platform::CPUDeviceContext, double>);
