@@ -114,26 +114,10 @@ REGISTER_OPERATOR(fft_c2c, ops::FFTC2COp, ops::FFTC2COpMaker,
                   ops::FFTC2CGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     fft_c2c, ops::FFTC2CKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FFTC2CKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FFTC2CKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16>,
-    ops::FFTC2CKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FFTC2CKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FFTC2CKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<float>>,
-    ops::FFTC2CKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<double>>);
+    ops::FFTC2CKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(fft_c2c_grad, ops::FFTC2CGradOp);
 REGISTER_OP_CPU_KERNEL(
     fft_c2c_grad,
     ops::FFTC2CGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FFTC2CGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FFTC2CGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::float16>,
-    ops::FFTC2CGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FFTC2CGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FFTC2CGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<float>>,
-    ops::FFTC2CGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<double>>);
+    ops::FFTC2CGradKernel<paddle::platform::CPUDeviceContext, double>);
