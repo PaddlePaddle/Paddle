@@ -86,8 +86,13 @@ class CollectiveHelper(object):
             other_endpoints.remove(current_endpoint)
 
         if rank == 0 and wait_port:
-            avoid = os.getenv('FLAGS_avoid_hccl_port_conflict')
+            avoid = os.getenv('FLAGS_avoid_hccl_port_conflict', "no")
+            avoid = avoid.lower() in [
+                'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly',
+                'uh-huh'
+            ]
             if avoid and core.is_compiled_with_npu():
+                print("try to avoid port conflict", flush=True)
                 ports = wait_server_ready(other_endpoints, get_all_ports=True)
                 find = False
                 for s in ports:

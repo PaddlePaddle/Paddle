@@ -51,7 +51,7 @@ def wait_server_ready(endpoints, get_all_ports=False):
                     continue
 
                 if get_all_ports:
-                    ports.append(socket.getsockname()[0])
+                    ports.append(socket.getsockname()[1])
 
         if not all_ok:
             sys.stderr.write("server not ready, wait 3 sec to retry...\n")
