@@ -17,10 +17,9 @@ import contextlib
 import paddle
 from paddle.fluid import core
 from paddle import _C_ops
-import paddle.distributed as dist
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
-from paddle.distributed.fleet.utils.recompute import check_recompute_necessary, detach_variable
+from ...utils.recompute import check_recompute_necessary, detach_variable
 from ..parallel_layers.random import get_rng_state_tracker
 
 __all__ = []
