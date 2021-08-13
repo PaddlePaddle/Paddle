@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import os
+import time
 
 import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
@@ -85,7 +86,18 @@ class CollectiveHelper(object):
             other_endpoints.remove(current_endpoint)
 
         if rank == 0 and wait_port:
-            wait_server_ready(other_endpoints)
+            avoid = os.getenv('FLAGS_avoid_hccl_port_conflict')
+            if avoid and core.is_compiled_with_npu():
+                ports = wait_server_ready(other_endpoints, get_all_ports=True)
+                find = False
+                for s in ports:
+                    if s >= 60000 and s <= 60015:
+                        find = True
+                if find:
+                    print("find conflict ports so wait 2MSL", flush=True)
+                    time.sleep(123)
+            else:
+                wait_server_ready(other_endpoints)
 
         def _add_sync_by_allreduce(block):
             sync_var = block.create_var(

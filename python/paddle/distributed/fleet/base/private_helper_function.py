@@ -20,7 +20,7 @@ from six import string_types
 __all__ = []
 
 
-def wait_server_ready(endpoints):
+def wait_server_ready(endpoints, get_all_ports=False):
     """
     Wait until parameter servers are ready, use connext_ex to detect
     port readiness.
@@ -35,6 +35,7 @@ def wait_server_ready(endpoints):
          wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
     """
     assert not isinstance(endpoints, str)
+    ports = []
     while True:
         all_ok = True
         not_ready_endpoints = []
@@ -47,6 +48,11 @@ def wait_server_ready(endpoints):
                 if result != 0:
                     all_ok = False
                     not_ready_endpoints.append(ep)
+                    continue
+
+                if get_all_ports:
+                    ports.append(socket.getsockname()[0])
+
         if not all_ok:
             sys.stderr.write("server not ready, wait 3 sec to retry...\n")
             sys.stderr.write("not ready endpoints:" + str(not_ready_endpoints) +
@@ -55,3 +61,6 @@ def wait_server_ready(endpoints):
             time.sleep(3)
         else:
             break
+
+    if get_all_ports:
+        return ports
