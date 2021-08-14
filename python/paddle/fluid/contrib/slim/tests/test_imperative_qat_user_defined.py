@@ -106,7 +106,7 @@ class ModelForConv2dT(nn.Layer):
         super(ModelForConv2dT, self).__init__()
         self.features = nn.Conv2DTranspose(4, 6, (3, 3))
         self.fc = Linear(input_dim=600, output_dim=num_classes)
-    
+
     def forward(self, inputs):
         x = self.features(inputs)
         x = paddle.flatten(x, 1)
@@ -183,10 +183,9 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         adam = Adam(learning_rate=0.001, parameters=lenet.parameters())
         dynamic_loss_rec = []
         #for CI coverage
-        conv_transpose = ModelForConv2dT() 
+        conv_transpose = ModelForConv2dT()
         imperative_qat.quantize(conv_transpose)
-        x_var = paddle.uniform(
-            (2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
+        x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
         conv_transpose(x_var)
 
         def train(model):
