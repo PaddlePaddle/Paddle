@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/adam_op.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/operators/optimizers/adamw_op.h"
 
 namespace paddle {
 namespace operators {
@@ -245,12 +246,15 @@ class AdamWOpMaker : public AdamOpMaker {
         .SetDefault(false);
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adam, ops::AdamOp, ops::AdamOpMaker);
+
 REGISTER_OP_WITHOUT_GRADIENT(adamw, ops::AdamWOp, ops::AdamWOpMaker);
+
 REGISTER_OP_CPU_KERNEL(
     adam, ops::AdamOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AdamOpKernel<paddle::platform::CPUDeviceContext, double>);

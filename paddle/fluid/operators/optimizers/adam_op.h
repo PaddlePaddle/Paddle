@@ -647,9 +647,5 @@ class AdamOpKernel : public framework::OpKernel<T> {
   }
 };
 
-class AdamWOp : public AdamOp {
-  using AdamOp::AdamOp;
-};
-
 }  // namespace operators
 }  // namespace paddle
