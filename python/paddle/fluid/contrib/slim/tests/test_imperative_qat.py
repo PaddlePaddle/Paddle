@@ -78,7 +78,7 @@ class TestImperativeQat(unittest.TestCase):
             conv_transpose = Conv2DTranspose(4, 6, (3, 3))
             quant_conv_transpose = QuantizedConv2DTranspose(conv_transpose)
             x_var = paddle.uniform(
-                (2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+                (2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
             quant_conv_transpose(x_var)
 
             seed = 1
