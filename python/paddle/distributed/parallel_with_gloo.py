@@ -50,7 +50,7 @@ def init_gloo_parallel_env(rank_id, rank_num, server_endpoint, with_gloo=True):
     Returns:
         None
 
-    Example:
+    Examples:
         .. code-block:: python
 
             import paddle
@@ -120,7 +120,7 @@ def gloo_barrier():
     """
     Call barrier function with initialized gloo context.
 
-    Example:
+    Examples:
         .. code-block:: python
 
             import paddle
