@@ -33,7 +33,7 @@ __all__ = []
 
 ParallelStrategy = core.ParallelStrategy
 
-# NOTE(chenweihang): Maintain a global parallel env to avoid 
+# NOTE(chenweihang): Maintain a global parallel env to avoid
 # initializing ParallelEnv every time and improve performance
 _global_parallel_env = None
 
@@ -64,7 +64,7 @@ def init_parallel_env():
 
     Returns:
         None
-        
+
     Examples:
         .. code-block:: python
 
@@ -78,7 +78,7 @@ def init_parallel_env():
                     super(LinearNet, self).__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
-                    
+
                 def forward(self, x):
                     return self._linear2(self._linear1(x))
 
@@ -99,7 +99,7 @@ def init_parallel_env():
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
                 loss = loss_fn(outputs, labels)
-                
+
                 loss.backward()
 
                 adam.step()
@@ -187,12 +187,16 @@ def init_parallel_env():
     _set_expected_place(place)
 
     # init nccl or bkcl context
-    if core.is_compiled_with_cuda():
-        parallel_helper._set_parallel_ctx(
-            core.NCCLParallelContext(strategy, place))
-    elif core.is_compiled_with_xpu():
-        parallel_helper._set_parallel_ctx(
-            core.BKCLParallelContext(strategy, place))
+    # NOTE(ZHUI): As the comments above, we need set
+    # the place when switch default places, but we don't need
+    # reset the parallel context if the context is initialized.
+    if not parallel_helper._is_parallel_ctx_initialized():
+        if core.is_compiled_with_cuda():
+            parallel_helper._set_parallel_ctx(
+                core.NCCLParallelContext(strategy, place))
+        elif core.is_compiled_with_xpu():
+            parallel_helper._set_parallel_ctx(
+                core.BKCLParallelContext(strategy, place))
 
     other_endpoints = strategy.trainer_endpoints[:]
     other_endpoints.remove(strategy.current_endpoint)
@@ -228,7 +232,7 @@ def get_rank():
     """
     Returns the rank of current trainer.
 
-    Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` . 
+    Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` .
     The default value is 0.
 
     Returns:
@@ -251,7 +255,7 @@ def get_world_size():
     """
     Returns the number of trainers (number of processes participating in current job).
 
-    Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . 
+    Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` .
     The default value is 1.
 
     Returns:
