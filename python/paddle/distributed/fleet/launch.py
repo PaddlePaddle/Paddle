@@ -232,7 +232,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
 
 
 def launch_collective(args):
-    sockets = try_to_bind()
+    sockets = ascend_utils.try_to_bind()
 
     # parse arguments, used for cloud-single-machine and local
     (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)

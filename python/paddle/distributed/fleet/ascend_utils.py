@@ -15,6 +15,8 @@
 import os
 import json
 import paddle
+import socket
+import paddle.fluid as fluid
 from paddle.distributed.fleet.launch_utils import get_cluster, logger, get_host_name_ip, DeviceMode
 
 __all__ = []
@@ -138,7 +140,7 @@ def relase_sockets(sockets, release_time):
         s.close()
 
 
-def try_to_bind(port):
+def _try_to_bind(port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     while True:
         try:
@@ -156,12 +158,12 @@ def try_to_bind(ports=[range(60000, 60016)], release_time=15 * 60):
     avoid = avoid.lower() in [
         'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh'
     ]
-    if not avoid or not core.is_compiled_with_npu():
+    if not avoid or not fluid.core.is_compiled_with_npu():
         return []
 
     sockets = []
-    for i in range(ports):
-        s = try_to_bind(i)
+    for i in ports:
+        s = _try_to_bind(i)
         sockets.append(s)
 
     t = threading.Thread(target=release_sockets, args=(sockets, release_time))
