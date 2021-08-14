@@ -33,6 +33,12 @@ void GlooParallelContext::Barrier() {
   CHECK_EQ(gloo_ptr->IsInitialized(), true);
   gloo_ptr->Barrier();
 }
+
+void GlooParallelContext::ReleaseContext() {
+  auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
+  CHECK_EQ(gloo_ptr->IsInitialized(), true);
+  gloo_ptr.reset();
+}
 #endif
 
 }  //  namespace platform

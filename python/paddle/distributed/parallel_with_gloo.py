@@ -116,7 +116,7 @@ def init_gloo_parallel_env(rank_id, rank_num, server_endpoint, with_gloo=True):
         http_server_proc.join()
 
 
-def gloo_barrier():
+def barrier_func():
     """
     Call barrier function with initialized gloo context.
 
@@ -135,19 +135,64 @@ def gloo_barrier():
             rank_id = 0
             paddle.distributed.init_gloo_parallel_env(
                 rand_id, rank_num, server_endpoint)
-            paddle.distributed.gloo_barrier()
+            paddle.distributed.barrier_func()
 
             # process 2
             rank_id = 1
             paddle.distributed.init_gloo_parallel_env(
                 rand_id, rank_num, server_endpoint)
-            paddle.distributed.gloo_barrier()
+            paddle.distributed.barrier_func()
 
             # process N
             rank_id = N - 1
             paddle.distributed.init_gloo_parallel_env(
                 rand_id, rank_num, server_endpoint)
-            paddle.distributed.gloo_barrier()
+            paddle.distributed.barrier_func()
     """
 
     _global_gloo_ctx.barrier()
+
+
+def release_gloo(rank_id):
+    """
+    Release the parallel environment initialized by gloo
+
+    Args:
+        rank_id: int, only the rank with id == 0 can do the release.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.distributed import init_gloo_parallel_env
+
+            # initialize a parallel environment for a job using N ranks
+            # and call barrier to synchronize
+            rank_num = N
+            server_endpoint = "127.0.0.1:8080"
+
+            # process 1
+            rank_id = 0
+            paddle.distributed.init_gloo_parallel_env(
+                rand_id, rank_num, server_endpoint)
+            paddle.distributed.barrier_func()
+            paddle.distributed.release_gloo(rank_id)
+
+            # process 2
+            rank_id = 1
+            paddle.distributed.init_gloo_parallel_env(
+                rand_id, rank_num, server_endpoint)
+            paddle.distributed.barrier_func()
+            paddle.distributed.release_gloo(rank_id)
+
+            # process N
+            rank_id = N - 1
+            paddle.distributed.init_gloo_parallel_env(
+                rand_id, rank_num, server_endpoint)
+            paddle.distributed.barrier_func()
+            paddle.distributed.release_gloo(rank_id)
+
+    """
+
+    if (rank_id == 0):
+        _global_gloo_ctx.release()

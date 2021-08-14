@@ -20,6 +20,7 @@ from contextlib import closing
 import socket
 
 import paddle
+import paddle.fluid as fluid
 
 port_set = set()
 paddle.enable_static()
@@ -38,22 +39,51 @@ def find_free_port():
             return port
 
 
-def barrier_op_func(id, rank_num, server_endpoint, out_dict, sleep_time):
+def test_barrier_func(id, rank_num, server_endpoint, out_dict, sleep_time):
     paddle.distributed.init_gloo_parallel_env(id, rank_num, server_endpoint)
     # 1st barrier
-    paddle.distributed.gloo_barrier()
+    # Run barrier to synchronize processes after starting
+    paddle.distributed.barrier_func()
 
+    # 2nd barrier
+    # Let rank 0 sleep for one second and check that all processes
+    # saw that artificial delay through the barrier
     start = time.time()
     if (id == 0):
         time.sleep(sleep_time)
-    # 2nd barrier
-    paddle.distributed.gloo_barrier()
+    paddle.distributed.barrier_func()
     end = time.time()
 
     out_dict[id] = end - start
+    # Release
+    paddle.distributed.release_gloo(id)
 
 
-def test_barrier_op_with_multiprocess(num_of_ranks, sleep_time):
+def test_barrier_op(id, rank_num, server_endpoint, out_dict, sleep_time):
+    main_prog = fluid.Program()
+    startup_prog = fluid.Program()
+    paddle.distributed.init_gloo_parallel_env(id, rank_num, server_endpoint)
+    place = fluid.CPUPlace()
+    with fluid.program_guard(main_prog, startup_prog):
+        paddle.distributed.barrier()
+    exe = fluid.Executor(place)
+    # Run barrier to synchronize processes after starting
+    exe.run(main_prog)
+
+    # Let rank 0 sleep for one second and check that all processes
+    # saw that artificial delay through the barrier
+    start = time.time()
+    if (id == 0):
+        time.sleep(sleep_time)
+    exe.run(main_prog)
+    end = time.time()
+
+    out_dict[id] = end - start
+    # Release
+    paddle.distributed.release_gloo(id)
+
+
+def test_barrier_with_multiprocess(test_barrier, num_of_ranks, sleep_time):
     if num_of_ranks <= 0 or sleep_time < 0:
         return
     # create endpoints
@@ -67,7 +97,7 @@ def test_barrier_op_with_multiprocess(num_of_ranks, sleep_time):
     jobs = []
     for id in range(num_of_ranks):
         p = multiprocessing.Process(
-            target=barrier_op_func,
+            target=test_barrier,
             args=(id, num_of_ranks, ep_str, procs_out_dict, sleep_time))
         jobs.append(p)
         p.start()
@@ -99,6 +129,7 @@ def test_barrier_op_with_multiprocess(num_of_ranks, sleep_time):
 
 
 if __name__ == '__main__':
+    # Arg 0: test_barrier_func or test_barrier_op
     # Arg 1: number of ranks (processes)
     # Arg 2: time sleeping in second in #1 process
-    test_barrier_op_with_multiprocess(16, 1)
+    test_barrier_with_multiprocess(test_barrier_func, 16, 1)
