@@ -58,7 +58,8 @@ class TestAdamW(OpTest):
             'epsilon': epsilon,
             'beta1': beta1,
             'beta2': beta2,
-            "coeff": 0.9
+            "coeff": 0.9,
+            "with_decay": True
         }
 
         param_out, moment1_out, \
@@ -114,7 +115,59 @@ class TestAdamOpWithSkipUpdate(OpTest):
             "SkipUpdate": np.array([True]).astype("bool"),
         }
 
-        self.attrs = {'epsilon': epsilon, "coeff": 0.02}
+        self.attrs = {'epsilon': epsilon, "coeff": 0.02, "with_decay": True}
+
+        self.outputs = {
+            'Moment1Out': moment1,
+            'Moment2Out': moment2,
+            'ParamOut': param,
+            'Beta1PowOut': self.inputs['Beta1Pow'],
+            'Beta2PowOut': self.inputs['Beta2Pow'],
+        }
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, atol=1e-5)
+
+
+class TestAdamOpWithoutDecay(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "adamw"
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        # The second moment is positive
+        moment2 = np.random.random((102, 105)).astype("float32")
+
+        learning_rate = 0.004
+        beta1 = 0.78
+        beta2 = 0.836
+        epsilon = 1e-4
+        beta1_pow = beta1**10
+        beta2_pow = beta2**10
+
+        self.inputs = {
+            'Param': param,
+            'Grad': grad,
+            'Moment1': moment1,
+            'Moment2': moment2,
+            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
+            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
+            'Beta1Tensor': np.array([beta1]).astype("float32"),
+            'Beta2Tensor': np.array([beta2]).astype("float32"),
+            'EpsilonTensor': np.array([epsilon]).astype("float32"),
+            "SkipUpdate": np.array([True]).astype("bool"),
+        }
+
+        self.attrs = {'epsilon': epsilon, "coeff": 0.02, "with_decay": False}
 
         self.outputs = {
             'Moment1Out': moment1,
@@ -188,7 +241,9 @@ class TestNet(unittest.TestCase):
 
     def test_npu(self):
         npu_pred, npu_loss = self._test(True)
-        assert (npu_loss <= 0.005), f"loss{npu_loss} is larger tha 0.005"
+        cpu_pred, cpu_loss = self._test(False)
+        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-3))
+        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-3))
 
 
 if __name__ == '__main__':
