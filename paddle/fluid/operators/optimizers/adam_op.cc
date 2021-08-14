@@ -237,8 +237,12 @@ class AdamWOpMaker : public AdamOpMaker {
     AdamOpMaker::Make();
     AddAttr<float>("coeff",
                    "(float, default 0.01) "
-                   "weight decay ")
+                   "coeff of the weight decay")
         .SetDefault(0.01f);
+    AddAttr<bool>("with_decay",
+                  "(bool, default false) "
+                  "whether to do weight decay")
+        .SetDefault(false);
   }
 };
 }  // namespace operators
