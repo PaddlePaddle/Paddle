@@ -233,9 +233,10 @@ def adamw_step(inputs, attributes):
 
     epsilon = attributes['epsilon']
     coeff = attributes["coeff"]
-    decay = 1.0 - lr * coeff
-    param2 = param * decay
-    param = param2.copy()
+    if attributes.get("with_decay", False):
+        decay = 1.0 - lr * coeff
+        param2 = param * decay
+        param = param2.copy()
     if 'beta1' in attributes:
         beta1 = attributes['beta1']
     else:
