@@ -1531,7 +1531,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     out_tensor_list.extend(paddle.split(out, nranks, 0))
 
 
-def selectscatter(local_input_buf, local_expert_count,
+def selectscatter(local_input_buf, local_expert_count, \
                     global_expert_count, input_buf, \
                     in_feat, n_expert, world_size, \
                     out_tensor_list, group=None, use_calc_stream=True):
@@ -1576,11 +1576,14 @@ def selectscatter(local_input_buf, local_expert_count,
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        print("dygraph_mode selectscatter")
-        return core.ops.selectscatter(local_input_buf, local_expert_count,
-                                    global_expert_count, input_buf, \
-                                    in_feat, n_expert, world_size, \
-                                    out_tensor_list, 'use_calc_stream', use_calc_stream, \
+        # print("dygraph_mode selectscatter")
+        # print("ring_id", ring_id)
+        # print(local_input_buf)
+        # paddle.fluid.layers.Print(local_expert_count, message="local_input_buf")
+        return core.ops.select_scatter(local_input_buf, input_buf, 'local_expert_count', local_expert_count, \
+                                    'global_expert_count', global_expert_count,  \
+                                    'in_feat', in_feat, 'n_expert', n_expert, 'world_size', world_size, \
+                                    'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
 
         # out = _C_ops.selectscatter(local_input_buf, local_expert_count, 
@@ -1591,7 +1594,7 @@ def selectscatter(local_input_buf, local_expert_count,
     else:
         # return
         print("static selectscatter")
-        op_type = 'selectscatter'
+        op_type = 'select_scatter'
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(
             dtype=local_input_buf.dtype)
