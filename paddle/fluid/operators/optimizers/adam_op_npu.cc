@@ -230,6 +230,7 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     VLOG(3) << "NPU AdamW Kernel";
+    AdamNPUKernel<platform::NPUDeviceContext, T>::Compute(ctx);
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
       VLOG(3) << "Has SkipUpdate";
@@ -245,6 +246,10 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
     }
     VLOG(3) << "Skip update" << skip_update;
     if (!skip_update) {
+      bool with_decay = ctx.Attr<bool>("with_decay");
+      if (!with_decay) {
+        return;
+      }
       float coeff = ctx.Attr<float>("coeff");
       auto* lr = ctx.Input<LoDTensor>("LearningRate");
 
