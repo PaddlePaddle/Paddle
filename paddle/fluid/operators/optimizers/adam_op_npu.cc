@@ -260,7 +260,7 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
       Tensor tmp(framework::proto::VarType::FP32);
 
       tmp.mutable_data<float>({1}, place);
-      one.mutable_data<T>({1}, place);
+      one.mutable_data<float>({1}, place);
       decay.mutable_data<float>({1}, place);
 
       FillNpuTensorWithConstant<float>(&one, 1.0f);
