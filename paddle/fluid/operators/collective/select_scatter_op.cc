@@ -24,25 +24,25 @@ class SelectScatterOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("local_input_buf"), "Input", "local_input_buf",
                    "SelectScatter");
-    OP_INOUT_CHECK(ctx->HasInput("local_expert_count"), "Input",
-                   "local_expert_count", "SelectScatter");
-    OP_INOUT_CHECK(ctx->HasInput("global_expert_count"), "Input",
-                   "global_expert_count", "SelectScatter");
+    // OP_INOUT_CHECK(ctx->HasInput("local_expert_count"), "Input",
+    // "local_expert_count", "SelectScatter");
+    // OP_INOUT_CHECK(ctx->HasInput("global_expert_count"), "Input",
+    // "global_expert_count", "SelectScatter");
     OP_INOUT_CHECK(ctx->HasInput("input_buf"), "Input", "input_buf",
                    "SelectScatter");
-    OP_INOUT_CHECK(ctx->HasInput("in_feat"), "Input", "in_feat",
-                   "SelectScatter");
-    OP_INOUT_CHECK(ctx->HasInput("n_expert"), "Input", "n_expert",
-                   "SelectScatter");
-    OP_INOUT_CHECK(ctx->HasInput("world_size"), "Input", "world_size",
-                   "SelectScatter");
+    // OP_INOUT_CHECK(ctx->HasInput("in_feat"), "Input", "in_feat",
+    // "SelectScatter");
+    // OP_INOUT_CHECK(ctx->HasInput("n_expert"), "Input", "n_expert",
+    // "SelectScatter");
+    // OP_INOUT_CHECK(ctx->HasInput("world_size"), "Input", "world_size",
+    // "SelectScatter");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SelectScatter");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
-    framework::DDim dim = ctx->GetInputDim("X");
+    framework::DDim dim = ctx->GetInputDim("input_buf");
     if (dim[0] < 0) dim[0] = -1;
     ctx->SetOutputDim("Out", dim);
   }
@@ -51,7 +51,8 @@ class SelectScatterOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "local_input_buf"),
+        ctx.GetPlace());
   }
 };
 
@@ -59,13 +60,22 @@ class SelectScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("local_input_buf", "(Tensor) tensor send.");
-    AddInput("local_expert_count", "(Tensor) tensor send.");
-    AddInput("global_expert_count", "(Tensor) tensor send.");
+    AddAttr<std::vector<int>>("local_expert_count", "The shape of the output");
+    AddAttr<std::vector<int>>("global_expert_count", "The shape of the output");
+    // AddInput("local_expert_count", "(Tensor) tensor send.");
+    // AddInput("global_expert_count", "(Tensor) tensor send.");
     AddInput("input_buf", "(Tensor) tensor send.");
-    AddInput("in_feat", "(Tensor) tensor send.");
-    AddInput("n_expert", "(Tensor) tensor send.");
-    AddInput("world_size", "(Tensor) tensor send.");
+    // AddInput("in_feat", "(Tensor) tensor send.");
+    // AddInput("n_expert", "(Tensor) tensor send.");
+    // AddInput("world_size", "(Tensor) tensor send.");
+    AddAttr<int>("in_feat", "(int default 0) nccl communication ring id.")
+        .SetDefault(0);
+    AddAttr<int>("n_expert", "(int default 0) nccl communication ring id.")
+        .SetDefault(0);
+    AddAttr<int>("world_size", "(int default 0) nccl communication ring id.")
+        .SetDefault(0);
     AddOutput("Out", "(Tensor) the result of alltoall.");
+
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<bool>(
@@ -100,14 +110,14 @@ Scatter tensors from all participators to all participators.
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_WITHOUT_GRADIENT(selectscatter, ops::SelectScatterOp,
+REGISTER_OP_WITHOUT_GRADIENT(select_scatter, ops::SelectScatterOp,
                              ops::SelectScatterOpMaker);
 // REGISTER_OPERATOR(alltoall, ops::AllToAllOp, ops::AllToAllOpMaker,
 //                   ops::AllToAllOpGradMaker<paddle::framework::OpDesc>,
 //                   ops::AllToAllOpGradMaker<paddle::imperative::OpBase>,
 //                   ops::AllToAllInplaceInferer)
 
-REGISTER_OP_CPU_KERNEL(selectscatter, ops::SelectScatterOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(select_scatter, ops::SelectScatterOpCPUKernel<float>,
                        ops::SelectScatterOpCPUKernel<double>,
                        ops::SelectScatterOpCPUKernel<int>,
                        ops::SelectScatterOpCPUKernel<int64_t>,
