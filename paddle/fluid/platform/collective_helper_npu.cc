@@ -176,6 +176,47 @@ void WaitPortClosed(const std::vector<int>& ports) {
   }
 }
 
+static void WaitToBind(int port) {
+  struct sockaddr_in my_addr;
+  int client = socket(AF_INET, SOCK_STREAM, 0);
+  PADDLE_ENFORCE_GT(client, 0, "socket must be created");
+
+  // Explicitly assigning port number 12010 by
+  // binding client with that port
+  my_addr.sin_family = AF_INET;
+  my_addr.sin_addr.s_addr = INADDR_ANY;
+  my_addr.sin_port = htons(port);
+
+  // This ip address will change according to the machine
+  my_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  while (1) {
+    int ret =
+        bind(client, (struct sockaddr*)&my_addr, sizeof(struct sockaddr_in));
+    if (ret != 0) {
+      LOG(WARNING) << "bind to addr error wait to bind"
+                   << my_addr.sin_addr.s_addr << ":" << my_addr.sin_port;
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+      continue;
+    }
+
+    break;
+  }
+
+  return client;
+}
+
+void WaitToBind(const std::vector<int>& ports) {
+  std::vector<int> conns;
+  for (auto port : ports) {
+    int conn = WaitToBind(port);
+    conns.push_back(conn);
+  }
+
+  for (auto conn : conns) {
+    close(conn);
+  }
+}
+
 }  // namespace platform
 }  // namespace paddle
 #endif
