@@ -176,7 +176,7 @@ void WaitPortClosed(const std::vector<int>& ports) {
   }
 }
 
-static void WaitToBind(int port) {
+static int WaitToBind(int port) {
   struct sockaddr_in my_addr;
   int client = socket(AF_INET, SOCK_STREAM, 0);
   PADDLE_ENFORCE_GT(client, 0, "socket must be created");

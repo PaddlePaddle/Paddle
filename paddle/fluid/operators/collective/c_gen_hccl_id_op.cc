@@ -76,7 +76,7 @@ class CGenHCCLIdOp : public framework::OperatorBase {
     std::vector<HcclRootInfo> hccl_ids;
     hccl_ids.resize(1);
 
-    std::vector<int> local_orts;
+    std::vector<int> local_ports;
     if (rank == 0) {
       GenHCCLID(&hccl_ids);
       std::vector<std::string> endpoint_list =

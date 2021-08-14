@@ -132,7 +132,7 @@ def get_cloud_cluster(rank_table_file=None,
                        devices_per_proc)
 
 
-def relase_sockets(sockets):
+def relase_sockets(sockets, release_time):
     time.sleep(15 * 60)
     for s in sockets:
         s.close()
@@ -143,6 +143,7 @@ def try_to_bind(port):
     while True:
         try:
             s.bind(('', port))
+            print("binded port:", port)
             break
         except Exception as e:
             print(e, flush=True)
@@ -150,7 +151,7 @@ def try_to_bind(port):
     return s
 
 
-def try_to_bind():
+def try_to_bind(ports=[range(60000, 60016)], release_time=15 * 60):
     avoid = os.getenv('FLAGS_avoid_hccl_port_conflict', "no")
     avoid = avoid.lower() in [
         'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh'
@@ -159,10 +160,10 @@ def try_to_bind():
         return []
 
     sockets = []
-    for i in range(60000, 60016):
+    for i in range(ports):
         s = try_to_bind(i)
         sockets.append(s)
 
-    t = threading.Thread(target=release_sockets, args=(sockets, ))
+    t = threading.Thread(target=release_sockets, args=(sockets, release_time))
     t.start()
     return sockets

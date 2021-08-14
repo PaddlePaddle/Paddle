@@ -231,42 +231,6 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
                        devices_per_proc)
 
 
-def relase_sockets(sockets):
-    time.sleep(15 * 60)
-    for s in sockets:
-        s.close()
-
-
-def try_to_bind(port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    while True:
-        try:
-            s.bind(('', port))
-            break
-        except Exception as e:
-            print(e, flush=True)
-            time.sleep(1)
-    return s
-
-
-def try_to_bind():
-    avoid = os.getenv('FLAGS_avoid_hccl_port_conflict', "no")
-    avoid = avoid.lower() in [
-        'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh'
-    ]
-    if not avoid or not core.is_compiled_with_npu():
-        return []
-
-    sockets = []
-    for i in range(60000, 60016):
-        s = try_to_bind(i)
-        sockets.append(s)
-
-    t = threading.Thread(target=release_sockets, args=(sockets, ))
-    t.start()
-    return sockets
-
-
 def launch_collective(args):
     sockets = try_to_bind()
 
