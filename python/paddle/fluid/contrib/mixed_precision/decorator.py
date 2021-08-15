@@ -407,8 +407,9 @@ class OptimizerWithMixedPrecision(object):
                                        paddle.optimizer.AdamW)):
             # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we 
             # copy it in advance to avoid multiple time copies.
-            found_inf = paddle.tensor.creation._memcpy(found_inf,
-                                                       paddle.CPUPlace())
+            with self._train_program._optimized_guard([]):
+                found_inf = paddle.tensor.creation._memcpy(found_inf,
+                                                           paddle.CPUPlace())
             real_optimizer._set_auxiliary_var('found_inf', found_inf)
         optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
