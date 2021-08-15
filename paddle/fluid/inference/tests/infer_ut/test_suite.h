@@ -51,7 +51,7 @@ void SingleThreadPrediction(paddle_infer::Predictor *predictor,
 
   // inference
   for (size_t i = 0; i < repeat_times; ++i) {
-    predictor->Run();
+    CHECK(predictor->Run());
   }
 
   // get output data to Record
