@@ -1188,7 +1188,6 @@ class CrossEntropyLoss(unittest.TestCase):
         label_np = np.random.randint(0, C, size=(N, H, W)).astype(np.int64)
         label_np[0, 0, 0] = 255
         weight_np = np.random.random([C]).astype(self.dtype)
-
         with fluid.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=fluid.dygraph.to_variable(weight_np),
@@ -1201,9 +1200,6 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(dy_ret_value)
         expected = cross_entropy_loss_2d(
             input_np, label_np, weight=weight_np, ignore_index=255)[0]
-
-        self.assertTrue(np.allclose(static_ret, dy_ret_value))
-        self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_2d_with_weight_mean(self):
