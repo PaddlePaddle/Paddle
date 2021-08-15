@@ -1814,8 +1814,8 @@ def cross_entropy(input,
                 paddle.zeros(
 		    [1], dtype=label.dtype),
 	    	label)
-            if (len(paddle.nonzero(valid_label < 0)) > 0) or (
-                    len(paddle.nonzero(valid_label >= input.shape[-1])) > 0):
+            if (paddle.numel(paddle.nonzero(valid_label < 0)) > 0) or (
+                    paddle.numel(paddle.nonzero(valid_label >= input.shape[-1])) > 0):
                 invalid_label = paddle.gather_nd(
                     input, paddle.nonzero(valid_label < 0))
                 if paddle.numel(invalid_label) > 0:
