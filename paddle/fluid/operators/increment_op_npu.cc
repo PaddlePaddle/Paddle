@@ -43,13 +43,19 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
     step_tensor.mutable_data<T>({1}, context.GetPlace());
     FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));
 
+    Tensor tmp_out(out_tensor->type());
+    tmp_out.mutable_data<T>(out_tensor->dims(), context.GetPlace());
+
     const auto& runner =
-        NpuOpRunner("Add", {*x_tensor, step_tensor}, {*out_tensor}, {});
+        NpuOpRunner("Add", {*x_tensor, step_tensor}, {tmp_out}, {});
 
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     runner.Run(stream);
+    framework::TensorCopy(
+        tmp_out, context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(), out_tensor);
   }
 };
 
