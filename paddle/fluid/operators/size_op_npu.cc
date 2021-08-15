@@ -25,22 +25,22 @@ template <typename DeviceContext, typename T>
 class SizeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(3) << "Ensure the op execute on NPU" << std::endl;
     auto* x = ctx.Input<framework::Tensor>("Input");
     auto* out = ctx.Output<framework::Tensor>("Out");
-
-    framework::NPUAttributeMap attr_input = {};
-    // set attrs if have
-    if (ctx.HasAttr("index")) {
-      attr_input["index"] = ctx.Attr<int>("index");
-    }
-
     out->mutable_data<T>(ctx.GetPlace());
-    const auto& runner = NpuOpRunner("Size", {*x}, {*out}, attr_input);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
+
+    Tensor cpu_tensor;
+    auto cpu_data =
+        cpu_tensor.mutable_data<int64_t>(out->dims(), platform::CPUPlace());
+    cpu_data[0] = x->numel();
+    TensorCopy(cpu_tensor, ctx.GetPlace(), out);
+
+    // framework::NPUAttributeMap attr_input = {};
+    // const auto& runner = NpuOpRunner("Size", {*x}, {*out}, attr_input);
+    // auto stream =
+    //     ctx.template device_context<paddle::platform::NPUDeviceContext>()
+    //         .stream();
+    // runner.Run(stream);
   }
 };
 

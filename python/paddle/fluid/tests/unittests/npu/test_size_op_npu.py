@@ -28,17 +28,16 @@ class TestSizeOp(OpTest):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
         # self.place = paddle.CPUPlace()
-        self.dtype = 'int32'
-
         self.op_type = "size"
-        self.shape = [1, 2]
+
         self.config()
         input = np.zeros(self.shape, dtype=self.dtype)
         self.inputs = {'Input': input}
-        self.outputs = {'Out': np.array([np.size(input)], dtype='int64')}
+        self.outputs = {'Out': np.array([np.size(input)], dtype=np.int64)}
 
     def config(self):
-        pass
+        self.shape = [1, 2]
+        self.dtype = np.int32
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
@@ -47,28 +46,34 @@ class TestSizeOp(OpTest):
         self.__class__.use_npu = True
 
 
-class TestRank1Tensor(TestSizeOp):
+class TestSizeOp1(TestSizeOp):
     def config(self):
         self.shape = [2]
-        self.dtype = 'double'
+        self.dtype = np.float64
 
 
-class TestRank2Tensor(TestSizeOp):
+class TestSizeOp2(TestSizeOp):
     def config(self):
         self.shape = [2, 3]
-        self.dtype = 'float'
+        self.dtype = np.float32
 
 
-class TestRank3Tensor(TestSizeOp):
+class TestSizeOp3(TestSizeOp):
     def config(self):
         self.shape = [2, 3, 100]
-        self.dtype = 'float16'
+        self.dtype = np.float16
 
 
-class TestLargeTensor(TestSizeOp):
+class TestSizeOp4(TestSizeOp):
     def config(self):
         self.shape = [2**10]
-        self.dtype = 'bool'
+        self.dtype = np.bool
+
+
+class TestSizeOp5(TestSizeOp):
+    def config(self):
+        self.shape = [2, 3, 4, 5]
+        self.dtype = np.int64
 
 
 class TestSizeAPI(unittest.TestCase):
