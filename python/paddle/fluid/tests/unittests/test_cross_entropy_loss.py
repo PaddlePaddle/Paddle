@@ -852,7 +852,6 @@ class CrossEntropyLoss(unittest.TestCase):
         with fluid.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=fluid.dygraph.to_variable(weight_np),
-                axis=1,
                 ignore_index=255)
             dy_ret = cross_entropy_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -1191,7 +1190,6 @@ class CrossEntropyLoss(unittest.TestCase):
         with fluid.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=fluid.dygraph.to_variable(weight_np),
-                axis=1,
                 ignore_index=255)
             dy_ret = cross_entropy_loss(
                 fluid.dygraph.to_variable(input_np),
