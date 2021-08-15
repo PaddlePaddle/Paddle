@@ -1620,9 +1620,9 @@ def cross_entropy(input,
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                  logits,
-                                                                  labels,
-                                                                  soft_label=True,
+                                                                  logits,  
+                                                                  labels, 
+                                                                  soft_label=True, 
                                                                   axis=axis,
                                                                   weight=weight,
                                                                   reduction=reduction)
