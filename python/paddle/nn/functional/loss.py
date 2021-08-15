@@ -1801,7 +1801,7 @@ def cross_entropy(input,
             weight_gather_reshape = reshape(weight_gather, shape=out_shape)
             out = paddle.cast(out, weight_gather_reshape.dtype)
         else:
-			if input.shape[-1] != weight.shape[-1]:
+            if input.shape[-1] != weight.shape[-1]:
                 raise ValueError("input's class_dimension({}) must equal to "\
                         "weight's class_dimension({}) "\
                             "when weight is provided"
