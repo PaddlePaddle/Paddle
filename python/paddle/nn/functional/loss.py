@@ -1521,7 +1521,7 @@ def cross_entropy(input,
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
-            2. If soft_label=True, the shape and data type should be same with ``input`` ,
+            2. If soft_label=True, the shape and data type should be same with ``input`` , 
             and the sum of the labels for each sample should be 1.
 
         - **weight** (Tensor, optional)
@@ -1606,7 +1606,7 @@ def cross_entropy(input,
     Example2(soft labels):
 
         .. code-block:: python
-
+            
             import paddle
             paddle.seed(99999)
             axis = -1
@@ -1889,12 +1889,12 @@ def sigmoid_focal_loss(logit,
     it is used in one-stage object detection where the foreground-background class
     imbalance is extremely high.
 
-    This operator measures focal loss function as follows:
+    This operator measures focal loss function as follows: 
 
     .. math::
            Out = -Labels * alpha * {(1 - \sigma(Logit))}^{gamma}\log(\sigma(Logit)) - (1 - Labels) * (1 - alpha) * {\sigma(Logit)}^{gamma}\log(1 - \sigma(Logit))
 
-    We know that :math:`\sigma(Logit) = \frac{1}{1 + \exp(-Logit)}`.
+    We know that :math:`\sigma(Logit) = \frac{1}{1 + \exp(-Logit)}`. 
 
     Then, if :attr:`normalizer` is not None, this operator divides the
     normalizer tensor on the loss `Out`:
@@ -1921,7 +1921,7 @@ def sigmoid_focal_loss(logit,
             For object detection task, it is the the number of positive samples.
             If set to None, the focal loss will not be normalized. Default is None.
         alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
-            it should be between 0 and 1.  Default value is set to 0.25.
+            it should be between 0 and 1.  Default value is set to 0.25. 
         gamma(int|float, optional): Hyper-parameter to modulate the easy and hard examples.
             Default value is set to 2.0.
         reduction (str, optional): Indicate how to average the loss by batch_size,
