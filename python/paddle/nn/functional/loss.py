@@ -1811,8 +1811,7 @@ def cross_entropy(input,
                                  .format(input.shape[-1], weight.shape[-1]))
             valid_label = paddle.where(
                 label == ignore_index,
-                paddle.to_tensor(
-                    0, dtype=label.dtype),
+                paddle.zeros([1], dtype=label.dtype), dtype=label.dtype),
                 label)
             if (len(paddle.nonzero(valid_label < 0)) > 0) or (
                     len(paddle.nonzero(valid_label >= input.shape[-1])) > 0):
