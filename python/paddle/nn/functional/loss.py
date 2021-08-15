@@ -1389,18 +1389,18 @@ def cross_entropy(input,
                   use_softmax=True,
                   name=None):
     r"""
-    By default, this operator implements the cross entropy loss function with softmax. This function
-    combines the calculation of the softmax operation and the cross entropy loss function
-    to provide a more numerically stable computing.
+    By default, this operator implements the cross entropy loss function with softmax. This function 
+    combines the calculation of the softmax operation and the cross entropy loss function 
+    to provide a more numerically stable computing. 
 
     This operator will calculate the cross entropy loss function without softmax when use_softmax=False.
 
-    By default, this operator will calculate the mean of the result, and you can also affect
-    the default behavior by using the reduction parameter. Please refer to the part of
+    By default, this operator will calculate the mean of the result, and you can also affect 
+    the default behavior by using the reduction parameter. Please refer to the part of 
     parameters for details.
 
     This operator can be used to calculate the softmax cross entropy loss with soft and hard labels.
-    Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels
+    Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels 
     mean the probability of the actual label, 0.6, 0.8, 0.2, etc.
 
     The calculation of this operator includes the following two steps.
@@ -1455,7 +1455,7 @@ def cross_entropy(input,
             1.1. Hard labels (soft_label = False)
 
             .. math::
-                \\loss_j=loss_j*weight[label_j]
+                \\loss_j=loss_j*weight[label_j] 
 
 
             1.2. Soft labels (soft_label = True)
@@ -1465,21 +1465,21 @@ def cross_entropy(input,
 
         2. reduction
 
-            2.1 if the ``reduction`` parameter is ``none``
+            2.1 if the ``reduction`` parameter is ``none`` 
 
                 Return the previous result directly
 
-            2.2 if the ``reduction`` parameter is ``sum``
+            2.2 if the ``reduction`` parameter is ``sum`` 
 
                 Return the sum of the previous results
 
             .. math::
                \\loss=\sum_{j}loss_j
 
-            2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to
-            the ``weight`` parameter as follows.
+            2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to 
+            the ``weight`` parameter as follows. 
 
-            2.3.1. If the  ``weight``  parameter is ``None``
+            2.3.1. If the  ``weight``  parameter is ``None`` 
 
                    Return the average value of the previous results
 
@@ -1493,28 +1493,28 @@ def cross_entropy(input,
             1. Hard labels (soft_label = False)
 
              .. math::
-                \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j]
+                \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j] 
 
             2. Soft labels (soft_label = True)
 
              .. math::
                 \\loss=\sum_{j}loss_j/\sum_{j}\left(\sum_{i}weight[label_i]\right)
-
-
+ 
+ 
     Parameters:
 
         - **input** (Tensor)
 
             Input tensor, the data type is float32, float64. Shape is
-	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
+	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
 
-            Note:
+            Note: 
 
-                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the
+                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the 
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
-
+ 
         - **label** (Tensor)
 
             1. If soft_label=False, the shape is
@@ -1526,15 +1526,15 @@ def cross_entropy(input,
 
         - **weight** (Tensor, optional)
 
-            a manual rescaling weight given to each class.
-            If given, has to be a Tensor of size C and the data type is float32, float64.
+            a manual rescaling weight given to each class. 
+            If given, has to be a Tensor of size C and the data type is float32, float64. 
             Default is ``'None'`` .
 
         - **ignore_index** (int64, optional)
 
             Specifies a target value that is ignored
-            and does not contribute to the loss. A negative value means that no label
-            value needs to be ignored. Only valid when soft_label = False.
+            and does not contribute to the loss. A negative value means that no label 
+            value needs to be ignored. Only valid when soft_label = False.  
             Default is ``-100`` .
 
         - **reduction** (str, optional)
@@ -1548,14 +1548,14 @@ def cross_entropy(input,
 
         - **soft_label** (bool, optional)
 
-            Indicate whether label is soft.
+            Indicate whether label is soft. 
             Default is ``False``.
 
         - **axis** (int, optional)
 
-            The index of dimension to perform softmax calculations.
-            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the
-            number of dimensions of input :attr:`input`.
+            The index of dimension to perform softmax calculations. 
+            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the 
+            number of dimensions of input :attr:`input`. 
             Default is ``-1`` .
 
         - **use_softmax** (bool, optional)
@@ -1577,24 +1577,24 @@ def cross_entropy(input,
 
         If :attr:`reduction` is ``'none'``:
 
-        1. If soft_label = False, the dimension of return value is the same with ``label`` .
+        1. If soft_label = False, the dimension of return value is the same with ``label`` . 
 
-        2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` .
+        2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
 
      Example1(hard labels):
 
         .. code-block:: python
-
+            
             import paddle
             paddle.seed(99999)
             N=100
             C=200
             reduction='mean'
-            input =  paddle.rand([N, C], dtype='float64')
+            input =  paddle.rand([N, C], dtype='float64')  
             label =  paddle.randint(0, C, shape=[N], dtype='int64')
-            weight = paddle.rand([C], dtype='float64')
-
+            weight = paddle.rand([C], dtype='float64') 
+            
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
