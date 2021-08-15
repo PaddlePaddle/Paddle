@@ -12,11 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
-#include <memory>
-#include <string>
-
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/arg_min_max_op_base.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
