@@ -1818,13 +1818,13 @@ def cross_entropy(input,
                     len(paddle.nonzero(valid_label >= input.shape[-1])) > 0):
                 invalid_label = paddle.gather_nd(
                     input, paddle.nonzero(valid_label < 0))
-                if invalid_label.numel() > 0:
+                if paddle.numel(invalid_label) > 0:
                     raise ValueError(
                         "Target({}) is out of class_dimension's lower bound({})".
                         format(invalid_label[0], 0))
                 invalid_label = paddle.gather_nd(
                     input, paddle.nonzero(valid_label >= input.shape[-1]))
-                if invalid_label.numel() > 0:
+                if paddle.numel(invalid_label) > 0:
                     raise ValueError(
                         "Target({}) is out of class_dimension's upper bound({})".
                         format(invalid_label[0], input.shape[-1]))
