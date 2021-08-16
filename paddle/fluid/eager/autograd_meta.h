@@ -18,7 +18,7 @@
 
 namespace egr {
 
-using AutogradMetaInterface = pt::AutogradMetaInterface;
+using AbstractAutogradMeta = pt::AbstractAutogradMeta;
 /**
  *
  * AutogradMeta is what record the backward info for tensor. When we run
@@ -55,15 +55,17 @@ using AutogradMetaInterface = pt::AutogradMetaInterface;
  * properties should be true. We will pass stop_gradient when we find one who
  * need it.
  *
- * NOTE: AutogradMeta is inherited from AutogradMetaInterface which is defined
+ * NOTE: AutogradMeta is inherited from AbstractAutogradMeta which is defined
  * in tensor's deps,
  * we did this to avoid additional dependency on Autograd. In eager execution,
  * we will cast
- * AutogradMetaInterface as AutogradMeta to use it.
+ * AbstractAutogradMeta as AutogradMeta to use it.
  *
  * **/
 
-class AutogradMeta : public AutogradMetaInterface {
+// No other AutogradMeta class should be derivated from AbstractAutogradMeta.
+// It's only used by
+class AutogradMeta : public AbstractAutogradMeta {
  public:
   explict AutogradMeta(const Edge& edge = Edge()) {
     output_rank_ = -1;
@@ -83,11 +85,25 @@ class AutogradMeta : public AutogradMetaInterface {
   }
 
   GradNodeBase* GradNode() const { return grad_node_.get(); }
+
   void SetOutRank(size_t rank) { output_rank_ = rank; }
 
   size_t OutRank() const { return output_rank_; }
 
   bool IsInitialized() { return !grad_node_.get(); }
+
+  int StopGradient() const { return stop_gradient_ != 0; }
+
+  int NumericStopGradient() const { return stop_gradient_; }
+
+  void SetNumericStopGradient(bool stop_gradient) {
+    if (stop_gradient_ == -1) {
+      stop_gradient_ = static_cast<int>(stop_gradient);
+    } else {
+      VLOG(0) << "Ignore Stop gradient conversion for Var: "
+              << "Set value is: " << stop_gradient_;
+    }
+  }
 
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
@@ -107,7 +123,7 @@ class AutogradMeta : public AutogradMetaInterface {
   // TODO(jiabin) :Support hooks here and store it in AutogradMeta
 
   // Stop gradient flag to indicate should we compute backward
-  int overrided_stop_gradient_{-1};
+  int stop_gradient_{-1};
 
   bool persistable_{false};
 
@@ -123,6 +139,20 @@ class AutogradMeta : public AutogradMetaInterface {
 class EagerUtils {
  public:
   static AutogradMeta* autograd_meta(const pt::Tensor& target);
+
+  static std::vector<AutogradMeta*> multi_autograd_meta(
+      const vector<pt::Tensor>& targets)
+
+      static int64_t output_rank()(const pt::Tensor& target);
+
+  static std::shared_ptr<GradNodeBase> grad_node(const pt::Tensor& target);
+
+  static bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num,
+                                 AutogradMeta** outs, size_t outs_num,
+                                 bool trace_backward);
+
+  static void PassStopGradient(AutogradMeta** outs, size_t outs_num,
+                               bool generate_grad);
 };
 
 }  // namespace egr

@@ -19,14 +19,20 @@
 **/
 namespace egr {
 
-void GradNodeBase::AddEdge(const std::vector<pt::Tensor>& tensors) {
-  for (const auto& tensor : tensors) {
-    auto* p_autograd_meta = EagerUtils::autograd_meta(tensor);
-    adj_edges_.emplace_back(p_autograd_meta->GetMutableGradNode(),
-                            p_autograd_meta->OutRank());
+void GradNodeBase::AddEdge(const std::vector<AutogradMeta*>& metas) {
+  VLOG(0) << "Add Edge for tensors";
+  for (const auto& meta : metas) {
+    adj_edges_.emplace_back(meta->GetMutableGradNode(), meta->OutRank());
   }
 }
 
 const std::vector<Edge>& GradNodeBase::GetEdges() const { return adj_edges_; }
+
+void GradNodeBase::RecordStopGradient(
+    const std::vector<AutogradMeta*>& ins_autograds) {
+  for (size_t i = 0; i < ins_autograds.size(); ++i) {
+    bwd_stop_gradients_.emplace_back(ins_autograds->NumericStopGradient());
+  }
+}
 
 }  // namespace egr

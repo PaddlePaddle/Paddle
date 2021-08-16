@@ -15,17 +15,65 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 
 /**
- * Implementation of AutogradMeta and AutogradMetaInterface.
+ * Implementation of AutogradMeta and AbstractAutogradMeta.
 **/
 
 namespace egr {
 
 AutogradMeta* EagerUtils::autograd_meta(const pt::Tensor& target) {
-  auto* autograd_meta_ptr = target.get_autograd_meta();
-  PADDLE_ENFORCE_NOT_NULL(
-      autograd_meta_ptr,
-      "Can't get NULL from autogradMeta, please init with autograd info!");
-  return static_cast<AutogradMeta*>(autograd_meta_ptr);
+  auto* p_autograd_meta = target.get_autograd_meta();
+  if (!p_autograd_meta) {
+    target.set_autograd_meta(std::static_pointer_cast<pt::AbstractAutogradMeta>(
+        make_shared<AutogradMeta>()))
+  }
+  return static_cast<AutogradMeta*>(p_autograd_meta);
+}
+
+std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
+    const vector<pt::Tensor>& targets) {
+  std::vector<AutogradMeta*> ret;
+
+  // for multi_autograd_meta we can tolerent it has nullptr.
+  for (const auto& t : targets) {
+    auto* p_autograd_meta = t.get_autograd_meta();
+    ret.push_back(static_cast<AutogradMeta*>(p_autograd_meta));
+  }
+  return ret;
+}
+
+int64_t EagerUtils::output_rank(const pt::Tensor& target) {
+  return autograd_meta(target)->OutRank();
+}
+
+std::shared_ptr<GradNodeBase> EagerUtils::grad_node(const pt::Tensor& target) {
+  return autograd_meta(target)->GetMutableGradNode();
+}
+
+bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num, AutogradMeta** outs,
+                        size_t outs_num, bool trace_backward) {
+  if (!trace_backward) return false;
+
+  for (size_t i = 0; i < ins_num; ++i) {
+    auto ins_stop_gradient = ins[i]->StopGradient();
+    if (!ins_stop_gradient) {
+      VLOG(0) << "Find out input Stop Gradient is False";
+      PassStopGradient(outs, outs_num, ins_stop_gradient);
+      return true;
+    }
+  }
+  return false;
+}
+
+void PassStopGradient(AutogradMeta** outs, size_t outs_num,
+                      bool generate_grad) {
+  for (size_t i = 0; i < outs_num; ++i) {
+    if (!out[i]) {
+      // TODO(jiabin): Add Tensor name here when we supported.
+      VLOG(0) << "Tensor is NULL";
+      continue;
+    }
+    out[i]->SetNumericStopGradient(generate_grad);
+  }
 }
 
 }  // namespace egr

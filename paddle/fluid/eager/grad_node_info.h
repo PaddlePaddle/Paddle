@@ -74,16 +74,27 @@ class GradNodeBase {
    * Get Input num of current Grad node**/
   size_t InputNum() const { return input_num_; }
 
+  /**
+   * Record Inputs' grads' stop_gradient status, this order matters, and the
+   * backward
+   * output should have the same order with forward inputs
+   * **/
+
+  void RecordStopGradient(const std::vector<pt::Tensor>& ins);
+
  private:
+  // TODO(jiabin): Do we need InputMeta here to indicate input info? Or we just
+  // need to know
+  // how many inputs do we need to create input buffer
+  size_t input_num_{0};
   // Edges recorded the backward related node info, which indicate all edges
   // linked
   // by this Grad Node.
   std::vector<Edge> adj_edges_;
-
-  // TODO(jiabin): Do we need InputMeta here to indicate input info? Or we just
-  // need to know
-  // how many inputs do we need to create input buffer
-  size_t input_num_;
+  // We need GradNode to record all input's stop_gradient status, since some
+  // of our kernel will have different operation according to if backward output
+  // is stop_gradient
+  std::vector<int> bwd_stop_gradients_;
 };
 
 class Edge {

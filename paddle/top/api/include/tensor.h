@@ -45,11 +45,11 @@ namespace pt {
 
 class Tensor;
 
-class AutogradMetaInterface {
+class AbstractAutogradMeta {
  public:
-  virtual const Tensor& grad() const = 0;
-  virtual ~AutogradMetaInterface() = 0;
-  // TODO(yangjiabin): design other methods
+  // No AbstractAutogradMeta should be created
+  AbstractAutogradMeta() = delete;
+  virtual ~AbstractAutogradMeta() = 0;
 };
 
 /**
@@ -208,10 +208,13 @@ class Tensor final {
   /* Part 6: Operator overloading used by eager */
   Tensor& operator=(const Tensor& x) & {
     impl_ = x.impl_;
+    autograd_meta_ = x.autograd_meta_;
     return *this;
   }
+
   Tensor& operator=(Tensor&& x) & {
     impl_ = std::move(x.impl_);
+    autograd_meta_ = std::move(x.autograd_meta_);
     return *this;
   }
   // TODO(chenweihang): impl later
@@ -221,8 +224,16 @@ class Tensor final {
   /* Part 7: Autograd methods */
   // TODO(yangjiabin): Design autograd methods
 
-  AutogradMetaInterface* get_autograd_meta() const {
+  AbstractAutogradMeta* get_autograd_meta() const {
     return autograd_meta_.get();
+  }
+
+  void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
+    autograd_meta_ = std::move(autograd_meta);
+  }
+
+  void set_impl(std::shared_ptr<TensorInterface> tensor_impl) {
+    impl_ = tensor_impl;
   }
 
   /* Part 8: Auto generated Tensor methods */
@@ -250,7 +261,7 @@ class Tensor final {
   std::shared_ptr<TensorInterface> impl_;
 
   /**
-   * [ Why need abstract AutogradMetaInterface here? ]
+   * [ Why need abstract AbstractAutogradMeta here? ]
    *
    * Dynamic graphs need to hold backward information
    *
@@ -260,7 +271,7 @@ class Tensor final {
    *    information, not Tensor data description-related information.
    * 2. Kernel calculation does not require AutogradMeta.
    */
-  std::unique_ptr<AutogradMetaInterface> autograd_meta_ = nullptr;
+  std::shared_ptr<AbstractAutogradMeta> autograd_meta_ = nullptr;
 };
 
 }  // namespace pt
