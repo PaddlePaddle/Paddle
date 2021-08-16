@@ -378,6 +378,22 @@ def divide(x, y, name=None):
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
+@inplace_apis_in_dygraph_only
+def divide_(x, y, name=None):
+    """
+    Inplace version of ``divide`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_divide`.
+    """
+    axis = -1
+    act = None
+
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+
+    out = _elementwise_op_in_dygraph(
+        x, y, axis=axis, act=act, op_name='elementwise_div_')
+    return out
 
 def floor_divide(x, y, name=None):
     """

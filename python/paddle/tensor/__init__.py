@@ -140,6 +140,7 @@ from .math import minimum  # noqa: F401
 from .math import mm  # noqa: F401
 from .math import divide  # noqa: F401
 from .math import floor_divide  # noqa: F401
+from .math import divide_
 from .math import remainder  # noqa: F401
 from .math import mod  # noqa: F401
 from .math import floor_mod  # noqa: F401
@@ -265,6 +266,7 @@ tensor_method_func  = [ #noqa
            'minimum',
            'mm',
            'divide',
+           'divide_',
            'floor_divide',
            'remainder',
            'mod',
