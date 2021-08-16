@@ -23,7 +23,7 @@ T cRandom(int min, int max) {
   unsigned int seed = 100;
   return (min +
           static_cast<T>(max * rand_r(&seed) / static_cast<T>(RAND_MAX + 1)));
-}
+} 
 
 std::map<std::string, paddle::test::Record> PrepareInput(int batch_size) {
   // init input data
