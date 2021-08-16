@@ -20,6 +20,8 @@ from ..fluid.framework import Variable
 from ..fluid.dygraph import base as imperative_base
 import paddle
 
+_C_ops = core.ops
+
 __all__ = []
 
 
