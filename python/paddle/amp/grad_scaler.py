@@ -152,10 +152,14 @@ class GradScaler(AmpScaler):
         
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
         Otherwise, it first unscales the scaled gradients of parameters, then updates the parameters.
+
         Args:
             optimizer(Optimizer):  The optimizer used to update parameters.
+
         Examples:
             .. code-block:: python
+            
+                # required: gpu
                 import paddle
                 model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
                 optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
