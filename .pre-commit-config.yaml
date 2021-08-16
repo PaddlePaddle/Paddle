@@ -26,10 +26,6 @@ repos:
         entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
-        exclude: |
-            (?x)^(
-                paddle/utils/.*
-            )$
 -   repo: local
     hooks:
     -   id: cpplint-cpp-source
@@ -38,10 +34,6 @@ repos:
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
-        exclude: |
-            (?x)^(
-                paddle/utils/.*
-            )$
 -   repo: local
     hooks:
     -   id: pylint-doc-string
