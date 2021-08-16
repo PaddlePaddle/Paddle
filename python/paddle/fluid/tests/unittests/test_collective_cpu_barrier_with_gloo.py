@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 import os
 import sys
 import time
@@ -26,110 +27,98 @@ port_set = set()
 paddle.enable_static()
 
 
-def find_free_port():
-    def _free_port():
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-            s.bind(('', 0))
-            return s.getsockname()[1]
+class CollectiveCPUBarrierText(unittest.TestCase):
+    def find_free_port(self):
+        def _free_port():
+            with closing(socket.socket(socket.AF_INET,
+                                       socket.SOCK_STREAM)) as s:
+                s.bind(('', 0))
+                return s.getsockname()[1]
 
-    while True:
-        port = _free_port()
-        if port not in port_set:
-            port_set.add(port)
-            return port
+        while True:
+            port = _free_port()
+            if port not in port_set:
+                port_set.add(port)
+                return port
 
+    def barrier_func(self, id, rank_num, server_endpoint, out_dict, sleep_time):
+        paddle.distributed.init_gloo_parallel_env(id, rank_num, server_endpoint)
+        # 1st barrier
+        # Run barrier to synchronize processes after starting
+        paddle.distributed.barrier_func()
+        # 2nd barrier
+        # Let rank 0 sleep for one second and check that all processes
+        # saw that artificial delay through the barrier
+        start = time.time()
+        if (id == 0):
+            time.sleep(sleep_time)
+        paddle.distributed.barrier_func()
+        end = time.time()
+        out_dict[id] = end - start
+        # Release
+        paddle.distributed.release_gloo(id)
 
-def test_barrier_func(id, rank_num, server_endpoint, out_dict, sleep_time):
-    paddle.distributed.init_gloo_parallel_env(id, rank_num, server_endpoint)
-    # 1st barrier
-    # Run barrier to synchronize processes after starting
-    paddle.distributed.barrier_func()
+    def barrier_op(self, id, rank_num, server_endpoint, out_dict, sleep_time):
+        main_prog = fluid.Program()
+        startup_prog = fluid.Program()
+        paddle.distributed.init_gloo_parallel_env(id, rank_num, server_endpoint)
+        place = fluid.CPUPlace()
+        with fluid.program_guard(main_prog, startup_prog):
+            paddle.distributed.barrier()
+        exe = fluid.Executor(place)
+        # Run barrier to synchronize processes after starting
+        exe.run(main_prog)
+        # Let rank 0 sleep for one second and check that all processes
+        # saw that artificial delay through the barrier
+        start = time.time()
+        if (id == 0):
+            time.sleep(sleep_time)
+        exe.run(main_prog)
+        end = time.time()
+        out_dict[id] = end - start
+        # Release
+        paddle.distributed.release_gloo(id)
 
-    # 2nd barrier
-    # Let rank 0 sleep for one second and check that all processes
-    # saw that artificial delay through the barrier
-    start = time.time()
-    if (id == 0):
-        time.sleep(sleep_time)
-    paddle.distributed.barrier_func()
-    end = time.time()
+    def test_barrier_func_with_multiprocess(self):
+        num_of_ranks = 4
+        sleep_time = 1
+        # create endpoints
+        ep_str = "127.0.0.1:%s" % (self.find_free_port())
+        # call barrier op inside each process
+        manager = multiprocessing.Manager()
+        procs_out_dict = manager.dict()
+        jobs = []
+        for id in range(num_of_ranks):
+            p = multiprocessing.Process(
+                target=self.barrier_op,
+                args=(id, num_of_ranks, ep_str, procs_out_dict, sleep_time))
+            jobs.append(p)
+            p.start()
+        for proc in jobs:
+            proc.join()
+        for _, v in procs_out_dict.items():
+            self.assertTrue(v > sleep_time)
 
-    out_dict[id] = end - start
-    # Release
-    paddle.distributed.release_gloo(id)
-
-
-def test_barrier_op(id, rank_num, server_endpoint, out_dict, sleep_time):
-    main_prog = fluid.Program()
-    startup_prog = fluid.Program()
-    paddle.distributed.init_gloo_parallel_env(id, rank_num, server_endpoint)
-    place = fluid.CPUPlace()
-    with fluid.program_guard(main_prog, startup_prog):
-        paddle.distributed.barrier()
-    exe = fluid.Executor(place)
-    # Run barrier to synchronize processes after starting
-    exe.run(main_prog)
-
-    # Let rank 0 sleep for one second and check that all processes
-    # saw that artificial delay through the barrier
-    start = time.time()
-    if (id == 0):
-        time.sleep(sleep_time)
-    exe.run(main_prog)
-    end = time.time()
-
-    out_dict[id] = end - start
-    # Release
-    paddle.distributed.release_gloo(id)
-
-
-def test_barrier_with_multiprocess(test_barrier, num_of_ranks, sleep_time):
-    if num_of_ranks <= 0 or sleep_time < 0:
-        return
-    # create endpoints
-    ep_str = "127.0.0.1:%s" % (find_free_port())
-    #print(ep_str)
-
-    # call barrier op inside each process
-    all_procs_start = time.time()
-    manager = multiprocessing.Manager()
-    procs_out_dict = manager.dict()
-    jobs = []
-    for id in range(num_of_ranks):
-        p = multiprocessing.Process(
-            target=test_barrier,
-            args=(id, num_of_ranks, ep_str, procs_out_dict, sleep_time))
-        jobs.append(p)
-        p.start()
-    for proc in jobs:
-        proc.join()
-    all_procs_end = time.time()
-
-    # check results
-    print("***************************************************")
-    print("Barrier op exection time recorded in each process: ")
-    print("***************************************************")
-    print(procs_out_dict)
-
-    sum_of_barrier_time = 0
-    for _, v in procs_out_dict.items():
-        if v <= sleep_time:
-            print("Failed")
-            return
-        sum_of_barrier_time += v
-
-    print("**********************************")
-    print("Average barrier op exection time: ")
-    print("**********************************")
-    print((sum_of_barrier_time - sleep_time * num_of_ranks) / num_of_ranks)
-
-    print("")
-    print("Passed   %.2fs" % (all_procs_end - all_procs_start))
-    return
+    def test_barrier_op_with_multiprocess(self):
+        num_of_ranks = 4
+        sleep_time = 1
+        # create endpoints
+        ep_str = "127.0.0.1:%s" % (self.find_free_port())
+        # call barrier op inside each process
+        manager = multiprocessing.Manager()
+        procs_out_dict = manager.dict()
+        jobs = []
+        for id in range(num_of_ranks):
+            p = multiprocessing.Process(
+                target=self.barrier_op,
+                args=(id, num_of_ranks, ep_str, procs_out_dict, sleep_time))
+            jobs.append(p)
+            p.start()
+        for proc in jobs:
+            proc.join()
+        for _, v in procs_out_dict.items():
+            self.assertTrue(v > sleep_time)
 
 
 if __name__ == '__main__':
-    # Arg 0: test_barrier_func or test_barrier_op
-    # Arg 1: number of ranks (processes)
-    # Arg 2: time sleeping in second in #1 process
-    test_barrier_with_multiprocess(test_barrier_func, 16, 1)
+    unittest.main()
