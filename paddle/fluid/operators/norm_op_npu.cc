@@ -52,18 +52,7 @@ class NormNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     runner.Run(stream);
-    // the out_norm have the true value
-    auto in_x_shape = framework::vectorize<int32_t>(xdim);
-
-    Tensor norm_tensor_after_broadcast(out_norm->type());
-    norm_tensor_after_broadcast.mutable_data<T>(xdim, ctx.GetPlace());
-
-    /*  Use BroadcastToD is Ok, but call of BroadcastTo will get errors.*/
-    NpuOpRunner("BroadcastToD", {*out_norm}, {norm_tensor_after_broadcast},
-                {{"shape", in_x_shape}})
-        .Run(stream);
-    NpuOpRunner("Div", {*in_x, norm_tensor_after_broadcast}, {*out_y}, {})
-        .Run(stream);
+    NpuOpRunner("Div", {*in_x, *out_norm}, {*out_y}, {}).Run(stream);
   }
 };
 
