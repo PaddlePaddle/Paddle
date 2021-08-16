@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-#include <string>
-
 #include "paddle/fluid/operators/mul_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
