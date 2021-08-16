@@ -27,7 +27,6 @@ class TestSizeOp(OpTest):
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
-        # self.place = paddle.CPUPlace()
         self.op_type = "size"
 
         self.config()
@@ -72,7 +71,13 @@ class TestSizeOp4(TestSizeOp):
 
 class TestSizeOp5(TestSizeOp):
     def config(self):
-        self.shape = [2, 3, 4, 5]
+        self.shape = [7, 8, 9, 10]
+        self.dtype = np.int64
+
+
+class TestSizeOp6(TestSizeOp):
+    def config(self):
+        self.shape = []
         self.dtype = np.int64
 
 

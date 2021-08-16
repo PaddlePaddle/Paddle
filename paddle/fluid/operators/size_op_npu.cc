@@ -33,14 +33,9 @@ class SizeNPUKernel : public framework::OpKernel<T> {
     auto cpu_data =
         cpu_tensor.mutable_data<int64_t>(out->dims(), platform::CPUPlace());
     cpu_data[0] = x->numel();
-    TensorCopy(cpu_tensor, ctx.GetPlace(), out);
-
-    // framework::NPUAttributeMap attr_input = {};
-    // const auto& runner = NpuOpRunner("Size", {*x}, {*out}, attr_input);
-    // auto stream =
-    //     ctx.template device_context<paddle::platform::NPUDeviceContext>()
-    //         .stream();
-    // runner.Run(stream);
+    TensorCopy(cpu_tensor, ctx.GetPlace(),
+               ctx.template device_context<platform::DeviceContext>(), out);
+    ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
   }
 };
 
