@@ -921,6 +921,29 @@ void BindImperative(py::module *m_ptr) {
                    axis -= len;
                  }
 
+                 // Deal with cases that there are more than one
+                 // prefix none index, For example:
+                 // [None, None, :, :, None]
+                 // the none_axes int the return of ParseIndexingSlice is:
+                 // [0,    0,          2   ]
+                 // according to the interface of "unsqueeze2",
+                 // we should convert it to:
+                 // [0,    0,          4   ]
+                 int prefix_zero_cnt = 0;
+                 for (const auto &axis : none_axes) {
+                   if (axis == 0) {
+                     prefix_zero_cnt++;
+                   } else {
+                     break;
+                   }
+                 }
+                 if (prefix_zero_cnt > 0) {
+                   int none_axes_num = static_cast<int>(none_axes.size());
+                   for (int i = prefix_zero_cnt; i < none_axes_num; ++i) {
+                     none_axes[i] += prefix_zero_cnt;
+                   }
+                 }
+
                  imperative::NameVarBaseMap ins = {{"X", {out}}};
                  framework::AttributeMap attrs = {{"axes", none_axes}};
                  auto new_out = std::shared_ptr<imperative::VarBase>(
