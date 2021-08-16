@@ -632,14 +632,13 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     nranks = _get_global_group().nranks if group is None else group.nranks
 
-    op_type = 'c_allgather'
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-
     if in_dygraph_mode():
-        _C_ops.c_allgather(tensor, out, 'use_calc_stream', use_calc_stream,
-                           'ring_id', ring_id, 'nranks', nranks)
+        out = _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
+                                 'ring_id', ring_id, 'nranks', nranks)
     else:
+        op_type = 'c_allgather'
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
         if not isinstance(tensor_list, list):
             raise ValueError("The type of 'tensor_list' for all_gather "
                              "should be list.")

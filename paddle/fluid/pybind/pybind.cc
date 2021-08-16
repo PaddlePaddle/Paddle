@@ -2221,6 +2221,7 @@ All parameter, weight, gradient are variables in Paddle.
     auto &pool = platform::DeviceContextPool::Instance();
     auto devices = platform::GetSelectedNPUDevices();
     for (size_t i = 0; i < devices.size(); ++i) {
+      platform::NPUDeviceGuard guard(devices[i]);
       pool.Get(platform::NPUPlace(devices[i]))->Wait();
     }
     platform::AclInstance::Instance().Finalize();
