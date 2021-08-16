@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using U = LayerNormParamType<T>;
-
 template <typename T>
 class AttnLayerNorm {
  public:
@@ -33,13 +31,15 @@ class AttnLayerNorm {
 
   ~AttnLayerNorm() {}
 
-  void ComputeForward(const T* x_data, const U* scale_data, const U* bias_data,
-                      T* y_data, U* mean_data, U* var_data) {
+  void ComputeForward(const T* x_data, const LayerNormParamType<T>* scale_data,
+                      const LayerNormParamType<T>* bias_data, T* y_data,
+                      LayerNormParamType<T>* mean_data,
+                      LayerNormParamType<T>* var_data) {
     auto stream = dev_ctx_.stream();
 
     switch (GetDesiredBlockDim(feature_size_)) {
       FIXED_BLOCK_DIM_CASE(
-          LayerNormForward<T, U,
+          LayerNormForward<T, LayerNormParamType<T>,
                            kBlockDim><<<batch_size_, kBlockDim, 0, stream>>>(
               x_data, scale_data, bias_data, y_data, mean_data, var_data,
               epsilon_, feature_size_));
@@ -50,9 +50,12 @@ class AttnLayerNorm {
     }
   }
 
-  void ComputeBackward(const T* x_data， const T* y_data, const U* scale_data,
-                       const U* mean_data, const U* var_data, T* d_x_data,
-                       U* d_scale_data, U* d_bias_data) {
+  void ComputeBackward(const T* x_data， const T* y_data,
+                       const LayerNormParamType<T>* scale_data,
+                       const LayerNormParamType<T>* mean_data,
+                       const LayerNormParamType<T>* var_data, T* d_x_data,
+                       LayerNormParamType<T>* d_scale_data,
+                       LayerNormParamType<T>* d_bias_data) {
     LayerNormBackward<T, LayerNormParamType<T>>(
         x_data, d_y_data, scale_data, mean_data, var_data, d_x_data,
         d_scale_data, d_bias_data, epsilon_, batch_size_, feature_size_,
