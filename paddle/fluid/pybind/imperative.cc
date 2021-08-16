@@ -1680,6 +1680,10 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::Tracer::SetEnableProgramDescTracing)
       .def_property("_enable_autocast", &imperative::Tracer::IsAutoCastEnabled,
                     &imperative::Tracer::SetEnableAutoCast)
+      //
+      .def_property("_enable_pure_fp16", &imperative::Tracer::IsPureFp16Enabled,
+                    &imperative::Tracer::SetEnablePureFp16)
+
       .def_property("_has_grad", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(

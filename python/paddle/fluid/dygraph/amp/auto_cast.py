@@ -19,6 +19,8 @@ import contextlib
 from paddle.fluid.framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags, get_flags
 import warnings
 import copy
+import functools
+import paddle
 
 __all__ = ['amp_guard']
 
@@ -101,9 +103,69 @@ def _in_amp_guard():
         return False
 
 
+# float32/64 -> float16
+def to_type(dtype, data):
+    print("==========", data)
+    for d in data:
+        print(d.dtype)
+        if isinstance(d.dtype, (paddle.float32, paddle.float64)):
+            d = d.astype(dtype)
+    print("==========", data)
+    return data
+
+
+def applier(value, fn):
+    return fn(value)
+
+
+@dygraph_only
+def fp16_initialize(enable_pure_fp16, model, optimizer):
+    if not enable_pure_fp16:
+        return model, optimizer
+
+    # cast model to fp16
+    for layer in model.sublayers():
+        if isinstance(layer, (paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
+            continue
+        layer.to(dtype='float16')
+    '''
+    #cast model forward's input and output to fp16 
+    input_caster = functools.partial(to_type, 'float16')
+    output_caster = functools.partial(to_type, 'float16')
+    for layer in model.sublayers():
+        def patch_forward(old_forward):
+            def new_fwd(*args, **kwargs):
+                output = old_forward(*applier(args, input_caster), **applier(kwargs, input_caster))
+                return applier(output, output_caster)
+            return new_fwd
+        layer.forward = patch_forward(layer.forward)
+    '''
+    return model, optimizer
+    #
+
+
+# 获取master weight
+def master_weight(optimizer):
+    fp16_groups = []
+    fp16_from_fp32_groups = []
+    fp32_groups = []
+    for group in optimizer._param_groups:
+        fp16_this_group = []
+        fp32_this_group = []
+        fp16_from_fp32_this_group = []
+        for param in group['params']:
+            if param._grad_ivar() is not None:
+                pass
+
+
 @signature_safe_contextmanager
 @dygraph_only
-def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
+def amp_guard(enable=True,
+              custom_white_list=None,
+              custom_black_list=None,
+              enable_pure_fp16=False,
+              model=None,
+              optimizer=None):
     """
     :api_attr: imperative
 
@@ -143,6 +205,13 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
         raise ValueError(
             "current_tracer is None, maybe it is not in imperative mode.")
 
+    print("enable_pure_fp16:", enable_pure_fp16)
+    print("model:", model)
+    print("optimizer:", optimizer)
+    # print(model.parameters())
+    model, optimizer = fp16_initialize(enable_pure_fp16, model, optimizer)
+    #print(model.parameters())
+
     if enable and not (tracer._expected_place.is_gpu_place() or
                        tracer._expected_place.is_xpu_place()):
         warnings.warn(
@@ -173,6 +242,9 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
         # original_flags = get_flags(AMP_RELATED_FLAGS)
         # set_flags(AMP_RELATED_FLAGS_SETTING)
 
+        original_pure_fp16_enable = tracer._enable_pure_fp16
+        tracer._enable_pure_fp16 = enable_pure_fp16
+
     # restore status
     try:
         yield
@@ -181,3 +253,4 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
             tracer._enable_autocast = original_enable
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
+            tracer._enable_pure_fp16 = original_pure_fp16_enable
