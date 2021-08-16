@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
-import gast
+from paddle.utils import gast
 import inspect
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import unittest
 

@@ -427,8 +427,14 @@ class BuildExtension(build_ext, object):
                 elif isinstance(cflags, dict):
                     cflags = cflags['cxx']
 
+                # NOTE(Aurelius84): Since Paddle 2.0, we require gcc version > 5.x,
+                # so we add this flag to ensure the symbol names from user compiled
+                # shared library have same ABI suffix with core_(no)avx.so.
+                # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
+                add_compile_flag(['-D_GLIBCXX_USE_CXX11_ABI=1'], cflags)
+
                 add_std_without_repeat(
-                    cflags, self.compiler.compiler_type, use_std14=False)
+                    cflags, self.compiler.compiler_type, use_std14=True)
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:
                 # restore original_compiler

@@ -30,8 +30,137 @@ namespace ir {
 
 class Node;
 
-static int BuildFusion(Graph* graph, const std::string& name_scope,
-                       Scope* scope, bool with_fc_bias) {
+MulGRUFusePass::MulGRUFusePass() {
+  AddOpCompat(OpCompat("gru"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("H0")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("Weight")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("BatchGate")
+      .IsTensor()
+      .End()
+      .AddOutput("BatchResetHiddenPrev")
+      .IsTensor()
+      .End()
+      .AddOutput("BatchHidden")
+      .IsTensor()
+      .End()
+      .AddOutput("Hidden")
+      .IsTensor()
+      .End()
+      .AddAttr("activation")
+      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .End()
+      .AddAttr("gate_activation")
+      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .End()
+      .AddAttr("is_reverse")
+      .IsType<bool>()
+      .End()
+      .AddAttr("origin_mode")
+      .IsType<bool>()
+      .IsOptional()
+      .End();
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+}
+
+FCGRUFusePass::FCGRUFusePass() {
+  AddOpCompat(OpCompat("gru"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("H0")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("Weight")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("BatchGate")
+      .IsTensor()
+      .End()
+      .AddOutput("BatchResetHiddenPrev")
+      .IsTensor()
+      .End()
+      .AddOutput("BatchHidden")
+      .IsTensor()
+      .End()
+      .AddOutput("Hidden")
+      .IsTensor()
+      .End()
+      .AddAttr("activation")
+      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .End()
+      .AddAttr("gate_activation")
+      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .End()
+      .AddAttr("is_reverse")
+      .IsType<bool>()
+      .End()
+      .AddAttr("origin_mode")
+      .IsType<bool>()
+      .IsOptional()
+      .End();
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumGE(-1)
+      .End();
+}
+
+int FCGRUFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
+                               Scope* scope, bool with_fc_bias) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -47,8 +176,9 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   gru_pattern(fc_out);
 
   // Create New OpDesc
-  auto gru_creater = [&](Node* gru, Node* x, Node* weight_x, Node* weight_h,
-                         Node* bias, Node* hidden, Node* fc_bias) {
+  auto gru_creator = [&](Node* gru, Node* x, Node* weight_x, Node* weight_h,
+                         Node* bias, Node* hidden, Node* fc_bias,
+                         const bool use_mkldnn) {
     OpDesc op_desc;
     op_desc.SetType("fusion_gru");
 
@@ -67,6 +197,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
                     gru->Op()->GetAttrIfExists<bool>("origin_mode"));
     // TODO(TJ): This should be a option for infer
     op_desc.SetAttr("use_seq", true);
+    op_desc.SetAttr("use_mkldnn", use_mkldnn);
     op_desc.SetAttr("activation", gru->Op()->GetAttr("activation"));
     op_desc.SetAttr("gate_activation", gru->Op()->GetAttr("gate_activation"));
 
@@ -131,6 +262,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     auto* x_n = subgraph.at(x);
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
@@ -149,6 +284,11 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       LOG(INFO) << "fc_gru_fuse_pass not supported when origin_mode=True.";
       return;
     }
+    const bool use_mkldnn =
+        (mul->Op()->GetAttrIfExists<bool>("use_mkldnn") &&
+         gru->Op()->GetAttrIfExists<std::string>("activation") == "tanh" &&
+         gru->Op()->GetAttrIfExists<std::string>("gate_activation") ==
+             "sigmoid");
 
     if (with_fc_bias) {
       GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
@@ -156,14 +296,14 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
 
-      gru_creater(gru, x_n, w, Weight, Bias, Hidden, fc_bias);
+      gru_creator(gru, x_n, w, Weight, Bias, Hidden, fc_bias, use_mkldnn);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, gru, elementwise_add, fc_out, mul_out, BatchGate,
            BatchResetHiddenPrev, BatchHidden});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
-      gru_creater(gru, x_n, w, Weight, Bias, Hidden, nullptr);
+      gru_creator(gru, x_n, w, Weight, Bias, Hidden, nullptr, use_mkldnn);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, gru, BatchGate, BatchResetHiddenPrev, BatchHidden});
@@ -182,8 +322,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 void MulGRUFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count =
-      BuildFusion(graph, name_scope_, param_scope(), false /*with_fc_bias*/);
+  int fusion_count = MulGRUFusePass::BuildFusion(
+      graph, name_scope_, param_scope(), false /*with_fc_bias*/);
 
   AddStatis(fusion_count);
 }
@@ -191,8 +331,8 @@ void MulGRUFusePass::ApplyImpl(ir::Graph* graph) const {
 void FCGRUFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count =
-      BuildFusion(graph, name_scope_, param_scope(), true /*with_fc_bias*/);
+  int fusion_count = FCGRUFusePass::BuildFusion(
+      graph, name_scope_, param_scope(), true /*with_fc_bias*/);
 
   AddStatis(fusion_count);
 }

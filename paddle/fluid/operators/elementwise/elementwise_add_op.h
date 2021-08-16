@@ -17,7 +17,6 @@ limitations under the License. */
 #include <utility>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -72,12 +71,10 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     if (x->dims() == y->dims()) {
-      SameDimsElemwiseAdd<platform::CPUDeviceContext, T>
-          LaunchElementwiseCpuKernel;
+      SameDimsElemwiseAdd<DeviceContext, T> LaunchElementwiseCpuKernel;
       LaunchElementwiseCpuKernel(ctx, x, y, z);
     } else {
-      LaunchBroadcastElementwiseCpuKernel<platform::CPUDeviceContext, T>(ctx, x,
-                                                                         y, z);
+      LaunchBroadcastElementwiseCpuKernel<DeviceContext, T>(ctx, x, y, z);
     }
   }
 };

@@ -32,6 +32,7 @@ from .common import Pad3D  # noqa: F401
 from .common import CosineSimilarity  # noqa: F401
 from .common import Embedding  # noqa: F401
 from .common import Linear  # noqa: F401
+from .common import Identity  # noqa: F401
 from .common import Flatten  # noqa: F401
 from .common import Upsample  # noqa: F401
 from .common import Dropout  # noqa: F401

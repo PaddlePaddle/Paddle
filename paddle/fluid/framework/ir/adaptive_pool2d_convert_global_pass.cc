@@ -24,6 +24,47 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
+  AddOpCompat(OpCompat("pool2d"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("pooling_type")
+      .IsStringIn({"max", "avg"})
+      .End()
+      .AddAttr("ksize")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("global_pooling")
+      .IsBoolEQ(true)
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("exclusive")
+      .IsType<bool>()
+      .End()
+      .AddAttr("adaptive")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("ceil_mode")
+      .IsType<bool>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NHWC", "NCHW"})
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End();
+}
+
 void AdaptivePool2dConvertGlobalPass::ApplyImpl(ir::Graph* graph) const {
   std::string name_scope = "adaptive_pool2d_convert_global_pass";
   FusePassBase::Init(name_scope, graph);

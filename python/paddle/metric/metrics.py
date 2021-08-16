@@ -25,8 +25,9 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.layers.nn import topk
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode
 import paddle
+from paddle import _C_ops
 
-__all__ = ['Metric', 'Accuracy', 'Precision', 'Recall', 'Auc', 'accuracy']
+__all__ = []
 
 
 def _is_numpy_(var):
@@ -222,7 +223,7 @@ class Accuracy(Metric):
           transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
           train_dataset = MNIST(mode='train', transform=transform)
 
-          model = paddle.Model(paddle.vision.LeNet(), input, label)
+          model = paddle.Model(paddle.vision.models.LeNet(), input, label)
           optim = paddle.optimizer.Adam(
               learning_rate=0.001, parameters=model.parameters())
           model.prepare(
@@ -798,8 +799,8 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             total = _varbase_creator(dtype="int32")
 
         topk_out, topk_indices = topk(input, k=k)
-        _acc, _, _ = core.ops.accuracy(topk_out, topk_indices, label, correct,
-                                       total)
+        _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label, correct,
+                                     total)
         return _acc
 
     helper = LayerHelper("accuracy", **locals())

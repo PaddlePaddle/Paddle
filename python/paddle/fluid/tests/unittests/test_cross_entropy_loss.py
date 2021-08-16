@@ -23,12 +23,6 @@ from test_softmax_with_cross_entropy_op import cross_entropy
 from paddle.fluid import Program, program_guard
 
 
-def stable_softmax(x):
-    shiftx = (x - np.max(x)).clip(-64.)
-    exps = np.exp(shiftx)
-    return exps / np.sum(exps)
-
-
 def log_softmax(x, axis=-1):
     softmax_out = np.apply_along_axis(stable_softmax, axis, x)
     return np.log(softmax_out)

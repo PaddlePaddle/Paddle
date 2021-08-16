@@ -20,7 +20,7 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_check
+from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_check, _get_default_nprocs
 
 from paddle.fluid import core
 from paddle.fluid.dygraph import parallel_helper
@@ -86,6 +86,15 @@ class TestSpawnAssistMethod(unittest.TestCase):
         with self.assertRaises(ValueError):
             options['error'] = "error"
             _options_valid_check(options)
+
+    def test_get_default_nprocs(self):
+        paddle.set_device('cpu')
+        with self.assertRaises(RuntimeError):
+            nprocs = _get_default_nprocs()
+
+        paddle.set_device('gpu')
+        nprocs = _get_default_nprocs()
+        self.assertEqual(nprocs, core.get_cuda_device_count())
 
 
 if __name__ == "__main__":

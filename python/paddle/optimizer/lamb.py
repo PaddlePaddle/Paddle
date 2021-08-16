@@ -16,6 +16,7 @@ from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
+from paddle import _C_ops
 
 __all__ = []
 
@@ -33,17 +34,17 @@ class Lamb(Optimizer):
 
     ..  math::
 
-        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t
+        m_t &= \beta_1 m_{t - 1}+ (1 - \beta_1)g_t
 
-        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2
+        v_t &= \beta_2 v_{t - 1}  + (1 - \beta_2)g_t^2
 
-        m_t &= \\frac{m_t}{\\beta_1^t}
+        m_t &= \frac{m_t}{\beta_1^t}
 
-        v_t &= \\frac{v_t}{\\beta_2^t}
+        v_t &= \frac{v_t}{\beta_2^t}
 
-        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon}
+        r_t &= \frac{m_t}{\sqrt{v_t}+\epsilon}
 
-        w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
+        w_t &= w_{t-1} -\eta_t \frac{\left \| w_{t-1}\right \|}{\left \| r_t + \lambda w_{t-1}\right \|} (r_t + \lambda w_{t-1})
 
 
     where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`\\eta` the
@@ -59,7 +60,10 @@ class Lamb(Optimizer):
             Default 0.999.
         epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
         parameters (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
+            This parameter is required in dygraph mode. And you can specify different options for \
+            different parameter groups such as the learning rate, weight decay, etc, \
+            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            represents the scale of base learning_rate. \
             The default value is None in static mode, at this time all parameters will be updated.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
@@ -72,8 +76,8 @@ class Lamb(Optimizer):
         .. code-block:: python
             
             import paddle
-            import numpy as np
-            inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
+
+            inp = paddle.uniform(shape=[10, 10], dtype='float32', min=-0.1, max=0.1)
             linear = paddle.nn.Linear(10, 10)
             out = linear(inp)
             loss = paddle.mean(out)
@@ -83,6 +87,7 @@ class Lamb(Optimizer):
             back = out.backward()
             lamb.step()
             lamb.clear_grad()
+
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
@@ -115,9 +120,18 @@ class Lamb(Optimizer):
         self._epsilon = epsilon
         self._lamb_weight_decay = lamb_weight_decay
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
+        self._default_dict = {
+            'beta1': beta1,
+            'beta2': beta2,
+            'epsilon': epsilon,
+            'lamb_weight_decay': lamb_weight_decay,
+            'exclude_from_weight_decay_fn': exclude_from_weight_decay_fn,
+        }
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
+        if isinstance(parameters, dict):
+            parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
@@ -140,6 +154,9 @@ class Lamb(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
+
         block.program._use_lamb = True
 
         moment1 = self._get_accumulator(self._moment1_acc_str,
@@ -159,7 +176,7 @@ class Lamb(Optimizer):
         lr = self._create_param_lr(param_and_grad)
 
         if framework.in_dygraph_mode():
-            _, _, _, _, _ = core.ops.lamb(
+            _, _, _, _, _ = _C_ops.lamb(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
                 moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', self._beta1,
@@ -199,3 +216,15 @@ class Lamb(Optimizer):
             stop_gradient=True)
 
         return lamb_op
+
+    def _update_param_group(self, parameters):
+        self._beta1 = parameters.get('beta1', self._default_dict['beta1'])
+        self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
+        self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
+        self._lamb_weight_decay = parameters.get(
+            'lamb_weight_decay', self._default_dict['lamb_weight_decay'])
+        self._exclude_from_weight_decay_fn = parameters.get(
+            'exclude_from_weight_decay_fn',
+            self._default_dict['exclude_from_weight_decay_fn'])
+        parameters = parameters.get('params')
+        return parameters

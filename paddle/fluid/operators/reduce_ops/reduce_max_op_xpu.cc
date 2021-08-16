@@ -16,7 +16,7 @@
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/reduce_ops/reduce_op_xpu.h"
-#include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {

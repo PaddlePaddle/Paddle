@@ -197,6 +197,26 @@ struct EigenRankLossGrad {
 };
 
 template <typename EigenDevice, typename T>
+struct EigenLogLoss {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& pred,
+                   const InType& label, const T& epsilon);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenLogLossGrad {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType dpred, const InType& dloss,
+                   const InType& pred, const InType& label, const T& epsilon);
+};
+
+template <typename EigenDevice, typename T>
 struct EigenHingeLoss {
   using InType = Eigen::TensorMap<
       Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
