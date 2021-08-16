@@ -25,6 +25,7 @@ __all__ = [ #noqa
     'InverseTimeDecay',
     'PolynomialDecay',
     'LinearWarmup',
+    'ConstantWarmp',
     'ExponentialDecay',
     'MultiStepDecay',
     'StepDecay',
@@ -797,6 +798,129 @@ class LinearWarmup(LRScheduler):
         if self.last_epoch < self.warmup_steps:
             return (self.end_lr - self.start_lr) * float(
                 self.last_epoch) / float(self.warmup_steps) + self.start_lr
+        else:
+            if isinstance(self.learning_rate, LRScheduler):
+                self.learning_rate.step(self.last_epoch - self.warmup_steps)
+                return self.learning_rate()
+
+            return self.learning_rate
+
+
+class ConstantWarmup(LRScheduler):
+    r"""
+    Constant learning rate warm up strategy. Keep a constant learning rate before the normal learning rate scheduler.
+    
+    When epoch < warmup_steps, learning rate is updated as:
+    
+    .. math::
+    
+            lr = start\_lr
+    
+    where start_lr is the initial learning rate;
+    
+    When epoch >= warmup_steps, learning rate is updated as:
+    
+    .. math::
+    
+            lr = learning_rate
+    
+    where ``learning_rate`` is float or any subclass of ``LRScheduler`` .
+    Args:
+        learning_rate (float|LRScheduler): The learning rate after warm-up. It is a python float number or any subclass of ``LRScheduler`` .
+        warmup_steps (int): total steps of warm up. It must be a positive integer.
+        start_lr (float): Initial learning rate of warm up.
+        last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+    Returns:
+        ``ConstantWarmup`` instance to schedule learning rate.
+    Examples:
+        
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            # train on default dynamic graph mode
+            linear = paddle.nn.Linear(10, 10)
+            scheduler = paddle.optimizer.lr.ConstantWarmup(
+                    learning_rate=0.5, warmup_steps=20, start_lr=0, verbose=True)
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
+            for epoch in range(20):
+                for batch_id in range(5):
+                    x = paddle.uniform([10, 10])
+                    out = linear(x)
+                    loss = paddle.mean(out)
+                    loss.backward()
+                    sgd.step()
+                    sgd.clear_gradients()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
+            # train on static graph mode
+            paddle.enable_static()
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[None, 4, 5])
+                y = paddle.static.data(name='y', shape=[None, 4, 5])
+                z = paddle.static.nn.fc(x, 100)
+                loss = paddle.mean(z)
+                scheduler = paddle.optimizer.lr.ConstantWarmup(
+                    learning_rate=0.5, warmup_steps=20, start_lr=0, verbose=True)
+                sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+                sgd.minimize(loss)
+            exe = paddle.static.Executor()
+            exe.run(start_prog)
+            for epoch in range(20):
+                for batch_id in range(5):
+                    out = exe.run(
+                        main_prog,
+                        feed={
+                            'x': np.random.randn(3, 4, 5).astype('float32'),
+                            'y': np.random.randn(3, 4, 5).astype('float32')
+                        },
+                        fetch_list=loss.name)
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
+    """
+
+    def __init__(self,
+                 learning_rate,
+                 warmup_steps,
+                 start_lr,
+                 last_epoch=-1,
+                 verbose=False):
+        type_check = isinstance(learning_rate, float) or isinstance(
+            learning_rate, int) or isinstance(learning_rate, LRScheduler)
+        if not type_check:
+            raise TypeError(
+                "the type of learning_rate should be [int, float or LRScheduler], the current type is {}".
+                format(learning_rate))
+        self.learning_rate = learning_rate
+        assert warmup_steps > 0 and isinstance(
+            warmup_steps, int), " 'warmup_steps' must be a positive integer."
+        self.warmup_steps = warmup_steps
+        self.start_lr = start_lr
+        super(ConstantWarmup, self).__init__(start_lr, last_epoch, verbose)
+
+    def state_dict(self):
+        """
+        Returns the state of the ConstantWarmup scheduler as a :class:`dict`.
+        It is a subset of ``self.__dict__`` .
+        """
+        state_dict = super(ConstantWarmup, self).state_dict()
+        if isinstance(self.learning_rate, LRScheduler):
+            state_dict["ConstantWarmup_LR"] = self.learning_rate.state_dict()
+        return state_dict
+
+    def set_state_dict(self, state_dict):
+        """
+        Loads state_dict for ConstantWarmup scheduler.
+        """
+        super(ConstantWarmup, self).set_state_dict(state_dict)
+        if isinstance(self.learning_rate, LRScheduler):
+            self.learning_rate.set_state_dict(state_dict["ConstantWarmup_LR"])
+
+    def get_lr(self):
+        if self.last_epoch < self.warmup_steps:
+            return self.start_lr
         else:
             if isinstance(self.learning_rate, LRScheduler):
                 self.learning_rate.step(self.last_epoch - self.warmup_steps)
