@@ -89,6 +89,8 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   use_cvm_ = desc.use_cvm();
   // for sparse value accessor, embedding only
   no_cvm_ = desc.no_cvm();
+  scale_sparse_gradient_with_batch_size_ =
+      desc.scale_sparse_gradient_with_batch_size();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
@@ -591,7 +593,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_,
+            scale_sparse_gradient_with_batch_size_);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -866,7 +869,8 @@ void DownpourWorker::TrainFiles() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_,
+            scale_sparse_gradient_with_batch_size_);
       }
     }
 
