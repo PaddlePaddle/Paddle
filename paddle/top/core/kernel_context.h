@@ -16,9 +16,8 @@
 
 #include <utility>
 
-#include <boost/any.hpp>
-
 #include "paddle/top/core/tensor_interface.h"
+#include "paddle/utils/any.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -40,7 +39,7 @@ class OpKernelContext {
   OpKernelContext(const DeviceContext& dev_ctx,
                   const std::vector<std::shared_ptr<TensorInterface>>& inputs,
                   const std::vector<std::shared_ptr<TensorInterface>>& outputs,
-                  const std::vector<boost::any>& attrs)
+                  const std::vector<paddle::any>& attrs)
       : dev_ctx_(dev_ctx), inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
 
   template <typename CtxType>
@@ -75,8 +74,7 @@ class OpKernelContext {
   // Note: can't use API Tensor here, the inference don't use this API Tensor
   std::vector<std::shared_ptr<TensorInterface>> inputs_{};
   std::vector<std::shared_ptr<TensorInterface>> outputs_{};
-  // TODO(chenweihang): replaced by paddle::any
-  std::vector<boost::any> attrs_{};
+  std::vector<paddle::any> attrs_{};
 
   // Only contains input like list[Tensor] need `range`
   // TODO(chenweihang): replaced by small_vector
