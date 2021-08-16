@@ -6,3 +6,4 @@ Pillow
 six
 decorator
 astor
+bfloat16==1.1
