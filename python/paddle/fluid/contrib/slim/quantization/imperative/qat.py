@@ -216,6 +216,41 @@ class ImperativeQuantAware(object):
             model(paddle.nn.Layer): the model to be quantized.
         Returns:
             None
+
+        Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.fluid.contrib.slim.quantization \
+                import ImperativeQuantAware
+
+            class ImperativeModel(paddle.nn.Layer):
+                def __init__(self):
+                    super(ImperativeModel, self).__init__()
+                    # self.linear_0 would skip the quantization.
+                    self.linear_0 = paddle.nn.Linear(784, 400)
+                    self.linear_0.skip_quant = True
+
+                    # self.linear_1 would not skip the quantization.
+                    self.linear_1 = paddle.nn.Linear(400, 10)
+                    self.linear_1.skip_quant = False
+
+                def forward(self, inputs):
+                    x = self.linear_0(inputs)
+                    x = self.linear_1(inputs)
+                    return x
+
+            model = ImperativeModel()
+            imperative_qat = ImperativeQuantAware(
+                weight_quantize_type='abs_max',
+                activation_quantize_type='moving_average_abs_max')
+
+            # Add the fake quant logical.
+            # The original model will be rewrite.
+            #
+            # There is only one Layer(self.linear1) would be added the
+            # fake quant logical.
+            imperative_qat.quantize(model)
         """
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
