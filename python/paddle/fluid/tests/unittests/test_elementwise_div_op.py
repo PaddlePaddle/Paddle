@@ -362,7 +362,7 @@ class TestDivApi(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
-            z_expected = np.array([2., 0.6, 2.], dtype='float32')
+            z_expected = np.array([2, 0.6, 2], dtype='float32')
             self.assertEqual((np.array(z_value) == z_expected).all(), True)
 
     def test_dygraph(self):
@@ -373,7 +373,7 @@ class TestDivApi(unittest.TestCase):
             y = fluid.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
-            z_expected = np.array([2., 0.6, 2.])
+            z_expected = np.array([2, 0.6, 2])
             self.assertEqual((np_z == z_expected).all(), True)
 
 class TestDivInplaceApi(TestDivApi):
