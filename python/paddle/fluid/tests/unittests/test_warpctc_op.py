@@ -18,7 +18,7 @@ import sys
 import unittest
 import numpy as np
 from op_test import OpTest
-from op_test import skip_check_grad_assert_ci
+from op_test import skip_check_grad_ci
 from test_softmax_op import stable_softmax
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -457,7 +457,7 @@ class TestWarpCTCOpFp64(OpTest):
         self.check_grad(["Logits"], "Loss")
 
 
-@skip_check_grad_assert_ci(reason="For warpctc, not check grad.")
+@skip_check_grad_ci(reason="For warpctc, not check grad.")
 class TestWarpCTCOpAttr(OpTest):
     def config(self):
         self.batch_size = 4
@@ -542,7 +542,7 @@ class TestWarpCTCOpAttr(OpTest):
         self.check_output()
 
 
-@skip_check_grad_assert_ci(reason="For warpctc, not check grad.")
+@skip_check_grad_ci(reason="For warpctc, not check grad.")
 class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpAttr):
     def config(self):
         self.batch_size = 4
@@ -557,7 +557,7 @@ class TestWarpCTCOpFp64NormByTimes(TestWarpCTCOpAttr):
         self.norm_by_total_logits_len = False
 
 
-@skip_check_grad_assert_ci(reason="For warpctc, not check grad.")
+@skip_check_grad_ci(reason="For warpctc, not check grad.")
 class TestWarpCTCOpFp64SizeAverage(TestWarpCTCOpAttr):
     def config(self):
         self.batch_size = 4
@@ -572,7 +572,7 @@ class TestWarpCTCOpFp64SizeAverage(TestWarpCTCOpAttr):
         self.norm_by_total_logits_len = False
 
 
-@skip_check_grad_assert_ci(reason="For warpctc, not check grad.")
+@skip_check_grad_ci(reason="For warpctc, not check grad.")
 class TestWarpCTCOpFp64LengthAverage(TestWarpCTCOpAttr):
     def config(self):
         self.batch_size = 4
