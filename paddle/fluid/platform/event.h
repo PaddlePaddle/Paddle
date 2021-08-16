@@ -140,9 +140,9 @@ class CudaEvent {
 
   ~CudaEvent() {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event_));
+    hipEventDestroy(event_);
 #else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event_));
+    cudaEventDestroy(event_);
 #endif
   }
 

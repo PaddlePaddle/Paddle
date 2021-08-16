@@ -1254,9 +1254,10 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  if (kernel_iter == kernels.end() &&
-      is_xpu_place(expected_kernel_key.place_) &&
-      !paddle::platform::is_xpu_support_op(type_, expected_kernel_key)) {
+  if ((kernel_iter == kernels.end() &&
+       is_xpu_place(expected_kernel_key.place_) &&
+       !paddle::platform::is_xpu_support_op(type_, expected_kernel_key)) ||
+      paddle::platform::is_in_xpu_black_list(type_)) {
     VLOG(3) << "missing XPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";

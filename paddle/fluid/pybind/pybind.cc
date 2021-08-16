@@ -1632,7 +1632,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 #ifdef PADDLE_WITH_XPU
+  py::enum_<platform::XPUVersion>(m, "XPUVersion", py::arithmetic())
+      .value("XPU1", platform::XPUVersion::XPU1)
+      .value("XPU2", platform::XPUVersion::XPU2)
+      .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+  m.def("get_xpu_device_version",
+        [](int device_id) { return platform::get_xpu_version(device_id); });
 #endif
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
@@ -2048,6 +2054,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindOpDesc(&m);
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
+  BindProcessMeshDesc(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -2210,7 +2217,15 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_ASCEND_CL
   m.def("get_npu_device_count", platform::GetNPUDeviceCount);
-  m.def("npu_finalize", []() { platform::AclInstance::Instance().Finalize(); });
+  m.def("npu_finalize", []() {
+    auto &pool = platform::DeviceContextPool::Instance();
+    auto devices = platform::GetSelectedNPUDevices();
+    for (size_t i = 0; i < devices.size(); ++i) {
+      platform::NPUDeviceGuard guard(devices[i]);
+      pool.Get(platform::NPUPlace(devices[i]))->Wait();
+    }
+    platform::AclInstance::Instance().Finalize();
+  });
 
   py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
 
