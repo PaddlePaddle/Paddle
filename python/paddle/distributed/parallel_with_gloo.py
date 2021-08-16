@@ -225,7 +225,7 @@ def release_gloo(rank_id):
                 server_endpoint = "127.0.0.1:%s" % (find_free_port())
                 for id in range(num_of_ranks):
                     p = multiprocessing.Process(
-                        target=test_barrier_func,
+                        target=test_release_gloo,
                         args=(id, num_of_ranks, server_endpoint))
                     jobs.append(p)
                     p.start()
