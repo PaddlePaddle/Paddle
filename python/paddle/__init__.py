@@ -446,7 +446,6 @@ __all__ = [  # noqa
            'ones_like',
            'index_sample',
            'cast',
-           'grad',
            'all',
            'ones',
            'not_equal',
