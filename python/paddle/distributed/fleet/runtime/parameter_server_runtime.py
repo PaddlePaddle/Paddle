@@ -26,6 +26,8 @@ from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 class ParameterServerRuntime(RuntimeBase):
     def __init__(self):

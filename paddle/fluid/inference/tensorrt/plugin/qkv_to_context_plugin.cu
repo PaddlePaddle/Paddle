@@ -20,7 +20,6 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/operators/math/blas.h"
@@ -148,11 +147,11 @@ inline void TransposeQKV(const int batch, const int seq_len,
   }
 }
 
-int QkvToContextPluginDynamic::initialize() { return 0; }
+int QkvToContextPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   // input[0], (B, S, 3 * N * H, 1, 1)
   // input[1], (B, head_num, seq_len, seq_len)
   // output, (B, seq_len, hidden)
@@ -178,7 +177,7 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
 
 bool QkvToContextPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
@@ -216,7 +215,8 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType QkvToContextPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
       index, 0, platform::errors::InvalidArgument(
                     "The EmbEltwiseLayernorm Plugin only has one input, so the "
@@ -225,10 +225,18 @@ nvinfer1::DataType QkvToContextPluginDynamic::getOutputDataType(
   return input_types[0];
 }
 
+template <typename T>
+__global__ void apply_scale(T *data, T scale, int n) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  data[tid] = data[tid] * scale;
+#endif
+}
+
 int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) {
+    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   int input_num = ProductDim(input_dims);
   // input[0], (B, S, 3 * N * H, 1, 1)
@@ -291,10 +299,17 @@ int QkvToContextPluginDynamic::enqueue(
         platform::DeviceContextPool::Instance().Get(
             platform::CUDAPlace(device_id)));
 
+    int n_q = seq_len * head_number_ * head_size_ * batch;
+    constexpr int threads = 128;
+    int blocks = (n_q + threads - 1) / threads;
+
+    apply_scale<<<blocks, threads, 0, stream>>>(tptr, static_cast<half>(scale_),
+                                                n_q);
+
     const platform::CUDADeviceContext &dev_ctx = *device_ctx;
     operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
     multihead_compute_func(dev_ctx, batch, seq_len, head_number_, head_size_,
-                           qkptr, input1_data, tptr, half(scale_), half(0.0));
+                           qkptr, input1_data, tptr, half(1.), half(0.0));
 
     int grid = batch * head_number_ * seq_len;
     int block = head_size_;

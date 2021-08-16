@@ -25,8 +25,6 @@ from paddle.fluid.contrib.mixed_precision.amp_nn import check_finite_and_unscale
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCheckFiniteAndUnscale(unittest.TestCase):
     def get_prog(self):
         paddle.enable_static()
@@ -39,7 +37,11 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
                 name="status", shape=[8], dtype='float32')
             main_program.global_block().append_op(
                 type="alloc_float_status",
-                outputs={"FloatStatus": float_status}, )
+                outputs={"FloatStatus": float_status})
+            main_program.global_block().append_op(
+                type="clear_float_status",
+                inputs={"FloatStatus": float_status},
+                outputs={"FloatStatusOut": float_status})
             c = paddle.fluid.layers.elementwise_div(a, b)
             out, found_inf = check_finite_and_unscale(
                 [c], scale, float_status=float_status)
@@ -91,8 +93,6 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
         self.assertFalse(found_inf[0])
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
     def get_prog(self):
         paddle.enable_static()
@@ -105,13 +105,21 @@ class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
                 name="status", shape=[8], dtype='float32')
             main_program.global_block().append_op(
                 type="alloc_float_status",
-                outputs={"FloatStatus": float_status}, )
+                outputs={"FloatStatus": float_status})
+            main_program.global_block().append_op(
+                type="clear_float_status",
+                inputs={"FloatStatus": float_status},
+                outputs={"FloatStatusOut": float_status})
             c = paddle.fluid.layers.elementwise_div(a, b)
             out, found_inf = check_finite_and_unscale(
                 [c], scale, float_status=float_status)
             main_program.global_block().append_op(
                 type="alloc_float_status",
-                outputs={"FloatStatus": float_status}, )
+                outputs={"FloatStatus": float_status})
+            main_program.global_block().append_op(
+                type="clear_float_status",
+                inputs={"FloatStatus": float_status},
+                outputs={"FloatStatusOut": float_status})
             d = paddle.fluid.layers.elementwise_add(a, b)
             out, found_inf = check_finite_and_unscale(
                 [d], scale, float_status=float_status)

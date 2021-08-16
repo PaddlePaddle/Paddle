@@ -15,7 +15,8 @@ register_operators(EXCLUDES
     fusion_group_op
     fusion_gru_op
     fusion_lstm_op
-    fused_bn_add_activation_op)
+    fused_bn_add_activation_op
+    fused_transformer_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
@@ -32,8 +33,7 @@ if (WITH_GPU OR WITH_ROCM)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_batch_norm_act);\n")
     endif()
     # conv_fusion_op needs cudnn 7 above
-    # HIP not support cudnnConvolutionBiasActivationForward
-    if ((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7100))
+    if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
         op_library(conv_fusion_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
     endif()

@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 
-__all__ = ['run_check']
+__all__ = []
 
 
 def _simple_network():

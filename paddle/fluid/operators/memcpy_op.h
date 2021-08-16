@@ -51,17 +51,14 @@ class MemcpyFunctor {
     } else if (dst_place_type_ == 1) {
       framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
                             &out_tensor);
-    }
+    } else if (dst_place_type_ == 0) {
+      framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);
 #ifdef PADDLE_WITH_ASCEND_CL
-    else if (dst_place_type_ == 0) {  // NOLINT
-      framework::TensorCopy(lod_tensor, platform::CPUPlace(), dev_ctx_,
-                            &out_tensor);
     } else if (dst_place_type_ == 4) {
       framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
                             &out_tensor);
-    }
 #endif
-    else {  // NOLINT
+    } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
     }

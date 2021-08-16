@@ -14,6 +14,8 @@
 from paddle.fluid.optimizer import RecomputeOptimizer as RO
 from .meta_optimizer_base import MetaOptimizerBase
 
+__all__ = []
+
 
 class RecomputeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

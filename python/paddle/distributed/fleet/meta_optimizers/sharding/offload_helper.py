@@ -15,6 +15,8 @@
 from ..common import is_optimizer_op, OP_ROLE_KEY, OpRole
 from paddle.fluid import core, unique_name
 
+__all__ = []
+
 
 class OffloadHelper(object):
     cpu_place_type = 0

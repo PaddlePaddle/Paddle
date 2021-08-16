@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+__all__ = []
+
 
 class ProgramDeps(object):
     def __init__(self, block, start_vars, end_vars):

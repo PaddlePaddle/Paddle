@@ -18,6 +18,8 @@ import os
 import paddle
 import warnings
 
+__all__ = []
+
 
 class DistributedInfer:
     """

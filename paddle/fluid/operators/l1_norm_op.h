@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -33,7 +34,7 @@ class L1NormKernel : public framework::OpKernel<T> {
     auto &place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    out.device(place) = x.abs().sum();
+    EigenL1Norm<std::decay_t<decltype(place)>, T>::Eval(place, out, x);
   }
 };
 
@@ -59,8 +60,9 @@ class L1NormGradKernel : public framework::OpKernel<T> {
     auto &place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    Eigen::DSizes<int, 1> x_dsize(x->numel());
-    dx_eigen.device(place) = d_out_eigen.broadcast(x_dsize) * x_eigen.sign();
+    Eigen::DSizes<Eigen::DenseIndex, 1> x_dsize(x->numel());
+    EigenL1NormGrad<std::decay_t<decltype(place)>, T>::Eval(
+        place, dx_eigen, d_out_eigen, x_eigen, x_dsize);
   }
 };
 

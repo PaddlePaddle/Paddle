@@ -17,16 +17,17 @@ limitations under the License. */
 #include <limits>
 #include <memory>
 #include <vector>
-#ifdef PADDLE_WTIH_PSLIB
+#ifdef PADDLE_WITH_PSLIB
 #include "common_value.h"  // NOLINT
 #endif
 #ifdef PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
 #endif
+#include "paddle/fluid/framework/rw_lock.h"
 #include "thrust/pair.h"
-//#include "cudf/concurrent_unordered_map.cuh.h"
+// #include "cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #ifdef PADDLE_WITH_HETERPS
-#include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
 #include "paddle/fluid/platform/type_defs.h"
 
 namespace paddle {
@@ -62,6 +63,8 @@ class HashTable {
               Sgd sgd, gpuStream_t stream);
 
   int size() { return container_->size(); }
+
+  std::unique_ptr<RWLock> rwlock_{nullptr};
 
  private:
   TableContainer<KeyType, ValType>* container_;

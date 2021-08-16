@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/capi_exp/pd_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/capi_exp/pd_types.h"
+#include "paddle/fluid/inference/capi_exp/utils_internal.h"
 #include "paddle/fluid/platform/enforce.h"
 
 #define CHECK_NULL_POINTER_PARM(param)                  \
@@ -125,13 +127,27 @@ PD_Bool PD_ConfigUseGpu(__pd_keep PD_Config* pd_config) {
 }
 
 void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
-                        int32_t l3_workspace_size) {
+                        int32_t l3_workspace_size, PD_Bool locked,
+                        PD_Bool autotune, const char* autotune_file,
+                        const char* precision, PD_Bool adaptive_seqlen) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableXpu(l3_workspace_size);
+  config->EnableXpu(l3_workspace_size, locked, autotune, autotune_file,
+                    precision, adaptive_seqlen);
 }
+
+void PD_ConfigEnableNpu(__pd_keep PD_Config* pd_config, int32_t device_id) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableNpu(device_id);
+}
+
 PD_Bool PD_ConfigUseXpu(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->use_xpu();
+}
+
+PD_Bool PD_ConfigUseNpu(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->use_npu();
 }
 
 int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
@@ -141,6 +157,10 @@ int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
 int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->xpu_device_id();
+}
+int32_t PD_ConfigNpuDeviceId(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->npu_device_id();
 }
 int32_t PD_ConfigMemoryPoolInitSizeMb(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -377,6 +397,32 @@ void PD_ConfigEnableGpuMultiStream(__pd_keep PD_Config* pd_config) {
 void PD_ConfigPartiallyRelease(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->PartiallyRelease();
+}
+void PD_ConfigDeletePass(__pd_keep PD_Config* pd_config, const char* pass) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->pass_builder()->DeletePass(pass);
+}
+void PD_ConfigInsertPass(__pd_keep PD_Config* pd_config, size_t idx,
+                         const char* pass) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->pass_builder()->InsertPass(idx, pass);
+}
+void PD_ConfigAppendPass(__pd_keep PD_Config* pd_config, const char* pass) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->pass_builder()->AppendPass(pass);
+}
+__pd_give PD_OneDimArrayCstr* PD_ConfigAllPasses(
+    __pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  std::vector<std::string> passes = config->pass_builder()->AllPasses();
+  return paddle_infer::CvtVecToOneDimArrayCstr(passes);
+}
+const char* PD_ConfigSummary(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  auto sum_str = config->Summary();
+  char* c = reinterpret_cast<char*>(malloc(sum_str.length() + 1));
+  snprintf(c, sum_str.length() + 1, "%s", sum_str.c_str());
+  return c;
 }
 
 }  // extern "C"

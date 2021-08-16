@@ -18,6 +18,8 @@ import numpy as np
 from paddle.distributed import fleet
 from functools import reduce
 
+__all__ = []
+
 registerd_op = {## forwards
                 "elementwise_add": "AddParser",
                 "matmul": "MatMulParser",
@@ -134,7 +136,7 @@ class AscendHelper(object):
 
     def dtype2np(self, index):
         assert index in self.dtype2np_map, "index[%d] is not supported %d" % (
-            dtype)
+            index)
         return self.dtype2np_map[index]
 
 
@@ -340,7 +342,7 @@ class DotPowParser(AscendParserBase):
         y = self._get_ge_input(self.op.input_arg_names[1])
         pow = core.GEOperatorFactory.create_operator(
             "dotpow" + self._accumulated_op_id(),
-            "Pow").set_input("x1", x1).set_input("x2", y)
+            "Pow").set_input("x1", x).set_input("x2", y)
         return [pow], [[0]]
 
 
@@ -916,15 +918,15 @@ class ScatterParser(AscendParserBase):
             scatter_value = core.GEOperatorFactory.create_operator(
                 "scatter" + self._accumulated_op_id(),
                 "TensorScatterAdd").set_input(
-                    "x", x_var).set_input("indices", index_var).set_input(
-                        "updates", updatesi_var)
+                    "x", x).set_input("indices", index).set_input("updates",
+                                                                  updates)
         else:
             scatter_value = core.GEOperatorFactory.create_operator(
                 "scatter" + self._accumulated_op_id(),
                 "TensorScatterUpdate").set_input(
-                    "x", x_var).set_input("indices", index_var).set_input(
-                        "updates", updates_var)
-        return [x_var, index_var, updates_var, scatter_value], [[-1]]
+                    "x", x).set_input("indices", index).set_input("updates",
+                                                                  updates)
+        return [x, index, updates, scatter_value], [[-1]]
 
 
 class CastParser(AscendParserBase):

@@ -15,6 +15,7 @@
 from collections import OrderedDict
 from ..framework import Parameter
 from .layers import Layer
+from .base import param_guard
 
 __all__ = [
     'Sequential',
@@ -159,7 +160,8 @@ class ParameterList(Layer):
                 self.add_parameter(str(idx), param)
 
     def __getitem__(self, idx):
-        return self._parameters[str(idx)]
+        with param_guard(self._parameters):
+            return self._parameters[str(idx)]
 
     def __setitem__(self, idx, param):
         assert isinstance(param, Parameter)
@@ -169,7 +171,8 @@ class ParameterList(Layer):
         return len(self._parameters)
 
     def __iter__(self):
-        return iter(self._parameters.values())
+        with param_guard(self._parameters):
+            return iter(self._parameters.values())
 
     def append(self, parameter):
         """Appends a given parameter at the end of the list.

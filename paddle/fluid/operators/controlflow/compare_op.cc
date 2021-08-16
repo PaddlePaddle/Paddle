@@ -131,18 +131,18 @@ class CompareOp : public framework::OperatorWithKernel {
 
 REGISTER_COMPARE_OP(less_than, "Out = X < Y");
 REGISTER_COMPARE_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor,
-                        paddle::operators::GreaterEqualFunctor);
+                        paddle::operators::GreaterThanFunctor);
 REGISTER_COMPARE_OP(less_equal, "Out = X <= Y");
 REGISTER_COMPARE_KERNEL(less_equal, CPU, paddle::operators::LessEqualFunctor,
-                        paddle::operators::GreaterThanFunctor);
+                        paddle::operators::GreaterEqualFunctor);
 REGISTER_COMPARE_OP(greater_than, "Out = X > Y");
 REGISTER_COMPARE_KERNEL(greater_than, CPU,
                         paddle::operators::GreaterThanFunctor,
-                        paddle::operators::LessEqualFunctor);
+                        paddle::operators::LessThanFunctor);
 REGISTER_COMPARE_OP(greater_equal, "Out = X >= Y");
 REGISTER_COMPARE_KERNEL(greater_equal, CPU,
                         paddle::operators::GreaterEqualFunctor,
-                        paddle::operators::LessThanFunctor);
+                        paddle::operators::LessEqualFunctor);
 REGISTER_COMPARE_OP(equal, "Out = X == Y");
 REGISTER_COMPARE_KERNEL(equal, CPU, paddle::operators::EqualFunctor,
                         paddle::operators::EqualFunctor);

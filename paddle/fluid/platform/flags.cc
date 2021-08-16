@@ -93,6 +93,10 @@ DEFINE_string(selected_npus, "",
               "This option is useful when doing multi process training and "
               "each process have only one device (NPU). If you want to use "
               "all visible devices, set this to empty string.");
+DEFINE_string(
+    npu_config_path, "",
+    "The absolute path of configuration json file, like: /tmp/config.json. "
+    "If proveided, it will be passed to aclInit().");
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -579,6 +583,19 @@ DEFINE_string(tracer_mkldnn_ops_off, "",
               "List of OneDNN operation types to be turned off");
 
 /**
+ * Debug related FLAG
+ * Name: check_kernel_launch
+ * Since Version: 2.1.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Check kernel launch status after every kernel compute.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DEFINE_bool(check_kernel_launch, false,
+            "Check kernel launch status after every kernel compute");
+#endif
+
+/**
  * CUDNN related FLAG
  * Name: conv2d_disable_cudnn
  * Since Version:
@@ -588,4 +605,18 @@ DEFINE_string(tracer_mkldnn_ops_off, "",
  */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DEFINE_bool(conv2d_disable_cudnn, false, "Disable cudnn in conv2d");
+#endif
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_get_host_by_name_time
+ * Since Version: 2.2.0
+ * Value Range: int32, default=120
+ * Example:
+ * Note: Get host by name time.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP)
+DEFINE_int32(get_host_by_name_time, 120,
+             "The maximum time for get host by name time");
 #endif
