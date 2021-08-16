@@ -174,9 +174,11 @@ class AdamW(Adam):
             multi_precision=multi_precision)
         self._default_dict = {'coeff': coeff}
 
-        # now the adamw op only supports cpu and npu
-        if core.is_compiled_with_npu() or core.is_compiled_with_cpu():
-            self.type = "adamw"
+        self.type = "adamw"
+
+        # now the adamw op doesn't support cuda
+        if core.is_compiled_with_cuda():
+            self.type = "adam"
         # Use _auxiliary_vars together with _set_auxiliary_var/_get_auxiliary_var to achieve that.
         self._auxiliary_vars = dict()
 
