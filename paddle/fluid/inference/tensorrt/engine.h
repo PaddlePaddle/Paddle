@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/utils/any.h"
 
 namespace paddle {
 namespace framework {
@@ -425,8 +426,8 @@ class TensorRTEngine {
                       platform::errors::InvalidArgument(
                           "Attribute %s not found in trt engine.", attr_name));
     try {
-      return *boost::any_cast<AttrType*>(attrs_.at(attr_name));
-    } catch (boost::bad_any_cast&) {
+      return *paddle::any_cast<AttrType*>(attrs_.at(attr_name));
+    } catch (paddle::bad_any_cast&) {
       auto TypeToString = [](const std::type_info& info) -> std::string {
         if (std::type_index(info) == std::type_index(typeid(bool*))) {
           return "bool";
@@ -504,7 +505,7 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
 
-  std::unordered_map<std::string, boost::any> attrs_;
+  std::unordered_map<std::string, paddle::any> attrs_;
   std::unordered_map<std::string, std::function<void(void)>> attr_dels_;
 
   // For dynamic shape

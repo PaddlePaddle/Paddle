@@ -142,6 +142,11 @@ class Optimizer(object):
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
+        # NOTE(zhiqiu): sometimes we want to add some variables(Tenosr) to the optimizer for a specific optimization,
+        # for example, we want to pass 'found_inf' to adam optimizer so it can skip update when found_inf is True.
+        # And these variables should not be the parameters of Optimizer's construnctor (because not commonly used). 
+        # Use _auxiliary_vars together with _set_auxiliary_var/_get_auxiliary_var to achieve that.
+        self._auxiliary_vars = dict()
 
     @framework.dygraph_only
     def state_dict(self):
@@ -293,6 +298,15 @@ class Optimizer(object):
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
+
+    def _set_auxiliary_var(self, key, val):
+        self._auxiliary_vars[key] = val
+
+    def _get_auxiliary_var(self, key):
+        if key in self._auxiliary_vars:
+            return self._auxiliary_vars[key]
+        else:
+            return None
 
     def _create_global_learning_rate(self):
         from paddle.optimizer.lr import LRScheduler
@@ -2467,6 +2481,13 @@ class AdamOptimizer(Optimizer):
             "Beta1Pow": [beta1_pow_acc],
             "Beta2Pow": [beta2_pow_acc]
         }
+
+        # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
+        found_inf = self._get_auxiliary_var('found_inf')
+
+        if found_inf:
+            inputs['SkipUpdate'] = found_inf
+
         outputs = {
             "ParamOut": [param_and_grad[0]],
             "Moment1Out": [moment1],
@@ -2514,30 +2535,46 @@ class AdamOptimizer(Optimizer):
 
             with block.program._optimized_guard([]):
                 inputs = {"X": beta1_pow_acc}
+                outputs = {"Out": beta1_pow_acc}
                 attrs = {}
                 if isinstance(self._beta1, Variable):
-                    inputs['ScaleTensor'] = self._beta1
+                    inputs["Y"] = self._beta1
+                    # use elementwise_mul for better performance
+                    block.append_op(
+                        type="elementwise_mul",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
                 else:
                     attrs['scale'] = self._beta1
-                block.append_op(
-                    type="scale",
-                    inputs=inputs,
-                    outputs={"Out": beta1_pow_acc},
-                    attrs=attrs,
-                    stop_gradient=True)
+                    block.append_op(
+                        type="scale",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
 
                 inputs = {"X": beta2_pow_acc}
+                outputs = {"Out": beta2_pow_acc}
                 attrs = {}
                 if isinstance(self._beta2, Variable):
-                    inputs['ScaleTensor'] = self._beta2
+                    inputs["Y"] = self._beta2
+                    # use elementwise_mul for better performance
+                    block.append_op(
+                        type="elementwise_mul",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
                 else:
                     attrs['scale'] = self._beta2
-                block.append_op(
-                    type="scale",
-                    inputs=inputs,
-                    outputs={"Out": beta2_pow_acc},
-                    attrs=attrs,
-                    stop_gradient=True)
+                    block.append_op(
+                        type="scale",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
 
 
 class AdamaxOptimizer(Optimizer):
@@ -4190,6 +4227,11 @@ class PipelineOptimizer(object):
     """
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
+        self._device = 'cpu'
+        if core.is_compiled_with_npu():
+            self._device = "npu"
+        elif core.is_compiled_with_cuda():
+            self._device = "gpu"
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
         if not isinstance(optimizer, Optimizer) and not isinstance(
@@ -4355,6 +4397,10 @@ class PipelineOptimizer(object):
         return op_role & int(self._op_role.Backward) and op_role & int(
             self._op_role.Loss)
 
+    def _is_forward_op(self, op):
+        return self._op_role_key in op.attr_names and (
+            int(op.attr(self._op_role_key)) == int(self._op_role.Forward))
+
     def _is_backward_op(self, op):
         return self._op_role_key in op.attr_names and (
             int(op.attr(self._op_role_key)) & int(self._op_role.Backward))
@@ -4387,7 +4433,7 @@ class PipelineOptimizer(object):
         for op in block.ops:
             device = op.attr(self._op_device_key)
             # Copy ops whose op_device set to "gpu:all" to all sections.
-            if device == "gpu:all":
+            if device == f"{self._device}:all":
                 for device in devices:
                     program = device_program_map[device]
                     op_desc = op.desc
@@ -4486,7 +4532,7 @@ class PipelineOptimizer(object):
         op._rename_input(old_name, new_name)
         op._rename_output(old_name, new_name)
 
-    def _create_var(self, block, ref_var, name):
+    def _create_var(self, block, ref_var, name, dtype=None):
         """
         Create a new var for block, which has the same type,
         shape and dtype as ref_var, then rename it with the
@@ -4495,7 +4541,7 @@ class PipelineOptimizer(object):
         new_var = block.create_var(
             name=name,
             shape=ref_var.shape,
-            dtype=ref_var.dtype,
+            dtype=ref_var.dtype if dtype is None else dtype,
             type=ref_var.type,
             lod_level=ref_var.lod_level,
             persistable=ref_var.persistable,
@@ -4539,7 +4585,7 @@ class PipelineOptimizer(object):
         if op.attr(self._op_role_key) == lrsched_role:
             # For LRSched ops, we should put them on all sub-programs to
             # make sure each sub-program update the lr correctly
-            op._set_attr(self._op_device_key, "gpu:all")
+            op._set_attr(self._op_device_key, f"{self._device}:all")
         # bugfix in hybrid parallelism
         elif op.type == "sum" and self._is_backward_op(op):
             # For sum ops that compute the sum of @RENAMED@ vars
@@ -4606,10 +4652,13 @@ class PipelineOptimizer(object):
                     op.type == 'fill_constant' or
                     op.type == 'elementwise_max' or
                     op.type == 'elementwise_div'):
-                device = "gpu:all"
+                device = f"{self._device}:all"
             op._set_attr(self._op_device_key, device)
-        elif op.type == "alloc_float_status":
-            op._set_attr(self._op_device_key, "gpu:all")
+        elif self._is_weight_decay_op(op) and op.type == 'scale':
+            # set AdamW decay_coeff to device:all
+            op._set_attr(self._op_device_key, f"{self._device}:all")
+        elif op.type == "alloc_float_status" or op.type == "clear_float_status":
+            op._set_attr(self._op_device_key, f"{self._device}:all")
         else:
             other_known_ops = [
                 'update_loss_scaling',
@@ -4623,7 +4672,7 @@ class PipelineOptimizer(object):
                 "op_device set, they must be one of {}, but it " \
                 "is {}".format(other_known_ops, op.type)
             assert self._is_optimize_op(op)
-            op._set_attr(self._op_device_key, "gpu:all")
+            op._set_attr(self._op_device_key, f"{self._device}:all")
 
     def _add_op_device_attr(self, block):
         """
@@ -4638,7 +4687,7 @@ class PipelineOptimizer(object):
                 # We use "gpu:all" to represent the op should be put on all
                 # sub-programs, such as lr-related ops. Note that: "gpu:all"
                 # is only used by pipeline as an indicator.
-                op._set_attr(self._op_device_key, "gpu:all")
+                op._set_attr(self._op_device_key, f"{self._device}:all")
                 continue
             # op_device attribute has been set
             if self._get_op_device_attr(op): continue
@@ -4660,9 +4709,6 @@ class PipelineOptimizer(object):
             int(self._op_role.Optimize),
             int(self._op_role.Backward) | int(self._op_role.Loss),
         ]
-        pre_stage_id = None
-        decrease_flag = False
-        in_optimize = False
         for op in block.ops:
             if not op._has_kernel(op.type):
                 assert op.type == "conditional_block" and (
@@ -4678,8 +4724,6 @@ class PipelineOptimizer(object):
                     op_role,
                     op.type,
                     valid_op_role_value)
-            if int(op_role) == int(self._op_role.Optimize):
-                in_optimize = True
 
             assert op.has_attr(self._op_device_key), (
                 "op ({}) has no {} attribute.".format(op.type,
@@ -4688,34 +4732,15 @@ class PipelineOptimizer(object):
             device = op.attr(self._op_device_key)
             assert device, ("op_device attribute for op "
                             "{} has not been set.".format(op.type))
-            if device == "gpu:all" or device == "npu:all": continue
+            if device == f"{self._device}:all": continue
 
             dev_type = device.split(':')[0]
-            stage_id = int(device.split(':')[1])
             assert dev_type == "gpu" or dev_type == 'npu', (
                 "Now only gpu and npu devices are supported "
                 "for pipeline parallelism.")
 
             if device not in device_list:
                 device_list.append(device)
-
-            if not in_optimize:
-                if pre_stage_id is not None:
-                    interval = stage_id - pre_stage_id
-                    assert abs(interval) <= 1, \
-                        "The stage interval of two consecutive ops in the pipeline must be < = 1," \
-                        "but the interval of op={} and prev op is {}".format(op, interval)
-                    # stage must be in order, such as Forward(0 1 2 3 4), Backward(4 3 2 1 0)
-                    # if stage is unordered, such as Forward(0 1 2 3 4 3 4), will report error
-                    if interval == -1:
-                        decrease_flag = True
-                    if interval == 1:
-                        # FIXME(wangxi): recompute failed
-                        pass
-                        #assert decrease_flag is False, \
-                        #    "Pipeline stage must be in order, " \
-                        #    "please check the stage of op={}".format(op)
-                pre_stage_id = stage_id
 
         return device_list
 
@@ -4740,7 +4765,7 @@ class PipelineOptimizer(object):
 
         for index, op in enumerate(list(block.ops)):
             cur_device = op.attr(self._op_device_key)
-            if cur_device == "gpu:all": continue
+            if cur_device == f"{self._device}:all": continue
             for var_name in op.input_arg_names:
                 var = block.var(var_name)
                 # skip data var
@@ -4758,7 +4783,8 @@ class PipelineOptimizer(object):
                     prev_device = prev_op.attr(self._op_device_key) \
                         if prev_op else None
 
-                if prev_device is None or prev_device == "gpu:all": continue
+                if prev_device is None or prev_device == f"{self._device}:all":
+                    continue
 
                 if prev_device == cur_device: continue
 
@@ -4768,6 +4794,25 @@ class PipelineOptimizer(object):
                     continue
 
                 device_type = cur_device.split(':')[0] + ':'
+
+                def _check_stage(cur_id, prev_id):
+                    # check send/recv stage valid
+                    is_forward = self._is_forward_op(op)
+                    is_backward = self._is_backward_op(op)
+                    assert is_forward or is_backward, \
+                        'send/recv in pipeline should only be inserted in forward or backward,' \
+                        'please check the op_role of op={}'.format(op)
+
+                    if is_forward:
+                        assert prev_id < cur_id, \
+                            "In forward, send/recv can only be passed forward, but now " \
+                            "prev_stage={} great than cur_stage={}, please check op_device of op={}".format(
+                                prev_id, cur_id, op)
+                    elif is_backward:
+                        assert prev_id > cur_id, \
+                            "In backward, send/recv can only be passed backward, but now " \
+                            "prev_stage={} less than cur_stage={}, please check op_device of op={}".format(
+                                prev_id, cur_id, op)
 
                 def _insert_send_recv(cur_id, prev_id):
                     cur_dev = device_type + str(cur_id)
@@ -4835,6 +4880,41 @@ class PipelineOptimizer(object):
                             })
                         extra_index_info['index'] += 1
                     elif self.schedule_mode == '1F1B':  # 1F1B
+                        var_shape = list(var.shape)
+                        var_shape[0] = self.micro_batch_size if var_shape[
+                            0] < 0 else var_shape[0]
+
+                        numel = np.prod(var_shape)
+                        use_mp = (self.mp_degree > 1) and (
+                            numel % self.mp_degree == 0)
+
+                        if 'subprog' in var.name:
+                            # For recompute, if the checkpoints var is layer_norm_6.tmp_2
+                            # this var will be sent twice, layer_norm_6.tmp_2 for forward pass,
+                            # layer_norm_6.tmp_2.subprog_* for recompute pass.
+                            # We can store the first sent var and copy the value to the
+                            # second one to reduce one send/recv op.
+                            # The origin_ckpt_name is layer_norm_6.tmp_2, which will be used
+                            # to find the stored var for the forward pass.
+                            origin_name = var.name.split('subprog')[0][0:-1]
+                            associate_var = block.var(origin_name)
+                            block._insert_op_without_sync(
+                                index=index + extra_index_info['index'],
+                                type='assign',
+                                inputs={'X': [associate_var]},
+                                outputs={'Out': [var]},
+                                attrs={
+                                    'out_shape': var_shape,
+                                    'dtype': var.dtype,
+                                    self._op_device_key: cur_dev,
+                                    self._op_role_key: op_role,
+                                    'use_calc_stream': True,
+                                })
+                            extra_index_info['index'] += 1
+                            return
+
+                        _check_stage(cur_id, prev_id)
+
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='c_sync_calc_stream',
@@ -4847,8 +4927,7 @@ class PipelineOptimizer(object):
                         extra_index_info['index'] += 1
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='send_v2'
-                            if self.mp_degree == 1 else 'partial_send',
+                            type='send_v2' if not use_mp else 'partial_send',
                             inputs={'X': var},
                             attrs={
                                 self._op_device_key: prev_dev,
@@ -4862,7 +4941,6 @@ class PipelineOptimizer(object):
                             })
                         extra_index_info['index'] += 1
                         insert_index = None
-
                         if int(op_role) == int(self._op_role.Backward):
                             insert_index = extra_index_info[
                                 'first_optimize_index']
@@ -4870,7 +4948,6 @@ class PipelineOptimizer(object):
                         else:
                             insert_index = index
                             new_op_role = self._op_role.Backward
-
                         sync_comm_op = block._insert_op_without_sync(
                             index=insert_index + extra_index_info['index'],
                             type='c_sync_comm_stream',
@@ -4881,22 +4958,12 @@ class PipelineOptimizer(object):
                                 self._op_role_key: new_op_role,
                                 'ring_id': ring_id,
                             })
-
                         if int(op_role) == int(self._op_role.Forward):
                             sync_comm_op._set_attr('pipeline_flag', '')
                             extra_index_info['index'] += 1
-
-                        var_shape = list(var.shape)
-                        var_shape[0] = self.micro_batch_size if var_shape[
-                            0] < 0 else var_shape[0]
-
-                        numel = np.prod(var.shape)
-                        assert numel % self.mp_degree == 0, \
-                            "The numel={} must be divisible by mp_degree={}".format(numel, self.mp_degree)
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='recv_v2'
-                            if self.mp_degree == 1 else 'partial_recv',
+                            type='recv_v2' if not use_mp else 'partial_recv',
                             outputs={'Out': [var]},
                             attrs={
                                 'out_shape': var_shape,
@@ -4911,7 +4978,7 @@ class PipelineOptimizer(object):
                                 'id': self.mp_rank,
                             })
                         extra_index_info['index'] += 1
-                        if self.mp_degree > 1:
+                        if use_mp:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
                                 type='partial_allgather',
@@ -4971,13 +5038,19 @@ class PipelineOptimizer(object):
                 new_grad_name = name + "@MERGED"
                 self._rename_arg(op, name, new_grad_name)
 
-    def _accumulate_gradients(self, block, pp_allreduce_in_optimize=False):
+    def _accumulate_gradients(self,
+                              block,
+                              pp_allreduce_in_optimize=False,
+                              fp16_allreduce=False):
         """
         Create a new merged gradient for each parameter and accumulate the
         corresponding gradient to it.
         """
         merged_gradient_names = []
         first_opt_op_idx = None
+
+        merged_suffix = '@MERGED@FP16' if fp16_allreduce else '@MERGED'
+        dtype = paddle.float16 if fp16_allreduce else None
 
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             # remove the cast op of fp16 grad to fp32 grad
@@ -4989,12 +5062,10 @@ class PipelineOptimizer(object):
                     block._remove_op(index)
                     continue
 
-            if self._is_backward_op(op) and not first_opt_op_idx:
+            if self._is_backward_op(op) and first_opt_op_idx is None:
                 first_opt_op_idx = index + 1
                 # no optimize phase
                 if first_opt_op_idx == len(block.ops): return
-                if block.ops[first_opt_op_idx].type == "c_sync_comm_stream":
-                    first_opt_op_idx += 1
 
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
@@ -5006,12 +5077,14 @@ class PipelineOptimizer(object):
                     param_name = op_role_var[i]
                     if not block.has_var(param_name): continue
                     if '@BroadCast' in param_name: continue
+
                     param_grad_name = param_name + core.grad_var_suffix()
-                    merged_param_grad_name = param_grad_name + '@MERGED'
+                    merged_param_grad_name = param_grad_name + merged_suffix
                     if not block.has_var(merged_param_grad_name):
                         self._create_var(block, block.vars[param_name],
-                                         merged_param_grad_name)
+                                         merged_param_grad_name, dtype)
                     assert block.has_var(merged_param_grad_name)
+
                     param_grad_var = block.var(param_grad_name)
                     merged_param_grad_var = block.var(merged_param_grad_name)
                     merged_param_grad_var.persistable = True
@@ -5030,22 +5103,18 @@ class PipelineOptimizer(object):
                     offset += 1
                     grad_name = op_role_var[i + 1]
                     grad_var = block.vars[grad_name]
-                    if not 'cast_fp16' in grad_name:
-                        block._insert_op(
-                            index=first_opt_op_idx + offset,
-                            type='sum',
-                            inputs={'X': [grad_var, merged_param_grad_var]},
-                            outputs={'Out': merged_param_grad_var},
-                            attrs={
-                                self._op_role_key: self._op_role.Backward,
-                            })
-                        offset += 1
-                        merged_gradient_names.append(merged_param_grad_name)
-                    else:
-                        # cast gradient to fp32 to accumulate to merged gradient
+
+                    is_fp16_grad = 'cast_fp16' in grad_name
+                    need_cast = (is_fp16_grad is not fp16_allreduce)
+
+                    if need_cast:
+                        # if fp16_allreduce:
+                        #     cast grad to fp16 to accumulate to merged gradient
+                        # else:
+                        #     cast grad to fp32 to accumulate to merged gradient
                         cast_grad_var_name = param_grad_name + '@TMP'
-                        cast_grad_var = self._create_var(block, param_grad_var,
-                                                         cast_grad_var_name)
+                        cast_grad_var = self._create_var(
+                            block, param_grad_var, cast_grad_var_name, dtype)
                         cast_grad_var.persistable = False
                         block._insert_op(
                             index=first_opt_op_idx + offset,
@@ -5058,18 +5127,52 @@ class PipelineOptimizer(object):
                                 self._op_role_key: self._op_role.Backward,
                             })
                         offset += 1
-                        block._insert_op(
-                            index=first_opt_op_idx + offset,
-                            type='sum',
-                            inputs={
-                                'X': [merged_param_grad_var, cast_grad_var]
-                            },
-                            outputs={'Out': merged_param_grad_var},
-                            attrs={
-                                self._op_role_key: self._op_role.Backward,
-                            })
-                        offset += 1
-                        merged_gradient_names.append(merged_param_grad_name)
+                        grad_var = cast_grad_var
+
+                    block._insert_op(
+                        index=first_opt_op_idx + offset,
+                        type='sum',
+                        inputs={'X': [merged_param_grad_var, grad_var]},
+                        outputs={'Out': merged_param_grad_var},
+                        attrs={self._op_role_key: self._op_role.Backward, })
+                    offset += 1
+                    merged_gradient_names.append(merged_param_grad_name)
+
+        if not fp16_allreduce: return merged_gradient_names
+
+        first_opt_op_idx = None
+        for index, op in reversed(tuple(enumerate(list(block.ops)))):
+            if self._is_backward_op(op) and first_opt_op_idx is None:
+                first_opt_op_idx = index + 1
+                break
+        assert first_opt_op_idx is not None
+
+        # insert cast op from fp16->fp32
+        # FIXME(wangxi): maybe put in sharding is better, for some grad
+        #                is not in sharding device.
+        for fp16_grad_name in merged_gradient_names:
+            grad_name = fp16_grad_name.replace('@FP16', '')
+            param_name = fp16_grad_name.replace('@GRAD@MERGED@FP16', '')
+
+            if not block.has_var(grad_name):
+                self._create_var(block, block.vars[param_name], grad_name)
+            assert block.has_var(grad_name)
+
+            fp16_grad_var = block.var(fp16_grad_name)
+            grad_var = block.var(grad_name)
+            grad_var.persistable = False
+
+            block._insert_op(
+                index=first_opt_op_idx,
+                type='cast',
+                inputs={'X': fp16_grad_var},
+                outputs={'Out': grad_var},
+                attrs={
+                    'in_dtype': fp16_grad_var.dtype,
+                    'out_dtype': grad_var.dtype,
+                    self._op_role_key: self._op_role.Optimize,
+                })
+
         return merged_gradient_names
 
     def _add_sub_blocks(self, main_block, program_list):
@@ -5213,6 +5316,11 @@ class PipelineOptimizer(object):
         return op.desc.has_attr("op_namescope") \
             and op.desc.attr("op_namescope").startswith("/regularization")
 
+    def _is_weight_decay_op(self, op):
+        # in AdamW namescope is /optimizer_*/weight decay/
+        return op.desc.has_attr("op_namescope") \
+            and 'weight decay' in op.desc.attr("op_namescope")
+
     def _get_input_output_info(self, block):
         '''
         Get info of op input and output.
@@ -5245,6 +5353,7 @@ class PipelineOptimizer(object):
                 backward_recv_index = index
                 break
 
+        # last pipeline stage
         if backward_recv_index is None: return
 
         offset = 0
@@ -5267,6 +5376,55 @@ class PipelineOptimizer(object):
                     inputs={'X': [var]},
                     outputs={'Out': [var]},
                     attrs={self._op_role_key: self._op_role.Backward})
+        block._sync_with_cpp()
+
+    def _mv_head_recv(self, program):
+        """
+        A pass to move the recv op to the beginning of
+        the forward/backward phase
+        """
+        forward_insert_index = 0
+        backward_insert_index = None
+        block = program.global_block()
+        num_ops = len(program.global_block().ops)
+        for i in range(num_ops):
+            insert_index = None
+            op = program.global_block().ops[i]
+            op_role = int(op.attr(self._op_role_key))
+            if op_role == int(
+                    self._op_role.Backward) and backward_insert_index is None:
+                backward_insert_index = i
+            if op.type != "partial_recv" and op.type != "partial_allgather" and op.type != "nop" and op.type != "recv_v2":
+                continue
+            if op_role == int(self._op_role.Forward):
+                if i == forward_insert_index:
+                    forward_insert_index += 1
+                    continue
+                insert_index = forward_insert_index
+            elif op_role == int(self._op_role.Backward):
+                if i == backward_insert_index:
+                    backward_insert_index += 1
+                    continue
+                insert_index = backward_insert_index
+            else:
+                raise ValueError("Unknown op_role: {}".format(op_role))
+            op_inputs = dict()
+            for name in op.input_names:
+                op_inputs[name] = op.input(name)
+            op_outputs = dict()
+            for name in op.output_names:
+                op_outputs[name] = op.output(name)
+            block._insert_op_without_sync(
+                index=insert_index,
+                type=op.type,
+                inputs=op_inputs,
+                outputs=op_outputs,
+                attrs=op.all_attrs())
+            block._remove_op(i + 1)
+            if op_role == int(self._op_role.Forward):
+                forward_insert_index += 1
+            elif op_role == int(self._op_role.Backward):
+                backward_insert_index += 1
         block._sync_with_cpp()
 
     def minimize(self,
@@ -5382,6 +5540,9 @@ class PipelineOptimizer(object):
             place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         elif core.is_compiled_with_npu():
             place_id = int(os.getenv("FLAGS_selected_npus", "0"))
+        # A pass to move the recv op to the beginning of
+        # the forward/backward phase
+        self._mv_head_recv(program_list[self.local_rank])
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
@@ -5900,7 +6061,7 @@ class RecomputeOptimizer(Optimizer):
         self._main_program = loss.block.program
         self.block = loss.block
         if startup_program == None:
-            startup_program = fluid.default_startup_program()
+            startup_program = paddle.static.default_startup_program()
 
         with program_guard(self._main_program, startup_program):
             assert len(self.checkpoint_shape) > 0, (

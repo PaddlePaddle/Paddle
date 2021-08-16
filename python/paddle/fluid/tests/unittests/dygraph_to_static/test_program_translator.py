@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import astor
-import gast
+from paddle.utils import gast
 import inspect
 import numpy as np
 import textwrap

@@ -52,6 +52,7 @@ import paddle.metric  # noqa: F401
 import paddle.regularizer  # noqa: F401
 import paddle.incubate  # noqa: F401
 import paddle.autograd  # noqa: F401
+import paddle.device  # noqa: F401
 
 import paddle.jit  # noqa: F401
 import paddle.amp  # noqa: F401
@@ -238,6 +239,8 @@ from .tensor.search import nonzero  # noqa: F401
 from .tensor.search import sort  # noqa: F401
 
 from .tensor.to_string import set_printoptions  # noqa: F401
+
+from .tensor.einsum import einsum  # noqa: F401
 
 from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
@@ -427,7 +430,6 @@ __all__ = [  # noqa
            'exp',
            'expm1',
            'bernoulli',
-           'summary',
            'sinh',
            'round',
            'DataParallel',
@@ -513,4 +515,5 @@ __all__ = [  # noqa
            'standard_normal',
            'diagonal',
            'broadcast_tensors',
+           'einsum'
 ]

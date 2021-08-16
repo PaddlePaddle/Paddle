@@ -17,8 +17,8 @@ from __future__ import print_function
 import os
 import numpy as np
 import random
-import shutil
 import time
+import tempfile
 import unittest
 import logging
 
@@ -49,19 +49,6 @@ class TestImperativeQat(unittest.TestCase):
     """
     QAT = quantization-aware training
     """
-
-    @classmethod
-    def setUpClass(cls):
-        timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-        cls.root_path = os.path.join(os.getcwd(), "imperative_qat_" + timestamp)
-        cls.save_path = os.path.join(cls.root_path, "lenet")
-
-    @classmethod
-    def tearDownClass(cls):
-        try:
-            shutil.rmtree(cls.root_path)
-        except Exception as e:
-            print("Failed to delete {} due to {}".format(cls.root_path, str(e)))
 
     def set_vars(self):
         self.weight_quantize_type = 'abs_max'
@@ -170,34 +157,35 @@ class TestImperativeQat(unittest.TestCase):
             lenet.eval()
             before_save = lenet(test_img)
 
-        # save inference quantized model
-        imperative_qat.save_quantized_model(
-            layer=lenet,
-            path=self.save_path,
-            input_spec=[
-                paddle.static.InputSpec(
-                    shape=[None, 1, 28, 28], dtype='float32')
-            ])
-        print('Quantized model saved in {%s}' % self.save_path)
+        with tempfile.TemporaryDirectory(prefix="qat_save_path_") as tmpdir:
+            # save inference quantized model
+            imperative_qat.save_quantized_model(
+                layer=lenet,
+                path=os.path.join(tmpdir, "lenet"),
+                input_spec=[
+                    paddle.static.InputSpec(
+                        shape=[None, 1, 28, 28], dtype='float32')
+                ])
+            print('Quantized model saved in %s' % tmpdir)
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(
-             dirname=self.root_path,
-             executor=exe,
-             model_filename="lenet" + INFER_MODEL_SUFFIX,
-             params_filename="lenet" + INFER_PARAMS_SUFFIX)
-        after_save, = exe.run(inference_program,
-                              feed={feed_target_names[0]: test_data},
-                              fetch_list=fetch_targets)
-        # check
-        self.assertTrue(
-            np.allclose(after_save, before_save.numpy()),
-            msg='Failed to save the inference quantized model.')
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+            else:
+                place = core.CPUPlace()
+            exe = fluid.Executor(place)
+            [inference_program, feed_target_names,
+             fetch_targets] = fluid.io.load_inference_model(
+                 dirname=tmpdir,
+                 executor=exe,
+                 model_filename="lenet" + INFER_MODEL_SUFFIX,
+                 params_filename="lenet" + INFER_PARAMS_SUFFIX)
+            after_save, = exe.run(inference_program,
+                                  feed={feed_target_names[0]: test_data},
+                                  fetch_list=fetch_targets)
+            # check
+            self.assertTrue(
+                np.allclose(after_save, before_save.numpy()),
+                msg='Failed to save the inference quantized model.')
 
 
 if __name__ == '__main__':
