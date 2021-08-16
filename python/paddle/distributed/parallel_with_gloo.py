@@ -54,20 +54,43 @@ def init_gloo_parallel_env(rank_id, rank_num, server_endpoint, with_gloo=True):
         .. code-block:: python
 
             import paddle
+            import multiprocessing
+            from contextlib import closing
+            import socket
 
-            # initialize a parallel environment for a job using 2 ranks
-            rank_num = 2
-            server_endpoint = "127.0.0.1:8080"
+            port_set = set()
 
-            # process 1
-            rank_id = 0
-            paddle.distributed.init_gloo_parallel_env(
-                rand_id, rank_num, server_endpoint)
+            def find_free_port():
+                def _free_port():
+                    with closing(socket.socket(socket.AF_INET,
+                        socket.SOCK_STREAM)) as s:
+                        s.bind(('', 0))
+                        return s.getsockname()[1]
+                while True:
+                    port = _free_port()
+                    if port not in port_set:
+                        port_set.add(port)
+                        return port
 
-            # process 2
-            rank_id = 1
-            paddle.distributed.init_gloo_parallel_env(
-                rand_id, rank_num, server_endpoint)
+            def test_init_gloo(id, rank_num, server_endpoint):
+                paddle.distributed.init_gloo_parallel_env(
+                    id, rank_num, server_endpoint)
+
+            def test_init_gloo_with_multiprocess(num_of_ranks):
+                jobs = []
+                server_endpoint = "127.0.0.1:%s" % (find_free_port())
+                for id in range(num_of_ranks):
+                    p = multiprocessing.Process(
+                        target=test_init_gloo,
+                        args=(id, num_of_ranks, server_endpoint))
+                    jobs.append(p)
+                    p.start()
+                for proc in jobs:
+                    proc.join()
+
+            if __name__ == '__main__':
+                # Arg: number of ranks (processes)
+                test_init_gloo_with_multiprocess(2)
     """
 
     assert (rank_num < 2) is False, \
@@ -119,23 +142,44 @@ def barrier_func():
         .. code-block:: python
 
             import paddle
-            from paddle.distributed import init_gloo_parallel_env
+            import multiprocessing
+            from contextlib import closing
+            import socket
 
-            # initialize a parallel environment for a job using 2 ranks
-            rank_num = 2
-            server_endpoint = "127.0.0.1:8080"
+            port_set = set()
 
-            # process 1
-            rank_id = 0
-            paddle.distributed.init_gloo_parallel_env(
-                rand_id, rank_num, server_endpoint)
-            paddle.distributed.barrier_func()
+            def find_free_port():
+                def _free_port():
+                    with closing(socket.socket(socket.AF_INET,
+                        socket.SOCK_STREAM)) as s:
+                        s.bind(('', 0))
+                        return s.getsockname()[1]
+                while True:
+                    port = _free_port()
+                    if port not in port_set:
+                        port_set.add(port)
+                        return port
 
-            # process 2
-            rank_id = 1
-            paddle.distributed.init_gloo_parallel_env(
-                rand_id, rank_num, server_endpoint)
-            paddle.distributed.barrier_func()
+            def test_barrier_func(id, rank_num, server_endpoint):
+                paddle.distributed.init_gloo_parallel_env(
+                    id, rank_num, server_endpoint)
+                paddle.distributed.barrier_func()
+
+            def test_barrier_with_multiprocess(num_of_ranks):
+                jobs = []
+                server_endpoint = "127.0.0.1:%s" % (find_free_port())
+                for id in range(num_of_ranks):
+                    p = multiprocessing.Process(
+                        target=test_barrier_func,
+                        args=(id, num_of_ranks, server_endpoint))
+                    jobs.append(p)
+                    p.start()
+                for proc in jobs:
+                    proc.join()
+
+            if __name__ == '__main__':
+                # Arg: number of ranks (processes)
+                test_barrier_with_multiprocess(2)
     """
 
     _global_gloo_ctx.barrier()
@@ -152,25 +196,45 @@ def release_gloo(rank_id):
         .. code-block:: python
 
             import paddle
-            from paddle.distributed import init_gloo_parallel_env
+            import multiprocessing
+            from contextlib import closing
+            import socket
 
-            # initialize a parallel environment for a job using 2 ranks
-            rank_num = 2
-            server_endpoint = "127.0.0.1:8080"
+            port_set = set()
 
-            # process 1
-            rank_id = 0
-            paddle.distributed.init_gloo_parallel_env(
-                rand_id, rank_num, server_endpoint)
-            paddle.distributed.barrier_func()
-            paddle.distributed.release_gloo(rank_id)
+            def find_free_port():
+                def _free_port():
+                    with closing(socket.socket(socket.AF_INET,
+                        socket.SOCK_STREAM)) as s:
+                        s.bind(('', 0))
+                        return s.getsockname()[1]
+                while True:
+                    port = _free_port()
+                    if port not in port_set:
+                        port_set.add(port)
+                        return port
 
-            # process 2
-            rank_id = 1
-            paddle.distributed.init_gloo_parallel_env(
-                rand_id, rank_num, server_endpoint)
-            paddle.distributed.barrier_func()
-            paddle.distributed.release_gloo(rank_id)
+            def test_release_gloo(id, rank_num, server_endpoint):
+                paddle.distributed.init_gloo_parallel_env(
+                    id, rank_num, server_endpoint)
+                paddle.distributed.barrier_func()
+                paddle.distributed.release_gloo(id)
+
+            def test_release_gloo_with_multiprocess(num_of_ranks):
+                jobs = []
+                server_endpoint = "127.0.0.1:%s" % (find_free_port())
+                for id in range(num_of_ranks):
+                    p = multiprocessing.Process(
+                        target=test_barrier_func,
+                        args=(id, num_of_ranks, server_endpoint))
+                    jobs.append(p)
+                    p.start()
+                for proc in jobs:
+                    proc.join()
+
+            if __name__ == '__main__':
+                # Arg: number of ranks (processes)
+                test_release_gloo_with_multiprocess(2)
     """
 
     if (rank_id == 0):
