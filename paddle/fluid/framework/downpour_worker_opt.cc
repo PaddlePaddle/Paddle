@@ -450,12 +450,13 @@ void DownpourWorkerOpt::TrainFiles() {
             break;
           }
         }
-        bool scale_sparse_grad_ = true;
+        bool scale_sparse_gradient_with_batch_size_ = true;
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_, scale_sparse_grad_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_,
+            scale_sparse_gradient_with_batch_size_);
       }
     }
 

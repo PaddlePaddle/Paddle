@@ -871,7 +871,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     std::vector<::std::future<int32_t>>* push_sparse_status,
     const int batch_size, const bool use_cvm, const bool dump_slot,
     std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
-    const bool scale_sparse_grad) {
+    const bool scale_sparse_gradient_with_batch_size) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;
