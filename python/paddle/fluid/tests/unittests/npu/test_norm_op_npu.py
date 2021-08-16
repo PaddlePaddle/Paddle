@@ -52,12 +52,48 @@ class TestNorm(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
-        self.axis = -1
+        self.axis = 1
         self.epsilon = 1e-10
-        self.shape = (2, 3, 4, 100)
+        self.shape = (2, 3, 4, 5)
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
+
+
+class TestNormOp2(TestNorm):
+    def init_test_case(self):
+        self.shape = [5, 3, 9, 7]
+        self.axis = 0
+        self.epsilon = 1e-8
+        self.dtype = np.float32
+
+
+class TestNormOp3(TestNorm):
+    def init_test_case(self):
+        self.shape = [5, 3, 2, 7]
+        self.axis = -1
+        self.epsilon = 1e-8
+        self.dtype = np.float32
+
+
+class TestNormOp4(TestNorm):
+    def init_test_case(self):
+        self.shape = [128, 1024, 14, 14]
+        self.axis = 2
+        self.epsilon = 1e-8
+        self.dtype = np.float32
+
+
+class API_NormTest(unittest.TestCase):
+    def test_errors(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program()):
+
+            def test_norm_x_type():
+                data = fluid.data(name="x", shape=[3, 3], dtype="float64")
+                out = fluid.layers.l2_normalize(data)
+
+            self.assertRaises(TypeError, test_norm_x_type)
 
 
 class TestNormFP16(TestNorm):
