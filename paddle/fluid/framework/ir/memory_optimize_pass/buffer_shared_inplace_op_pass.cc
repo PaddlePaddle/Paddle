@@ -169,10 +169,10 @@ GetInplaceVars(const BlockDesc &block, bool use_cuda,
   PADDLE_ENFORCE_EQ(block.ID(), 0, platform::errors::Unimplemented(
                                        "Inplace can only perform in block 0."));
   // only take block 0 gc_vars
-  const auto all_gc_vars =
+  const auto op_gc_vars =
       GetEagerDeletionCleanVars(*block.Program(), skip_vars)[0];
   const auto all_ops = block.AllOps();
-  PADDLE_ENFORCE_EQ(all_gc_vars.size(), all_ops.size(),
+  PADDLE_ENFORCE_EQ(op_gc_vars.size(), all_ops.size(),
                     platform::errors::PermissionDenied(
                         "GC analysis error: op number not match."));
   size_t n = all_ops.size();
@@ -193,7 +193,7 @@ GetInplaceVars(const BlockDesc &block, bool use_cuda,
   std::vector<std::vector<std::pair<std::string, std::string>>> result(n);
   for (size_t i = 0; i < n; ++i) {
     const auto &op = *all_ops[i];
-    const auto &gc_vars = all_gc_vars[i];
+    const auto &gc_vars = op_gc_vars[i];
     const auto inputs = op.InputArgumentNames();
     const auto outputs = op.OutputArgumentNames();
     visited_vars.insert(inputs.begin(), inputs.end());
@@ -226,11 +226,11 @@ GetInplaceVars(const BlockDesc &block, bool use_cuda,
     for (const auto &pair : var_pair) {
       const auto &input_slot = pair.first;
       const auto &output_slot = pair.second;
-      auto input_var = GetFirstVarName(op, input_slot, true);
+      auto input_var = GetFirstVarName(op, input_slot, /*is_input=*/true);
       if (input_var == kEmptyVarName || valid_vars.count(input_var) == 0) {
         continue;
       }
-      auto output_var = GetFirstVarName(op, output_slot, false);
+      auto output_var = GetFirstVarName(op, output_slot, /*is_input=*/false);
       if (output_var == kEmptyVarName || visited_vars.count(output_var) > 0) {
         continue;
       }
