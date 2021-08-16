@@ -940,7 +940,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     float* g = g_tensor->data<float>();
 
-    if (scale_sparse_grad && grad_dim > 0) {
+    if (scale_sparse_gradient_with_batch_size && grad_dim > 0) {
       int dim = emb_dim;
       Eigen::Map<
           Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
