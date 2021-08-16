@@ -175,8 +175,6 @@ class GradScaler(AmpScaler):
         #  unscale the grad
         self._unscale(optimizer)
 
-        optimize_ops, params_grads = (None, None)
-
         if self._found_inf:
             self._cache_founf_inf = True
         else:
