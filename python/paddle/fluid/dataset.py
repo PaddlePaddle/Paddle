@@ -287,7 +287,7 @@ class DatasetBase(object):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from dataset_generator_old import CTRDataset
+              from dataset_generator import CTRDataset
               dataset = fluid.DatasetFactory().create_dataset()
               generator_class = CTRDataset()
               dataset.check_use_var_with_data_generator([data, label], generator_class, "data/part-00000")
