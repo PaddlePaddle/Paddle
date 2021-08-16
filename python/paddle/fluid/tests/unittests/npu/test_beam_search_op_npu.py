@@ -14,79 +14,54 @@
 
 from __future__ import print_function
 
-import logging
-from paddle.fluid.op import Operator, DynamicRecurrentOp
-import paddle.fluid.core as core
+import paddle
+import sys
+sys.path.append("..")
+from op_test import OpTest
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-from paddle.fluid.framework import Program, program_guard
+
+paddle.enable_static()
 
 
-def create_tensor(scope, name, np_data):
-    tensor = scope.var(name).get_tensor()
-    tensor.set(np_data, core.NPUPlace(0))
-    return tensor
-
-
-class BeamSearchOpTester(unittest.TestCase):
-    """unittest of beam_search_op"""
-
+class TestBeamSearchNPUOp(OpTest):
     def setUp(self):
-        self.scope = core.Scope()
-        self._create_ids()
-        self._create_pre_scores()
-        self._create_scores()
-        self._create_pre_ids()
-        self.scope.var('selected_ids').get_tensor()
-        self.scope.var('selected_scores').get_tensor()
-        self.scope.var('parent_idx').get_tensor()
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "beam_search"
+        self.init_data()
+        self.inputs = {
+            'pre_ids': (self.pre_ids, self.lod),
+            'pre_scores': (self.pre_score, self.lod),
+            'ids': (self.ids, self.lod),
+            'scores': (self.score, self.lod)
+        }
+        # The `target_lod` attribute is still based on offset
+        self.attrs = {
+            'level': 0,
+            'beam_size': 2,
+            'end_id': 0,
+            'is_accumulated': self.is_accumulated
+        }
+        self.outputs = {
+            'selected_ids': (self.selected_ids, self.out_lod),
+            'selected_scores': (self.selected_scores, self.out_lod),
+            'parent_idx': self.parent_idx
+        }
 
-    def test_run(self):
-        op = Operator(
-            'beam_search',
-            pre_ids='pre_ids',
-            pre_scores='pre_scores',
-            ids='ids',
-            scores='scores',
-            selected_ids='selected_ids',
-            selected_scores='selected_scores',
-            parent_idx='parent_idx',
-            level=0,
-            beam_size=2,
-            end_id=0, )
-        op.run(self.scope, core.NPUPlace(0))
-        selected_ids = self.scope.find_var("selected_ids").get_tensor()
-        selected_scores = self.scope.find_var("selected_scores").get_tensor()
-        parent_idx = self.scope.find_var("parent_idx").get_tensor()
-        self.assertTrue(
-            np.allclose(
-                np.array(selected_ids), np.array([4, 2, 3, 8])[:, np.newaxis]))
-        self.assertTrue(
-            np.allclose(
-                np.array(selected_scores),
-                np.array([0.5, 0.6, 0.9, 0.7])[:, np.newaxis]))
-        self.assertEqual(selected_ids.lod(), [[0, 2, 4], [0, 1, 2, 3, 4]])
-        self.assertTrue(
-            np.allclose(np.array(parent_idx), np.array([0, 1, 2, 3])))
+    def set_npu(self):
+        self.__class__.use_npu = True
 
-    def _create_pre_ids(self):
-        np_data = np.array([[1], [2], [3], [4]], dtype='int32')
-        tensor = create_tensor(self.scope, 'pre_ids', np_data)
-
-    def _create_pre_scores(self):
-        np_data = np.array([[0.1], [0.2], [0.3], [0.4]], dtype='float32')
-        tensor = create_tensor(self.scope, 'pre_scores', np_data)
-
-    def _create_ids(self):
-        self.lod = [[0, 2, 4], [0, 1, 2, 3, 4]]
-        np_data = np.array(
+    def init_data(self):
+        self.is_accumulated = True
+        self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int32')
+        self.ids = np.array(
             [[4, 2, 5], [2, 1, 3], [3, 5, 2], [8, 2, 1]], dtype='int32')
-        tensor = create_tensor(self.scope, "ids", np_data)
-        tensor.set_lod(self.lod)
-
-    def _create_scores(self):
-        np_data = np.array(
+        self.lod = [[2, 2], [1, 1, 1, 1]]
+        self.out_lod = [[2, 2], [1, 1, 1, 1]]
+        self.offset_lod = [[0, 2, 4], [0, 1, 2, 3, 4]]
+        self.score = np.array(
             [
                 [0.5, 0.3, 0.2],
                 [0.6, 0.3, 0.1],
@@ -94,8 +69,79 @@ class BeamSearchOpTester(unittest.TestCase):
                 [0.7, 0.5, 0.1],
             ],
             dtype='float32')
-        tensor = create_tensor(self.scope, "scores", np_data)
-        tensor.set_lod(self.lod)
+        self.pre_score = np.array([[0.1], [0.2], [0.3], [0.4]], dtype='float32')
+        self.selected_ids = np.array([4, 2, 3, 8])[:, np.newaxis]
+        self.selected_scores = np.array([0.5, 0.6, 0.9, 0.7])[:, np.newaxis]
+        self.parent_idx = np.array([0, 1, 2, 3])
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+
+
+class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
+    def init_data(self):
+        self.is_accumulated = True
+        self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int32')
+        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int32')
+        self.lod = [[2, 2], [1, 1, 1, 1]]
+        self.out_lod = [[2, 2], [2, 0, 1, 1]]
+        self.offset_lod = [[0, 2, 4], [0, 2, 2, 3, 4]]
+        self.score = np.array(
+            [
+                [0.6, 0.9],
+                [0.5, 0.3],
+                [0.9, 0.5],
+                [0.1, 0.7],
+            ], dtype='float32')
+        self.pre_score = np.array([[0.1], [0.2], [0.3], [0.4]], dtype='float32')
+        self.selected_ids = np.array([4, 2, 3, 1])[:, np.newaxis]
+        self.selected_scores = np.array([0.6, 0.9, 0.9, 0.7])[:, np.newaxis]
+        self.parent_idx = np.array([0, 0, 2, 3])
+
+
+class TestBeamSearchNPUOp3(TestBeamSearchNPUOp):
+    def init_data(self):
+        # end_id = 0
+        self.is_accumulated = True
+        self.pre_ids = np.array([[1], [0], [0], [4]], dtype='int32')
+        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int32')
+        self.lod = [[2, 2], [1, 1, 1, 1]]
+        self.out_lod = [[2, 2], [1, 1, 0, 2]]
+        self.offset_lod = [[0, 2, 4], [0, 1, 2, 2, 4]]
+        self.score = np.array(
+            [
+                [0.6, 0.9],
+                [0.5, 0.3],
+                [0.9, 0.5],
+                [0.6, 0.7],
+            ], dtype='float32')
+        self.pre_score = np.array([[0.1], [1.2], [0.5], [0.4]], dtype='float32')
+        self.selected_ids = np.array([2, 0, 8, 1])[:, np.newaxis]
+        self.selected_scores = np.array([0.9, 1.2, 0.6, 0.7])[:, np.newaxis]
+        self.parent_idx = np.array([0, 1, 3, 3])
+
+
+class TestBeamSearchNPUOp4(TestBeamSearchNPUOp):
+    def init_data(self):
+        # is_accumulated = False
+        self.is_accumulated = False
+        self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int32')
+        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int32')
+        self.lod = [[2, 2], [1, 1, 1, 1]]
+        self.out_lod = [[2, 2], [0, 2, 1, 1]]
+        self.offset_lod = [[0, 2, 4], [0, 0, 2, 3, 4]]
+        self.score = np.array(
+            [
+                [0.6, 0.9],
+                [0.5, 0.3],
+                [0.9, 0.5],
+                [0.1, 0.7],
+            ], dtype='float32')
+        self.pre_score = np.array([[0.1], [2.2], [0.3], [0.4]], dtype='float32')
+        self.selected_ids = np.array([7, 3, 3, 1])[:, np.newaxis]
+        self.selected_scores = np.array(
+            [1.50685, 0.996027, 0.194639, 0.043325])[:, np.newaxis]
+        self.parent_idx = np.array([1, 1, 2, 3])
 
 
 if __name__ == '__main__':

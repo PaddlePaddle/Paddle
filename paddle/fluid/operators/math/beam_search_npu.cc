@@ -47,7 +47,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     int64_t num_seqs = scores->NumElements(level);
     // size of the first beam is 1, others are equal to beam_size
     int64_t real_beam_size = static_cast<int64_t>(scores->dims()[0] / num_seqs);
-    // K(=beam_size)
+    // K
     int64_t seq_width = 1;
     for (int i = 1; i < scores->dims().size(); i++) {
       seq_width *= scores->dims()[i];
@@ -65,26 +65,6 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     parent_idx->mutable_data<int>(framework::make_ddim({total_length}), place);
 
     // Step1: Define Tensors and Preprocess the situation that pre_id == end_id
-
-    // cast ids from `int64_t` to `int32`
-    // Tensor cast_pre_ids_int32(framework::proto::VarType::INT32);
-    // cast_pre_ids_int32.Resize(pre_ids->dims());
-    // cast_pre_ids_int32.mutable_data<int>(ctx.GetPlace());
-    // auto dst_dtype = ConvertToNpuDtype(cast_pre_ids_int32.type());
-    // const auto& runner_cast_pre_ids =
-    //     NpuOpRunner("Cast", {*pre_ids}, {cast_pre_ids_int32},
-    //                 {{"dst_type", static_cast<int>(dst_dtype)}});
-    // runner_cast_pre_ids.Run(stream);
-
-    // expand pre_ids to shape of ids
-    // Tensor expand_pre_ids(cast_pre_ids_int32.type());
-    // expand_pre_ids.Resize(framework::make_ddim({batch_size, seq_width}));
-    // expand_pre_ids.mutable_data<int>(place);
-    // const auto& runner_tile_pre_ids =
-    //     NpuOpRunner("TileWithAxis", {cast_pre_ids_int32}, {expand_pre_ids},
-    //                 {{"axis", 1}, {"tiles", seq_width}});
-    // runner_tile_pre_ids.Run(stream);
-    // expand_pre_ids.Resize(ids->dims());
 
     Tensor expand_pre_ids(pre_ids->type());
     expand_pre_ids.Resize(framework::make_ddim({batch_size, seq_width}));
@@ -260,9 +240,9 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         framework::make_ddim({num_seqs, real_beam_size * seq_width}));
 
     Tensor topk_scores(scores->type());
-    topk_scores.ShareDataWith(*selected_scores);
     topk_scores.Resize(
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
+    topk_scores.mutable_data<float>(ctx.GetPlace());
 
     Tensor tmp_indices(framework::proto::VarType::INT32);
     tmp_indices.Resize(
@@ -280,6 +260,40 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         .AddAttr("dim", -1)
         .AddAttr("largest", true);
     runner_topk.Run(stream);
+
+    // cast tmp_indices from int to float32 for Sort op
+    Tensor cast_tmp_indices(framework::proto::VarType::FP32);
+    cast_tmp_indices.Resize(tmp_indices.dims());
+    cast_tmp_indices.mutable_data<float>(ctx.GetPlace());
+    auto dst_dtype_tmp_indices_fp32 =
+        ConvertToNpuDtype(cast_tmp_indices.type());
+    const auto& runner_cast_tmp_indices = NpuOpRunner(
+        "Cast", {tmp_indices}, {cast_tmp_indices},
+        {{"dst_type", static_cast<int>(dst_dtype_tmp_indices_fp32)}});
+    runner_cast_tmp_indices.Run(stream);
+
+    // sort tmp_indices
+    Tensor sorted_tmp_indices(framework::proto::VarType::FP32);
+    sorted_tmp_indices.Resize(tmp_indices.dims());
+    sorted_tmp_indices.mutable_data<float>(ctx.GetPlace());
+    Tensor sorted_score_indices(framework::proto::VarType::INT32);
+    sorted_score_indices.Resize(tmp_indices.dims());
+    sorted_score_indices.mutable_data<int>(ctx.GetPlace());
+    const auto& runner_sort_tmp_indices = NpuOpRunner(
+        "Sort", {cast_tmp_indices}, {sorted_tmp_indices, sorted_score_indices},
+        {{"axis", 1}, {"descending", false}});
+    runner_sort_tmp_indices.Run(stream);
+
+    // cast sorted_tmp_indices from float32 to int
+    Tensor cast_sort_tmp_indices(framework::proto::VarType::INT32);
+    cast_sort_tmp_indices.Resize(sorted_tmp_indices.dims());
+    cast_sort_tmp_indices.mutable_data<int>(ctx.GetPlace());
+    auto dst_dtype_tmp_indices_int32 =
+        ConvertToNpuDtype(cast_sort_tmp_indices.type());
+    const auto& runner_cast_sort_tmp_indices = NpuOpRunner(
+        "Cast", {sorted_tmp_indices}, {cast_sort_tmp_indices},
+        {{"dst_type", static_cast<int>(dst_dtype_tmp_indices_int32)}});
+    runner_cast_sort_tmp_indices.Run(stream);
 
     // Step 3: infer selected ids from tmp_indices and ids
 
@@ -312,21 +326,46 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     batch_ids.Resize(
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 1}));
 
-    // get indices of gather_nd op
-    tmp_indices.Resize(
-        framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 1}));
-    Tensor gather_nd_indices(framework::proto::VarType::INT32);
-    gather_nd_indices.Resize(
+    // sort topk_scores to get selected_scores
+    // get indices of gather_nd op for calculating selected_scores
+    Tensor gather_nd_score_indices(framework::proto::VarType::INT32);
+    gather_nd_score_indices.Resize(
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 2}));
-    gather_nd_indices.mutable_data<int>(place);
+    gather_nd_score_indices.mutable_data<int>(place);
 
-    std::vector<framework::Tensor> concat_inputs2 = {batch_ids, tmp_indices};
-    NpuOpRunner runner_concat_indices{"ConcatD",
-                                      {concat_inputs2},
-                                      {gather_nd_indices},
-                                      {{"concat_dim", 2}, {"N", 2}}};
-    runner_concat_indices.AddInputNames(concat_names);
-    runner_concat_indices.Run(stream);
+    sorted_score_indices.Resize(
+        framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 1}));
+    std::vector<framework::Tensor> concat_inputs2 = {batch_ids,
+                                                     sorted_score_indices};
+    NpuOpRunner runner_concat_score_indices{"ConcatD",
+                                            {concat_inputs2},
+                                            {gather_nd_score_indices},
+                                            {{"concat_dim", 2}, {"N", 2}}};
+    runner_concat_score_indices.AddInputNames(concat_names);
+    runner_concat_score_indices.Run(stream);
+
+    // use gather_nd to get selected_scores
+    const auto& runner_gather_nd_scores =
+        NpuOpRunner("GatherNd", {topk_scores, gather_nd_score_indices},
+                    {*selected_scores}, {});
+    runner_gather_nd_scores.Run(stream);
+
+    // get indices of gather_nd op
+    cast_sort_tmp_indices.Resize(
+        framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 1}));
+    Tensor gather_nd_id_indices(framework::proto::VarType::INT32);
+    gather_nd_id_indices.Resize(
+        framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 2}));
+    gather_nd_id_indices.mutable_data<int>(place);
+
+    std::vector<framework::Tensor> concat_inputs3 = {batch_ids,
+                                                     cast_sort_tmp_indices};
+    NpuOpRunner runner_concat_id_indices{"ConcatD",
+                                         {concat_inputs3},
+                                         {gather_nd_id_indices},
+                                         {{"concat_dim", 2}, {"N", 2}}};
+    runner_concat_id_indices.AddInputNames(concat_names);
+    runner_concat_id_indices.Run(stream);
 
     // use gather_nd to get selected_ids
     Tensor topk_ids(selected_ids->type());
@@ -334,9 +373,9 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     topk_ids.Resize(
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
 
-    const auto& runner_gather_nd =
-        NpuOpRunner("GatherNd", {cal_ids, gather_nd_indices}, {topk_ids}, {});
-    runner_gather_nd.Run(stream);
+    const auto& runner_gather_nd_ids = NpuOpRunner(
+        "GatherNd", {cal_ids, gather_nd_id_indices}, {topk_ids}, {});
+    runner_gather_nd_ids.Run(stream);
 
     // TODO(pangyoki): PruneEndBeams
 
@@ -351,12 +390,12 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     beam_ids.Resize(
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
     beam_ids.mutable_data<int>(ctx.GetPlace());
-    tmp_indices.Resize(
+    cast_sort_tmp_indices.Resize(
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
 
-    const auto& runner_mod =
-        NpuOpRunner("Mod", {tmp_indices, beam_size_tensor}, {beam_ids}, {});
-    runner_mod.Run(stream);
+    const auto& runner_div = NpuOpRunner(
+        "Div", {cast_sort_tmp_indices, beam_size_tensor}, {beam_ids}, {});
+    runner_div.Run(stream);
 
     // get parent_idx by adding batch_ids to beam_ids
     // construct scale_batch_ids like [[0, 0, 0], [bw, bw, bw], ..., [bs-1*bw,
@@ -385,42 +424,24 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
                      {"shift", static_cast<float>(0.0)}});
     runner_power.Run(stream);
 
-    // cast beam_ids from int to float32
-    Tensor cast_beam_ids(framework::proto::VarType::FP32);
-    cast_beam_ids.Resize(beam_ids.dims());
-    cast_beam_ids.mutable_data<float>(ctx.GetPlace());
-    auto dst_dtype2 = ConvertToNpuDtype(cast_beam_ids.type());
-    const auto& runner_cast_beam_ids =
-        NpuOpRunner("Cast", {beam_ids}, {cast_beam_ids},
+    // cast cast_scale_batch_ids from float32 to int
+    Tensor cast_scale_batch_ids(framework::proto::VarType::INT32);
+    cast_scale_batch_ids.Resize(scale_batch_ids.dims());
+    cast_scale_batch_ids.mutable_data<int>(ctx.GetPlace());
+    auto dst_dtype2 = ConvertToNpuDtype(cast_scale_batch_ids.type());
+    const auto& runner_cast_scale_batch_ids =
+        NpuOpRunner("Cast", {scale_batch_ids}, {cast_scale_batch_ids},
                     {{"dst_type", static_cast<int>(dst_dtype2)}});
-    runner_cast_beam_ids.Run(stream);
+    runner_cast_scale_batch_ids.Run(stream);
 
     // calculate parent_idx
-    Tensor tmp_parent_idx(framework::proto::VarType::FP32);
-    tmp_parent_idx.Resize(parent_idx->dims());
-    tmp_parent_idx.mutable_data<float>(place);
+    Tensor tmp_parent_idx(framework::proto::VarType::INT32);
+    // tmp_parent_idx.Resize(parent_idx->dims());
+    // tmp_parent_idx.mutable_data<float>(place);
+    tmp_parent_idx.ShareDataWith(*parent_idx);
     const auto& runner_add_beam_id = NpuOpRunner(
-        "Add", {cast_beam_ids, scale_batch_ids}, {tmp_parent_idx}, {});
+        "Add", {beam_ids, cast_scale_batch_ids}, {tmp_parent_idx}, {});
     runner_add_beam_id.Run(stream);
-
-    // sort parent_idx
-    Tensor sorted_parent_idx(framework::proto::VarType::FP32);
-    sorted_parent_idx.Resize(parent_idx->dims());
-    sorted_parent_idx.mutable_data<float>(ctx.GetPlace());
-    Tensor useless_indices(framework::proto::VarType::INT32);
-    useless_indices.Resize(parent_idx->dims());
-    useless_indices.mutable_data<int>(ctx.GetPlace());
-    const auto& runner_sort_parent_idx = NpuOpRunner(
-        "Sort", {tmp_parent_idx}, {sorted_parent_idx, useless_indices},
-        {{"axis", 0}, {"descending", false}});
-    runner_sort_parent_idx.Run(stream);
-
-    // cast sorted_parent_idx from float to int
-    auto dst_dtype3 = ConvertToNpuDtype(parent_idx->type());
-    const auto& runner_cast_parent_ids =
-        NpuOpRunner("Cast", {sorted_parent_idx}, {*parent_idx},
-                    {{"dst_type", static_cast<int>(dst_dtype3)}});
-    runner_cast_parent_ids.Run(stream);
 
     std::vector<int> vector_parent_idx;
     framework::TensorToVector(*parent_idx, ctx, &vector_parent_idx);
