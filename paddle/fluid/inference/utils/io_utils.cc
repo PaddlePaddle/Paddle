@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/utils/io_utils.h"
 
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <utility>
 
@@ -169,8 +170,11 @@ void SerializeShapeRangeInfo(
     const std::string &path,
     const paddle::inference::proto::ShapeRangeInfos &info) {
   int out_fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  google::protobuf::io::FileOutputStream os(out_fd);
-  google::protobuf::TextFormat::Print(info, &os);
+  google::protobuf::io::FileOutputStream *os =
+      new google::protobuf::io::FileOutputStream(out_fd);
+  google::protobuf::TextFormat::Print(info, os);
+  delete os;
+  close(out_fd);
 }
 
 void SerializeShapeRangeInfo(
@@ -194,8 +198,11 @@ void SerializeShapeRangeInfo(
 void DeserializeShapeRangeInfo(
     const std::string &path, paddle::inference::proto::ShapeRangeInfos *info) {
   int fd = open(path.c_str(), O_RDONLY);
-  google::protobuf::io::FileInputStream is(fd);
-  google::protobuf::TextFormat::Parse(&is, info);
+  google::protobuf::io::FileInputStream *is =
+      new google::protobuf::io::FileInputStream(fd);
+  google::protobuf::TextFormat::Parse(is, info);
+  delete is;
+  close(fd);
 }
 
 void DeserializeShapeRangeInfo(

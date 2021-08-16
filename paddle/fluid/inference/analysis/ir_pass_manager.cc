@@ -148,7 +148,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
 
       // tuned trt dynamic_shape
-      pass->Set("trt_shape_info_path",
+      pass->Set("trt_shape_range_info_path",
                 new std::string(argument->tensorrt_shape_range_info_path()));
       pass->Set("trt_tuned_dynamic_shape",
                 new bool(argument->tensorrt_tuned_dynamic_shape()));

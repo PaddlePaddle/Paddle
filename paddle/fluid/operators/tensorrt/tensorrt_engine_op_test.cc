@@ -116,6 +116,7 @@ TEST(TensorRTEngineOp, manual) {
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
   int device_id = 0;
   engine_op_desc.SetAttr("gpu_id", device_id);
+  engine_op_desc.SetAttr("shape_range_info_pbtxt", std::string(""));
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
@@ -220,6 +221,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
   int device_id = 0;
   engine_op_desc.SetAttr("gpu_id", device_id);
+  engine_op_desc.SetAttr("shape_range_info_pbtxt", std::string(""));
 
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
 

@@ -32,6 +32,7 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/utils/io_utils.h"
 
 namespace paddle {
 namespace inference {
@@ -146,6 +147,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   int predictor_id_;
   int device_id_;
   bool allow_build_at_runtime_;
+  std::string shape_range_info_path_;
   AnalysisConfig::Precision precision_mode_;
 
  public:
@@ -166,6 +168,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     calibration_engine_key_ = Attr<std::string>("calibration_engine_key");
     predictor_id_ = Attr<int>("predictor_id");
     allow_build_at_runtime_ = false;
+    shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
     if (HasAttr("allow_build_at_runtime")) {
       allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
     }
@@ -265,6 +268,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
             anc = anc->parent();
           }
           PrepareTRTEngine(*anc, trt_engine);
+
+          // update shape_range_info_pbtxt
+          if (!shape_range_info_path_.empty()) {
+            inference::SerializeShapeRangeInfo(
+                shape_range_info_path_, trt_engine->min_input_shape(),
+                trt_engine->max_input_shape(), trt_engine->optim_input_shape());
+          }
         }
       }
     }

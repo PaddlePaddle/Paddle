@@ -370,11 +370,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Enable tuned tensorrt dynamic shape.
   ///
-  /// \param shape_info_path the path to shape_info file got in CollectShapeInfo
+  /// \param shape_range_info_path the path to shape_info file got in
+  /// CollectShapeInfo
   /// mode.
   /// \param allow_build_at_runtime allow build trt engine at runtime.
   ///
-  void EnableTunedTensorRtDynamicShape(const std::string& shape_info_path,
+  void EnableTunedTensorRtDynamicShape(const std::string& shape_range_info_path,
                                        bool allow_build_at_runtime = true);
 
   ///
@@ -392,7 +393,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Collect shape info of all tensors in compute graph.
   ///
-  /// \param shape_info_path the path to save shape info.
+  /// \param shape_range_info_path the path to save shape info.
   ///
   void CollectShapeRangeInfo(const std::string& shape_range_info_path);
 
@@ -731,7 +732,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the
-  // min_shape, max_shape and opt_shape and save in shape_info_path_;
+  // min_shape, max_shape and opt_shape and save in shape_range_info_path_;
   bool collect_shape_range_info_{false};
   std::string shape_range_info_path_;
 

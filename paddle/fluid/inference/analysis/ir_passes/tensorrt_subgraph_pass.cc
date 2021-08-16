@@ -199,13 +199,14 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       Get<std::map<std::string, std::vector<int>>>("optim_input_shape");
 
   auto allow_build_at_runtime = Get<bool>("trt_allow_build_at_runtime");
-  auto shape_info_path = Get<std::string>("trt_shape_info_path");
+  auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
   int max_batch_size = Get<int>("max_batch_size");
   if (trt_tuned_dynamic_shape) {
-    VLOG(1) << "trt dynamic_shape deserialize from " << shape_info_path;
-    inference::DeserializeShapeRangeInfo(shape_info_path, &min_input_shape,
-                                         &max_input_shape, &opt_input_shape);
+    VLOG(1) << "trt dynamic_shape deserialize from " << shape_range_info_path;
+    inference::DeserializeShapeRangeInfo(shape_range_info_path,
+                                         &min_input_shape, &max_input_shape,
+                                         &opt_input_shape);
   }
 
   // The following procedure is used to rename all the intermediate
@@ -260,6 +261,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("origin_output_dims", renamed_output_dims);
   op_desc->SetAttr("parameters", params);
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
+  op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
