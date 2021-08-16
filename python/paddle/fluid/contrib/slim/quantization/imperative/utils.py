@@ -24,7 +24,6 @@ from ..quantization_pass import _get_output_name_index
 from ..quantization_pass import _get_input_name_index
 
 layer_name_map = {
-    'Conv2DTranspose': paddle.nn.Conv2DTranspose,
     'Conv2D': paddle.nn.Conv2D,
     'Linear': paddle.nn.Linear,
     'AdaptiveAvgPool2D': paddle.nn.AdaptiveAvgPool2D,
@@ -47,9 +46,8 @@ layer_name_map = {
 }
 
 # Apply fake quant for the inputs of these layers
-fake_quant_input_layers = [
-    paddle.nn.Conv2D, paddle.nn.Linear, paddle.nn.Conv2DTranspose
-]
+# TODO (jc): support paddle.nn.Conv2DTranspose
+fake_quant_input_layers = [paddle.nn.Conv2D, paddle.nn.Linear]
 
 # Apply fake quant for the output of these layers
 # TODO(jc): fix the problem of adding duplicate fake_quant ops
@@ -67,8 +65,7 @@ fake_quant_leaf_layers = [
 ]
 
 fake_quant_wrap_layers = [
-    quant_layers.QuantizedConv2D, quant_layers.QuantizedLinear,
-    quant_layers.QuantizedConv2DTranspose
+    quant_layers.QuantizedConv2D, quant_layers.QuantizedLinear
 ]
 
 # The weight format of these layers is Cin * Cout * H * W 
@@ -87,9 +84,9 @@ fake_quantize_dequantize_op_types = [
 
 
 def load_variable_data(scope, var_name):
-    """
+    '''
     Load variable value from scope
-    """
+    '''
     var_node = scope.find_var(var_name)
     assert var_node is not None, \
         "Can not find " + var_name + " in the scope."
@@ -123,12 +120,6 @@ def find_parent_layer_and_sub_name(model, name):
     the sub_name of the layer.
     For example, if name is 'block_1/convbn_1/conv_1', the parent layer is
     'block_1/convbn_1' and the sub_name is `conv_1`.
-    Args:
-        model(paddle.nn.Layer): the model to be quantized.
-        name(string): the name of a layer
-
-    Returns:
-        parent_layer, subname
     """
     assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
