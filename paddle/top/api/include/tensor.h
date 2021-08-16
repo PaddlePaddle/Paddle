@@ -17,6 +17,7 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 #include <utility>
+#include "glog/logging.h"
 
 #include "paddle/top/core/tensor_interface.h"
 
@@ -48,8 +49,7 @@ class Tensor;
 class AbstractAutogradMeta {
  public:
   // No AbstractAutogradMeta should be created
-  AbstractAutogradMeta() = delete;
-  virtual ~AbstractAutogradMeta() = 0;
+  virtual ~AbstractAutogradMeta() {}
 };
 
 /**
@@ -178,6 +178,9 @@ class Tensor final {
    * @return {std::shared_ptr<TensorInterface>}
    */
   std::shared_ptr<TensorInterface> impl() const { return impl_; }
+  void SetImpl(const std::shared_ptr<TensorInterface>& tensor_impl) { 
+      impl_ = tensor_impl;
+  }
 
   // Whether API Tensor need `data` and `mutable_data`?
 
@@ -218,11 +221,15 @@ class Tensor final {
     return *this;
   }
   // TODO(chenweihang): impl later
-  Tensor& operator=(const Tensor&) &&;
-  Tensor& operator=(Tensor&&) &&;
+  //Tensor& operator=(const Tensor&) &&;
+  //Tensor& operator=(Tensor&&) &&;
 
   /* Part 7: Autograd methods */
   // TODO(yangjiabin): Design autograd methods
+  void SetAutoGradMeta(const std::shared_ptr<AbstractAutogradMeta>& auto_grad_meta) {
+    // Copy this shared_ptr
+    autograd_meta_ = auto_grad_meta;
+  }
 
   AbstractAutogradMeta* get_autograd_meta() const {
     return autograd_meta_.get();
@@ -239,7 +246,7 @@ class Tensor final {
   /* Part 8: Auto generated Tensor methods */
   // ...
 
- private:
+ public:
   /**
    * [ Why use abstract TensorImpl interface here? ]
    *

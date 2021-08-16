@@ -20,17 +20,17 @@
 
 namespace egr {
 
-AutogradMeta* EagerUtils::autograd_meta(const pt::Tensor& target) {
+AutogradMeta* EagerUtils::autograd_meta(pt::Tensor& target) {
   auto* p_autograd_meta = target.get_autograd_meta();
   if (!p_autograd_meta) {
     target.set_autograd_meta(std::static_pointer_cast<pt::AbstractAutogradMeta>(
-        make_shared<AutogradMeta>()))
+        std::make_shared<AutogradMeta>()));
   }
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
 
 std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
-    const vector<pt::Tensor>& targets) {
+    const std::vector<pt::Tensor>& targets) {
   std::vector<AutogradMeta*> ret;
 
   // for multi_autograd_meta we can tolerent it has nullptr.
@@ -41,12 +41,24 @@ std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
   return ret;
 }
 
-int64_t EagerUtils::output_rank(const pt::Tensor& target) {
+int64_t EagerUtils::output_rank(pt::Tensor& target) {
   return autograd_meta(target)->OutRank();
 }
 
-std::shared_ptr<GradNodeBase> EagerUtils::grad_node(const pt::Tensor& target) {
+std::shared_ptr<GradNodeBase> EagerUtils::grad_node(pt::Tensor& target) {
   return autograd_meta(target)->GetMutableGradNode();
+}
+
+void PassStopGradient(AutogradMeta** outs, size_t outs_num,
+                      bool generate_grad) {
+  for (size_t i = 0; i < outs_num; ++i) {
+    if (!outs[i]) {
+      // TODO(jiabin): Add Tensor name here when we supported.
+      VLOG(0) << "Tensor is NULL";
+      continue;
+    }
+    outs[i]->SetNumericStopGradient(generate_grad);
+  }
 }
 
 bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num, AutogradMeta** outs,
@@ -62,18 +74,6 @@ bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num, AutogradMeta** outs,
     }
   }
   return false;
-}
-
-void PassStopGradient(AutogradMeta** outs, size_t outs_num,
-                      bool generate_grad) {
-  for (size_t i = 0; i < outs_num; ++i) {
-    if (!out[i]) {
-      // TODO(jiabin): Add Tensor name here when we supported.
-      VLOG(0) << "Tensor is NULL";
-      continue;
-    }
-    out[i]->SetNumericStopGradient(generate_grad);
-  }
 }
 
 }  // namespace egr

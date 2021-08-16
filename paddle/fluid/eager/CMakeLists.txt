@@ -1,2 +1,6 @@
+add_subdirectory(nodes)
+add_subdirectory(tests)
+
 cc_library(autograd_meta SRCS autograd_meta.cc DEPS top)
-cc_library(grad_node_info SRCS grad_node_info.cc DEPS top autograd_meta)
+cc_library(grad_node_info SRCS grad_node_info.cc ${DYGRAPH_BACKWARD_NODES} DEPS top)
+cc_library(backward SRCS backward.cc DEPS autograd_meta grad_node_info)

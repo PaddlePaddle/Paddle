@@ -43,11 +43,14 @@ namespace egr {
  * input of grad this edge belong).
  * */
 class Edge;
+class AutogradMeta;
 
 class GradNodeBase {
  public:
   GradNodeBase() = default;
-  virtual ~GradNodeBase() = 0;
+  explicit GradNodeBase(size_t input_num) { input_num_ = input_num; }
+  
+  virtual ~GradNodeBase() {}
 
   /**
    * operator() designed to contian the real backward execution logic, it should
@@ -65,7 +68,8 @@ class GradNodeBase {
    * This method should be call in forward code and for double backward depends
    * computation.
    * **/
-  void AddEdge(const std::vector<pt::Tensor>& tensors);
+  void AddEdge(const std::vector<AutogradMeta*>& metas);
+  
   /**
    * GetEdges is designed to get all edges of current node**/
   const std::vector<Edge>& GetEdges() const;
@@ -80,7 +84,7 @@ class GradNodeBase {
    * output should have the same order with forward inputs
    * **/
 
-  void RecordStopGradient(const std::vector<pt::Tensor>& ins);
+  void RecordStopGradient(const std::vector<AutogradMeta*>& ins_autograds);
 
  private:
   // TODO(jiabin): Do we need InputMeta here to indicate input info? Or we just
@@ -91,10 +95,12 @@ class GradNodeBase {
   // linked
   // by this Grad Node.
   std::vector<Edge> adj_edges_;
+  
   // We need GradNode to record all input's stop_gradient status, since some
   // of our kernel will have different operation according to if backward output
   // is stop_gradient
   std::vector<int> bwd_stop_gradients_;
+
 };
 
 class Edge {
@@ -122,4 +128,30 @@ class Edge {
   std::shared_ptr<GradNodeBase> grad_node_;
   size_t input_rank_;
 };
+
+class InputBuffer {
+ public:  
+  explicit InputBuffer(size_t size) : buffer(size) {
+  }
+
+  InputBuffer(const InputBuffer& other) = delete;
+  
+  InputBuffer(InputBuffer& other) = default;
+  
+  explicit InputBuffer(std::vector<pt::Tensor>&& inputs): buffer(std::move(inputs)) {};
+  
+  InputBuffer& operator=(InputBuffer& other) = default;
+  
+  // Create new tensor and copy tensor->impl
+  void add(size_t pos, const pt::Tensor& t, bool fill_one = false);
+  
+  pt::Tensor& operator[](size_t pos) { return buffer[pos]; }
+
+  const std::vector<pt::Tensor>& Buffers() { return buffer; }
+
+ private:
+  std::vector<pt::Tensor> buffer;
+
+};
+
 }  // namespace egr
