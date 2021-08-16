@@ -63,7 +63,7 @@ class RMSProp(Optimizer):
         w & = w - v(w, t)
 
     where, :math:`\rho` is a hyperparameter and typical values are 0.9, 0.95
-    and so on. :math: `beta` is the momentum term. :math: `\epsilon` is a
+    and so on. :math:`\beta` is the momentum term. :math:`\epsilon` is a
     smoothing term to avoid division by zero, usually set somewhere in range
     from 1e-4 to 1e-8.
 
@@ -71,10 +71,10 @@ class RMSProp(Optimizer):
     Parameters:
         - learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
           It can be a float value or a LRScheduler.
-        - rho(float): rho is :math: `\rho` in equation, default is 0.95.
-        - epsilon(float): :math: `\epsilon` in equation is smoothing term to
+        - rho(float): rho is :math:`\rho` in equation, default is 0.95.
+        - epsilon(float): :math:`\epsilon` in equation is smoothing term to
           avoid division by zero, default is 1e-6.
-        - momentum(float): :math:`\\beta` in equation is the momentum term,
+        - momentum(float): :math:`\beta` in equation is the momentum term,
           default is 0.0.
         - centered(bool): If True, gradients are normalized by the estimated variance of
           the gradient; if False, by the uncentered second moment. Setting this to

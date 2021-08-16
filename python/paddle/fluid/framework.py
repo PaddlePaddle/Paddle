@@ -495,7 +495,7 @@ def xpu_places(device_ids=None):
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
-        
+
             # required: xpu
 
             import paddle
@@ -1364,8 +1364,8 @@ class Variable(object):
         Indicating name of the gradient Variable of current Variable.
 
         **Notes: This is a read-only property. It simply returns name of
-          gradient Variable from a naming convention but doesn't guarantee
-          the gradient exists.**
+        gradient Variable from a naming convention but doesn't guarantee
+        the gradient exists.**
 
         Examples:
           .. code-block:: python
