@@ -172,13 +172,14 @@ def list(repo_dir, source='github', force_reload=False):
     List all entrypoints available in `github` hubconf.
 
     Args:
-        repo_dir(str): github or local path
+        repo_dir(str): github or local path.
 
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
             
             local path (str): local repo path
-        source (str): `github` | `gitee` | `local`, default is `github`
+        
+        source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): whether to discard the existing cache and force a fresh download, default is `False`.
     Returns:
         entrypoints: a list of available entrypoint names
@@ -215,15 +216,16 @@ def help(repo_dir, model, source='github', force_reload=False):
     Show help information of model
 
     Args:
-        repo_dir(str): github or local path
+        repo_dir(str): github or local path.
 
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
             
-            local path (str): local repo path
-        model (str): model name
-        source (str): `github` | `gitee` | `local`, default is `github`
-        force_reload (bool, optional): default is `False`
+            local path (str): local repo path.
+        
+        model (str): model name.
+        source (str): `github` | `gitee` | `local`, default is `github`.
+        force_reload (bool, optional): default is `False`.
     Return:
         docs
 
@@ -256,15 +258,16 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
     Load model
 
     Args:
-        repo_dir(str): github or local path
-        
+        repo_dir(str): github or local path.
+
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
 
-            local path (str): local repo path
-        model (str): model name
-        source (str): `github` | `gitee` | `local`, default is `github`
-        force_reload (bool, optional), default is `False`
+            local path (str): local repo path.
+        
+        model (str): model name.
+        source (str): `github` | `gitee` | `local`, default is `github`.
+        force_reload (bool, optional): default is `False`.
         **kwargs: parameters using for model
     Return:
         paddle model

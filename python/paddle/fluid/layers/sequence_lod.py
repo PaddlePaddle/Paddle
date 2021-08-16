@@ -913,8 +913,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
         to ``maxlen``). The padding value is defined by ``pad_value``, and will be 
         appended to the tail of sequences. The result is a Python tuple ``(Out, Length)``: 
         the LodTensor ``Out`` is the padded sequences, and LodTensor ``Length`` is 
-        the length information of input sequences. For removing padding data (unpadding 
-	    operation), See :ref:`api_fluid_layers_sequence_unpad` .
+        the length information of input sequences. For removing padding data (unpadding operation), See :ref:`api_fluid_layers_sequence_unpad`.
 
         Please note that the input ``x`` should be LodTensor.
 
