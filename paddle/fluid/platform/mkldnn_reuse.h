@@ -1072,7 +1072,6 @@ class ActivationMKLDNNHandler
   }
 };
 
-
 class ReorderMKLDNNHandler : public MKLDNNHandler {
  public:
   ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
