@@ -689,18 +689,18 @@ function get_precision_ut_mac() {
         on_precision=1
         re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
         UT_list_prec_1='ut_list_prec2'
-        for case in $UT_list; do
-            flag=$(echo $case|grep -oE $re)
+        for ut_case in $UT_list; do
+            flag=$(echo $ut_case|grep -oE $re)
             if [ -n "$flag" ];then
                 if [ -z "$UT_list_prec" ];then
-                    UT_list_prec="^$case$"
+                    UT_list_prec="^$ut_case$"
                 elif [[ "${#UT_list_prec}" -gt 10000 ]];then
-                    UT_list_prec_1="$UT_list_prec_1|^$case$"
+                    UT_list_prec_1="$UT_list_prec_1|^$ut_case$"
                 else
-                    UT_list_prec="$UT_list_prec|^$case$"
+                    UT_list_prec="$UT_list_prec|^$ut_case$"
                 fi
             else
-                echo ${case} "won't run in PRECISION_TEST mode."
+                echo ${ut_case} "won't run in PRECISION_TEST mode."
             fi
         done
     fi
@@ -722,6 +722,32 @@ function fetch_upstream_develop_if_not_exist() {
     fi
 }
 
+function check_whl_size() {
+    if [ ! "${pr_whl_size}" ];then
+        echo "pr whl size not found "         
+        exit 1
+    fi
+
+    set +x
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    echo "dev_whl_size: ${dev_whl_size}"
+
+    whldiffSize=`expr ${pr_whl_size} - ${dev_whl_size}`
+    if [ ${whldiffSize} -gt 10 ] ; then
+       approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22334008 22361972`
+       echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+       if [ "${APPROVALS}" == "FALSE" ]; then
+           echo "=========================================================================================="
+           echo "This PR make the release paddlepaddle whl size growth exceeds 10 M."
+           echo "Then you must have one RD (jim19930609 (Recommend) or JiabinYang) approval for this PR\n"
+           echo "=========================================================================================="
+           exit 6
+       fi
+    fi
+    set -x
+}
+
 function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
@@ -730,6 +756,9 @@ function generate_upstream_develop_api_spec() {
     cmake_gen $1
     build $2
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    echo "pr_whl_size: ${pr_whl_size}"
+    
 
     git checkout $cur_branch
     generate_api_spec "$1" "DEV"
@@ -2234,6 +2263,7 @@ function main() {
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
+        check_whl_size
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}

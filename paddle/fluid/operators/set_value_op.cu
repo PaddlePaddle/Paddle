@@ -22,3 +22,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SetValueKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SetValueKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SetValueKernel<paddle::platform::CUDADeviceContext, bool>);
+
+REGISTER_OP_CUDA_KERNEL(
+    set_value_grad,
+    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, bool>);

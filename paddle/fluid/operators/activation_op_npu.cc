@@ -16,6 +16,7 @@ limitations under the Licnse. */
 #include <string>
 
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
@@ -388,6 +389,155 @@ class SigmoidGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+// HardSwish = min(max(0, x+offset), threshold) * x / scale
+template <typename T>
+class HardSwishNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+
+    float threshold = ctx.Attr<float>("threshold");
+    float scale = ctx.Attr<float>("scale");
+    float offset = ctx.Attr<float>("offset");
+
+    auto place = ctx.GetPlace();
+
+    out->mutable_data<T>(place);
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    Tensor tensor_offset(x->type());
+    tensor_offset.mutable_data<T>({1}, place);
+    FillNpuTensorWithConstant<T>(&tensor_offset, static_cast<T>(offset));
+
+    Tensor add_offset_val(x->type());
+    add_offset_val.mutable_data<T>(x->dims(), place);
+    const auto& runner_add =
+        NpuOpRunner("AddV2", {*x, tensor_offset}, {add_offset_val});
+    runner_add.Run(stream);
+
+    Tensor tensor_threshold(x->type());
+    tensor_threshold.mutable_data<T>({1}, place);
+    FillNpuTensorWithConstant<T>(&tensor_threshold, static_cast<T>(threshold));
+
+    Tensor tensor_zero(x->type());
+    tensor_zero.mutable_data<T>({1}, place);
+    FillNpuTensorWithConstant<T>(&tensor_zero, static_cast<T>(0.0));
+
+    Tensor clip_val(x->type());
+    clip_val.mutable_data<T>(x->dims(), place);
+    const auto& runner_clip = NpuOpRunner(
+        "ClipByValue", {add_offset_val, tensor_zero, tensor_threshold},
+        {clip_val});
+    runner_clip.Run(stream);
+
+    Tensor tensor_scale_tmp(x->type());
+    tensor_scale_tmp.mutable_data<T>({1}, place);
+    FillNpuTensorWithConstant<T>(&tensor_scale_tmp, static_cast<T>(scale));
+    Tensor tensor_scale(x->type());
+    tensor_scale.mutable_data<T>(x->dims(), place);
+    const auto& runner_fill =
+        NpuOpRunner("FillD", {tensor_scale_tmp}, {tensor_scale},
+                    {{"dims", framework::vectorize(x->dims())}});
+    runner_fill.Run(stream);
+
+    Tensor div_val(x->type());
+    div_val.mutable_data<T>(x->dims(), place);
+    const auto& runner_div =
+        NpuOpRunner("Div", {clip_val, tensor_scale}, {div_val});
+    runner_div.Run(stream);
+
+    const auto& runner_mul = NpuOpRunner("Mul", {*x, div_val}, {*out});
+    runner_mul.Run(stream);
+  }
+};
+
+template <typename T>
+class HardSwishGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    float threshold = ctx.Attr<float>("threshold");
+    float scale = ctx.Attr<float>("scale");
+    float offset = ctx.Attr<float>("offset");
+
+    auto place = ctx.GetPlace();
+
+    dx->mutable_data<T>(place);
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    Tensor tensor_offset(x->type());
+    tensor_offset.mutable_data<T>({1}, place);
+    FillNpuTensorWithConstant<T>(&tensor_offset, static_cast<T>(offset));
+
+    Tensor add_offset_val(x->type());
+    add_offset_val.mutable_data<T>(x->dims(), place);
+    const auto& runner_add =
+        NpuOpRunner("AddV2", {*x, tensor_offset}, {add_offset_val});
+    runner_add.Run(stream);
+
+    Tensor tmp1(x->type());
+    tmp1.mutable_data<T>(x->dims(), place);
+    const auto& runner_pow1 = NpuOpRunner("Power", {*x}, {tmp1},
+                                          {{"scale", 2.0f}, {"shift", offset}});
+    runner_pow1.Run(stream);
+
+    Tensor tmp2(x->type());
+    tmp2.mutable_data<T>(x->dims(), place);
+    const auto& runner_ht_grad =
+        NpuOpRunner("HardtanhGrad", {add_offset_val, tmp1}, {tmp2},
+                    {{"min_val", 0.0f}, {"max_val", threshold}});
+    runner_ht_grad.Run(stream);
+
+    Tensor tmp3(x->type());
+    tmp3.mutable_data<T>(x->dims(), place);
+    const auto& runner_pow2 = NpuOpRunner(
+        "Power", {tmp2}, {tmp3}, {{"scale", 1.0f / scale}, {"shift", 1.0f}});
+    runner_pow2.Run(stream);
+
+    Tensor tensor_threshold_tmp(x->type());
+    tensor_threshold_tmp.mutable_data<T>({1}, place);
+    FillNpuTensorWithConstant<T>(&tensor_threshold_tmp,
+                                 static_cast<T>(threshold));
+    Tensor tensor_threshold(x->type());
+    tensor_threshold.mutable_data<T>(x->dims(), place);
+    const auto& runner_fill =
+        NpuOpRunner("FillD", {tensor_threshold_tmp}, {tensor_threshold},
+                    {{"dims", framework::vectorize(x->dims())}});
+    runner_fill.Run(stream);
+
+    Tensor tmp_bool(framework::proto::VarType::BOOL);
+    tmp_bool.mutable_data<bool>(x->dims(), place);
+    const auto& runner_less =
+        NpuOpRunner("Less", {add_offset_val, tensor_threshold}, {tmp_bool});
+    runner_less.Run(stream);
+    Tensor tmp4(x->type());
+    tmp4.mutable_data<T>(x->dims(), place);
+    auto dst_dtype = ConvertToNpuDtype(x->type());
+    const auto& runner_cast =
+        NpuOpRunner("Cast", {tmp_bool}, {tmp4},
+                    {{"dst_type", static_cast<int>(dst_dtype)}});
+    runner_cast.Run(stream);
+
+    Tensor tmp5(x->type());
+    tmp5.mutable_data<T>(x->dims(), place);
+    const auto& runner_sub = NpuOpRunner("Sub", {tmp3, tmp4}, {tmp5});
+    runner_sub.Run(stream);
+
+    const auto& runner_final = NpuOpRunner("Mul", {tmp5, *dout}, {*dx});
+    runner_final.Run(stream);
+  }
+};
+
 template <typename DeviceContext, typename T>
 class HardSigmoidNPUKernel : public framework::OpKernel<T> {
  public:
@@ -560,6 +710,37 @@ class AtanGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class ExpNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+    const auto& runner = NpuOpRunner("Exp", {*x}, {*out}, {});
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ExpGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    const auto& runner = NpuOpRunner("Mul", {*dout, *out}, {*dx}, {});
+    runner.Run(stream);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -646,6 +827,12 @@ REGISTER_OP_NPU_KERNEL(
     ops::SigmoidGradNPUKernel<paddle::platform::NPUDeviceContext,
                               paddle::platform::float16>);
 
+REGISTER_OP_NPU_KERNEL(hard_swish, ops::HardSwishNPUKernel<float>,
+                       ops::HardSwishNPUKernel<paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(hard_swish_grad, ops::HardSwishGradNPUKernel<float>,
+                       ops::HardSwishGradNPUKernel<paddle::platform::float16>);
+
 REGISTER_OP_NPU_KERNEL(
     hard_sigmoid,
     ops::HardSigmoidNPUKernel<paddle::platform::NPUDeviceContext, float>,
@@ -692,3 +879,11 @@ REGISTER_OP_NPU_KERNEL(
     ops::AtanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AtanGradNPUKernel<paddle::platform::NPUDeviceContext,
                            paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    exp, ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ExpNPUKernel<paddle::platform::NPUDeviceContext, double>);
+
+REGISTER_OP_NPU_KERNEL(
+    exp_grad, ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, double>);

@@ -64,6 +64,5 @@ REGISTER_OP_NPU_KERNEL(
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext,
                               plat::float16>)
