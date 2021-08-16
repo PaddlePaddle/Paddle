@@ -224,7 +224,8 @@ class DistributedBatchSampler(BatchSampler):
                  num_replicas=None,
                  rank=None,
                  shuffle=False,
-                 drop_last=False):
+                 drop_last=False,
+                 consumed_samples=0):
         self.dataset = dataset
 
         assert isinstance(batch_size, int) and batch_size > 0, \
@@ -254,14 +255,22 @@ class DistributedBatchSampler(BatchSampler):
 
         self.drop_last = drop_last
         self.epoch = 0
+
+        self.consumed_samples = consumed_samples
         self.num_samples = int(math.ceil(len(self.dataset) * 1.0 / self.nranks))
         self.total_size = self.num_samples * self.nranks
 
     def __iter__(self):
+        self.remain_num_samples = int(
+            math.ceil((len(self.dataset) - self.consumed_samples) * 1.0 /
+                      self.nranks))
+        self.remain_total_size = self.remain_num_samples * self.nranks
+
         num_samples = len(self.dataset)
-        indices = np.arange(num_samples).tolist()
-        indices += indices[:(self.total_size - len(indices))]
-        assert len(indices) == self.total_size
+        indices = np.arange(self.consumed_samples, num_samples).tolist()
+        indices += indices[:(self.remain_total_size - len(indices))]
+
+        assert len(indices) == self.remain_total_size
         if self.shuffle:
             np.random.RandomState(self.epoch).shuffle(indices)
             self.epoch += 1
@@ -269,7 +278,8 @@ class DistributedBatchSampler(BatchSampler):
         # subsample
         def _get_indices_by_batch_size(indices):
             subsampled_indices = []
-            last_batch_size = self.total_size % (self.batch_size * self.nranks)
+            last_batch_size = self.remain_total_size % (self.batch_size *
+                                                        self.nranks)
             assert last_batch_size % self.nranks == 0
             last_local_batch_size = last_batch_size // self.nranks
 
@@ -287,7 +297,7 @@ class DistributedBatchSampler(BatchSampler):
         if self.nranks > 1:
             indices = _get_indices_by_batch_size(indices)
 
-        assert len(indices) == self.num_samples
+        assert len(indices) == self.remain_num_samples
         _sample_iter = iter(indices)
 
         batch_indices = []
@@ -342,3 +352,5 @@ class DistributedBatchSampler(BatchSampler):
                     sampler.set_epoch(epoch)
         """
         self.epoch = epoch
+        # if we reset the epoch, the consumed_samples should be set to 0.
+        self.consumed_samples = 0
