@@ -20,6 +20,7 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -210,24 +211,6 @@ class TestArgMaxFloat32Case10(BaseTestCase):
         self.axis = 0
 
 
-class TestArgMaxFloat32Case11(BaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, )
-        self.dtype = 'float32'
-        self.axis = 0
-        self.keep_dims = True
-
-
-class TestArgMaxFloat32Case12(BaseTestCase):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.dims = (3, )
-        self.dtype = 'float32'
-        self.axis = 0
-        self.keep_dims = False
-
-
 class TestArgMaxAPI(unittest.TestCase):
     def initTestCase(self):
         self.dims = (3, 4, 5)
@@ -249,6 +232,37 @@ class TestArgMaxAPI(unittest.TestCase):
             paddle_output = paddle.argmax(tensor_input, axis=self.axis)
             self.assertEqual(
                 np.allclose(numpy_output, paddle_output.numpy()), True)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+class TestArgMaxAPI_2(unittest.TestCase):
+    def initTestCase(self):
+        self.dims = (3, 4, 5)
+        self.dtype = 'float32'
+        self.axis = 0
+        self.keep_dims = True
+
+    def setUp(self):
+        self.initTestCase()
+        self.__class__.use_npu = True
+        self.place = [paddle.NPUPlace(0)]
+
+    def test_dygraph_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            np.random.seed(2021)
+            numpy_input = (np.random.random(self.dims)).astype(self.dtype)
+            tensor_input = paddle.to_tensor(numpy_input)
+            numpy_output = np.argmax(
+                numpy_input, axis=self.axis).reshape(1, 4, 5)
+            paddle_output = paddle.argmax(
+                tensor_input, axis=self.axis, keepdim=self.keep_dims)
+            self.assertEqual(
+                np.allclose(numpy_output, paddle_output.numpy()), True)
+            self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 
         for place in self.place:
