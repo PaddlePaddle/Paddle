@@ -212,8 +212,8 @@ struct Argument {
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_oss, TensorRtUseOSS, bool);
-  DECL_ARGUMENT_FIELD(tensorrt_shape_info_path, TensorRtShapeInfoPath,
-                      std::string);
+  DECL_ARGUMENT_FIELD(tensorrt_shape_range_info_path,
+                      TensorRtShapeRangeInfoPath, std::string);
   DECL_ARGUMENT_FIELD(tensorrt_tuned_dynamic_shape, TensorRtTunedDynamicShape,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_allow_build_at_runtime,

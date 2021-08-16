@@ -519,9 +519,10 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
-      .def("collect_shape_range_info", &AnalysisConfig::CollectShapeInfo)
-      .def("shape_info_path", &AnalysisConfig::shape_info_path)
-      .def("shape_range_info_collected", &AnalysisConfig::shape_info_collected)
+      .def("collect_shape_range_info", &AnalysisConfig::CollectShapeRangeInfo)
+      .def("shape_range_info_path", &AnalysisConfig::shape_range_info_path)
+      .def("shape_range_info_collected",
+           &AnalysisConfig::shape_range_info_collected)
       .def("enable_tuned_tensorrt_dynamic_shape",
            &AnalysisConfig::EnableTunedTensorRtDynamicShape)
       .def("tuned_tensorrt_dynamic_shape",

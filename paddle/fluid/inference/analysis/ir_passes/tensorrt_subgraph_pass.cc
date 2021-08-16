@@ -204,8 +204,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   int max_batch_size = Get<int>("max_batch_size");
   if (trt_tuned_dynamic_shape) {
     VLOG(1) << "trt dynamic_shape deserialize from " << shape_info_path;
-    inference::DeserializeShapeInfo(shape_info_path, &min_input_shape,
-                                    &max_input_shape, &opt_input_shape);
+    inference::DeserializeShapeRangeInfo(shape_info_path, &min_input_shape,
+                                         &max_input_shape, &opt_input_shape);
   }
 
   // The following procedure is used to rename all the intermediate

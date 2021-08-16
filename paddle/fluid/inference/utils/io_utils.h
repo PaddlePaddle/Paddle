@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
-#include "paddle/fluid/inference/utils/shape_info.pb.h"
+#include "paddle/fluid/inference/utils/shape_range_info.pb.h"
 
 namespace paddle {
 struct PaddleTensor;
@@ -43,16 +43,17 @@ void SerializePDTensorsToFile(const std::string& path,
 void DeserializePDTensorsToFile(const std::string& path,
                                 std::vector<PaddleTensor>* tensors);
 
-void SerializeShapeInfo(const std::string& path,
-                        const paddle::inference::proto::ShapeInfos& info);
-void SerializeShapeInfo(
+void SerializeShapeRangeInfo(
+    const std::string& path,
+    const paddle::inference::proto::ShapeRangeInfos& info);
+void SerializeShapeRangeInfo(
     const std::string& path,
     const std::map<std::string, std::vector<int32_t>>& min_shape,
     const std::map<std::string, std::vector<int32_t>>& max_shape,
     const std::map<std::string, std::vector<int32_t>>& opt_shape);
-void DeserializeShapeInfo(const std::string& path,
-                          paddle::inference::proto::ShapeInfos* info);
-void DeserializeShapeInfo(
+void DeserializeShapeRangeInfo(const std::string& path,
+                               paddle::inference::proto::ShapeRangeInfos* info);
+void DeserializeShapeRangeInfo(
     const std::string& path,
     std::map<std::string, std::vector<int32_t>>* min_shape,
     std::map<std::string, std::vector<int32_t>>* max_shape,

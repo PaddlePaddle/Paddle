@@ -35,8 +35,8 @@ TEST(AnalysisPredictor, analysis_off) {
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(false);
   LOG(INFO) << config.Summary();
-  LOG(INFO) << "Shape Info collected: " << config.shape_info_collected()
-            << ", path: " << config.shape_info_path();
+  LOG(INFO) << "Shape Info collected: " << config.shape_range_info_collected()
+            << ", path: " << config.shape_range_info_path();
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
@@ -108,7 +108,7 @@ TEST(AnalysisPredictor, CollectShapeRangeInfo) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
   config.SwitchUseFeedFetchOps(false);
-  config.CollectShapeInfo("shape_range_info.pbtxt");
+  config.CollectShapeRangeInfo("shape_range_info.pbtxt");
   LOG(INFO) << config.Summary();
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 

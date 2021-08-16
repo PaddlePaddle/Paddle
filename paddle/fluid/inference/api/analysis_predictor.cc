@@ -575,7 +575,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
-    argument_.SetTensorRtShapeInfoPath(config_.shape_info_path());
+    argument_.SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
     argument_.SetTensorRtTunedDynamicShape(
         config_.tuned_tensorrt_dynamic_shape());
     argument_.SetTensorRtAllowBuildAtRuntime(
@@ -926,8 +926,8 @@ bool AnalysisPredictor::ZeroCopyRun() {
 
   executor_->Run();
 
-  if (config_.shape_info_collected()) {
-    CollectShapeInfo();
+  if (config_.shape_range_info_collected()) {
+    CollectShapeRangeInfo();
   }
 
   // Fix TensorArray reuse not cleaned bug.
@@ -949,7 +949,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
   return true;
 }
 
-void AnalysisPredictor::CollectShapeInfo() {
+void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
   if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -979,7 +979,7 @@ void AnalysisPredictor::CollectShapeInfo() {
   }
 }
 
-void AnalysisPredictor::StatisticShapeInfo() {
+void AnalysisPredictor::StatisticShapeRangeInfo() {
   std::map<std::string, std::vector<int32_t>> min_shapes;
   std::map<std::string, std::vector<int32_t>> max_shapes;
   std::map<std::string, std::vector<int32_t>> opt_shapes;
@@ -1017,8 +1017,8 @@ void AnalysisPredictor::StatisticShapeInfo() {
     opt_shapes[name] = opt_shape;
   }
 
-  inference::SerializeShapeInfo(config_.shape_info_path(), min_shapes,
-                                max_shapes, opt_shapes);
+  inference::SerializeShapeRangeInfo(config_.shape_range_info_path(),
+                                     min_shapes, max_shapes, opt_shapes);
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {
@@ -1227,8 +1227,8 @@ AnalysisPredictor::~AnalysisPredictor() {
   }
 #endif
 
-  if (config_.shape_info_collected()) {
-    StatisticShapeInfo();
+  if (config_.shape_range_info_collected()) {
+    StatisticShapeRangeInfo();
   }
 
   memory::Release(place_);

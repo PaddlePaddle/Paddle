@@ -87,7 +87,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] AnalysisConfig config
   ///
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
-    if (config_.shape_info_collected()) {
+    if (config_.shape_range_info_collected()) {
       config_.SwitchIrOptim(false);
       config_.EnableMemoryOptim(false);
     }
@@ -378,8 +378,8 @@ class AnalysisPredictor : public PaddlePredictor {
 #endif
 
  private:
-  void StatisticShapeInfo();
-  void CollectShapeInfo();
+  void StatisticShapeRangeInfo();
+  void CollectShapeRangeInfo();
 
  private:
   AnalysisConfig config_;

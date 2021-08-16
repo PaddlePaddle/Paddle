@@ -394,21 +394,21 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param shape_info_path the path to save shape info.
   ///
-  void CollectShapeInfo(const std::string& shape_info_path);
+  void CollectShapeRangeInfo(const std::string& shape_range_info_path);
 
   ///
   /// \brief the shape info path in CollectShapeInfo mode.
   ///
   /// \return the shape info path.
   ///
-  std::string shape_info_path();
+  std::string shape_range_info_path();
 
   ///
   /// \brief A boolean state telling whether to collect shape info.
   ///
   /// \return bool Whether to collect shape info.
   ///
-  bool shape_info_collected();
+  bool shape_range_info_collected();
 
   ///
   /// \brief Prevent ops running in Paddle-TRT
@@ -732,8 +732,8 @@ struct PD_INFER_DECL AnalysisConfig {
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the
   // min_shape, max_shape and opt_shape and save in shape_info_path_;
-  bool collect_shape_info_{false};
-  std::string shape_info_path_;
+  bool collect_shape_range_info_{false};
+  std::string shape_range_info_path_;
 
   // dlnne related.
   bool use_dlnne_{false};

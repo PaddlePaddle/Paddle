@@ -21,7 +21,7 @@
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/utils/shape_info.pb.h"
+#include "paddle/fluid/inference/utils/shape_range_info.pb.h"
 
 namespace paddle {
 namespace inference {
@@ -165,21 +165,22 @@ void DeserializePDTensorsToFile(const std::string &path,
   fin.close();
 }
 
-void SerializeShapeInfo(const std::string &path,
-                        const paddle::inference::proto::ShapeInfos &info) {
-  int out_fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+void SerializeShapeRangeInfo(
+    const std::string &path,
+    const paddle::inference::proto::ShapeRangeInfos &info) {
+  int out_fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
   google::protobuf::io::FileOutputStream os(out_fd);
   google::protobuf::TextFormat::Print(info, &os);
 }
 
-void SerializeShapeInfo(
+void SerializeShapeRangeInfo(
     const std::string &path,
     const std::map<std::string, std::vector<int32_t>> &min_shape,
     const std::map<std::string, std::vector<int32_t>> &max_shape,
     const std::map<std::string, std::vector<int32_t>> &opt_shape) {
-  paddle::inference::proto::ShapeInfos shape_infos;
+  paddle::inference::proto::ShapeRangeInfos shape_range_infos;
   for (auto it : min_shape) {
-    auto *s = shape_infos.add_shape_info();
+    auto *s = shape_range_infos.add_shape_range_info();
     s->set_name(it.first);
     for (size_t i = 0; i < it.second.size(); ++i) {
       s->add_min_shape(it.second[i]);
@@ -188,24 +189,24 @@ void SerializeShapeInfo(
     }
   }
 
-  inference::SerializeShapeInfo(path, shape_infos);
+  inference::SerializeShapeRangeInfo(path, shape_range_infos);
 }
-void DeserializeShapeInfo(const std::string &path,
-                          paddle::inference::proto::ShapeInfos *info) {
+void DeserializeShapeRangeInfo(
+    const std::string &path, paddle::inference::proto::ShapeRangeInfos *info) {
   int fd = open(path.c_str(), O_RDONLY);
   google::protobuf::io::FileInputStream is(fd);
   google::protobuf::TextFormat::Parse(&is, info);
 }
 
-void DeserializeShapeInfo(
+void DeserializeShapeRangeInfo(
     const std::string &path,
     std::map<std::string, std::vector<int32_t>> *min_shape,
     std::map<std::string, std::vector<int32_t>> *max_shape,
     std::map<std::string, std::vector<int32_t>> *opt_shape) {
-  paddle::inference::proto::ShapeInfos shape_infos;
-  DeserializeShapeInfo(path, &shape_infos);
-  for (int i = 0; i < shape_infos.shape_info_size(); ++i) {
-    auto info = shape_infos.shape_info(i);
+  paddle::inference::proto::ShapeRangeInfos shape_range_infos;
+  DeserializeShapeRangeInfo(path, &shape_range_infos);
+  for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
+    auto info = shape_range_infos.shape_range_info(i);
     auto name = info.name();
     if (min_shape->count(name) || max_shape->count(name) ||
         opt_shape->count(name)) {
