@@ -69,25 +69,42 @@ class FeedOp : public framework::OperatorBase {
     VLOG(3) << "Feed variable " << feed_var_name << "'s " << col
             << " column to variable " << out_name;
 
-    auto &feed_list = feed_var->Get<framework::FeedList>();
-    PADDLE_ENFORCE_LT(
-        static_cast<size_t>(col), feed_list.size(),
-        platform::errors::InvalidArgument(
-            "The column index of current feeding variable is expected to be "
-            "less than the length of feeding list. But received column index = "
-            "%d, the length of feeding list = %d",
-            col, feed_list.size()));
-
-    auto &feed_item = feed_list.at(static_cast<size_t>(col));
-    auto *out_item = out_var->GetMutable<framework::FeedType>();
-
-    if (platform::is_same_place(feed_item.place(), place)) {
-      out_item->ShareDataWith(feed_item);
+    if (feed_var->IsType<framework::STRINGS>()) {
+      auto &feed_list = feed_var->Get<framework::STRINGS>();
+      PADDLE_ENFORCE_LT(
+          static_cast<size_t>(col), feed_list.size(),
+          platform::errors::InvalidArgument(
+              "The column index of current feeding variable is expected to be "
+              "less than the length of feeding list. But received column index "
+              "= "
+              "%d, the length of feeding list = %d",
+              col, feed_list.size()));
+      auto &feed_item = feed_list.at(static_cast<size_t>(col));
+      auto *out_item = out_var->GetMutable<framework::WSTRING>();
+      out_item->resize(feed_item.size());
+      *out_item = feed_item;
     } else {
-      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      framework::TensorCopy(feed_item, place, *dev_ctx, out_item);
+      auto &feed_list = feed_var->Get<framework::LoDTensorArray>();
+      PADDLE_ENFORCE_LT(
+          static_cast<size_t>(col), feed_list.size(),
+          platform::errors::InvalidArgument(
+              "The column index of current feeding variable is expected to be "
+              "less than the length of feeding list. But received column index "
+              "= "
+              "%d, the length of feeding list = %d",
+              col, feed_list.size()));
+
+      auto &feed_item = feed_list.at(static_cast<size_t>(col));
+      auto *out_item = out_var->GetMutable<framework::LoDTensor>();
+
+      if (platform::is_same_place(feed_item.place(), place)) {
+        out_item->ShareDataWith(feed_item);
+      } else {
+        auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+        framework::TensorCopy(feed_item, place, *dev_ctx, out_item);
+      }
+      out_item->set_lod(feed_item.lod());
     }
-    out_item->set_lod(feed_item.lod());
   }
 };
 
@@ -95,7 +112,8 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>) A feeding list of LoDTensor, which may have "
+             "(vector<LoDTensor>|vector<std::wstring>) "
+             "A feeding list of LoDTensor or wstring, which may have "
              "different dimension and data type.");
     AddOutput("Out",
               "(LoDTensor) The LoDTensor which is a copy of the col-th feeding "

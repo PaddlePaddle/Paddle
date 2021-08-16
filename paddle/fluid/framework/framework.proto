@@ -139,6 +139,8 @@ message VarType {
 
     STRINGS = 25;
     MAP = 26;
+    FEED_LIST = 27;
+    WSTRING = 28;
   }
 
   required Type type = 1;

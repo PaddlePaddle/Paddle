@@ -23,6 +23,7 @@
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
@@ -90,7 +91,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
 namespace paddle {
 namespace framework {
 
-using STRINGS = std::vector<std::wstring>;
+using WSTRING = std::wstring;
 using STRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
 
 const char *ToTypeName(int var_id);
@@ -166,8 +167,9 @@ struct VarTypeRegistryImpl {
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
-    LoDTensorArray, platform::PlaceList, ReaderHolder, std::string, Scope *,
-    operators::reader::LoDTensorBlockingQueueHolder, FetchList,
+    WSTRING, STRINGS, LoDTensorArray, platform::PlaceList, ReaderHolder,
+    std::string, Scope *, operators::reader::LoDTensorBlockingQueueHolder,
+    FetchList, FeedList,
     operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -181,7 +183,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId, platform::BKCLCommunicator,
 #endif
-    int, float, STRINGS, STRING_MAP>;
+    int, float, STRING_MAP>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -204,6 +206,8 @@ struct VarTypeTrait {
 
 // Users should set some of variable type ids to be what is defined in
 // framework.proto below
+REG_PROTO_VAR_TYPE_TRAIT(WSTRING, proto::VarType::WSTRING);
+REG_PROTO_VAR_TYPE_TRAIT(STRINGS, proto::VarType::STRINGS);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
@@ -211,10 +215,10 @@ REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensorArray, proto::VarType::LOD_TENSOR_ARRAY);
 REG_PROTO_VAR_TYPE_TRAIT(platform::PlaceList, proto::VarType::PLACE_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
+REG_PROTO_VAR_TYPE_TRAIT(FeedList, proto::VarType::FEED_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
-REG_PROTO_VAR_TYPE_TRAIT(STRINGS, proto::VarType::STRINGS);
 REG_PROTO_VAR_TYPE_TRAIT(STRING_MAP, proto::VarType::MAP);
 
 /** End of variable type registration */

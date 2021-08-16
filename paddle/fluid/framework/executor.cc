@@ -109,7 +109,8 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+                << " locally, which pointer is " << ptr << "Variable Type "
+                << static_cast<int>(var->GetType());
       }
     }
   } else {

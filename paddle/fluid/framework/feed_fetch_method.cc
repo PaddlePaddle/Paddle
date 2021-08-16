@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 
+#include <boost/variant.hpp>
 #include "glog/logging.h"
 
 namespace paddle {
@@ -24,34 +25,33 @@ namespace framework {
 class LoDTensor;
 class Variable;
 
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
+void SetFeedVariable(Scope* scope, const FeedType& input,
                      const std::string& var_name, size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
-  VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
   Variable* g_feed_value = scope->Var(var_name);
-  auto& feed_inputs = *(g_feed_value->GetMutable<FeedList>());
-  if (index >= feed_inputs.size()) {
-    feed_inputs.resize(index + 1);
+  if (input.type() == typeid(WSTRING)) {
+    VLOG(3) << "SetFeedStringVariable name=" << var_name << " index=" << index;
+    WSTRING input_data = boost::get<WSTRING>(input);
+    Variable* g_feed_value = scope->Var(var_name);
+    auto& feed_inputs = *(g_feed_value->GetMutable<STRINGS>());
+    if (index >= feed_inputs.size()) {
+      feed_inputs.resize(index + 1);
+    }
+    // shared data with input tensor
+    feed_inputs[index] = input_data;
+  } else {
+    VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
+    LoDTensor input_data = boost::get<LoDTensor>(input);
+    auto& feed_inputs = *(g_feed_value->GetMutable<LoDTensorArray>());
+    if (index >= feed_inputs.size()) {
+      feed_inputs.resize(index + 1);
+    }
+    // shared data with input tensor
+    feed_inputs[index].ShareDataWith(input_data);
+    // set lod
+    feed_inputs[index].set_lod(input_data.lod());
   }
-  // shared data with input tensor
-  feed_inputs[index].ShareDataWith(input);
-  // set lod
-  feed_inputs[index].set_lod(input.lod());
-}
-
-void SetFeedVariable(Scope* scope, const STRINGS& input,
-                     const std::string& var_name, size_t index) {
-  // If var_name Variable is not found in GlobalScope, a new variable will
-  // be created.
-  VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
-  Variable* g_feed_value = scope->Var(var_name);
-  auto& feed_inputs = *(g_feed_value->GetMutable<STRINGS>());
-  if (index >= feed_inputs.size()) {
-    feed_inputs.resize(index + 1);
-  }
-  // shared data with input tensor
-  feed_inputs[index] = input[index];
 }
 
 FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,

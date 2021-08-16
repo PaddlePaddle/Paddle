@@ -44,6 +44,13 @@ inline bool data_is_lod_tensor_array(const FetchType &data) {
   return false;
 }
 
+inline bool data_is_string_tensor(const FeedType &data) {
+  if (data.type() == typeid(STRINGS)) {
+    return true;
+  }
+  return false;
+}
+
 static const char kFeedOpType[] = "feed";
 static const char kFetchOpType[] = "fetch";
 

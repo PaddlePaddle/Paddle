@@ -25,10 +25,7 @@ namespace framework {
 class LoDTensor;
 class Scope;
 
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index);
-
-void SetFeedVariable(Scope* scope, const STRINGS& input,
+void SetFeedVariable(Scope* scope, const FeedType& input,
                      const std::string& var_name, size_t index);
 
 FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
