@@ -28,6 +28,8 @@ import shutil
 import unittest
 import paddle.fluid.incubate.data_generator as dg
 
+paddle.enable_static()
+
 url_schema_len = 5
 query_schema = [
     'Q_query_basic', 'Q_query_phrase', 'Q_quq', 'Q_timelevel',
