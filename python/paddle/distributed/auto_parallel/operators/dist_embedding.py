@@ -24,18 +24,20 @@ from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 
 
-class DistributedSoftmax(DistributedOperator):
+class DistributedEmbedding(DistributedOperator):
     def __init__(self, name):
-        super(DistributedSoftmax, self).__init__()
+        super(DistributedEmbedding, self).__init__()
         self._name = name
 
 
-register_distributed_operator("softmax", DistributedSoftmax("softmax"))
+register_distributed_operator("lookup_table_v2",
+                              DistributedEmbedding("embedding"))
 
 
-class DistributedSoftmaxImpl0(DistributedOperatorImpl):
+# RowParallel
+class DistributedEmbeddingImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedSoftmaxImpl0, self).__init__()
+        super(DistributedEmbeddingImpl, self).__init__()
         self._name = name
 
     def is_process_mesh_compatible(self, op_dist_attr):
@@ -44,49 +46,52 @@ class DistributedSoftmaxImpl0(DistributedOperatorImpl):
 
     def is_input_compatible(self, op_dist_attr):
         op_desc = op_dist_attr.get_owner_op().desc
-        x_name = op_desc.input('X')[0]
-        axis = op_desc.attr('axis')
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
-        # print("softmax axis", axis)
-
-        if axis != -1 and axis != len(x_dims_mapping) - 1:
+        ids_name = op_desc.input('Ids')[0]
+        w_name = op_desc.input('W')[0]
+        ids_dims_mapping = op_dist_attr.get_input_dims_mapping(ids_name)
+        w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
+        if is_dim_replicate(w_dims_mapping[-2]) or is_dim_shard(w_dims_mapping[
+                -1]):
             return False
-
-        if is_dim_shard(x_dims_mapping[axis]):
-            return False
-
+        # Other dimensions must be replicate except the batch dimension
+        for mapping in ids_dims_mapping[1:]:
+            if is_dim_shard(mapping):
+                return False
         return True
 
     def is_output_compatible(self, op_dist_attr):
         op_desc = op_dist_attr.get_owner_op().desc
         out_name = op_desc.output('Out')[0]
-        axis = op_desc.attr('axis')
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-
-        if axis != -1 and axis != len(out_dims_mapping) - 1:
-            return False
-
-        if is_dim_shard(out_dims_mapping[axis]):
-            return False
-
+        # Other dimensions must be replicate except the batch dimension
+        for mapping in out_dims_mapping[1:]:
+            if is_dim_shard(mapping):
+                return False
         return True
 
     def update_dims_mapping(self, op_dist_attr):
         changed = False
         op_desc = op_dist_attr.get_owner_op().desc
-        x_name = op_desc.input('X')[0]
+        ids_name = op_desc.input('Ids')[0]
+        w_name = op_desc.input('W')[0]
         out_name = op_desc.output('Out')[0]
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        ids_dims_mapping = op_dist_attr.get_input_dims_mapping(ids_name)
+        w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
 
-        for i in range(len(x_dims_mapping)):
+        for i in range(len(ids_dims_mapping)):
             dim_changed = compute_compatible_and_update_dim_mapping(
-                [x_dims_mapping, out_dims_mapping], [i, i])
+                [ids_dims_mapping, out_dims_mapping], [i, i])
             if dim_changed:
                 changed = True
+
+        dim_changed = compute_compatible_and_update_dim_mapping(
+            [w_dims_mapping, out_dims_mapping], [-1, -1])
+        if dim_changed:
+            changed = True
 
         return changed
 
 
-register_distributed_operator_impl(
-    "softmax", DistributedSoftmaxImpl0("replicate_last_axis"))
+register_distributed_operator_impl("lookup_table_v2",
+                                   DistributedEmbeddingImpl("row_parallel"))

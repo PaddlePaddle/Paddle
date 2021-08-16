@@ -31,7 +31,7 @@ from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_pr
 from paddle.distributed.auto_parallel.utils import print_program_with_distributed_attr
 from paddle.distributed.auto_parallel.utils import append_distributed_attr_suffix
 from paddle.distributed.auto_parallel.context import DistributedContext
-
+from paddle.distributed.auto_parallel.context import set_default_distributed_context
 paddle.enable_static()
 _global_parallel_stratergy = None
 _global_process_mesh = None
@@ -202,10 +202,12 @@ class TestMLPAutoCompletion(unittest.TestCase):
                     attr_name = append_distributed_attr_suffix("OUT_" +
                                                                tensor_name)
                     self.assertIsNotNone(desc.has_attr(attr_name))
-        with unittest.mock.patch(
-                "sys.stdout", new_callable=StringIO) as mock_stdout:
-            print_program_with_distributed_attr(complete_train_program)
-            self.assertIsNotNone(mock_stdout.getvalue())
+        # with unittest.mock.patch(
+        #         "sys.stdout", new_callable=StringIO) as mock_stdout:
+        #     print_program_with_distributed_attr(complete_train_program)
+        #     self.assertIsNotNone(mock_stdout.getvalue())
+        set_default_distributed_context(dist_context)
+        self.assertTrue("dist_attr" in str(complete_train_program))
 
 
 class AttentionLayer(nn.Layer):

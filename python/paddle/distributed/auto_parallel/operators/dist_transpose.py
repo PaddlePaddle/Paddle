@@ -33,9 +33,9 @@ class DistributedTranspose2(DistributedOperator):
 register_distributed_operator("transpose2", DistributedTranspose2("transpose2"))
 
 
-class DistributedTranspose2Impl0(DistributedOperatorImpl):
+class DistributedTranspose2Impl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedTranspose2Impl0, self).__init__()
+        super(DistributedTranspose2Impl, self).__init__()
         self._name = name
 
     def is_process_mesh_compatible(self, op_dist_attr):
@@ -84,4 +84,4 @@ class DistributedTranspose2Impl0(DistributedOperatorImpl):
 
 
 register_distributed_operator_impl(
-    "transpose2", DistributedTranspose2Impl0("same_mapping_transpose"))
+    "transpose2", DistributedTranspose2Impl("same_mapping_transpose"))

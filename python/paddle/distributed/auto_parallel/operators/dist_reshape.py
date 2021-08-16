@@ -33,9 +33,9 @@ class DistributedReshape2(DistributedOperator):
 register_distributed_operator("reshape2", DistributedReshape2("reshape2"))
 
 
-class DistributedReshape2Impl0(DistributedOperatorImpl):
+class DistributedReshapeImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReshape2Impl0, self).__init__()
+        super(DistributedReshapeImpl0, self).__init__()
         self._name = name
 
     def is_process_mesh_compatible(self, op_dist_attr):
@@ -92,9 +92,9 @@ class DistributedReshape2Impl0(DistributedOperatorImpl):
         return changed
 
 
-class DistributedReshape2Impl1(DistributedOperatorImpl):
+class DistributedReshapeImpl1(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReshape2Impl1, self).__init__()
+        super(DistributedReshapeImpl1, self).__init__()
         self._name = name
 
     def is_process_mesh_compatible(self, op_dist_attr):
@@ -152,6 +152,6 @@ class DistributedReshape2Impl1(DistributedOperatorImpl):
 
 
 register_distributed_operator_impl("reshape2",
-                                   DistributedReshape2Impl0("add_one_dim_back"))
+                                   DistributedReshapeImpl0("add_one_dim_back"))
 register_distributed_operator_impl(
-    "reshape2", DistributedReshape2Impl1("remove_one_dim_back"))
+    "reshape2", DistributedReshapeImpl1("remove_one_dim_back"))

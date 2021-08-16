@@ -24,11 +24,11 @@ from .utils import print_program_with_distributed_attr
 from .context import get_default_distributed_context
 from .operators import find_best_compatible_distributed_operator_impl
 
-ELEMENTWISE_LIKIE_OP_LIST = ["elementwise_add", "gelu", "dropout", "cast"]
+ELEMENTWISE_LIKE_OP_LIST = ["elementwise_add", "gelu", "dropout", "cast"]
 
 
 def is_elementwise_like_op(op_type):
-    if op_type in ELEMENTWISE_LIKIE_OP_LIST:
+    if op_type in ELEMENTWISE_LIKE_OP_LIST:
         return True
     else:
         return False

@@ -138,12 +138,9 @@ class TensorDistributedAttribute:
 
 
 class OperatorDistributedAttribute:
-    def __init__(self, owner_op, owner_context=None):
+    def __init__(self, owner_op, owner_context):
         self._owner_op = owner_op
-        if owner_context is None:
-            self._owner_context = owner_context
-        else:
-            self._owner_context = owner_context
+        self._owner_context = owner_context
         self._process_mesh = None
         self._dims_mapping = {}
         self._shapes = {}
@@ -299,7 +296,7 @@ class OperatorDistributedAttribute:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            # No need to copy the owner tensor and context
+            # No need to copy the owner op and context
             if k == "_owner_op" or k == "_owner_context":
                 setattr(result, k, v)
             else:

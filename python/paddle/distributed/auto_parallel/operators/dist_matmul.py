@@ -288,9 +288,9 @@ register_distributed_operator("matmul_v2", DistributedMatmulV2("matmul_v2"))
 
 
 # ReplicateParallel 
-class DistributedMatmulV2Impl0(DistributedOperatorImpl):
+class DistributedMatmulV2Impl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulV2Impl0, self).__init__()
+        super(DistributedMatmulV2Impl, self).__init__()
         self._name = name
 
     def is_process_mesh_compatible(self, op_dist_attr):
@@ -340,4 +340,4 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
 
 
 register_distributed_operator_impl(
-    "matmul_v2", DistributedMatmulV2Impl0("replicate_parallel"))
+    "matmul_v2", DistributedMatmulV2Impl("replicate_parallel"))
