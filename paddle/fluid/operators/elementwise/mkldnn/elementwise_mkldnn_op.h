@@ -47,13 +47,24 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     float scale_o = ctx.Attr<float>("Scale_out");
     int axis = ctx.Attr<int>("axis");
 
-    platform::BinaryMKLDNNHandler<T> handler(
-        BINARY_OP, axis, dev_ctx, mkldnn_engine, ctx.GetPlace(), x, y, z,
-        scale_x, scale_y, scale_o, ctx.OutputName("Out"));
+    platform::BinaryMKLDNNHandler<T> handler(BINARY_OP, axis, mkldnn_engine,
+                                             ctx.GetPlace(), x, y, z, scale_x,
+                                             scale_y, scale_o);
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
-    const auto dst_memory = handler.AcquireDstMemory(z);
+    // (jczaja) For Inplace src and dst should be the same memory object.
+    // So x should share buffer with z. But UT mechanics is testing inplace
+    // execution for this op not checking that x can be bradcasted to match in
+    // shape y tensor.
+    // This is wrong as when x is to be broadcasted then z(out) will match the
+    // shape of y which is bigger than x. Hence if x is smaller in shape than z
+    // and they share a buffer (of
+    // shape x) then this buffer is not big enough to hold result of elementwise
+    // operation.
+    auto dst_memory = (x->numel() == z->numel() && x->IsSharedBufferWith(*z))
+                          ? src_x_memory
+                          : handler.AcquireDstMemory(z);
 
     const auto binary_prim = handler.AcquireForwardPrimitive();
 

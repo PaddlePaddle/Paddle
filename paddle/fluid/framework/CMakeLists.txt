@@ -202,7 +202,7 @@ cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute shape_inference op_info operator glog version)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc process_mesh_desc.cc DEPS attribute shape_inference op_info operator glog version)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 
@@ -413,6 +413,7 @@ configure_file(commit.h.in commit.h)
 # to avoid exposing the path of the underlying file
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include)
+include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
 
 if(WITH_ROCM)
   hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
@@ -428,6 +429,9 @@ if(WITH_ROCM)
 else()
   cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
 endif()
+
+#cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
+#cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
