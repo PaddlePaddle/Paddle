@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/device_event.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
 
 namespace paddle {
@@ -22,7 +21,7 @@ namespace platform {
 struct CUDADeviceEventWrapper {
   explicit CUDADeviceEventWrapper(const DeviceOption& dev_opt) {
     PADDLE_ENFORCE_EQ(
-        dev_opt.device_type(), static_cast<int>(DeviceType::kCUDA),
+        dev_opt.device_type(), static_cast<int>(DeviceType::CUDA),
         platform::errors::PreconditionNotMet(
             "Required device type shall be CUDA, but received %d. ",
             dev_opt.device_type()));
@@ -49,7 +48,7 @@ void DeviceEventRecordCUDA(DeviceEvent* event, const platform::Place& place,
   auto* cuda_dev_ctx = static_cast<const platform::CUDADeviceContext*>(context);
 
   // TODO(Aurelius84): verify device_id and stream is as expected.
-  wrapper->inner_event_.Record(cuda_dev_ctx->context()->Stream());
+  wrapper->inner_event_.Record(*cuda_dev_ctx->context()->Stream());
 }
 
 bool DeviceEventQueryCUDA(const DeviceEvent* event) {
@@ -57,9 +56,9 @@ bool DeviceEventQueryCUDA(const DeviceEvent* event) {
   return wrapper->inner_event_.Query();
 }
 
-REGISTER_EVENT_CREATE_FUNCTION(DeviceType::kCUDA, DeviceEventCreateCUDA)
-REGISTER_EVENT_RECORD_FUNCTION(DeviceType::kCUDA, DeviceEventRecordCUDA)
-REGISTER_EVENT_QUERY_FUNCTION(DeviceType::kCUDA, DeviceEventQueryCUDA)
+REGISTER_EVENT_CREATE_FUNCTION(DeviceType::CUDA, DeviceEventCreateCUDA)
+REGISTER_EVENT_RECORD_FUNCTION(DeviceType::CUDA, DeviceEventRecordCUDA)
+REGISTER_EVENT_QUERY_FUNCTION(DeviceType::CUDA, DeviceEventQueryCUDA)
 
 #endif
 }  // namespace platform

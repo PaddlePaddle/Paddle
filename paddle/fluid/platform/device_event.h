@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 #include <memory>
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -22,15 +23,8 @@ namespace platform {
 class DeviceOption;
 class DeviceEvent;
 
-enum class DeviceType {
-  kCPU = 0,
-  kCUDA = 1,  // CUDA.
-  kHIP = 2,   // AMD HIP
-
-  MAX_DEVICE_TYPES = 3,
-};
-
-constexpr int MaxDeviceTypes = static_cast<int>(DeviceType::MAX_DEVICE_TYPES);
+constexpr int MaxDeviceTypes =
+    static_cast<int>(platform::DeviceType::MAX_DEVICE_TYPES);
 
 typedef void (*EventCreateFunction)(DeviceEvent*, const DeviceOption&);
 typedef void (*EventRecordFunction)(DeviceEvent*, const platform::Place&,
@@ -110,6 +104,10 @@ class DeviceEvent {
   template <DeviceType device_typ>
   friend struct EventQueryFunctionRegisterer;
 };
+
+inline int DeviceTypeToId(const DeviceType& device_type) {
+  return static_cast<int>(device_type);
+}
 
 template <DeviceType device_type>
 struct EventCreateFunctionRegisterer {

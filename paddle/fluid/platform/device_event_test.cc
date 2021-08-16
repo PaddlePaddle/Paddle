@@ -28,6 +28,7 @@ Test(DeviceEvent, GPU) {
   auto* context = pool.get(place);
   DeviceOption dev_opt(place.device);
 
+  ASSERT_NE(context, nullptr);
   DeviceEvent event(dev_opt);
   event.Record(place, context);
   bool status = event.Query();
