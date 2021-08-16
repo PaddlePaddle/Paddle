@@ -471,7 +471,7 @@ def grad(outputs,
                 y = x * x
 
                 # Since y = x * x, dx = 2 * x
-                dx = paddle.grad(
+                dx = paddle.autograd.grad(
                         outputs=[y],
                         inputs=[x],
                         create_graph=create_graph,
@@ -516,7 +516,7 @@ def grad(outputs,
                 # Therefore, the final result would be:
                 # dx = 2 * x * dy1 + 3 * dy2 = 4 * dy1 + 3 * dy2.
 
-                dx = paddle.grad(
+                dx = paddle.autograd.grad(
                     outputs=[y1, y2], 
                     inputs=[x],
                     grad_outputs=grad_outputs)[0]
