@@ -87,6 +87,8 @@ class CCommInitOpAscend : public framework::OperatorBase {
     }
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         buff, size, HCCL_DATA_TYPE_FP32, 0, comm->comm(), stream));
+    // Synchronize stream to find hccl error in time.
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
     VLOG(3) << "Build connection successful.";
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
