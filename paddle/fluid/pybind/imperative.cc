@@ -808,7 +808,8 @@ void BindImperative(py::module *m_ptr) {
                    {"starts", starts},
                    {"ends", ends},
                    {"steps", steps},
-                   {"decrease_axes", decrease_axes}};
+                   {"decrease_axes", decrease_axes},
+                   {"none_axes", none_axes}};
 
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                imperative::NameVarBaseMap outs = {{"Out", {self}}};
