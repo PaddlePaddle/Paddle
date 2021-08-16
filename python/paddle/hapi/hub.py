@@ -173,6 +173,7 @@ def list(repo_dir, source='github', force_reload=False):
 
     Args:
         repo_dir(str): github or local path
+
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
             
@@ -184,6 +185,7 @@ def list(repo_dir, source='github', force_reload=False):
 
     Example:
         .. code-block:: python
+
             import paddle
 
             paddle.hub.list('lyuwenyu/paddlehub_demo:main', source='github', force_reload=False)
@@ -214,6 +216,7 @@ def help(repo_dir, model, source='github', force_reload=False):
 
     Args:
         repo_dir(str): github or local path
+
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
             
@@ -254,9 +257,10 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
 
     Args:
         repo_dir(str): github or local path
+        
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
-            
+
             local path (str): local repo path
         model (str): model name
         source (str): `github` | `gitee` | `local`, default is `github`
