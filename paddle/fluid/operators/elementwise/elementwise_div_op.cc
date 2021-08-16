@@ -109,6 +109,8 @@ class ElementwiseDivDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(ElementwiseDivInplaceInferer, {"X", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -117,7 +119,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
                   ops::ElementwiseDivOpMaker, ops::ElementwiseOpInferVarType,
                   ops::ElementwiseDivGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ElementwiseDivGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ElementwiseDivGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ElementwiseDivInplaceInferer);
 
 REGISTER_OPERATOR(
     elementwise_div_grad, ops::ElementwiseOpGrad,
