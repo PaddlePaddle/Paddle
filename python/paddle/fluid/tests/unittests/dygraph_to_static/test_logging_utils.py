@@ -20,7 +20,7 @@ import os
 import sys
 import unittest
 
-import gast
+from paddle.utils import gast
 
 import paddle
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils

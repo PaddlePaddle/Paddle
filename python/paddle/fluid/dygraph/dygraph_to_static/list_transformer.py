@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import astor
-import gast
+from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
