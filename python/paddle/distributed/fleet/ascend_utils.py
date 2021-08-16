@@ -16,6 +16,7 @@ import os
 import json
 import paddle
 import socket
+import time
 import paddle.fluid as fluid
 from paddle.distributed.fleet.launch_utils import get_cluster, logger, get_host_name_ip, DeviceMode
 
@@ -134,10 +135,14 @@ def get_cloud_cluster(rank_table_file=None,
                        devices_per_proc)
 
 
-def relase_sockets(sockets, release_time):
-    time.sleep(15 * 60)
-    for s in sockets:
-        s.close()
+def release_sockets(sockets):
+    try:
+        for s in sockets:
+            s.close()
+        print("sockets released", flush=True)
+    except Exception as e:
+        print("relase_sockets error:", e, flush=True)
+        raise e
 
 
 def _try_to_bind(port):
@@ -148,12 +153,12 @@ def _try_to_bind(port):
             print("binded port:", port)
             break
         except Exception as e:
-            print(e, flush=True)
+            print("bind socket error:", e, flush=True)
             time.sleep(1)
     return s
 
 
-def try_to_bind(ports=[range(60000, 60016)], release_time=15 * 60):
+def try_to_bind(ports=list(range(60000, 60016))):
     avoid = os.getenv('FLAGS_avoid_hccl_port_conflict', "no")
     avoid = avoid.lower() in [
         'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh'
@@ -166,6 +171,4 @@ def try_to_bind(ports=[range(60000, 60016)], release_time=15 * 60):
         s = _try_to_bind(i)
         sockets.append(s)
 
-    t = threading.Thread(target=release_sockets, args=(sockets, release_time))
-    t.start()
     return sockets

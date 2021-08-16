@@ -290,7 +290,10 @@ def launch_collective(args):
                 break
 
             time.sleep(3)
-
+            if sockets:
+                print("prepare close", flush=True)
+                ascend_utils.release_sockets(sockets)
+                sockets = None
         except:
             logger.warning("Terminating... exit")
             terminate_local_procs(procs)
