@@ -1,8 +1,12 @@
 add_subdirectory(src)
 
-set(PTEN_DEPS convert_utils dense_tensor selected_rows_tensor)
+set(TOP_DEPS convert_utils dense_tensor selected_rows_tensor kernel_factory kernel_context)
+set(TOP_DEPS ${TOP_DEPS} math_cpu)
 if(WITH_GPU)
-  set(PTEN_DEPS ${PTEN_DEPS} math_cuda)
+  set(TOP_DEPS ${TOP_DEPS} math_cuda)
+endif()
+if(WITH_XPU)
+  set(TOP_DEPS ${TOP_DEPS} math_xpu)
 endif()
 
-cc_library(top SRCS all.cc DEPS ${PTEN_DEPS})
+cc_library(top SRCS all.cc DEPS ${TOP_DEPS})

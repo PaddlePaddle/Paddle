@@ -21,7 +21,11 @@
 
 #include "paddle/top/core/backend.h"
 #include "paddle/top/core/dtype.h"
+#include "paddle/top/core/kernel_def.h"
 #include "paddle/top/core/layout.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/enforce.h"
 
 namespace pt {
 
@@ -30,6 +34,7 @@ class OpKernelContext;
 using OpKernelFn = void (*)(OpKernelContext* ctx);
 
 struct OperationName final {
+  // TODO(chenweihang): use string_view later?
   std::string op_type;
   std::string overload_type;
   // Avoid calculating Hash value at runtime
@@ -37,6 +42,24 @@ struct OperationName final {
 
   OperationName(std::string op_type, std::string overload_type)
       : op_type(std::move(op_type)), overload_type(std::move(overload_type)) {
+    hash_value = std::hash<std::string>()(op_type) ^
+                 (std::hash<std::string>()(overload_type) << 1);
+  }
+
+  OperationName(const char* op_name) {
+    std::string op_name_str(op_name);
+    size_t pos = op_name_str.find_first_of('.');
+    if (pos == std::string::npos) {
+      op_type = op_name_str;
+      overload_type = "";
+    } else {
+      op_type = op_name_str.substr(0, pos);
+      PADDLE_ENFORCE_EQ(op_name_str.find('.', pos + 1),
+                        std::string::npos,
+                        paddle::platform::errors::InvalidArgument(
+                            "OperationName only can contains one '.'."));
+      overload_type = op_name_str.substr(pos + 1, op_name_str.size());
+    }
     hash_value = std::hash<std::string>()(op_type) ^
                  (std::hash<std::string>()(overload_type) << 1);
   }
@@ -62,21 +85,21 @@ struct OperationName final {
 
 class OpKernelKey {
  public:
-  OpKernelKey(Backend backend, DataType dtype, DataLayout layout)
-      : backend_(backend), dtype_(dtype), layout_(layout) {
-    // |----31-20------|---19-16----|---15-8---|---7-0---|
-    // | For extension | DataLayout | DataType | Backend |
+  OpKernelKey(Backend backend, DataLayout layout, DataType dtype)
+      : backend_(backend), layout_(layout), dtype_(dtype) {
+    // |----31-20------|---19-12---|---11-8----|---7-0---|
+    // | For extension | DataType | DataLayout | Backend |
 
     hash_value_ = 0;
     hash_value_ |= static_cast<uint8_t>(backend_);
-    hash_value_ |= (static_cast<uint16_t>(dtype_) << kBackendBitLength);
-    hash_value_ |= (static_cast<uint32_t>(layout_)
+    hash_value_ |= (static_cast<uint8_t>(layout_) << kBackendBitLength);
+    hash_value_ |= (static_cast<uint16_t>(dtype_)
                     << (kBackendBitLength + kDataTypeBitLength));
   }
 
   Backend backend() const { return backend_; }
-  DataType dtype() const { return dtype_; }
   DataLayout layout() const { return layout_; }
+  DataType dtype() const { return dtype_; }
 
   uint32_t hash_value() const { return hash_value_; }
 
@@ -101,12 +124,12 @@ class OpKernelKey {
  private:
   // In total should be smaller than 32.
   constexpr static int kBackendBitLength = 8;
-  constexpr static int kDataTypeBitLength = 8;
   constexpr static int kDataLayoutBitLength = 4;
+  constexpr static int kDataTypeBitLength = 8;
 
   Backend backend_;
-  DataType dtype_;
   DataLayout layout_;
+  DataType dtype_;
 
   // Avoid calculating Hash value at runtime.
   // Note: Now the number of bits we need does not exceed 32 bits, so there is
@@ -115,37 +138,100 @@ class OpKernelKey {
   uint32_t hash_value_;
 };
 
-class OpKernelFactory {
- public:
-  static OpKernelFactory& Instance();
+struct ParamDef {
+  Backend backend;
+  DataLayout layout;
+  DataType dtype;
 
-  const OpKernelFn& FindOpKernel(const OperationName& op_name,
-                                 const OpKernelKey& kernel_key) const;
+  ParamDef(Backend backend, DataLayout layout, DataType dtype)
+      : backend(backend), layout(layout), dtype(dtype) {}
+};
+
+class OpKernelParamDef {
+ public:
+  OpKernelParamDef() = default;
+
+  void AppendInput(Backend backend, DataLayout layout, DataType dtype) {
+    input_defs_.emplace_back(ParamDef(backend, layout, dtype));
+  }
+
+  void AppendOutput(Backend backend, DataLayout layout, DataType dtype) {
+    output_defs_.emplace_back(ParamDef(backend, layout, dtype));
+  }
+
+  void SetSameAsKernelKey() { same_as_kernel_key_ = true; }
 
  private:
-  OpKernelFactory();
+  // TODO(chenweihang): replaced by paddle::small_vector
+  std::vector<ParamDef> input_defs_{{}};
+  std::vector<ParamDef> output_defs_{{}};
+  // if the same_as_kernel_key_ is true, all this kernel's input and output
+  // hold def that same as kernel key, the input_defs_ and output_defs_ are
+  // empty
+  bool same_as_kernel_key_{false};
+};
 
+class OpKernel {
+ public:
+  // for map element contruct
+  OpKernel() = default;
+
+  explicit OpKernel(OpKernelFn fn) : fn_(fn) {}
+
+  void operator()(OpKernelContext* ctx) const { fn_(ctx); }
+
+  OpKernelParamDef& param_def() { return param_def_; }
+
+ private:
+  OpKernelFn fn_{nullptr};
+  OpKernelParamDef param_def_;
+};
+
+class OpKernelFactory {
+ public:
   // replaced by paddle::flat_hash_map later
-  std::unordered_map<
+  using OpKernelMap = std::unordered_map<
       OperationName,
-      std::unordered_map<OpKernelKey, OpKernelFn, OpKernelKey::Hash>,
-      OperationName::Hash>
-      kernels_;
+      std::unordered_map<OpKernelKey, OpKernel, OpKernelKey::Hash>,
+      OperationName::Hash>;
+
+  static OpKernelFactory& Instance();
+
+  OpKernelMap& kernels() { return kernels_; }
+
+  const OpKernel& SelectKernel(const OperationName& op_name,
+                               const OpKernelKey& kernel_key) const;
+
+  const OpKernel& SelectKernel(const OperationName& op_name,
+                               Backend backend,
+                               DataLayout layout,
+                               DataType dtype) const;
+
+ private:
+  OpKernelFactory() = default;
+
+  OpKernelMap kernels_;
 };
 
 /** operator << overload **/
 
 inline std::ostream& operator<<(std::ostream& os,
                                 const OperationName& op_name) {
-  os << op_name.op_type << "." << op_name.overload_type;
+  if (op_name.overload_type.empty()) {
+    os << op_name.op_type;
+  } else {
+    os << op_name.op_type << "." << op_name.overload_type;
+  }
   return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os,
                                 const OpKernelKey& kernel_key) {
-  os << "(" << kernel_key.backend() << ", " << kernel_key.dtype() << ", "
-     << kernel_key.layout() << ")";
+  os << "(" << kernel_key.backend() << ", " << kernel_key.layout() << ", "
+     << kernel_key.dtype() << ")";
   return os;
 }
+
+std::ostream& operator<<(std::ostream& os, OpKernelFactory& kernel_factory);
 
 }  // namespace pt

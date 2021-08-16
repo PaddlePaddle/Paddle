@@ -17,7 +17,7 @@ limitations under the License. */
 namespace pt {
 
 // TODO(chenweihang): Add other place branchs
-Backend TransToPtenBackend(const paddle::platform::Place& place) {
+Backend TransToPtBackend(const paddle::platform::Place& place) {
   if (paddle::platform::is_cpu_place(place)) {
     return Backend::kCPU;
   } else if (paddle::platform::is_gpu_place(place)) {
@@ -35,7 +35,7 @@ Backend TransToPtenBackend(const paddle::platform::Place& place) {
   }
 }
 
-pt::DataType TransToPtenDataType(
+pt::DataType TransToPtDataType(
     const paddle::framework::proto::VarType::Type& dtype) {
   // Set the order of case branches according to the frequency with
   // the data type is used
@@ -67,7 +67,7 @@ pt::DataType TransToPtenDataType(
   }
 }
 
-DataLayout TransToPtenLayout(const paddle::framework::DataLayout& layout) {
+DataLayout TransToPtLayout(const paddle::framework::DataLayout& layout) {
   switch (layout) {
     case paddle::framework::DataLayout::kNHWC:
       return DataLayout::kNHWC;

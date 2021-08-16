@@ -29,10 +29,10 @@ namespace pt {
 
 // TODO(chenweihang): Use the original var type as much as possible
 // to avoid transform, such as DataLayout, VarType
-Backend TransToPtenBackend(const paddle::platform::Place& place);
-DataType TransToPtenDataType(
+Backend TransToPtBackend(const paddle::platform::Place& place);
+DataType TransToPtDataType(
     const paddle::framework::proto::VarType::Type& dtype);
-DataLayout TransToPtenLayout(const paddle::framework::DataLayout& layout);
+DataLayout TransToPtLayout(const paddle::framework::DataLayout& layout);
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const DataType& dtype);
 

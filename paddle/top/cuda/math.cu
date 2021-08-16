@@ -23,6 +23,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/top/core/convert_utils.h"
+#include "paddle/top/core/kernel_registry.h"
 
 namespace pt {
 
@@ -64,7 +65,7 @@ void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   pt::DenseTensor tmp(
       TensorMeta(paddle::framework::make_ddim(
                      {static_cast<int64_t>(temp_storage_bytes)}),
-                 pt::TransToPtenBackend(dev_ctx.GetPlace()),
+                 pt::TransToPtBackend(dev_ctx.GetPlace()),
                  x.type(),
                  x.layout()),
       TensorStatus());
@@ -85,3 +86,7 @@ template void Mean<paddle::platform::float16>(const CUDAContext& dev_ctx,
                                               DenseTensor* out);
 
 }  // namespace pt
+
+// PT_REGISTER_KERNEL_3T(sign, CUDA, NCHW, pt::Sign, float, double,
+// pt::float16);
+PT_REGISTER_KERNEL_2T(sign, CUDA, NCHW, pt::Sign, float, double);

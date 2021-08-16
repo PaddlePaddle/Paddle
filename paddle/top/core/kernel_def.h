@@ -13,3 +13,10 @@
 // limitations under the License.
 
 #pragma once
+
+namespace pt {
+
+class OpKernelContext;
+using OpKernelFn = void (*)(OpKernelContext* ctx);
+
+}  // namespace pt

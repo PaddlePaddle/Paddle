@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
 
+#include "paddle/top/api/dev/core.h"
+
 namespace paddle {
 namespace framework {
 

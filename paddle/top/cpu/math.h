@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/top/core/dense_tensor.h"
+#include "paddle/top/core/kernel_registry.h"
 #include "paddle/top/module/scale.h"
 #include "paddle/top/module/sign.h"
 
@@ -80,3 +81,5 @@ void Scale(const CPUContext& dev_ctx,
 }
 
 }  // namespace pt
+
+PT_DECLARE_KERNEL_2T(sign, CPU, NCHW, float, double);

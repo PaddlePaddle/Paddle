@@ -14,4 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/top/core/convert_utils.h"
 #include "paddle/top/core/dense_tensor.h"
+#include "paddle/top/core/kernel_context.h"
+#include "paddle/top/core/kernel_factory.h"
+#include "paddle/top/core/mkldnn_dense_tensor.h"

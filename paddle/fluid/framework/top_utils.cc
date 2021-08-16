@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/top_utils.h"
 
-#include "paddle/top/core/convert_utils.h"
-#include "paddle/top/core/dense_tensor.h"
-#include "paddle/top/core/mkldnn_dense_tensor.h"
+#include "paddle/top/api/include/tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -29,9 +27,9 @@ std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
     proto::VarType::Type type) {
   auto holder = tensor.Holder();
   auto tensor_impl = std::make_shared<pt::DenseTensor>(
-      pt::TensorMeta(tensor.dims(), pt::TransToPtenBackend(place),
-                     pt::TransToPtenDataType(type),
-                     pt::TransToPtenLayout(tensor.layout()), tensor.offset()),
+      pt::TensorMeta(tensor.dims(), pt::TransToPtBackend(place),
+                     pt::TransToPtDataType(type),
+                     pt::TransToPtLayout(tensor.layout()), tensor.offset()),
       pt::TensorStatus());
 
   if (holder != nullptr) {
@@ -58,9 +56,9 @@ std::shared_ptr<pt::MKLDNNDenseTensor> MakeTensorImpl<pt::MKLDNNDenseTensor>(
     proto::VarType::Type type) {
   auto holder = tensor.Holder();
   auto tensor_impl = std::make_shared<pt::MKLDNNDenseTensor>(
-      pt::TensorMeta(tensor.dims(), pt::TransToPtenBackend(place),
-                     pt::TransToPtenDataType(type),
-                     pt::TransToPtenLayout(tensor.layout()), tensor.offset()),
+      pt::TensorMeta(tensor.dims(), pt::TransToPtBackend(place),
+                     pt::TransToPtDataType(type),
+                     pt::TransToPtLayout(tensor.layout()), tensor.offset()),
       pt::TensorStatus());
 
   if (holder != nullptr) {

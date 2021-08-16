@@ -24,7 +24,7 @@ OpKernelFactory& OpKernelFactory::Instance() {
   return g_op_kernel_factory;
 }
 
-const OpKernelFn& OpKernelFactory::FindOpKernel(
+const OpKernel& OpKernelFactory::SelectKernel(
     const OperationName& op_name, const OpKernelKey& kernel_key) const {
   auto iter = kernels_.find(op_name);
   PADDLE_ENFORCE_NE(iter,
@@ -42,6 +42,23 @@ const OpKernelFn& OpKernelFactory::FindOpKernel(
           op_name));
 
   return kernel_iter->second;
+}
+
+const OpKernel& OpKernelFactory::SelectKernel(const OperationName& op_name,
+                                              Backend backend,
+                                              DataLayout layout,
+                                              DataType dtype) const {
+  return SelectKernel(op_name, OpKernelKey(backend, layout, dtype));
+}
+
+std::ostream& operator<<(std::ostream& os, OpKernelFactory& kernel_factory) {
+  for (const auto& op_kernel_pair : kernel_factory.kernels()) {
+    os << "- op: " << op_kernel_pair.first << "\n";
+    for (const auto& kernel_pair : op_kernel_pair.second) {
+      os << "\t- kernel: " << kernel_pair.first << "\n";
+    }
+  }
+  return os;
 }
 
 }  // namespace pt

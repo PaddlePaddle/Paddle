@@ -33,13 +33,23 @@ class SignKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
     auto& dev_ctx = context.device_context<DeviceContext>();
 
+    // debug: print all registered sign kernels for check
+    VLOG(1) << pt::OpKernelFactory::Instance();
+
+    // TODO(chenweihang): only to test correctness, this will introduce
+    // needless context prepare cost
+    pt::OpKernelContext op_kernel_ctx(dev_ctx);
     auto pt_x =
         framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());
     auto pt_out =
         framework::MakeTensorImpl<pt::DenseTensor>(*out, x->place(), x->type());
+    op_kernel_ctx.EmplaceBackInput(pt_x);
+    op_kernel_ctx.EmplaceBackOutput(pt_out);
 
-    // call new kernel
-    pt::Sign<T>(dev_ctx, *pt_x.get(), pt_out.get());
+    auto& op_kernel = pt::OpKernelFactory::Instance().SelectKernel(
+        "sign", pt::TransToPtBackend(x->place()),
+        pt::TransToPtLayout(x->layout()), pt::TransToPtDataType(x->type()));
+    op_kernel(&op_kernel_ctx);
 
     // share pt_out data to out
     framework::ShareTensorImpl(pt_out.get(), out);

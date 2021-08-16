@@ -16,7 +16,15 @@ limitations under the License. */
 
 #include <ostream>
 
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/platform/float16.h"
+
 namespace pt {
+
+using complex64 = paddle::platform::complex<float>;
+using complex128 = paddle::platform::complex<double>;
+using float16 = paddle::platform::float16;
 
 /**
  * [ Why need new data type? ]
@@ -48,5 +56,44 @@ enum class DataType {
 };
 
 std::ostream& operator<<(std::ostream& os, DataType dtype);
+
+#define PT_FOR_EACH_DATA_TYPE(_)     \
+  _(bool, DataType::kBOOL)           \
+  _(int8_t, DataType::kINT8)         \
+  _(uint8_t, DataType::kUINT8)       \
+  _(int16_t, DataType::kINT16)       \
+  _(int, DataType::kINT32)           \
+  _(int64_t, DataType::kINT64)       \
+  _(float16, DataType::kFLOAT16)     \
+  _(float, DataType::kFLOAT32)       \
+  _(double, DataType::kFLOAT64)      \
+  _(complex64, DataType::kCOMPLEX64) \
+  _(complex128, DataType::kCOMPLEX128)
+
+template <pt::DataType T>
+struct DataTypeToCppType;
+
+template <typename T>
+struct CppTypeToDataType;
+
+#define PT_SPECIALIZE_DataTypeToCppType(cpp_type, data_type) \
+  template <>                                                \
+  struct DataTypeToCppType<data_type> {                      \
+    using type = cpp_type;                                   \
+  };
+
+PT_FOR_EACH_DATA_TYPE(PT_SPECIALIZE_DataTypeToCppType)
+
+#undef PT_SPECIALIZE_DataTypeToCppType
+
+#define PT_SPECIALIZE_CppTypeToDataType(cpp_type, data_type) \
+  template <>                                                \
+  struct CppTypeToDataType<cpp_type> {                       \
+    DataType type = data_type;                               \
+  };
+
+PT_FOR_EACH_DATA_TYPE(PT_SPECIALIZE_CppTypeToDataType)
+
+#undef PT_SPECIALIZE_CppTypeToDataType
 
 }  // namespace pt

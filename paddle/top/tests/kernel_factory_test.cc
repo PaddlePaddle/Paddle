@@ -18,6 +18,6 @@ limitations under the License. */
 
 TEST(OpKernelFactory, OpKernelKey) {
   pt::OpKernelKey key(
-      pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW);
+      pt::Backend::kCPU, pt::DataLayout::kNCHW, pt::DataType::kFLOAT32);
   std::cout << key;
 }
