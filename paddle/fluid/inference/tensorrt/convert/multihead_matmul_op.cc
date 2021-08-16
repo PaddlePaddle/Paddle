@@ -153,7 +153,9 @@ class MultiheadMatMulOpConverter : public OpConverter {
           float out_scale =
               BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
           engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
-          dp_probs = out_scale / 127.0;
+          dp_probs =
+              BOOST_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
+          dp_probs = dp_probs / 127.0;
         }
 
         auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
@@ -165,7 +167,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                         ? nvinfer1::DataType::kHALF
                                         : nvinfer1::DataType::kFLOAT);
         if (enable_int8) {
-          type = static_cast<int>(nvinfer1::DataType::kHALF);
+          type = static_cast<int>(nvinfer1::DataType::kINT8);
         }
         bool has_mask = true;
         int var_seqlen = 1;
