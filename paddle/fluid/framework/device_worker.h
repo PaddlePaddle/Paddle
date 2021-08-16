@@ -148,6 +148,7 @@ class DeviceWorker {
   FetchConfig fetch_config_;
   bool use_cvm_;
   bool no_cvm_;
+  bool scale_sparse_gradient_with_batch_size_;
   std::vector<std::string> all_param_;
 };
 
