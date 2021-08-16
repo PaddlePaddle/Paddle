@@ -89,19 +89,39 @@ Scatter tensors from all participators to all participators.
   }
 };
 
-// template <typename T>
-// class AllToAllOpGradMaker : public framework::SingleGradOpMaker<T> {
-//  public:
-//   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+template <typename T>
+class SelectScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-//  protected:
-//   void Apply(GradOpPtr<T> retv) const override {
-//     retv->SetType("alltoall");
-//     retv->SetInput("X", this->OutputGrad("Out"));
-//     retv->SetOutput("Out", this->InputGrad("X"));
-//     retv->SetAttrMap(this->Attrs());
-//   }
-// };
+ protected:
+  void Apply(GradOpPtr<T> retv) const override {
+    retv->SetType("select_scatter");
+    retv->SetInput("local_input_buf", this->OutputGrad("Out"));
+    retv->SetInput("input_buf", this->Input("input_buf"));
+    retv->SetOutput("Out", this->InputGrad("local_input_buf"));
+    retv->SetAttrMap(this->Attrs());
+    auto local_expert_count = retv->GetAttr("local_expert_count");
+    auto global_expert_count = retv->GetAttr("global_expert_count");
+    retv->SetAttr("local_expert_count", global_expert_count);
+    retv->SetAttr("global_expert_count", local_expert_count);
+    // for (auto i = 0; i < (int) local_expert_count.size(); ++i)
+    //   VLOG(1) << local_expert_count[i] << " ";
+    // auto global_expert_count = retv->GetAttr("global_expert_count");
+    // int in_feat = (int)this->Attrs().find("in_feat");
+    // VLOG(1) << in_feat;
+    // auto local_expert_count = this->Attrs().find("local_expert_count");
+    // auto global_expert_count = this->Attrs().find("glboal_expert_count");
+    // VLOG(1) << local_expert_count;
+    // VLOG(1) << global_expert_count;
+
+    // retv->SetAttr("local_expert_count", this->Attr("global_expert_count"));
+    // retv->SetAttr("global_expert_count", this->Attr("local_expert_count"));
+    // retv->SetAttr("in_feat", this->Attr("in_feat"));
+    // retv->SetAttr("n_expert", this->Attr("n_expert"));
+    // retv->SetAttr("world_size", this->Attr("world_size"));
+  }
+};
 
 // DECLARE_INPLACE_OP_INFERER(AllToAllInplaceInferer, {"X", "Out"});
 
@@ -110,12 +130,12 @@ Scatter tensors from all participators to all participators.
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_WITHOUT_GRADIENT(select_scatter, ops::SelectScatterOp,
-                             ops::SelectScatterOpMaker);
-// REGISTER_OPERATOR(alltoall, ops::AllToAllOp, ops::AllToAllOpMaker,
-//                   ops::AllToAllOpGradMaker<paddle::framework::OpDesc>,
-//                   ops::AllToAllOpGradMaker<paddle::imperative::OpBase>,
-//                   ops::AllToAllInplaceInferer)
+// REGISTER_OP_WITHOUT_GRADIENT(select_scatter, ops::SelectScatterOp,
+// ops::SelectScatterOpMaker);
+REGISTER_OPERATOR(select_scatter, ops::SelectScatterOp,
+                  ops::SelectScatterOpMaker,
+                  ops::SelectScatterOpGradMaker<paddle::framework::OpDesc>,
+                  ops::SelectScatterOpGradMaker<paddle::imperative::OpBase>)
 
 REGISTER_OP_CPU_KERNEL(select_scatter, ops::SelectScatterOpCPUKernel<float>,
                        ops::SelectScatterOpCPUKernel<double>,
