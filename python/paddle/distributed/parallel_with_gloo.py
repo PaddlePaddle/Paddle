@@ -55,8 +55,8 @@ def init_gloo_parallel_env(rank_id, rank_num, server_endpoint, with_gloo=True):
 
             import paddle
 
-            # initialize a parallel environment for a job using N ranks
-            rank_num = N
+            # initialize a parallel environment for a job using 2 ranks
+            rank_num = 2
             server_endpoint = "127.0.0.1:8080"
 
             # process 1
@@ -66,11 +66,6 @@ def init_gloo_parallel_env(rank_id, rank_num, server_endpoint, with_gloo=True):
 
             # process 2
             rank_id = 1
-            paddle.distributed.init_gloo_parallel_env(
-                rand_id, rank_num, server_endpoint)
-
-            # process N
-            rank_id = N - 1
             paddle.distributed.init_gloo_parallel_env(
                 rand_id, rank_num, server_endpoint)
     """
@@ -126,9 +121,8 @@ def barrier_func():
             import paddle
             from paddle.distributed import init_gloo_parallel_env
 
-            # initialize a parallel environment for a job using N ranks
-            # and call barrier to synchronize
-            rank_num = N
+            # initialize a parallel environment for a job using 2 ranks
+            rank_num = 2
             server_endpoint = "127.0.0.1:8080"
 
             # process 1
@@ -139,12 +133,6 @@ def barrier_func():
 
             # process 2
             rank_id = 1
-            paddle.distributed.init_gloo_parallel_env(
-                rand_id, rank_num, server_endpoint)
-            paddle.distributed.barrier_func()
-
-            # process N
-            rank_id = N - 1
             paddle.distributed.init_gloo_parallel_env(
                 rand_id, rank_num, server_endpoint)
             paddle.distributed.barrier_func()
@@ -166,9 +154,8 @@ def release_gloo(rank_id):
             import paddle
             from paddle.distributed import init_gloo_parallel_env
 
-            # initialize a parallel environment for a job using N ranks
-            # and call barrier to synchronize
-            rank_num = N
+            # initialize a parallel environment for a job using 2 ranks
+            rank_num = 2
             server_endpoint = "127.0.0.1:8080"
 
             # process 1
@@ -184,14 +171,6 @@ def release_gloo(rank_id):
                 rand_id, rank_num, server_endpoint)
             paddle.distributed.barrier_func()
             paddle.distributed.release_gloo(rank_id)
-
-            # process N
-            rank_id = N - 1
-            paddle.distributed.init_gloo_parallel_env(
-                rand_id, rank_num, server_endpoint)
-            paddle.distributed.barrier_func()
-            paddle.distributed.release_gloo(rank_id)
-
     """
 
     if (rank_id == 0):
