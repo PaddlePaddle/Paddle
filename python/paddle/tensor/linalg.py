@@ -790,11 +790,12 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     matrix_rank
     """
     if in_dygraph_mode():
-        if tol:
-            return _C_ops.matrix_rank(x, "tol", tol, 'hermitian', hermitian)
-        return _C_ops.matrix_rank(x, 'hermitian', hermitian)
+        if not tol:
+            return _C_ops.matrix_rank(x, 'hermitian', hermitian)
+        return _C_ops.matrix_rank(x, "tol", tol, 'hermitian', hermitian)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_rank')
-    check_type(tol, 'tol', float, 'matrix_rank')
+    if tol:
+        check_type(tol, 'tol', float, 'matrix_rank')
     check_type(hermitian, 'hermitian', bool, 'matrix_rank')
 
     helper = LayerHelper('matrix_rank', **locals())

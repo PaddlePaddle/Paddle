@@ -45,21 +45,22 @@ class TestMatrixRankOP(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        # self.check_output_with_place(self.place)
+        self.check_output()
 
     def init_data(self):
         self.x = np.eye(3, dtype=np.float32)
         self.tol = 0.1
         self.hermitian = True
-        self.out = np.linalg.matrix_rank(self.x, self.tol)
+        self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
 
 
 class TestMatrixRankOP1(TestMatrixRankOP):
     def init_data(self):
         self.x = np.eye(3, k=1, dtype=np.float64)
-        self.tol = 0.0
+        self.tol = None
         self.hermitian = False
-        self.out = np.linalg.matrix_rank(self.x, self.tol)
+        self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
 
 
 class TestMatrixRankOP2(TestMatrixRankOP):
@@ -67,7 +68,7 @@ class TestMatrixRankOP2(TestMatrixRankOP):
         self.x = np.random.rand(3, 4, 5, 6)
         self.tol = 0.1
         self.hermitian = False
-        self.out = np.linalg.matrix_rank(self.x, self.tol)
+        self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
 
 
 if __name__ == '__main__':

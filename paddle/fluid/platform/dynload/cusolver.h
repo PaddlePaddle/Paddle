@@ -67,7 +67,13 @@ CUSOLVER_ROUTINE_EACH_R1(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
   __macro(cusolverDnDgesvdj_bufferSize);  \
   __macro(cusolverDnSgesvdj);             \
   __macro(cusolverDnDgesvdj);             \
-  __macro(cusolverDnDestroyGesvdjInfo);
+  __macro(cusolverDnDestroyGesvdjInfo);   \
+  __macro(cusolverDnCreateSyevjInfo);     \
+  __macro(cusolverDnSsyevj_bufferSize);   \
+  __macro(cusolverDnDsyevj_bufferSize);   \
+  __macro(cusolverDnSsyevj);              \
+  __macro(cusolverDnDsyevj);              \
+  __macro(cusolverDnDestroySyevjInfo);
 
 CUSOLVER_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
 #endif

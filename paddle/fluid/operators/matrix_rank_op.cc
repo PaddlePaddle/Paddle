@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/matrix_rank_op.h"
-#include "paddle/fluid/framework/ddim.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/operators/matrix_rank_op.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -68,7 +68,7 @@ class MatrixRankeOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor<float>, optional). Tol tensor, shape is same as X batch.")
         .AsDispensable();
 
-    AddAttr<float>("tol", "float. tol");
+    AddAttr<float>("tol", "(float, optional). tol").SetDefault(0.0f);
     AddAttr<bool>("hermitian", "(bool, optional). whether is hermitian matrix")
         .SetDefault(false);
 
