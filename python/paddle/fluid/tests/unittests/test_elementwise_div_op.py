@@ -334,6 +334,109 @@ class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
         self.grad_x = np.real(self.grad_out / np.conj(self.y))
         self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
 
+class TestDivApi(unittest.TestCase):
+    def _executed_api(self, x, y, name=None):
+        return paddle.divide(x, y, name)
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
+            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+
+            y_1 = self._executed_api(x, y, name='divide_res')
+            self.assertEqual(('divide_res' in y_1.name), True)
+
+    def test_declarative(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32')
+                }
+
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
+            z = self._executed_api(x, y)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+            z_expected = np.array([2., 0.6, 2.], dtype='float32')
+            self.assertEqual((np.array(z_value) == z_expected).all(), True)
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([2, 3, 4]).astype('float64')
+            np_y = np.array([1, 5, 2]).astype('float64')
+            x = fluid.dygraph.to_variable(np_x)
+            y = fluid.dygraph.to_variable(np_y)
+            z = self._executed_api(x, y)
+            np_z = z.numpy()
+            z_expected = np.array([2., 0.6, 2.])
+            self.assertEqual((np_z == z_expected).all(), True)
+
+class TestDivInplaceApi(TestDivApi):
+    def _executed_api(self, x, y, name=None):
+        return x.divide_(y, name)
+
+
+class TestDivInplaceBroadcastSuccess(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 4).astype('float')
+        self.y_numpy = np.random.rand(3, 4).astype('float')
+
+    def test_broadcast_success(self):
+        paddle.disable_static()
+        self.init_data()
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
+        inplace_result = x.divide_(y)
+        numpy_result = self.x_numpy / self.y_numpy
+        self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
+        paddle.enable_static()
+
+
+class TestDivInplaceBroadcastSuccess2(TestDivInplaceBroadcastSuccess):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
+        self.y_numpy = np.random.rand(3, 1).astype('float')
+
+
+class TestDivInplaceBroadcastSuccess3(TestDivInplaceBroadcastSuccess):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
+        self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
+
+
+class TestDivInplaceBroadcastError(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(3, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
+    def test_broadcast_errors(self):
+        paddle.disable_static()
+        self.init_data()
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
+
+        def broadcast_shape_error():
+            x.divide_(y)
+
+        self.assertRaises(ValueError, broadcast_shape_error)
+        paddle.enable_static()
+
+
+class TestDivInplaceBroadcastError2(TestDivInplaceBroadcastError):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 1, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
+
+class TestDivInplaceBroadcastError3(TestDivInplaceBroadcastError):
+    def init_data(self):
+        self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
+        self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 if __name__ == '__main__':
     paddle.enable_static()

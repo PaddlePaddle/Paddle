@@ -192,6 +192,7 @@ from .tensor.math import min  # noqa: F401
 from .tensor.math import minimum  # noqa: F401
 from .tensor.math import mm  # noqa: F401
 from .tensor.math import divide  # noqa: F401
+from .tensor.math import divide_
 from .tensor.math import floor_divide  # noqa: F401
 from .tensor.math import remainder  # noqa: F401
 from .tensor.math import mod  # noqa: F401
@@ -439,6 +440,7 @@ __all__ = [  # noqa
            'lgamma',
            'square',
            'divide',
+           'divide_',
            'ceil',
            'atan',
            'atan2',
