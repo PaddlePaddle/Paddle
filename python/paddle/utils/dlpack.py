@@ -13,18 +13,45 @@
 # limitations under the License.
 
 import paddle
+from paddle.fluid.data_feeder import convert_dtype
 
 
 def to_dlpack(x):
-    """Returns the DLPack capsule representing the corresponding tensor.
+    """
+    Encodes a tensor to DLPack.
 
     Args:
-        x (Tensor): a Paddle tensor to be converted to DLPack capsule.
+        x (Tensor): A tensor, and the data type is bool, float32, float64, int32, int64.
 
     Returns:
-        A PyCapsule object with the dltensor, which shares the memory to other frameworks. 
-        The PyCapsule can only be consumed once.
+        dltensor, and the data type is PyCapsule.
+    
+    Raises:
+        ValueError: The :attr:`dtype` must be float32, float64, int32 or int64.
+        TypeError: The type of :attr:`axis` must be int, list or tuple.
+    
+    Examples:
+        .. code-block:: python
+            import paddle
+            # x is a tensor with shape [2, 4]
+            x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+                                  [0.1, 0.2, 0.6, 0.7]])
+            dlpack = paddle.utils.dlpack.to_dlpack(x)
+            print(dlpack)
+            # <capsule object "dltensor" at 0x7f6103c681b0>
     """
+
+    if not isinstance(x, paddle.Tensor):
+        raise TypeError("The type of 'x' in to_dlpack must be paddle.Tensor,"
+                        " but received {}.".format(type(x)))
+
+    dtype = convert_dtype(x.dtype)
+
+    if dtype not in ['bool', 'int32', 'int64', 'float32', 'float64']:
+        raise TypeError(
+            "the dtype of 'x' in to_dlpack must be any of [bool, int32, int64, "
+            "float32, float64], but received {}.".format(dtype))
+
     return x.value().get_tensor()._to_dlpack()
 
 
@@ -36,7 +63,27 @@ def from_dlpack(dlpack):
 
     Returns:
         out (Tensor): a tensor decoded from DLPack.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            # x is a tensor with shape [2, 4]
+            x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+                                  [0.1, 0.2, 0.6, 0.7]])
+            dlpack = paddle.utils.dlpack.to_dlpack(x)
+            x = paddle.utils.dlpack.from_dlpack(dlpack)
+            print(x)
+            # Tensor(shape=[2, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+              [[0.20000000, 0.30000001, 0.50000000, 0.89999998],
+              [0.10000000, 0.20000000, 0.60000002, 0.69999999]]) 
     """
+
+    if str(type(dlpack)) != "<class 'PyCapsule'>":
+        raise TypeError(
+            "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
+            " but received {}.".format(type(dlpack)))
+
     out = paddle.fluid.core.from_dlpack(dlpack)
     out = paddle.to_tensor(out)
+
     return out
