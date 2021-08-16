@@ -41,10 +41,16 @@ class DeviceOption {
  public:
   explicit DeviceOption(int device_type) : device_type_(device_type) {}
 
+  DeviceOption(int device_type, int device_id)
+      : device_type_(device_type), device_id_(device_id) {}
+
   int device_type() const { return device_type_; }
+
+  int device_id() const { return device_id_; }
 
  private:
   int device_type_;
+  int device_id_;
 };
 
 class DeviceEvent {
@@ -82,6 +88,10 @@ class DeviceEvent {
     event_querier_[type_](this);
   }
 
+  void InitEvent(std::shared_ptr<void> event) { event_ = event; }
+
+  std::shared_ptr<void> GetEvent() const { return event_; }
+
  private:
   std::shared_ptr<void> event_;
   int type_;
@@ -111,7 +121,7 @@ struct EventCreateFunctionRegisterer {
 #define REGISTER_EVENT_CREATE_FUNCTION(device_type, func) \
   namespace {                                             \
   static EventCreateFunctionRegisterer<device_type>       \
-      g_device_event_create_##type_idx(func)              \
+      g_device_event_create_##type_idx(func);             \
   }
 
 template <DeviceType device_type>
@@ -124,7 +134,7 @@ struct EventRecordFunctionRegisterer {
 #define REGISTER_EVENT_RECORD_FUNCTION(device_type, func) \
   namespace {                                             \
   static EventRecordFunctionRegisterer<device_type>       \
-      g_device_event_record_##type_idx(func)              \
+      g_device_event_record_##type_idx(func);             \
   }
 
 template <DeviceType device_type>
@@ -137,7 +147,7 @@ struct EventQueryFunctionRegisterer {
 #define REGISTER_EVENT_QUERY_FUNCTION(device_type, func) \
   namespace {                                            \
   static EventQueryFunctionRegisterer<device_type>       \
-      g_device_event_query_##type_idx(func)              \
+      g_device_event_query_##type_idx(func);             \
   }
 
 }  // namespace platform
