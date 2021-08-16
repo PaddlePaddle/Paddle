@@ -22,7 +22,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import PassVersionChecker
-'''
+
+
 class FCFusePassTRTTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -282,8 +283,6 @@ class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
             use_gpu.append(True)
         for i in range(len(use_gpu)):
             self.check_output_with_option(use_gpu[i])
-
-'''
 
 
 class FCQuantDequantFusePassTRTTest(QuantDequantTest):
