@@ -49,9 +49,6 @@ class TestSumOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['x0'], 'Out')
 
-    def init_kernel_type(self):
-        pass
-
 
 class TestSelectedRowsSumOp(unittest.TestCase):
     def setUp(self):
