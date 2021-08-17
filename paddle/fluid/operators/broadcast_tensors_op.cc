@@ -38,6 +38,7 @@ class BroadcastTensorsOp : public framework::OperatorWithKernel {
 
     int target_rank = 0;
     const auto& input_dims = ctx->GetInputsDim("X");
+
     // 1. Find Output rank = max(Inputs rank)
     for (const auto& input_ddim : input_dims) {
       target_rank = std::max(target_rank, input_ddim.size());
@@ -62,6 +63,14 @@ class BroadcastTensorsOp : public framework::OperatorWithKernel {
         int dim_size = 1;
         if (axis >= 0) {
           dim_size = input_ddim[axis];
+        }
+
+        if (target_dim_size != 1 && dim_size != 1 &&
+            target_dim_size != dim_size) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "BroadcastTensorsOp inputs does not satisfy bcast semantics,"
+              "Please check axis = %d in reverse order",
+              index));
         }
 
         // We performed bcast semantics check at python level
