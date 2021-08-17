@@ -114,7 +114,7 @@ def TestHuberLossOp2(TestHuberLossOp):
         return (6, 6)
 
 
-def TestHuberLossOp2(TestHuberLossOp):
+def TestHuberLossOp3(TestHuberLossOp):
     def set_shape(self):
         return (6, 6, 1)
 
