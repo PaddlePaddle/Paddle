@@ -59,6 +59,9 @@ class CCommInitOpAscend : public framework::OperatorBase {
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
+
+    WaitHcclPort(device_id);
+
     platform::HCCLCommContext::Instance().CreateHCCLComm(
         hccl_id, rank_ids, rank_id, device_id, rid);
 

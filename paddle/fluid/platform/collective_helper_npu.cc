@@ -14,6 +14,13 @@
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+#include <sys/types.h>
+#include <time.h>
 #include <utility>
 
 namespace paddle {
@@ -212,6 +219,59 @@ void WaitToBind(const std::vector<int>& ports) {
   for (auto conn : conns) {
     close(conn);
   }
+}
+
+static int g_avoid_hccl_ports_steps = 0;
+
+void prepare_dir(const std::string& dirname) {
+  struct stat st = {0};
+  if (stat(dir_name.c_str(), &st) == -1) {
+    mkdir(dir_name.c_str(), 0700);
+  }
+}
+
+void WaitHcclPorts(int devce_id) {
+  if (!FLAGS_avoid_hccl_port_conflict) {
+    return;
+  }
+  prepare_dir(".flags");
+
+  LOG(INFO) << "begin to wait to avoid hccl conflicts steps:"
+            << g_avoid_hccl_ports_steps << ", device_id" << device_id;
+
+  if (device_id == 0) {
+    std::vector<int> hccl_ports;
+    for (int i = 60000; i < 60016; i++) {
+      hccl_ports.push_back(i);
+    }
+
+    WaitToBindPorts(hccl_ports);
+    for (int i = 1; i < 8; i++) {
+      std::string file = string::Sprintf(".flags/hccl_flags_%d", device_id);
+      std::string tmp = "file" + ".tmp";
+      FILE* fp = fopen(tmp.c_str(), "wb");
+      fclose(fp);
+      int ret = rename(tmp.c_str(), file.c_str());
+      PADDLE_ENFORCE_EQ(ret, 0, platform::errors::Fatal(
+                                    "rename from %s to %s error, retcode:%d",
+                                    tmp, file, ret));
+    }
+  } else {
+    std::string file = string::Sprintf(".flags/hccl_flags_%d", device_id);
+    struct stat buf;
+    while (True) {
+      if (stat(file.c_str(), &buf) == 0) {
+        remove(file.c_str());
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
+
+  std::this_thread::sleep_for(std::chrono::seconds(120));
+  g_avoid_hccl_ports_steps += 1;
+  LOG(INFO) << "end to wait to avoid hccl conflicts steps:"
+            << g_avoid_hccl_ports_steps << ", device_id" << device_id;
 }
 
 }  // namespace platform
