@@ -332,8 +332,7 @@ class DatasetBase(object):
                         if (var_list[i].dtype == core.VarDesc.VarType.INT64 or
                                 var_list[i].dtype == core.VarDesc.VarType.INT32
                             ) and not all(
-                                isinstance(ele, int) or isinstance(ele, long)
-                                for ele in ele[1]):
+                                isinstance(ele, int) for ele in ele[1]):
                             raise TypeError(
                                 "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-int value, which is %s \n"
                                 "Please check if order of var_list and data_generator are aligned. \n"

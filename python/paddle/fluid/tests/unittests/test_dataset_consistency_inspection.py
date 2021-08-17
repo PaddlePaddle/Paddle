@@ -28,9 +28,9 @@ import shutil
 import unittest
 import paddle.fluid.incubate.data_generator as dg
 
-paddle.enable_static()
+#paddle.enable_static()
 # fluid.disable_dygraph()
-
+fluid.disable_dygraph()
 url_schema_len = 5
 query_schema = [
     'Q_query_basic', 'Q_query_phrase', 'Q_quq', 'Q_timelevel',
@@ -241,6 +241,30 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         # yield zip(feature_name[:3], sparse_query_feature[:3])
                         yield list(zip(feature_name, [[], [2.0]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
                             neg_url_fea + neg_click_fea + neg_context_fea))
+            elif self.test == 5:
+                for p in range(len(pos_url_feas)):
+                    #feature_name = ["click"] + query_schema + url_schema[:4] + click_info_schema[:11] + context_schema[:2] + url_schema[4:] + click_info_schema[11:] + context_schema[2:]
+                    feature_name = ["click"]
+                    for i in range(1, 54):
+                        feature_name.append(str(i))
+                    #print("#######")
+                    #print(feature_name)
+                    #print("#######")
+                    pos_url_fea = pos_url_feas[p]
+                    pos_click_fea = pos_click_feas[p]
+                    pos_context_fea = pos_context_feas[p]
+                    for n in range(len(neg_url_feas)):
+                        # prob = get_rand()
+                        # if prob < sample_rate:
+                        neg_url_fea = neg_url_feas[n]
+                        neg_click_fea = neg_click_feas[n]
+                        neg_context_fea = neg_context_feas[n]
+                        #print("q:", query_feas)
+                        #print("pos:", pos_url_fea)
+                        #print("neg:", neg_url_fea)
+                        # yield zip(feature_name[:3], sparse_query_feature[:3])
+                        yield list(zip(feature_name, sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
+                            neg_url_fea + neg_click_fea + neg_context_fea))
 
         return reader
 
@@ -361,6 +385,17 @@ class TestDataset(unittest.TestCase):
                 slot_data, generator_class, "test_run_with_dump_a.txt")
         except Exception as e:
             print("warning: case 4 catch expected error")
+            print(e)
+        print("========================================")
+        print("\n")
+
+        print("========================================")
+        generator_class = CTRDataset(mode=5)
+        try:
+            dataset.check_use_var_with_data_generator(
+                slot_data, generator_class, "test_run_with_dump_a.txt")
+        except Exception as e:
+            print("warning: case 5 catch expected error")
             print(e)
         print("========================================")
 
