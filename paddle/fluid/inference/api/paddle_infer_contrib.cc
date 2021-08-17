@@ -13,31 +13,154 @@
 // limitations under the License.
 
 #include "paddle_infer_contrib.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle_infer {
 namespace contrib {
+namespace utils {
 
-void Utils::CopyTensor(Tensor& dst, const Tensor& src) {
+using paddle::PaddleDType;
+
+void CopyTensorImp(Tensor& dst, const Tensor& src, void* exec_stream,
+                   CallbackFunc cb, void* cb_params) {
+  dst.Reshape(src.shape());
+  PADDLE_ENFORCE(
+      src.place() == PlaceType::kCPU || src.place() == PlaceType::kGPU,
+      paddle::platform::errors::InvalidArgument(
+          "CopyTensor only support PlaceType kCPU/kGPU now."));
+  PADDLE_ENFORCE(
+      dst.place() == PlaceType::kCPU || dst.place() == PlaceType::kGPU,
+      paddle::platform::errors::InvalidArgument(
+          "CopyTensor only support PlaceType kCPU/kGPU now."));
+  // copy to cpu, gpu => cpu or cpu => cpu
+  if (dst.place() == PlaceType::kCPU) {
+    switch (src.type()) {
+      case PaddleDType::INT32:
+        src.CopyToCpuImp(dst.mutable_data<int32_t>(PlaceType::kCPU),
+                         exec_stream, cb, cb_params);
+        break;
+      case PaddleDType::INT64:
+        src.CopyToCpuImp(dst.mutable_data<int64_t>(PlaceType::kCPU),
+                         exec_stream, cb, cb_params);
+        break;
+      case PaddleDType::FLOAT32:
+        src.CopyToCpuImp(dst.mutable_data<float>(PlaceType::kCPU), exec_stream,
+                         cb, cb_params);
+        break;
+      case PaddleDType::UINT8:
+        src.CopyToCpuImp(dst.mutable_data<uint8_t>(PlaceType::kCPU),
+                         exec_stream, cb, cb_params);
+        break;
+      case PaddleDType::INT8:
+        src.CopyToCpuImp(dst.mutable_data<int8_t>(PlaceType::kCPU), exec_stream,
+                         cb, cb_params);
+        break;
+      case PaddleDType::FLOAT16:
+        src.CopyToCpuImp(
+            dst.mutable_data<paddle::platform::float16>(PlaceType::kCPU),
+            exec_stream, cb, cb_params);
+        break;
+      default:
+        PADDLE_THROW(paddle::platform::errors::Unimplemented(
+            "Only INT32, INT64, UINT8, INT8, FLOAT16 and "
+            "FLOAT32 is supported in Tensor. Others not implements"));
+    }
+    // gpu => gpu or cpu => gpu
+  } else {
+    void* dst_data = nullptr;
+    void* src_data = nullptr;
+    size_t data_len = 0;
+    int data_size = 0;
+    PlaceType src_place;
+    switch (src.type()) {
+      case PaddleDType::INT32:
+        dst_data =
+            static_cast<void*>(dst.mutable_data<int32_t>(PlaceType::kGPU));
+        src_data =
+            static_cast<void*>(src.data<int32_t>(&src_place, &data_size));
+        data_len = data_size * sizeof(int32_t);
+        break;
+      case PaddleDType::INT64:
+        dst_data =
+            static_cast<void*>(dst.mutable_data<int64_t>(PlaceType::kGPU));
+        src_data =
+            static_cast<void*>(src.data<int64_t>(&src_place, &data_size));
+        data_len = data_size * sizeof(int64_t);
+        break;
+      case PaddleDType::FLOAT32:
+        dst_data = static_cast<void*>(dst.mutable_data<float>(PlaceType::kGPU));
+        src_data = static_cast<void*>(src.data<float>(&src_place, &data_size));
+        data_len = data_size * sizeof(float);
+        break;
+      case PaddleDType::UINT8:
+        dst_data =
+            static_cast<void*>(dst.mutable_data<uint8_t>(PlaceType::kGPU));
+        src_data =
+            static_cast<void*>(src.data<uint8_t>(&src_place, &data_size));
+        data_len = data_size * sizeof(uint8_t);
+        break;
+      case PaddleDType::INT8:
+        dst_data =
+            static_cast<void*>(dst.mutable_data<int8_t>(PlaceType::kGPU));
+        src_data = static_cast<void*>(src.data<int8_t>(&src_place, &data_size));
+        data_len = data_size * sizeof(int8_t);
+        break;
+      case PaddleDType::FLOAT16:
+        dst_data = static_cast<void*>(
+            dst.mutable_data<paddle::platform::float16>(PlaceType::kGPU));
+        src_data = static_cast<void*>(
+            src.data<paddle::platform::float16>(&src_place, &data_size));
+        data_len = data_size * 2;
+        break;
+      default:
+        PADDLE_THROW(paddle::platform::errors::Unimplemented(
+            "Only INT32, INT64, UINT8, INT8, FLOAT16 and "
+            "FLOAT32 is supported in Tensor. Others not implements"));
+    }
+
+    paddle::platform::DeviceContextPool& pool =
+        paddle::platform::DeviceContextPool::Instance();
+    paddle::platform::CUDAPlace gpu_place(dst.device_);
+    auto* dev_ctx = static_cast<const paddle::platform::CUDADeviceContext*>(
+        pool.Get(gpu_place));
+
+    if (src.place() == PlaceType::kCPU) {
+      paddle::memory::Copy(gpu_place, static_cast<void*>(dst_data),
+                           paddle::platform::CPUPlace(), src_data, data_len,
+                           dev_ctx->stream());
+    } else {
+      paddle::memory::Copy(gpu_place, static_cast<void*>(dst_data),
+                           paddle::platform::CUDAPlace(), src_data, data_len,
+                           dev_ctx->stream());
+    }
+
+    if (nullptr != exec_stream) {
+      *(static_cast<cudaStream_t*>(exec_stream)) = dev_ctx->stream();
+    } else if (cb) {
+      cudaLaunchHostFunc(dev_ctx->stream(), cb, cb_params);
+    } else {
+      cudaStreamSynchronize(dev_ctx->stream());
+    }
+  }
+  return;
+}
+
+void CopyTensor(Tensor& dst, const Tensor& src) {
   CopyTensorImp(dst, src, nullptr, nullptr, nullptr);
 }
 
-void Utils::CopyTensorAsync(Tensor& dst, const Tensor& src, void* exec_stream) {
+void CopyTensorAsync(Tensor& dst, const Tensor& src, void* exec_stream) {
   CopyTensorImp(dst, src, exec_stream, nullptr, nullptr);
 }
 
-void Utils::CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
-                            void* cb_params) {
+void CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
+                     void* cb_params) {
   CopyTensorImp(dst, src, nullptr, cb, cb_params);
 }
 
-void CopyTensorImp(Tensor& dst, const Tensor& src, void* exec_stream = nullptr,
-                   CallbackFunc cb = nullptr, void* cb_params = nullptr) {
-  (void)dst;
-  (void)src;
-  (void)exec_stream;
-  (void)cb;
-  (void)cb_params;
-}
-
+}  // namespace utils
 }  // namespace contrib
 }  // namespace paddle_infer

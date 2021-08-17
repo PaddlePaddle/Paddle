@@ -18,7 +18,16 @@
 
 namespace paddle_infer {
 
+class Tensor;
 typedef void (*CallbackFunc)(void*);
+
+namespace contrib {
+namespace utils {
+void CopyTensorImp(paddle_infer::Tensor& dst, const paddle_infer::Tensor& src,
+                   void* exec_stream, paddle_infer::CallbackFunc cb,
+                   void* cb_params);
+}
+}
 
 /// \brief Paddle data type.
 enum DataType {
@@ -74,14 +83,14 @@ class PD_INFER_DECL Tensor {
   /// It's usually used to get the output tensor data.
   /// \param[out] data The tensor will copy the data to the address.
   template <typename T>
-  void CopyToCpu(T* data);
+  void CopyToCpu(T* data) const;
 
   /// \brief Copy the tensor data to the host memory asynchronously.
   /// \param[out] data The tensor will copy the data to the address.
   /// \param[out] exec_stream The tensor will excute copy in this stream(Only
   /// GPU CUDA stream suppported now).
   template <typename T>
-  void CopyToCpuAsync(T* data, void* exec_stream);
+  void CopyToCpuAsync(T* data, void* exec_stream) const;
 
   /// \brief Copy the tensor data to the host memory asynchronously.
   /// \param[out] data The tensor will copy the data to the address.
@@ -89,7 +98,7 @@ class PD_INFER_DECL Tensor {
   /// host after all
   ///                currently enqueued items in the stream have completed .
   template <typename T>
-  void CopyToCpuAsync(T* data, CallbackFunc cb, void* cb_params);
+  void CopyToCpuAsync(T* data, CallbackFunc cb, void* cb_params) const;
 
   /// \brief Return the shape of the Tensor.
   std::vector<int> shape() const;
@@ -121,7 +130,7 @@ class PD_INFER_DECL Tensor {
 
   template <typename T>
   void CopyToCpuImp(T* data, void* stream = nullptr, CallbackFunc cb = nullptr,
-                    void* cb_params = nullptr);
+                    void* cb_params = nullptr) const;
 
   std::string name_;
   // The corresponding tensor pointer inside Paddle workspace is cached for
@@ -132,6 +141,12 @@ class PD_INFER_DECL Tensor {
   void* scope_{nullptr};
   PlaceType place_;
   int device_;
+
+  friend void paddle_infer::contrib::utils::CopyTensorImp(Tensor& dst,
+                                                          const Tensor& src,
+                                                          void* exec_stream,
+                                                          CallbackFunc cb,
+                                                          void* cb_params);
 };
 
 }  // namespace paddle_infer

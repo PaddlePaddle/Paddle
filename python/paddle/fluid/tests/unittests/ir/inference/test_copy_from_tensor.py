@@ -23,14 +23,15 @@ from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import PassVersionChecker
 from paddle.inference import Config
 from paddle.inference import create_predictor
-from paddle.inference import test_callback
+from paddle.inference.contrib import utils
+
 
 class TestCallback:
     def __init__(self):
-      self.num = 1024
+        self.num = 1024
 
     def test(self):
-      print(self.num)
+        print(self.num)
 
 
 class CopyFromTensor(InferencePassTest):
@@ -72,8 +73,11 @@ class CopyFromTensor(InferencePassTest):
 
         predictor_2 = create_predictor(config_2)
         input_tensor_2 = predictor_2.get_input_handle(input_names[0])
-        input_tensor_2.copy_from_tensor(output_tensor_1)
+
+        #copy tensor to tensor
+        utils.copy_tensor(input_tensor_2, output_tensor_1)
         self.assertTrue(predictor_2.run())
+
         output_tensor_2 = predictor_2.get_output_handle(output_names[0])
         output_data = output_tensor_2.copy_to_cpu()
 
@@ -86,10 +90,6 @@ class CopyFromTensor(InferencePassTest):
         self.place_1_gpu = False
         self.place_2_gpu = True
         self.execute_two_models()
-        test_obj = TestCallback()
-        test_obj.num = 4096
-        test_callback(test_obj.test)        
-        test_callback()        
 
 
 if __name__ == "__main__":

@@ -23,13 +23,13 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <thread>
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
@@ -195,46 +195,6 @@ void PaddleInferTensorCreate(
   tensor.CopyFromCpu(static_cast<const T *>(data.data()));
 }
 
-void PaddleInferTensorCopyFromTensor(
-    paddle_infer::Tensor &to_tensor,         // NOLINT
-    const paddle_infer::Tensor &from_tensor  // NOLINT
-    ) {
-  auto from_place = from_tensor.place();
-  int out_numel = 0;
-  to_tensor.Reshape(from_tensor.shape());
-  if (from_place == paddle_infer::PlaceType::kGPU) {
-    std::cout << " ===> copy from gpu" << std::endl;
-    PADDLE_THROW(platform::errors::Unimplemented("xxx not implements"));
-  } else if (from_place == paddle_infer::PlaceType::kCPU) {
-    std::cout << " ===> copy from cpu" << std::endl;
-    switch (from_tensor.type()) {
-      case PaddleDType::INT32:
-        to_tensor.CopyFromCpu(
-            from_tensor.data<int32_t>(&from_place, &out_numel));
-        break;
-      case PaddleDType::INT64:
-        to_tensor.CopyFromCpu(
-            from_tensor.data<int64_t>(&from_place, &out_numel));
-        break;
-      case PaddleDType::FLOAT32:
-        to_tensor.CopyFromCpu(from_tensor.data<float>(&from_place, &out_numel));
-        break;
-      case PaddleDType::UINT8:
-        to_tensor.CopyFromCpu(
-            from_tensor.data<uint8_t>(&from_place, &out_numel));
-        break;
-      case PaddleDType::INT8:
-        to_tensor.CopyFromCpu(
-            from_tensor.data<int8_t>(&from_place, &out_numel));
-        break;
-      default:
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Now only supports INT32, INT64, UINT8, INT8 and "
-            "FLOAT32. Others not implements"));
-    }
-  }
-}
-
 size_t PaddleGetDTypeSize(PaddleDType dt) {
   size_t size{0};
   switch (dt) {
@@ -328,6 +288,11 @@ py::bytes SerializePDTensorToBytes(PaddleTensor &tensor) {  // NOLINT
   paddle::inference::SerializePDTensorToStream(&ss, tensor);
   return static_cast<py::bytes>(ss.str());
 }
+
+void CopyPaddleInferTensor(paddle_infer::Tensor &dst,
+                           const paddle_infer::Tensor &src) {
+  return paddle_infer::contrib::utils::CopyTensor(dst, src);
+}
 }  // namespace
 
 void BindInferenceApi(py::module *m) {
@@ -350,23 +315,6 @@ void BindInferenceApi(py::module *m) {
 #endif
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<AnalysisConfig>, py::arg("config"));
-  m->def("test_callback", [](const py::object &cb) {
-    for (int i = 0; i < 10; i++) {
-      std::cout << i << " sleep 1s..." << std::endl;
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
-    std::cout << "begin call back" << std::endl;
-    return cb();
-  });
-  m->def("test_callback", []() {
-    for (int i = 0; i < 10; i++) {
-      std::cout << i << " sleep 1s..." << std::endl;
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
-    std::cout << "no call back" << std::endl;
-  });
-  m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
-  m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<NativeConfig>, py::arg("config"));
   m->def("create_predictor", [](const paddle_infer::Config &config)
@@ -376,6 +324,7 @@ void BindInferenceApi(py::module *m) {
                                            new paddle_infer::Predictor(config));
                                    return std::move(pred);
                                  });
+  m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
   m->def("get_version", &paddle_infer::GetVersion);
@@ -758,7 +707,6 @@ void BindPaddleInferTensor(py::module *m) {
       .def("copy_from_cpu", &PaddleInferTensorCreate<float>)
       .def("copy_from_cpu", &PaddleInferTensorCreate<paddle_infer::float16>)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
-      .def("copy_from_tensor", &PaddleInferTensorCopyFromTensor)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)
       .def("lod", &paddle_infer::Tensor::lod)

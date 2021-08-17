@@ -14,23 +14,17 @@
 
 #pragma once
 
-#include "paddle_tensor.h"
+#include "paddle_inference_api.h"
 
 namespace paddle_infer {
 namespace contrib {
+namespace utils {
 
-class PD_INFER_DECL Utils {
- public:
-  void CopyTensor(Tensor& dst, const Tensor& src);
-  void CopyTensorAsync(Tensor& dst, const Tensor& src, void* exec_stream);
-  void CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
-                       void* cb_params);
+void CopyTensor(Tensor& dst, const Tensor& src);
+void CopyTensorAsync(Tensor& dst, const Tensor& src, void* exec_stream);
+void CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
+                     void* cb_params);
 
- private:
-  void CopyTensorImp(Tensor& dst, const Tensor& src,
-                     void* exec_stream = nullptr, CallbackFunc cb = nullptr,
-                     void* cb_params = nullptr);
-}
-
+}  // namespace utils
 }  // namespace contrib
 }  // namespace paddle_infer
