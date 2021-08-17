@@ -58,11 +58,12 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
 
     int64_t total_length = num_seqs * beam_size;
     int64_t batch_size = static_cast<int64_t>(scores->dims()[0]);
-    selected_ids->mutable_data<int>(framework::make_ddim({total_length, 1}),
-                                    place);
+    selected_ids->mutable_data<int64_t>(framework::make_ddim({total_length, 1}),
+                                        place);
     selected_scores->mutable_data<float>(
         framework::make_ddim({total_length, 1}), place);
-    parent_idx->mutable_data<int>(framework::make_ddim({total_length}), place);
+    parent_idx->mutable_data<int64_t>(framework::make_ddim({total_length}),
+                                      place);
 
     // Step1: Define Tensors and Preprocess the situation that pre_id == end_id
 
