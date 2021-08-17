@@ -29,8 +29,14 @@ constexpr int MaxDeviceTypes =
 
 typedef void (*EventCreateFunction)(DeviceEvent*, const DeviceOption&);
 typedef void (*EventRecordFunction)(DeviceEvent*, const platform::Place&,
-                                    const void*);
+                                    const DeviceContext*);
 typedef bool (*EventQueryFunction)(const DeviceEvent*);
+typedef void (*EventFinishFunction)(const DeviceEvent*);
+typedef void (*EventWaitFunction)(const DeviceEvent*, DeviceContext*);
+
+inline int DeviceTypeToId(const DeviceType& device_type) {
+  return static_cast<int>(device_type);
+}
 
 class DeviceOption {
  public:
@@ -67,7 +73,7 @@ class DeviceEvent {
 
   ~DeviceEvent() {}
 
-  void Record(const platform::Place& place, const void* dev_ctx) {
+  void Record(const platform::Place& place, const DeviceContext* dev_ctx) {
     PADDLE_ENFORCE_NOT_NULL(
         event_recorder_[type_],
         platform::errors::Unavailable(
@@ -83,6 +89,23 @@ class DeviceEvent {
     return event_querier_[type_](this);
   }
 
+  void Finish() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        event_finisher_[type_],
+        platform::errors::Unavailable(
+            "event_finisher_[%d] shall not be nullptr.", type_));
+    event_finisher_[type_](this);
+  }
+
+  void Wait(const DeviceType& waiter_type, DeviceContext* context) const {
+    auto waiter_idx = DeviceTypeToId(waiter_type);
+    PADDLE_ENFORCE_NOT_NULL(
+        event_waiter_[waiter_idx][type_],
+        platform::errors::Unavailable(
+            "event_waiter_[%d][%d] shall not be nullptr.", waiter_idx, type_));
+    event_waiter_[waiter_idx][type_](this, context);
+  }
+
   void InitEvent(std::shared_ptr<void> event) { event_ = event; }
 
   std::shared_ptr<void> GetEvent() const { return event_; }
@@ -95,6 +118,8 @@ class DeviceEvent {
   static EventCreateFunction event_creator_[MaxDeviceTypes];
   static EventRecordFunction event_recorder_[MaxDeviceTypes];
   static EventQueryFunction event_querier_[MaxDeviceTypes];
+  static EventFinishFunction event_finisher_[MaxDeviceTypes];
+  static EventWaitFunction event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
 
   template <DeviceType device_typ>
   friend struct EventCreateFunctionRegisterer;
@@ -104,60 +129,149 @@ class DeviceEvent {
 
   template <DeviceType device_typ>
   friend struct EventQueryFunctionRegisterer;
+
+  template <DeviceType device_typ>
+  friend struct EventFinishFunctionRegisterer;
+
+  template <DeviceType waiter_typ, DeviceType event_type>
+  friend struct EventWaitFunctionRegisterer;
 };
 
-inline int DeviceTypeToId(const DeviceType& device_type) {
-  return static_cast<int>(device_type);
-}
+/**
+ * check if MACRO is used in GLOBAL NAMESPACE.
+ */
+#define STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                        \
+  struct __test_global_namespace_##uniq_name##__ {};                          \
+  static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
+                             __test_global_namespace_##uniq_name##__>::value, \
+                msg)
 
+// =============== Register for Create ===============
 template <DeviceType device_type>
-struct EventCreateFunctionRegisterer {
+struct EventCreateFunctionRegisterer : public framework::Registrar {
   explicit EventCreateFunctionRegisterer(EventCreateFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
+    VLOG(3) << "register event_creator with type_id :" << type_idx;
     DeviceEvent::event_creator_[type_idx] = func;
-    VLOG(2) << "register creator " << type_idx << " with "
-            << DeviceEvent::event_creator_[type_idx];
   }
-  void Touch() {}
 };
 
-#define REGISTER_EVENT_CREATE_FUNCTION(device_type, func)               \
-  static ::paddle::platform::EventCreateFunctionRegisterer<device_type> \
-      g_device_event_create_1(func);                                    \
-  int touch_g_device_event_create_1() {                                 \
-    g_device_event_create_1.Touch();                                    \
-    return 0;                                                           \
+#define REGISTER_EVENT_CREATE_FUNCTION(device_type, func)                   \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      __reg_event_creator__##device_type,                                   \
+      "REGISTER_EVENT_CREATE_FUNCTION must be called in global namespace"); \
+  static ::paddle::platform::EventCreateFunctionRegisterer<device_type>     \
+      __reg_event_create_##device_type##__(func);                           \
+  int TouchDeviceEventCreate##device_type() {                               \
+    __reg_event_create_##device_type##__.Touch();                           \
+    return 0;                                                               \
   }
 
-#define USE_EVENT(device_type)                \
-  extern int touch_g_device_event_create_1(); \
-  UNUSED static int use_event_itself_1 = touch_g_device_event_create_1();
-
+// =============== Register for Record ===============
 template <DeviceType device_type>
-struct EventRecordFunctionRegisterer {
+struct EventRecordFunctionRegisterer : public framework::Registrar {
   explicit EventRecordFunctionRegisterer(EventRecordFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
+    VLOG(3) << "register event_recorder with type_id :" << type_idx;
     DeviceEvent::event_recorder_[type_idx] = func;
   }
 };
-#define REGISTER_EVENT_RECORD_FUNCTION(device_type, func) \
-  namespace {                                             \
-  static EventRecordFunctionRegisterer<device_type>       \
-      g_device_event_record_##type_idx(func);             \
+
+#define REGISTER_EVENT_RECORD_FUNCTION(device_type, func)                   \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      __reg_event_recorder__##device_type,                                  \
+      "REGISTER_EVENT_RECORD_FUNCTION must be called in global namespace"); \
+  static ::paddle::platform::EventRecordFunctionRegisterer<device_type>     \
+      __reg_event_record_##device_type##__(func);                           \
+  int TouchDeviceEventRecord##device_type() {                               \
+    __reg_event_record_##device_type##__.Touch();                           \
+    return 0;                                                               \
   }
 
+// =============== Register for Query ===============
 template <DeviceType device_type>
-struct EventQueryFunctionRegisterer {
+struct EventQueryFunctionRegisterer : public framework::Registrar {
   explicit EventQueryFunctionRegisterer(EventQueryFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
+    VLOG(3) << "register event_querier with type_id :" << type_idx;
     DeviceEvent::event_querier_[type_idx] = func;
   }
 };
-#define REGISTER_EVENT_QUERY_FUNCTION(device_type, func) \
-  namespace {                                            \
-  static EventQueryFunctionRegisterer<device_type>       \
-      g_device_event_query_##type_idx(func);             \
+
+#define REGISTER_EVENT_QUERY_FUNCTION(device_type, func)                   \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      __reg_event_querier__##device_type,                                  \
+      "REGISTER_EVENT_QUERY_FUNCTION must be called in global namespace"); \
+  static ::paddle::platform::EventQueryFunctionRegisterer<device_type>     \
+      __reg_event_query_##device_type##__(func);                           \
+  int TouchDeviceEventQuery##device_type() {                               \
+    __reg_event_query_##device_type##__.Touch();                           \
+    return 0;                                                              \
   }
+
+// =============== Register for Finish ===============
+template <DeviceType device_type>
+struct EventFinishFunctionRegisterer : public framework::Registrar {
+  explicit EventFinishFunctionRegisterer(EventFinishFunction func) {
+    auto type_idx = DeviceTypeToId(device_type);
+    VLOG(3) << "register event_finisher with type_id :" << type_idx;
+    DeviceEvent::event_finisher_[type_idx] = func;
+  }
+};
+
+#define REGISTER_EVENT_FINISH_FUNCTION(device_type, func)                   \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      __reg_event_finishier__##device_type,                                 \
+      "REGISTER_EVENT_FINISH_FUNCTION must be called in global namespace"); \
+  static ::paddle::platform::EventFinishFunctionRegisterer<device_type>     \
+      __reg_event_finish_##device_type##__(func);                           \
+  int TouchDeviceEventFinish##device_type() {                               \
+    __reg_event_finish_##device_type##__.Touch();                           \
+    return 0;                                                               \
+  }
+
+// =============== Register for Wait ===============
+template <DeviceType waiter_type, DeviceType event_type>
+struct EventWaitFunctionRegisterer : public framework::Registrar {
+  explicit EventWaitFunctionRegisterer(EventWaitFunction func) {
+    auto waiter_idx = DeviceTypeToId(waiter_type);
+    auto event_idx = DeviceTypeToId(event_type);
+    VLOG(3) << "register event_finisher with waiter_idx : " << type_idx
+            << ", event_idx : " << event_idx;
+    DeviceEvent::event_waiter_[waiter_idx][event_idx] = func;
+  }
+};
+
+#define REGISTER_EVENT_WAIT_FUNCTION(waiter_type, event_type, func)       \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
+      __reg_event_waiter__##waiter_type##event_type,                      \
+      "REGISTER_EVENT_WAIT_FUNCTION must be called in global namespace"); \
+  static ::paddle::platform::EventWaitFunctionRegisterer<waiter_type,     \
+                                                         event_type>      \
+      __reg_event_wait_##waiter_type##event_type##__(func);               \
+  int TouchDeviceEventWait##waiter_type##event_type() {                   \
+    __reg_event_wait_##waiter_type##event_type##__.Touch();               \
+    return 0;                                                             \
+  }
+
+#define USE_EVENT(device_type)                         \
+  extern int TouchDeviceEventCreate##device_type();    \
+  extern int TouchDeviceEventRecord##device_type();    \
+  extern int TouchDeviceEventQuery##device_type();     \
+  extern int TouchDeviceEventFinish##device_type();    \
+  UNUSED static int use_event_creator_##device_type =  \
+      TouchDeviceEventCreate##device_type();           \
+  UNUSED static int use_event_recorder_##device_type = \
+      TouchDeviceEventRecord##device_type();           \
+  UNUSED static int use_event_querier_##device_type =  \
+      TouchDeviceEventQuery##device_type();            \
+  UNUSED static int use_event_finisher_##device_type = \
+      TouchDeviceEventFinish##device_type();
+
+#define USE_EVENT_WAIT(waiter_type, event_type)                  \
+  extern int TouchDeviceEventWait##waiter_type##event_type();    \
+  UNUSED static int use_event_waiter_##waiter_type##event_type = \
+      TouchDeviceEventWait##waiter_type##event_type();
 
 }  // namespace platform
 }  // namespace paddle

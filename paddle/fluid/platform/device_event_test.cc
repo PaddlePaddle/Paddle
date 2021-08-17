@@ -13,14 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/device_event.h"
-
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-USE_EVENT(1);
-
 #ifdef PADDLE_WITH_CUDA
-TEST(DeviceEvent, GPU) {
+#include <cuda_runtime.h>
+using ::paddle::platform::DeviceType::CUDA;
+using ::paddle::platform::DeviceType::CPU;
+USE_EVENT(CUDA);
+USE_EVENT_WAIT(CUDA, CUDA)
+USE_EVENT_WAIT(CPU, CUDA)
+
+TEST(DeviceEvent, CUDA) {
   VLOG(1) << "In Test";
   using paddle::platform::CUDAPlace;
   using paddle::platform::DeviceOption;
@@ -30,15 +34,45 @@ TEST(DeviceEvent, GPU) {
 
   auto& pool = DeviceContextPool::Instance();
   auto place = CUDAPlace(0);
-  auto* context = pool.Get(place);
+  auto* context =
+      static_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
   int device_type = static_cast<int>(DeviceType::CUDA);
   DeviceOption dev_opt(device_type, place.device);
 
   ASSERT_NE(context, nullptr);
+  // case 1. test for event_creator
   DeviceEvent event(dev_opt);
   ASSERT_NE(event.GetEvent().get(), nullptr);
-  // event.Record(place, context);
-  // bool status = event.Query();
-  // ASSERT_EQ(status, true);
+  // case 2. test for event_recorder
+  event.Record(place, context);
+  bool status = event.Query();
+  ASSERT_EQ(status, false);
+  // case 3. test for event_finisher
+  event.Finish();
+  status = event.Query();
+  ASSERT_EQ(status, true);
+
+  // case 4. test for event_waiter
+  float *src_fp32, *dst_fp32;
+  int size = 1000000 * sizeof(float);
+  cudaMallocHost(reinterpret_cast<void**>(&src_fp32), size);
+  cudaMalloc(reinterpret_cast<void**>(&dst_fp32), size);
+  cudaMemcpyAsync(dst_fp32, src_fp32, size, cudaMemcpyHostToDevice,
+                  context->stream());
+  event.Record(place, context);  // step 1. record it
+  status = event.Query();
+  ASSERT_EQ(status, false);
+
+  event.Wait(CUDA, context);  // step 2. add streamWaitEvent
+  status = event.Query();
+  ASSERT_EQ(status, false);  // async
+
+  event.Wait(CPU, context);  // step 3. EventSynchornize
+  status = event.Query();
+  ASSERT_EQ(status, true);  // sync
+
+  // release resource
+  cudaFree(dst_fp32);
+  cudaFreeHost(src_fp32);
 }
 #endif

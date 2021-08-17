@@ -16,11 +16,12 @@
 
 namespace paddle {
 namespace platform {
-#define PD_CX __attribute__((visibility("default")))
 
-PD_CX EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];
-PD_CX EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];
-PD_CX EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];
+EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];
+EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];
+EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];
+EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];
+EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
 
 }  // namespace platform
 }  // namespace paddle
