@@ -72,12 +72,6 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
             {*param_out, *mean_grad_out, *mean_square_out, *moment_out},
             {attr_input});
         runner_applycenterrmsprop.Run(stream);
-        if (mean_grad_out->data<T>() != mg_tensor->data<T>()) {
-          framework::TensorCopy(
-              *mg_tensor, ctx.GetPlace(),
-              ctx.template device_context<platform::DeviceContext>(),
-              mean_grad_out);
-        }
       } else {
         framework::NPUAttributeMap attr_input = {
             {"rho", rho}, {"momentum", momentum}, {"epsilon", epsilon}};
