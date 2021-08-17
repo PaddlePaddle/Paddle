@@ -760,3 +760,15 @@ func (config *Config) AllPasses() []string {
 	C.PD_OneDimArrayCstrDestroy(cPasses)
 	return passes
 }
+
+///
+/// \brief Get information of config.
+///
+/// \return Return config info.
+///
+func (config *Config) Summary() string {
+	cSummary := C.PD_ConfigSummary(config.c)
+	summary := C.GoString(cSummary)
+	C.free(unsafe.Pointer(cSummary))
+	return summary
+}

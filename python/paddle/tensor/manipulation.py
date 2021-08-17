@@ -223,7 +223,7 @@ def flip(x, axis, name=None):
     Args:
         x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
-        axis (list|tuple): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
+        axis (list|tuple|int): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -240,10 +240,17 @@ def flip(x, axis, name=None):
           x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           x = x.astype('float32')
           img = paddle.to_tensor(x)
-          out = paddle.flip(img, [0,1])
+          tmp = paddle.flip(img, [0,1])
+          print(tmp) # [[[10,11],[8, 9]], [[6, 7],[4, 5]], [[2, 3],[0, 1]]]
 
-          print(out) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
+          out = paddle.flip(tmp,-1)
+          print(out) # [[[11,10],[9, 8]], [[7, 6],[5, 4]], [[3, 2],[1, 0]]]
     """
+    if isinstance(axis, int):
+        axis = [axis]
+    if in_dygraph_mode():
+        return core.ops.flip(x, "axis", axis)
+
     helper = LayerHelper("flip", **locals())
     check_type(x, 'X', (Variable), 'flip')
     dtype = helper.input_dtype('x')
@@ -708,6 +715,112 @@ def squeeze_(x, axis=None, name=None):
 
     out, _ = _C_ops.squeeze2_(x, 'axes', axis)
     return out
+
+
+def unique_consecutive(x,
+                       return_inverse=False,
+                       return_counts=False,
+                       axis=None,
+                       dtype="int64",
+                       name=None):
+    r"""
+    Eliminates all but the first element from every consecutive group of equivalent elements.
+
+    .. note:: This function is different from :func:`paddle.unique` in the sense that this function
+        only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
+
+    Args:
+        x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        return_inverse(bool, optional): If True, also return the indices for where elements in
+            the original input ended up in the returned unique consecutive tensor. Default is False.
+        return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
+            Default is False.
+        axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
+            Default is None.
+        dtype(np.dtype|str, optional): The data type `inverse` tensor: int32 or int64.
+            Default: int64.
+        name(str, optional): Name for the operation. For more information, please refer to
+            :ref:`api_guide_Name`. Default is None.
+
+    Returns:
+        tuple: (out, inverse, counts). `out` is the unique consecutive tensor for `x`. `inverse` is provided only if `return_inverse` is True. `counts` is provided only if `return_counts` is True.
+
+    Example:
+        .. code-block:: python
+
+            import paddle 
+
+            x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
+            output = paddle.unique_consecutive(x) # 
+            np_output = output.numpy() # [1 2 3 1 2]
+            _, inverse, counts = paddle.unique_consecutive(x, return_inverse=True, return_counts=True)
+            np_inverse = inverse.numpy() # [0 0 1 1 2 3 3 4]
+            np_counts = inverse.numpy() # [2 2 1 2 1]
+
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
+            output = paddle.unique_consecutive(x, axis=0) # 
+            np_output = output.numpy() # [2 1 3 0 1 2 1 3 2 1 3]
+
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
+            output = paddle.unique_consecutive(x, axis=0) # 
+            np_output = output.numpy()
+            # [[2 1 3]
+            #  [3 0 1]
+            #  [2 1 3]]
+    """
+
+    if axis is None:
+        axis = []
+    else:
+        axis = [axis]
+    attr_dtype = convert_np_dtype_to_dtype_(dtype)
+    if in_dygraph_mode():
+        out, inverse, counts = core.ops.unique_consecutive(
+            x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
+            'return_counts', return_counts, 'axis', axis)
+        outs = [out]
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+        if len(outs) == 1:
+            return outs[0]
+        return tuple(outs)
+    check_variable_and_dtype(x, "input",
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'unique_consecutive')
+    check_type(return_inverse, 'return_inverse', bool, 'unique_consecutive')
+    check_type(return_counts, 'return_counts', bool, 'unique_consecutive')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'unique_consecutive')
+    if len(axis) != 0:
+        check_type(axis[0], 'axis', int, 'unique_consecutive')
+    helper = LayerHelper('unique_consecutive', **locals())
+    attrs = {
+        'dtype': attr_dtype,
+        "return_inverse": return_inverse,
+        "return_counts": return_counts,
+        "axis": axis,
+    }
+    out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+    inverse = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
+    counts = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
+    outputs = {"Out": out, "Index": inverse, "Counts": counts}
+    outs = [out]
+    if return_inverse:
+        outs.append(inverse)
+    if return_counts:
+        outs.append(counts)
+    helper.append_op(
+        type="unique_consecutive",
+        inputs={"X": x},
+        attrs=attrs,
+        outputs=outputs)
+    if len(outs) == 1:
+        return outs[0]
+    return tuple(outs)
 
 
 def unique(x,

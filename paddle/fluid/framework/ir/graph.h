@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/utils/any.h"
 
 DECLARE_bool(convert_all_blocks);
 
@@ -104,7 +105,14 @@ class Graph {
     attr_dels_.clear();
   }
 
-  bool IsConstructedByPartialProgram() const { return is_partial_; }
+  bool IsConstructedByPartialProgram() const {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->IsConstructedByPartialProgram();
+      }
+    }
+    return is_partial_;
+  }
 
   bool Has(const std::string &attr_name) const {
     if (FLAGS_convert_all_blocks) {
@@ -140,8 +148,8 @@ class Graph {
         platform::errors::PreconditionNotMet(
             "%s attribute not registered for current graph.", attr_name));
     try {
-      return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
-    } catch (boost::bad_any_cast &) {
+      return *paddle::any_cast<AttrType *>(attrs_.at(attr_name));
+    } catch (paddle::bad_any_cast &) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Invalid attribute type of %s, expected: %s, received: %s.",
           attr_name, platform::demangle(typeid(AttrType *).name()),  // NOLINT
@@ -210,7 +218,7 @@ class Graph {
   }
 
   // Create a normal variable with non-null VarDesc.
-  ir::Node *CreateVarNode(VarDesc *var_desc) {
+  ir::Node *CreateVarNode(VarDesc *var_desc, int block_id = -1) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
         return GetSubGraph(0)->CreateVarNode(var_desc);
@@ -219,7 +227,8 @@ class Graph {
     PADDLE_ENFORCE_NOT_NULL(
         var_desc, platform::errors::InvalidArgument(
                       "The VarDesc used to create variable node is null."));
-    auto *x = AddNode(new ir::Node(var_desc));
+    auto *x =
+        AddNode(new ir::Node(var_desc, block_id == -1 ? block_id_ : block_id));
     x->SetId(num_node_created_++);
     return x;
   }
@@ -252,7 +261,7 @@ class Graph {
     const std::string name = string::Sprintf(
         "%s@%llu", static_cast<const char *>(ir::Node::kControlDepVarName),
         num_node_created_);
-    auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable));
+    auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable, block_id_));
     x->SetId(num_node_created_++);
     return x;
   }
@@ -265,7 +274,7 @@ class Graph {
         return GetSubGraph(0)->CreateEmptyNode(name, type);
       }
     }
-    auto *x = AddNode(new ir::Node(name, type));
+    auto *x = AddNode(new ir::Node(name, type, block_id_));
     x->SetId(num_node_created_++);
     return x;
   }
@@ -365,6 +374,15 @@ class Graph {
     return sub_graphs_.at(idx).get();
   }
 
+  int GetBlockId() const {
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->block_id_;
+      }
+    }
+    return block_id_;
+  }
+
   size_t SubGraphsSize() const {
     PADDLE_ENFORCE_EQ(
         this->IsMainGraph(), true,
@@ -394,6 +412,9 @@ class Graph {
     PADDLE_ENFORCE_EQ(
         this->IsMainGraph(), true,
         platform::errors::InvalidArgument("This graph is not main_graph"));
+    PADDLE_ENFORCE_EQ(sub_graphs_.size(), sub_graph->block_id_,
+                      platform::errors::InvalidArgument(
+                          "sub_graph idx is not equal to block_id_"));
     sub_graphs_.push_back(std::move(sub_graph));
   }
 
@@ -406,7 +427,7 @@ class Graph {
   const Graph *main_graph_;  // not owned.
   std::vector<std::unique_ptr<Graph>> sub_graphs_;
 
-  std::map<std::string, boost::any> attrs_;
+  std::map<std::string, paddle::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
@@ -416,6 +437,8 @@ class Graph {
   // parts: forward graph and backward graph, which can be executed
   // independently.
   bool is_partial_{false};
+  // The block this SubGraph belongs to.
+  int block_id_{0};
 };
 
 bool IsControlDepVar(const ir::Node &var);

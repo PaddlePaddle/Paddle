@@ -21,7 +21,6 @@
 #include <vector>
 
 #include <ThreadPool.h>
-#include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/framework/blocking_queue.h"
@@ -35,8 +34,6 @@ constexpr int FG = 256 * 1024 * 1024;
 constexpr int Q_SIZE = 10000;
 constexpr int BUCKET = 10;
 constexpr char XEOF[] = "EOF";
-
-using boost::lexical_cast;
 
 inline double GetCurrentUS() {
   struct timeval time;
@@ -208,8 +205,10 @@ class ShardingMerge {
         for (int x = 0; x < embedding_dim; ++x) {
           float v = 0.0;
           try {
-            v = lexical_cast<float>(values_str[x]);
-          } catch (boost::bad_lexical_cast &e) {
+            v = std::stof(values_str[x]);
+          } catch (std::invalid_argument &e) {
+            VLOG(0) << " get unexpected line: " << line;
+          } catch (std::out_of_range &e) {
             VLOG(0) << " get unexpected line: " << line;
           }
           out->push_back(v);
