@@ -66,7 +66,7 @@ class ConcatMKLDNNHandler
 
     // Create memory descriptors for each of inputs
     const auto dims = paddle::framework::vectorize<int64_t>(inputs[0]->dims());
-    for (size_t i = 0; i < inputs->size(); i++) {
+    for (size_t i = 0; i < inputs.size(); i++) {
       srcs_md.emplace_back(memory::desc(dims, dt, inputs[i]->format()));
     }
 
