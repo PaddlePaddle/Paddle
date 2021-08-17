@@ -165,8 +165,7 @@ class ResNeXt(nn.Layer):
                 supported_layers, layers)
         supported_cardinality = [32, 64]
         assert cardinality in supported_cardinality, \
-            "supported cardinality is {} but input cardinality is {}" \
-                .format(supported_cardinality, cardinality)
+            "supported cardinality is {} but input cardinality is {}".format(supported_cardinality, cardinality)
         if layers == 50:
             depth = [3, 4, 6, 3]
         elif layers == 101:
@@ -264,8 +263,7 @@ def resnext50_32x4d(pretrained=False,
     _load_params(
         MODEL_URLS["ResNeXt50_32x4d"],
         model,
-        pretrained,
-        use_ssld=use_ssld)
+        pretrained)
     return model
 
 
