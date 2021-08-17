@@ -1059,7 +1059,6 @@ function get_quickly_disable_ut() {
 
 function card_test() {
     set -m
-    CTEST_PARALLEL_LEVEL=2
     case_count $1 $2
     ut_startTime_s=`date +%s` 
 
