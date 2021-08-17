@@ -70,6 +70,7 @@ void CopyTensorImp(Tensor& dst, const Tensor& src, void* exec_stream,
     }
     // gpu => gpu or cpu => gpu
   } else {
+#if defined(PADDLE_WITH_CUDA)
     void* dst_data = nullptr;
     void* src_data = nullptr;
     size_t data_len = 0;
@@ -144,6 +145,11 @@ void CopyTensorImp(Tensor& dst, const Tensor& src, void* exec_stream,
     } else {
       cudaStreamSynchronize(dev_ctx->stream());
     }
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not copy tensor to GPU CUDA place because paddle is not compiled "
+        "with CUDA."));
+#endif
   }
   return;
 }
