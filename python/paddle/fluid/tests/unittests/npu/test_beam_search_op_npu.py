@@ -55,9 +55,9 @@ class TestBeamSearchNPUOp(OpTest):
 
     def init_data(self):
         self.is_accumulated = True
-        self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int32')
+        self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int64')
         self.ids = np.array(
-            [[4, 2, 5], [2, 1, 3], [3, 5, 2], [8, 2, 1]], dtype='int32')
+            [[4, 2, 5], [2, 1, 3], [3, 5, 2], [8, 2, 1]], dtype='int64')
         self.lod = [[2, 2], [1, 1, 1, 1]]
         self.out_lod = [[2, 2], [1, 1, 1, 1]]
         self.offset_lod = [[0, 2, 4], [0, 1, 2, 3, 4]]
@@ -81,8 +81,8 @@ class TestBeamSearchNPUOp(OpTest):
 class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
     def init_data(self):
         self.is_accumulated = True
-        self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int32')
-        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int32')
+        self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int64')
+        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int64')
         self.lod = [[2, 2], [1, 1, 1, 1]]
         self.out_lod = [[2, 2], [2, 0, 1, 1]]
         self.offset_lod = [[0, 2, 4], [0, 2, 2, 3, 4]]
@@ -103,8 +103,8 @@ class TestBeamSearchNPUOp3(TestBeamSearchNPUOp):
     def init_data(self):
         # end_id = 0
         self.is_accumulated = True
-        self.pre_ids = np.array([[1], [0], [0], [4]], dtype='int32')
-        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int32')
+        self.pre_ids = np.array([[1], [0], [0], [4]], dtype='int64')
+        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int64')
         self.lod = [[2, 2], [1, 1, 1, 1]]
         self.out_lod = [[2, 2], [1, 1, 0, 2]]
         self.offset_lod = [[0, 2, 4], [0, 1, 2, 2, 4]]
@@ -125,8 +125,8 @@ class TestBeamSearchNPUOp4(TestBeamSearchNPUOp):
     def init_data(self):
         # is_accumulated = False
         self.is_accumulated = False
-        self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int32')
-        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int32')
+        self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int64')
+        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int64')
         self.lod = [[2, 2], [1, 1, 1, 1]]
         self.out_lod = [[2, 2], [0, 2, 1, 1]]
         self.offset_lod = [[0, 2, 4], [0, 0, 2, 3, 4]]

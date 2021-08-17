@@ -61,10 +61,6 @@ class BeamSearchOpTester(unittest.TestCase):
         selected_ids = self.scope.find_var("selected_ids").get_tensor()
         selected_scores = self.scope.find_var("selected_scores").get_tensor()
         parent_idx = self.scope.find_var("parent_idx").get_tensor()
-        print("yoki: selected_ids: ", selected_ids)
-        print("yoki: selected_scores: ", selected_scores)
-        print("yoki: lod", selected_ids.lod())
-        print("yoki: np.array(parent_idx): ", np.array(parent_idx))
         self.assertTrue(np.allclose(np.array(selected_ids), self.output_ids))
         self.assertTrue(
             np.allclose(np.array(selected_scores), self.output_scores))
@@ -177,6 +173,41 @@ class BeamSearchOpTester3(BeamSearchOpTester):
 
 
 class BeamSearchOpTester4(BeamSearchOpTester):
+    # prune beam search while pre_id of in all beams is end_id
+    def _create_pre_ids(self):
+        np_data = np.array([[0], [0], [0], [4]], dtype='int64')
+        tensor = create_tensor(self.scope, 'pre_ids', np_data)
+
+    def _create_pre_scores(self):
+        np_data = np.array([[0.1], [1.2], [0.5], [0.4]], dtype='float32')
+        tensor = create_tensor(self.scope, 'pre_scores', np_data)
+
+    def _create_ids(self):
+        self.lod = [[0, 2, 4], [0, 1, 2, 3, 4]]
+        np_data = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int64')
+        tensor = create_tensor(self.scope, "ids", np_data)
+        tensor.set_lod(self.lod)
+
+    def _create_scores(self):
+        np_data = np.array(
+            [
+                [0.6, 0.9],
+                [0.5, 0.3],
+                [0.9, 0.5],
+                [0.6, 0.7],
+            ], dtype='float32')
+        tensor = create_tensor(self.scope, "scores", np_data)
+        tensor.set_lod(self.lod)
+
+    def set_outputs(self):
+        self.is_accumulated = True
+        self.output_ids = np.array([1, 8])[:, np.newaxis]
+        self.output_scores = np.array([0.7, 0.6])[:, np.newaxis]
+        self.output_lod = [[0, 2, 4], [0, 0, 0, 0, 2]]
+        self.output_parent_idx = np.array([3, 3])
+
+
+class BeamSearchOpTester5(BeamSearchOpTester):
     # is_accumulated = False
     def _create_pre_ids(self):
         np_data = np.array([[1], [2], [3], [4]], dtype='int64')
