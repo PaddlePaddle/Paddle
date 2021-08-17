@@ -145,7 +145,7 @@ class EagerUtils {
   static std::vector<AutogradMeta*> multi_autograd_meta(
       const std::vector<pt::Tensor>& targets);
 
-  static int64_t output_rank(pt::Tensor& target);
+  static size_t output_rank(pt::Tensor& target);
 
   static std::shared_ptr<GradNodeBase> grad_node(pt::Tensor& target);
 

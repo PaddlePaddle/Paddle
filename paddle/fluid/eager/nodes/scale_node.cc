@@ -32,8 +32,22 @@ std::vector<pt::Tensor> GradNodeScale::operator()(const std::vector<pt::Tensor>&
     PADDLE_ENFORCE(grads.size() == 1,
                 paddle::platform::errors::Fatal("ScaleGradNode should take exactly 1 grad tensor"
                                                 "However received: %d", grads.size()));
+    
+    // Apply Gradient Hooks
+    std::shared_ptr<pt::DenseTensor> dense_grad(nullptr);
+    if(GradientHooksRegistered()) {
+        std::vector<pt::Tensor> hooked_grads = ApplyGradientHooks(grads);
+        dense_grad = std::dynamic_pointer_cast<pt::DenseTensor>(hooked_grads[0].impl());
+    } else {
+        dense_grad = std::dynamic_pointer_cast<pt::DenseTensor>(grads[0].impl());
+    }
+    
+    // Apply Reduce Hooks
+    if(ReduceHooksRegistered()) {
+        ApplyReduceHooks();
+    }
+
     // Handle input tensor
-    auto dense_grad = std::dynamic_pointer_cast<pt::DenseTensor>(grads[0].impl());
     PADDLE_ENFORCE(dense_grad != nullptr,
                 paddle::platform::errors::Fatal("Only DenseTensor is supported for now"));
     PADDLE_ENFORCE(dense_grad->backend() == pt::Backend::kCPU,
