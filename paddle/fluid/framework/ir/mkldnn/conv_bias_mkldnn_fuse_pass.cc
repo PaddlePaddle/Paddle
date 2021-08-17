@@ -47,6 +47,7 @@ ConvBiasFusePass::ConvBiasFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("padding_algorithm")
+      .IsOptional()
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")
@@ -56,7 +57,7 @@ ConvBiasFusePass::ConvBiasFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC"})
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -70,7 +71,7 @@ ConvBiasFusePass::ConvBiasFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(-1)
+      .IsIntIn({1, 3})
       .End();
 }
 
@@ -84,15 +85,18 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .End()
       .AddInput("Bias")
       .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Output")
       .IsTensor()
       .End()
       .AddAttr("output_padding")
       .IsType<std::vector<int>>()
+      .IsOptional()
       .End()
       .AddAttr("output_size")
-      .IsNumGE(1)
+      .IsType<std::vector<int>>()
+      .IsOptional()
       .End()
       .AddAttr("groups")
       .IsNumGE(1)
@@ -107,10 +111,11 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("padding_algorithm")
+      .IsOptional()
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC"})
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 }
 
@@ -132,6 +137,7 @@ Conv3DBiasFusePass::Conv3DBiasFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("padding_algorithm")
+      .IsOptional()
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")

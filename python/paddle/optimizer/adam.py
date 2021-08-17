@@ -24,6 +24,7 @@ from ..fluid.dygraph import base as imperative_base
 from collections import defaultdict
 
 import paddle
+from paddle import _C_ops
 
 __all__ = []
 
@@ -41,14 +42,14 @@ class Adam(Optimizer):
 
         t & = t + 1
 
-        moment\_1\_out & = {\\beta}_1 * moment\_1 + (1 - {\\beta}_1) * grad
+        moment\_1\_out & = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad
 
-        moment\_2\_out & = {\\beta}_2 * moment\_2 + (1 - {\\beta}_2) * grad * grad
+        moment\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
 
-        learning\_rate & = learning\_rate * \\
-                          \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {\\beta}_1^t}
+        learning\_rate & = learning\_rate * \
+                          \frac{\sqrt{1 - {\beta}_2^t}}{1 - {\beta}_1^t}
 
-        param\_out & = param - learning\_rate * \\frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
+        param\_out & = param - learning\_rate * \frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
 
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
@@ -316,7 +317,7 @@ class Adam(Optimizer):
                 self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
-            _, _, _, _, _ = core.ops.adam(
+            _, _, _, _, _ = _C_ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
                 moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,

@@ -52,6 +52,7 @@ import paddle.metric  # noqa: F401
 import paddle.regularizer  # noqa: F401
 import paddle.incubate  # noqa: F401
 import paddle.autograd  # noqa: F401
+import paddle.device  # noqa: F401
 
 import paddle.jit  # noqa: F401
 import paddle.amp  # noqa: F401
@@ -141,6 +142,7 @@ from .tensor.manipulation import squeeze_  # noqa: F401
 from .tensor.manipulation import stack  # noqa: F401
 from .tensor.manipulation import strided_slice  # noqa: F401
 from .tensor.manipulation import unique  # noqa: F401
+from .tensor.manipulation import unique_consecutive  # noqa: F401
 from .tensor.manipulation import unsqueeze  # noqa: F401
 from .tensor.manipulation import unsqueeze_  # noqa: F401
 from .tensor.manipulation import unstack  # noqa: F401
@@ -237,6 +239,8 @@ from .tensor.search import sort  # noqa: F401
 
 from .tensor.to_string import set_printoptions  # noqa: F401
 
+from .tensor.einsum import einsum  # noqa: F401
+
 from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
 from .framework.random import set_cuda_rng_state  # noqa: F401
@@ -283,6 +287,7 @@ from . import callbacks  # noqa: F401
 from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
 from . import hub  # noqa: F401
+from . import linalg  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -423,7 +428,6 @@ __all__ = [  # noqa
            'exp',
            'expm1',
            'bernoulli',
-           'summary',
            'sinh',
            'round',
            'DataParallel',
@@ -467,6 +471,7 @@ __all__ = [  # noqa
            'randn',
            'strided_slice',
            'unique',
+           'unique_consecutive',
            'set_cuda_rng_state',
            'set_printoptions',
            'std',
@@ -508,4 +513,5 @@ __all__ = [  # noqa
            'standard_normal',
            'diagonal',
            'broadcast_tensors',
+           'einsum'
 ]

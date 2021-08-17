@@ -16,10 +16,14 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle_infer {
+
+using float16 = paddle::platform::float16;
 
 void Tensor::Reshape(const std::vector<int> &shape) {
   PADDLE_ENFORCE_EQ(
@@ -64,10 +68,13 @@ T *Tensor::mutable_data(PlaceType place) {
     case static_cast<int>(PlaceType::kXPU): {
       return tensor->mutable_data<T>(paddle::platform::XPUPlace(device_));
     }
+    case static_cast<int>(PlaceType::kNPU): {
+      return tensor->mutable_data<T>(paddle::platform::NPUPlace(device_));
+    }
     default:
       PADDLE_THROW(paddle::platform::errors::Unavailable(
-          "Only CPU / CUDA / XPU places is supported. The place `%d` is not "
-          "supported.",
+          "Only CPU / CUDA / XPU / NPU places is supported. The place `%d` is "
+          "not supported.",
           static_cast<int>(place)));
       break;
   }
@@ -85,6 +92,8 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kGPU;
   } else if (paddle::platform::is_xpu_place(tensor->place())) {
     *place = PlaceType::kXPU;
+  } else if (paddle::platform::is_npu_place(tensor->place())) {
+    *place = PlaceType::kNPU;
   } else {
     *place = PlaceType::kUNK;
   }
@@ -98,6 +107,8 @@ DataType Tensor::type() const {
   auto type = tensor->type();
   if (type == paddle::framework::proto::VarType::FP32) {
     return DataType::FLOAT32;
+  } else if (type == paddle::framework::proto::VarType::FP16) {
+    return DataType::FLOAT16;
   } else if (type == paddle::framework::proto::VarType::INT64) {
     return DataType::INT64;
   } else if (type == paddle::framework::proto::VarType::INT32) {
@@ -151,9 +162,25 @@ void Tensor::CopyFromCpu(const T *data) {
         "Can not create tensor with XPU place because paddle is not compiled "
         "with XPU."));
 #endif
+  } else if (place_ == PlaceType::kNPU) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    paddle::platform::NPUPlace npu_place(device_);
+    auto *t_data = tensor->mutable_data<T>(npu_place);
+    auto *dev_ctx = static_cast<const paddle::platform::NPUDeviceContext *>(
+        pool.Get(npu_place));
+    paddle::memory::Copy(npu_place, static_cast<void *>(t_data),
+                         paddle::platform::CPUPlace(), data, ele_size,
+                         dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with NPU place because paddle is not compiled "
+        "with NPU."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU and XPU now."));
+        "The analysis predictor supports CPU, GPU, NPU and XPU now."));
   }
 }
 
@@ -213,9 +240,25 @@ void Tensor::CopyToCpu(T *data) {
         "Can not create tensor with XPU place because paddle is not compiled "
         "with XPU."));
 #endif
+  } else if (place_ == PlaceType::kNPU) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto npu_place = BOOST_GET_CONST(paddle::platform::NPUPlace, t_place);
+    auto *dev_ctx = static_cast<const paddle::platform::NPUDeviceContext *>(
+        pool.Get(npu_place));
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data), npu_place, t_data,
+                         ele_num * sizeof(T), dev_ctx->stream());
+    aclrtSynchronizeStream(dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with NPU place because paddle is not compiled "
+        "with NPU."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU and XPU now."));
+        "The analysis predictor supports CPU, GPU, NPU and XPU now."));
   }
 }
 template PD_INFER_DECL void Tensor::CopyFromCpu<float>(const float *data);
@@ -223,12 +266,14 @@ template PD_INFER_DECL void Tensor::CopyFromCpu<int64_t>(const int64_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<float16>(const float16 *data);
 
 template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<uint8_t>(uint8_t *data);
 template PD_INFER_DECL void Tensor::CopyToCpu<int8_t>(int8_t *data);
+template PD_INFER_DECL void Tensor::CopyToCpu<float16>(float16 *data);
 
 template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
                                                   int *size) const;

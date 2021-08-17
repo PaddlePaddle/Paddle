@@ -16,6 +16,7 @@ from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
+from paddle import _C_ops
 
 __all__ = []
 
@@ -33,17 +34,17 @@ class Lamb(Optimizer):
 
     ..  math::
 
-        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t
+        m_t &= \beta_1 m_{t - 1}+ (1 - \beta_1)g_t
 
-        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2
+        v_t &= \beta_2 v_{t - 1}  + (1 - \beta_2)g_t^2
 
-        m_t &= \\frac{m_t}{\\beta_1^t}
+        m_t &= \frac{m_t}{\beta_1^t}
 
-        v_t &= \\frac{v_t}{\\beta_2^t}
+        v_t &= \frac{v_t}{\beta_2^t}
 
-        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon}
+        r_t &= \frac{m_t}{\sqrt{v_t}+\epsilon}
 
-        w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
+        w_t &= w_{t-1} -\eta_t \frac{\left \| w_{t-1}\right \|}{\left \| r_t + \lambda w_{t-1}\right \|} (r_t + \lambda w_{t-1})
 
 
     where :math:`m` is the 1st moment, and :math:`v` the 2nd moment, :math:`\\eta` the
@@ -75,8 +76,8 @@ class Lamb(Optimizer):
         .. code-block:: python
             
             import paddle
-            import numpy as np
-            inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
+
+            inp = paddle.uniform(shape=[10, 10], dtype='float32', min=-0.1, max=0.1)
             linear = paddle.nn.Linear(10, 10)
             out = linear(inp)
             loss = paddle.mean(out)
@@ -84,30 +85,6 @@ class Lamb(Optimizer):
             beta2 = paddle.to_tensor([0.85], dtype="float32")
             lamb = paddle.optimizer.Lamb(learning_rate=0.002, parameters=linear.parameters(), lamb_weight_decay=0.01)
             back = out.backward()
-            lamb.step()
-            lamb.clear_grad()
-
-
-            #Note that the learning_rate of linear_2 is 0.01.
-            linear_1 = paddle.nn.Linear(10, 10)
-            linear_2 = paddle.nn.Linear(10, 10)
-            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-            out = linear_1(inp)
-            out = linear_2(out)
-            loss = paddle.mean(out)
-            lamb = paddle.optimizer.Lamb(
-                learning_rate=0.1,
-                parameters=[{
-                    'params': linear_1.parameters()
-                }, {
-                    'params': linear_2.parameters(),
-                    'weight_decay': 0.001,
-                    'learning_rate': 0.1,
-                    'lamb_weight_decay': 0.02
-                }],
-                weight_decay=0.01,
-                lamb_weight_decay=0.01)                   
-            out.backward()
             lamb.step()
             lamb.clear_grad()
 
@@ -199,7 +176,7 @@ class Lamb(Optimizer):
         lr = self._create_param_lr(param_and_grad)
 
         if framework.in_dygraph_mode():
-            _, _, _, _, _ = core.ops.lamb(
+            _, _, _, _, _ = _C_ops.lamb(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
                 moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', self._beta1,

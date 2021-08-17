@@ -28,11 +28,11 @@ from paddle import framework
 from paddle.device import get_device, get_cudnn_version
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
-from paddle.fluid.dygraph import Layer, LayerList
+from paddle.nn import Layer, LayerList
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
-
+from paddle import _C_ops
 __all__ = []
 
 
@@ -332,6 +332,10 @@ class SimpleRNNCell(RNNCellBase):
                  bias_hh_attr=None,
                  name=None):
         super(SimpleRNNCell, self).__init__()
+        if hidden_size <= 0:
+            raise ValueError(
+                "hidden_size of {} must be greater than 0, but now equals to {}".
+                format(self.__class__.__name__, hidden_size))
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (hidden_size, input_size),
@@ -480,6 +484,10 @@ class LSTMCell(RNNCellBase):
                  bias_hh_attr=None,
                  name=None):
         super(LSTMCell, self).__init__()
+        if hidden_size <= 0:
+            raise ValueError(
+                "hidden_size of {} must be greater than 0, but now equals to {}".
+                format(self.__class__.__name__, hidden_size))
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (4 * hidden_size, input_size),
@@ -627,6 +635,10 @@ class GRUCell(RNNCellBase):
                  bias_hh_attr=None,
                  name=None):
         super(GRUCell, self).__init__()
+        if hidden_size <= 0:
+            raise ValueError(
+                "hidden_size of {} must be greater than 0, but now equals to {}".
+                format(self.__class__.__name__, hidden_size))
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (3 * hidden_size, input_size),
@@ -962,7 +974,7 @@ class RNNBase(LayerList):
             # for static-graph, append coalesce_tensor into startup program
             with fluid.program_guard(fluid.default_startup_program(),
                                      fluid.default_startup_program()):
-                with framework.no_grad():
+                with paddle.no_grad():
                     self._helper.append_op(
                         type="coalesce_tensor",
                         inputs={"Input": self._all_weights},
@@ -981,7 +993,7 @@ class RNNBase(LayerList):
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
         if fluid.framework.in_dygraph_mode():
-            _, _, out, state = framework.core.ops.rnn(
+            _, _, out, state = _C_ops.rnn(
                 inputs, initial_states, self._all_weights, sequence_length,
                 self._dropout_state, self.state_components, 'dropout_prob',
                 self.dropout, 'is_bidirec', self.num_directions == 2,
@@ -1040,11 +1052,11 @@ class RNNBase(LayerList):
             ])
         else:
             initial_states = [initial_states] if isinstance(
-                initial_states,
-                paddle.fluid.framework.Variable) else initial_states
+                initial_states, paddle.static.Variable) else initial_states
 
-        if self.could_use_cudnn and (not fluid.core.is_compiled_with_rocm() or
-                                     sequence_length is None):
+        if self.could_use_cudnn and (
+                not paddle.device.is_compiled_with_rocm() or
+                sequence_length is None):
             # Add CPU kernel and dispatch in backend later
             return self._cudnn_impl(inputs, initial_states, sequence_length)
 
