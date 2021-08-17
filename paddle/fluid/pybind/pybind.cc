@@ -42,7 +42,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-// #include "paddle/fluid/framework/new_exec.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -1942,34 +1941,6 @@ All parameter, weight, gradient are variables in Paddle.
         self.Run(prog, scope, block_id, create_local_scope, create_vars,
                  fetch_vars);
       });
-
-  // py::class_<framework::InterpreterCore>(m, "InterpreterCore")
-  //     .def(py::init<const platform::Place &, const ProgramDesc &,
-  //                   const ProgramDesc &, Scope *>())
-  //     .def("run",
-  //          [](InterpreterCore &self,
-  //             const std::unordered_map<std::string, py::array> &input_dict,
-  //             std::vector<std::string> vec_fetch_name) {
-  //            pybind11::gil_scoped_release release;
-  //            std::vector<framework::Tensor> vec_tensor;
-  //            std::vector<std::string> vec_name;
-
-  //            for (auto &item : input_dict) {
-  //              framework::LoDTensor t;
-  //              SetTensorFromPyArray<platform::CPUPlace>(
-  //                  &t, item.second, platform::CPUPlace(), false);
-  //              vec_name.push_back(item.first);
-  //              vec_tensor.push_back(t);
-  //            }
-
-  //            std::vector<framework::Tensor> vec_out;
-  //            self.run(vec_name, vec_tensor, vec_fetch_name, &vec_out);
-  //            std::vector<py::array> vec_ret;
-  //            for (size_t i = 0; i < vec_out.size(); ++i) {
-  //              vec_ret.push_back(TensorToPyArray(vec_out[i], true));
-  //            }
-  //            return vec_ret;
-  //          });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
       .def(py::init<const platform::Place &, const ProgramDesc &,
