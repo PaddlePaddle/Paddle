@@ -23,26 +23,7 @@ enum class FFTNormMode : int64_t {
   by_n,       // Divide by signal_size
 };
 
-// Convert normalization mode string to enum values
-// NOTE: for different direction, normalization modes have different meanings.
-// eg: "forward" translates to `by_n` for a forward transform and `none` for
-// backward.
-FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
-  if (norm.empty() || norm == "backward") {
-    return forward ? FFTNormMode::none : FFTNormMode::by_n;
-  }
-
-  if (norm == "forward") {
-    return forward ? FFTNormMode::by_n : FFTNormMode::none;
-  }
-
-  if (norm == "ortho") {
-    return FFTNormMode::by_sqrt_n;
-  }
-
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "Fft norm string must be forward or backward or ortho"));
-}
+FFTNormMode get_norm_from_string(const std::string& norm, bool forward);
 
 template <typename DeviceContext, typename T>
 struct FFTC2CFunctor {
