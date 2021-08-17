@@ -15,7 +15,6 @@
 #include "paddle/fluid/inference/utils/io_utils.h"
 
 #include <fcntl.h>
-#include <unistd.h>
 
 #include <utility>
 
