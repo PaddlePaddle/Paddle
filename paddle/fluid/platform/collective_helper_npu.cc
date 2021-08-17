@@ -205,6 +205,9 @@ static int Bind(int port) {
   int ret =
       bind(client, (struct sockaddr*)&my_addr, sizeof(struct sockaddr_in));
 
+  VLOG(10) << "bind to addr:" << my_addr.sin_addr.s_addr << ", port:" << port
+           << ", socket:" << client;
+
   if (ret != 0) {
     // close(client);
     return -1;
@@ -267,7 +270,7 @@ std::vector<HCCLConn_> TryToProtectHcclFreePorts() {
   while (1) {
     bool all_ok = true;
     for (size_t i = 0; i < conns.size(); i++) {
-      if (conns[i].socket <= 0) {
+      if (conns[i].socket > 0) {
         continue;
       }
 
@@ -355,9 +358,9 @@ void WaitHcclPorts(int device_id) {
     }
   }
 
-  LOG(INFO) << "begin to 2MSL time under steps:" << g_avoid_hccl_ports_steps
-            << ", device_id" << device_id;
-  std::this_thread::sleep_for(std::chrono::seconds(120));
+  // LOG(INFO) << "begin to 2MSL time under steps:" << g_avoid_hccl_ports_steps
+  //          << ", device_id" << device_id;
+  // std::this_thread::sleep_for(std::chrono::seconds(120));
   g_avoid_hccl_ports_steps += 1;
   LOG(INFO) << "end to wait to avoid hccl conflicts steps:"
             << g_avoid_hccl_ports_steps << ", device_id" << device_id;
