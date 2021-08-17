@@ -17,5 +17,6 @@ limitations under the License. */
 // develop apis
 #include "paddle/top/api/dev/core.h"
 #include "paddle/top/api/dev/math.h"
+#include "paddle/top/api/include/tensor.h"
 
 // user apis

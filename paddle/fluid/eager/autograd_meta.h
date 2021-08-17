@@ -67,7 +67,7 @@ using AbstractAutogradMeta = pt::AbstractAutogradMeta;
 // It's only used by
 class AutogradMeta : public AbstractAutogradMeta {
  public:
-  explict AutogradMeta(const Edge& edge = Edge()) {
+  explicit AutogradMeta(const Edge& edge = Edge()) {
     output_rank_ = -1;
     grad_node_ = edge.GetMutableGradNode();
   }
@@ -75,17 +75,19 @@ class AutogradMeta : public AbstractAutogradMeta {
   ~AutogradMeta() override = default;
 
   const pt::Tensor& Grad() const { return grad_; }
+  
   void SetGradNode(std::shared_ptr<GradNodeBase> grad_node) {
     PADDLE_ENFORCE_NOT_NULL(grad_node.get(),
                             "Should Not set NULL as GradNode pointer!");
     grad_node_ = grad_node;
   }
+  
   std::shared_ptr<GradNodeBase> GetMutableGradNode() const {
     return grad_node_;
   }
 
   GradNodeBase* GradNode() const { return grad_node_.get(); }
-
+  
   void SetOutRank(size_t rank) { output_rank_ = rank; }
 
   size_t OutRank() const { return output_rank_; }
@@ -138,14 +140,14 @@ class AutogradMeta : public AbstractAutogradMeta {
  * **/
 class EagerUtils {
  public:
-  static AutogradMeta* autograd_meta(const pt::Tensor& target);
+  static AutogradMeta* autograd_meta(pt::Tensor& target);
 
   static std::vector<AutogradMeta*> multi_autograd_meta(
-      const vector<pt::Tensor>& targets)
+      const std::vector<pt::Tensor>& targets);
 
-      static int64_t output_rank()(const pt::Tensor& target);
+  static int64_t output_rank(pt::Tensor& target);
 
-  static std::shared_ptr<GradNodeBase> grad_node(const pt::Tensor& target);
+  static std::shared_ptr<GradNodeBase> grad_node(pt::Tensor& target);
 
   static bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num,
                                  AutogradMeta** outs, size_t outs_num,
