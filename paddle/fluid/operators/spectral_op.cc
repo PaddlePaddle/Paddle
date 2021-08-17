@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/operators/spectral_op.h"
+
 #include <algorithm>
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
-#include "thrust/device_vector.h"
+
+#ifdef PADDLE_WITH_POCKETFFT
+#include "extern_pocketfft/pocketfft_hdronly.h"
 #endif
 
 #include "paddle/fluid/framework/op_registry.h"
@@ -32,24 +31,28 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 class FFTC2COp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    // TODO(chenfeiyu): check shape and dim here and generate output dim
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(%s) of FFTC2COp should not be null.", "X"));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(%s) of FFTC2COp should not be null.", "Out"));
+
+    ctx->ShareDim("X", /*->*/ "Out");  // only for c2c
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // TODO(chenfeiyu): get output dtype from X
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
-    // TODO(chenfeiyu): get kernel type
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -58,10 +61,10 @@ class FFTC2COpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), the input tensor of fft_c2c op.");
     AddOutput("Out", "(Tensor), the output tensor of fft_c2c op.");
-    AddAttr<std::vector<int64_t>>("s", "std::vector<int64_t>, the fft shape.");
     AddAttr<std::vector<int64_t>>("axes",
                                   "std::vector<int64_t>, the fft axes.");
-    AddAttr<int64_t>("norm", "fft_norm_type, the fft normalization type.");
+    AddAttr<int64_t>("normalization",
+                     "fft_norm_type, the fft normalization type.");
     AddAttr<bool>("forward", "bool, the fft direction.");
     AddComment(R"DOC(
       // add doc here
@@ -73,20 +76,15 @@ class FFTC2CGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShaoe(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     // TODO(chenfeiyu): check shape and dim here and generate output dim
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // TODO(chenfeiyu): get output dtype from DOut
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
-    // TODO(chenfeiyu): get kernel type
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "DOut"), ctx.GetPlace());
   }
 };
 
@@ -103,6 +101,21 @@ class FFTC2CGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetAttrMap(this->Attrs());
   }
 };
+
+template <typename T>
+struct FFTC2CFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* X,
+                  Tensor* out, const std::vector<int64_t>& axes,
+                  FFTNormMode normalization, bool forward) {}
+};
+
+// mkl fft for all cases
+void exec_fft(const Tensor* x, Tensor* out, const std::vector<int64_t>& out_dim,
+              int64_t normalization, bool forward) {
+  // construct the descriptor
+
+  // compute
+}  // namespace anonymous
 
 }  // namespace operators
 }  // namespace paddle

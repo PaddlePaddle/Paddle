@@ -222,6 +222,7 @@ option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
+option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)

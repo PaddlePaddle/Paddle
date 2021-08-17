@@ -59,6 +59,10 @@ if (WITH_GPU)
     endif()
 endif()
 
+if (WITH_POCKETFFT)
+    SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} pocketfft)
+endif()
+
 
 SET(OP_MKL_DEPS "")
 if (NOT WITH_MKL OR NOT WITH_AVX)

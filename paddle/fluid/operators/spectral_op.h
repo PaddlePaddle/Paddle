@@ -15,6 +15,8 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 enum class FFTNormMode : int64_t {
   none,       // No normalization
   by_sqrt_n,  // Divide by sqrt(signal_size)
@@ -26,15 +28,15 @@ enum class FFTNormMode : int64_t {
 // eg: "forward" translates to `by_n` for a forward transform and `none` for
 // backward.
 FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
-  if (!norm || *norm == "backward") {
+  if (norm.empty() || norm == "backward") {
     return forward ? FFTNormMode::none : FFTNormMode::by_n;
   }
 
-  if (*norm == "forward") {
+  if (norm == "forward") {
     return forward ? FFTNormMode::by_n : FFTNormMode::none;
   }
 
-  if (*norm == "ortho") {
+  if (norm == "ortho") {
     return FFTNormMode::by_sqrt_n;
   }
 
@@ -43,9 +45,52 @@ FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
 }
 
 template <typename DeviceContext, typename T>
+struct FFTC2CFunctor {
+  void operator()(const DeviceContext& ctx, const Tensor* X, Tensor* out,
+                  const std::vector<int64_t>& axes, FFTNormMode normalization,
+                  bool forward);
+};
+
+template <typename DeviceContext, typename T>
 class FFTC2CKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using U = paddle::platform::complex<T>;
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+
+    auto axes = ctx.Attr<std::vector<int64_t>>("axes");
+    const std::string& norm_str = ctx.Attr<std::string>("normalization");
+    const bool forward = ctx.Attr<bool>("forward");
+    const auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Output<Tensor>("Out");
+
+    y->mutable_data<U>(ctx.GetPlace());
+    auto normalization = get_norm_from_string(norm_str, forward);
+
+    FFTC2CFunctor<DeviceContext, U> fft_c2c_func;
+    fft_c2c_func(dev_ctx, x, y, axes, normalization, forward);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class FFTC2CGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using U = paddle::platform::complex<T>;
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+
+    auto axes = ctx.Attr<std::vector<int64_t>>("axes");
+    const std::string& norm_str = ctx.Attr<std::string>("normalization");
+    const bool forward = ctx.Attr<bool>("forward");
+    const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    dx->mutable_data<U>(ctx.GetPlace());
+    auto normalization = get_norm_from_string(norm_str, forward);
+
+    FFTC2CFunctor<DeviceContext, U> fft_c2c_func;
+    fft_c2c_func(dev_ctx, dy, dx, axes, normalization, forward);
+  }
 };
 
 }  // namespace operators

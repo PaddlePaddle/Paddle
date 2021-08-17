@@ -361,4 +361,10 @@ if (WITH_CRYPTO)
     add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
+if (WITH_POCKETFFT)
+    include(external/pocketfft)
+    list(APPEND third_party_deps extern_pocketfft)
+    add_definitions(-DPADDLE_WITH_POCKETFFT)
+endif (WITH_POCKETFFT)
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})
