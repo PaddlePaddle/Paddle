@@ -29,6 +29,8 @@ class Scope;
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
+DECLARE_bool(avoid_hccl_port_conflict);
+
 namespace paddle {
 namespace operators {
 
@@ -61,6 +63,7 @@ class CCommInitOpAscend : public framework::OperatorBase {
     }
 
     platform::WaitHcclPorts(device_id);
+    VLOG(3) << "WaitHcclPorts flags:" << FLAGS_avoid_hccl_port_conflict;
 
     platform::HCCLCommContext::Instance().CreateHCCLComm(
         hccl_id, rank_ids, rank_id, device_id, rid);

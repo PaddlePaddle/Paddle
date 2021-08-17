@@ -248,6 +248,7 @@ def __bootstrap__():
             'gpu_memory_limit_mb',
             'npu_config_path',
             'get_host_by_name_time',
+            'avoid_hccl_port_conflict',
         ]
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])

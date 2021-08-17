@@ -195,7 +195,7 @@ static int WaitToBind(int port) {
   my_addr.sin_port = htons(port);
 
   // This ip address will change according to the machine
-  my_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  my_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
   while (1) {
     int ret =
         bind(client, (struct sockaddr*)&my_addr, sizeof(struct sockaddr_in));
@@ -239,7 +239,7 @@ void WaitHcclPorts(int device_id) {
   }
   prepare_dir(".flags");
 
-  LOG(INFO) << "begin to wait to avoid hccl conflicts steps:"
+  LOG(INFO) << "begin to avoid hccl conflicts steps:"
             << g_avoid_hccl_ports_steps << ", device_id" << device_id;
 
   if (device_id == 0) {
@@ -250,7 +250,8 @@ void WaitHcclPorts(int device_id) {
 
     WaitToBind(hccl_ports);
     for (int i = 1; i < 8; i++) {
-      std::string file = string::Sprintf(".flags/hccl_flags_%d", i);
+      std::string file = string::Sprintf(".flags/hccl_flags_%d_%d",
+                                         g_avoid_hccl_ports_steps, i);
       std::string tmp = file + ".tmp";
       FILE* fp = fopen(tmp.c_str(), "wb");
       fclose(fp);
@@ -262,7 +263,8 @@ void WaitHcclPorts(int device_id) {
                                     tmp, file, ret));
     }
   } else {
-    std::string file = string::Sprintf(".flags/hccl_flags_%d", device_id);
+    std::string file = string::Sprintf(".flags/hccl_flags_%d_%d",
+                                       g_avoid_hccl_ports_steps, device_id);
     struct stat buf;
     while (true) {
       if (stat(file.c_str(), &buf) == 0) {
@@ -274,6 +276,8 @@ void WaitHcclPorts(int device_id) {
     }
   }
 
+  LOG(INFO) << "begin to 2MSL time under steps:" << g_avoid_hccl_ports_steps
+            << ", device_id" << device_id;
   std::this_thread::sleep_for(std::chrono::seconds(120));
   g_avoid_hccl_ports_steps += 1;
   LOG(INFO) << "end to wait to avoid hccl conflicts steps:"
