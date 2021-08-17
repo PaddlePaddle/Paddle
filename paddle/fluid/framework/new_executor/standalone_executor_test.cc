@@ -35,54 +35,46 @@
 #include "paddle/fluid/pybind/pybind.h"
 
 #include "gperftools/profiler.h"
-#include "paddle/fluid/framework/new_exec.h"
+#include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/platform/init.h"
+
+paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
+  std::ifstream fin(file_name, std::ios::in | std::ios::binary);
+  fin.seekg(0, std::ios::end);
+  std::string buffer(fin.tellg(), ' ');
+  fin.seekg(0, std::ios::beg);
+  fin.read(&buffer[0], buffer.size());
+  fin.close();
+
+  paddle::framework::ProgramDesc program_desc(buffer);
+  return program_desc;
+}
 
 int main() {
   paddle::framework::InitDevices();
-  paddle::framework::VariableScope global_scope;
   auto place = paddle::platform::CUDAPlace(0);
-  auto test_prog = paddle::framework::load_from_file("lm_startup_program");
-  {
-    paddle::framework::build_variable_scope(test_prog, &global_scope);
+  auto test_prog = load_from_file("lm_startup_program");
 
-    std::vector<paddle::framework::OpFuncNode> vec_func_list;
-    std::vector<paddle::framework::OperatorBase*> op_list;
-    paddle::framework::build_op_func_list(test_prog, op_list, vec_func_list,
-                                          &global_scope, place);
+  auto main_prog = load_from_file("lm_main_program");
 
-    // paddle::framework::exec_op_func_list( vec_func_list, op_list,
-    // global_scope, place );
-  }
-
-  cerr << "run main" << endl;
-  auto main_prog = paddle::framework::load_from_file("lm_main_program");
-
-  paddle::framework::build_variable_scope(main_prog, &global_scope);
-
-  std::vector<paddle::framework::OpFuncNode> vec_main_func_list;
-  std::vector<paddle::framework::OperatorBase*> op_main_list;
-  paddle::framework::build_op_func_list(
-      main_prog, op_main_list, vec_main_func_list, &global_scope, place);
   paddle::framework::Scope scope;
-  paddle::framework::InterpreterCore interp_core(place, main_prog, test_prog,
-                                                 &scope);
+  paddle::framework::StandaloneExecutor exec(place, test_prog, main_prog,
+                                             &scope);
+
   auto start = std::chrono::steady_clock::now();
-  ProfilerStart("new_executor.prof");
+  // ProfilerStart("new_executor.prof");
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
-      cerr << i << endl;
+      std::cout << i << std::endl;
     }
-    // paddle::framework::exec_op_func_list( vec_main_func_list, op_main_list,
-    // global_scope, place );
+
     std::vector<paddle::framework::Tensor> vec_out;
-    interp_core.run({}, {}, {}, vec_out);
+    exec.Run({}, {}, {}, &vec_out);
   }
-  ProfilerStop();
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 
-  cerr << "time cost " << diff.count() << endl;
+  std::cout << "time cost " << diff.count() << std::endl;
 
   return 1;
 }

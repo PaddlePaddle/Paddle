@@ -15,7 +15,7 @@
 import unittest
 import paddle
 from paddle.fluid import core
-from paddle.fluid.core import InterpreterCore
+from paddle.fluid.core import StandaloneExecutor
 
 import numpy as np
 
@@ -37,15 +37,15 @@ class LinearTestCase(unittest.TestCase):
         startup_program = paddle.fluid.default_startup_program()
         p = core.Place()
         p.set_place(self.place)
-        inter_core = InterpreterCore(p, main_program.desc, startup_program.desc,
-                                     core.Scope())
+        standaloneexecutor = StandaloneExecutor(p, startup_program.desc,
+                                                main_program.desc, core.Scope())
 
-        out = inter_core.run({
+        out = standaloneexecutor.run({
             "a": np.ones(
                 [2, 2], dtype="float32") * 2
         }, [c.name])
         for i in range(10):
-            out = inter_core.run({
+            out = standaloneexecutor.run({
                 "a": np.ones(
                     [2, 2], dtype="float32") * i
             }, [c.name])
