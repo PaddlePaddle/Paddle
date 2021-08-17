@@ -88,8 +88,6 @@ for _OP in set(__activations_noattr__):
     if _OP in __deprecated_func_name__:
         _new_OP = __deprecated_func_name__[_OP]
     _func = generate_activation_fn(_OP)
-    _func = deprecated(
-        since="2.0.0", update_to="paddle.nn.functional.%s" % (_new_OP))(_func)
     globals()[_OP] = _func
 
 for _OP in set(__unary_func__):
@@ -97,7 +95,6 @@ for _OP in set(__unary_func__):
     if _OP in __deprecated_func_name__:
         _new_OP = __deprecated_func_name__[_OP]
     _func = generate_activation_fn(_OP)
-    _func = deprecated(since="2.0.0", update_to="paddle.%s" % (_new_OP))(_func)
     globals()[_OP] = _func
 
 for _OP in set(__inplace_unary_func__):
@@ -105,7 +102,6 @@ for _OP in set(__inplace_unary_func__):
     if _OP in __deprecated_func_name__:
         _new_OP = __deprecated_func_name__[_OP]
     _func = generate_inplace_fn(_OP)
-    _func = deprecated(since="2.0.0", update_to="paddle.%s" % (_new_OP))(_func)
     globals()[_OP] = _func
 
 add_sample_code(globals()["sigmoid"], r"""
