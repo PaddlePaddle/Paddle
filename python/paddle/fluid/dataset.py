@@ -306,9 +306,6 @@ class DatasetBase(object):
             if line:
                 line_iter = data_generator_class.generate_sample(line)
                 for user_parsed_line in line_iter():
-                    if user_parsed_line == None:
-                        continue
-
                     data_gen_len = len(user_parsed_line)
                     if var_len != data_gen_len:
                         raise ValueError(
