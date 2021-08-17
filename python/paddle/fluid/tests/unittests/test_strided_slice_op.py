@@ -871,8 +871,6 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
         self.create_case(Net21(input_size=112, array_size=13))
 
-        self.create_case(Net(input_size=112, array_size=13))
-
         class Net22(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[-5:-1:3]
