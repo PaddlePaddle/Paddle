@@ -167,8 +167,8 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         #print("pos:", pos_url_fea)
                         #print("neg:", neg_url_fea)
                         # yield zip(feature_name[:3], sparse_query_feature[:3])
-                        yield zip(feature_name, [[1]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
-                            neg_url_fea + neg_click_fea + neg_context_fea)
+                        yield list(zip(feature_name, [[1]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
+                            neg_url_fea + neg_click_fea + neg_context_fea))
             elif self.test == 2:
                 for p in range(len(pos_url_feas)):
                     #feature_name = ["click"] + query_schema + url_schema[:4] + click_info_schema[:11] + context_schema[:2] + url_schema[4:] + click_info_schema[11:] + context_schema[2:]
@@ -191,8 +191,8 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         #print("pos:", pos_url_fea)
                         #print("neg:", neg_url_fea)
                         # yield zip(feature_name[:3], sparse_query_feature[:3])
-                        yield zip(feature_name, [[1], [2]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
-                            neg_url_fea + neg_click_fea + neg_context_fea)
+                        yield list(zip(feature_name, [[1], [2]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
+                            neg_url_fea + neg_click_fea + neg_context_fea))
             elif self.test == 3:
                 for p in range(len(pos_url_feas)):
                     #feature_name = ["click"] + query_schema + url_schema[:4] + click_info_schema[:11] + context_schema[:2] + url_schema[4:] + click_info_schema[11:] + context_schema[2:]
@@ -215,8 +215,8 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         #print("pos:", pos_url_fea)
                         #print("neg:", neg_url_fea)
                         # yield zip(feature_name[:3], sparse_query_feature[:3])
-                        yield zip(feature_name, [[1], [2.0]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
-                            neg_url_fea + neg_click_fea + neg_context_fea)
+                        yield list(zip(feature_name, [[1], [2.0]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
+                            neg_url_fea + neg_click_fea + neg_context_fea))
             elif self.test == 4:
                 for p in range(len(pos_url_feas)):
                     #feature_name = ["click"] + query_schema + url_schema[:4] + click_info_schema[:11] + context_schema[:2] + url_schema[4:] + click_info_schema[11:] + context_schema[2:]
@@ -239,8 +239,8 @@ class CTRDataset(dg.MultiSlotDataGenerator):
                         #print("pos:", pos_url_fea)
                         #print("neg:", neg_url_fea)
                         # yield zip(feature_name[:3], sparse_query_feature[:3])
-                        yield zip(feature_name, [[], [2.0]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
-                            neg_url_fea + neg_click_fea + neg_context_fea)
+                        yield list(zip(feature_name, [[], [2.0]] + sparse_query_feature + pos_url_fea + pos_click_fea + pos_context_fea + \
+                            neg_url_fea + neg_click_fea + neg_context_fea))
 
         return reader
 
