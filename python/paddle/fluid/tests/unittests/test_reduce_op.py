@@ -561,24 +561,6 @@ class TestKeepDim8DReduce(Test1DReduce):
         }
 
 
-class TestReduceAll(Test1DReduce):
-    def setUp(self):
-        self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float64")}
-        self.attrs = {'reduce_all': True}
-        self.outputs = {'Out': self.inputs['X'].sum()}
-
-
-class TestReduceAll(Test1DReduce):
-    def setUp(self):
-        self.op_type = "reduce_sum"
-        self.inputs = {
-            'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype("float64")
-        }
-        self.attrs = {'reduce_all': True, 'dim': (3, 4, 5)}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=self.attrs['dim'])}
-
-
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
