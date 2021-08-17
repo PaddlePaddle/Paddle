@@ -128,7 +128,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     std::unordered_map<int, memory> args;
     for (size_t i = 0; i < multi_input.size(); ++i) {
-      srcs[i] = handler.AcquireSrcMemory(multi_input[i], i);
+      srcs.push_back(handler.AcquireSrcMemory(multi_input[i], i));
       args.insert({MKLDNN_ARG_MULTIPLE_SRC + i, (*srcs).at(i)});
     }
     args.insert({MKLDNN_ARG_DST, *dst_mem});
