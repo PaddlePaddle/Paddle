@@ -23,6 +23,8 @@
 #include <time.h>
 #include <utility>
 
+DECLARE_bool(avoid_hccl_port_conflict);
+
 namespace paddle {
 namespace platform {
 
@@ -199,7 +201,7 @@ static int WaitToBind(int port) {
     if (ret != 0) {
       LOG(WARNING) << "bind to addr error wait to bind"
                    << my_addr.sin_addr.s_addr << ":" << my_addr.sin_port;
-      std::this_thread::sleep_for(std::chrono::seconds(2));
+      std::this_thread::sleep_for(std::chrono::seconds(3));
       continue;
     }
 
@@ -223,7 +225,7 @@ void WaitToBind(const std::vector<int>& ports) {
 
 static int g_avoid_hccl_ports_steps = 0;
 
-void prepare_dir(const std::string& dirname) {
+void prepare_dir(const std::string& dir_name) {
   struct stat st = {0};
   if (stat(dir_name.c_str(), &st) == -1) {
     mkdir(dir_name.c_str(), 0700);
@@ -245,22 +247,25 @@ void WaitHcclPorts(int devce_id) {
       hccl_ports.push_back(i);
     }
 
-    WaitToBindPorts(hccl_ports);
+    WaitToBind(hccl_ports);
     for (int i = 1; i < 8; i++) {
-      std::string file = string::Sprintf(".flags/hccl_flags_%d", device_id);
-      std::string tmp = "file" + ".tmp";
+      std::string file = string::Sprintf(".flags/hccl_flags_%d", i);
+      std::string tmp = file + ".tmp";
       FILE* fp = fopen(tmp.c_str(), "wb");
       fclose(fp);
+      VLOG(4) << "touch file " << tmp;
       int ret = rename(tmp.c_str(), file.c_str());
+      VLOG(4) << "rename file from " << tmp << " to " << file;
       PADDLE_ENFORCE_EQ(ret, 0, platform::errors::Fatal(
                                     "rename from %s to %s error, retcode:%d",
                                     tmp, file, ret));
     }
   } else {
     std::string file = string::Sprintf(".flags/hccl_flags_%d", device_id);
-    struct stat buf;
-    while (True) {
+    struct stat buf = {0};
+    while (true) {
       if (stat(file.c_str(), &buf) == 0) {
+        VLOG(4) << "remove file " << file;
         remove(file.c_str());
         break;
       }
