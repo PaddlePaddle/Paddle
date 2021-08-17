@@ -19,6 +19,9 @@ import numpy as np
 import six
 from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
 
+if fluid.core.is_compiled_with_cuda():
+    fluid.set_flags({"FLAGS_cudnn_deterministic": True})
+
 
 class SimpleConv(fluid.dygraph.Layer):
     def __init__(self,
@@ -373,8 +376,6 @@ class TestGradScalerStateDict(unittest.TestCase):
         return dy_out, dy_param_value, dy_grad_value
 
     def test_with_state_dict(self):
-        if fluid.core.is_compiled_with_cuda():
-            fluid.set_flags({"FLAGS_cudnn_deterministic": True})
         with fluid.dygraph.guard():
             out_use_state_dict = self.train_resnet(
                 enable_amp=True, use_data_loader=True, use_save_load=True)
@@ -390,18 +391,43 @@ class TestResnet2(unittest.TestCase):
     Use paddle-2.0 API
     """
 
-    def train_resnet(self, enable_amp=True, use_data_loader=False):
+    def train_resnet(self,
+                     enable_amp=True,
+                     use_data_loader=False,
+                     use_param_group=False):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
-        batch_num = 1
+        batch_num = 10
 
         paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
         resnet = ResNet(use_cudnn=True)
-        optimizer = optimizer_setting(
-            train_parameters, parameter_list=resnet.parameters())
+
+        if use_param_group:
+            conv_params = resnet.conv.parameters()
+            other_params = []
+            for p in resnet.parameters():
+                contains = False
+                for q in conv_params:
+                    if p is q:
+                        contains = True
+                if not contains:
+                    other_params.append(p)
+            # NOTE(zhiqiu): The Membership test operations(in / not in) calls "is" and "equal",
+            # see details: https://docs.python.org/3/reference/expressions.html#membership-test-operations.
+            # So do not use other_params =  [p for p in resnet.parameters() if p not in conv_params]
+            optimizer = paddle.optimizer.Momentum(parameters=[{
+                'params': conv_params,
+                'learning_rate': 0.01
+            }, {
+                'params': other_params,
+                'learning_rate': 0.001
+            }])
+        else:
+            optimizer = paddle.optimizer.SGD(parameters=resnet.parameters())
+
         np.random.seed(seed)
         train_reader = paddle.batch(
             paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size)
@@ -456,7 +482,7 @@ class TestResnet2(unittest.TestCase):
             scaled_loss = scaler.scale(avg_loss)
             scaled_loss.backward()
 
-            scaler.minimize(optimizer, scaled_loss)
+            scaler.step(optimizer)
 
             dy_grad_value = {}
             for param in resnet.parameters():
@@ -475,22 +501,27 @@ class TestResnet2(unittest.TestCase):
         return dy_out, dy_param_value, dy_grad_value
 
     def test_resnet(self):
-        if fluid.core.is_compiled_with_cuda():
-            fluid.set_flags({"FLAGS_cudnn_deterministic": True})
         with fluid.dygraph.guard():
             out_fp32 = self.train_resnet(enable_amp=False)
             out_amp = self.train_resnet(enable_amp=True)
         print(out_fp32[0], out_amp[0])
-        self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
+        self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
 
     def test_with_data_loader(self):
-        if fluid.core.is_compiled_with_cuda():
-            fluid.set_flags({"FLAGS_cudnn_deterministic": True})
         with fluid.dygraph.guard():
             out_fp32 = self.train_resnet(enable_amp=False, use_data_loader=True)
             out_amp = self.train_resnet(enable_amp=True, use_data_loader=True)
         print(out_fp32[0], out_amp[0])
-        self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
+        self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
+
+    def test_param_group(self):
+        with fluid.dygraph.guard():
+            out_fp32 = self.train_resnet(
+                enable_amp=False, use_data_loader=True, use_param_group=True)
+            out_amp = self.train_resnet(
+                enable_amp=True, use_data_loader=True, use_param_group=True)
+        print(out_fp32[0], out_amp[0])
+        self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
 
 
 class TestResnet(unittest.TestCase):
@@ -566,8 +597,6 @@ class TestResnet(unittest.TestCase):
         return dy_out, dy_param_value, dy_grad_value
 
     def test_resnet(self):
-        if fluid.core.is_compiled_with_cuda():
-            fluid.set_flags({"FLAGS_cudnn_deterministic": True})
         out_fp32 = self.train_resnet(enable_amp=False)
         out_amp = self.train_resnet(enable_amp=True)
         print(out_fp32[0], out_amp[0])
