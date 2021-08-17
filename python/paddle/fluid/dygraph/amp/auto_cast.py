@@ -103,21 +103,6 @@ def _in_amp_guard():
         return False
 
 
-# float32/64 -> float16
-def to_type(dtype, data):
-    print("==========", data)
-    for d in data:
-        print(d.dtype)
-        if isinstance(d.dtype, (paddle.float32, paddle.float64)):
-            d = d.astype(dtype)
-    print("==========", data)
-    return data
-
-
-def applier(value, fn):
-    return fn(value)
-
-
 @dygraph_only
 def fp16_initialize(enable_pure_fp16, model, optimizer):
     if not enable_pure_fp16:
@@ -128,18 +113,6 @@ def fp16_initialize(enable_pure_fp16, model, optimizer):
         if isinstance(layer, (paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
             continue
         layer.to(dtype='float16')
-    '''
-    #cast model forward's input and output to fp16 
-    input_caster = functools.partial(to_type, 'float16')
-    output_caster = functools.partial(to_type, 'float16')
-    for layer in model.sublayers():
-        def patch_forward(old_forward):
-            def new_fwd(*args, **kwargs):
-                output = old_forward(*applier(args, input_caster), **applier(kwargs, input_caster))
-                return applier(output, output_caster)
-            return new_fwd
-        layer.forward = patch_forward(layer.forward)
-    '''
     return model, optimizer
     #
 
@@ -205,19 +178,28 @@ def amp_guard(enable=True,
         raise ValueError(
             "current_tracer is None, maybe it is not in imperative mode.")
 
-    print("enable_pure_fp16:", enable_pure_fp16)
-    print("model:", model)
-    print("optimizer:", optimizer)
-    # print(model.parameters())
-    model, optimizer = fp16_initialize(enable_pure_fp16, model, optimizer)
-    #print(model.parameters())
-
     if enable and not (tracer._expected_place.is_gpu_place() or
                        tracer._expected_place.is_xpu_place()):
         warnings.warn(
             'amp_guard can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
         enable = False
+
+    if (not enable) and enable_pure_fp16:
+        warnings.warn(
+            'When enable autocast is False, enable_pure_fp16 should be False, but current is %s, so it makes no effect.'
+            % enable_pure_fp16)
+        enable_pure_fp16 = False
+
+    if enable_pure_fp16:
+        if isinstance(model, paddle.nn.Layer) and isinstance(
+                optimizer, paddle.optimizer.Optimizer):
+            model, optimizer = fp16_initialize(enable_pure_fp16, model,
+                                               optimizer)
+        else:
+            raise ValueError(
+                "Current train mode is pure fp16, model and optimizer should be paddle.nn.Layer and paddle.optimizer.Optimizer, but receive {} and {}.".
+                format(type(model), type(optimizer)))
 
     # use default white_list and black_list if no custom lists provided
     _white_list = WHITE_LIST

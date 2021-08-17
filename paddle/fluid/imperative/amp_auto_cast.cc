@@ -226,8 +226,8 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
 }
 
 // new
-NameVarBaseMap PureFp16Inputs(const std::string& op_type,
-                              const NameVarBaseMap& ins) {
+NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
+                                  const NameVarBaseMap& ins) {
   NameVarBaseMap new_ins(ins);
   auto dst_type = framework::proto::VarType::FP16;
   if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type)) {

@@ -182,8 +182,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
       new_ins = AutoCastInputs(type, ins);
     } else {
       // new
-      VLOG(1) << "Pure fp16 run operator: " << type;
-      new_ins = PureFp16Inputs(type, ins);
+      VLOG(5) << "Pure fp16 run operator: " << type;
+      new_ins = CastPureFp16Inputs(type, ins);
     }
   }
 

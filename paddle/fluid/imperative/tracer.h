@@ -111,6 +111,7 @@ class Tracer {
 
   // new
   void SetEnablePureFp16(bool enable) { enable_pure_fp16_ = enable; }
+  // new
   bool IsPureFp16Enabled() const { return enable_pure_fp16_; }
 
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
