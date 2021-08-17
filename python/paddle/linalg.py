@@ -15,9 +15,11 @@
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
 from .tensor import inverse as inv  # noqa: F401
+from .tensor.linalg import svd
 
 __all__ = [
     'cholesky',  #noqa
     'norm',
-    'inv'
+    'inv',
+    'svd',
 ]
