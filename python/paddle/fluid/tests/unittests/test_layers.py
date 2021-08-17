@@ -1658,20 +1658,20 @@ class TestLayer(LayerTest):
             i = layers.fill_constant(shape=[1], dtype='int64', value=0)
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
 
-            def cond(i):
+            def cond1(i):
                 return layers.less_than(i, ten)
 
-            def body(i):
+            def body1(i):
                 return i + 1
 
-            dy_ret = layers.while_loop(cond, body, [i])
+            dy_ret = layers.while_loop(cond1, body1, [i])
             with self.assertRaises(ValueError):
                 j = layers.fill_constant(shape=[1], dtype='int64', value=0)
 
                 def body2(i):
                     return i + 1, i + 2
 
-                layers.while_loop(cond, body2, [j])
+                layers.while_loop(cond1, body2, [j])
 
         self.assertTrue(np.array_equal(static_ret[0], dy_ret[0].numpy()))
 

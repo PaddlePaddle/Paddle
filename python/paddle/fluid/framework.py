@@ -72,6 +72,7 @@ _dygraph_tracer_ = None
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
+_current_pipeline_stage = None
 _global_flags_ = core.globals()
 
 
@@ -237,6 +238,11 @@ def _static_only_(func):
         return func(*args, **kwargs)
 
     return __impl__
+
+
+def _set_pipeline_stage(stage):
+    global _current_pipeline_stage
+    _current_pipeline_stage = stage
 
 
 # NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
@@ -1873,6 +1879,86 @@ class Variable(object):
             type='size', inputs={'Input': [self]}, outputs={'Out': [output]})
         return output
 
+    def _set_attr(self, name, val):
+        """
+        Set the value of attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(int|str|list): the value of the attribute.
+        """
+        self._update_desc_attr(name, val)
+
+    def _has_attr(self, name):
+        """
+        Whether this Variable has the attribute with the name `name` or not.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            bool: True if has this attribute.
+        """
+        return self.desc.has_attr(name)
+
+    def _remove_attr(self, name):
+        self.desc.remove_attr(name)
+
+    def _update_desc_attr(self, name, val):
+        """
+        Update the value of desc's attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(int|str|list): the value of the attribute.
+        """
+        self.desc._set_attr(name, val)
+
+    @property
+    def attr_names(self):
+        """Get the names of all attributes defined."""
+        return self.desc.attr_names()
+
+    def _get_attr(self, name):
+        """
+        Get the attribute by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            int|str|list: The attribute value. The return value
+            can be any valid attribute type.
+        """
+        return self.desc.attr(name)
+
+    @property
+    def process_mesh(self):
+        """
+        Get the process mesh belonging to this Variable.
+        """
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+        from paddle.distributed.auto_parallel.interface import ProcessMesh
+        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
+        mesh_id = self.desc.attr(mesh_attr_name)
+        return _g_process_mesh_map[mesh_id]
+
+    @property
+    def shard_mask(self):
+        """
+        Get shard_mask belonging to this Variable.
+        """
+        mask_attr_name = 'mask' + core.kAutoParallelSuffix()
+        return self.desc.attr(mask_attr_name)
+
+    @property
+    def offload_device(self):
+        """
+        Get the offload device of this Variable.
+        """
+        offload_attr_name = 'offload_device' + core.kAutoParallelSuffix()
+        return self.desc.attr(offload_attr_name)
+
 
 def get_all_op_protos():
     """
@@ -2035,6 +2121,11 @@ class Operator(object):
                 del op_attrs[role_var_name]
 
             if len(self.desc.type()) != 0:
+                # NOTE(Aurelius84): prog.clone() will lead that var.op is always None,
+                # we add this to fix the problem.
+                for arg in self.desc.output_arg_names():
+                    if block.has_var(arg) and block.var(arg).op is None:
+                        block.var(arg).op = self
                 return
             if type is None:
                 raise ValueError(
@@ -2072,6 +2163,11 @@ class Operator(object):
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
                             "used at the same time." % type)
+            if _current_pipeline_stage is not None:
+                pipeline_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix(
+                )
+                self._update_desc_attr(pipeline_attr_name,
+                                       _current_pipeline_stage)
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -2542,6 +2638,31 @@ class Operator(object):
             return True
 
         return False
+
+    @property
+    def process_mesh(self):
+        """
+        Get the process mesh belonging to this Operator.
+        """
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
+        mesh_id = self.attr(mesh_attr_name)
+        return _g_process_mesh_map[mesh_id]
+
+    def dims_mapping(self, name):
+        """
+        Get the dims_mapping for the op's var named `name`.
+        """
+        dims_mapping_attr_name = name + core.kAutoParallelSuffix()
+        return self.attr(dims_mapping_attr_name)
+
+    @property
+    def pipeline_stage(self):
+        """
+        Get pipeline stage of the Operator.
+        """
+        pipeline_stage_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix()
+        return self.desc.attr(pipeline_stage_attr_name)
 
 
 class Block(object):
