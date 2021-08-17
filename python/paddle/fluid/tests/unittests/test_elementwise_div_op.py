@@ -408,6 +408,15 @@ class TestDivInplaceBroadcastSuccess3(TestDivInplaceBroadcastSuccess):
         self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
         self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
 
+class TestDivInplaceFloat64(TestDivInplaceBroadcastSuccess):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 1, 5).astype('double')
+        self.y_numpy = np.random.rand(1, 3, 1, 5).astype('double')
+
+class TestDivInplaceFloat16(TestDivInplaceBroadcastSuccess):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float16')
+        self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float16')
 
 class TestDivInplaceBroadcastError(unittest.TestCase):
     def init_data(self):
@@ -441,3 +450,4 @@ class TestDivInplaceBroadcastError3(TestDivInplaceBroadcastError):
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
+
