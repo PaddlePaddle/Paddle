@@ -108,8 +108,7 @@ static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
 // From a multi-input, gather only nonempty inputs
 static const std::vector<const Tensor*> ReduceMultiInput(
     const std::vector<const Tensor*>& inputs) {
-  std::vector<const Tensor*> reduced;
-  reduced.reserve(inputs.size());
+  std::vector<const Tensor*> reduced(inputs.size());
   auto end_it = std::copy_if(inputs.begin(), inputs.end(), reduced.begin(),
                              [](const Tensor* t) { return t->numel() > 0; });
   reduced.resize(std::distance(reduced.begin(), end_it));
