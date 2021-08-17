@@ -120,7 +120,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     ConcatMKLDNNHandler<T> handler(ctx, mkldnn_engine, multi_input, output);
 
-    std::shared_ptr<std::vector<memory>> srcs(multi_input.size());
+    std::vector<std::shared_ptr<memory>> srcs(multi_input.size());
 
     auto dst_mem = handler.AcquireDstMemory(output);
     auto concat_p = handler.AcquireForwardPrimitive();
