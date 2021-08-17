@@ -76,6 +76,15 @@ class ConcatMKLDNNHandler
     this->AcquireForwardPrimitiveDescriptor(dst_md, concat_axis, srcs_md);
   }
 
+  // (jczaja) concat oneDNN prim is not having .desc attribute so
+  // we cannot use base AcquireForwardPrimitiveDescriptor
+  void AcquireForwardPrimitiveDescriptor(
+      const mkldnn::memory::desc& dst_md, const int concat_axis,
+      const std::vector<mkldnn::memory::desc>& srcs_md) {
+    this->fwd_pd_.reset(new dnnl::sum::primitive_desc(dst_md, concat_axis,
+                                                      srcs_md, this->engine_));
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const framework::Tensor& input, int i) {
     const T* input_data = input.data<T>();
