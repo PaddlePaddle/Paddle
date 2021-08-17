@@ -41,7 +41,7 @@ std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
   return ret;
 }
 
-int64_t EagerUtils::output_rank(pt::Tensor& target) {
+size_t EagerUtils::output_rank(pt::Tensor& target) {
   return autograd_meta(target)->OutRank();
 }
 

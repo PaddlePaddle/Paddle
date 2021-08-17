@@ -43,6 +43,42 @@ void GradNodeBase::RecordStopGradient(
     bwd_stop_gradients_.emplace_back(std::move(ins_autograds[i]->NumericStopGradient()));
   }
 }
+  
+void GradNodeBase::RegisterGradientHook(size_t output_rank, const std::function<pt::Tensor(const pt::Tensor&)>& hook) {
+    gradient_hooks_.push_back(std::make_pair(output_rank, hook));
+}
+  
+void GradNodeBase::RegisterReduceHook(const std::function<void(void)>& hook) {
+    reduce_hooks_.push_back(hook);
+}
+  
+std::vector<pt::Tensor> GradNodeBase::ApplyGradientHooks(const std::vector<pt::Tensor>& tensors) {
+    std::vector<pt::Tensor> outs(tensors.size());
+    for(auto& pair : gradient_hooks_) {
+        size_t output_rank = pair.first;
+        std::function<pt::Tensor(const pt::Tensor&)>& hook = pair.second;
+    
+        PADDLE_ENFORCE(output_rank < tensors.size(), 
+            paddle::platform::errors::Fatal("OutputRank from registered hook should be smaller than size of grad_tensors"));
+
+        const pt::Tensor& tensor = tensors[output_rank];
+        outs[output_rank] = hook(tensor);
+    }
+
+    for(size_t i = 0; i < outs.size(); i++) {
+        if(!outs[i].defined() || !outs[i].initialized()) {
+            outs[i] = tensors[i];
+        }
+    }
+
+    return outs;
+}
+  
+void GradNodeBase::ApplyReduceHooks() {
+    for(auto& hook : reduce_hooks_) {
+        hook();
+    }
+}
 
 template<typename T>
 static void add_kernel(const pt::DenseTensor& t0, const pt::DenseTensor& t1, pt::DenseTensor& out) {

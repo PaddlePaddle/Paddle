@@ -86,6 +86,21 @@ class GradNodeBase {
 
   void RecordStopGradient(const std::vector<AutogradMeta*>& ins_autograds);
 
+  /**
+   * Register GradientHook or ReduceHook
+   * **/
+  void RegisterGradientHook(size_t output_rank, const std::function<pt::Tensor(const pt::Tensor&)>& hook);
+  void RegisterReduceHook(const std::function<void(void)>& hook);
+  
+  /**
+   * Apply GradientHook or ReduceHook
+   * **/
+  inline bool GradientHooksRegistered() { return gradient_hooks_.size() != 0; }
+  inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
+
+  std::vector<pt::Tensor> ApplyGradientHooks(const std::vector<pt::Tensor>& tensors);
+  void ApplyReduceHooks();
+
  private:
   // TODO(jiabin): Do we need InputMeta here to indicate input info? Or we just
   // need to know
@@ -100,6 +115,12 @@ class GradNodeBase {
   // of our kernel will have different operation according to if backward output
   // is stop_gradient
   std::vector<int> bwd_stop_gradients_;
+
+  // Gradient Hooks
+  // Customer may register a list of hooks which will be called in order during backward
+  // Each entry consists one pair of <out_rank, std::function>
+  std::vector<std::pair<size_t, std::function<pt::Tensor(const pt::Tensor&)>>> gradient_hooks_;
+  std::vector<std::function<void(void)>> reduce_hooks_;
 
 };
 
