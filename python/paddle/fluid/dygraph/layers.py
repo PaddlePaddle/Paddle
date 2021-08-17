@@ -1406,7 +1406,6 @@ class Layer(core.Layer):
 
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, device, dtype, blocking)
-        self._dtype = dtype
 
     def to(self, device=None, dtype=None, blocking=None):
         '''
@@ -1502,6 +1501,7 @@ class Layer(core.Layer):
             return new_t
 
         self._apply(transform, device, dtype, blocking)
+        self._dtype = dtype
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict

@@ -5865,6 +5865,20 @@ class ParamBase(core.VarBase):
         core.varbase_copy(self, new_param, device, blocking)
         return new_param
 
+    def to(self, dtype, device, blocking):
+        print("in ParamBase cast dtype")
+        new_t = self._copy_to(device, blocking)
+        if dtype is not None and dtype != self.dtype:
+            _dygraph_tracer().trace_op(
+                type='cast',
+                inputs={'X': new_t},
+                outputs={'Out': new_t},
+                attrs={
+                    'in_dtype': self.dtype,
+                    'out_dtype': convert_np_dtype_to_dtype_(dtype)
+                })
+        return new_t
+
     __repr__ = __str__
 
 
