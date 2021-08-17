@@ -719,6 +719,25 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       if (!with_dynamic_shape && shape[0] == -1) return false;
+
+      auto* block = desc.Block();
+      std::string input_name = desc.Input("X")[0];
+      auto* var_desc = block->FindVar(input_name);
+      const auto input_shape = var_desc->GetShape();
+      if (shape.size() <= 1 || input_shape.size() <= 1) return false;
+      int input_volume = 1;
+      int shape_volume = 1;
+      for (size_t i = 1; i < input_shape.size(); i++) {
+        input_volume *= input_shape[i];
+      }
+      for (size_t i = 1; i < shape.size(); i++) {
+        shape_volume *= shape[i];
+      }
+      if (input_volume != shape_volume) {
+        VLOG(2) << "reshape2 input volume not equals to shape volume, not "
+                   "convert to TRT.";
+        return false;
+      }
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
