@@ -461,8 +461,8 @@ void OperatorBase::CheckAllInputOutputSet() const {
 
 void OperatorBase::GenerateTemporaryNames() {
   static std::atomic<size_t> gUniqId(0UL);
-  for (auto& output : outputs_) {
-    for (auto& output_name : output.second) {
+  for (auto it = outputs_.begin(); it != outputs_.end(); ++it) {
+    for (auto& output_name : it.value()) {
       if (output_name == kTempVarName) {
         output_name += type_;
         output_name += "@";

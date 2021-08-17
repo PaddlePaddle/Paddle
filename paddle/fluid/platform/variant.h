@@ -38,11 +38,12 @@ limitations under the License. */
 #endif
 #endif
 
-#include <boost/any.hpp>
 #include <boost/mpl/comparison.hpp>
 #include <boost/mpl/less_equal.hpp>
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
+
+#include "paddle/utils/any.h"
 
 // some platform-independent defintion
 #if defined(_WIN32)
