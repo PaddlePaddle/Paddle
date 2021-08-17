@@ -68,10 +68,23 @@ class MKLDNNHandlerNoCachingT {
                                             to_void_cast<T>(input_data));
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
+      const pt::DenseTensor* input) {
+    const T* input_data = input->data<T>();
+    return this->AcquireMemoryFromPrimitive(fwd_pd_->src_desc(),
+                                            to_void_cast<T>(input_data));
+  }
+
   template <typename T_out = T>
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output) {
     T_out* ptr =
         output->mutable_data<T_out>(place_, fwd_pd_->dst_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), ptr);
+  }
+
+  template <typename T_out = T>
+  std::shared_ptr<mkldnn::memory> AcquireDstMemory(pt::DenseTensor* output) {
+    T_out* ptr = output->mutable_data<T_out>();
     return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), ptr);
   }
 
@@ -952,7 +965,6 @@ class BroadcastDataMKLDNNHandler
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output) {
     T_out* ptr = output->mutable_data<T_out>(
         this->place_, this->fwd_pd_->dst_desc().get_size());
-    ;
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr,
                                             "@dst_mem_p");
@@ -1012,8 +1024,9 @@ class ActivationMKLDNNHandler
     if (algorithm == mkldnn::algorithm::eltwise_linear) {
       bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
       auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
-      alpha = (scale_tensor == nullptr) ? ctx.Attr<float>("scale")
-                                        : (float)*(scale_tensor->data<T>());
+      alpha = (scale_tensor == nullptr)
+                  ? ctx.Attr<float>("scale")
+                  : (float)*(scale_tensor->data<T>());  // NOLINT
       beta = ctx.Attr<float>("bias");
       // if bias_after_scale == true
       //   out = scale*X + bias

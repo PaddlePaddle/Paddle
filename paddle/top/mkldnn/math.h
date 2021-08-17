@@ -30,19 +30,19 @@ void Scale(const MKLDNNDContext& dev_ctx,
            float bias,
            bool bias_after_scale,
            MKLDNNDenseTensor* out) {
-  bool is_inplaced = x.allocation() && x.allocation() == out->allocation();
+  const auto mkldnn_engine = dev_ctx.GetEngine();
 
-  // TODO(chenweihang): add `name` into TensorMeta?
-  ScaleMKLDNNHandler<T> handler(dev_ctx,
+  ScaleMKLDNNHandler<T> handler(mkldnn_engine,
                                 x,
-                                /*unique_name=*/"X",
-                                is_inplaced,
                                 /*alpha=*/scale,
                                 /*beta=*/bias,
                                 bias_after_scale);
 
+  bool is_inplaced = x.allocation() && x.allocation() == out->allocation();
+
   auto src_memory_p = handler.AcquireSrcMemory(&x);
-  auto dst_memory_p = handler.AcquireDstMemory(out);
+  auto dst_memory_p =
+      is_inplaced ? src_memory_p : handler.AcquireDstMemory(out);
   auto activation_p = handler.AcquireForwardPrimitive();
 
   auto& astream = MKLDNNDContext::tls().get_stream();

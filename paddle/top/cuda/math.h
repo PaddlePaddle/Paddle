@@ -14,7 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUDA
+// CUDA and HIP use same api
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include "paddle/top/core/dense_tensor.h"
 #include "paddle/top/module/scale.h"

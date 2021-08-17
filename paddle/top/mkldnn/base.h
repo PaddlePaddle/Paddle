@@ -29,35 +29,20 @@ using MKLDNNDContext = paddle::platform::MKLDNNDeviceContext;
 // `ExecutionContext`, refactoring that may be a big project!
 
 template <typename T>
-class ScaleMKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerT<T,
-                                              mkldnn::eltwise_forward,
-                                              mkldnn::eltwise_backward> {
+class ScaleMKLDNNHandler : public paddle::platform::MKLDNNHandlerNoCachingT<
+                               T,
+                               mkldnn::eltwise_forward,
+                               mkldnn::eltwise_backward> {
  public:
-  ScaleMKLDNNHandler(const MKLDNNDContext& dev_ctx,
+  ScaleMKLDNNHandler(const mkldnn::engine& engine,
                      const pt::MKLDNNDenseTensor& in_x,
-                     const std::string& unique_name,
-                     bool is_inplaced,
                      float alpha,
                      float beta,
                      bool bias_after_scale)
-      : paddle::platform::MKLDNNHandlerT<T,
-                                         mkldnn::eltwise_forward,
-                                         mkldnn::eltwise_backward>(
-            dev_ctx,
-            dev_ctx.GetEngine(),
-            in_x.place(),
-            is_inplaced ? paddle::platform::CreateKey(
-                              dev_ctx,
-                              paddle::framework::vectorize(in_x.dims()),
-                              "a",
-                              mkldnn::algorithm::eltwise_linear,
-                              unique_name)
-                        : paddle::platform::CreateKey(
-                              dev_ctx,
-                              paddle::framework::vectorize(in_x.dims()),
-                              "a",
-                              unique_name)) {
+      : paddle::platform::MKLDNNHandlerNoCachingT<T,
+                                                  mkldnn::eltwise_forward,
+                                                  mkldnn::eltwise_backward>(
+            engine, in_x.place()) {
     if (!bias_after_scale) {
       beta *= alpha;
     }

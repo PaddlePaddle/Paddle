@@ -40,12 +40,26 @@ static std::map<framework::proto::VarType::Type, aclDataType>
         {framework::proto::VarType::FP16, ACL_FLOAT16},
         {framework::proto::VarType::FP32, ACL_FLOAT},
         {framework::proto::VarType::FP64, ACL_DOUBLE},
+        // for top dtype
+        {pt::DataType::kBOOL, ACL_BOOL},
+        {pt::DataType::kINT8, ACL_INT8},
+        {pt::DataType::kUINT8, ACL_UINT8},
+        {pt::DataType::kINT16, ACL_INT16},
+        {pt::DataType::kINT32, ACL_INT32},
+        {pt::DataType::kINT64, ACL_INT64},
+        {pt::DataType::kFLOAT16, ACL_FLOAT16},
+        {pt::DataType::kFLOAT32, ACL_FLOAT},
+        {pt::DataType::kFLOAT64, ACL_DOUBLE},
 };
 
 static std::map<DataLayout, aclFormat> DATA_LAYOUT_2_ACL_FORMAT = {
     {DataLayout::kNCHW, ACL_FORMAT_NCHW},
     {DataLayout::kNHWC, ACL_FORMAT_NHWC},
     {DataLayout::kAnyLayout, ACL_FORMAT_ND},
+    // for top dtype
+    {pt::DataLayout::kNCHW, ACL_FORMAT_NCHW},
+    {pt::DataLayout::kNHWC, ACL_FORMAT_NHWC},
+    {pt::DataLayout::kAny, ACL_FORMAT_ND},
 };
 
 aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype) {
@@ -83,6 +97,16 @@ NpuOpRunner::NpuOpRunner(const std::string &op_type) : op_type_(op_type) {}
 NpuOpRunner::NpuOpRunner(const std::string &op_type,
                          const std::vector<Tensor> &inputs,
                          const std::vector<Tensor> &outputs,
+                         const NPUAttributeMap &attrs)
+    : op_type_(op_type) {
+  AddInputs(inputs);
+  AddOutputs(outputs);
+  AddAttrs(attrs);
+}
+
+NpuOpRunner::NpuOpRunner(const std::string &op_type,
+                         const std::vector<pt::DenseTensor> &inputs,
+                         const std::vector<pt::DenseTensor> &outputs,
                          const NPUAttributeMap &attrs)
     : op_type_(op_type) {
   AddInputs(inputs);
@@ -201,6 +225,14 @@ NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor) {
   return *this;
 }
 
+NpuOpRunner &NpuOpRunner::AddInput(const pt::DenseTensor &tensor) {
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(tensor));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(tensor));
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor, aclMemType mem_type) {
   // create aclTensorDesc
   input_descs_.emplace_back(CreateTensorDesc(tensor, mem_type));
@@ -281,7 +313,28 @@ NpuOpRunner &NpuOpRunner::AddOutput(const Tensor &tensor) {
   return *this;
 }
 
+NpuOpRunner &NpuOpRunner::AdOutput(const pt::DenseTensor &tensor) {
+  // create aclTensorDesc
+  output_descs_.emplace_back(CreateTensorDesc(tensor));
+  // create aclDataBuffer
+  output_buffers_.emplace_back(CreateDataBuffer(tensor));
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
+  input_descs_.reserve(tensors.size());
+  input_buffers_.reserve(tensors.size());
+  for (auto tensor : tensors) {
+    // create aclTensorDesc
+    input_descs_.emplace_back(CreateTensorDesc(tensor));
+    // create aclDataBuffer
+    input_buffers_.emplace_back(CreateDataBuffer(tensor));
+  }
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddInputs(
+    const std::vector<pt::DenseTensor> &tensors) {
   input_descs_.reserve(tensors.size());
   input_buffers_.reserve(tensors.size());
   for (auto tensor : tensors) {
@@ -309,6 +362,19 @@ NpuOpRunner &NpuOpRunner::AddInputNames(const std::vector<std::string> &names) {
 }
 
 NpuOpRunner &NpuOpRunner::AddOutputs(const std::vector<Tensor> &tensors) {
+  output_descs_.reserve(tensors.size());
+  output_buffers_.reserve(tensors.size());
+  for (auto tensor : tensors) {
+    // create aclTensorDesc
+    output_descs_.emplace_back(CreateTensorDesc(tensor));
+    // create aclDataBuffer
+    output_buffers_.emplace_back(CreateDataBuffer(tensor));
+  }
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddOutputs(
+    const std::vector<pt::DenseTensor> &tensors) {
   output_descs_.reserve(tensors.size());
   output_buffers_.reserve(tensors.size());
   for (auto tensor : tensors) {
@@ -383,10 +449,48 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
   return desc;
 }
 
+aclTensorDesc *NpuOpRunner::CreateTensorDesc(pt::DenseTensor tensor,
+                                             aclMemType mem_type) {
+  auto dtype = ConvertToNpuDtype(tensor.type());
+  auto format = ConvertToNpuFormat(tensor.layout());
+  auto dims = framework::vectorize(tensor.dims());
+  int size = dims.size();
+  // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
+  // OP must be a scalar with shape[0]. At present, the shape
+  // of the `prob` Tensor of this OP is forced to be set to 0
+  // in `npu_op_runner.cc`, which needs to be optimized later.
+  if (op_type_ == "DropOutGenMask" && size == 1 && *(dims.data()) == 1) {
+    size = 0;
+  }
+
+  VLOG(4) << "NPU dtype:" << dtype << " "
+          << "rank:" << dims.size() << " dims:" << tensor.dims()
+          << " format:" << format;
+
+  auto *desc = aclCreateTensorDesc(dtype, size, dims.data(), format);
+  PADDLE_ENFORCE_NOT_NULL(
+      desc, platform::errors::External("Call aclCreateTensorDesc failed."));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, format));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageShape(desc, size, dims.data()));
+  if (mem_type == ACL_MEMTYPE_HOST) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorPlaceMent(desc, mem_type));
+  }
+  return desc;
+}
+
 aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
   void *ptr = tensor.data<void>();
   VLOG(4) << "NPU ptr: " << ptr << ", size: " << tensor.memory_size();
   auto *buffer = aclCreateDataBuffer(ptr, tensor.memory_size());
+  PADDLE_ENFORCE_NOT_NULL(
+      buffer, platform::errors::External("Call aclCreateDataBuffer failed."));
+  return buffer;
+}
+
+aclDataBuffer *NpuOpRunner::CreateDataBuffer(pt::DenseTensor tensor) {
+  void *ptr = tensor.data<void>();
+  VLOG(4) << "NPU ptr: " << ptr << ", size: " << tensor.MemorySize();
+  auto *buffer = aclCreateDataBuffer(ptr, tensor.MemorySize());
   PADDLE_ENFORCE_NOT_NULL(
       buffer, platform::errors::External("Call aclCreateDataBuffer failed."));
   return buffer;
