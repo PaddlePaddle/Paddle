@@ -12,15 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include <string>
-
 #include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
@@ -32,7 +31,7 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     auto str_value = ctx.Attr<std::string>("str_value");
     auto force_cpu = ctx.Attr<bool>("force_cpu");
 
-    auto *out = ctx.Output<framework::Tensor>("Out");
+    auto *out = ctx.Output<Tensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("Input");
     if (in->lod().size() && ctx.Attr<int>("input_dim_idx") == 0) {
       // set the correct batch size for the LoDTensor.
@@ -69,7 +68,8 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
-    if (force_cpu) {
+    bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
+    if (cpu_place) {
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       out->mutable_data(platform::CPUPlace(), data_type);
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
