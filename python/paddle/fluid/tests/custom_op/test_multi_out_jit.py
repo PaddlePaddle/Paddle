@@ -77,6 +77,7 @@ class TestMultiOutputDtypes(unittest.TestCase):
             np.array_equal(one_int32, np.ones([4, 8]).astype('int32')))
 
     def test_static(self):
+        assert False
         paddle.enable_static()
         for device in self.devices:
             for dtype in self.dtypes:
@@ -85,6 +86,7 @@ class TestMultiOutputDtypes(unittest.TestCase):
         paddle.disable_static()
 
     def test_dynamic(self):
+        assert False
         for device in self.devices:
             for dtype in self.dtypes:
                 paddle.set_device(device)
