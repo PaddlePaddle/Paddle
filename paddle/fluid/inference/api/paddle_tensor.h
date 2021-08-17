@@ -95,8 +95,7 @@ class PD_INFER_DECL Tensor {
   /// \brief Copy the tensor data to the host memory asynchronously.
   /// \param[out] data The tensor will copy the data to the address.
   /// \param[out] cb Callback function cb(cb_params) will be executed on the
-  /// host after all
-  ///                currently enqueued items in the stream have completed .
+  /// host after all currently enqueued items in the stream have completed .
   template <typename T>
   void CopyToCpuAsync(T* data, CallbackFunc cb, void* cb_params) const;
 

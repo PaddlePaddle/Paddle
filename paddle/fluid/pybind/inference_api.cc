@@ -15,7 +15,6 @@
 #include "paddle/fluid/pybind/inference_api.h"
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
-#include <chrono>
 #include <cstring>
 #include <functional>
 #include <iostream>
