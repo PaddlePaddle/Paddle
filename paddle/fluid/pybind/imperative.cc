@@ -1864,7 +1864,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("async_write", [](imperative::VarBase &src, imperative::VarBase &dst,
                           imperative::VarBase &offset,
                           imperative::VarBase &count) {
-    VLOG(0) << "Enter WRITE";
+    // VLOG(0) << "Enter WRITE";
     auto &src_tensor = src.Var().Get<framework::LoDTensor>();
     auto &dst_tensor = dst.Var().Get<framework::LoDTensor>();
     auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
@@ -1879,7 +1879,7 @@ void BindImperative(py::module *m_ptr) {
     const int64_t *offset_data = offset_tensor.data<int64_t>();
     const int64_t *count_data = count_tensor.data<int64_t>();
     int64_t src_offset = 0, dst_offset, c;
-    VLOG(0) << offset_tensor.numel();
+    // VLOG(0) << offset_tensor.numel();
     for (int64_t i = 0; i < offset_tensor.numel(); i++) {
       dst_offset = offset_data[i], c = count_data[i];
       cudaMemcpyAsync(dst_data_new + (dst_offset * size),
@@ -1887,7 +1887,7 @@ void BindImperative(py::module *m_ptr) {
                       cudaMemcpyDeviceToHost, stream);
       src_offset += c;
     }
-    VLOG(0) << "End";
+    // VLOG(0) << "End";
   });
   m.def("async_read", [](imperative::VarBase &src, imperative::VarBase &dst,
                          imperative::VarBase &index,
