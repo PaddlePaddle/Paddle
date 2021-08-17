@@ -5243,6 +5243,7 @@ class PipelineOptimizer(object):
                 cur_size += tmp_size
 
         merged_suffix = '@MERGED@FP16' if fp16 else '@MERGED'
+        dtype = paddle.float16 if fp16 else None
         fused_gradients = []
         fused_merged_gradients = []
         # create fused vars for grad and param
@@ -5256,7 +5257,7 @@ class PipelineOptimizer(object):
             fused_merged_grad = main_block.create_var(
                 name='FusedMergedGrad_{}'.format(grad_segment[0].name) +
                 merged_suffix,
-                dtype=grad_segment[0].dtype,
+                dtype=dtype if dtype is not None else grad_segment[0].dtype,
                 persistable=True,
                 stop_gradient=True)
             fused_gradients.append(fused_grad)
@@ -5273,7 +5274,6 @@ class PipelineOptimizer(object):
                 break
         assert first_back_op_idx is not None
         offset = 0
-        fuse_param_pos = len(startup_block.ops)
         for i in range(len(grad_param_segments)):
             fused_grad = fused_gradients[i]
             fused_merged_grad = fused_merged_gradients[i]
@@ -5301,12 +5301,11 @@ class PipelineOptimizer(object):
                 attrs={
                     "copy_data": False,
                     "use_align": True,
-                    "dtype": grads[0].dtype,
+                    "dtype": dtype if dtype is not None else grads[0].dtype,
                     self._op_role_key: self._op_role.Forward
                 })
             offset += 1
 
-        dtype = paddle.float16 if fp16 else None
         first_opt_op_idx += offset
         offset = 0
         for i in range(len(fused_gradients)):
@@ -5324,14 +5323,14 @@ class PipelineOptimizer(object):
                 })
             offset += 1
 
-            is_fp16_grad = 'cast_fp16' in fused_grad
+            is_fp16_grad = 'cast_fp16' in fused_grad.name
             need_cast = (is_fp16_grad is not fp16)
 
             if need_cast:
                 cast_grad_var_name = fused_grad.name + '@TMP'
                 cast_grad_var = main_block.create_var(
                     name=cast_grad_var_name,
-                    dtype=dtype if dtype else fused_merged_grad.dtype,
+                    dtype=dtype if dtype is not None else fused_grad.dtype,
                     persistable=False,
                     stop_gradient=True)
                 main_block._insert_op(
