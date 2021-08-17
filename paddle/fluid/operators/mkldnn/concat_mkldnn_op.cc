@@ -81,7 +81,7 @@ class ConcatMKLDNNHandler
   void AcquireForwardPrimitiveDescriptor(
       const mkldnn::memory::desc& dst_md, const int concat_axis,
       const std::vector<mkldnn::memory::desc>& srcs_md) {
-    this->fwd_pd_.reset(new dnnl::sum::primitive_desc(dst_md, concat_axis,
+    this->fwd_pd_.reset(new dnnl::concat::primitive_desc(dst_md, concat_axis,
                                                       srcs_md, this->engine_));
   }
 
