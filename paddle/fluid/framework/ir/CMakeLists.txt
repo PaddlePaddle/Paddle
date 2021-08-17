@@ -50,7 +50,7 @@ if (WITH_TESTING)
 endif(WITH_TESTING)
 cc_library(graph_pattern_detector SRCS graph_pattern_detector.cc DEPS ${GRAPH_PATTERN_DETECTOR_DEPS})
 
-cc_library(op_compat_sensible_pass SRCS op_compat_sensible_pass.cc DEPS graph_pattern_detector op_def_api)
+cc_library(op_compat_sensible_pass SRCS op_compat_sensible_pass.cc DEPS graph_pattern_detector op_def_api pass)
 cc_library(subgraph_detector SRCS subgraph_detector.cc DEPS graph_pattern_detector executor)
 cc_library(fuse_pass_base SRCS fuse_pass_base.cc DEPS op_compat_sensible_pass)
 cc_library(placement_pass_base SRCS placement_pass_base.cc DEPS pass)

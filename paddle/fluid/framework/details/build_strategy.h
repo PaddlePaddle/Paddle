@@ -180,6 +180,11 @@ struct BuildStrategy {
 
   bool IsFinalized() const { return is_finalized_; }
 
+  void ClearFinalized() {
+    pass_builder_ = nullptr;
+    is_finalized_ = false;
+  }
+
   bool IsMultiDevPass(const std::string &pass_name) const;
 
   // Apply the passes built by the pass_builder_. The passes will be

@@ -146,6 +146,49 @@ class GradScaler(AmpScaler):
         """
         return super(GradScaler, self).minimize(optimizer, *args, **kwargs)
 
+    def step(self, optimizer):
+        """
+        This function is similar as `optimizer.step()`, which performs parameters updating.
+        
+        If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
+        Otherwise, it first unscales the scaled gradients of parameters, then updates the parameters.
+
+        Args:
+            optimizer(Optimizer):  The optimizer used to update parameters.
+
+        Examples:
+            .. code-block:: python
+            
+                # required: gpu
+                import paddle
+                model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                data = paddle.rand([10, 3, 32, 32])
+                with paddle.amp.auto_cast():
+                    conv = model(data)
+                    loss = paddle.mean(conv)
+                scaled = scaler.scale(loss)  # scale the loss 
+                scaled.backward()            # do backward
+                scaler.step(optimizer)
+                optimizer.clear_grad()
+        """
+        if not self._enable:
+            return optimizer.step()
+
+        #  unscale the grad
+        self._unscale(optimizer)
+
+        if self._found_inf:
+            self._cache_founf_inf = True
+        else:
+            optimizer.step()
+            self._cache_founf_inf = False
+
+        if self._use_dynamic_loss_scaling:
+            # uopdate the scale
+            self._update()
+
     def is_enable(self):
         """
         Enable loss scaling or not.
