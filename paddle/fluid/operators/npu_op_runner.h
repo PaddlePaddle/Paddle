@@ -117,9 +117,9 @@ class NpuOpRunner {
                                   aclMemType mem_type = ACL_MEMTYPE_DEVICE);
   aclDataBuffer *CreateDataBuffer(Tensor tensor);
 
-  aclTensorDesc *CreateTensorDesc(pt::DenseTensor tensor,
+  aclTensorDesc *CreateTensorDesc(const pt::DenseTensor &tensor,
                                   aclMemType mem_type = ACL_MEMTYPE_DEVICE);
-  aclDataBuffer *CreateDataBuffer(pt::DenseTensor tensor);
+  aclDataBuffer *CreateDataBuffer(const pt::DenseTensor &tensor);
 
  private:
   std::string op_type_;

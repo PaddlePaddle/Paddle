@@ -40,23 +40,23 @@ static std::map<framework::proto::VarType::Type, aclDataType>
         {framework::proto::VarType::FP16, ACL_FLOAT16},
         {framework::proto::VarType::FP32, ACL_FLOAT},
         {framework::proto::VarType::FP64, ACL_DOUBLE},
-        // for top dtype
-        {pt::DataType::kBOOL, ACL_BOOL},
-        {pt::DataType::kINT8, ACL_INT8},
-        {pt::DataType::kUINT8, ACL_UINT8},
-        {pt::DataType::kINT16, ACL_INT16},
-        {pt::DataType::kINT32, ACL_INT32},
-        {pt::DataType::kINT64, ACL_INT64},
-        {pt::DataType::kFLOAT16, ACL_FLOAT16},
-        {pt::DataType::kFLOAT32, ACL_FLOAT},
-        {pt::DataType::kFLOAT64, ACL_DOUBLE},
+};
+
+static std::map<pt::DataType aclDataType> PT_DTYPE_2_ACL_DTYPE = {
+    {pt::DataType::kBOOL, ACL_BOOL},       {pt::DataType::kINT8, ACL_INT8},
+    {pt::DataType::kUINT8, ACL_UINT8},     {pt::DataType::kINT16, ACL_INT16},
+    {pt::DataType::kINT32, ACL_INT32},     {pt::DataType::kINT64, ACL_INT64},
+    {pt::DataType::kFLOAT16, ACL_FLOAT16}, {pt::DataType::kFLOAT32, ACL_FLOAT},
+    {pt::DataType::kFLOAT64, ACL_DOUBLE},
 };
 
 static std::map<DataLayout, aclFormat> DATA_LAYOUT_2_ACL_FORMAT = {
     {DataLayout::kNCHW, ACL_FORMAT_NCHW},
     {DataLayout::kNHWC, ACL_FORMAT_NHWC},
     {DataLayout::kAnyLayout, ACL_FORMAT_ND},
-    // for top dtype
+};
+
+static std::map<pt::DataLayout, aclFormat> PT_DATA_LAYOUT_2_ACL_FORMAT = {
     {pt::DataLayout::kNCHW, ACL_FORMAT_NCHW},
     {pt::DataLayout::kNHWC, ACL_FORMAT_NHWC},
     {pt::DataLayout::kAny, ACL_FORMAT_ND},
@@ -71,10 +71,28 @@ aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype) {
   return iter->second;
 }
 
+aclDataType ConvertToNpuDtype(pt::DataType dtype) {
+  auto iter = PT_DTYPE_2_ACL_DTYPE.find(dtype);
+  PADDLE_ENFORCE_NE(
+      iter, PT_DTYPE_2_ACL_DTYPE.end(),
+      platform::errors::NotFound(
+          "The data type (%s) can not convert to ACL data type.", dtype));
+  return iter->second;
+}
+
 aclFormat ConvertToNpuFormat(DataLayout layout) {
   auto iter = DATA_LAYOUT_2_ACL_FORMAT.find(layout);
   PADDLE_ENFORCE_NE(
       iter, DATA_LAYOUT_2_ACL_FORMAT.end(),
+      platform::errors::NotFound(
+          "The data type (%s) can not convert to ACL data type.", layout));
+  return iter->second;
+}
+
+aclFormat ConvertToNpuFormat(pt::DataLayout layout) {
+  auto iter = PT_DATA_LAYOUT_2_ACL_FORMAT.find(layout);
+  PADDLE_ENFORCE_NE(
+      iter, PT_DATA_LAYOUT_2_ACL_FORMAT.end(),
       platform::errors::NotFound(
           "The data type (%s) can not convert to ACL data type.", layout));
   return iter->second;
@@ -449,7 +467,7 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
   return desc;
 }
 
-aclTensorDesc *NpuOpRunner::CreateTensorDesc(pt::DenseTensor tensor,
+aclTensorDesc *NpuOpRunner::CreateTensorDesc(const pt::DenseTensor &tensor,
                                              aclMemType mem_type) {
   auto dtype = ConvertToNpuDtype(tensor.type());
   auto format = ConvertToNpuFormat(tensor.layout());
@@ -487,8 +505,8 @@ aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
   return buffer;
 }
 
-aclDataBuffer *NpuOpRunner::CreateDataBuffer(pt::DenseTensor tensor) {
-  void *ptr = tensor.data<void>();
+aclDataBuffer *NpuOpRunner::CreateDataBuffer(const pt::DenseTensor &tensor) {
+  const void *ptr = tensor.data<void>();
   VLOG(4) << "NPU ptr: " << ptr << ", size: " << tensor.MemorySize();
   auto *buffer = aclCreateDataBuffer(ptr, tensor.MemorySize());
   PADDLE_ENFORCE_NOT_NULL(
