@@ -115,6 +115,7 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .AddAttr("quant_axis")
       .IsIntIn({0, 1})
       .IsOptional()
+      .End()
       .AddAttr("x_num_col_dims")
       .IsType<int>()
       .IsOptional()
