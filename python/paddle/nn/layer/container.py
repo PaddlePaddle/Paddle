@@ -13,10 +13,10 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from ...fluid.dygraph.layers import Layer
-from six.moves import collections_abc
+from .. import Layer
+from collections.abc import Iterable, Mapping
 
-__all__ = ['LayerDict', ]
+__all__ = []
 
 
 class LayerDict(Layer):
@@ -276,12 +276,11 @@ class LayerDict(Layer):
         """
 
         assert isinstance(
-            sublayers, collections_abc.Iterable
+            sublayers, Iterable
         ), "The type of sublayers is not iterable of key/value pairs, the type of sublayers is " + type(
             sublayers).__name__
 
-        if isinstance(sublayers,
-                      (OrderedDict, LayerDict, collections_abc.Mapping)):
+        if isinstance(sublayers, (OrderedDict, LayerDict, Mapping)):
             for key, layer in sublayers.items():
                 self.add_sublayer(key, layer)
         else:

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -31,16 +31,16 @@ void CloseSocket(int fd);
 
 template <typename CommUniqueId>
 void SendBroadCastCommID(std::vector<std::string> servers,
-                         std::vector<CommUniqueId>* nccl_ids);
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id = 0);
 
 template <typename CommUniqueId>
 void RecvBroadCastCommID(std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids);
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id = 0);
 
 // recv nccl id from socket
 template <typename CommUniqueId>
 void RecvBroadCastCommID(int server_fd, std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids);
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id = 0);
 
 class SocketServer {
  public:

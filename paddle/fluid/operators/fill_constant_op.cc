@@ -36,7 +36,6 @@ class FillConstantOp : public framework::OperatorWithKernel {
                 i, shape[i], framework::make_ddim(shape)));
       }
     }
-
     if (shape.empty() && ctx->HasInput("ShapeTensor")) {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
       int num_ele = 1;
@@ -147,16 +146,15 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
-                       ops::FillConstantKernel<double>,
-                       ops::FillConstantKernel<uint8_t>,
-                       ops::FillConstantKernel<int64_t>,
-                       ops::FillConstantKernel<int>,
-                       ops::FillConstantKernel<bool>,
-                       ops::FillConstantKernel<paddle::platform::float16>,
-                       ops::FillConstantKernel<paddle::platform::bfloat16>,
-                       ops::FillConstantKernel<paddle::platform::complex64>,
-                       ops::FillConstantKernel<paddle::platform::complex128>);
+REGISTER_OP_CPU_KERNEL(
+    fill_constant, ops::FillConstantKernel<float>,
+    ops::FillConstantKernel<double>, ops::FillConstantKernel<uint8_t>,
+    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<int>,
+    ops::FillConstantKernel<bool>,
+    ops::FillConstantKernel<paddle::platform::float16>,
+    ops::FillConstantKernel<paddle::platform::bfloat16>,
+    ops::FillConstantKernel<paddle::platform::complex<float>>,
+    ops::FillConstantKernel<paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(fill_constant)
     .AddCheckpoint(

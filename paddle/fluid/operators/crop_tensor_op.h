@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 
 namespace paddle {
@@ -199,15 +200,16 @@ void CropTensorFunction(const framework::ExecutionContext& context) {
 
   auto x_tensor = EigenTensor<T, D>::From(*x);
   auto out_tensor = EigenTensor<T, D>::From(*out);
-  Eigen::array<int, D> e_offsets;
-  Eigen::array<int, D> e_shape;
+  Eigen::DSizes<Eigen::DenseIndex, D> e_offsets;
+  Eigen::DSizes<Eigen::DenseIndex, D> e_shape;
   for (size_t i = 0; i < D; ++i) {
     e_offsets[i] = offsets[i];
     e_shape[i] = out->dims()[i];
   }
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
-  out_tensor.device(place) = x_tensor.slice(e_offsets, e_shape);
+  EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
+      place, out_tensor, x_tensor, e_offsets, e_shape);
 }
 
 template <typename DeviceContext, typename T>
@@ -259,16 +261,17 @@ void CropTensorGradFunction(const framework::ExecutionContext& context) {
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
     d_x->mutable_data<T>(x->dims(), context.GetPlace());
     auto offsets = GetOffsets(context);
-    Eigen::array<std::pair<int, int>, D> paddings;
+    Eigen::array<std::pair<int64_t, int64_t>, D> paddings;
     for (size_t i = 0; i < D; ++i) {
       paddings[i].first = offsets[i];
       paddings[i].second = d_x->dims()[i] - d_out->dims()[i] - offsets[i];
     }
     auto d_x_tensor = EigenTensor<T, D>::From(*d_x);
     auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
-    d_x_tensor.device(
-        *context.template device_context<DeviceContext>().eigen_device()) =
-        d_out_tensor.pad(paddings, 0);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
+        place, d_x_tensor, d_out_tensor, paddings, static_cast<T>(0));
   }
 }
 

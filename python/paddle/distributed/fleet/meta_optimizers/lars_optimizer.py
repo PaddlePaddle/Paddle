@@ -15,6 +15,8 @@ from paddle.fluid.optimizer import Momentum, LarsMomentumOptimizer
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
+__all__ = []
+
 
 class LarsOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

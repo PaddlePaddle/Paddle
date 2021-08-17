@@ -123,7 +123,7 @@ RUN rm Python-$version.tgz setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.
 
 # Install Go and glide
 WORKDIR /home
-RUN wget -qO- https://paddle-ci.cdn.bcebos.com/go1.8.1.linux-amd64.tar.gz | \
+RUN wget -qO- https://paddle-ci.gz.bcebos.com/go1.15.12.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
@@ -205,7 +205,7 @@ RUN pip3.6 --no-cache-dir install -r /root/requirements.txt && \
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev && apt-get clean -y && \
-    pip3.6 install --upgrade pip && \ 
+    pip3.6 install --upgrade pip==20.3.3 && \ 
     pip3.7 install --upgrade pip && \ 
     pip3.8 install --upgrade pip && \ 
     pip3.9 install --upgrade pip && \ 

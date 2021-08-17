@@ -13,12 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
-#include "paddle/fluid/operators/math/sampler.h"
 
 namespace paddle {
 namespace distributed {
-
-using Sampler = paddle::operators::math::Sampler;
 
 std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
     const std::vector<std::vector<uint64_t>>& user_inputs,
@@ -30,22 +27,7 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
       std::vector<uint64_t>(user_feature_num + 2));
 
   auto max_layer = tree_->Height();
-  std::vector<Sampler*> sampler_vec(max_layer - start_sample_layer_);
-  std::vector<std::vector<IndexNode>> layer_ids(max_layer -
-                                                start_sample_layer_);
-
-  auto layer_index = max_layer - 1;
   size_t idx = 0;
-  while (layer_index >= start_sample_layer_) {
-    auto layer_codes = tree_->GetLayerCodes(layer_index);
-    layer_ids[idx] = tree_->GetNodes(layer_codes);
-    sampler_vec[idx] = new paddle::operators::math::UniformSampler(
-        layer_ids[idx].size() - 1, seed_);
-    layer_index--;
-    idx++;
-  }
-
-  idx = 0;
   for (size_t i = 0; i < input_num; i++) {
     auto travel_codes =
         tree_->GetTravelCodes(target_ids[i], start_sample_layer_);
@@ -76,17 +58,14 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
       for (int idx_offset = 0; idx_offset < layer_counts_[j]; idx_offset++) {
         int sample_res = 0;
         do {
-          sample_res = sampler_vec[j]->Sample();
-        } while (layer_ids[j][sample_res].id() == travel_path[j].id());
+          sample_res = sampler_vec_[j]->Sample();
+        } while (layer_ids_[j][sample_res].id() == travel_path[j].id());
         outputs[idx + idx_offset][user_feature_num] =
-            layer_ids[j][sample_res].id();
+            layer_ids_[j][sample_res].id();
         outputs[idx + idx_offset][user_feature_num + 1] = 0;
       }
       idx += layer_counts_[j];
     }
-  }
-  for (size_t i = 0; i < sampler_vec.size(); i++) {
-    delete sampler_vec[i];
   }
   return outputs;
 }

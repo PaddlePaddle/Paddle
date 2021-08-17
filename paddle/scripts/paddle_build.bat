@@ -18,76 +18,90 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 @ECHO ON
-setlocal
+setlocal enabledelayedexpansion
 
 rem -------clean up environment-----------
 set work_dir=%cd%
-set cache_dir=%work_dir:Paddle=cache%
+if not defined cache_dir set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
-taskkill /f /im op_function_generator.exe  2>NUL
-taskkill /f /im cmake.exe  2>NUL
-taskkill /f /im MSBuild.exe 2>NUL
-taskkill /f /im CL.exe 2>NUL
-taskkill /f /im Lib.exe 2>NUL
-taskkill /f /im link.exe 2>NUL
-taskkill /f /im vctip.exe 2>NUL
-taskkill /f /im cvtres.exe 2>NUL
-taskkill /f /im rc.exe 2>NUL
-taskkill /f /im mspdbsrv.exe 2>NUL
-taskkill /f /im csc.exe 2>NUL
-taskkill /f /im python.exe  2>NUL
-taskkill /f /im nvcc.exe 2>NUL
-taskkill /f /im cicc.exe 2>NUL
-taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im test_api_impl.exe 2>NUL
-taskkill /f /im op_function_generator.exe 2>NUL
+taskkill /f /im cmake.exe /t 2>NUL
+taskkill /f /im ninja.exe /t 2>NUL
+taskkill /f /im MSBuild.exe /t 2>NUL
+taskkill /f /im cl.exe /t 2>NUL
+taskkill /f /im lib.exe /t 2>NUL
+taskkill /f /im link.exe /t 2>NUL
+taskkill /f /im vctip.exe /t 2>NUL
+taskkill /f /im cvtres.exe /t 2>NUL
+taskkill /f /im rc.exe /t 2>NUL
+taskkill /f /im mspdbsrv.exe /t 2>NUL
+taskkill /f /im csc.exe /t 2>NUL
+taskkill /f /im python.exe /t 2>NUL
+taskkill /f /im nvcc.exe /t 2>NUL
+taskkill /f /im cicc.exe /t 2>NUL
+taskkill /f /im ptxas.exe /t 2>NUL
+taskkill /f /im op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined BRANCH set BRANCH=develop
-if not defined WITH_TENSORRT set WITH_TENSORRT=ON 
+if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 if not defined WITH_GPU set WITH_GPU=ON
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
 if not defined WITH_TESTING set WITH_TESTING=ON
-if not defined MSVC_STATIC_CRT set MSVC_STATIC_CRT=OFF
+if not defined MSVC_STATIC_CRT set MSVC_STATIC_CRT=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
-if not defined WITH_TPCACHE set WITH_TPCACHE=ON
+if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
 if not defined WITH_CLCACHE set WITH_CLCACHE=OFF
 if not defined WITH_CACHE set WITH_CACHE=OFF
+if not defined WITH_SCCACHE set WITH_SCCACHE=OFF
 if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
-if not defined retry_times set retry_times=2
+if not defined retry_times set retry_times=3
+if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
+if not defined BUILD_DIR set BUILD_DIR=build
 
-rem -------set cache build directory-----------
-rmdir build\python /s/q
-rmdir build\paddle_install_dir /s/q
-rmdir build\paddle_inference_install_dir /s/q
-rmdir build\paddle_inference_c_install_dir /s/q
-del build\CMakeCache.txt
+rem ------initialize the python environment------
+set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
+set PATH=%PYTHON_ROOT%\Scripts;%PYTHON_ROOT%;%PATH%
+if "%WITH_PYTHON%" == "ON" (
+    where python
+    where pip
+    pip install wheel --user
+    pip install -r %work_dir%\python\requirements.txt --user
+    if !ERRORLEVEL! NEQ 0 (
+        echo pip install requirements.txt failed!
+        exit /b 7
+    )
+)
 
-: set CI_SKIP_CPP_TEST if only *.py changed
-git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
+rem -------Caching strategy 1: keep build directory for incremental compilation-----------
+rmdir %BUILD_DIR%\python /s/q
+rmdir %BUILD_DIR%\paddle\third_party\externalError /s/q
+rem rmdir %BUILD_DIR%\paddle\fluid\pybind /s/q
+rmdir %BUILD_DIR%\paddle_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
+del %BUILD_DIR%\CMakeCache.txt
 
 if "%WITH_CACHE%"=="OFF" (
-    rmdir build /s/q
+    rmdir %BUILD_DIR% /s/q
     goto :mkbuild
 )
 
@@ -95,7 +109,7 @@ set error_code=0
 type %cache_dir%\error_code.txt
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
-    rmdir build /s/q
+    rmdir %BUILD_DIR% /s/q
     goto :mkbuild
 )
 
@@ -105,102 +119,97 @@ if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
     git diff HEAD last_pr --stat --name-only | findstr "setup.py.in"
     if !ERRORLEVEL! EQU 0 (
-        rmdir build /s/q
+        rmdir %BUILD_DIR% /s/q
     )
     git branch -D last_pr
     git branch last_pr
 ) else (
-    rmdir build /s/q
+    rmdir %BUILD_DIR% /s/q
     git branch last_pr
 )
 
-:: git diff HEAD origin/develop --stat --name-only
-:: git diff HEAD origin/develop --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
-:: if %ERRORLEVEL% EQU 0 (
-::     rmdir build /s/q
-:: )
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=< %cache_dir%\day.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > %cache_dir%\day.txt
+    type %cache_dir%\day.txt
+    rmdir %BUILD_DIR% /s/q
+    goto :mkbuild
+)
 
 :mkbuild
-if not exist build (
+if not exist %BUILD_DIR% (
     echo Windows build cache FALSE
     set Windows_Build_Cache=FALSE
-    mkdir build
+    mkdir %BUILD_DIR%
 ) else (
     echo Windows build cache TRUE
     set Windows_Build_Cache=TRUE
 )
 echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
-cd /d build
+cd /d %BUILD_DIR%
 dir .
 dir %cache_dir%
 dir paddle\fluid\pybind\Release
+rem -------Caching strategy 1: End --------------------------------
 
-rem ------initialize the python environment------
-if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
 
-rem ToDo: virtual environment can't be deleted safely, some process not exit when task is canceled
-rem Now use system python environment temporarily
-rem %PYTHON_EXECUTABLE% -m pip install virtualenv
-rem %PYTHON_EXECUTABLE% -m virtualenv paddle_winci
-rem call paddle_winci\Scripts\activate.bat
+rem -------Caching strategy 2: sccache decorate compiler-----------
+if "%WITH_SCCACHE%"=="ON" (
+    del D:\sccache\sccache_log.txt
+    cmd /C sccache -V || call :install_sccache
+    sccache --stop-server 2> NUL
 
-rem ------pre install python requirement----------
-where python
-where pip
-pip install wheel --user
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
-pip install -r %work_dir%\python\requirements.txt --user
+    :: Localy storage on windows
+    if not exist D:\sccache mkdir D:\sccache
+    set SCCACHE_DIR=D:\sccache\.cache
+    
+    :: Sccache will shut down if a source file takes more than 10 mins to compile
+    set SCCACHE_IDLE_TIMEOUT=0
+    set SCCACHE_CACHE_SIZE=100G
+    set SCCACHE_ERROR_LOG=D:\sccache\sccache_log.txt
+    set SCCACHE_LOG=quiet
 
-if %ERRORLEVEL% NEQ 0 (
-    echo pip install requirements.txt failed!
-    exit /b 7
+    :: Distributed storage on windows
+    set SCCACHE_ENDPOINT=s3.bj.bcebos.com
+    set SCCACHE_BUCKET=paddle-windows
+    set SCCACHE_S3_KEY_PREFIX=sccache/
+    set SCCACHE_S3_USE_SSL=true
+
+    sccache --start-server
+    sccache -z
+    goto :CASE_%1
+) else (
+    del %PYTHON_ROOT%\sccache.exe 2> NUL
+    goto :CASE_%1
 )
 
-rem ------pre install clcache and init config----------
-rem pip install clcache --user
-pip uninstall -y clcache
-:: set USE_CLCACHE to enable clcache
-rem set USE_CLCACHE=1
-:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
-rem set CLCACHE_HARDLINK=1
-:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
-rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
-:: set maximum cache size to 20G
-rem clcache.exe -M 21474836480
-
-:: install ninja if GENERATOR is Ninja
-if %GENERATOR% == "Ninja" (
-    pip install ninja
-    if %errorlevel% NEQ 0 (
-        echo pip install ninja failed!
-        exit /b 7
-    )
-)
-
-rem ------show summary of current environment----------
-cmake --version
-if "%WITH_GPU%"=="ON" (
-    nvcc --version
-    nvidia-smi
-)
-::python %work_dir%\tools\summary_env.py
-::%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
-
-goto :CASE_%1
+:install_sccache
+echo There is not sccache in this PC, will install sccache.
+echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
+%PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
+xcopy sccache.exe %PYTHON_ROOT%\Scripts\ /Y
+goto:eof
+rem -------Caching strategy 2: End --------------------------------
 
 echo "Usage: paddle_build.bat [OPTION]"
 echo "OPTION:"
-echo "wincheck_mkl: run Windows MKL/GPU/UnitTest CI tasks on Windows"
-echo "wincheck_openbals: run Windows OPENBLAS/CPU CI tasks on Windows"
+echo "wincheck_mkl: run Windows MKL/GPU PR CI tasks on Windows"
+echo "wincheck_openbals: run Windows OPENBLAS/CPU PR CI tasks on Windows"
+echo "build_avx_whl: build Windows avx whl package on Windows"
+echo "build_no_avx_whl: build Windows no avx whl package on Windows"
+echo "build_inference_lib: build Windows inference library on Windows"
 exit /b 1
 
 rem ------PR CI windows check for MKL/GPU----------
 :CASE_wincheck_mkl
 set WITH_MKL=ON
 set WITH_GPU=ON
+set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
+set ON_INFER=ON
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -212,16 +221,18 @@ goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------
 :CASE_wincheck_openblas
-set WITH_MKL=ON
+set WITH_MKL=OFF
 set WITH_GPU=OFF
+set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
 set retry_times=1
+set ON_INFER=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
-call :test_inference || goto test_inference_error
+:: call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
@@ -251,20 +262,27 @@ goto:success
 
 rem ------Build windows inference library------
 :CASE_build_inference_lib
+set ON_INFER=ON
 set WITH_PYTHON=OFF
 set CUDA_ARCH_NAME=All
+python %work_dir%\tools\remove_grad_op_and_kernel.py
+if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :zip_file || goto zip_file_error
+call :test_inference || goto test_inference_error
+call :zip_cc_file || goto zip_cc_file_error
+call :zip_c_file || goto zip_c_file_error
 goto:success
 
 rem "Other configurations are added here"
 rem :CASE_wincheck_others
 rem call ...
 
+
 rem ---------------------------------------------------------------------------------------------
 :cmake
+@ECHO OFF
 echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
@@ -274,16 +292,44 @@ call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
 set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
+rem Use 64-bit ToolSet to compile
+set PreferredToolArchitecture=x64
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
-@ECHO ON
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2
 set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR%\bin;%CUDA_TOOLKIT_ROOT_DIR%\libnvvp;%PATH%
 
-rem ------set third_party cache dir------
+rem install ninja if GENERATOR is Ninja
+if %GENERATOR% == "Ninja" (
+    pip install ninja
+    if %errorlevel% NEQ 0 (
+        echo pip install ninja failed!
+        exit /b 7
+    )
+)
 
+rem ------show summary of current GPU environment----------
+cmake --version
+if "%WITH_GPU%"=="ON" (
+    nvcc --version
+    nvidia-smi 2>NUL
+)
+
+rem ------pre install clcache and init config----------
+rem pip install clcache --user
+pip uninstall -y clcache
+:: set USE_CLCACHE to enable clcache
+rem set USE_CLCACHE=1
+:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
+rem set CLCACHE_HARDLINK=1
+:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
+rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
+:: set maximum cache size to 20G
+rem clcache.exe -M 21474836480
+
+rem ------set third_party cache dir------
 : clear third party cache every once in a while
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
 set day_now=%datetime:~6,2%
@@ -307,7 +353,7 @@ if %day_now% NEQ %day_before% (
 )
 
 if "%WITH_TPCACHE%"=="OFF" (
-    set THIRD_PARTY_PATH=%work_dir:\=/%/build/third_party
+    set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
     goto :cmake_impl
 )
 
@@ -320,25 +366,26 @@ echo echo ${md5_content}^>md5.txt >> cache.sh
 
 set /p md5=< md5.txt
 if "%WITH_GPU%"=="ON" (
-    set THIRD_PARTY_PATH=%cache_dir:\=/%/third_party_GPU/%md5%
+    set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party_GPU
 ) else (
-    set THIRD_PARTY_PATH=%cache_dir:\=/%/third_party/%md5%
+    set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party
 )
+set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 
 :cmake_impl
-echo cmake .. -G %GENERATOR% -T host=x64 -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME%
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub
 
-cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -T host=x64 -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME%
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub
 goto:eof
 
 :cmake_error
@@ -356,18 +403,26 @@ echo    ========================================
 
 for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
 echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
+
 set build_times=1
+rem MSbuild will build third_party first to improve compiler stability.
+if NOT %GENERATOR% == "Ninja" (
+    goto :build_tp
+) else (
+    goto :build_paddle
+)
+
 :build_tp
 echo Build third_party the %build_times% time:
-
 if %GENERATOR% == "Ninja" (
     ninja third_party
 ) else (
-    MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:quiet third_party.vcxproj
+    MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% third_party.vcxproj
 )
+
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
-    if %build_times% GTR %retry_times% (
+    if %build_times% GEQ %retry_times% (
         exit /b 7
     ) else (
         echo Build third_party failed, will retry!
@@ -382,30 +437,34 @@ set build_times=1
 rem clcache.exe -z
 
 rem -------clean up environment again-----------
-taskkill /f /im MSBuild.exe 2>NUL
-taskkill /f /im cl.exe 2>NUL
-taskkill /f /im lib.exe 2>NUL
-taskkill /f /im link.exe 2>NUL
-taskkill /f /im vctip.exe 2>NUL
-taskkill /f /im cvtres.exe 2>NUL
-taskkill /f /im rc.exe 2>NUL
-taskkill /f /im mspdbsrv.exe 2>NUL
-taskkill /f /im csc.exe 2>NUL
-taskkill /f /im nvcc.exe 2>NUL
-taskkill /f /im cicc.exe 2>NUL
-taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im test_api_impl.exe 2>NUL
-taskkill /f /im op_function_generator.exe 2>NUL
+taskkill /f /im cmake.exe /t 2>NUL
+taskkill /f /im MSBuild.exe /t 2>NUL
+taskkill /f /im cl.exe /t 2>NUL
+taskkill /f /im lib.exe /t 2>NUL
+taskkill /f /im link.exe /t 2>NUL
+taskkill /f /im vctip.exe /t 2>NUL
+taskkill /f /im cvtres.exe /t 2>NUL
+taskkill /f /im rc.exe /t 2>NUL
+taskkill /f /im mspdbsrv.exe /t 2>NUL
+taskkill /f /im csc.exe /t 2>NUL
+taskkill /f /im nvcc.exe /t 2>NUL
+taskkill /f /im cicc.exe /t 2>NUL
+taskkill /f /im ptxas.exe /t 2>NUL
+taskkill /f /im op_function_generator.exe /t 2>NUL
+wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
+
+if "%WITH_TESTING%"=="ON" (
+    for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
+)
 
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
-    ninja -j %PARALLEL_PROJECT_COUNT%
+    ninja all
 ) else (
     if "%WITH_CLCACHE%"=="OFF" (
         MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
@@ -416,7 +475,7 @@ if %GENERATOR% == "Ninja" (
 
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
-    if %build_times% GTR %retry_times% (
+    if %build_times% GEQ %retry_times% (
         exit /b 7
     ) else (
         echo Build Paddle failed, will retry!
@@ -428,8 +487,10 @@ echo Build Paddle successfully!
 echo 0 > %cache_dir%\error_code.txt
 type %cache_dir%\error_code.txt
 
-:: ci will collect clcache hit rate
-rem goto :collect_clcache_hits
+:: ci will collect sccache hit rate
+if "%WITH_SCCACHE%"=="ON" (
+    call :collect_sccache_hits
+)
 
 goto:eof
 
@@ -452,15 +513,6 @@ for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
 
-tree /F %cd%\paddle_inference_install_dir\paddle
-%cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
-set /p libsize=< lib_size.txt
-for /F %%i in ("%libsize%") do (
-    set /a libsize_m=%%i/1024
-    echo "Windows Paddle_Inference Size: !libsize_m!M"
-    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
-)
-
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
 for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
@@ -479,7 +531,6 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-
 set CUDA_VISIBLE_DEVICES=0
 python %work_dir%\paddle\scripts\installation_validate.py
 goto:eof
@@ -496,6 +547,15 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
+
+: set CI_SKIP_CPP_TEST if only *.py changed
+git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
+
+pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+if %ERRORLEVEL% NEQ 0 (
+    echo pip install unittest requirements.txt failed!
+    exit /b 7
+)
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
@@ -576,6 +636,15 @@ set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "1 card TestCases Total"
 call :timestamp "%start%" "%end%" "TestCases Total"
 
+tree /F %cd%\paddle_inference_install_dir\paddle
+%cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
+set /p libsize=< lib_size.txt
+for /F %%i in ("%libsize%") do (
+    set /a libsize_m=%%i/1024
+    echo "Windows Paddle_Inference Size: !libsize_m!M"
+    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
+)
+
 cd %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT%/include %TENSORRT_ROOT%/lib %MSVC_STATIC_CRT%
 goto:eof
@@ -593,7 +662,7 @@ echo    ========================================
 echo    Step 6. Check whether deleting a unit test ...
 echo    ========================================
 
-cd /d %work_dir%\build
+cd /d %work_dir%\%BUILD_DIR%
 echo set -e>  check_change_of_unittest.sh
 echo set +x>> check_change_of_unittest.sh
 echo GITHUB_API_TOKEN=%GITHUB_API_TOKEN% >>  check_change_of_unittest.sh
@@ -627,12 +696,12 @@ echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_
 echo fi>>  check_change_of_unittest.sh
 echo git checkout -b origin_pr >>  check_change_of_unittest.sh
 echo git checkout -f $BRANCH >>  check_change_of_unittest.sh
-echo cmake .. -G %GENERATOR% -T host=x64 -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
--DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
+echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% >>  check_change_of_unittest.sh
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME%  >>  check_change_of_unittest.sh
 echo cat ^<^<EOF>>  check_change_of_unittest.sh
 echo     ============================================       >>  check_change_of_unittest.sh
 echo     Generate unit tests.spec of develop.               >>  check_change_of_unittest.sh
@@ -670,7 +739,8 @@ goto:eof
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
-:zip_file
+:zip_cc_file
+cd /d %work_dir%\%BUILD_DIR%
 tree /F %cd%\paddle_inference_install_dir\paddle
 if exist paddle_inference.zip del paddle_inference.zip
 python -c "import shutil;shutil.make_archive('paddle_inference', 'zip', root_dir='paddle_inference_install_dir')"
@@ -682,8 +752,26 @@ for /F %%i in ("%libsize%") do (
 )
 goto:eof
 
-:zip_file_error
+:zip_cc_file_error
 echo Tar inference library failed!
+exit /b 1
+
+rem ---------------------------------------------------------------------------------------------
+:zip_c_file
+cd /d %work_dir%\%BUILD_DIR%
+tree /F %cd%\paddle_inference_c_install_dir\paddle
+if exist paddle_inference_c.zip del paddle_inference_c.zip
+python -c "import shutil;shutil.make_archive('paddle_inference_c', 'zip', root_dir='paddle_inference_c_install_dir')"
+%cache_dir%\tools\busybox64.exe du -h -k paddle_inference_c.zip > lib_size.txt
+set /p libsize=< lib_size.txt
+for /F %%i in ("%libsize%") do (
+    set /a libsize_m=%%i/1024
+    echo "Windows Paddle_Inference CAPI ZIP Size: !libsize_m!M"
+)
+goto:eof
+
+:zip_c_file_error
+echo Tar inference capi library failed!
 exit /b 1
 
 :timestamp
@@ -725,16 +813,22 @@ echo ipipe_log_param_Windows_%tempTaskName: =_%_Time: %cost_secs%s
 goto:eof
 
 
-:collect_clcache_hits
-for /f "tokens=2,4" %%i in ('clcache.exe -s ^| findstr "entries hits"') do set %%i=%%j
-if %hits% EQU 0 (
-    echo "clcache hit rate: 0%%"
-    echo ipipe_log_param_Clcache_Hit_Rate: 0%%
+:collect_sccache_hits
+sccache -s > sccache_summary.txt
+echo    ========================================
+echo    sccache statistical summary ...
+echo    ========================================
+type sccache_summary.txt
+for /f "tokens=2,3" %%i in ('type sccache_summary.txt ^| findstr "requests hits" ^| findstr /V "executed C/C++ CUDA"') do set %%i=%%j
+if %requests% EQU 0 (
+    echo "sccache hit rate: 0%"
+    echo ipipe_log_param_sccache_Hit_Hate: 0%
 ) else (
-    set /a rate=%hits%*10000/%entries%
-    echo "clcache hit rate: %rate:~0,-2%.%rate:~-2%%%"
-    echo ipipe_log_param_Clcache_Hit_Hate: %rate:~0,-2%.%rate:~-2%%%
+    set /a rate=!hits!*10000/!requests!
+    echo "sccache hit rate: !rate:~0,-2!.!rate:~-2!%%"
+    echo ipipe_log_param_sccache_Hit_Hate: !rate:~0,-2!.!rate:~-2!%%
 )
+
 goto:eof
 
 
@@ -743,31 +837,33 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Clean up environment  at the end ...
 echo    ========================================
-taskkill /f /im cmake.exe  2>NUL
-taskkill /f /im MSBuild.exe 2>NUL
-taskkill /f /im git.exe 2>NUL
-taskkill /f /im cl.exe 2>NUL
-taskkill /f /im lib.exe 2>NUL
-taskkill /f /im link.exe 2>NUL
-taskkill /f /im git-remote-https.exe 2>NUL
-taskkill /f /im vctip.exe 2>NUL
-taskkill /f /im cvtres.exe 2>NUL
-taskkill /f /im rc.exe 2>NUL
-taskkill /f /im mspdbsrv.exe 2>NUL
-taskkill /f /im csc.exe 2>NUL
-taskkill /f /im python.exe  2>NUL
-taskkill /f /im nvcc.exe 2>NUL
-taskkill /f /im cicc.exe 2>NUL
-taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im test_api_impl.exe 2>NUL
-taskkill /f /im op_function_generator.exe 2>NUL
+taskkill /f /im cmake.exe /t 2>NUL
+taskkill /f /im ninja.exe /t 2>NUL
+taskkill /f /im MSBuild.exe /t 2>NUL
+taskkill /f /im git.exe /t 2>NUL
+taskkill /f /im cl.exe /t 2>NUL
+taskkill /f /im lib.exe /t 2>NUL
+taskkill /f /im link.exe /t 2>NUL
+taskkill /f /im git-remote-https.exe /t 2>NUL
+taskkill /f /im vctip.exe /t 2>NUL
+taskkill /f /im cvtres.exe /t 2>NUL
+taskkill /f /im rc.exe /t 2>NUL
+taskkill /f /im mspdbsrv.exe /t 2>NUL
+taskkill /f /im csc.exe /t 2>NUL
+taskkill /f /im python.exe /t 2>NUL
+taskkill /f /im nvcc.exe /t 2>NUL
+taskkill /f /im cicc.exe /t 2>NUL
+taskkill /f /im ptxas.exe /t 2>NUL
+taskkill /f /im op_function_generator.exe /t 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
+if "%WITH_TESTING%"=="ON" (
+    for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
+)
 echo Windows CI run successfully!
 exit /b 0
 

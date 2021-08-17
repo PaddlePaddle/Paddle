@@ -25,7 +25,8 @@ limitations under the License. */
 #include <unordered_set>
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "glog/logging.h"               // For VLOG()
+#include "gflags/gflags.h"
+#include "glog/logging.h"  // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
@@ -66,6 +67,8 @@ class Version;
 }  // namespace proto
 }  // namespace framework
 }  // namespace paddle
+
+DECLARE_bool(check_kernel_launch);
 
 namespace paddle {
 namespace framework {
@@ -134,6 +137,19 @@ class OpRegistry {
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 };
 
+template <typename PlaceType>
+inline void CheckKernelLaunch(const char* op_type) {}
+
+#ifdef PADDLE_WITH_CUDA
+template <>
+inline void CheckKernelLaunch<::paddle::platform::CUDAPlace>(
+    const char* op_type) {
+  if (FLAGS_check_kernel_launch) {
+    PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(op_type);
+  }
+}
+#endif
+
 template <typename PlaceType, bool at_end, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor;
 
@@ -162,8 +178,9 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
     RegisterKernelClass<PlaceType, T>(
         op_type, library_type, customized_type_value,
 
-        [](const framework::ExecutionContext& ctx) {
+        [op_type](const framework::ExecutionContext& ctx) {
           KERNEL_TYPE().Compute(ctx);
+          CheckKernelLaunch<PlaceType>(op_type);
         });
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
     OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
@@ -223,8 +240,13 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 
   void operator()(const char* op_type, const char* library_type,
                   int customized_type_value) const {
-    RegisterKernelClass<PlaceType, T>(op_type, library_type,
-                                      customized_type_value, Functor());
+    RegisterKernelClass<PlaceType, T>(
+        op_type, library_type, customized_type_value,
+
+        [op_type](const framework::ExecutionContext& ctx) {
+          Functor()(ctx);
+          CheckKernelLaunch<PlaceType>(op_type);
+        });
 
     constexpr auto size =
         std::tuple_size<std::tuple<DataTypeAndKernelType...>>::value;
@@ -295,8 +317,12 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDAPlace, __VA_ARGS__)
+#else
+#define REGISTER_OP_CUDA_KERNEL(op_type, ...)
+#endif
 
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)

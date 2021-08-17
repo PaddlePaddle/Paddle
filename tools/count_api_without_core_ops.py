@@ -20,8 +20,8 @@ import collections
 import sys
 import pydoc
 import hashlib
-import six
 import functools
+import platform
 
 __all__ = ['get_apis_with_and_without_core_ops', ]
 
@@ -34,9 +34,17 @@ omitted_list = [
 
 
 def md5(doc):
-    hash = hashlib.md5()
-    hash.update(str(doc).encode('utf-8'))
-    return hash.hexdigest()
+    try:
+        hashinst = hashlib.md5()
+        hashinst.update(str(doc).encode('utf-8'))
+        md5sum = hashinst.hexdigest()
+    except UnicodeDecodeError as e:
+        md5sum = None
+        print(
+            "Error({}) occurred when `md5({})`, discard it.".format(
+                str(e), doc),
+            file=sys.stderr)
+    return md5sum
 
 
 def split_with_and_without_core_ops(member, cur_name):
@@ -95,7 +103,7 @@ def visit_member(parent_name, member, func):
 
 
 def is_primitive(instance):
-    int_types = (int, long) if six.PY2 else (int, )
+    int_types = (int, )
     pritimitive_types = int_types + (float, str)
     if isinstance(instance, pritimitive_types):
         return True

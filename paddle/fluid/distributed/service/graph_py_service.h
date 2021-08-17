@@ -141,6 +141,10 @@ class GraphPyClient : public GraphPyService {
   void finalize_worker();
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
+  void clear_nodes(std::string name);
+  void add_graph_node(std::string name, std::vector<uint64_t>& node_ids,
+                      std::vector<bool>& weight_list);
+  void remove_graph_node(std::string name, std::vector<uint64_t>& node_ids);
   int get_client_id() { return client_id; }
   void set_client_id(int client_id) { this->client_id = client_id; }
   void start_client();

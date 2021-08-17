@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -24,7 +25,8 @@ template <typename T>
 static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
   const auto* tensor_data = tensor->data<T>();
   framework::Tensor cpu_tensor;
-  if (platform::is_gpu_place(tensor->place())) {
+  if (platform::is_gpu_place(tensor->place()) ||
+      platform::is_npu_place(tensor->place())) {
     TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
     tensor_data = cpu_tensor.data<T>();
   }
@@ -68,11 +70,8 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    if (bias_after_scale) {
-      eigen_out.device(dev) = scale * eigen_in + bias;
-    } else {
-      eigen_out.device(dev) = scale * (eigen_in + bias);
-    }
+    EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
+        dev, eigen_out, eigen_in, scale, bias, bias_after_scale);
   }
 };
 

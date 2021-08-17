@@ -18,7 +18,7 @@ import paddle.nn as nn
 import numpy as np
 from .static_flops import static_flops, Table
 
-__all__ = ['flops']
+__all__ = []
 
 
 def flops(net, input_size, custom_ops=None, print_detail=False):
@@ -211,8 +211,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     def add_hooks(m):
         if len(list(m.children())) > 0:
             return
-        m.register_buffer('total_ops', paddle.zeros([1], dtype='int32'))
-        m.register_buffer('total_params', paddle.zeros([1], dtype='int32'))
+        m.register_buffer('total_ops', paddle.zeros([1], dtype='int64'))
+        m.register_buffer('total_params', paddle.zeros([1], dtype='int64'))
         m_type = type(m)
 
         flops_fn = None

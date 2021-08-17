@@ -250,8 +250,12 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
     auto dout_name = Input(framework::GradVarName("Out"));
 
     std::vector<std::string> grad_names;
+    // NOTE(Aurelius84): Generating grad base name by Input("X") instead of
+    // fixed string to avoid incorrectly sharing same var's allocation in
+    // multi-thread that will cause wrong calculation result.
+    std::string grad_base_name = base_name + "_temp_grad_";
 
-    LodTensorVectorResizeFromLodTensorArray(scope, "grad_name", Input("X"),
+    LodTensorVectorResizeFromLodTensorArray(scope, grad_base_name, Input("X"),
                                             &grad_names);
 
     auto use_stack = Attr<bool>("use_stack");

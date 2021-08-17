@@ -15,6 +15,8 @@
 import logging
 import sys
 
+__all__ = []
+
 
 class LoggerFactory:
     @staticmethod

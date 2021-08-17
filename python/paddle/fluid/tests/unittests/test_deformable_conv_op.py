@@ -285,6 +285,19 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
         self.assertRaises(TypeError, test_invalid_offset)
 
+        def test_invalid_filter():
+            paddle.enable_static()
+            input = fluid.data(
+                name='input_filter', shape=[None, 3, 32, 32], dtype='float32')
+            offset = fluid.data(
+                name='offset_filter', shape=[None, 3, 32, 32], dtype='float32')
+            mask = fluid.data(
+                name='mask_filter', shape=[None, 3, 32, 32], dtype='float32')
+            loss = fluid.layers.deformable_conv(
+                input, offset, mask, num_filters=4, filter_size=0)
+
+        self.assertRaises(ValueError, test_invalid_filter)
+
 
 class TestDeformConv2DAPI(unittest.TestCase):
     def test_api(self):

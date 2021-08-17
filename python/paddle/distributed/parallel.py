@@ -15,7 +15,8 @@
 import os
 import six
 import warnings
-from multiprocessing import Process, Manager
+from multiprocessing import Process  # noqa: F401
+from multiprocessing import Manager  # noqa: F401
 import time
 import sys
 
@@ -26,9 +27,9 @@ from paddle.fluid import core
 from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
 
-__all__ = ["init_parallel_env"]
+__all__ = []
 
 ParallelStrategy = core.ParallelStrategy
 
@@ -149,7 +150,6 @@ def init_parallel_env():
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
     if init_gloo:
         ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
-        ep_rank = parallel_env.trainer_endpoints[parallel_env.rank].split(":")
         manager = Manager()
         # glboal dict to store status
         http_server_d = manager.dict()
@@ -193,6 +193,12 @@ def init_parallel_env():
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place))
+
+    other_endpoints = strategy.trainer_endpoints[:]
+    other_endpoints.remove(strategy.current_endpoint)
+    if strategy.local_rank == 0:
+        wait_server_ready(other_endpoints)
+
     parallel_helper._init_parallel_ctx()
 
     # 5: init gloo context (step 2: gloo init)

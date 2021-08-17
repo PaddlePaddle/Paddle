@@ -34,6 +34,7 @@ TEST(AnalysisPredictor, analysis_off) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(false);
+  LOG(INFO) << config.Summary();
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
@@ -68,6 +69,7 @@ TEST(AnalysisPredictor, analysis_on) {
 #else
   config.DisableGpu();
 #endif
+  LOG(INFO) << config.Summary();
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
@@ -104,6 +106,7 @@ TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
   config.SwitchUseFeedFetchOps(false);
+  LOG(INFO) << config.Summary();
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
   auto w0 = predictor->GetInputTensor("firstw");
@@ -144,6 +147,7 @@ TEST(AnalysisPredictor, Clone) {
   config.SetModel(FLAGS_dirname);
   config.SwitchUseFeedFetchOps(true);
   config.SwitchIrOptim(true);
+  LOG(INFO) << config.Summary();
 
   std::vector<std::unique_ptr<PaddlePredictor>> predictors;
   predictors.emplace_back(CreatePaddlePredictor(config));

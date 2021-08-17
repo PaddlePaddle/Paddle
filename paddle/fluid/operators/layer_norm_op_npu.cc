@@ -81,7 +81,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       Tensor value(x->type());
       value.mutable_data<T>({1}, place);
       FillNpuTensorWithConstant<T>(&value, static_cast<T>(1.0));
-      auto runner =
+      const auto& runner =
           NpuOpRunner("FillD", {value}, {default_scale}, {{"dims", axes}});
       runner.Run(stream);
       scale = &default_scale;
@@ -95,7 +95,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       Tensor value(x->type());
       value.mutable_data<T>({1}, place);
       FillNpuTensorWithConstant<T>(&value, static_cast<T>(0));
-      auto runner =
+      const auto& runner =
           NpuOpRunner("FillD", {value}, {default_bias}, {{"dims", axes}});
       runner.Run(stream);
       bias = &default_bias;
@@ -110,7 +110,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       cast_scale.Resize(scale->dims());
       cast_scale.mutable_data<T>(ctx.GetPlace());
       auto dst_dtype = ConvertToNpuDtype(x->type());
-      auto runner_cast_scale =
+      const auto& runner_cast_scale =
           NpuOpRunner("Cast", {*scale}, {cast_scale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_scale.Run(stream);
@@ -125,7 +125,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       cast_bias.Resize(bias->dims());
       cast_bias.mutable_data<T>(ctx.GetPlace());
       auto dst_dtype = ConvertToNpuDtype(x->type());
-      auto runner_cast_bias =
+      const auto& runner_cast_bias =
           NpuOpRunner("Cast", {*bias}, {cast_bias},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_bias.Run(stream);
@@ -163,18 +163,18 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       variance->mutable_data<T>(ctx.GetPlace());
     }
 
-    auto runner = NpuOpRunner("LayerNorm", {*x, cast_scale, cast_bias},
-                              {*y, *tmp_mean, *tmp_variance},
-                              {{"begin_norm_axis", begin_norm_axis},
-                               {"begin_params_axis", begin_norm_axis},
-                               {"epsilon", epsilon}});
+    const auto& runner = NpuOpRunner("LayerNorm", {*x, cast_scale, cast_bias},
+                                     {*y, *tmp_mean, *tmp_variance},
+                                     {{"begin_norm_axis", begin_norm_axis},
+                                      {"begin_params_axis", begin_norm_axis},
+                                      {"epsilon", epsilon}});
     runner.Run(stream);
 
     // cast back from FP16 to FP32
     if (x->type() == framework::proto::VarType::FP16 &&
         mean->type() == framework::proto::VarType::FP32) {
       auto dst_dtype = ConvertToNpuDtype(mean->type());
-      auto runner_cast_mean =
+      const auto& runner_cast_mean =
           NpuOpRunner("Cast", {*tmp_mean}, {*mean},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_mean.Run(stream);
@@ -183,7 +183,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     if (x->type() == framework::proto::VarType::FP16 &&
         variance->type() == framework::proto::VarType::FP32) {
       auto dst_dtype = ConvertToNpuDtype(variance->type());
-      auto runner_cast_variance =
+      const auto& runner_cast_variance =
           NpuOpRunner("Cast", {*tmp_variance}, {*variance},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_variance.Run(stream);
@@ -250,7 +250,7 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       Tensor value(x->type());
       value.mutable_data<T>({1}, place);
       FillNpuTensorWithConstant<T>(&value, static_cast<T>(1.0));
-      auto runner =
+      const auto& runner =
           NpuOpRunner("FillD", {value}, {default_scale}, {{"dims", axes}});
       runner.Run(stream);
       scale = &default_scale;
@@ -265,7 +265,7 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       cast_scale.Resize(scale->dims());
       cast_scale.mutable_data<T>(ctx.GetPlace());
       auto dst_dtype = ConvertToNpuDtype(x->type());
-      auto runner_cast_scale =
+      const auto& runner_cast_scale =
           NpuOpRunner("Cast", {*scale}, {cast_scale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_scale.Run(stream);
@@ -280,7 +280,7 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       cast_mean.Resize(mean->dims());
       cast_mean.mutable_data<T>(ctx.GetPlace());
       auto dst_dtype = ConvertToNpuDtype(x->type());
-      auto runner_cast_mean =
+      const auto& runner_cast_mean =
           NpuOpRunner("Cast", {*mean}, {cast_mean},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_mean.Run(stream);
@@ -295,7 +295,7 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       cast_variance.Resize(variance->dims());
       cast_variance.mutable_data<T>(ctx.GetPlace());
       auto dst_dtype = ConvertToNpuDtype(x->type());
-      auto runner_cast_variance =
+      const auto& runner_cast_variance =
           NpuOpRunner("Cast", {*variance}, {cast_variance},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_variance.Run(stream);
@@ -343,16 +343,16 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       dbias->mutable_data<T>(ctx.GetPlace());
     }
 
-    auto runner = NpuOpRunner("LayerNormGrad",
-                              {*dy, *x, cast_variance, cast_mean, cast_scale},
-                              {*dx, *tmp_dscale, *tmp_dbias}, {});
+    const auto& runner = NpuOpRunner(
+        "LayerNormGrad", {*dy, *x, cast_variance, cast_mean, cast_scale},
+        {*dx, *tmp_dscale, *tmp_dbias}, {});
     runner.Run(stream);
 
     // cast back from FP16 to FP32
     if (x->type() == framework::proto::VarType::FP16 &&
         dscale->type() == framework::proto::VarType::FP32) {
       auto dst_dtype = ConvertToNpuDtype(dscale->type());
-      auto runner_cast_dscale =
+      const auto& runner_cast_dscale =
           NpuOpRunner("Cast", {*tmp_dscale}, {*dscale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_dscale.Run(stream);
@@ -361,7 +361,7 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     if (x->type() == framework::proto::VarType::FP16 &&
         dbias->type() == framework::proto::VarType::FP32) {
       auto dst_dtype = ConvertToNpuDtype(dbias->type());
-      auto runner_cast_dbias =
+      const auto& runner_cast_dbias =
           NpuOpRunner("Cast", {*tmp_dbias}, {*dbias},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_dbias.Run(stream);

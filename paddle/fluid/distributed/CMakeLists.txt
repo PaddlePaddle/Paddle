@@ -11,8 +11,8 @@ if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
             "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 endif()
 
-add_subdirectory(table)
 add_subdirectory(service)
+add_subdirectory(table)
 add_subdirectory(test)
 add_subdirectory(index_dataset)
 

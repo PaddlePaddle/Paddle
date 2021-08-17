@@ -17,7 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import inspect
-import gast
+from paddle.utils import gast
 
 import paddle
 import paddle.fluid as fluid
@@ -64,13 +64,11 @@ def dyfunc_int_to_tensor(x):
 
 
 def dyfunc_float_to_tensor(x):
-    res = paddle.to_tensor(2.0)
-    return res
+    return paddle.to_tensor(2.0)
 
 
 def dyfunc_bool_to_tensor(x):
-    res = paddle.to_tensor(True)
-    return res
+    return paddle.to_tensor(True)
 
 
 class TestDygraphBasicApi_ToVariable(unittest.TestCase):

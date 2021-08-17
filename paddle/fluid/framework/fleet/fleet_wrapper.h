@@ -28,7 +28,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/heter_service.h"
+#include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -209,7 +209,8 @@ class FleetWrapper {
       std::vector<std::vector<float>>* push_values,
       std::vector<::std::future<int32_t>>* push_sparse_status,
       const int batch_size, const bool use_cvm, const bool dump_slot,
-      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm);
+      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
+      const bool scale_sparse_gradient_with_batch_size);
 
   // Push sparse variables to server in async mode
   void PushSparseFromTensorWithLabelAsync(

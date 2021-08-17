@@ -18,9 +18,40 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/bfloat16.h"
 
 namespace paddle {
 namespace operators {
+
+namespace {
+template <typename T>
+inline void UniformRealDistribution(T *data, const int64_t &size,
+                                    const float &min, const float &max,
+                                    const unsigned int &seed) {
+  VLOG(4) << "[CPU] UniformRandomKernel<T>";
+  std::uniform_real_distribution<T> dist(static_cast<T>(min),
+                                         static_cast<T>(max));
+  auto engine = paddle::framework::GetCPURandomEngine(seed);
+
+  for (int64_t i = 0; i < size; ++i) {
+    data[i] = dist(*engine);
+  }
+}
+
+template <>
+inline void UniformRealDistribution(paddle::platform::bfloat16 *data,
+                                    const int64_t &size, const float &min,
+                                    const float &max,
+                                    const unsigned int &seed) {
+  VLOG(4) << "[CPU] UniformRandomKernel<bfloat16>";
+  std::uniform_real_distribution<float> dist(min, max);
+  auto engine = paddle::framework::GetCPURandomEngine(seed);
+
+  for (int64_t i = 0; i < size; ++i) {
+    data[i] = static_cast<paddle::platform::bfloat16>(dist(*engine));
+  }
+}
+}  // namespace
 
 // It seems that Eigen::Tensor::random in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
@@ -61,17 +92,11 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
           framework::ToTypeName(out_var->Type())));
     }
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
-
     int64_t size = tensor->numel();
-    std::uniform_real_distribution<T> dist(
-        static_cast<T>(ctx.Attr<float>("min")),
-        static_cast<T>(ctx.Attr<float>("max")));
-    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
 
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(*engine);
-    }
+    UniformRealDistribution<T>(
+        data, size, ctx.Attr<float>("min"), ctx.Attr<float>("max"),
+        static_cast<unsigned int>(ctx.Attr<int>("seed")));
 
     unsigned int diag_num =
         static_cast<unsigned int>(ctx.Attr<int>("diag_num"));
@@ -257,9 +282,12 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::UniformRandomOpVarTypeInference);
 
-REGISTER_OP_CPU_KERNEL(uniform_random,
-                       paddle::operators::CPUUniformRandomKernel<float>,
-                       paddle::operators::CPUUniformRandomKernel<double>);
-REGISTER_OP_CPU_KERNEL(uniform_random_batch_size_like,
-                       paddle::operators::CPUUniformRandomKernel<float>,
-                       paddle::operators::CPUUniformRandomKernel<double>);
+REGISTER_OP_CPU_KERNEL(
+    uniform_random, paddle::operators::CPUUniformRandomKernel<float>,
+    paddle::operators::CPUUniformRandomKernel<double>,
+    paddle::operators::CPUUniformRandomKernel<paddle::platform::bfloat16>);
+REGISTER_OP_CPU_KERNEL(
+    uniform_random_batch_size_like,
+    paddle::operators::CPUUniformRandomKernel<float>,
+    paddle::operators::CPUUniformRandomKernel<double>,
+    paddle::operators::CPUUniformRandomKernel<paddle::platform::bfloat16>);
