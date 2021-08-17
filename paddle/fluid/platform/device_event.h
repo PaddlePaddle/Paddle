@@ -236,7 +236,7 @@ struct EventWaitFunctionRegisterer : public framework::Registrar {
   explicit EventWaitFunctionRegisterer(EventWaitFunction func) {
     auto waiter_idx = DeviceTypeToId(waiter_type);
     auto event_idx = DeviceTypeToId(event_type);
-    VLOG(3) << "register event_finisher with waiter_idx : " << type_idx
+    VLOG(3) << "register event_finisher with waiter_idx : " << waiter_idx
             << ", event_idx : " << event_idx;
     DeviceEvent::event_waiter_[waiter_idx][event_idx] = func;
   }
