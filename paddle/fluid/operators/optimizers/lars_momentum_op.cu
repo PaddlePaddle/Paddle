@@ -14,7 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
+
+#ifdef PADDLE_WITH_CUDA
+#define BLOCK_DIM 256
+#endif
+#ifdef PADDLE_WITH_HIP
+#define BLOCK_DIM 256
+#endif
 
 namespace paddle {
 namespace operators {
@@ -23,25 +31,66 @@ template <typename T>
 using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
 template <typename T, typename MT>
+__device__ inline MT L2NormCalculationKernel(
+    const T* __restrict__ data, int tid, int64_t numel,
+    const MultiPrecisionType<T> rescale_grad = 1) {
+  static __shared__ MultiPrecisionType<T> buffer[BLOCK_DIM];
+  static __shared__ MultiPrecisionType<T> result;
+  int reduce_times = (gridDim.x + BLOCK_DIM - 1) / BLOCK_DIM;
+  int stride = BLOCK_DIM * BLOCK_DIM;
+
+  if (reduce_times == 1) {
+    if (tid < gridDim.x * BLOCK_DIM) {
+      MultiPrecisionType<T> val = static_cast<MultiPrecisionType<T>>(data[tid]);
+      buffer[blockIdx.x] = math::blockReduceSum<MultiPrecisionType<T>>(
+          val * val * rescale_grad, FINAL_MASK);
+      if (tid < BLOCK_DIM) {
+        result = math::blockReduceSum<MultiPrecisionType<T>>(buffer[tid],
+                                                             FINAL_MASK);
+      }
+    }
+  } else {
+    for (int i = 0; i < reduce_times; ++i) {
+      int rest_num = numel - stride * i;
+      int tid_upper_limit = stride < rest_num ? stride : rest_num;
+      if (tid < tid_upper_limit) {
+        MultiPrecisionType<T> val =
+            static_cast<MultiPrecisionType<T>>(data[stride * i + tid]);
+        buffer[blockIdx.x] = math::blockReduceSum<MultiPrecisionType<T>>(
+            val * val * rescale_grad, FINAL_MASK);
+        if (tid < BLOCK_DIM) {
+          result += math::blockReduceSum<MultiPrecisionType<T>>(buffer[tid],
+                                                                FINAL_MASK);
+        }
+      }
+    }
+  }
+  return static_cast<MT>(std::sqrt(result));
+}
+
+template <typename T, typename MT>
 __global__ void MomentumLarsKernel(
-    const T* p, const T* g, const MT* v,
-    const MultiPrecisionType<T>* learning_rate, const MT mu, const int64_t num,
-    const MT lars_coeff, const MT lars_weight_decay,
-    const MultiPrecisionType<T>* p_norm, const MultiPrecisionType<T>* g_norm,
-    T* p_out, MT* v_out, const MT epsilon, const MT* master_p, MT* master_p_out,
-    const MultiPrecisionType<T> rescale_grad) {
+    const T* __restrict__ p, const T* __restrict__ g, const MT* __restrict__ v,
+    const MultiPrecisionType<T>* learning_rate, const MT mu,
+    const MT lars_coeff, const MT lars_weight_decay, T* p_out, MT* v_out,
+    const MT epsilon, const MT* master_p, MT* master_p_out,
+    const MultiPrecisionType<T> rescale_grad, int64_t numel) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
   const MT lr = static_cast<MT>(learning_rate[0]);
+  MT re_scale = static_cast<MT>(rescale_grad);
   MT local_lr = lr;
-  const MT p_n = static_cast<MT>(p_norm[0]);
-  const MT g_n = static_cast<MT>(g_norm[0]);
+  MT p_n = L2NormCalculationKernel<T, MT>(p, tid, numel);
+  MT g_n = L2NormCalculationKernel<T, MT>(g, tid, numel, rescale_grad);
 
   if (lars_weight_decay > static_cast<MT>(0) && p_n > static_cast<MT>(0) &&
       g_n > static_cast<MT>(0)) {
     local_lr =
         lr * lars_coeff * p_n / (g_n + lars_weight_decay * p_n + epsilon);
   }
-  CUDA_KERNEL_LOOP(i, num) {
-    MT grad = static_cast<MT>(g[i]) * static_cast<MT>(rescale_grad);
+
+  for (int i = tid; i < numel; i += blockDim.x * gridDim.x) {
+    MT grad = static_cast<MT>(g[i]) * re_scale;
     MT param = master_p ? master_p[i] : static_cast<MT>(p[i]);
 
     MT v_new = v[i] * mu + local_lr * (grad + lars_weight_decay * param);
@@ -49,19 +98,20 @@ __global__ void MomentumLarsKernel(
 
     v_out[i] = v_new;
     p_out[i] = static_cast<T>(p_new);
-    if (master_p_out) master_p_out[i] = p_new;
+
+    if (master_p_out) {
+      master_p_out[i] = p_new;
+    }
   }
 }
 
 template <typename DeviceContext, typename T>
 class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
-  using MPDType = MultiPrecisionType<T>;
-
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
     if (multi_precision) {
-      InnerCompute<MPDType>(ctx, multi_precision);
+      InnerCompute<MultiPrecisionType<T>>(ctx, multi_precision);
     } else {
       InnerCompute<T>(ctx, multi_precision);
     }
@@ -105,41 +155,21 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     MT lars_weight_decay =
         static_cast<MT>(ctx.Attr<float>("lars_weight_decay"));
     MT epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
-    MPDType rescale_grad =
-        static_cast<MPDType>(ctx.Attr<float>("rescale_grad"));
+    MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
 
     auto* p = param->data<T>();
     auto* g = grad->data<T>();
     auto* v = velocity->data<MT>();
-    auto* lr = learning_rate->data<MPDType>();
+    auto* lr = learning_rate->data<MT>();
 
-    int block = 512;
-    int grid = (param->numel() + block - 1) / block;
-
-    auto eigen_p = framework::EigenVector<T>::Flatten(*param);
-    auto eigen_g = framework::EigenVector<T>::Flatten(*grad);
-    // calculate norms using eigein and launch the kernel.
-    framework::Tensor p_norm_t, g_norm_t;
-    p_norm_t.Resize({1});
-    g_norm_t.Resize({1});
-    auto* p_norm_data = p_norm_t.mutable_data<MPDType>(ctx.GetPlace());
-    auto* g_norm_data = g_norm_t.mutable_data<MPDType>(ctx.GetPlace());
-    auto ep_norm = framework::EigenScalar<MPDType>::From(p_norm_t);
-    auto eg_norm = framework::EigenScalar<MPDType>::From(g_norm_t);
-
-    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
-
-    // eigen unsupport fp16 l2-norm
-    ep_norm.device(*place) =
-        eigen_p.template cast<MPDType>().square().sum().sqrt();
-    eg_norm.device(*place) =
-        (eigen_g.template cast<MPDType>() * rescale_grad).square().sum().sqrt();
+    int64_t numel = param->numel();
+    int block = BLOCK_DIM;
+    int grid = (numel + block - 1) / block;
 
     MomentumLarsKernel<
         T, MT><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-        p, g, v, lr, mu, param->numel(), lars_coeff, lars_weight_decay,
-        p_norm_data, g_norm_data, p_out, v_out, epsilon, master_p, master_p_out,
-        rescale_grad);
+        p, g, v, lr, mu, lars_coeff, lars_weight_decay, p_out, v_out, epsilon,
+        master_p, master_p_out, rescale_grad, numel);
   }
 };
 
