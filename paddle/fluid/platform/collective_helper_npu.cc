@@ -150,8 +150,9 @@ void HCCLCommContext::ReleaseHCCLComms() {
   }
 }
 
-static const int g_hccl_port_start = 60000 static const int g_hccl_port_end =
-    60015 static const int g_avoid_hccl_ports_steps = 0;
+static const int g_hccl_port_start = 60000;
+static const int g_hccl_port_end = 60015;
+static const int g_avoid_hccl_ports_steps = 0;
 
 int GetSocketPort(int fd) {
   struct sockaddr_in local;
