@@ -75,7 +75,7 @@ class TestBeamSearchNPUOp(OpTest):
         self.parent_idx = np.array([0, 1, 2, 3])
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+        self.check_output_with_place(self.place, atol=1e-3)
 
 
 class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
