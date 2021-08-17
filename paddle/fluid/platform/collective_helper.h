@@ -333,6 +333,7 @@ class BKCLCommContext {
 int GetSocketPort(int fd);
 void WaitPortClosed(const std::vector<int>& ports);
 void WaitToBind(const std::vector<int>& ports);
+void WaitHcclPorts(int devce_id);
 #endif
 
 }  // namespace platform
