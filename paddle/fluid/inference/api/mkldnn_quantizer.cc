@@ -48,7 +48,8 @@ static LoDTensor CreateScaleTensor(int64_t channels_num = 1);
 
 bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
   PrettyLogH1("--- Calculating scales for quantization");
-  using VariableNameMap = std::map<std::string, std::vector<std::string>>;
+  using VariableNameMap =
+      paddle::ordered_map<std::string, std::vector<std::string>>;
   std::map<std::string, std::map<std::string, LoDTensor>> gathered_data;
   for (const auto* op : predictor_.inference_program_->Block(0).AllOps()) {
     if (platform::HasOpINT8DataType(op)) {

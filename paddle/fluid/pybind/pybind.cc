@@ -1860,7 +1860,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
            [](const OperatorBase &op)
-               -> std::map<std::string, std::vector<std::string>> {
+               -> paddle::ordered_map<std::string, std::vector<std::string>> {
                  return op.Outputs();
                })
       .def("output_vars",
