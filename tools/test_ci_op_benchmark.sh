@@ -282,6 +282,8 @@ function cpu_op_benchmark {
   LOG "[INFO] Start run op benchmark cpu test ..."
   load_CHANGE_OP_FILES
   prepare_benchmark_environment
+  load_CHANGE_OP_MAP
+  load_BENCHMARK_OP_MAP
   build_whl
   summary_problems
   LOG "[INFO] Op benchmark run success and no error!"
@@ -291,8 +293,6 @@ function cpu_op_benchmark {
 
 function gpu_op_benchmark {
   LOG "[INFO] Start run op benchmark gpu test ..."
-  load_CHANGE_OP_FILES
-  load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
   run_op_benchmark_test
   summary_problems
