@@ -2553,6 +2553,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("Customized", BuildStrategy::GradientScaleStrategy::kCustomized);
 
   build_strategy.def(py::init())
+      .def("_clear_finalized", &BuildStrategy::ClearFinalized)
       .def_property(
           "reduce_strategy",
           [](const BuildStrategy &self) { return self.reduce_; },
@@ -3074,6 +3075,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool fix_op_run_order) {
             self.fix_op_run_order_ = fix_op_run_order;
           })
+      .def("_copy",
+           [](const BuildStrategy &self) {
+             auto new_bs = self;
+             new_bs.ClearFinalized();
+             return new_bs;
+           })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);
