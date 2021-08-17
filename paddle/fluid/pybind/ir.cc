@@ -301,6 +301,7 @@ void BindPass(py::module *m) {
   // pass_attr_types to indicate the type of "nranks" explicitly,
   // i.e. pass_attr_types = {"nranks": "size_t"} means that the type of
   // "nranks" is size_t in C++.
+  REGISTER_PASS_ATTR_GETTER_SETTER("bool", bool);
   REGISTER_PASS_ATTR_GETTER_SETTER("int", int64_t);
   REGISTER_PASS_ATTR_GETTER_SETTER("long", int64_t);
   REGISTER_PASS_ATTR_GETTER_SETTER("size_t", size_t);
@@ -309,6 +310,7 @@ void BindPass(py::module *m) {
   REGISTER_PASS_ATTR_GETTER_SETTER("float", double);
   REGISTER_PASS_ATTR_GETTER_SETTER("bytes", std::string);
   REGISTER_PASS_ATTR_GETTER_SETTER("str", std::string);
+  REGISTER_PASS_ATTR_GETTER_SETTER("list[str]", std::vector<std::string>);
 
   m->def(
       "apply_pass",

@@ -111,6 +111,8 @@ class BlockDesc {
 
   ProgramDesc *Program() const { return this->prog_; }
 
+  void MoveFrom(BlockDesc *block);
+
  private:
   ProgramDesc *prog_;       // not_own
   proto::BlockDesc *desc_;  // not_own

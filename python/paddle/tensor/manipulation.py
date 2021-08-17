@@ -38,6 +38,55 @@ __all__ = []
 
 
 @dygraph_only
+def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+    This function fill the value into the x Tensor's diagonal inplace.
+    Args:
+        x(Tensor): ``x`` is the original Tensor
+        value(Scale): ``value`` is the value to filled in x
+        offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
+        wrap(bool,optional): the diagonal 'wrapped' after N columns for tall matrices.
+        name(str,optional): Name for the operation (optional, default is None)
+    Returns:
+        Tensor: Tensor with diagonal filled with value.
+    Returns type:
+        dtype is same as x Tensor
+    Examples:
+        .. code-block:: python
+            import paddle
+            x = paddle.ones((4, 3)) * 2
+            x.fill_diagonal_(1.0)
+            print(x.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+    """
+    helper = LayerHelper("fill_diagonal_", **locals())
+    check_type(x, 'X', (Variable), 'fill_diagonal_')
+    dtype = helper.input_dtype('x')
+    check_dtype(dtype, 'X',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'fill_diagonal_')
+    check_type(value, 'value', (bool, int, float), 'fill_diagonal_')
+    check_type(wrap, 'wrap', (bool), 'fill_diagonal_')
+
+    inshape = x.shape
+    inshapeset = set(inshape)
+    assert len(inshape) >= 2, ('Tensor dims should >= 2 in fill_diagonal_ API')
+    if len(inshape) > 2:
+        assert len(inshapeset) == 1, (
+            'Tensor dims should be equal while input dims > 2 in fill_diagonal_ API'
+        )
+    if len(inshape) == 2:
+        return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset,
+                                       'wrap', wrap)
+    return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
+                                   True)
+
+
+setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
+
+
+@dygraph_only
 def tolist(x):
     """
     **Notes**:
