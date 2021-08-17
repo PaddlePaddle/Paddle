@@ -329,5 +329,11 @@ class BKCLCommContext {
 };
 #endif
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+int GetSocketPort(int fd);
+void WaitPortClosed(const std::vector<int>& ports);
+void WaitToBind(const std::vector<int>& ports);
+#endif
+
 }  // namespace platform
 }  // namespace paddle

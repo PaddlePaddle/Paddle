@@ -97,6 +97,10 @@ DEFINE_string(
     npu_config_path, "",
     "The absolute path of configuration json file, like: /tmp/config.json. "
     "If proveided, it will be passed to aclInit().");
+
+DEFINE_bool(
+    avoid_hccl_port_conflict, false,
+    "HCCL use 60000~60015 ports so we should not use them to avoid conflict!");
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

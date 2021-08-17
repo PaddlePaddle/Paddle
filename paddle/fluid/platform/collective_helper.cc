@@ -17,6 +17,8 @@
 
 #include "paddle/fluid/platform/cuda_resource_pool.h"
 
+DECLARE_bool(avoid_hccl_port_conflict);
+
 namespace paddle {
 namespace platform {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
