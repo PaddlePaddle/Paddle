@@ -5246,6 +5246,7 @@ class PipelineOptimizer(object):
         dtype = paddle.float16 if fp16 else None
         fused_gradients = []
         fused_merged_gradients = []
+        fused_merged_gradients_back_fp32 = []
         # create fused vars for grad and param
         for grad_param_segment in grad_param_segments:
             grad_segment = grad_param_segment[0]
@@ -5262,6 +5263,14 @@ class PipelineOptimizer(object):
                 stop_gradient=True)
             fused_gradients.append(fused_grad)
             fused_merged_gradients.append(fused_merged_grad)
+            if fp16:
+                fused_merged_grad_fp32 = main_block.create_var(
+                    name='FusedMergedGrad_{}'.format(grad_segment[0].name) +
+                    merged_suffix + '@BACK@FP32',
+                    dtype=paddle.float32,
+                    persistable=True,
+                    stop_gradient=True)
+                fused_merged_gradients_back_fp32.append(fused_merged_grad_fp32)
 
         assert len(fused_gradients) == len(grad_param_segments)
         assert len(fused_merged_gradients) == len(grad_param_segments)
@@ -5295,16 +5304,34 @@ class PipelineOptimizer(object):
             main_block._insert_op_without_sync(
                 first_back_op_idx + offset,
                 type="coalesce_tensor",
-                inputs={"Input": params},
-                outputs={"Output": grads,
-                         "FusedOutput": fused_merged_grad},
+                inputs={"Input": fused_grad},
+                outputs={
+                    "Output": fused_grad,
+                    "FusedOutput": fused_merged_grad
+                },
                 attrs={
                     "copy_data": False,
                     "use_align": True,
                     "dtype": dtype if dtype is not None else grads[0].dtype,
-                    self._op_role_key: self._op_role.Forward
+                    self._op_role_key: self._op_role.Backward
                 })
             offset += 1
+            if fp16:
+                fused_merged_grad_fp32 = fused_merged_gradients_back_fp32[i]
+                main_block._insert_op_without_sync(
+                    first_back_op_idx + offset,
+                    type="coalesce_tensor",
+                    inputs={"Input": fused_merged_grad},
+                    outputs={
+                        "Output": fused_merged_grad,
+                        "FusedOutput": fused_merged_grad_fp32
+                    },
+                    attrs={
+                        "copy_data": False,
+                        "use_align": True,
+                        "dtype": paddle.float32,
+                        self._op_role_key: self._op_role.Backward
+                    })
 
         first_opt_op_idx += offset
         offset = 0
@@ -5353,17 +5380,11 @@ class PipelineOptimizer(object):
                 attrs={self._op_role_key: self._op_role.Backward, })
             offset += 1
 
-        fp32_gradients = None
         if fp16:
             # if using fp16 allreduce, the optimizer needs fp32 grads, cast them back to fp32
-            fp32_gradients = []
-            for fp16_grad in fused_merged_gradients:
-                fp32_grad = main_block.create_var(
-                    name=fp16_grad.name + '@BACK@FP32',
-                    dtype=paddle.float32,
-                    shape=fp16_grad.shape,
-                    persistable=False,
-                    stop_gradient=True)
+            for i in range(len(fused_merged_gradients)):
+                fp16_grad = fused_merged_gradients[i]
+                fp32_grad = fused_merged_gradients_back_fp32[i]
                 main_block._insert_op(
                     index=first_opt_op_idx + offset,
                     type='cast',
@@ -5375,7 +5396,6 @@ class PipelineOptimizer(object):
                         self._op_role_key: self._op_role.Optimize,
                     })
                 offset += 1
-                fp32_gradients.append(fp32_grad)
 
         # repalce the var with it's name
         for i in range(len(fused_merged_gradients)):
