@@ -9753,19 +9753,18 @@ def prelu(x, mode, param_attr=None, name=None):
 
     There are three modes for the activation:
 
-    .. code-block:: text
-
-        all: All elements share same alpha.
-        channel: Elements in same channel share same alpha.
-        element: All elements do not share alpha. Each element has its own alpha.
+    
+    all: All elements share same alpha.
+    channel: Elements in same channel share same alpha.
+    element: All elements do not share alpha. Each element has its own alpha.
 
     Parameters:
-        - x (Tensor): The input Tensor or LoDTensor with data type float32.
-        - mode (str): The mode for weight sharing.
-        - param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
-        weight (alpha), it can be create by ParamAttr. None by default.
-        For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
-        - name (str, optional): Name for the operation (optional, default is None).
+        x (Tensor): The input Tensor or LoDTensor with data type float32.
+        mode (str): The mode for weight sharing.
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
+            weight (alpha), it can be create by ParamAttr. None by default.
+            For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
+        name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
