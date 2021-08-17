@@ -117,13 +117,11 @@ class Distribution(object):
                 if str(arg_dtype) != 'float64':
                     # "assign" op doesn't support float64. if dtype is float64, float32 variable will be generated
                     #  and converted to float64 later using "cast".
-                    warnings.warn(
-                        "data type of argument only support float32 and float64, your argument will be convert to float32."
-                    )
-                arg_np = arg_np.astype('float32')
+                    warnings.warn( "data type of argument only support float32 and float64, your argument will be convert to float32." )
+                arg_np = arg_np.astype( 'float32' )
             # tmp is used to support broadcast, it summarizes shapes of all the args and get the mixed shape.
             tmp = tmp + arg_np
-            numpy_args.append(arg_np)
+            numpy_args.append( arg_np )
 
         dtype = tmp.dtype
         for arg in numpy_args:
