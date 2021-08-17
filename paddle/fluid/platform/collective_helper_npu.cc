@@ -154,6 +154,7 @@ static const int g_hccl_port_start = 60000;
 static const int g_hccl_port_end = 60015;
 static int g_avoid_hccl_ports_steps = 0;
 
+/*
 int GetSocketPort(int fd) {
   struct sockaddr_in local;
   socklen_t size = sizeof(local);
@@ -186,6 +187,7 @@ void WaitPortClosed(const std::vector<int>& ports) {
     std::this_thread::sleep_for(std::chrono::seconds(123));
   }
 }
+*/
 
 static int Bind(int port) {
   struct sockaddr_in my_addr;
@@ -202,15 +204,17 @@ static int Bind(int port) {
   my_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
   int ret =
       bind(client, (struct sockaddr*)&my_addr, sizeof(struct sockaddr_in));
+
   if (ret != 0) {
-    close(conn);
+    // close(client);
     return -1;
   }
 
   return client;
 }
 
-static int WaitToBind(int port) {
+/*
+static void WaitToBind(int port) {
   while (1) {
     int ret = Bind(port);
     if (ret < 0) {
@@ -223,8 +227,6 @@ static int WaitToBind(int port) {
     VLOG(10) << "bind to port:" << port << " OK";
     break;
   }
-
-  return client;
 }
 
 void WaitToBind(const std::vector<int>& ports) {
@@ -238,6 +240,7 @@ void WaitToBind(const std::vector<int>& ports) {
     close(conn);
   }
 }
+*/
 
 void prepare_dir(const std::string& dir_name) {
   struct stat st;
@@ -258,19 +261,21 @@ std::vector<HCCLConn_> TryToProtectHcclFreePorts() {
   struct timeval start;
   struct timeval now;
   gettimeofday(&start, NULL);
+
+  // occupy
   while (1) {
     bool all_ok = true;
-    for (int i = 0; i < conns.size(); i++) {
-      if (conn[i].socket <= 0) {
+    for (size_t i = 0; i < conns.size(); i++) {
+      if (conns[i].socket <= 0) {
         continue;
       }
 
-      int ret = Bind(port);
+      int ret = Bind(conns[i].port);
       if (ret < 0) {
         all_ok = false;
       }
 
-      conn[i].socket = ret;
+      conns[i].socket = ret;
     }
 
     if (all_ok) {
@@ -285,19 +290,29 @@ std::vector<HCCLConn_> TryToProtectHcclFreePorts() {
   }
 
   std::ostringstream ss;
-  ss << "find free ports, size:" << conns.size() << ", ports:";
+  ss << "find free ports, size:"
+     << ", ports:";
 
-  for (int i = 0; i < conns.size(); i++) {
-    ss << conns[i].port << ","
+  int free_size = 0;
+  for (size_t i = 0; i < conns.size(); i++) {
+    if (conns[i].socket < 0) {
+      continue;
+    }
+
+    ss << conns[i].port << ",";
+    free_size += 1;
   }
-
   LOG(INFO) << ss.str();
 
-  for (int i = 0; i < conns.size(); i++) {
-    close(conns[i].socket);
+  // closed
+  for (size_t i = 0; i < conns.size(); i++) {
+    if (conns[i].socket > 0) {
+      close(conns[i].socket);
+      conns[i].socket = -1;
+    }
   }
 
-  if (conns.size() == 0) {
+  if (free_size == 0) {
     LOG(WARNING) << "not find hccl free ports";
   }
 

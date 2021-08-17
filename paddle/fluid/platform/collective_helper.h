@@ -330,9 +330,9 @@ class BKCLCommContext {
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-int GetSocketPort(int fd);
-void WaitPortClosed(const std::vector<int>& ports);
-void WaitToBind(const std::vector<int>& ports);
+// int GetSocketPort(int fd);
+// void WaitPortClosed(const std::vector<int>& ports);
+// void WaitToBind(const std::vector<int>& ports);
 void WaitHcclPorts(int devce_id);
 
 struct HCCLConn_ {
