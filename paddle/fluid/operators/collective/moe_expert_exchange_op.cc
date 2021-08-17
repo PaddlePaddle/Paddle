@@ -24,24 +24,13 @@ class MoeExpertExchangeOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("local_expert_count"), "Input",
                    "local_expert_count", "MoeExpertExchange");
-    // OP_INOUT_CHECK(ctx->HasInput("local_expert_count"), "Input",
-    // "local_expert_count", "SelectScatter");
-    // OP_INOUT_CHECK(ctx->HasInput("global_expert_count"), "Input",
-    // "global_expert_count", "SelectScatter");
-    // OP_INOUT_CHECK(ctx->HasInput("global_expert_count"), "Input",
-    // "global_expert_count", "MoeExpertExchange");
-    // OP_INOUT_CHECK(ctx->HasInput("in_feat"), "Input", "in_feat",
-    // "SelectScatter");
-    // OP_INOUT_CHECK(ctx->HasInput("n_expert"), "Input", "n_expert",
-    // "SelectScatter");
-    // OP_INOUT_CHECK(ctx->HasInput("world_size"), "Input", "world_size",
-    // "SelectScatter");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MoeExpertExchange");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
-            "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
+            "The ring_id (%d) for moe_expert_exchange op must be non-negative.",
+            ring_id));
     framework::DDim dim = ctx->GetInputDim("local_expert_count");
     if (dim[0] < 0) dim[0] = -1;
     ctx->SetOutputDim("Out", dim);
@@ -60,25 +49,11 @@ class MoeExpertExchangeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("local_expert_count", "(Tensor) tensor send.");
-    // AddInput("global_expert_count", "(Tensor) tensor send.");
-    // AddAttr<std::vector<int>>("local_expert_count", "The shape of the
-    // output");
-    // AddAttr<std::vector<int>>("global_expert_count", "The shape of the
-    // output");
-    // AddInput("local_expert_count", "(Tensor) tensor send.");
-    // AddInput("global_expert_count", "(Tensor) tensor send.");
-    // AddInput("input_buf", "(Tensor) tensor send.");
-    // AddInput("in_feat", "(Tensor) tensor send.");
-    // AddInput("n_expert", "(Tensor) tensor send.");
-    // AddInput("world_size", "(Tensor) tensor send.");
-    // AddAttr<int>("in_feat", "(int default 0) nccl communication ring id.")
-    //     .SetDefault(0);
     AddAttr<int>("n_expert", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("world_size", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddOutput("Out", "(Tensor) the result of alltoall.");
-
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<bool>(
@@ -92,8 +67,6 @@ Scatter tensors from all participators to all participators.
   }
 };
 
-// DECLARE_INPLACE_OP_INFERER(AllToAllInplaceInferer, {"X", "Out"});
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -101,14 +74,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_WITHOUT_GRADIENT(moe_expert_exchange, ops::MoeExpertExchangeOp,
                              ops::MoeExpertExchangeOpMaker);
-// REGISTER_OPERATOR(moe_expert_exchange, ops::MoeExpertExchangeOp,
-// ops::MoeExpertExchangeOpMaker,
-//                   ops::MoeExpertExchangeOpGradMaker<paddle::framework::OpDesc>,
-//                   ops::MoeExpertExchangeOpGradMaker<paddle::imperative::OpBase>)
 
 REGISTER_OP_CPU_KERNEL(moe_expert_exchange,
-                       ops::MoeExpertExchangeOpCPUKernel<float>,
-                       ops::MoeExpertExchangeOpCPUKernel<double>,
                        ops::MoeExpertExchangeOpCPUKernel<int>,
-                       ops::MoeExpertExchangeOpCPUKernel<int64_t>,
-                       ops::MoeExpertExchangeOpCPUKernel<plat::float16>);
+                       ops::MoeExpertExchangeOpCPUKernel<int64_t>);

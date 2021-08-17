@@ -1576,64 +1576,63 @@ def selectscatter(local_input_buf, local_expert_count, \
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        # print("dygraph_mode selectscatter")
-        # print("ring_id", ring_id)
-        # print(local_input_buf)
-        # paddle.fluid.layers.Print(local_expert_count, message="local_input_buf")
-        return core.ops.select_scatter(local_input_buf, 'local_expert_count', local_expert_count, \
-                                    'global_expert_count', global_expert_count,  \
+        return core.ops.select_scatter(local_input_buf, local_expert_count, \
+                                    global_expert_count,  \
                                     'in_feat', in_feat, 'n_expert', n_expert, 'world_size', world_size, \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
-
-        # out = _C_ops.selectscatter(local_input_buf, local_expert_count, 
-        #                             global_expert_count, input_buf, \
-        #                             in_feat, n_expert, world_size, \
-        #                             out_tensor_list, 'use_calc_stream', use_calc_stream, \
-        #                             'ring_id', ring_id)
     else:
-        # return
-        print("static selectscatter")
         op_type = 'select_scatter'
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(
             dtype=local_input_buf.dtype)
-
-        # if not isinstance(in_tensor_list, list):
-        #     raise ValueError("The type of 'in_tensor_list' for all_to_all "
-        #                      "should be list.")
-        # for elem in in_tensor_list:
+        for elem in local_input_buf:
+            check_variable_and_dtype(
+                elem, 'local_input_buf',
+                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                'select_scatter')
+        # for elem in local_expert_count:
         #     check_variable_and_dtype(
-        #         elem, 'in_tensor_list',
-        #         ['float16', 'float32', 'float64', 'int32', 'int64'],
-        #         'all_to_all')
-        # if not isinstance(out_tensor_list, list):
-        #     raise ValueError("The type of 'out_tensor_list' for all_to_all "
-        #                      "should be list.")
-        # if len(out_tensor_list) != 0:
-        #     raise ValueError("The 'out_tensor_list' for all_to_all "
-        #                      "must be an empty list.")
+        #         elem, 'local_expert_count',
+        #         ['int32', 'int64'],
+        #         'select_scatter')
+        # for elem in global_expert_count:
+        #     check_variable_and_dtype(
+        #         elem, 'global_expert_count',
+        #         ['int32', 'int64'],
+        #         'select_scatter')
+        # check_variable_and_dtype(
+        #         in_feat, 'in_feat',
+        #         ['int32', 'int64'],
+        #         'moe_expert_exchange')
+        # check_variable_and_dtype(
+        #         n_expert, 'n_expert',
+        #         ['int32', 'int64'],
+        #         'moe_expert_exchange')
+        # check_variable_and_dtype(
+        #         world_size, 'world_size',
+        #         ['int32', 'int64'],
+        #         'moe_expert_exchange')
         helper.append_op(
             type=op_type,
             inputs={
                 'local_input_buf': [local_input_buf],
                 'local_expert_count': [local_expert_count],
                 'global_expert_count': [global_expert_count],
-                'input_buf': [input_buf],
-                'in_feat': [in_feat],
-                'n_expert': [n_expert],
-                'world_size': [world_size]
             },
             outputs={'Out': [out]},
             attrs={
-                'ring_id': group,
-                'use_calc_stream': use_calc_stream,
+                'in_feat': in_feat,
+                'n_expert': n_expert,
+                'world_size': world_size,
+                'ring_id': ring_id,
+                'use_calc_stream': use_calc_stream
             })
-    # out_tensor_list.extend(paddle.split(out, nranks, 0))
+        return out
 
 
 def selectgather(output_buf, local_expert_count, \
-                    global_expert_count, local_output_buf, \
+                    global_expert_count, \
                     in_feat, n_expert, world_size, \
                     group=None, use_calc_stream=True):
     """
@@ -1677,64 +1676,58 @@ def selectgather(output_buf, local_expert_count, \
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        # print("dygraph_mode selectscatter")
-        # print("ring_id", ring_id)
-        # print(local_input_buf)
-        # paddle.fluid.layers.Print(local_expert_count, message="local_input_buf")
-        return core.ops.select_scatter(local_input_buf, input_buf, 'local_expert_count', global_expert_count, \
-                                    'global_expert_count', local_expert_count,  \
+        return core.ops.select_scatter(output_buf, global_expert_count, \
+                                    local_expert_count,  \
                                     'in_feat', in_feat, 'n_expert', n_expert, 'world_size', world_size, \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
-
-        # out = _C_ops.selectscatter(local_input_buf, local_expert_count, 
-        #                             global_expert_count, input_buf, \
-        #                             in_feat, n_expert, world_size, \
-        #                             out_tensor_list, 'use_calc_stream', use_calc_stream, \
-        #                             'ring_id', ring_id)
     else:
-        # return
-        print("static selectscatter")
         op_type = 'select_scatter'
         helper = LayerHelper(op_type, **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=local_input_buf.dtype)
+        out = helper.create_variable_for_type_inference(dtype=output_buf.dtype)
 
-        # if not isinstance(in_tensor_list, list):
-        #     raise ValueError("The type of 'in_tensor_list' for all_to_all "
-        #                      "should be list.")
-        # for elem in in_tensor_list:
-        #     check_variable_and_dtype(
-        #         elem, 'in_tensor_list',
-        #         ['float16', 'float32', 'float64', 'int32', 'int64'],
-        #         'all_to_all')
-        # if not isinstance(out_tensor_list, list):
-        #     raise ValueError("The type of 'out_tensor_list' for all_to_all "
-        #                      "should be list.")
-        # if len(out_tensor_list) != 0:
-        #     raise ValueError("The 'out_tensor_list' for all_to_all "
-        #                      "must be an empty list.")
+        for elem in output_buf:
+            check_variable_and_dtype(
+                elem, 'output_buf',
+                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                'select_gather')
+        for elem in local_expert_count:
+            check_variable_and_dtype(elem, 'local_expert_count',
+                                     ['int32', 'int64'], 'select_gather')
+        for elem in global_expert_count:
+            check_variable_and_dtype(elem, 'global_expert_count',
+                                     ['int32', 'int64'], 'select_gather')
+        # check_variable_and_dtype(
+        #         in_feat, 'in_feat',
+        #         ['int32', 'int64'],
+        #         'moe_expert_exchange')
+        # check_variable_and_dtype(
+        #         n_expert, 'n_expert',
+        #         ['int32', 'int64'],
+        #         'moe_expert_exchange')
+        # check_variable_and_dtype(
+        #         world_size, 'world_size',
+        #         ['int32', 'int64'],
+        #         'moe_expert_exchange')
         helper.append_op(
             type=op_type,
-            inputs={
-                'local_input_buf': [local_input_buf],
+            inputs={'output_buf': output_buf},
+            outputs={'Out': out},
+            attrs={
                 'local_expert_count': [local_expert_count],
                 'global_expert_count': [global_expert_count],
-                'input_buf': [input_buf],
                 'in_feat': [in_feat],
                 'n_expert': [n_expert],
-                'world_size': [world_size]
-            },
-            outputs={'Out': [out]},
-            attrs={
+                'world_size': [world_size],
                 'ring_id': group,
                 'use_calc_stream': use_calc_stream,
             })
-    # out_tensor_list.extend(paddle.split(out, nranks, 0))
+        return out
+
 
 def moe_expert_exchange(local_expert_count, \
-                    n_expert, world_size, \
-                    group=None, use_calc_stream=True):
+                        n_expert, world_size, \
+                        group=None, use_calc_stream=True):
     """
     Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
     
@@ -1776,59 +1769,31 @@ def moe_expert_exchange(local_expert_count, \
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        # print("dygraph_mode selectscatter")
-        # print("ring_id", ring_id)
-        # print(local_input_buf)
-        # paddle.fluid.layers.Print(local_expert_count, message="local_input_buf")
         return core.ops.moe_expert_exchange(local_expert_count, \
                                     'n_expert', n_expert, 'world_size', world_size, \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
-
-        # out = _C_ops.selectscatter(local_input_buf, local_expert_count, 
-        #                             global_expert_count, input_buf, \
-        #                             in_feat, n_expert, world_size, \
-        #                             out_tensor_list, 'use_calc_stream', use_calc_stream, \
-        #                             'ring_id', ring_id)
     else:
-        # return
-        print("static selectscatter")
-        op_type = 'select_scatter'
+        op_type = 'moe_expert_exchange'
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(
-            dtype=local_input_buf.dtype)
+            dtype=local_expert_count.dtype)
 
-        # if not isinstance(in_tensor_list, list):
-        #     raise ValueError("The type of 'in_tensor_list' for all_to_all "
-        #                      "should be list.")
-        # for elem in in_tensor_list:
-        #     check_variable_and_dtype(
-        #         elem, 'in_tensor_list',
-        #         ['float16', 'float32', 'float64', 'int32', 'int64'],
-        #         'all_to_all')
-        # if not isinstance(out_tensor_list, list):
-        #     raise ValueError("The type of 'out_tensor_list' for all_to_all "
-        #                      "should be list.")
-        # if len(out_tensor_list) != 0:
-        #     raise ValueError("The 'out_tensor_list' for all_to_all "
-        #                      "must be an empty list.")
+        for elem in local_expert_count:
+            check_variable_and_dtype(elem, 'local_expert_count',
+                                     ['int32', 'int64'], 'moe_expert_exchange')
+
         helper.append_op(
             type=op_type,
-            inputs={
-                'local_input_buf': [local_input_buf],
-                'local_expert_count': [local_expert_count],
-                'global_expert_count': [global_expert_count],
-                'input_buf': [input_buf],
-                'in_feat': [in_feat],
-                'n_expert': [n_expert],
-                'world_size': [world_size]
-            },
-            outputs={'Out': [out]},
+            inputs={'local_expert_count': local_expert_count},
+            outputs={'Out': out},
             attrs={
+                'n_expert': n_expert,
+                'world_size': world_size,
                 'ring_id': group,
                 'use_calc_stream': use_calc_stream,
             })
-    # out_tensor_list.extend(paddle.split(out, nranks, 0))
+        return out
 
 
 def send(tensor, dst=0, group=None, use_calc_stream=True):

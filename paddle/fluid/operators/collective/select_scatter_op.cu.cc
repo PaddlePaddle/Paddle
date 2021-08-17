@@ -28,16 +28,35 @@ class SelectScatterOpCUDAKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL)
 #if NCCL_VERSION_CODE >= 2703
     auto local_input_buf = ctx.Input<framework::LoDTensor>("local_input_buf");
-    auto local_expert_count = ctx.Attr<std::vector<int>>("local_expert_count");
+    auto local_expert_count =
+        ctx.Input<framework::LoDTensor>("local_expert_count");
     auto global_expert_count =
-        ctx.Attr<std::vector<int>>("global_expert_count");
-    auto in_feat = ctx.Attr<int>("in_feat");
-    auto n_expert = ctx.Attr<int>("n_expert");
-    auto world_size = ctx.Attr<int>("world_size");
+        ctx.Input<framework::LoDTensor>("global_expert_count");
+    // auto local_expert_count =
+    // ctx.Attr<std::vector<int>>("local_expert_count");
+    // auto global_expert_count =
+    // ctx.Attr<std::vector<int>>("global_expert_count");
+    auto in_feat = static_cast<int>(ctx.Attr<int>("in_feat"));
+    auto n_expert = static_cast<int>(ctx.Attr<int>("n_expert"));
+    auto world_size = static_cast<int>(ctx.Attr<int>("world_size"));
     auto out = ctx.Output<framework::LoDTensor>("Out");
+
+    framework::Tensor cpu_local_expert_count;
+    framework::TensorCopy(*local_expert_count, platform::CPUPlace(),
+                          &cpu_local_expert_count);
+    framework::Tensor cpu_global_expert_count;
+    framework::TensorCopy(*global_expert_count, platform::CPUPlace(),
+                          &cpu_global_expert_count);
+    int* cpu_local_expert_count_data = cpu_local_expert_count.data<int>();
+    int* cpu_global_expert_count_data = cpu_global_expert_count.data<int>();
+    // int64_t data_numel = local_input_buf->numel();
+    // T* cpu_local_input_buf_data = cpu_local_input_buf.data<T>();
+    // for (auto i = 0; i < data_numel; i++)
+    //     VLOG(1) << cpu_local_input_buf_data[i];
+    // VLOG(1) << "local_input_buf";
+
     ncclDataType_t dtype = platform::ToNCCLDataType(local_input_buf->type());
-    VLOG(1) << "nccl type: ";
-    VLOG(1) << dtype;
+
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
         ring_id, 0,
@@ -46,8 +65,6 @@ class SelectScatterOpCUDAKernel : public framework::OpKernel<T> {
             ring_id));
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-    // int nranks = comm->nranks();
-    VLOG(1) << "defination3";
     cudaStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -55,121 +72,42 @@ class SelectScatterOpCUDAKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
-    int fwd_expert_count = 0;
-    for (auto i = 0; i < global_expert_count.size(); ++i)
-      fwd_expert_count += global_expert_count[i];
-    // framework::DDim input_buf_dims = input_buf->dims();
-    // framework::DDim out_dims(input_buf_dims);
+
+    auto fwd_expert_count = 0;
+    auto global_expert_count_len = cpu_global_expert_count.numel();
+    for (auto i = 0; i < global_expert_count_len; ++i)
+      fwd_expert_count += cpu_global_expert_count_data[i];
     framework::DDim out_dims =
         framework::make_ddim({fwd_expert_count, in_feat});
-    VLOG(1) << "local_expert_count";
-    for (auto i = 0; i < local_expert_count.size(); ++i)
-      VLOG(1) << local_expert_count[i] << " ";
-    VLOG(1) << "local_expert_count";
-    VLOG(1) << "global_expert_count";
-    for (auto i = 0; i < global_expert_count.size(); ++i)
-      VLOG(1) << global_expert_count[i] << " ";
-    VLOG(1) << "global_expert_count";
-    VLOG(1) << "expert_ptr";
     int* expert_ptr = new int[n_expert * world_size];
     expert_ptr[0] = 0;
-    for (auto i = 1; i < n_expert * world_size; ++i) {
-      expert_ptr[i] = expert_ptr[i - 1] + local_expert_count[i - 1];
-      VLOG(1) << expert_ptr[i];
+    auto tot_experts = n_expert * world_size;
+    for (auto i = 1; i < tot_experts; ++i) {
+      expert_ptr[i] = expert_ptr[i - 1] + cpu_local_expert_count_data[i - 1];
     }
-    VLOG(1) << "expert_ptr";
-    size_t recv_ptr = 0;
-    size_t recv_print_ptr = 0;
+    auto recv_ptr = 0;
     auto send_buf = local_input_buf->data<T>();
     auto recv_buf = out->mutable_data<T>(out_dims, place);
-    // VLOG(1) << "local_expert_count" << local_expert_count;
-    // VLOG(1) << "global_expert_count" << global_expert_count;
+
     for (auto i = 0; i < n_expert; ++i) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
       for (auto j = 0; j < world_size; ++j) {
-        // VLOG(1) << "type j";
-        // VLOG(1) << typeid(j).name();
-        // VLOG(1) << "type j";
         int idx = i + j * n_expert;
-        if (local_expert_count[idx]) {
-          // VLOG(1) << "send ahah: " << idx;
-          // // int64_t in_data_numel = local_input_buf->numel();
-          // T* cpu_in_data = new T[local_expert_count[idx] * in_feat];
-          // cudaMemcpy(cpu_in_data, send_buf + expert_ptr[idx] * in_feat,
-          // local_expert_count[idx] * in_feat * sizeof(T),
-          //         cudaMemcpyDeviceToHost);
-          // for (auto i = 0; i < local_expert_count[idx] * in_feat; i ++)
-          //     VLOG(1) << cpu_in_data[i];
-          // VLOG(1) << "send ahah: " << idx;
-          // 只用j是因为只有这么多张卡
-          PADDLE_ENFORCE_CUDA_SUCCESS(
-              platform::dynload::ncclSend(send_buf + expert_ptr[idx] * in_feat,
-                                          local_expert_count[idx] * in_feat,
-                                          dtype, j, comm->comm(), stream));
+        if (cpu_local_expert_count_data[idx]) {
+          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
+              send_buf + expert_ptr[idx] * in_feat,
+              cpu_local_expert_count_data[idx] * in_feat, dtype, j,
+              comm->comm(), stream));
         }
-        if (global_expert_count[idx]) {
-          // VLOG(1) << "recv ahah";
+        if (cpu_global_expert_count_data[idx]) {
           PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
-              recv_buf + recv_ptr * in_feat, global_expert_count[idx] * in_feat,
-              dtype, j, comm->comm(), stream));
-
-          // VLOG(1) << "recv ahah: " << idx;
-          // // int64_t in_data_numel = local_input_buf->numel();
-          // // 在这内部打印是不行的，因为还没有执行ncclGroupEnd()
-          // T* cpu_in_data = new T[global_expert_count[idx] * in_feat];
-          // cudaMemcpy(cpu_in_data, recv_buf + recv_ptr * in_feat,
-          // global_expert_count[idx] * in_feat * sizeof(T),
-          //         cudaMemcpyDeviceToHost);
-          // for (auto i = 0; i < global_expert_count[idx] * in_feat; i ++)
-          //     VLOG(1) << cpu_in_data[i];
-          // VLOG(1) << "recv ahah: " << idx;
-          recv_ptr += global_expert_count[idx];
-          // VLOG(1) << "out";
-          // VLOG(1) << "recv_ptr: " << recv_ptr;
-          // framework::Tensor cpu_local_input_buf;
-          // framework::TensorCopy(*out, platform::CPUPlace(),
-          // &cpu_local_input_buf);
-          // int64_t data_numel = out->numel();
-          // T* cpu_local_input_buf_data = cpu_local_input_buf.data<T>();
-          // for (auto i = 0; i < data_numel; i++)
-          //     VLOG(1) << cpu_local_input_buf_data[i];
-          // VLOG(1) << "out";
+              recv_buf + recv_ptr * in_feat,
+              cpu_global_expert_count_data[idx] * in_feat, dtype, j,
+              comm->comm(), stream));
+          recv_ptr += cpu_global_expert_count_data[idx];
         }
       }
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
-      // 打印
-      for (auto j = 0; j < world_size; ++j) {
-        int idx = i + j * n_expert;
-        if (local_expert_count[idx]) {
-          VLOG(1) << "send ahah: " << idx;
-          // int64_t in_data_numel = local_input_buf->numel();
-          T* cpu_in_data = new T[local_expert_count[idx] * in_feat];
-          cudaMemcpy(cpu_in_data, send_buf + expert_ptr[idx] * in_feat,
-                     local_expert_count[idx] * in_feat * sizeof(T),
-                     cudaMemcpyDeviceToHost);
-          for (auto i = 0; i < local_expert_count[idx] * in_feat; i++)
-            VLOG(1) << cpu_in_data[i];
-          VLOG(1) << "send ahah: " << idx;
-        }
-        if (global_expert_count[idx]) {
-          // VLOG(1) << "recv ahah";
-          // PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
-          //     recv_buf + recv_print_ptr * in_feat, global_expert_count[idx] *
-          //     in_feat * sizeof(T), dtype, j, comm->comm(), stream));
-
-          VLOG(1) << "recv ahah: " << idx;
-          // int64_t in_data_numel = local_input_buf->numel();
-          // 在这内部打印是不行的，因为还没有执行ncclGroupEnd()
-          T* cpu_in_data = new T[global_expert_count[idx] * in_feat];
-          cudaMemcpy(cpu_in_data, recv_buf + recv_print_ptr * in_feat,
-                     global_expert_count[idx] * in_feat * sizeof(T),
-                     cudaMemcpyDeviceToHost);
-          for (auto i = 0; i < global_expert_count[idx] * in_feat; i++)
-            VLOG(1) << cpu_in_data[i];
-          VLOG(1) << "recv ahah: " << idx;
-          recv_print_ptr += global_expert_count[idx];
-        }
-      }
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
     }
 #else

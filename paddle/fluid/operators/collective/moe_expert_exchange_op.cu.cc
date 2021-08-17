@@ -38,7 +38,7 @@ class MoeExpertExchangeOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
-            "The ring_id (%d) for selectscatter op must be non-negative.",
+            "The ring_id (%d) for moe_expert_exchange op must be non-negative.",
             ring_id));
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
@@ -81,8 +81,5 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(moe_expert_exchange,
-                        ops::MoeExpertExchangeOpCUDAKernel<float>,
-                        ops::MoeExpertExchangeOpCUDAKernel<double>,
                         ops::MoeExpertExchangeOpCUDAKernel<int>,
-                        ops::MoeExpertExchangeOpCUDAKernel<int64_t>,
-                        ops::MoeExpertExchangeOpCUDAKernel<plat::float16>);
+                        ops::MoeExpertExchangeOpCUDAKernel<int64_t>);

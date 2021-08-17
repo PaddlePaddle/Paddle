@@ -34,7 +34,7 @@ class SelectScatterOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Do not support select scatter for cpu kernel now."));
+        "Do not support select scatter/gather op for cpu kernel now."));
   }
 };
 
