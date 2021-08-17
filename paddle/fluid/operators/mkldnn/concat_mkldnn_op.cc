@@ -62,7 +62,8 @@ class ConcatMKLDNNHandler
 
     memory::data_type dt =
         paddle::framework::ToMKLDNNDataType(inputs[0]->type());
-    std::vector<memory::desc> srcs_md(inputs.size());
+    std::vector<memory::desc> srcs_md;
+    srcs_md.resize(inputs.size());
 
     // Create memory descriptors for each of inputs
     const auto dims = paddle::framework::vectorize<int64_t>(inputs[0]->dims());
@@ -81,8 +82,8 @@ class ConcatMKLDNNHandler
   void AcquireForwardPrimitiveDescriptor(
       const mkldnn::memory::desc& dst_md, const int concat_axis,
       const std::vector<mkldnn::memory::desc>& srcs_md) {
-    this->fwd_pd_.reset(new dnnl::concat::primitive_desc(dst_md, concat_axis,
-                                                      srcs_md, this->engine_));
+    this->fwd_pd_.reset(new dnnl::concat::primitive_desc(
+        dst_md, concat_axis, srcs_md, this->engine_));
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
@@ -107,7 +108,8 @@ static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
 // From a multi-input, gather only nonempty inputs
 static const std::vector<const Tensor*> ReduceMultiInput(
     const std::vector<const Tensor*>& inputs) {
-  std::vector<const Tensor*> reduced(inputs.size());
+  std::vector<const Tensor*> reduced;
+  reduced.resize(inputs.size());
   auto end_it = std::copy_if(inputs.begin(), inputs.end(), reduced.begin(),
                              [](const Tensor* t) { return t->numel() > 0; });
   reduced.resize(std::distance(reduced.begin(), end_it));
@@ -129,7 +131,8 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     ConcatMKLDNNHandler<T> handler(ctx, mkldnn_engine, multi_input, output);
 
-    std::vector<std::shared_ptr<memory>> srcs(multi_input.size());
+    std::vector<std::shared_ptr<memory>> srcs;
+    srcs.reserve(multi_input.size());
 
     auto dst_mem = handler.AcquireDstMemory(output);
     auto concat_p = handler.AcquireForwardPrimitive();
