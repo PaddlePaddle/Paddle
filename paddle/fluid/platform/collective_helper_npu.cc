@@ -152,7 +152,7 @@ void HCCLCommContext::ReleaseHCCLComms() {
 
 static const int g_hccl_port_start = 60000;
 static const int g_hccl_port_end = 60015;
-static const int g_avoid_hccl_ports_steps = 0;
+static int g_avoid_hccl_ports_steps = 0;
 
 int GetSocketPort(int fd) {
   struct sockaddr_in local;
@@ -207,7 +207,7 @@ static int Bind(int port) {
     return -1;
   }
 
-  return client
+  return client;
 }
 
 static int WaitToBind(int port) {
@@ -285,8 +285,9 @@ std::vector<HCCLConn_> TryToProtectHcclFreePorts() {
   }
 
   std::ostringstream ss;
-  ss << "find free ports, size:" << conns.size()
-     << ", ports:" for (int i = 0; i < conns.size(); i++) {
+  ss << "find free ports, size:" << conns.size() << ", ports:";
+
+  for (int i = 0; i < conns.size(); i++) {
     ss << conns[i].port << ","
   }
 
