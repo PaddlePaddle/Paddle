@@ -38,31 +38,31 @@ class TensorDistributedAttribute:
         return self._process_mesh
 
     def set_process_mesh(self, process_mesh):
-        self._process_mesh = process_mesh
+        self._process_mesh = copy.deepcopy(process_mesh)
 
     def get_dims_mapping(self):
         return self._dims_mapping
 
     def set_dims_mapping(self, dims_mapping):
-        self._dims_mapping = dims_mapping
+        self._dims_mapping = copy.deepcopy(dims_mapping)
 
     def get_shard_mask(self):
         return self._shard_mask
 
     def set_shard_mask(self, shard_mask):
-        self._shard_mask = shard_mask
+        self._shard_mask = copy.deepcopy(shard_mask)
 
     def get_offload_device(self):
         return self._offload_device
 
     def set_offload_device(self, offload_device):
-        self._offload_device = offload_device
+        self._offload_device = copy.deepcopy(offload_device)
 
     def get_shape(self):
         return self._shape
 
     def set_shape(self, shape):
-        self._shape = shape
+        self._shape = copy.deepcopy(shape)
 
     def is_annotated(self, dist_attr_name):
         return self._is_annotated.get(dist_attr_name, False)
@@ -159,19 +159,19 @@ class OperatorDistributedAttribute:
         return self._process_mesh
 
     def set_process_mesh(self, process_mesh):
-        self._process_mesh = process_mesh
+        self._process_mesh = copy.deepcopy(process_mesh)
 
     def get_input_dims_mapping(self, name):
         return self._dims_mapping.get("IN_" + name, None)
 
     def set_input_dims_mapping(self, name, dims_mapping):
-        self._dims_mapping["IN_" + name] = dims_mapping
+        self._dims_mapping["IN_" + name] = copy.deepcopy(dims_mapping)
 
     def get_output_dims_mapping(self, name):
         return self._dims_mapping.get("OUT_" + name, None)
 
     def set_output_dims_mapping(self, name, dims_mapping):
-        self._dims_mapping["OUT_" + name] = dims_mapping
+        self._dims_mapping["OUT_" + name] = copy.deepcopy(dims_mapping)
 
     def get_impl_idx(self):
         return self._impl_idx
@@ -183,19 +183,19 @@ class OperatorDistributedAttribute:
         return self._pipeline_stage
 
     def set_pipeline_stage(self, pipeline_stage):
-        self._pipeline_stage = pipeline_stage
+        self._pipeline_stage = copy.deepcopy(pipeline_stage)
 
     def get_input_shape(self, name):
         return self._shapes.get("IN_" + name, None)
 
     def set_input_shape(self, name, shape):
-        self._shapes["IN_" + name] = shape
+        self._shapes["IN_" + name] = copy.deepcopy(shape)
 
     def get_output_shape(self, name):
         return self._shapes.get("OUT_" + name, None)
 
     def set_output_shape(self, name, shape):
-        self._shapes["OUT_" + name] = shape
+        self._shapes["OUT_" + name] = copy.deepcopy(shape)
 
     def is_annotated(self, attr_name):
         return self._is_annotated.get(attr_name, False)

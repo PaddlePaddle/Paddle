@@ -160,9 +160,8 @@ class OpDesc {
     return ++id;
   }
 
-  // Giving each operator an identity can help us map related properties to it.
-  // For example, the identity can be used as a key for referring to its
-  // distributed attribute.
+  // Note: the identity only used as a key for referring to its
+  // distributed attribute now.
   uint64_t Id() { return id_; }
 
  private:

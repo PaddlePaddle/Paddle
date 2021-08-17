@@ -158,9 +158,8 @@ class VarDesc {
     return ++uid;
   }
 
-  // Giving each variable an identity can help us map related properties to it.
-  // For example, the identity can be used as a key for referring to its
-  // distributed attribute.
+  // Note: the identity only used as a key for referring to its
+  // distributed attribute now.
   uint64_t Id() { return id_; }
 
  private:

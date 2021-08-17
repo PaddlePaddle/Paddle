@@ -349,7 +349,8 @@ class DistributedContext:
             # If the dimension of tensor is less than the sharding dimension of process mesh,
             # we just amend the dimension mapping to -1. (Is this really OK?)
             for i in range(len(tensor_shape)):
-                if process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
+                if dims_mapping[i] != -1 and process_mesh_shape[dims_mapping[
+                        i]] > tensor_shape[i]:
                     dims_mapping[i] = -1
 
         for attr in self._op_distributed_attr_map_for_program.values():
@@ -362,7 +363,8 @@ class DistributedContext:
                 # If the dimension of tensor is less than the sharding dimension of process mesh,
                 # we just amend the dimension mapping to -1. (Is this really OK?)
                 for i in range(len(tensor_shape)):
-                    if process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
+                    if dims_mapping[i] != -1 and process_mesh_shape[
+                            dims_mapping[i]] > tensor_shape[i]:
                         dims_mapping[i] = -1
 
             for arg_name in attr.get_owner_op().desc.output_arg_names():
@@ -372,5 +374,6 @@ class DistributedContext:
                 # If the dimension of tensor is less than the sharding dimension of process mesh,
                 # we just amend the dimension mapping to -1. (Is this really OK?)
                 for i in range(len(tensor_shape)):
-                    if process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
+                    if dims_mapping[i] != -1 and process_mesh_shape[
+                            dims_mapping[i]] > tensor_shape[i]:
                         dims_mapping[i] = -1

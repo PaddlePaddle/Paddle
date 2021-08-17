@@ -202,12 +202,12 @@ class TestMLPAutoCompletion(unittest.TestCase):
                     attr_name = append_distributed_attr_suffix("OUT_" +
                                                                tensor_name)
                     self.assertIsNotNone(desc.has_attr(attr_name))
-        # with unittest.mock.patch(
-        #         "sys.stdout", new_callable=StringIO) as mock_stdout:
-        #     print_program_with_distributed_attr(complete_train_program)
-        #     self.assertIsNotNone(mock_stdout.getvalue())
         set_default_distributed_context(dist_context)
         self.assertTrue("dist_attr" in str(complete_train_program))
+        with unittest.mock.patch(
+                "sys.stdout", new_callable=StringIO) as mock_stdout:
+            print_program_with_distributed_attr(complete_train_program)
+            self.assertIsNotNone(mock_stdout.getvalue())
 
 
 class AttentionLayer(nn.Layer):
