@@ -90,45 +90,6 @@ class MultiHeadAttention(nn.Layer):
             self.out_proj = nn.Linear(
                 embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
 
-        else:
-            assert self.num_heads % topo.mp_info.size == 0
-            self.num_heads = self.num_heads // topo.mp_info.size
-            if self.fuse:
-                assert self.kdim == embed_dim
-                assert self.vdim == embed_dim
-                self.qkv_proj = paddlenlp.ops.ColumnParallelLiner(
-                    (embed_dim, 3 * embed_dim),
-                    topo.mp_info.size,
-                    gather_out=False,
-                    param_attr=weight_attr,
-                    bias_attr=bias_attr)
-            else:
-                self.q_proj = paddlenlp.ops.ColumnParallelLiner(
-                    (embed_dim, embed_dim),
-                    topo.mp_info.size,
-                    gather_out=False,
-                    param_attr=weight_attr,
-                    bias_attr=bias_attr)
-                self.k_proj = paddlenlp.ops.ColumnParallelLiner(
-                    (self.kdim, embed_dim),
-                    topo.mp_info.size,
-                    gather_out=False,
-                    param_attr=weight_attr,
-                    bias_attr=bias_attr)
-                self.v_proj = paddlenlp.ops.ColumnParallelLiner(
-                    (self.vdim, embed_dim),
-                    topo.mp_info.size,
-                    gather_out=False,
-                    param_attr=weight_attr,
-                    bias_attr=bias_attr)
-
-            self.out_proj = paddlenlp.ops.RowParallelLiner(
-                (embed_dim, embed_dim),
-                topo.mp_info.size,
-                input_is_parallel=True,
-                param_attr=weight_attr,
-                bias_attr=bias_attr)
-
     def _fuse_prepare_qkv(self, query):
         mix_layer = self.qkv_proj(query)
         mix_layer = paddle.reshape_(mix_layer,
@@ -422,19 +383,6 @@ class TransformerDecoderLayer(nn.Layer):
                 d_model,
                 weight_attrs[2],
                 bias_attr=bias_attrs[2])
-        else:
-            self.linear1 = paddlenlp.ops.ColumnParallelLiner(
-                (d_model, dim_feedforward),
-                topo.mp_info.size,
-                gather_out=False,
-                param_attr=weight_attrs[2],
-                bias_attr=bias_attrs[2])
-            self.linear2 = paddlenlp.ops.RowParallelLiner(
-                (dim_feedforward, d_model),
-                topo.mp_info.size,
-                input_is_parallel=True,
-                param_attr=weight_attrs[2],
-                bias_attr=bias_attrs[2])
 
         self.norm1 = nn.LayerNorm(d_model, epsilon=1e-5)
         self.norm2 = nn.LayerNorm(d_model, epsilon=1e-5)
@@ -513,14 +461,6 @@ class GPTEmbeddings(nn.Layer):
                     name="word_embeddings",
                     initializer=nn.initializer.Normal(
                         mean=0.0, std=initializer_range)))
-        else:
-            self.word_embeddings = paddlenlp.ops.ParallelEmbedding(
-                vocab_size,
-                hidden_size,
-                topo.mp_info.rank,
-                topo.mp_info.size,
-                weight_attr=paddle.ParamAttr(initializer=nn.initializer.Normal(
-                    mean=0.0, std=initializer_range)))
         self.position_embeddings = nn.Embedding(
             max_position_embeddings,
             hidden_size,
@@ -598,9 +538,6 @@ class GPTModel(nn.Layer):
         decoder_layers = nn.LayerList()
         for i in range(num_hidden_layers):
             DecoderLayer = TransformerDecoderLayer
-            if self.pipline_mode:
-                DecoderLayer = paddlenlp.ops.guard('gpu:{}'.format(
-                    i // self.layer_per_stage))(TransformerDecoderLayer)
             decoder_layers.append(
                 DecoderLayer(
                     d_model=hidden_size,
@@ -616,11 +553,7 @@ class GPTModel(nn.Layer):
                     bias_attr=None,
                     topo=topo))
 
-        if self.pipline_mode:
-            Decoder = paddlenlp.ops.guard('gpu:{}'.format(
-                self.topo.pp_info.size - 1))(TransformerDecoder)
-        else:
-            Decoder = TransformerDecoder
+        Decoder = TransformerDecoder
 
         self.decoder = Decoder(
             decoder_layers,

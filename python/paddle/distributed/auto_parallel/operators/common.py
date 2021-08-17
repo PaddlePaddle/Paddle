@@ -34,10 +34,10 @@ class DistributedOperatorImpl:
     def __init__(self):
         self._name = None
 
-    def forward(self, serial_op):
+    def forward(self, dist_ctx, *args, **kwargs):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
-    def backward(self, serial_grad_op):
+    def backward(self, dist_ctx, *grad_outputs):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
     def get_name(self):
