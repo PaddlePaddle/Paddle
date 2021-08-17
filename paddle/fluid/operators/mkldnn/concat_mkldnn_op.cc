@@ -39,7 +39,7 @@ class ConcatMKLDNNHandler
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::concat>(mkldnn_engine,
                                                            ctx.GetPlace()) {
     int concat_axis = ctx.Attr<int>("axis");
-    const int rank = multi_input[0]->dims().size();
+    const int rank = inputs[0]->dims().size();
     PADDLE_ENFORCE_EQ(
         concat_axis >= -rank && concat_axis < rank, true,
         platform::errors::InvalidArgument(
@@ -49,9 +49,9 @@ class ConcatMKLDNNHandler
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<Tensor>("AxisTensor");
       concat_axis = GetDataFromTensor(axis_tensor)[0];
-      auto out_dims = multi_input[0]->dims();
-      for (size_t i = 1; i < multi_input.size(); ++i) {
-        out_dims[concat_axis] += multi_input[i]->dims()[concat_axis];
+      auto out_dims = inputs[0]->dims();
+      for (size_t i = 1; i < inputs.size(); ++i) {
+        out_dims[concat_axis] += inputs[i]->dims()[concat_axis];
       }
       output->Resize(out_dims);
     }
@@ -61,14 +61,13 @@ class ConcatMKLDNNHandler
     }
 
     memory::data_type dt =
-        paddle::framework::ToMKLDNNDataType(multi_input[0]->type());
-    std::vector<memory::desc> srcs_md(multi_input.size());
+        paddle::framework::ToMKLDNNDataType(inputs[0]->type());
+    std::vector<memory::desc> srcs_md(inputs.size());
 
     // Create memory descriptors for each of inputs
-    const auto dims =
-        paddle::framework::vectorize<int64_t>(multi_input[0].dims());
-    for (size_t i = 0; i < multi_input.size(); i++) {
-      srcs_md.emplace_back(memory::desc(dims, dt, multi_input[i].format()));
+    const auto dims = paddle::framework::vectorize<int64_t>(inputs[0].dims());
+    for (size_t i = 0; i < inputs.size(); i++) {
+      srcs_md.emplace_back(memory::desc(dims, dt, inputs[i].format()));
     }
 
     auto dst_dims = paddle::framework::vectorize<int64_t>(output->dims());
