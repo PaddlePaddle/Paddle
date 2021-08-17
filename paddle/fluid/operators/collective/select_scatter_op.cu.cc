@@ -21,7 +21,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-
 template <typename T>
 class SelectScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -32,58 +31,10 @@ class SelectScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto local_expert_count = ctx.Attr<std::vector<int>>("local_expert_count");
     auto global_expert_count =
         ctx.Attr<std::vector<int>>("global_expert_count");
-    // auto local_expert_count =
-    // ctx.Input<framework::LoDTensor>("local_expert_count");
-    // auto global_expert_count =
-    // ctx.Input<framework::LoDTensor>("global_expert_count");
-    auto input_buf = ctx.Input<framework::LoDTensor>("input_buf");
     auto in_feat = ctx.Attr<int>("in_feat");
     auto n_expert = ctx.Attr<int>("n_expert");
     auto world_size = ctx.Attr<int>("world_size");
-    // auto in_feat = ctx.Input<framework::LoDTensor>("in_feat");
-    // auto n_expert = ctx.Input<framework::LoDTensor>("n_expert");
-    // auto world_size = ctx.Input<framework::LoDTensor>("world_size");
     auto out = ctx.Output<framework::LoDTensor>("Out");
-    VLOG(1) << "local_input_buf";
-    // int64_t in_data_numel = local_input_buf->numel();
-    // Tensor cpu_in_data = new T[in_data_numel];
-    // cudaMemcpy(cpu_in_data, local_input_buf, in_data_numel * sizeof(T),
-    //         cudaMemcpyDeviceToHost);
-    // for (auto i = 0; i < in_data_numel; i ++)
-    //     VLOG(1) << cpu_in_data[i];
-
-    framework::Tensor cpu_local_input_buf;
-    framework::TensorCopy(*local_input_buf, platform::CPUPlace(),
-                          &cpu_local_input_buf);
-    int64_t data_numel = local_input_buf->numel();
-    T* cpu_local_input_buf_data = cpu_local_input_buf.data<T>();
-    for (auto i = 0; i < data_numel; i++)
-      VLOG(1) << cpu_local_input_buf_data[i];
-    VLOG(1) << "local_input_buf";
-
-    // const T* local_input_buf_d = local_input_buf->data<T>();
-    // VLOG(1) << "defination";
-
-    // const int* local_expert_count_d = local_expert_count->data<int>();
-    // VLOG(1) << "local_expert_count_d";
-    // VLOG(1) << local_expert_count_d[0];
-
-    // const int* global_expert_count_d = global_expert_count->data<int>();
-    // VLOG(1) << "global_expert_count_d";
-    // VLOG(1) << global_expert_count;
-    // VLOG(1) << "in_feat_d";
-    // VLOG(1) << in_feat->data<int32_t>()[0];
-    // VLOG(1) << "n_expert_d";
-    // VLOG(1) << n_expert[0];
-    // VLOG(1) << "world_size";
-    // VLOG(1) << world_size[0];
-    // const int* in_feat_d = in_feat->data<int>();
-    // const int* n_expert_d = n_expert->data<int>();
-    // const int* world_size_d = world_size->data<int>();
-    // VLOG(1) << "world_size";
-    // VLOG(1) << in_feat_d[0];
-    VLOG(1) << "local_input_buf type: ";
-    VLOG(1) << local_input_buf->type();
     ncclDataType_t dtype = platform::ToNCCLDataType(local_input_buf->type());
     VLOG(1) << "nccl type: ";
     VLOG(1) << dtype;
@@ -104,17 +55,22 @@ class SelectScatterOpCUDAKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
-    framework::DDim input_buf_dims = input_buf->dims();
-    framework::DDim out_dims(input_buf_dims);
-    // VLOG(1) << "local_expert_count";
-    // for (auto i = 0; i < (int)local_expert_count.size(); ++i)
-    //   VLOG(1) << local_expert_count[i] << " ";
-    // VLOG(1) << "local_expert_count";
-    // VLOG(1) << "global_expert_count";
-    // for (auto i = 0; i < (int)global_expert_count.size(); ++i)
-    //   VLOG(1) << global_expert_count[i] << " ";
-    // VLOG(1) << "global_expert_count";
-    // VLOG(1) << "expert_ptr";
+    int fwd_expert_count = 0;
+    for (auto i = 0; i < global_expert_count.size(); ++i)
+      fwd_expert_count += global_expert_count[i];
+    // framework::DDim input_buf_dims = input_buf->dims();
+    // framework::DDim out_dims(input_buf_dims);
+    framework::DDim out_dims =
+        framework::make_ddim({fwd_expert_count, in_feat});
+    VLOG(1) << "local_expert_count";
+    for (auto i = 0; i < local_expert_count.size(); ++i)
+      VLOG(1) << local_expert_count[i] << " ";
+    VLOG(1) << "local_expert_count";
+    VLOG(1) << "global_expert_count";
+    for (auto i = 0; i < global_expert_count.size(); ++i)
+      VLOG(1) << global_expert_count[i] << " ";
+    VLOG(1) << "global_expert_count";
+    VLOG(1) << "expert_ptr";
     int* expert_ptr = new int[n_expert * world_size];
     expert_ptr[0] = 0;
     for (auto i = 1; i < n_expert * world_size; ++i) {
@@ -146,17 +102,16 @@ class SelectScatterOpCUDAKernel : public framework::OpKernel<T> {
           //     VLOG(1) << cpu_in_data[i];
           // VLOG(1) << "send ahah: " << idx;
           // 只用j是因为只有这么多张卡
-          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
-              send_buf + expert_ptr[idx] * in_feat,
-              local_expert_count[idx] * in_feat * sizeof(T), dtype, j,
-              comm->comm(), stream));
+          PADDLE_ENFORCE_CUDA_SUCCESS(
+              platform::dynload::ncclSend(send_buf + expert_ptr[idx] * in_feat,
+                                          local_expert_count[idx] * in_feat,
+                                          dtype, j, comm->comm(), stream));
         }
         if (global_expert_count[idx]) {
           // VLOG(1) << "recv ahah";
           PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
-              recv_buf + recv_ptr * in_feat,
-              global_expert_count[idx] * in_feat * sizeof(T), dtype, j,
-              comm->comm(), stream));
+              recv_buf + recv_ptr * in_feat, global_expert_count[idx] * in_feat,
+              dtype, j, comm->comm(), stream));
 
           // VLOG(1) << "recv ahah: " << idx;
           // // int64_t in_data_numel = local_input_buf->numel();

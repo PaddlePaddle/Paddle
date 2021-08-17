@@ -28,8 +28,8 @@ class SelectScatterOp : public framework::OperatorWithKernel {
     // "local_expert_count", "SelectScatter");
     // OP_INOUT_CHECK(ctx->HasInput("global_expert_count"), "Input",
     // "global_expert_count", "SelectScatter");
-    OP_INOUT_CHECK(ctx->HasInput("input_buf"), "Input", "input_buf",
-                   "SelectScatter");
+    // OP_INOUT_CHECK(ctx->HasInput("input_buf"), "Input", "input_buf",
+    // "SelectScatter");
     // OP_INOUT_CHECK(ctx->HasInput("in_feat"), "Input", "in_feat",
     // "SelectScatter");
     // OP_INOUT_CHECK(ctx->HasInput("n_expert"), "Input", "n_expert",
@@ -42,9 +42,9 @@ class SelectScatterOp : public framework::OperatorWithKernel {
         ring_id, 0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
-    framework::DDim dim = ctx->GetInputDim("input_buf");
-    if (dim[0] < 0) dim[0] = -1;
-    ctx->SetOutputDim("Out", dim);
+    // framework::DDim dim = ctx->GetInputDim("input_buf");
+    // if (dim[0] < 0) dim[0] = -1;
+    // ctx->SetOutputDim("Out", dim);
   }
 
  protected:
@@ -64,7 +64,7 @@ class SelectScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("global_expert_count", "The shape of the output");
     // AddInput("local_expert_count", "(Tensor) tensor send.");
     // AddInput("global_expert_count", "(Tensor) tensor send.");
-    AddInput("input_buf", "(Tensor) tensor send.");
+    // AddInput("input_buf", "(Tensor) tensor send.");
     // AddInput("in_feat", "(Tensor) tensor send.");
     // AddInput("n_expert", "(Tensor) tensor send.");
     // AddInput("world_size", "(Tensor) tensor send.");
@@ -98,13 +98,14 @@ class SelectScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("select_scatter");
     retv->SetInput("local_input_buf", this->OutputGrad("Out"));
-    retv->SetInput("input_buf", this->Input("input_buf"));
+    // retv->SetInput("input_buf", this->Input("input_buf"));
     retv->SetOutput("Out", this->InputGrad("local_input_buf"));
     retv->SetAttrMap(this->Attrs());
     auto local_expert_count = retv->GetAttr("local_expert_count");
     auto global_expert_count = retv->GetAttr("global_expert_count");
     retv->SetAttr("local_expert_count", global_expert_count);
     retv->SetAttr("global_expert_count", local_expert_count);
+    VLOG(1) << "AHAH";
     // for (auto i = 0; i < (int) local_expert_count.size(); ++i)
     //   VLOG(1) << local_expert_count[i] << " ";
     // auto global_expert_count = retv->GetAttr("global_expert_count");
