@@ -22,21 +22,32 @@
 namespace paddle {
 namespace operators {
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 using Tensor = framework::Tensor;
-
 template <typename T>
-Eigen::MatrixXf Tensor2EigenMatrix(const Tensor& tensor) {
-  Eigen::MatrixXf matrix;
-  std::vector<T> vector;
-  framework::TensorToVector(tensor, &vector);
-  for (auto it = vector.begin(); it != vector.end(); it++) {
-    matrix << *it;
+struct DeterminantFunctor {
+  void operator()(const Tensor& input, int rank, int batch_count,
+                  Tensor* output) {
+    std::vector<T> input_vec;
+    std::vector<float> output_vec;
+    framework::TensorToVector(input, &input_vec);
+    for (int i = 0; i < batch_count; ++i) {  // maybe can be parallel
+      auto begin_idx = input_vec.begin() + i * rank * rank;
+      auto end_idx = input_vec.begin() + (i + 1) * rank * rank;
+      std::vector<T> sub_vec(begin_idx,
+                             end_idx);  // get every square matrix data
+      Eigen::MatrixXf matrix(rank, rank);
+      for (int i = 0; i < rank; ++i) {
+        for (int j = 0; j < rank; ++j) {
+          matrix(i, j) = sub_vec[rank * i + j];
+        }
+      }
+      VLOG(2) << "det value: " << matrix.determinant();
+      VLOG(2) << "matrix val: " << matrix;
+      output_vec.push_back(matrix.determinant());
+    }
+    framework::TensorFromVector(output_vec, output);
   }
-  return matrix;
-}
+};
 
 template <typename T>
 class DeterminantKernel : public framework::OpKernel<T> {
@@ -46,26 +57,16 @@ class DeterminantKernel : public framework::OpKernel<T> {
     // const T* input_data = input->data<T>();
     auto input_dim = vectorize(input->dims());
     auto input_dim_size = input_dim.size();
-
     auto* output = context.Output<framework::Tensor>("Out");
-    // T* output_data = output->mutable_data<T>(context.GetPlace());
-    auto output_dim = vectorize(output->dims());
+    // auto output_dim = vectorize(output->dims());
 
     int batch_count = 1;
     for (int i = 0; i < input->dims().size() - 2; i++) {
       batch_count *= input_dim[i];
     }
     VLOG(2) << "input dim:" << input->dims();
-    auto m = input_dim[input_dim_size - 1];  // square matrix length
-    std::vector<T> output_vector;
-    for (int i = 0; i < batch_count; i++) {
-      Tensor slice_input = input->Slice(i * m * m, (i + 1) * m * m);
-      Eigen::MatrixXf mat = Tensor2EigenMatrix<T>(slice_input);
-      auto det = mat.determinant();
-      output_vector.push_back(det);
-      VLOG(3) << "det value:" << det;
-    }
-    framework::TensorFromVector(output_vector, output);
+    auto rank = input_dim[input_dim_size - 1];  // square matrix length
+    DeterminantFunctor<T>()(*input, rank, batch_count, output);
   }
 };
 
