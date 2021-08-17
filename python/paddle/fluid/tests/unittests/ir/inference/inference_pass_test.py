@@ -64,6 +64,9 @@ class InferencePassTest(unittest.TestCase):
                                           target_vars, executor, program)
 
     def _get_paddle_outs(self, executor, program, scope):
+        '''
+        Return PaddlePaddle outputs. 
+        '''
         with fluid.scope_guard(scope):
             outs = executor.run(program=program,
                                 feed=self.feeds,

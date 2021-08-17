@@ -57,6 +57,7 @@ class QuantDequantTest(unittest.TestCase):
         np.random.seed(1)
         random.seed(1)
 
+    # from Paddle release2.1 
     def _normalize_program(self, program, feed_vars, fetch_vars):
         if not isinstance(program, Program):
             raise TypeError(
@@ -84,18 +85,6 @@ class QuantDequantTest(unittest.TestCase):
                               "before saving inference model.")
                 break
 
-        # fix the bug that the activation op's output as target will be pruned.
-        # will affect the inference performance.
-        # TODO(Superjomn) add an IR pass to remove 1-scale op.
-        '''
-        with program_guard(program):
-            uniq_fetch_vars = []
-            for i, var in enumerate(fetch_vars):
-                var = layers.scale(
-                    var, 1., name="save_infer_model/scale_{}".format(i))
-                uniq_fetch_vars.append(var)
-            fetch_vars = uniq_fetch_vars
-        '''
         # serialize program
         copy_program = program.clone()
         global_block = copy_program.global_block()
@@ -121,13 +110,13 @@ class QuantDequantTest(unittest.TestCase):
     def _save_models(self, dirname, feeded_var_names, target_vars, executor,
                      program, scope):
         with fluid.scope_guard(scope):
-            # save models as combined to ensure that 
-            # there won't be too many useless files 
-            # after finishing a couple of tests.
             fluid.io.save_inference_model(dirname, feeded_var_names,
                                           target_vars, executor, program)
 
     def _get_paddle_outs(self, feed, fetch_list, executor, program, scope):
+        '''
+        Return PaddlePaddle outputs. 
+        '''
         with fluid.scope_guard(scope):
             outs = executor.run(program=program,
                                 feed=feed,
@@ -158,7 +147,6 @@ class QuantDequantTest(unittest.TestCase):
             predictor.get_output_tensor(out_name).copy_to_cpu()
             for out_name in output_names
         ]
-
         return outs
 
     def _get_analysis_config(self,
@@ -219,7 +207,6 @@ class QuantDequantTest(unittest.TestCase):
         with fluid.scope_guard(scope):
             executor.run(self.startup_program)
             executor.run(self.test_startup_program)
-
         main_graph = IrGraph(core.Graph(self.main_program.desc), for_test=False)
         test_graph = IrGraph(
             core.Graph(self.test_main_program.desc), for_test=True)
@@ -238,14 +225,15 @@ class QuantDequantTest(unittest.TestCase):
 
         scale_training_pass = OutScaleForTrainingPass(scope=scope, place=place)
         scale_training_pass.apply(main_graph)
+
         build_strategy = fluid.BuildStrategy()
         build_strategy.memory_optimize = False
         build_strategy.enable_inplace = False
         build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(main_graph.graph)
+
         iters = 10
         batch_size = 1
-
         train_reader = paddle.batch(
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=500),
@@ -268,18 +256,19 @@ class QuantDequantTest(unittest.TestCase):
             place=place,
             weight_quantize_type=self.weight_quantize_type)
         freeze_pass.apply(test_graph)
+
         self.main_program = test_graph.to_program()
+
         with fluid.scope_guard(scope):
             self.main_program = self._normalize_program(
                 self.main_program, self.data, self.fetch_list)
-
-        paddle_outs = self._get_paddle_outs(self.feeds, self.fetch_list,
-                                            executor, self.main_program, scope)
 
         self._save_models(self.path,
                           list(self.feeds.keys()), self.fetch_list, executor,
                           self.main_program, scope)
 
+        paddle_outs = self._get_paddle_outs(self.feeds, self.fetch_list,
+                                            executor, self.main_program, scope)
         inference_outs = self._get_inference_outs(
             self._get_analysis_config(use_gpu=use_gpu))
 
@@ -376,7 +365,6 @@ class QuantDequantTest(unittest.TestCase):
             self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
 
     def quant_dequant(self):
-
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         scope = fluid.Scope()

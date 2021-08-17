@@ -285,7 +285,7 @@ class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
             self.check_output_with_option(use_gpu[i])
 
 
-class FCQuantDequantFusePassTRTTest(QuantDequantTest):
+class FcQuantDequantFusePassTRTTest(QuantDequantTest):
     def setUp(self):
         def network():
             self.data = fluid.data(
@@ -319,7 +319,7 @@ class FCQuantDequantFusePassTRTTest(QuantDequantTest):
 
         self.enable_trt = True
 
-        self.trt_parameters = FCQuantDequantFusePassTRTTest.TensorRTParam(
+        self.trt_parameters = FcQuantDequantFusePassTRTTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
