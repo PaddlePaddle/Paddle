@@ -15,6 +15,8 @@
 import paddle
 from .utils import paddle_2_number, number_2_dtype
 from ...utils.log_util import logger
+import numpy as np
+from paddle import _C_ops
 
 _hcg = None
 
@@ -40,6 +42,7 @@ class SendRecvMeta:
 
         self.recv_shape_message = None
         self.recv_dtype_message = None
+        self.recv_stop_gradient = None
 
         self.has_send_meta = False
         self.has_recv_meta = False
@@ -57,7 +60,11 @@ class SendRecvMeta:
         # recv dtype
         dtype = paddle.to_tensor([0])
         paddle.distributed.recv(dtype, src=0, group=group)
-        return shape.numpy().tolist(), dtype.item()
+
+        # recv stop_gradient
+        stop_grad = paddle.to_tensor([0])
+        paddle.distributed.recv(stop_grad, src=0, group=group)
+        return shape.numpy().tolist(), dtype.item(), stop_grad.item()
 
     def recv_meta(self, group):
         tensor_type = paddle.to_tensor([0])
@@ -65,9 +72,10 @@ class SendRecvMeta:
         tensor_type = tensor_type.item()
 
         if tensor_type == 0:
-            shape, dtype = self._recv_shape_dtype(group)
+            shape, dtype, stop_grad = self._recv_shape_dtype(group)
             self.recv_shape_message = shape
             self.recv_dtype_message = dtype
+            self.recv_stop_gradient = bool(stop_grad)
 
         elif tensor_type == 1:
             num = paddle.to_tensor([0])
@@ -75,13 +83,16 @@ class SendRecvMeta:
             num = num.item()
             shapes = []
             dtypes = []
+            stop_grads = []
             for i in range(num):
-                shape, dtype = self._recv_shape_dtype(group)
+                shape, dtype, stop_grad = self._recv_shape_dtype(group)
                 shapes.append(shape)
                 dtypes.append(dtype)
+                stop_grads.append(bool(stop_grad))
 
             self.recv_shape_message = tuple(shapes)
             self.recv_dtype_message = tuple(dtypes)
+            self.recv_stop_gradient = tuple(stop_grads)
 
     def _send_dims_shape_dtype(self, tensor, group):
         # send len(shape)
@@ -95,6 +106,10 @@ class SendRecvMeta:
         # send dtype
         dtype = paddle.to_tensor(paddle_2_number(tensor.dtype))
         paddle.distributed.send(dtype, dst=1, group=group)
+
+        # send trainable
+        stop_grad = paddle.to_tensor(int(tensor.stop_gradient))
+        paddle.distributed.send(stop_grad, dst=1, group=group)
 
     def send_meta(self, tensor, group):
         if isinstance(tensor, paddle.Tensor):
@@ -129,6 +144,12 @@ class SendRecvMeta:
 _send_recv_meta = SendRecvMeta()
 
 
+def _is_valid_send_recv_partial(tensor, mp_degree):
+    tensor_numel = np.prod(tensor.shape)
+    assert tensor_numel != 0, "can't send/recv zero element"
+    return mp_degree > 1 and tensor_numel % mp_degree == 0
+
+
 def send_partial(tensor,
                  dst=0,
                  nranks=1,
@@ -138,9 +159,17 @@ def send_partial(tensor,
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
-    return paddle.fluid.core.ops.partial_send(
-        tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id, 'peer',
-        dst, 'num', nranks, 'id', rank_id)
+
+    if _is_valid_send_recv_partial(tensor, nranks):
+        return _C_ops.partial_send(tensor.detach(), 'use_calc_stream',
+                                   use_calc_stream, 'ring_id', ring_id, 'peer',
+                                   dst, 'num', nranks, 'id', rank_id)
+    else:
+        return paddle.distributed.send(
+            tensor.detach(),
+            dst=dst,
+            group=group,
+            use_calc_stream=use_calc_stream)
 
 
 def recv_partial(tensor,
@@ -153,10 +182,17 @@ def recv_partial(tensor,
         return
     ring_id = 0 if group is None else group.id
 
-    paddle.fluid.core.ops.partial_recv(
-        tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id, 'peer',
-        src, 'num', nranks, 'id', rank_id, 'dtype', tensor.dtype, 'out_shape',
-        tensor.shape)
+    if _is_valid_send_recv_partial(tensor, nranks):
+        _C_ops.partial_recv(tensor.detach(), 'use_calc_stream', use_calc_stream,
+                            'ring_id', ring_id, 'peer', src, 'num', nranks,
+                            'id', rank_id, 'dtype', tensor.dtype, 'out_shape',
+                            tensor.shape)
+    else:
+        paddle.distributed.recv(
+            tensor.detach(),
+            src=src,
+            group=group,
+            use_calc_stream=use_calc_stream)
 
 
 def allgather_partial(tensor,
@@ -164,15 +200,15 @@ def allgather_partial(tensor,
                       rank_id=0,
                       group=None,
                       use_calc_stream=True):
-    if nranks == 1:
+    if not _is_valid_send_recv_partial(tensor, nranks):
         return tensor
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
 
-    return paddle.fluid.core.ops.partial_allgather_(
-        tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
-        'nranks', nranks, 'rank', rank_id)
+    return _C_ops.partial_allgather_(tensor.detach(), 'use_calc_stream',
+                                     use_calc_stream, 'ring_id', ring_id,
+                                     'nranks', nranks, 'rank', rank_id)
 
 
 def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
@@ -184,6 +220,8 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
     # send / recv message
     recv_shape_msg = _send_recv_meta.recv_shape_message
     recv_dtype_msg = _send_recv_meta.recv_dtype_message
+    recv_stop_gradient = _send_recv_meta.recv_stop_gradient
+
     send_shape_msg = _send_recv_meta.send_shape_message
     send_dtype_msg = _send_recv_meta.send_dtype_message
 
@@ -196,13 +234,16 @@ def _p2p_helper(tensor_send_next, tensor_send_prev, recv_prev, recv_next):
         if isinstance(recv_shape_msg, tuple):
             tensor_recv_prev = []
             for idx, shape in enumerate(recv_shape_msg):
-                tensor_recv_prev.append(
-                    paddle.empty(
-                        shape=shape, dtype=number_2_dtype(recv_dtype_msg[idx])))
+                tmp = paddle.empty(
+                    shape=shape, dtype=number_2_dtype(recv_dtype_msg[idx]))
+                tmp.stop_gradient = recv_stop_gradient[idx]
+                tensor_recv_prev.append(tmp)
             tensor_recv_prev = tuple(tensor_recv_prev)
         else:
+
             tensor_recv_prev = paddle.empty(
                 shape=recv_shape_msg, dtype=number_2_dtype(recv_dtype_msg))
+            tensor_recv_prev.stop_gradient = recv_stop_gradient
 
     if recv_next:
         if isinstance(send_shape_msg, tuple):

@@ -34,12 +34,12 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     .. math::
 
-        y = \\frac{x}{ \\max\\left( \\lvert \\lvert x \\rvert \\rvert_p, epsilon\\right) }
+        y = \frac{x}{ \max\left( \lvert \lvert x \rvert \rvert_p, epsilon\right) }
     
     .. math::
-        \\lvert \\lvert x \\rvert \\rvert_p = \\left( \\sum_i {\\lvert x_i \\rvert^p}  \\right)^{1/p}
+        \lvert \lvert x \rvert \rvert_p = \left( \sum_i {\lvert x_i \rvert^p}  \right)^{1/p}
 
-    where, :math:`\\sum_i{\\lvert x_i \\rvert^p}` is calculated along the ``axis`` dimension.
+    where, :math:`\sum_i{\lvert x_i \rvert^p}` is calculated along the ``axis`` dimension.
 
 
     Parameters:
@@ -432,7 +432,7 @@ def local_response_norm(x,
 
         .. math::
 
-            Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + size/2)}_{j = \\max(0, i - size/2)}(Input(j, x, y))^2\\right)^{\\beta}
+            Output(i, x, y) = Input(i, x, y) / \left(k + \alpha \sum\limits^{\min(C-1, i + size/2)}_{j = \max(0, i - size/2)}(Input(j, x, y))^2\right)^{\beta}
 
         In the above equation:
 

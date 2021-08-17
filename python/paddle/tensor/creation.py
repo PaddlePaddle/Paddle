@@ -777,7 +777,7 @@ def meshgrid(*args, **kwargs):
 
 def diagflat(x, offset=0, name=None):
     """
-    If ``x`` is a vector (1-D tensor), a 2-D square tensor whth the elements of ``x`` as the diagonal is returned.
+    If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
 
     If ``x`` is a tensor (more than 1-D), a 2-D square tensor with the elements of flattened ``x`` as the diagonal is returned.
 
@@ -902,7 +902,7 @@ def diagflat(x, offset=0, name=None):
 
 def diag(x, offset=0, padding_value=0, name=None):
     """
-    If ``x`` is a vector (1-D tensor), a 2-D square tensor whth the elements of ``x`` as the diagonal is returned.
+    If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
 
     If ``x`` is a matrix (2-D tensor), a 1-D tensor with the diagonal elements of ``x`` is returned.
 

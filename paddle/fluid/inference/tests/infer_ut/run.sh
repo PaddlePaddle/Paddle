@@ -65,6 +65,24 @@ for model_name in $download_list; do
     download $url_prefix $model_name
 done
 
+ocr_download_list='ocr_det_mv3_db'
+for model_name in $ocr_download_list; do
+    url_prefix="https://paddle-qa.bj.bcebos.com/inference_model/2.1.1/ocr"
+    download $url_prefix $model_name
+done
+
+clas_download_list='LeViT'
+for model_name in $clas_download_list; do
+    url_prefix="https://paddle-qa.bj.bcebos.com/inference_model/2.1.1/class"
+    download $url_prefix $model_name
+done
+
+nlp_download_list='ernie_text_cls'
+for model_name in $nlp_download_list; do
+    url_prefix="https://paddle-qa.bj.bcebos.com/inference_model/2.1.1/nlp"
+    download $url_prefix $model_name
+done
+
 # compile and run test
 cd $current_dir
 mkdir -p build
@@ -88,6 +106,66 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         --gtest_output=xml:test_resnet50.xml
     if [ $? -ne 0 ]; then
         echo "test_resnet50 runs failed" >> ${current_dir}/build/test_summary.txt
+        EXIT_CODE=1
+    fi
+fi
+
+# ---------tensorrt det_mv3_db on linux---------
+if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
+    cmake .. -DPADDLE_LIB=${inference_install_dir} \
+        -DWITH_MKL=$TURN_ON_MKL \
+        -DDEMO_NAME=test_det_mv3_db \
+        -DWITH_GPU=$TEST_GPU_CPU \
+        -DWITH_STATIC_LIB=OFF \
+        -DUSE_TENSORRT=$USE_TENSORRT \
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
+        -DWITH_GTEST=ON
+    make -j$(nproc)
+    ./test_det_mv3_db \
+        --modeldir=$DATA_DIR/ocr_det_mv3_db/ocr_det_mv3_db \
+        --gtest_output=xml:test_det_mv3_db.xml
+    if [ $? -ne 0 ]; then
+        echo "test_det_mv3_db runs failed" >> ${current_dir}/build/test_summary.txt
+        EXIT_CODE=1
+    fi
+fi
+
+# ---------tensorrt LeViT on linux---------
+if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
+    cmake .. -DPADDLE_LIB=${inference_install_dir} \
+        -DWITH_MKL=$TURN_ON_MKL \
+        -DDEMO_NAME=test_LeViT \
+        -DWITH_GPU=$TEST_GPU_CPU \
+        -DWITH_STATIC_LIB=OFF \
+        -DUSE_TENSORRT=$USE_TENSORRT \
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
+        -DWITH_GTEST=ON
+    make -j$(nproc)
+    ./test_LeViT \
+        --modeldir=$DATA_DIR/LeViT/LeViT \
+        --gtest_output=xml:test_LeViT.xml
+    if [ $? -ne 0 ]; then
+        echo "test_LeViT runs failed" >> ${current_dir}/build/test_summary.txt
+        EXIT_CODE=1
+    fi
+fi
+
+# ---------gpu ernie_text_cls on linux---------
+if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
+    cmake .. -DPADDLE_LIB=${inference_install_dir} \
+        -DWITH_MKL=$TURN_ON_MKL \
+        -DDEMO_NAME=test_ernie_text_cls \
+        -DWITH_GPU=$TEST_GPU_CPU \
+        -DWITH_STATIC_LIB=OFF \
+        -DUSE_TENSORRT=$USE_TENSORRT \
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
+        -DWITH_GTEST=ON
+    make -j$(nproc)
+    ./test_ernie_text_cls \
+        --modeldir=$DATA_DIR/ernie_text_cls/ernie_text_cls \
+        --gtest_output=xml:test_ernie_text_cls.xml
+    if [ $? -ne 0 ]; then
+        echo "test_ernie_text_cls runs failed" >> ${current_dir}/build/test_summary.txt
         EXIT_CODE=1
     fi
 fi

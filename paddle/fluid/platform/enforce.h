@@ -270,12 +270,14 @@ inline std::string SimplifyDemangleStr(std::string str) {
   return str;
 }
 
-inline std::string GetCurrentTraceBackString() {
+inline std::string GetCurrentTraceBackString(bool for_signal = false) {
   std::ostringstream sout;
 
-  sout << "\n\n--------------------------------------\n";
-  sout << "C++ Traceback (most recent call last):";
-  sout << "\n--------------------------------------\n";
+  if (!for_signal) {
+    sout << "\n\n--------------------------------------\n";
+    sout << "C++ Traceback (most recent call last):";
+    sout << "\n--------------------------------------\n";
+  }
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
   static constexpr int TRACE_STACK_LIMIT = 100;
 
@@ -284,7 +286,12 @@ inline std::string GetCurrentTraceBackString() {
   auto symbols = backtrace_symbols(call_stack, size);
   Dl_info info;
   int idx = 0;
-  for (int i = size - 1; i >= 0; --i) {
+  // `for_signal` used to remove the stack trace introduced by
+  // obtaining the error stack trace when the signal error occurred,
+  // that is not related to the signal error self, remove it to
+  // avoid misleading users and developers
+  int end_idx = for_signal ? 2 : 0;
+  for (int i = size - 1; i >= end_idx; --i) {
     if (dladdr(call_stack[i], &info) && info.dli_sname) {
       auto demangled = demangle(info.dli_sname);
       std::string path(info.dli_fname);

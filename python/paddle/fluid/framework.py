@@ -72,6 +72,7 @@ _dygraph_tracer_ = None
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
+_current_pipeline_stage = None
 _global_flags_ = core.globals()
 
 
@@ -237,6 +238,11 @@ def _static_only_(func):
         return func(*args, **kwargs)
 
     return __impl__
+
+
+def _set_pipeline_stage(stage):
+    global _current_pipeline_stage
+    _current_pipeline_stage = stage
 
 
 # NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
@@ -1873,6 +1879,86 @@ class Variable(object):
             type='size', inputs={'Input': [self]}, outputs={'Out': [output]})
         return output
 
+    def _set_attr(self, name, val):
+        """
+        Set the value of attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(int|str|list): the value of the attribute.
+        """
+        self._update_desc_attr(name, val)
+
+    def _has_attr(self, name):
+        """
+        Whether this Variable has the attribute with the name `name` or not.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            bool: True if has this attribute.
+        """
+        return self.desc.has_attr(name)
+
+    def _remove_attr(self, name):
+        self.desc.remove_attr(name)
+
+    def _update_desc_attr(self, name, val):
+        """
+        Update the value of desc's attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(int|str|list): the value of the attribute.
+        """
+        self.desc._set_attr(name, val)
+
+    @property
+    def attr_names(self):
+        """Get the names of all attributes defined."""
+        return self.desc.attr_names()
+
+    def _get_attr(self, name):
+        """
+        Get the attribute by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            int|str|list: The attribute value. The return value
+            can be any valid attribute type.
+        """
+        return self.desc.attr(name)
+
+    @property
+    def process_mesh(self):
+        """
+        Get the process mesh belonging to this Variable.
+        """
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+        from paddle.distributed.auto_parallel.interface import ProcessMesh
+        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
+        mesh_id = self.desc.attr(mesh_attr_name)
+        return _g_process_mesh_map[mesh_id]
+
+    @property
+    def shard_mask(self):
+        """
+        Get shard_mask belonging to this Variable.
+        """
+        mask_attr_name = 'mask' + core.kAutoParallelSuffix()
+        return self.desc.attr(mask_attr_name)
+
+    @property
+    def offload_device(self):
+        """
+        Get the offload device of this Variable.
+        """
+        offload_attr_name = 'offload_device' + core.kAutoParallelSuffix()
+        return self.desc.attr(offload_attr_name)
+
 
 def get_all_op_protos():
     """
@@ -2035,6 +2121,11 @@ class Operator(object):
                 del op_attrs[role_var_name]
 
             if len(self.desc.type()) != 0:
+                # NOTE(Aurelius84): prog.clone() will lead that var.op is always None,
+                # we add this to fix the problem.
+                for arg in self.desc.output_arg_names():
+                    if block.has_var(arg) and block.var(arg).op is None:
+                        block.var(arg).op = self
                 return
             if type is None:
                 raise ValueError(
@@ -2072,6 +2163,11 @@ class Operator(object):
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
                             "used at the same time." % type)
+            if _current_pipeline_stage is not None:
+                pipeline_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix(
+                )
+                self._update_desc_attr(pipeline_attr_name,
+                                       _current_pipeline_stage)
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -2542,6 +2638,31 @@ class Operator(object):
             return True
 
         return False
+
+    @property
+    def process_mesh(self):
+        """
+        Get the process mesh belonging to this Operator.
+        """
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
+        mesh_id = self.attr(mesh_attr_name)
+        return _g_process_mesh_map[mesh_id]
+
+    def dims_mapping(self, name):
+        """
+        Get the dims_mapping for the op's var named `name`.
+        """
+        dims_mapping_attr_name = name + core.kAutoParallelSuffix()
+        return self.attr(dims_mapping_attr_name)
+
+    @property
+    def pipeline_stage(self):
+        """
+        Get pipeline stage of the Operator.
+        """
+        pipeline_stage_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix()
+        return self.desc.attr(pipeline_stage_attr_name)
 
 
 class Block(object):
@@ -3232,6 +3353,12 @@ class Block(object):
         return ret_var
 
 
+# NOTE(zjl): you should be careful that after you call this method,
+# some Python Variable and all Python Operators should not be used
+# again. Because all Python Variables and all Python Operators are
+# re-constructed inside this method. The underlying VarDesc(OpDesc)
+# of some old Python Variables(all old Python Operators) may have 
+# been destructed.
 def _apply_pass(main_program,
                 startup_program,
                 pass_name,
@@ -4165,6 +4292,14 @@ class Program(object):
         self._graph = None
 
     def _find_var_class_kwargs(self, new_desc):
+        # NOTE: not all variables support shape/dtype/lod_level methods.
+        # For example: RAW, STEP_SCOPES, etc.
+        def get_var_desc_attr_or_none(var_desc, attr_name, allowed_types):
+            if var_desc.type() in allowed_types:
+                return getattr(var_desc, attr_name)()
+            else:
+                return None
+
         old_desc = self.desc
         all_new_vars = []
         block_num = new_desc.num_blocks()
@@ -4181,9 +4316,21 @@ class Program(object):
                 kwargs = {
                     'type': new_var_desc.type(),
                     'name': new_var_desc.name(),
-                    'shape': new_var_desc.shape(),
-                    'dtype': new_var_desc.dtype(),
-                    'lod_level': new_var_desc.lod_level(),
+                    'shape': get_var_desc_attr_or_none(new_var_desc, "shape", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.SELECTED_ROWS,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
+                    'dtype': get_var_desc_attr_or_none(new_var_desc, "dtype", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.SELECTED_ROWS,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
+                    'lod_level':
+                    get_var_desc_attr_or_none(new_var_desc, "lod_level", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
                     'error_clip': old_var.error_clip
                     if old_var is not None else None,
                     'stop_gradient': old_var.stop_gradient
@@ -4222,14 +4369,20 @@ class Program(object):
         all_new_vars = self._find_var_class_kwargs(desc)
         block_num = desc.num_blocks()
         assert block_num == len(all_new_vars)
+        assert block_num == self.desc.num_blocks()
 
         # clear old blocks and desc
-        self.blocks = []
-        self.desc = None
+        for idx in range(block_num):
+            block = self.blocks[idx]
+            block.vars.clear()
+            block.ops.clear()
 
-        # create new blocks and set desc
-        self.desc = desc
-        self.blocks = [Block(self, idx) for idx in range(block_num)]
+        for idx in range(block_num):
+            block_desc = self.blocks[idx].desc
+            new_block_desc = desc.block(idx)
+            block_desc._move_from(new_block_desc)
+
+        del desc
 
         # add new vars first
         for idx in range(block_num):

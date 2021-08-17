@@ -33,6 +33,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 
@@ -145,7 +146,6 @@ using Tensor = framework::Tensor;
 constexpr int kMaxRank = framework::DDim::kMaxRank;
 
 enum ReduceType {
-  kReduceAll = 0x00,        // when reduce_rank == x_rank
   kReduceLastDim = 0x01,    // when reduce_dim[0] == x_dim.size() - 1;
   kReduceHigherDim = 0x02,  // ReduceFirstDim or reduceSecondDim
   kReduceAny = 0x03,        // when reduce_dim.size() > 1
@@ -158,12 +158,13 @@ struct IndexCalculator {
       : dim(dim) {
     dims = detail::VectorToArray<int, kMaxRank>(cal_dims);
     strides = detail::VectorToArray<int, kMaxRank>(full_strides);
-    std::vector<FastDivMod> cal_divmoders;
+    std::vector<platform::FastDivMod> cal_divmoders;
     // fast divmod
     for (auto i : cal_strides) {
-      cal_divmoders.push_back(FastDivMod(i));
+      cal_divmoders.push_back(platform::FastDivMod(i));
     }
-    divmoders = detail::VectorToArray<FastDivMod, kMaxRank>(cal_divmoders);
+    divmoders =
+        detail::VectorToArray<platform::FastDivMod, kMaxRank>(cal_divmoders);
   }
 
   __device__ inline int Get(int offset) const {
@@ -183,7 +184,7 @@ struct IndexCalculator {
   int dim;
   framework::Array<int, kMaxRank> dims;
   framework::Array<int, kMaxRank> strides;
-  framework::Array<FastDivMod, kMaxRank> divmoders;
+  framework::Array<platform::FastDivMod, kMaxRank> divmoders;
 };
 
 // reduce config
@@ -338,15 +339,11 @@ struct ReduceConfig {
   void SetReduceType() {
     int rank = x_dim.size();
     int reduce_rank = reduce_dim.size();
-    bool is_large_enough = (reduce_num > REDUCE_SPLIT_BOUNDARY / 2) ||
-                           (left_num > REDUCE_SPLIT_BOUNDARY);
-
-    if (rank == reduce_rank) {
-      reduce_type = static_cast<int>(ReduceType::kReduceAll);
-    } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
+    bool is_last_dim =
+        (rank == 2) && (reduce_rank == 1) && (reduce_dim[0] == 1);
+    if (rank == reduce_rank || is_last_dim) {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
-    } else if (reduce_rank == 1 &&
-               ((rank == 2 && is_large_enough) || rank != 2)) {
+    } else if (reduce_rank == 1) {
       // ReduceFirstDim and reduceSecondDim
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
     } else {
@@ -576,14 +573,15 @@ static __device__ T BlockYReduce(T val, ReduceOp reducer) {
 // eg: x_dim = {nz, ny, nx}, nx != 1, axis can be 0 or 1
 //     if axis = 1 then grid.z = nz, grid.y = ny / block_size, grid.x = nx / 32
 //     else grid.z = 1, grid.y = ny / block_size, grid.x = nx /32
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
+          typename TransformOp>
 __device__ void ReduceHigherDim(const Tx* x, Ty* y, ReduceOp reducer,
-                                TransformOp transformer, Ty init,
+                                TransformOp transformer, MPType init,
                                 int reduce_num, int left_num, int block_size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int idy = blockIdx.y * block_size;
 
-  Ty reduce_var = init;
+  MPType reduce_var = init;
 
   if (idx < left_num) {
     int loop = reduce_num - idy;
@@ -591,24 +589,24 @@ __device__ void ReduceHigherDim(const Tx* x, Ty* y, ReduceOp reducer,
 
     for (int iy = 0; iy < loop; iy++) {
       int id = (idy + iy) * left_num + idx + blockIdx.z * reduce_num * left_num;
-      reduce_var = reducer(reduce_var, static_cast<Ty>(transformer(x[id])));
+      reduce_var = reducer(reduce_var, static_cast<MPType>(transformer(x[id])));
     }
 
     y[idx + blockIdx.y * left_num + blockIdx.z * gridDim.y * left_num] =
-        reduce_var;
+        static_cast<Ty>(reduce_var);
   }
 }
 
 // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
 // when reduce_dim.size() != 1 and reduce_dim.size() != x_dim.size(), this
 // function will be used
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
-          typename ReduceIndexCal, typename LeftIndexCal>
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
+          typename TransformOp>
 __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
-                          TransformOp transformer, Ty init, int reduce_num,
+                          TransformOp transformer, MPType init, int reduce_num,
                           int left_num, bool reduce_lastdim,
-                          ReduceIndexCal reduce_index_calculator,
-                          LeftIndexCal left_index_calculator) {
+                          const IndexCalculator& reduce_index_calculator,
+                          const IndexCalculator& left_index_calculator) {
   int input_idx, left_idx, stride;
   // the last dim gets involved in reduction
   if (reduce_lastdim) {
@@ -621,9 +619,9 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
     stride = gridDim.y * blockDim.y;
   }
   // calculate the offset, means the addr where each thread really start.
-  int input_offset = left_index_calculator(left_idx);
+  int input_offset = left_index_calculator.Get(left_idx);
   const Tx* input = x + input_offset;
-  Ty reduce_var = init;
+  MPType reduce_var = init;
 
   // 1. reduce for each thread
   if (left_idx < left_num) {
@@ -634,12 +632,13 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
 #pragma unroll
       for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
         int reduce_idx = input_idx + i * stride;
-        int idx_x = reduce_index_calculator(reduce_idx);
+        int idx_x = reduce_index_calculator.Get(reduce_idx);
         input_reg[i] = input[idx_x];
       }
 #pragma unroll
       for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
-        reduce_var = reducer(reduce_var, transformer(input_reg[i]));
+        reduce_var =
+            reducer(reduce_var, static_cast<MPType>(transformer(input_reg[i])));
       }
       input_idx += REDUCE_VEC_SIZE * stride;
     }
@@ -652,7 +651,7 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
         break;
       }
       int reduce_idx = input_idx;
-      int idx_x = reduce_index_calculator(reduce_idx);
+      int idx_x = reduce_index_calculator.Get(reduce_idx);
       input_reg[i] = input[idx_x];
       input_idx += stride;
     }
@@ -662,7 +661,8 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
       if (input_idx >= reduce_num) {
         break;
       }
-      reduce_var = reducer(reduce_var, transformer(input_reg[i]));
+      reduce_var =
+          reducer(reduce_var, static_cast<MPType>(transformer(input_reg[i])));
       input_idx += stride;
     }
   }
@@ -677,63 +677,56 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
     // 3. reduce in block x
     reduce_var = BlockXReduce(reduce_var, reducer);
     if (left_idx < left_num && threadIdx.x == 0) {
-      y[blockIdx.y * left_num + left_idx] = reduce_var;
+      y[blockIdx.y * left_num + left_idx] = static_cast<Ty>(reduce_var);
     }
   } else {
     if (left_idx < left_num && threadIdx.y == 0) {
-      y[blockIdx.y * left_num + left_idx] = reduce_var;
+      y[blockIdx.y * left_num + left_idx] = static_cast<Ty>(reduce_var);
     }
   }
 }
 
 // module function designed for global function
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
+          typename TransformOp>
 __device__ void ReduceModule(const Tx* x, Ty* y, ReduceOp reducer,
-                             TransformOp transformer, Ty init, int reduce_num,
-                             int left_num, int blocking_size, int reduce_type,
-                             bool reduce_lastdim,
+                             TransformOp transformer, MPType init,
+                             int reduce_num, int left_num, int blocking_size,
+                             int reduce_type, bool reduce_lastdim,
                              const IndexCalculator& reduce_index_calculator,
                              const IndexCalculator& left_index_calculator) {
-  if (reduce_type == ReduceType::kReduceLastDim) {
-    ReduceAny<Tx, Ty, ReduceOp, TransformOp>(
+  if (reduce_type == ReduceType::kReduceLastDim ||
+      reduce_type == ReduceType::kReduceAny) {
+    ReduceAny<Tx, Ty, MPType, ReduceOp, TransformOp>(
         x, y, reducer, transformer, init, reduce_num, left_num, reduce_lastdim,
-        [&](int idx) { return idx; },
-        [&](int idx) { return idx * reduce_num; });
-
+        reduce_index_calculator, left_index_calculator);
     // reduce_rank == 1 && reduce_dim[0] != x_dim.size() - 1
   } else if (reduce_type == ReduceType::kReduceHigherDim) {
-    ReduceHigherDim<Tx, Ty, ReduceOp, TransformOp>(
+    ReduceHigherDim<Tx, Ty, MPType, ReduceOp, TransformOp>(
         x, y, reducer, transformer, init, reduce_num, left_num, blocking_size);
-
-    // reduce_rank >= 2
-  } else {
-    ReduceAny<Tx, Ty, ReduceOp, TransformOp>(
-        x, y, reducer, transformer, init, reduce_num, left_num, reduce_lastdim,
-        [&](int idx) { return reduce_index_calculator.Get(idx); },
-        [&](int idx) { return left_index_calculator.Get(idx); });
   }
 }
 
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
+          typename TransformOp>
 __global__ void ReduceKernelFunction(const Tx* x, Ty* y, ReduceOp reducer,
-                                     TransformOp transformer, Ty init,
+                                     TransformOp transformer, MPType init,
                                      int reduce_num, int left_num,
                                      int blocking_size, int reduce_type,
                                      bool reduce_lastdim,
                                      IndexCalculator reduce_index_calculator,
                                      IndexCalculator left_index_calculator) {
-  ReduceModule<Tx, Ty, ReduceOp, TransformOp>(
+  ReduceModule<Tx, Ty, MPType, ReduceOp, TransformOp>(
       x, y, reducer, transformer, init, reduce_num, left_num, blocking_size,
       reduce_type, reduce_lastdim, reduce_index_calculator,
       left_index_calculator);
 }
 
-template <typename Tx, typename Ty, typename ReduceOp>
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp>
 static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
-                               const ReduceOp& reducer, Ty init,
+                               const ReduceOp& reducer, MPType init,
                                gpuStream_t stream, ReduceConfig<Ty> config) {
   using TransformOp = typename ReduceOp::Transformer;
-
   int reduce_rank = config.reduce_strides.size();
   int left_rank = config.left_strides.size();
   auto reduce_index_calculator = IndexCalculator(
@@ -741,7 +734,7 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
   auto left_index_calculator = IndexCalculator(
       left_rank, config.left_dim, config.left_strides, config.x_strides);
 
-  ReduceKernelFunction<Tx, Ty, ReduceOp,
+  ReduceKernelFunction<Tx, Ty, MPType, ReduceOp,
                        TransformOp><<<config.grid, config.block, 0, stream>>>(
       x_data, config.output_data, reducer, TransformOp(config.reduce_num), init,
       config.reduce_num, config.left_num, config.blocking_size,
@@ -759,10 +752,11 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
       grid = dim3(config.grid.x, 1, config.grid.z);
     }
 
-    ReduceKernelFunction<Ty, Ty, ReduceOp, detail::IdentityFunctor<
-                                               Ty>><<<grid, block, 0, stream>>>(
+    ReduceKernelFunction<
+        Ty, Ty, MPType, ReduceOp,
+        detail::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
         config.output_data, y_data, reducer,
-        detail::IdentityFunctor<Ty>(config.grid.y), init, config.grid.y,
+        detail::IdentityFunctor<Ty, MPType>(config.grid.y), init, config.grid.y,
         config.left_num, config.grid.y, ReduceType::kReduceHigherDim,
         config.reduce_lastdim, reduce_index_calculator, left_index_calculator);
   }
@@ -776,7 +770,7 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   auto x_dim = framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();  // get the parameters of LaunchReduceKernel
-
+  int numel = x.numel();
   // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,
   // temp_output should be stored temp_data in output_data space or stored in
@@ -793,11 +787,12 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   }
 
   config.SetOutputData(y_data, x.place(), &tmp);
-
-  using TransformOp = typename ReduceOp<Tx, Ty>::Transformer;
-  auto reducer = ReduceOp<Tx, Ty>();
-  // launch CUB::Reduce
-  if (config.reduce_type == static_cast<int>(ReduceType::kReduceAll)) {
+  bool use_cub_reduce = (config.reduce_num == numel) &&
+                        (!std::is_same<Tx, paddle::platform::float16>::value);
+  if (use_cub_reduce) {
+    // launch CUB::Reduce
+    using TransformOp = typename ReduceOp<Tx, Ty>::Transformer;
+    auto reducer = ReduceOp<Tx, Ty>();
     cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(
         x_data, TransformOp(config.reduce_num));
     size_t temp_storage_bytes = 0;
@@ -815,7 +810,9 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
     return;
   }
 
-  LaunchReduceKernel<Tx, Ty, ReduceOp<Tx, Ty>>(
+  using MPType = typename details::MPTypeTrait<Ty>::Type;
+  auto reducer = ReduceOp<Tx, MPType>();
+  LaunchReduceKernel<Tx, Ty, MPType, ReduceOp<Tx, MPType>>(
       x_data, y_data, reducer, reducer.initial(), stream, config);
 }
 
