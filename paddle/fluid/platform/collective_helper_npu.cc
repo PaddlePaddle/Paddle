@@ -14,6 +14,7 @@
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
+#include <arpa/inet.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -226,13 +227,13 @@ void WaitToBind(const std::vector<int>& ports) {
 static int g_avoid_hccl_ports_steps = 0;
 
 void prepare_dir(const std::string& dir_name) {
-  struct stat st = {0};
+  struct stat st;
   if (stat(dir_name.c_str(), &st) == -1) {
     mkdir(dir_name.c_str(), 0700);
   }
 }
 
-void WaitHcclPorts(int devce_id) {
+void WaitHcclPorts(int device_id) {
   if (!FLAGS_avoid_hccl_port_conflict) {
     return;
   }
@@ -262,7 +263,7 @@ void WaitHcclPorts(int devce_id) {
     }
   } else {
     std::string file = string::Sprintf(".flags/hccl_flags_%d", device_id);
-    struct stat buf = {0};
+    struct stat buf;
     while (true) {
       if (stat(file.c_str(), &buf) == 0) {
         VLOG(4) << "remove file " << file;

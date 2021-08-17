@@ -60,7 +60,7 @@ class CCommInitOpAscend : public framework::OperatorBase {
       device_id = Attr<int>("device_id");
     }
 
-    WaitHcclPorts(device_id);
+    platform::WaitHcclPorts(device_id);
 
     platform::HCCLCommContext::Instance().CreateHCCLComm(
         hccl_id, rank_ids, rank_id, device_id, rid);
