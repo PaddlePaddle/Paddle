@@ -263,6 +263,7 @@ std::vector<HCCLConn_> TryToProtectHcclFreePorts() {
   gettimeofday(&start, NULL);
 
   // occupy
+  LOG(INFO) << "try to occupy hccl ports, may be take 2Minutes";
   while (1) {
     bool all_ok = true;
     for (size_t i = 0; i < conns.size(); i++) {

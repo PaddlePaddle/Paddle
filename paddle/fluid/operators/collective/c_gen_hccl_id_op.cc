@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/dynload/hccl.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
@@ -77,16 +78,15 @@ class CGenHCCLIdOp : public framework::OperatorBase {
     std::vector<HcclRootInfo> hccl_ids;
     hccl_ids.resize(1);
 
+    int device_id = BOOST_GET_CONST(platform::NPUPlace, dev_place).device;
+    VLOG(10) << "WaitHcclPorts flags:" << FLAGS_avoid_hccl_port_conflict
+             << ", device_id:" << device_id << ", rank:" << rank;
+
+    if (FLAGS_avoid_hccl_port_conflict) {
+      platform::WaitHcclPorts(device_id);
+    }
+
     if (rank == 0) {
-      int device_id = BOOST_GET_CONST(platform::NPUPlace, dev_place).device;
-
-      VLOG(10) << "WaitHcclPorts flags:" << FLAGS_avoid_hccl_port_conflict
-               << ", device_id:" << device_id;
-
-      if (!FLAGS_avoid_hccl_port_conflict) {
-        platform::TryToProtectHcclFreePorts(device_id);
-      }
-
       GenHCCLID(&hccl_ids);
       // VLOG(3) << "hccl_ids:" << hccl_ids[0].internal;
       std::vector<std::string> endpoint_list =
