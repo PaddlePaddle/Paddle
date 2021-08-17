@@ -150,6 +150,9 @@ void HCCLCommContext::ReleaseHCCLComms() {
   }
 }
 
+static const int g_hccl_port_start = 60000 static const int g_hccl_port_end =
+    60015 static const int g_avoid_hccl_ports_steps = 0;
+
 int GetSocketPort(int fd) {
   struct sockaddr_in local;
   socklen_t size = sizeof(local);
@@ -183,7 +186,7 @@ void WaitPortClosed(const std::vector<int>& ports) {
   }
 }
 
-static int WaitToBind(int port) {
+static int Bind(int port) {
   struct sockaddr_in my_addr;
   int client = socket(AF_INET, SOCK_STREAM, 0);
   PADDLE_ENFORCE_GT(client, 0, "socket must be created");
@@ -196,16 +199,27 @@ static int WaitToBind(int port) {
 
   // This ip address will change according to the machine
   my_addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+  int ret =
+      bind(client, (struct sockaddr*)&my_addr, sizeof(struct sockaddr_in));
+  if (ret != 0) {
+    close(conn);
+    return -1;
+  }
+
+  return client
+}
+
+static int WaitToBind(int port) {
   while (1) {
-    int ret =
-        bind(client, (struct sockaddr*)&my_addr, sizeof(struct sockaddr_in));
-    if (ret != 0) {
-      LOG(WARNING) << "bind to addr error wait to bind"
-                   << my_addr.sin_addr.s_addr << ":" << my_addr.sin_port;
+    int ret = Bind(port);
+    if (ret < 0) {
+      LOG(WARNING) << "bind to addr error wait to bind port :" << port
+                   << ",ret:" << ret;
       std::this_thread::sleep_for(std::chrono::seconds(3));
       continue;
     }
 
+    VLOG(10) << "bind to port:" << port << " OK";
     break;
   }
 
@@ -224,8 +238,6 @@ void WaitToBind(const std::vector<int>& ports) {
   }
 }
 
-static int g_avoid_hccl_ports_steps = 0;
-
 void prepare_dir(const std::string& dir_name) {
   struct stat st;
   if (stat(dir_name.c_str(), &st) == -1) {
@@ -233,22 +245,71 @@ void prepare_dir(const std::string& dir_name) {
   }
 }
 
-void WaitHcclPorts(int device_id) {
-  if (!FLAGS_avoid_hccl_port_conflict) {
-    return;
+std::vector<HCCLConn_> TryToProtectHcclFreePorts() {
+  std::vector<HCCLConn_> conns;
+  for (int i = g_hccl_port_start; i <= g_hccl_port_end; i++) {
+    struct HCCLConn_ conn;
+    conn.port = -1;
+    conn.socket = -1;
+    conns.push_back(conn);
   }
+
+  struct timeval start;
+  struct timeval now;
+  gettimeofday(&start, NULL);
+  while (1) {
+    bool all_ok = true;
+    for (int i = 0; i < conns.size(); i++) {
+      if (conn[i].socket <= 0) {
+        continue;
+      }
+
+      int ret = Bind(port);
+      if (ret < 0) {
+        all_ok = false;
+      }
+
+      conn[i].socket = ret;
+    }
+
+    if (all_ok) {
+      break;
+    }
+
+    gettimeofday(&now, NULL);
+    int64_t elapsed = (now.tv_sec - start.tv_sec);
+    if (elapsed >= 123) {  // < 2MSL
+      break;
+    }
+  }
+
+  std::ostringstream ss;
+  ss << "find free ports, size:" << conns.size()
+     << ", ports:" for (int i = 0; i < conns.size(); i++) {
+    ss << conns[i].port << ","
+  }
+
+  LOG(INFO) << ss.str();
+
+  for (int i = 0; i < conns.size(); i++) {
+    close(conns[i].socket);
+  }
+
+  if (conns.size() == 0) {
+    LOG(WARNING) << "not find hccl free ports";
+  }
+
+  return conns;
+}
+
+void WaitHcclPorts(int device_id) {
   prepare_dir(".flags");
 
   LOG(INFO) << "begin to avoid hccl conflicts steps:"
             << g_avoid_hccl_ports_steps << ", device_id" << device_id;
 
   if (device_id == 0) {
-    std::vector<int> hccl_ports;
-    for (int i = 60000; i < 60016; i++) {
-      hccl_ports.push_back(i);
-    }
-
-    WaitToBind(hccl_ports);
+    TryToProtectHcclFreePorts();
     for (int i = 1; i < 8; i++) {
       std::string file = string::Sprintf(".flags/hccl_flags_%d_%d",
                                          g_avoid_hccl_ports_steps, i);

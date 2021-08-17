@@ -334,6 +334,13 @@ int GetSocketPort(int fd);
 void WaitPortClosed(const std::vector<int>& ports);
 void WaitToBind(const std::vector<int>& ports);
 void WaitHcclPorts(int devce_id);
+
+struct HCCLConn_ {
+  int port = -1;
+  int socket = -1;
+};
+
+std::vector<HCCLConn_> TryToProtectHcclFreePorts();
 #endif
 
 }  // namespace platform
