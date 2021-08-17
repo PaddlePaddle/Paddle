@@ -28,8 +28,8 @@ import shutil
 import unittest
 import paddle.fluid.incubate.data_generator as dg
 
-# paddle.enable_static()
-fluid.disable_dygraph()
+paddle.enable_static()
+# fluid.disable_dygraph()
 
 url_schema_len = 5
 query_schema = [
