@@ -28,8 +28,7 @@ class Graph;
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
-DEFINE_bool(apply_pass_to_program, false,
-            "Whether to apply IR pass to program");
+DEFINE_bool(apply_pass_to_program, true, "Whether to apply IR pass to program");
 
 namespace paddle {
 namespace framework {
