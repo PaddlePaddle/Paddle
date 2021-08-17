@@ -21,10 +21,7 @@ if [ ! -d mobilenetv1 ]; then
 fi
 
 # 2. set LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$PWD/paddle_inference_c/paddle/lib:$PWD/paddle_inference_install_dir/third_party/install/mklml/lib:paddle_inference_install_dir/third_party/install/mkldnn/lib
-echo $LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$PWD/paddle_inference_c/paddle/lib:$PWD/paddle_inference_c
 
 # 3. go test
-which go
-sleep 30d
 go test -v ./...
