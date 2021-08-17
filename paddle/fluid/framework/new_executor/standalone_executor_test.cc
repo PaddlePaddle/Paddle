@@ -21,22 +21,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/garbage_collector.h"
-#include "paddle/fluid/framework/op_info.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/device_context.h"
-
-#include "paddle/fluid/pybind/pybind.h"
-
-#include "gperftools/profiler.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
-#include "paddle/fluid/platform/init.h"
 
 paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
@@ -62,7 +47,6 @@ int main() {
                                              &scope);
 
   auto start = std::chrono::steady_clock::now();
-  // ProfilerStart("new_executor.prof");
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
       std::cout << i << std::endl;

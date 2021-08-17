@@ -13,27 +13,12 @@
 // limitations under the License.
 #pragma once
 
-#include <iostream>
-#include <string>
-
-#include <chrono>
 #include <map>
-#include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/garbage_collector.h"
-#include "paddle/fluid/framework/op_info.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace framework {

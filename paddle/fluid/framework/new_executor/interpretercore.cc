@@ -49,8 +49,8 @@ void InterpreterCore::Run(const std::vector<framework::Tensor>& feed_tensors,
   }
 
   if (is_build_ == false) {
-    BuildOpFuncList(main_program_, &op_list_, &vec_func_list_, global_scope_,
-                    place_);
+    BuildOpFuncList(place_, main_program_, &op_list_, &vec_func_list_,
+                    global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
     Convert();
@@ -278,11 +278,11 @@ void InterpreterCore::BuildVariableScope(const framework::ProgramDesc& pdesc,
   }
 }
 
-void InterpreterCore::BuildOpFuncList(const framework::ProgramDesc& pdesc,
+void InterpreterCore::BuildOpFuncList(const platform::Place& place,
+                                      const framework::ProgramDesc& pdesc,
                                       std::vector<OperatorBase*>* op_list,
                                       std::vector<OpFuncNode>* vec_func_list,
-                                      VariableScope* var_scope,
-                                      const platform::Place& place) {
+                                      VariableScope* var_scope) {
   auto& global_block = pdesc.Block(0);
 
   for (auto& op : global_block.AllOps()) {

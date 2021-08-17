@@ -43,8 +43,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   // run startup program
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
   std::vector<paddle::framework::OperatorBase*> op_list;
-  InterpreterCore::BuildOpFuncList(startup_prog, &op_list, &vec_func_list,
-                                   &global_scope_, place_);
+  InterpreterCore::BuildOpFuncList(place_, startup_prog, &op_list,
+                                   &vec_func_list, &global_scope_);
 }
 
 int StandaloneExecutor::Run(const std::vector<std::string>& feed_names,
