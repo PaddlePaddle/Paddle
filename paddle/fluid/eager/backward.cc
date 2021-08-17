@@ -115,8 +115,6 @@ void RunBackward(const std::vector<std::shared_ptr<pt::Tensor>>& tensors,
     //    |- node(grads)
     //    |- Prepare for next node
     // 3. Update queue
-    VLOG(2) << 1111111;
-    VLOG(2) << queue.empty();
     while(!queue.empty()) {
         GradNodeBase* node = queue.front();
         queue.pop();
@@ -133,7 +131,7 @@ void RunBackward(const std::vector<std::shared_ptr<pt::Tensor>>& tensors,
         for(const auto& t : grad_output_tensors) {
             auto dense_t = std::dynamic_pointer_cast<pt::DenseTensor>(t.impl());
             float* ptr = dense_t->mutable_data<float>();
-            for(int i = 0; i < static_cast<int>(dense_t->numel()); i++) {
+            for(int i = 0; i < 10; i++) {
                 VLOG(2) << ptr[i];
             }
         }

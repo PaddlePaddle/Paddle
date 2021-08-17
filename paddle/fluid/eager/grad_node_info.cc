@@ -44,6 +44,16 @@ void GradNodeBase::RecordStopGradient(
   }
 }
 
+template<typename T>
+static void add_kernel(const pt::DenseTensor& t0, const pt::DenseTensor& t1, pt::DenseTensor& out) {
+    const T* t0_ptr = t0.data<T>();
+    const T* t1_ptr = t1.data<T>();
+    T* out_ptr = out.mutable_data<T>();
+    for(int i = 0; i < t0.numel(); i++) {
+        out_ptr[i] = t0_ptr[i] + t1_ptr[i];
+    }
+}
+
 void InputBuffer::add(size_t pos, const pt::Tensor& t, bool fill_one) {
     // TODO: Add support for other tensor types
     std::shared_ptr<pt::DenseTensor> tensor_instance = std::dynamic_pointer_cast<pt::DenseTensor>(t.impl());
@@ -57,9 +67,51 @@ void InputBuffer::add(size_t pos, const pt::Tensor& t, bool fill_one) {
     PADDLE_ENFORCE(pos < buffer.size(), 
         paddle::platform::errors::Fatal("Invalid pos for InputBuffer::add() which exceeds size of buffer"));
     
+    pt::Tensor& buffer_tensor = buffer[pos];
     if(!fill_one) {
-        // Simply copy tensor->impl
-        buffer[pos] = t;
+        if(!buffer_tensor.defined() || !buffer_tensor.initialized()) {
+            // Simply copy tensor->impl
+            buffer_tensor = t;
+
+        } else {
+            // Accumulation
+            std::shared_ptr<pt::DenseTensor> buffer_tensor_instance = std::dynamic_pointer_cast<pt::DenseTensor>(buffer_tensor.impl());
+            
+            PADDLE_ENFORCE(buffer_tensor_instance != nullptr, 
+                paddle::platform::errors::Fatal("InputBuffer::add() Only supports InputBuffer with DenseTensor for now."));
+            PADDLE_ENFORCE(t.type() == buffer_tensor.type(), 
+                paddle::platform::errors::Fatal("Unable to accumulate tensors with different dtype"));
+            PADDLE_ENFORCE(t.numel() == buffer_tensor.numel(), 
+                paddle::platform::errors::Fatal("Unable to accumulate tensors with different sizes"));
+            
+            PADDLE_ENFORCE(t.initialized(), 
+                paddle::platform::errors::Fatal("Tensors to accumulate has not been initialized"));
+    
+            
+            // TODO: Replace this with call to add_kernel_api
+            switch(t.type()) {
+                case pt::DataType::kINT64: {
+                    add_kernel<int64_t>(*buffer_tensor_instance.get(), *tensor_instance.get(), *buffer_tensor_instance.get());
+                    break;
+                }
+                case pt::DataType::kINT32: {
+                    add_kernel<int32_t>(*buffer_tensor_instance.get(), *tensor_instance.get(), *buffer_tensor_instance.get());
+                    break;
+                }
+                case pt::DataType::kFLOAT64: {
+                    add_kernel<double>(*buffer_tensor_instance.get(), *tensor_instance.get(), *buffer_tensor_instance.get());
+                    break;
+                }
+                case pt::DataType::kFLOAT32: {
+                    add_kernel<float>(*buffer_tensor_instance.get(), *tensor_instance.get(), *buffer_tensor_instance.get());
+                    break;
+                }
+                default: {
+                    PADDLE_THROW(paddle::platform::errors::Fatal("Only supports tensor with fp32, fp64, int32, int64 datatypes for now"));
+                    break;
+                }
+            }
+        }
 
     } else {
         // Create new tensor->impl and fill it with 1.0
