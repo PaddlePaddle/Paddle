@@ -110,11 +110,14 @@ def fp16_initialize(enable_pure_fp16, model, optimizer):
 
     if model.sublayers():
         for layer in model.sublayers():
-            if isinstance(layer, (paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
+            if (layer._dtype is 'float16') or isinstance(layer, (
+                    paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
                 continue
             layer.to(dtype='float16')
     else:
-        if not isinstance(model, (paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
+        if not isinstance(model,
+                          (paddle.nn.BatchNorm, paddle.nn.LayerNorm)) or (
+                              model._dtype is 'float16'):
             model.to(dtype='float16')
 
     optimizer._parameter_list = model.parameters()
