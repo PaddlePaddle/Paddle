@@ -593,6 +593,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
         opt_info["no_cvm"] = strategy.get("no_cvm", False)
+        opt_info["scale_sparse_gradient_with_batch_size"] = strategy.get(
+            "scale_sparse_gradient_with_batch_size", True)
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
         opt_info["local_tables"] = strategy.get("local_tables", [])
         opt_info["async_tables"] = strategy.get("async_tables", [])

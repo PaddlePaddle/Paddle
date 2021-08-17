@@ -51,6 +51,7 @@ message TrainerDesc {
   repeated string loss_names = 23;
 
   optional string user_define_dump_filename = 24;
+  optional bool scale_sparse_gradient_with_batch_size = 25 [ default = true ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
