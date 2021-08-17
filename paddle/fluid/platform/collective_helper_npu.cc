@@ -288,9 +288,11 @@ std::vector<HCCLConn_> TryToProtectHcclFreePorts() {
 
     gettimeofday(&now, NULL);
     int64_t elapsed = (now.tv_sec - start.tv_sec);
-    if (elapsed >= 123) {  // < 2MSL
+    if (elapsed >= 126) {  // < 2MSL
       break;
     }
+
+    std::this_thread::sleep_for(std::chrono::seconds(3));
   }
 
   std::ostringstream ss;
