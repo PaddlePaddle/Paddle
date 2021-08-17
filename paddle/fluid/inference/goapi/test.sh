@@ -22,6 +22,8 @@ fi
 
 # 2. set LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$PWD/paddle_inference_c/paddle/lib
+echo $LD_LIBRARY_PATH
 
 # 3. go test
+which go
 go test -v ./...
