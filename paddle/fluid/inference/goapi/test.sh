@@ -26,4 +26,5 @@ echo $LD_LIBRARY_PATH
 
 # 3. go test
 which go
+sleep 30d
 go test -v ./...
