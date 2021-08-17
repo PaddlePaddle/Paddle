@@ -73,6 +73,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
@@ -2910,7 +2911,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property("fuse_broadcast_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_broadcast_ops_ == true ||
-                             self.fuse_broadcast_ops_ == boost::none;
+                             self.fuse_broadcast_ops_ == paddle::none;
                     },
                     [](BuildStrategy &self, bool b) {
                       PADDLE_ENFORCE_NE(self.IsFinalized(), true,
@@ -2940,7 +2941,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_all_optimizer_ops_ == true ||
-                             self.fuse_all_optimizer_ops_ == boost::none;
+                             self.fuse_all_optimizer_ops_ == paddle::none;
                     },
                     [](BuildStrategy &self, bool b) {
                       PADDLE_ENFORCE_NE(self.IsFinalized(), true,
@@ -2989,7 +2990,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, const py::handle &value) {
             auto *py_obj = value.ptr();
             if (py_obj == nullptr || py_obj == Py_None) {
-              self.memory_optimize_ = boost::none;
+              self.memory_optimize_ = paddle::none;
             } else if (PyBool_Check(py_obj)) {
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
@@ -3046,7 +3047,7 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) {
             return self.fuse_all_reduce_ops_ == true ||
-                   self.fuse_all_reduce_ops_ == boost::none;
+                   self.fuse_all_reduce_ops_ == paddle::none;
           },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
       .def_property("enable_backward_optimizer_op_deps",

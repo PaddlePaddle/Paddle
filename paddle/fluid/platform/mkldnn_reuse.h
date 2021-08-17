@@ -1426,7 +1426,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
   std::shared_ptr<typename forward_t::primitive_desc>
   AcquireConvolutionPrimitiveDescriptor(
       const mkldnn::memory::desc& src, const mkldnn::memory::desc& weights,
-      boost::optional<const mkldnn::memory::desc&> bias,
+      paddle::optional<const mkldnn::memory::desc&> bias,
       const mkldnn::memory::desc& dst, const std::vector<int64_t>& strides,
       const std::vector<int64_t>& dilations,
       const std::vector<int64_t>& paddings, const mkldnn::engine& engine,

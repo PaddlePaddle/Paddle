@@ -40,7 +40,7 @@ using GraphWithStats = std::pair<ir::Graph*, int>;
 
 void CorrectGraphEdges(Graph* graph, Node* from, Node* to);
 bool IsReachable(ir::Graph* graph, Node* from, Node* to);
-boost::optional<Node*> HasBias(const Node& op, const std::string& bias_name);
+paddle::optional<Node*> HasBias(const Node& op, const std::string& bias_name);
 
 class ResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
