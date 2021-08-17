@@ -164,8 +164,23 @@ extern inline proto::VarType::Type ToComplexType(proto::VarType::Type t) {
       return proto::VarType::COMPLEX128;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unknown complex value data type (%s), now only support float32 and "
+          "Unknown real value data type (%s), now only support float32 and "
           "float64.",
+          DataTypeToString(t)));
+  }
+}
+
+extern inline proto::VarType::Type ToRealType(proto::VarType::Type t) {
+  switch (t) {
+    case proto::VarType::COMPLEX64:
+      return proto::VarType::FP32;
+    case proto::VarType::COMPLEX128:
+      return proto::VarType::FP64;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unknown complex value data type (%s), now only support complex64 "
+          "and "
+          "complex128.",
           DataTypeToString(t)));
   }
 }

@@ -11,6 +11,7 @@
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -44,6 +45,7 @@ FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
       "Fft norm string must be forward or backward or ortho"));
 }
 
+/*
 template <typename DeviceContext, typename T>
 struct FFTC2CFunctor {
   void operator()(const DeviceContext& ctx, const Tensor* X, Tensor* out,
@@ -92,6 +94,60 @@ class FFTC2CGradKernel : public framework::OpKernel<T> {
     fft_c2c_func(dev_ctx, dy, dx, axes, normalization, forward);
   }
 };
+*/
+
+// Enum representing the FFT type
+enum class FFTTransformType : int8_t {
+  C2C,  // Complex-to-complex
+  R2C,  // Real-to-complex
+  C2R,  // Complex-to-real
+};
+
+// Create transform type enum from bools representing if input and output are
+// complex
+inline FFTTransformType GetFFTTransformType(
+    framework::proto::VarType::Type input_dtype,
+    framework::proto::VarType::Type output_dtype) {
+  auto complex_input = framework::IsComplexType(input_dtype);
+  auto complex_output = framework::IsComplexType(output_dtype);
+  if (complex_input && complex_output) {
+    return FFTTransformType::C2C;
+  } else if (complex_input && !complex_output) {
+    return FFTTransformType::C2R;
+  } else if (!complex_input && complex_output) {
+    return FFTTransformType::R2C;
+  }
+  PADDLE_THROW(
+      platform::errors::InvalidArgument("Real to real FFTs are not supported"));
+}
+
+// Returns true if the transform type has complex input
+inline bool has_complex_input(FFTTransformType type) {
+  switch (type) {
+    case FFTTransformType::C2C:
+    case FFTTransformType::C2R:
+      return true;
+
+    case FFTTransformType::R2C:
+      return false;
+  }
+  PADDLE_THROW(
+      platform::errors::InvalidArgument("Real to real FFTs are not supported"));
+}
+
+// Returns true if the transform type has complex output
+inline bool has_complex_output(FFTTransformType type) {
+  switch (type) {
+    case FFTTransformType::C2C:
+    case FFTTransformType::R2C:
+      return true;
+
+    case FFTTransformType::C2R:
+      return false;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Unknown FFTTransformType : [%s]", type));
+}
 
 }  // namespace operators
 }  // namespace paddle
