@@ -84,7 +84,7 @@ class TestArrayReadWrite(unittest.TestCase):
                              'x2': tensor},
                        fetch_list=[a_sum, x_sum],
                        scope=core.Scope())
-        self.assertEqual(outs[0], outs[1])
+        self.assertEqual(numpy.allclose(outs[0], outs[1]), True)
 
         total_sum = layers.sums(input=[a_sum, x_sum])
         total_sum_scaled = layers.scale(x=total_sum, scale=1 / 6.0)
