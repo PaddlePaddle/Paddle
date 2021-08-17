@@ -19,6 +19,7 @@ import numpy as np
 import six
 import paddle.fluid as fluid
 import paddle
+import warnings
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
