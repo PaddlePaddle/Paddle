@@ -1,16 +1,16 @@
 #  Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from .resnet import ResNet  # noqa: F401
 from .resnet import resnet18  # noqa: F401
@@ -28,8 +28,15 @@ from .vgg import vgg13  # noqa: F401
 from .vgg import vgg16  # noqa: F401
 from .vgg import vgg19  # noqa: F401
 from .lenet import LeNet  # noqa: F401
+from .resnext import ResNeXt  # noqa: F401
+from .resnext import resnext50_32x4d  # noqa: F401
+from .resnext import resnext50_64x4d  # noqa: F401
+from .resnext import resnext101_32x4d  # noqa: F401
+from .resnext import resnext101_64x4d  # noqa: F401
+from .resnext import resnext152_32x4d  # noqa: F401
+from .resnext import resnext152_64x4d  # noqa: F401
 
-__all__ = [ #noqa
+__all__ = [  # noqa
     'ResNet',
     'resnet18',
     'resnet34',
@@ -45,5 +52,11 @@ __all__ = [ #noqa
     'mobilenet_v1',
     'MobileNetV2',
     'mobilenet_v2',
-    'LeNet'
+    'LeNet',
+    "resnext50_32x4d",
+    "resnext50_64x4d",
+    "resnext101_32x4d",
+    "resnext101_64x4d",
+    "resnext152_32x4d",
+    "resnext152_64x4d"
 ]
