@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -79,7 +80,7 @@ class DeviceEvent {
         event_querier_[type_],
         platform::errors::Unavailable(
             "event_querier_[%d] shall not be nullptr.", type_));
-    event_querier_[type_](this);
+    return event_querier_[type_](this);
   }
 
   void InitEvent(std::shared_ptr<void> event) { event_ = event; }
@@ -114,13 +115,23 @@ struct EventCreateFunctionRegisterer {
   explicit EventCreateFunctionRegisterer(EventCreateFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
     DeviceEvent::event_creator_[type_idx] = func;
+    VLOG(2) << "register creator " << type_idx << " with "
+            << DeviceEvent::event_creator_[type_idx];
   }
+  void Touch() {}
 };
-#define REGISTER_EVENT_CREATE_FUNCTION(device_type, func) \
-  namespace {                                             \
-  static EventCreateFunctionRegisterer<device_type>       \
-      g_device_event_create_##type_idx(func);             \
+
+#define REGISTER_EVENT_CREATE_FUNCTION(device_type, func)               \
+  static ::paddle::platform::EventCreateFunctionRegisterer<device_type> \
+      g_device_event_create_1(func);                                    \
+  int touch_g_device_event_create_1() {                                 \
+    g_device_event_create_1.Touch();                                    \
+    return 0;                                                           \
   }
+
+#define USE_EVENT(device_type)                \
+  extern int touch_g_device_event_create_1(); \
+  UNUSED static int use_event_itself_1 = touch_g_device_event_create_1();
 
 template <DeviceType device_type>
 struct EventRecordFunctionRegisterer {

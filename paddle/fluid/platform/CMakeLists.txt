@@ -151,7 +151,7 @@ endif()
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)
 
-cc_library(device_event SRCS device_event.cc DEPS place enforce device_context)
+cc_library(device_event SRCS device_event.cc DEPS place enforce device_context op_registry)
 cc_library(device_event_gpu SRCS device_event_gpu.cc DEPS device_event)
 
 

@@ -15,9 +15,9 @@
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/fluid/platform/event.h"
 
+#ifdef PADDLE_WITH_CUDA
 namespace paddle {
 namespace platform {
-#ifdef PADDLE_WITH_CUDA
 struct CUDADeviceEventWrapper {
   explicit CUDADeviceEventWrapper(const DeviceOption& dev_opt) {
     PADDLE_ENFORCE_EQ(
@@ -56,10 +56,12 @@ bool DeviceEventQueryCUDA(const DeviceEvent* event) {
   return wrapper->inner_event_.Query();
 }
 
-REGISTER_EVENT_CREATE_FUNCTION(DeviceType::CUDA, DeviceEventCreateCUDA)
-REGISTER_EVENT_RECORD_FUNCTION(DeviceType::CUDA, DeviceEventRecordCUDA)
-REGISTER_EVENT_QUERY_FUNCTION(DeviceType::CUDA, DeviceEventQueryCUDA)
+// REGISTER_EVENT_RECORD_FUNCTION(DeviceType::CUDA, DeviceEventRecordCUDA)
+// REGISTER_EVENT_QUERY_FUNCTION(DeviceType::CUDA, DeviceEventQueryCUDA)
 
-#endif
 }  // namespace platform
 }  // namespace paddle
+
+using ::paddle::platform::DeviceType::CUDA;
+REGISTER_EVENT_CREATE_FUNCTION(CUDA, paddle::platform::DeviceEventCreateCUDA)
+#endif
