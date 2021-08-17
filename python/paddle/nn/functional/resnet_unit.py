@@ -1,0 +1,133 @@
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import copy
+import collections
+import itertools
+import six
+import math
+import sys
+import warnings
+from functools import partial, reduce
+
+import numpy as np
+import paddle
+import paddle.fluid as fluid
+from paddle import framework
+from paddle.device import get_device, get_cudnn_version
+from paddle.nn import functional as F
+from paddle.nn import initializer as I
+from paddle.nn import Layer, LayerList
+from paddle.fluid.layers import utils
+from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
+from paddle.fluid.data_feeder import convert_dtype
+from paddle import _C_ops
+__all__ = []
+
+
+def resnet_unit(x, filter_x, z, filter_z, ele_count, stride, padding, dilation,
+                groups, momentum, eps, conv_format, bn_format, fused_add,
+                has_shortcut, act):
+
+    if fluid.framework.in_dygraph_mode():
+        attrs = ('ele_count', ele_count, 'stride', stride, 'pad', padding,
+                 'dilate', dilation, 'group', groups, 'momentum', momentum,
+                 'epsilon', eps, 'conv_format', conv_format, 'bn_format',
+                 bn_format, 'fused_add', fused_add, 'has_shortcut',
+                 has_shortcut, 'act', act)
+        out_list = getattr(_C_ops, 'resnet_unit')(x, filter_x, z, filter_z,
+                                                  *attrs)
+        out = out_list[0]
+    else:
+        helper = LayerHelper('resnet_unit', **locals())
+        # intermediate_out for x
+        bn_param_dtype = fluid.core.VarDesc.VarType.FP32
+        bit_mask_dtype = fluid.core.VarDesc.VarType.INT32
+        out = helper.create_variable_for_type_inference(x.dtype)
+        bit_mask = helper.create_variable_for_type_inference(bit_mask_dtype)
+        conv_x = helper.create_variable_for_type_inference(x.dtype)
+        sum_x = helper.create_variable_for_type_inference(bn_param_dtype)
+        sqsum_x = helper.create_variable_for_type_inference(bn_param_dtype)
+        saved_mean_x = helper.create_variable_for_type_inference(bn_param_dtype)
+        saved_invstd_x = helper.create_variable_for_type_inference(
+            bn_param_dtype)
+        running_mean_x = helper.create_variable_for_type_inference(
+            bn_param_dtype)
+        running_var_x = helper.create_variable_for_type_inference(
+            bn_param_dtype)
+        eq_scale_x = helper.create_variable_for_type_inference(x.dtype)
+        eq_bias_x = helper.create_variable_for_type_inference(x.dtype)
+        conv_z = helper.create_variable_for_type_inference(
+            z.dtype) if has_shortcut else None
+        sum_z = helper.create_variable_for_type_inference(
+            bn_param_dtype) if has_shortcut else None
+        sqsum_z = helper.create_variable_for_type_inference(
+            bn_param_dtype) if has_shortcut else None
+        saved_mean_z = helper.create_variable_for_type_inference(
+            bn_param_dtype) if has_shortcut else None
+        saved_invstd_z = helper.create_variable_for_type_inference(
+            bn_param_dtype) if has_shortcut else None
+        running_mean_z = helper.create_variable_for_type_inference(
+            bn_param_dtype) if has_shortcut else None
+        running_var_z = helper.create_variable_for_type_inference(
+            bn_param_dtype) if has_shortcut else None
+        eq_scale_z = helper.create_variable_for_type_inference(
+            z.dtype) if has_shortcut else None
+        eq_bias_z = helper.create_variable_for_type_inference(
+            z.dtype) if has_shortcut else None
+
+        inputs = {'X': x, 'FilterX': filter_x, 'Z': z, 'FilterZ': filter_z}
+
+        attrs = {
+            'ele_count': ele_count,
+            'stride': stride,
+            'pad': padding,
+            'dilate': dilation,
+            'group': groups,
+            'momentum': momentum,
+            'epsilon': eps,
+            'conv_format': conv_format,
+            'bn_format': bn_format,
+            'fused_add': fused_add,
+            'has_shortcut': has_shortcut,
+            'act': act
+        }
+
+        outputs = {
+            'Y': out,
+            'BitMask': bit_mask,
+            'ConvX': conv_x,
+            'SumX': sum_x,
+            'SqSumX': sqsum_x,
+            'SavedMeanX': saved_mean_x,
+            'SavedInvstdX': saved_invstd_x,
+            'RunningMeanX': running_mean_x,
+            'RunningVarX': running_mean_z,
+            'EqScaleX': eq_scale_x,
+            'EqBiasX': eq_bias_x,
+            'ConvZ': conv_z,
+            'SumZ': sum_z,
+            'SqSumZ': sqsum_z,
+            'SavedMeanZ': saved_mean_z,
+            'SavedInvstdZ': saved_invstd_z,
+            'RunningMeanZ': running_mean_z,
+            'RunningVarZ': running_var_z,
+            'EqScaleZ': eq_scale_z,
+            'EqBiasZ': eq_bias_z
+        }
+
+        helper.append_op(
+            type='resnet_unit', inputs=inputs, outputs=outputs, attrs=attrs)
+
+    return out

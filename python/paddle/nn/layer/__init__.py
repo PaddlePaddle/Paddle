@@ -79,6 +79,7 @@ from .norm import GroupNorm  # noqa: F401
 from .norm import LayerNorm  # noqa: F401
 from .norm import SpectralNorm  # noqa: F401
 from .norm import LocalResponseNorm  # noqa: F401
+from .resnet_unit import ResNetUnit  # noqa: F401
 
 from .vision import PixelShuffle  # noqa: F401
 from .distance import PairwiseDistance  # noqa: F401
