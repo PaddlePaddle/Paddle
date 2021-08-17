@@ -334,6 +334,7 @@ class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
         self.grad_x = np.real(self.grad_out / np.conj(self.y))
         self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
 
+
 class TestDivApi(unittest.TestCase):
     def _executed_api(self, x, y, name=None):
         return paddle.divide(x, y, name)
@@ -376,6 +377,7 @@ class TestDivApi(unittest.TestCase):
             z_expected = np.array([2, 0.6, 2])
             self.assertEqual((np_z == z_expected).all(), True)
 
+
 class TestDivInplaceApi(TestDivApi):
     def _executed_api(self, x, y, name=None):
         return x.divide_(y, name)
@@ -408,15 +410,12 @@ class TestDivInplaceBroadcastSuccess3(TestDivInplaceBroadcastSuccess):
         self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
         self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
 
+
 class TestDivInplaceFloat64(TestDivInplaceBroadcastSuccess):
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 1, 5).astype('double')
         self.y_numpy = np.random.rand(1, 3, 1, 5).astype('double')
 
-class TestDivInplaceFloat16(TestDivInplaceBroadcastSuccess):
-    def init_data(self):
-        self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float16')
-        self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float16')
 
 class TestDivInplaceBroadcastError(unittest.TestCase):
     def init_data(self):
@@ -447,7 +446,7 @@ class TestDivInplaceBroadcastError3(TestDivInplaceBroadcastError):
         self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
-

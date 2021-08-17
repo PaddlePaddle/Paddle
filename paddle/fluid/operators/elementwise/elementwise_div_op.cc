@@ -110,7 +110,6 @@ class ElementwiseDivDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 };
 
 DECLARE_INPLACE_OP_INFERER(ElementwiseDivInplaceInferer, {"X", "Out"});
-
 }  // namespace operators
 }  // namespace paddle
 
