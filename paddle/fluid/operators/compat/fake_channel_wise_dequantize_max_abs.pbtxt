@@ -17,4 +17,8 @@ def {
     name: "quant_axis"
     type: INT
   }
+  attrs {
+    name: "x_num_col_dims"
+    type: INT
+  }
 }

@@ -115,6 +115,9 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .AddAttr("quant_axis")
       .IsIntIn({0, 1})
       .IsOptional()
+      .AddAttr("x_num_col_dims")
+      .IsType<int>()
+      .IsOptional()
       .End();
   AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
