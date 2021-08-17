@@ -64,9 +64,12 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
         apply_pass("fuse_elewise_add_act_pass")
         build_strategy.fuse_elewise_add_act_ops = False
     if build_strategy.fuse_all_optimizer_ops:
-        apply_pass("fuse_adam_op_pass")
-        apply_pass("fuse_sgd_op_pass")
-        apply_pass("fuse_momentum_op_pass")
+        apply_pass([
+            "coalesce_grad_tensor_pass",
+            "fuse_adam_op_pass",
+            "fuse_sgd_op_pass",
+            "fuse_momentum_op_pass",
+        ])
         build_strategy.fuse_all_optimizer_ops = False
     # TODO(zjl): support fuse all reduce ops
     if build_strategy.cache_runtime_context:

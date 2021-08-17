@@ -28,6 +28,9 @@ class Graph;
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+DEFINE_bool(apply_pass_to_program, false,
+            "Whether to apply IR pass to program");
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -72,19 +75,6 @@ Graph *Pass::Apply(Graph *graph) const {
   return graph;
 }
 
-void Pass::Apply(ProgramDesc *main_program,
-                 ProgramDesc *startup_program) const {
-  VLOG(10) << "apply pass " << Type() << " to program";
-  PADDLE_ENFORCE_NOT_NULL(main_program, platform::errors::InvalidArgument(
-                                            "main program must be provided"));
-  PADDLE_ENFORCE_NOT_NULL(
-      startup_program,
-      platform::errors::InvalidArgument("startup program must be provided"));
-
-  ApplyImpl(main_program, startup_program);
-  VLOG(10) << "finish to apply pass " << Type() << " to program";
-}
-
 template <typename Container, typename Visitor>
 static void VisitAllElements(Container &&container, Visitor &&visitor,
                              bool reverse) {
@@ -95,8 +85,8 @@ static void VisitAllElements(Container &&container, Visitor &&visitor,
   }
 }
 
-void Pass::MergePrograms(ProgramDesc *dst, const details::ProgramDescs &srcs,
-                         bool append) {
+static void MergePrograms(ProgramDesc *dst, const details::ProgramDescs &srcs,
+                          bool append) {
   PADDLE_ENFORCE_NOT_NULL(
       dst, platform::errors::InvalidArgument("Dst program must be provided."));
   bool reverse = !append;
@@ -137,27 +127,68 @@ void Pass::MergePrograms(ProgramDesc *dst, const details::ProgramDescs &srcs,
   VisitAllElements(srcs, create_op_visitor, reverse);
 }
 
-void Pass::ApplyImpl(ProgramDesc *main_program,
-                     ProgramDesc *startup_program) const {
-  Graph graph(*main_program);
-  Apply(&graph);
+void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
+                                ProgramDesc *main_program,
+                                ProgramDesc *startup_program) {
+  PADDLE_ENFORCE_NOT_NULL(
+      main_program,
+      platform::errors::InvalidArgument("The main program must be provided."));
 
-  ProgramDesc new_main_program;
-  GraphToProgram(graph, &new_main_program);
-  main_program->CopyFrom(*new_main_program.Proto());
+  PADDLE_ENFORCE_NOT_NULL(startup_program,
+                          platform::errors::InvalidArgument(
+                              "The startup program must be provided."));
 
-  if (graph.Has(details::kStartupProgramDescs)) {
-    const auto &startups =
-        graph.Get<details::ProgramDescs>(details::kStartupProgramDescs);
-    VLOG(10) << "Merge startup programs";
-    MergePrograms(startup_program, startups, /*append=*/true);
+  for (auto *p : passes) {
+    PADDLE_ENFORCE_NOT_NULL(p, platform::errors::InvalidArgument(
+                                   "The provided pass cannot be nullptr."));
+    if (passes.size() > 1) {
+      PADDLE_ENFORCE_EQ(p->SupportApplyProgramViaGraph(), true,
+                        platform::errors::PermissionDenied(
+                            "Each pass must support to be applied via Graph if "
+                            "multi-passes are applied."));
+    }
   }
 
-  if (graph.Has(details::kProgramDescs)) {
+  if (passes.size() == 1 && !passes[0]->SupportApplyProgramViaGraph()) {
+    VLOG(10) << "apply pass " << passes[0]->Type() << " to program";
+    passes[0]->ApplyImpl(main_program, startup_program);
+    VLOG(10) << "finish to apply pass " << passes[0]->Type() << " to program";
+    return;
+  }
+
+  Graph graph(*main_program);
+  for (auto *p : passes) {
+    p->Apply(&graph);
+  }
+  ConvertToPrograms(&graph, main_program, startup_program);
+}
+
+void Pass::ApplyImpl(ProgramDesc *main_program,
+                     ProgramDesc *startup_program) const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "The pass %s does not support to apply ProgramDesc directly", Type()));
+}
+
+void Pass::ConvertToPrograms(Graph *graph, ProgramDesc *main_program,
+                             ProgramDesc *startup_program) {
+  ProgramDesc new_main_program;
+  GraphToProgram(*graph, &new_main_program);
+  main_program->CopyFrom(*new_main_program.Proto());
+
+  if (graph->Has(details::kStartupProgramDescs)) {
+    const auto &startups =
+        graph->Get<details::ProgramDescs>(details::kStartupProgramDescs);
+    VLOG(10) << "Merge startup programs";
+    MergePrograms(startup_program, startups, /*append=*/true);
+    graph->Erase(details::kStartupProgramDescs);
+  }
+
+  if (graph->Has(details::kProgramDescs)) {
     const auto &mains =
-        graph.Get<details::ProgramDescs>(details::kProgramDescs);
+        graph->Get<details::ProgramDescs>(details::kProgramDescs);
     VLOG(10) << "Merge main programs";
     MergePrograms(main_program, mains, /*append=*/false);
+    graph->Erase(details::kProgramDescs);
   }
 
   startup_program->Flush();

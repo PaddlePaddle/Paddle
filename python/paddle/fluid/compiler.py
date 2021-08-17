@@ -398,7 +398,14 @@ class CompiledProgram(object):
         for node in self._graph.nodes():
             if node.is_var() and node.var() is not None and node.var().persistable() and \
                     node.var().type() != core.VarDesc.VarType.RAW:
-                self._persistable_vars.append(cpt.to_text(node.name()))
+                name = cpt.to_text(node.name())
+                # skip var.is_distributed = True for broadcasting   
+                if self._program is not None and self._program.global_block(
+                ).has_var(name) and getattr(
+                        self._program.global_block().var(name),
+                        "is_distributed", False):
+                    continue
+                self._persistable_vars.append(name)
 
         places = list(map(_place_obj, places))
 
