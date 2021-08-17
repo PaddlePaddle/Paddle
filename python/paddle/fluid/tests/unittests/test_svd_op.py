@@ -227,7 +227,7 @@ class TestSvdNormalMatrixBig(TestSvdCheckGrad2):
 
 class TestSvdNormalMatrixFullMatrices(unittest.TestCase):
     def setUp(self):
-        paddle.disable_static(place=fluid.CUDAPlace(0))
+        paddle.disable_static()
 
     def tearDown(self):
         paddle.enable_static()
@@ -267,7 +267,7 @@ class TestSvdFullMatriceGrad(TestSvdNormalMatrix6x3):
 class TestDygraph(unittest.TestCase):
     def test_dygraph(self):
         if core.is_compiled_with_rocm():
-            paddle.disable_static(place=fluid.CPUPlace())
+            paddle.disable_static()
         else:
             paddle.disable_static()
         a = np.random.rand(5, 5)
