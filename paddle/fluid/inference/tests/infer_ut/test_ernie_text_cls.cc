@@ -23,7 +23,7 @@ T cRandom(int min, int max) {
   unsigned int seed = 100;
   return (min +
           static_cast<T>(max * rand_r(&seed) / static_cast<T>(RAND_MAX + 1)));
-} 
+}
 
 std::map<std::string, paddle::test::Record> PrepareInput(int batch_size) {
   // init input data
@@ -84,9 +84,7 @@ TEST(test_ernie_text_cls, analysis_gpu_bz2_buffer) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(DISABLED_test_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
-  // TODO(OliverLPH): disabled since it cause bug
-
+TEST(test_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
   int thread_num = 4;
   // init input data
   auto my_input_data_map = PrepareInput(2);
