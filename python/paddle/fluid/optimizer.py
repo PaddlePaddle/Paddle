@@ -5259,12 +5259,6 @@ class PipelineOptimizer(object):
                 dtype=grad_segment[0].dtype,
                 persistable=True,
                 stop_gradient=True)
-            fused_merged_grad_main = main_block.create_var(
-                name='FusedMergedGrad_{}'.format(grad_segment[0].name) +
-                merged_suffix,
-                dtype=grad_segment[0].dtype,
-                persistable=True,
-                stop_gradient=True)
             fused_gradients.append(fused_grad)
             fused_merged_gradients.append(fused_merged_grad)
 
@@ -5272,12 +5266,12 @@ class PipelineOptimizer(object):
         assert len(fused_merged_gradients) == len(grad_param_segments)
 
         # insert coalesce op to init fused values
-        first_opt_op_idx = None
-        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
-            if self._is_backward_op(op) and first_opt_op_idx is None:
-                first_opt_op_idx = index + 1
+        first_back_op_idx = None
+        for index, op in enumerate(main_block.ops):
+            if self._is_backward_op(op) and first_back_op_idx is None:
+                first_back_op_idx = index + 1
                 break
-        assert first_opt_op_idx is not None
+        assert first_back_op_idx is not None
         offset = 0
         fuse_param_pos = len(startup_block.ops)
         for i in range(len(grad_param_segments)):
@@ -5286,9 +5280,9 @@ class PipelineOptimizer(object):
             grads = grad_param_segments[i][0]
             params = grad_param_segments[i][1]
             main_block._insert_op_without_sync(
-                first_opt_op_idx + offset,
+                first_back_op_idx + offset,
                 type="coalesce_tensor",
-                inputs={"Input": grads},
+                inputs={"Input": params},
                 outputs={"Output": grads,
                          "FusedOutput": fused_grad},
                 attrs={
@@ -5297,8 +5291,9 @@ class PipelineOptimizer(object):
                     "dtype": grads[0].dtype,
                     self._op_role_key: self._op_role.Backward
                 })
-            startup_block._insert_op_without_sync(
-                fuse_param_pos + offset,
+            offset += 1
+            main_block._insert_op_without_sync(
+                first_back_op_idx + offset,
                 type="coalesce_tensor",
                 inputs={"Input": params},
                 outputs={"Output": grads,
@@ -5306,7 +5301,7 @@ class PipelineOptimizer(object):
                 attrs={
                     "copy_data": False,
                     "use_align": True,
-                    "dtype": params[0].dtype,
+                    "dtype": grads[0].dtype,
                     self._op_role_key: self._op_role.Forward
                 })
             offset += 1
