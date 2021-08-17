@@ -60,8 +60,7 @@ def apply_ir_passes(main_program, startup_program, config):
         )
         build_strategy.fuse_all_optimizer_ops = False
 
-    return apply_build_strategy(main_program, startup_program,
-                                config._user_defined_strategy.build_strategy,
+    return apply_build_strategy(main_program, startup_program, build_strategy,
                                 pass_attrs)
 
 
