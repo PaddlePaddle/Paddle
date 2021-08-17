@@ -63,7 +63,7 @@ class ConcatMKLDNNHandler
     memory::data_type dt =
         paddle::framework::ToMKLDNNDataType(inputs[0]->type());
     std::vector<memory::desc> srcs_md;
-    srcs_md.resize(inputs.size());
+    srcs_md.reserve(inputs.size());
 
     // Create memory descriptors for each of inputs
     const auto dims = paddle::framework::vectorize<int64_t>(inputs[0]->dims());
@@ -109,7 +109,7 @@ static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
 static const std::vector<const Tensor*> ReduceMultiInput(
     const std::vector<const Tensor*>& inputs) {
   std::vector<const Tensor*> reduced;
-  reduced.resize(inputs.size());
+  reduced.reserve(inputs.size());
   auto end_it = std::copy_if(inputs.begin(), inputs.end(), reduced.begin(),
                              [](const Tensor* t) { return t->numel() > 0; });
   reduced.resize(std::distance(reduced.begin(), end_it));
