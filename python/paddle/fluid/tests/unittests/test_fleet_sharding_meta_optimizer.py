@@ -859,7 +859,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
 
-    def test_hybrid_with_pp_dp_amp_fp16allreduce_remove_param_cast(self):
+    def test_hybrid_with_pp_dp_amp_fp16allreduce_optimize_cast(self):
         train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
@@ -871,7 +871,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "mp_degree": 1,
             "pp_degree": 2,
             "dp_degree": 2,
-            "remove_param_cast": True,
+            "optimize_cast": True,
         }
         strategy.pipeline = True
         strategy.pipeline_configs = {

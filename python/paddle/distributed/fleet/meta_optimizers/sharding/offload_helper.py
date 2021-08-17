@@ -222,7 +222,7 @@ class OffloadHelper(object):
         block._sync_with_cpp()
         startup_block._sync_with_cpp()
 
-    def remove_fp32param_cast(self, block, startup_block):
+    def cast_fp32param_in_optimize(self, block, startup_block):
         """
         (p_fp16) = cast(p)
         (p_fp16_recompute) = cast(p)
