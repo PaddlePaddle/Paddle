@@ -4277,11 +4277,8 @@ class PipelineOptimizer(object):
             op._set_attr(self._op_device_key, device)
         else:
             other_known_ops = [
-                'update_loss_scaling',
-                'reduce_any',
-                'concat',
-                'sum',
-                'check_finite_and_unscale',
+                'update_loss_scaling', 'reduce_any', 'concat', 'sum',
+                'check_finite_and_unscale', 'alloc_float_status', 'memcpy'
             ]
             assert op.type in other_known_ops, "For other ops without " \
                 "op_device set, they must be one of {}, but it " \
