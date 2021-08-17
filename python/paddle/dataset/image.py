@@ -39,8 +39,12 @@ import numpy as np
 if six.PY3:
     import subprocess
     import sys
+    if sys.platform == 'win32':
+        interpreter = sys.exec_prefix + "\\" + "python.exe"
+    else:
+        interpreter = sys.executable
     import_cv2_proc = subprocess.Popen(
-        [sys.executable, "-c", "import cv2"],
+        [interpreter, "-c", "import cv2"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
     out, err = import_cv2_proc.communicate()
@@ -93,8 +97,8 @@ def batch_images_from_tar(data_file,
     :rtype: string
     """
     batch_dir = data_file + "_batch"
-    out_path = "%s/%s" % (batch_dir, dataset_name)
-    meta_file = "%s/%s.txt" % (batch_dir, dataset_name)
+    out_path = "%s/%s_%s" % (batch_dir, dataset_name, os.getpid())
+    meta_file = "%s/%s_%s.txt" % (batch_dir, dataset_name, os.getpid())
 
     if os.path.exists(out_path):
         return meta_file

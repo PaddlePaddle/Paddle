@@ -15,9 +15,10 @@
 from __future__ import print_function
 
 import six
-import gast
+from paddle.utils import gast
 
 from paddle.fluid import core
+from paddle.fluid import unique_name
 from paddle.fluid.framework import Variable
 from paddle.fluid.layers import fill_constant
 from paddle.fluid.layer_helper import LayerHelper
@@ -84,7 +85,7 @@ def to_static_variable_gast_node(name):
 def create_static_variable_gast_node(name):
     func_code = "{} = paddle.jit.dy2static\
         .data_layer_not_check(name='{}', shape=[-1], dtype='float32')".format(
-        name, name)
+        name, unique_name.generate(name))
     return gast.parse(func_code).body[0]
 
 
@@ -98,17 +99,9 @@ def create_fill_constant_node(name, value):
         func_code += "dtype='float64', value={})".format(value)
         return gast.parse(func_code).body[0]
 
-    if six.PY2:
-        if isinstance(value, int):
-            func_code += "dtype='int32', value={})".format(value)
-            return gast.parse(func_code).body[0]
-        if isinstance(value, long):
-            func_code += "dtype='int64', value={})".format(value)
-            return gast.parse(func_code).body[0]
-    else:
-        if isinstance(value, int):
-            func_code += "dtype='int64', value={})".format(value)
-            return gast.parse(func_code).body[0]
+    if isinstance(value, int):
+        func_code += "dtype='int64', value={})".format(value)
+        return gast.parse(func_code).body[0]
 
 
 def to_static_variable(x):

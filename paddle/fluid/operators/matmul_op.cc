@@ -232,7 +232,9 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
-    head_number = context.Attr<int>("head_number");
+    if (context.HasAttr("head_number")) {
+      head_number = context.Attr<int>("head_number");
+    }
 #endif
 
     if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
@@ -824,6 +826,21 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
     if (context->HasOutput(y_grad_name)) {
       context->SetOutputDim(y_grad_name, y_dims);
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 

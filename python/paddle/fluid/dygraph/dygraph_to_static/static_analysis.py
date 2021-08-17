@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import gast
+from paddle.utils import gast
 from .utils import is_paddle_api, is_dygraph_api, is_numpy_api, index_in_list
 
 __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
@@ -368,5 +368,8 @@ class StaticAnalysisVisitor(object):
 
             if isinstance(node.func, gast.Name):
                 return self.var_env.get_var_type(node.func.id)
+        if isinstance(node, gast.Subscript):
+            if self.is_tensor_node(node.value):
+                return {NodeVarType.TENSOR}
 
         return {NodeVarType.STATEMENT}

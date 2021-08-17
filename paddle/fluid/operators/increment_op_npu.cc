@@ -43,7 +43,7 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
     step_tensor.mutable_data<T>({1}, context.GetPlace());
     FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));
 
-    auto runner =
+    const auto& runner =
         NpuOpRunner("Add", {*x_tensor, step_tensor}, {*out_tensor}, {});
 
     auto stream =
@@ -64,6 +64,5 @@ REGISTER_OP_NPU_KERNEL(
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext,
                               plat::float16>)

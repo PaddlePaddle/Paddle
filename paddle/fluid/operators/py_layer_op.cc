@@ -62,13 +62,22 @@ void RunPyObject(py::object *py_object,
     for (size_t i = 0; i < result_tuple.size(); i++) {
       if ((*outs)[i] != nullptr) {
         if (Py_None != result_tuple[i].ptr()) {
-          try {
-            auto result_var =
-                result_tuple[i].cast<std::shared_ptr<imperative::VarBase>>();
-            *(*outs)[i] = result_var->Var();
-          } catch (py::cast_error &) {
+          if (py::isinstance<imperative::VarBase>(result_tuple[i])) {
+            try {
+              auto result_var =
+                  result_tuple[i].cast<std::shared_ptr<imperative::VarBase>>();
+              *(*outs)[i] = result_var->Var();
+            } catch (py::cast_error &) {
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "The `PyLayer.backward` function returns invalid argument, "
+                  "the `%s` type argument can not be cast into `Tensor`.",
+                  result_tuple[i].ptr()->ob_type->tp_name));
+            }
+          } else {
             PADDLE_THROW(platform::errors::InvalidArgument(
-                "The output of `PyLayer.backward` should be `Tensor`."));
+                "The output of `PyLayer.backward` should be `Tensor`, but "
+                "received `%s`.",
+                result_tuple[i].ptr()->ob_type->tp_name));
           }
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -94,13 +103,22 @@ void RunPyObject(py::object *py_object,
     }
     if ((*outs)[0] != nullptr) {
       if (Py_None != py_result.ptr()) {
-        try {
-          auto result_var =
-              py_result.cast<std::shared_ptr<imperative::VarBase>>();
-          *((*outs)[0]) = result_var->Var();
-        } catch (py::cast_error &) {
+        if (py::isinstance<imperative::VarBase>(py_result)) {
+          try {
+            auto result_var =
+                py_result.cast<std::shared_ptr<imperative::VarBase>>();
+            *((*outs)[0]) = result_var->Var();
+          } catch (py::cast_error &) {
+            PADDLE_THROW(platform::errors::InvalidArgument(
+                "The `PyLayer.backward` function returns invalid argument, the "
+                "`%s` type argument can not be cast into `Tensor`.",
+                py_result.ptr()->ob_type->tp_name));
+          }
+        } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "The output of `PyLayer.backward` should be `Tensor`."));
+              "The output of `PyLayer.backward` should be `Tensor`, but "
+              "received `%s`",
+              py_result.ptr()->ob_type->tp_name));
         }
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -199,9 +217,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::complex64>,
+                         ::paddle::platform::complex<float>>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::complex128>);
+                         ::paddle::platform::complex<double>>);
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
     py_layer, ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, float>,
@@ -218,7 +236,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int16_t>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::complex64>,
+                         ::paddle::platform::complex<float>>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::complex128>);
+                         ::paddle::platform::complex<double>>);
 #endif  // PADDLE_WITH_CUDA

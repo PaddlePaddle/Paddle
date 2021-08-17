@@ -61,6 +61,7 @@ message TrainerDesc {
 
   optional bool use_ps_gpu = 32 [ default = false ];
   optional string user_define_dump_filename = 33;
+  optional bool scale_sparse_gradient_with_batch_size = 34 [ default = true ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;

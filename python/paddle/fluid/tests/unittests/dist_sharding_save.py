@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase, runtime_main
+from test_dist_base import TestDistRunnerBase
 from dist_mnist import cnn_model
 # from paddle.fluid.incubate.fleet.collective import fleet
 import paddle.distributed.fleet as fleet
@@ -24,7 +24,6 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet.meta_optimizers.sharding as sharding
 
 import os
-import six
 import sys
 import pickle
 
@@ -81,10 +80,7 @@ def runtime_main():
         exe, dirname, main_program=train_prog, filename=None)
 
     out_losses = []
-    if six.PY2:
-        print(pickle.dumps(out_losses))
-    else:
-        sys.stdout.buffer.write(pickle.dumps(out_losses))
+    sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-﻿
+
 <p align="center">
 <img align="center" src="doc/imgs/logo.png", width=1600>
 <p>
@@ -19,7 +19,7 @@
 
 ## 安装
 
-### PaddlePaddle最新版本: [v2.0](https://github.com/PaddlePaddle/Paddle/tree/release/2.0)
+### PaddlePaddle最新版本: [v2.1](https://github.com/PaddlePaddle/Paddle/tree/release/2.1)
 
 跟进PaddlePaddle最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
@@ -32,7 +32,7 @@ pip install paddlepaddle-gpu
 ```
 更多安装信息详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)
 
-PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型更高效。**每日登陆即送10小时**，[前往使用免费算力](https://aistudio.baidu.com/aistudio/index)。
+PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型更高效。**每日登陆即送8小时**，[前往使用免费算力](https://aistudio.baidu.com/aistudio/index)。
 
 ## 四大领先技术
 
@@ -47,10 +47,9 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
     [查看详情](https://github.com/PaddlePaddle/Fleet)
     
 
-- **多端多平台部署的高性能推理引擎**
+- **支持多端多平台的高性能推理部署工具**
 
-    飞桨不仅兼容其他开源框架训练的模型，还可以轻松地部署到不同架构的平台设备上。同时，飞桨的推理速度也是全面领先的。尤其经过了跟华为麒麟NPU的软硬一体优化，使得飞桨在NPU上的推理速度进一步突破。
-    [查看详情](https://github.com/PaddlePaddle/Paddle-Lite)
+    飞桨不仅广泛兼容第三方开源框架训练的模型部署，并且为不同的场景的生产环境提供了完备的推理引擎，包括适用于高性能服务器及云端推理的原生推理库 [Paddle Inference](https://paddle-inference.readthedocs.io/en/latest/product_introduction/summary.html)，面向分布式、流水线生产环境下自动上云、A/B测试等高阶功能的服务化推理框架 [Paddle Serving](https://github.com/PaddlePaddle/Serving)，针对于移动端、物联网场景的轻量化推理引擎 [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)，以及在浏览器、小程序等环境下使用的前端推理引擎 [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)。同时，透过与不同场景下的主流硬件高度适配优化及异构计算的支持, 飞桨的推理性能也领先绝大部分的主流实现。
 
 
 - **面向产业应用，开源开放覆盖多领域的工业级模型库。**
@@ -85,6 +84,11 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 - 欢迎您通过[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)来提交问题、报告与建议
 - QQ群: 793866180 (PaddlePaddle)
 - [论坛](https://ai.baidu.com/forum/topic/list/168): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验, 营造良好的论坛氛围
+    
+## 课程
+
+- [服务器部署](https://aistudio.baidu.com/aistudio/course/introduce/19084): 详细介绍高性能服务器端部署实操，包含本地端及服务化Serving部署等
+- [端侧部署](https://aistudio.baidu.com/aistudio/course/introduce/22690): 详细介绍端侧多场景部署实操，从移端端设备、IoT、网页到小程序部署
 
 ## 版权和许可证
 PaddlePaddle由[Apache-2.0 license](LICENSE)提供

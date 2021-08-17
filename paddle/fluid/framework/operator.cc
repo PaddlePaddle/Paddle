@@ -36,7 +36,8 @@ class LoDTensor;
 }  // namespace framework
 }  // namespace paddle
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_op_list.h"
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -1253,8 +1254,10 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  if (kernel_iter == kernels.end() &&
-      is_xpu_place(expected_kernel_key.place_)) {
+  if ((kernel_iter == kernels.end() &&
+       is_xpu_place(expected_kernel_key.place_) &&
+       !paddle::platform::is_xpu_support_op(type_, expected_kernel_key)) ||
+      paddle::platform::is_in_xpu_black_list(type_)) {
     VLOG(3) << "missing XPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
@@ -1531,7 +1534,12 @@ Scope* OperatorWithKernel::PrepareData(
   // the rest iterations to save the elapsed time.
   // We do not support skipping PrepareData in while block, because the Op's
   // input may be changed by subsequent Ops, which may cause an error.
-  if (pre_scope_ == &scope && new_scope == nullptr) {
+
+  // For inference, ops that behind conditional branch aren't supported well,
+  // so disable prepare optimization conservatively.
+  bool force_prepare_data = HasAttr("inference_force_prepare_data") &&
+                            Attr<bool>("inference_force_prepare_data");
+  if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data) {
     need_prepare_data_ = false;
   }
 

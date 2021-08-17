@@ -58,6 +58,42 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
     auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
 
+    bool skip_update = false;
+    if (ctx.HasInput("SkipUpdate")) {
+      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(SkipUpdate) size must be 1, but get %d",
+                            skip_update_tensor->numel()));
+      std::vector<bool> skip_update_vec;
+      TensorToVector(*skip_update_tensor, ctx.device_context(),
+                     &skip_update_vec);
+      skip_update = skip_update_vec[0];
+    }
+    // skip_update=true, just copy input to output, and TensorCopy will call
+    // mutable_data
+    if (skip_update) {
+      VLOG(4) << "Adam skip update";
+      framework::TensorCopy(
+          *param, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), param_out);
+      framework::TensorCopy(
+          *mom1, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom1_out);
+      framework::TensorCopy(
+          *mom2, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom2_out);
+      framework::TensorCopy(
+          *beta1_pow, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          beta1_pow_out);
+      framework::TensorCopy(
+          *beta2_pow, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          beta2_pow_out);
+      return;
+    }
+
     bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
     VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
@@ -105,7 +141,7 @@ class AdamNPUKernel : public framework::OpKernel<T> {
 
     if (ctx.HasInput("Beta2Tensor")) {
       beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
-      PADDLE_ENFORCE_EQ(beta1_tensor->numel(), 1,
+      PADDLE_ENFORCE_EQ(beta2_tensor->numel(), 1,
                         platform::errors::InvalidArgument(
                             "Input(Beta2Tensor) size must be 1, but get %d",
                             beta2_tensor->numel()));
@@ -147,7 +183,7 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner =
+    const auto& runner =
         NpuOpRunner("ApplyAdamD",
                     {
                         *param, *mom1, *mom2, *beta1_pow, *beta2_pow, *lr,
@@ -179,10 +215,10 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     if (!use_global_beta_pow) {
       beta1_pow_out->mutable_data<T>(ctx.GetPlace());
       beta2_pow_out->mutable_data<T>(ctx.GetPlace());
-      auto runner_m1 =
+      const auto& runner_m1 =
           NpuOpRunner("Mul", {*beta1_pow, *beta1_tensor}, {*beta1_pow_out}, {});
       runner_m1.Run(stream);
-      auto runner_m2 =
+      const auto& runner_m2 =
           NpuOpRunner("Mul", {*beta2_pow, *beta2_tensor}, {*beta2_pow_out}, {});
       runner_m2.Run(stream);
     }

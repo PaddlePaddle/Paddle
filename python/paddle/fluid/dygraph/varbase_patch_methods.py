@@ -16,6 +16,7 @@ import inspect
 import numpy as np
 import warnings
 import weakref
+import sys
 
 import paddle
 from .. import framework
@@ -86,7 +87,7 @@ def monkey_patch_varbase():
 
         """
 
-        # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph. 
+        # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery in dygraph only, should not let it getattr(self, attr, None).
         attr_not_need_keys = ['grad']
         if isinstance(self, ParamBase):
@@ -108,6 +109,8 @@ def monkey_patch_varbase():
 
         if to_parameter or isinstance(self, ParamBase):
             del attr_kwargs['persistable']
+            # NOTE(Aurelius84): All parameters should be placed into global block.
+            attr_kwargs['block'] = attr_kwargs['block'].program.global_block()
             static_var = Parameter(**attr_kwargs)
         else:
             static_var = Variable(**attr_kwargs)
@@ -368,8 +371,14 @@ def monkey_patch_varbase():
                 # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False, [500.])
 
         """
-        msg = "tensor.grad will return the tensor value of the gradient."
+        msg = 'tensor.grad will return the tensor value of the gradient.' \
+            ' This is an incompatible upgrade for tensor.grad API. ' \
+            ' It\'s return type changes from numpy.ndarray in version 2.0 to paddle.Tensor in version 2.1.0. ' \
+            ' If you want to get the numpy value of the gradient, you can use :code:`x.grad.numpy()`'
         warning_msg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
+        # ensure ANSI escape sequences print correctly in cmd and powershell
+        if sys.platform.lower() == 'win32':
+            warning_msg = "\nWarning:\n%s " % (msg)
         warnings.warn(warning_msg)
         return self._grad_ivar()
 

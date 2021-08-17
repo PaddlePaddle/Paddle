@@ -262,7 +262,7 @@ void FleetWrapper::HeterPushSparseVars(
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
-      slot = boost::lexical_cast<int>(sparse_key_names[i]);
+      slot = std::stoi(sparse_key_names[i]);
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     if (g_var == nullptr) {
@@ -551,16 +551,36 @@ void FleetWrapper::PullSparseVarsSync(
   for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
-  auto status = pslib_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
-  pull_sparse_status.push_back(std::move(status));
-  for (auto& t : pull_sparse_status) {
-    t.wait();
-    auto status = t.get();
-    if (status != 0) {
-      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
-      sleep(sleep_seconds_before_fail_exit_);
-      exit(-1);
+
+  int32_t cnt = 0;
+  while (true) {
+    pull_sparse_status.clear();
+    auto status = pslib_ptr_->_worker_ptr->pull_sparse(
+        pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+    pull_sparse_status.push_back(std::move(status));
+    bool flag = true;
+    for (auto& t : pull_sparse_status) {
+      t.wait();
+      int32_t status = -1;
+      try {
+        status = t.get();
+      } catch (const std::future_error& e) {
+        VLOG(0) << "Caught a future_error with code" << e.code()
+                << ", Message:" << e.what();
+      }
+      if (status != 0) {
+        VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(sleep_seconds_before_fail_exit_);
+        flag = false;
+        cnt++;
+      }
+      if (cnt > 3) {
+        VLOG(0) << "fleet pull sparse failed, retry 3 times";
+        exit(-1);
+      }
+    }
+    if (flag) {
+      break;
     }
   }
 #endif
@@ -850,7 +870,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     std::vector<std::vector<float>>* push_values,
     std::vector<::std::future<int32_t>>* push_sparse_status,
     const int batch_size, const bool use_cvm, const bool dump_slot,
-    std::vector<uint64_t>* sparse_push_keys, const bool no_cvm) {
+    std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
+    const bool scale_sparse_gradient_with_batch_size) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;
@@ -894,7 +915,19 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
-      slot = boost::lexical_cast<int>(sparse_key_names[i]);
+      try {
+        slot = std::stoi(sparse_key_names[i]);
+      } catch (std::invalid_argument const& e) {
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "sparse var's name: %s, doesn't support non-integer type name when "
+            "dump_slot=True",
+            sparse_key_names[i]));
+      } catch (std::out_of_range const& e) {
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "sparse var's name: %s, integer type name out of range when "
+            "dump_slot=True",
+            sparse_key_names[i]));
+      }
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     if (g_var == nullptr) {
@@ -907,7 +940,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     float* g = g_tensor->data<float>();
 
-    if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
+    if (scale_sparse_gradient_with_batch_size && grad_dim > 0) {
       int dim = emb_dim;
       Eigen::Map<
           Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
@@ -1094,7 +1127,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
         data[click_index] = static_cast<float>(fea_labels.at(input_idx));
       }
       if (dump_slot) {
-        int slot = boost::lexical_cast<int>(input_names[index]);
+        int slot = std::stoi(input_names[index]);
         data[0] = static_cast<float>(slot);
       }
       ++input_idx;

@@ -25,10 +25,6 @@ static bool CheckDims(const nvinfer1::Dims& dims_x,
     return false;
   }
   for (int i = 0; i < dims_x.nbDims; i++) {
-    // conservative judgment
-    if (dims_x.d[i] == -1 || dims_y.d[i] == -1) {
-      return false;
-    }
     if (dims_x.d[i] != dims_y.d[i]) {
       return false;
     }
@@ -255,10 +251,10 @@ class ElementwiseTensorOpConverter : public OpConverter {
       } else {
         plugin::ElementWisePlugin* plugin =
             new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
-        plugin->AddInput(X);
-        plugin->AddInput(Y);
-        nvinfer1::IPluginLayer* plugin_layer = engine_->AddPlugin(
-            plugin->GetInputs().data(), 2,
+
+        std::vector<nvinfer1::ITensor*> inputs{X, Y};
+        auto* plugin_layer = engine_->AddPlugin(
+            inputs.data(), inputs.size(),
             reinterpret_cast<plugin::PluginTensorRT*>(plugin));
 
         layer = plugin_layer;

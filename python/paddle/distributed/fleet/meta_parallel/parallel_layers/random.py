@@ -14,10 +14,14 @@
 
 import paddle
 import contextlib
+import numpy as np
 
 __all__ = []
 
 MODEL_PARALLEL_RNG = 'model_parallel_rng'
+
+# This file is inspired by Megatron to control random states for MP:
+# https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/mpu/random.py
 
 
 class RNGStatesTracker:
@@ -45,6 +49,15 @@ class RNGStatesTracker:
         self.states_[name] = paddle.get_cuda_rng_state()
         paddle.set_cuda_rng_state(orig_rng_state)
 
+    def get_states_tracker(self):
+        states = {}
+        for name in self.states_:
+            states[name] = self.states_[name]
+        return states
+
+    def set_states_tracker(self, states):
+        self.states_ = states
+
     @contextlib.contextmanager
     def rng_state(self, name=MODEL_PARALLEL_RNG):
         if name not in self.states_:
@@ -65,14 +78,18 @@ def get_rng_state_tracker():
     return RNG_STATE_TRACKER
 
 
-def model_parallel_random_seed(seed=2048):
+def model_parallel_random_seed(seed=None):
     import paddle.distributed.fleet as fleet
     hcg = fleet.get_hybrid_communicate_group()
     rank = hcg.get_model_parallel_rank()
 
-    local_seed = seed + 1024 + rank
-    global_seed = seed
+    if seed:
+        global_seed = seed
+        local_seed = seed * 1024 + rank * 100
+    else:
+        global_seed = np.random.randint(0, 655350)
+        local_seed = np.random.randint(rank * 10000, (rank + 1) * 10000 - 1)
 
     RNG_STATE_TRACKER.reset()
-    paddle.seed(global_seed)
     RNG_STATE_TRACKER.add(MODEL_PARALLEL_RNG, local_seed)
+    paddle.seed(global_seed)

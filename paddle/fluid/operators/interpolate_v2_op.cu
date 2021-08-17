@@ -1186,7 +1186,14 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   } else if ("bilinear" == interp_method) {
-    KeBilinearInterpFw<T><<<config.block_per_grid, config.thread_per_block, 0,
+    dim3 thread_num = config.thread_per_block;
+#ifdef WITH_NV_JETSON
+    if (config.compute_capability == 53 || config.compute_capability == 62) {
+      thread_num = 512;
+    }
+#endif
+
+    KeBilinearInterpFw<T><<<config.block_per_grid, thread_num, 0,
                             ctx.cuda_device_context().stream()>>>(
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, align_mode, data_layout);

@@ -78,6 +78,13 @@ class GraphBrpcClient : public BrpcPsClient {
       const uint32_t& table_id, const std::vector<uint64_t>& node_ids,
       const std::vector<std::string>& feature_names,
       std::vector<std::vector<std::string>>& res);
+
+  virtual std::future<int32_t> clear_nodes(uint32_t table_id);
+  virtual std::future<int32_t> add_graph_node(
+      uint32_t table_id, std::vector<uint64_t>& node_id_list,
+      std::vector<bool>& is_weighted_list);
+  virtual std::future<int32_t> remove_graph_node(
+      uint32_t table_id, std::vector<uint64_t>& node_id_list);
   virtual int32_t initialize();
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }

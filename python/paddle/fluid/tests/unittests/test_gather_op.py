@@ -182,6 +182,7 @@ class TestGatherOp4(TestGatherOp1):
         self.index_type = "int64"
         self.axis = [0]
         self.axis_type = "int32"
+        self.attrs = {'overwrite': False}
 
 
 class API_TestGather(unittest.TestCase):
@@ -274,10 +275,10 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_dtype)
 
-            def test_axis_dtype():
+            def test_axis_dtype1():
                 paddle.gather(x, index, axis=axis)
 
-            self.assertRaises(TypeError, test_axis_dtype)
+            self.assertRaises(TypeError, test_axis_dtype1)
 
     def test_error2(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):

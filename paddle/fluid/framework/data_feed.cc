@@ -31,6 +31,11 @@ USE_INT_STAT(STAT_total_feasign_num_in_mem);
 namespace paddle {
 namespace framework {
 
+DLManager& global_dlmanager_pool() {
+  static DLManager manager;
+  return manager;
+}
+
 void RecordCandidateList::ReSize(size_t length) {
   mutex_.lock();
   capacity_ = length;
@@ -366,6 +371,10 @@ void InMemoryDataFeed<T>::SetParseInsId(bool parse_ins_id) {
 template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemory() {
 #ifdef _LINUX
+  if (!so_parser_name_.empty()) {
+    LoadIntoMemoryFromSo();
+    return;
+  }
   VLOG(3) << "LoadIntoMemory() begin, thread_id=" << thread_id_;
   std::string filename;
   while (this->PickOneFile(&filename)) {
@@ -405,6 +414,51 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
             << " seconds, thread_id=" << thread_id_;
   }
   VLOG(3) << "LoadIntoMemory() end, thread_id=" << thread_id_;
+#endif
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
+#ifdef _LINUX
+  VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
+
+  string::LineFileReader reader;
+  paddle::framework::CustomParser* parser =
+      global_dlmanager_pool().Load(so_parser_name_, slot_conf_);
+
+  std::string filename;
+  while (this->PickOneFile(&filename)) {
+    VLOG(3) << "PickOneFile, filename=" << filename
+            << ", thread_id=" << thread_id_;
+    int err_no = 0;
+    this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+    CHECK(this->fp_ != nullptr);
+    __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
+
+    paddle::framework::ChannelWriter<T> writer(input_channel_);
+    T instance;
+    platform::Timer timeline;
+    timeline.Start();
+
+    while (1) {
+      if (!reader.getline(&*(fp_.get()))) {
+        break;
+      } else {
+        const char* str = reader.get();
+        ParseOneInstanceFromSo(str, &instance, parser);
+      }
+
+      writer << std::move(instance);
+      instance = T();
+    }
+
+    writer.Flush();
+    timeline.Pause();
+    VLOG(3) << "LoadIntoMemoryFromSo() read all lines, file=" << filename
+            << ", cost time=" << timeline.ElapsedSec()
+            << " seconds, thread_id=" << thread_id_;
+  }
+  VLOG(3) << "LoadIntoMemoryFromSo() end, thread_id=" << thread_id_;
 #endif
 }
 
@@ -638,25 +692,34 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
 
     const char* str = reader.get();
     std::string line = std::string(str);
-    // VLOG(3) << line;
+
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
-      PADDLE_ENFORCE_NE(
-          num, 0,
-          platform::errors::InvalidArgument(
-              "The number of ids can not be zero, you need padding "
-              "it in data generator; or if there is something wrong with "
-              "the data, please check if the data contains unresolvable "
-              "characters.\nplease check this error line: %s, \n Specifically, "
-              "something wrong happened(the length of this slot's feasign is 0)"
-              "when we parse the %d th slots."
-              "Maybe something wrong around this slot"
-              "\nWe detect the feasign number of this slot is %d, "
-              "which is illegal.",
-              str, i, num));
+
+      if (num <= 0) {
+        std::stringstream ss;
+        ss << "\n\nGot unexpected input, maybe something wrong with it.\n";
+        ss << "\n----------------------\n";
+        ss << "The Origin Input Data:\n";
+        ss << "----------------------\n";
+
+        ss << line << "\n";
+
+        ss << "\n----------------------\n";
+        ss << "Some Possible Errors:\n";
+        ss << "----------------------\n";
+        ss << "1. The number of ids can not be zero, you need padding.\n";
+        ss << "2. The input data contains unresolvable characters.\n";
+        ss << "3. We detect the slot " << i << "'s feasign number is " << num
+           << " which is illegal.\n";
+        ss << "\n";
+
+        PADDLE_THROW(platform::errors::InvalidArgument(ss.str()));
+      }
+
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
         if ((*instance)[idx].GetType()[0] == 'f') {  // float
@@ -818,16 +881,23 @@ void MultiSlotInMemoryDataFeed::Init(
   inductive_shape_index_.resize(all_slot_num);
   use_slots_.clear();
   use_slots_is_dense_.clear();
+  slot_conf_.resize(all_slot_num);
   for (size_t i = 0; i < all_slot_num; ++i) {
     const auto& slot = multi_slot_desc.slots(i);
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
     use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+
+    slot_conf_[i].name = slot.name();
+    slot_conf_[i].type = slot.type();
+    slot_conf_[i].use_slots_index = use_slots_index_[i];
+
     total_dims_without_inductive_[i] = 1;
     inductive_shape_index_[i] = -1;
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
+      slot_conf_[i].use_slots_is_dense = slot.is_dense();
       std::vector<int> local_shape;
       if (slot.is_dense()) {
         for (int j = 0; j < slot.shape_size(); ++j) {
@@ -860,6 +930,7 @@ void MultiSlotInMemoryDataFeed::Init(
   }
   visit_.resize(all_slot_num, false);
   pipe_command_ = data_feed_desc.pipe_command();
+  so_parser_name_ = data_feed_desc.so_parser_name();
   finish_init_ = true;
   input_type_ = data_feed_desc.input_type();
 }
@@ -876,6 +947,12 @@ void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
 
   std::string rank_str = log_key.substr(14, 2);
   *rank = (uint32_t)strtoul(rank_str.c_str(), NULL, 16);
+}
+
+void MultiSlotInMemoryDataFeed::ParseOneInstanceFromSo(const char* str,
+                                                       Record* instance,
+                                                       CustomParser* parser) {
+  parser->ParseOneInstance(str, instance);
 }
 
 bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {

@@ -69,6 +69,7 @@ disable_wingpu_test="^test_model$|\
 ^test_py_reader_pin_memory$|\
 ^test_py_reader_push_pop$|\
 ^test_reader_reset$|\
+^test_imperative_se_resnext$|\
 ^test_sync_batch_norm_op$|\
 ^test_imperative_static_runner_while$|\
 ^test_dataloader_keep_order$|\
@@ -77,7 +78,6 @@ disable_wingpu_test="^test_model$|\
 ^test_fuse_bn_act_pass$|\
 ^test_fuse_bn_add_act_pass$|\
 ^disable_wingpu_test$"
-
 
 # /*============================================================================*/
 
@@ -96,6 +96,7 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_bmn$|\
 ^test_mobile_net$|\
 ^test_resnet_v2$|\
+^test_build_strategy$|\
 ^test_se_resnet$|\
 ^disable_wincpu_test$"
 
@@ -194,7 +195,7 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
     num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
     echo "Windows 1 card TestCases count is $num"
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
-        python ${PADDLE_ROOT}/tools/get_pr_ut.py
+        python ${PADDLE_ROOT}/tools/get_pr_ut.py || echo "Failed to obtain ut_list !"
         if [[ -f "ut_list" ]]; then
             echo "PREC length: "`wc -l ut_list`
             precision_cases=`cat ut_list`
@@ -345,6 +346,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     if [ -f "$PADDLE_ROOT/added_ut" ];then
         added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
         ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+        rm -f $PADDLE_ROOT/added_ut
         if [ "$added_ut_error" != 0 ];then
             echo "========================================"
             echo "Added UT should pass three additional executions"

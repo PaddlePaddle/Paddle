@@ -17,6 +17,7 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
 from ..fluid.dygraph import no_grad
+from paddle import _C_ops
 
 __all__ = []
 
@@ -87,10 +88,12 @@ class SGD(Optimizer):
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
         lr = self._create_param_lr(param_and_grad)
         if framework.in_dygraph_mode():
-            core.ops.sgd(param_and_grad[0], lr, param_and_grad[1],
-                         param_and_grad[0])
+            _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1],
+                       param_and_grad[0])
             return None
 
         assert isinstance(block, framework.Block)
@@ -106,3 +109,7 @@ class SGD(Optimizer):
             stop_gradient=True)
 
         return sgd_op
+
+    def _update_param_group(self, parameters):
+        parameters = parameters.get('params')
+        return parameters
