@@ -119,7 +119,7 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
       int iter_size = 1;
       for (int i = 0; i < x_num_col_dims; i++) {
         iter_size *= in->dims()[i];
-        }
+      }
       int channel = in->dims()[x_num_col_dims];
       const T* scale_one = scales[0]->data<T>();
       const T* scale_two = scales[1]->data<T>();
