@@ -24,7 +24,6 @@
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
-#include "paddle/fluid/framework/new_exec_util.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -55,7 +54,6 @@ struct VariableMetaInfo {
 struct VariableScope {
   std::vector<Variable*> var_list;
   std::map<std::string, int> name2id;
-  std::vector<VariableMetaInfo> vec_meta_info_;
 };
 
 struct NextInstruction {

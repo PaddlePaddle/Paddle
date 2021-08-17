@@ -91,7 +91,7 @@ void InterpreterCore::Convert() {
 
   vec_instruction_.reserve(vec_func_list_.size());
   dependecy_count_.resize(vec_func_list_.size());
-  global_scope_->vec_meta_info_.resize(global_scope_->var_list.size());
+  vec_meta_info_.resize(global_scope_->var_list.size());
   for (size_t i = 0; i < vec_func_list_.size(); ++i) {
     Instruction temp_inst;
     temp_inst.kernel_func_.compute_func_ = vec_func_list_[i].kernel_func_;
@@ -111,7 +111,7 @@ void InterpreterCore::Convert() {
         std::unique(gc_check_input_list.begin(), gc_check_input_list.end());
     gc_check_input_list.erase(last, gc_check_input_list.end());
     for (auto var_id : gc_check_input_list) {
-      global_scope_->vec_meta_info_[var_id].var_ref_count_++;
+      vec_meta_info_[var_id].var_ref_count_++;
     }
 
     temp_inst.gc_check_var_list.swap(gc_check_input_list);
@@ -144,7 +144,7 @@ void InterpreterCore::Convert() {
         if (input_var2op_info_[id].size() == 0) {
           // output var not be used by any kernel
           vec_instruction_[i].gc_check_var_list.push_back(id);
-          global_scope_->vec_meta_info_[id].var_ref_count_++;
+          vec_meta_info_[id].var_ref_count_++;
         }
       }
     }
@@ -212,7 +212,7 @@ void InterpreterCore::ExecuteInstructionList(
     }
   }
 
-  auto working_var_ref = global_scope_->vec_meta_info_;
+  auto working_var_ref = vec_meta_info_;
 
   size_t run_op_number = 0;
   while (!working_queue.empty()) {

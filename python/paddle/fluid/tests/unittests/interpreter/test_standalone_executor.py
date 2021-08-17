@@ -50,6 +50,12 @@ class LinearTestCase(unittest.TestCase):
                     [2, 2], dtype="float32") * i
             }, [c.name])
 
+        for i in range(10):
+            out = standaloneexecutor.run({
+                "a": np.ones(
+                    [2, 2], dtype="float32") * i
+            }, [a.name, c.name])
+
 
 if __name__ == "__main__":
     unittest.main()
