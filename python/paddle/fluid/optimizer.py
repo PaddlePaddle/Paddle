@@ -5229,6 +5229,7 @@ class PipelineOptimizer(object):
             merged_grad_var = main_block.create_var(
                 name=grad + merged_suffix,
                 dtype=dtype if dtype is not None else paddle.float32,
+                shape=real_grad.shape,
                 persistable=False,
                 stop_gradient=True)
             real_param = main_block.var(param)
@@ -5251,7 +5252,7 @@ class PipelineOptimizer(object):
         # create fused vars for grad and param
         for grad_param_segment in grad_param_segments:
             grad_segment = grad_param_segment[0]
-            fused_grad_segment = grad_param_segments[2]
+            fused_grad_segment = grad_param_segment[2]
             fused_grad = main_block.create_var(
                 name='FusedGrad_{}'.format(grad_segment[0].name),
                 dtype=grad_segment[0].dtype,
@@ -5371,6 +5372,7 @@ class PipelineOptimizer(object):
                     fp32_grad = main_block.create_var(
                         name=fp32_grad_name,
                         dtype=paddle.float32,
+                        shape=grad.shape,
                         persistable=False,
                         stop_gradient=True)
                     main_block._insert_op(
