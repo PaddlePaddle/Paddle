@@ -5319,22 +5319,8 @@ class PipelineOptimizer(object):
         for i in range(len(fused_gradients)):
             fused_grad = fused_gradients[i]
             fused_merged_grad = fused_merged_gradients[i]
-            # main_block._insert_op(
-            #     index=first_opt_op_idx + offset,
-            #     type='fill_constant',
-            #     inputs={},
-            #     outputs={'Out': [fused_merged_grad]},
-            #     attrs={
-            #         'shape': fused_merged_grad.shape,
-            #         'dtype': fused_merged_grad.dtype,
-            #         'value': float(0),
-            #         self._op_role_key: self._op_role.Optimize.LRSched,
-            #     })
-            # offset += 1
-
             is_fp16_grad = 'cast_fp16' in fused_grad.name
             need_cast = (is_fp16_grad is not fp16)
-
             if need_cast:
                 cast_grad_var_name = fused_grad.name + '@TMP'
                 cast_grad_var = main_block.create_var(

@@ -24,6 +24,33 @@
 namespace paddle {
 namespace operators {
 
+template <typename DeviceContext>
+struct FillConstantVisitor {
+  FillConstantVisitor(const DeviceContext &dev_ctx,
+                      framework::LoDTensor *tensor, const float value)
+      : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
+
+  template <typename T>
+  void apply(typename std::enable_if<std::is_same<T, int8_t>::value ||
+                                     std::is_same<T, int16_t>::value>::type * =
+                 nullptr) const {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Not support data type for set_constant attr"));
+  }
+
+  template <typename T>
+  void apply(typename std::enable_if<!(std::is_same<T, int8_t>::value ||
+                                       std::is_same<T, int16_t>::value)>::type
+                 * = nullptr) const {
+    math::SetConstant<DeviceContext, T> set_constant;
+    set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
+  }
+
+  const DeviceContext &dev_ctx_;
+  framework::LoDTensor *tensor_;
+  float value_;
+};
+
 template <typename DeviceContext, typename T>
 class CoalesceTensorOpKernel : public framework::OpKernel<T> {
  public:
@@ -121,10 +148,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                       : len;
       }
     } else if (context.Attr<bool>("set_constant")) {
-      // TODO(Liu yuang) ADD NPU SET_CONSTANT FUNCTION.
-      math::SetConstant<DeviceContext, dtype> set_constant;
-      set_constant(dev_ctx, fused_tensor,
-                   static_cast<dtype>(context.Attr<float>("constant")));
+      framework::VisitDataType(
+          dtype, FillConstantVisitor<DeviceContext>(
+                     dev_ctx, fused_tensor, context.Attr<float>("constant")));
     } else if (context.Attr<bool>("persist_output")) {
       for (size_t i = 0; i < out_var_names.size(); ++i) {
         size_t len = static_cast<size_t>(out_tensors[i]->numel());
