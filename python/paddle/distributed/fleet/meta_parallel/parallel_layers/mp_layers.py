@@ -20,6 +20,7 @@ from paddle import framework
 from ...base import topology as tp
 from paddle.autograd import PyLayer
 from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
 
@@ -152,11 +153,15 @@ class ColumnParallelLinear(Layer):
     def forward(self, x):
         # use inner api to process identity
         if self.is_mp:
-            # use inplace version of c_identity
-            ring_id = 0 if self.model_parallel_group is None else self.model_parallel_group.id
-            input_parallel = _C_ops.c_identity_(x, 'use_calc_stream', True,
-                                                'ring_id', ring_id,
-                                                'use_model_parallel', True)
+            if in_dygraph_mode():
+                # use inplace version of c_identity in dygraph
+                ring_id = 0 if self.model_parallel_group is None else self.model_parallel_group.id
+                input_parallel = _C_ops.c_identity_(x, 'use_calc_stream', True,
+                                                    'ring_id', ring_id,
+                                                    'use_model_parallel', True)
+            else:
+                input_parallel = paddle.distributed.collective._c_identity(
+                    x, group=self.model_parallel_group)
         else:
             input_parallel = x
 
