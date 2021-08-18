@@ -1,7 +1,7 @@
 // Copy from https://github.com/skarupke/flat_hash_map
 // Modify the following points:
-// 1. modify std::max to (std::max) to fix the building failed problem on
-// windows platform
+//1. modify namespace ska to namespace paddle
+//2. modify std::max to (std::max) to fix the building failed problem on windows platform
 
 //          Copyright Malte Skarupke 2017.
 // Distributed under the Boost Software License, Version 1.0.
