@@ -21,11 +21,11 @@
 namespace paddle {
 
 namespace detailv8 {
-using ska::detailv3::functor_storage;
-using ska::detailv3::KeyOrValueHasher;
-using ska::detailv3::KeyOrValueEquality;
-using ska::detailv3::AssignIfTrue;
-using ska::detailv3::HashPolicySelector;
+using paddle::detailv3::functor_storage;
+using paddle::detailv3::KeyOrValueHasher;
+using paddle::detailv3::KeyOrValueEquality;
+using paddle::detailv3::AssignIfTrue;
+using paddle::detailv3::HashPolicySelector;
 
 template <typename = void>
 struct sherwood_v8_constants {
