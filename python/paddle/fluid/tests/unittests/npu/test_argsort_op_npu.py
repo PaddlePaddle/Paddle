@@ -31,8 +31,6 @@ from paddle.fluid.backward import append_backward
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestArgsortOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -84,8 +82,6 @@ class TestArgsortOp(OpTest):
         self.descending = False
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestArgsortOpAxis0NPU(TestArgsortOp):
     def init_axis(self):
         self.axis = 0

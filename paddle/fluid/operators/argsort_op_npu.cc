@@ -9,9 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include <string>
-
 #include "paddle/fluid/operators/argsort_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
@@ -29,17 +26,20 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
     indices->mutable_data<int32_t>(ctx.GetPlace());
 
     int32_t axis = ctx.Attr<int>("axis");
+    auto in_dims = indices->dims();
+    axis = (axis < 0) ? (in_dims.size() + axis) : axis;
     bool descending = ctx.Attr<bool>("descending");
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    int32_t npu_axis = -1;
-    framework::NPUAttributeMap sort_attr_input = {{"axis", npu_axis},
-                                                  {"descending", descending}};
+    framework::NPUAttributeMap sort_attr_input = {
+        {"axis", static_cast<int32_t>(-1)}, {"descending", descending}};
 
-    if (axis != -1) {
-      auto in_dims = indices->dims();
-      axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+    if (axis == -1 || axis + 1 == in_dims.size()) {
+      const auto& sort_runner =
+          NpuOpRunner("Sort", {*input}, {*output, *indices}, sort_attr_input);
+      sort_runner.Run(stream);
+    } else {
       // transpose
       std::vector<int> trans;
       for (int i = 0; i < axis; i++) {
@@ -81,10 +81,6 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
       const auto& trans_output_back_runner = NpuOpRunner(
           "TransposeD", {trans_output}, {*output}, trans_attr_input);
       trans_output_back_runner.Run(stream);
-    } else {
-      const auto& sort_runner =
-          NpuOpRunner("Sort", {*input}, {*output, *indices}, sort_attr_input);
-      sort_runner.Run(stream);
     }
   }
 };
