@@ -21,5 +21,6 @@ namespace egr {
 
 void RegisterGradientHookForTensor(pt::Tensor& tensor, std::function<pt::Tensor(const pt::Tensor&)>& hook);
 void RegisterReduceHookForTensor(pt::Tensor& tensor, std::function<void(void)>& hook);
+void RetainGradForTensor(pt::Tensor& tensor);
 
 } // namespace egr

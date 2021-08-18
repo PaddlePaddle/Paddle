@@ -27,6 +27,256 @@
 #include "paddle/top/core/tensor_meta.h"
 #include "paddle/top/core/dense_tensor.h"
 
+/*
+Node1
+  | retain_grad
+Node0
+  |
+ inp0
+*/
+TEST(RetainGrad, NonLeafTensor) {
+  // Create Target Tensor
+  // Use Empty Grad Tensor
+  std::vector<std::shared_ptr<pt::Tensor>> target_tensors;
+  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  {
+      auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
+              pt::DataType::kFLOAT32, pt::DataLayout::kNCHW);
+      auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
+      auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
+      
+      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      target_tensors.emplace_back(std::move(tensor)); 
+  }
+  
+  // Create Node0
+  auto node0_ptr = std::make_shared<egr::GradNodeScale>();
+  node0_ptr->SetAttributes(5.0/*scale*/);
+  
+  // Create Node1
+  auto node1_ptr = std::make_shared<egr::GradNodeScale>();
+  node1_ptr->SetAttributes(10.0/*scale*/);
+
+  // Connect Input Tensor and Node0 via AutoGradMeta
+  {
+      auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
+      auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(node0_ptr));
+      auto_grad_meta->SetOutRank(0);
+      target_tensors[0]->SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+  }
+
+  // Connect Node0 -> Node1 via Edge
+  {
+      auto meta = egr::AutogradMeta();
+      meta.SetOutRank(0);
+      meta.SetGradNode(node1_ptr);
+      node0_ptr->AddEdge({ &meta });
+  }
+  
+  // Retain Grad for tensor1 
+  pt::Tensor fake_tensor = pt::Tensor();
+  {
+      auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
+      auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(node1_ptr));
+      auto_grad_meta->SetOutRank(0);
+      fake_tensor.SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+      
+      egr::RetainGradForTensor(fake_tensor);
+  }
+
+  // Use Empty Grad Tensor
+  egr::RunBackward(target_tensors, {});
+
+  // Print retained grad
+  {
+      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(fake_tensor);
+      auto fake_grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
+      float* ptr = fake_grad_dense->mutable_data<float>();
+      for(int i = 0; i < 20; i++) {
+          VLOG(2) << ptr[i];
+      }
+      // result: 5.0
+  }
+}
+
+/*
+Node1
+  | retain_grad
+  | gradient_hook
+Node0
+  |
+ inp0
+*/
+TEST(RetainGrad, HookBeforeRetainGrad) {
+  // Create Target Tensor
+  // Use Empty Grad Tensor
+  std::vector<std::shared_ptr<pt::Tensor>> target_tensors;
+  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  {
+      auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
+              pt::DataType::kFLOAT32, pt::DataLayout::kNCHW);
+      auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
+      auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
+      
+      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      target_tensors.emplace_back(std::move(tensor)); 
+  }
+  
+  // Create Node0
+  auto node0_ptr = std::make_shared<egr::GradNodeScale>();
+  node0_ptr->SetAttributes(5.0/*scale*/);
+  
+  // Create Node1
+  auto node1_ptr = std::make_shared<egr::GradNodeScale>();
+  node1_ptr->SetAttributes(10.0/*scale*/);
+
+  // Connect Input Tensor and Node0 via AutoGradMeta
+  {
+      auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
+      auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(node0_ptr));
+      auto_grad_meta->SetOutRank(0);
+      target_tensors[0]->SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+  }
+
+  // Connect Node0 -> Node1 via Edge
+  {
+      auto meta = egr::AutogradMeta();
+      meta.SetOutRank(0);
+      meta.SetGradNode(node1_ptr);
+      node0_ptr->AddEdge({ &meta });
+  }
+  
+  // Retain Grad for tensor1 
+  pt::Tensor fake_tensor = pt::Tensor();
+  {
+      // Node1 Hook
+      std::function<pt::Tensor(const pt::Tensor&)> hook1 = [](const pt::Tensor& t) { 
+        pt::Tensor ret = pt::Tensor();
+
+        // Copy t::impl()
+        ret = t;
+        auto ret_dense = std::dynamic_pointer_cast<pt::DenseTensor>(ret.impl());
+        float* ret_ptr = ret_dense->mutable_data<float>();
+
+        for(int i = 0; i < ret_dense->numel(); i++) {
+            ret_ptr[i] += 3.0;
+        }
+        return ret;
+      };
+
+      auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
+      auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(node1_ptr));
+      auto_grad_meta->SetOutRank(0);
+      fake_tensor.SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+      
+      egr::RegisterGradientHookForTensor(fake_tensor, hook1);
+      egr::RetainGradForTensor(fake_tensor);
+  }
+
+  // Use Empty Grad Tensor
+  egr::RunBackward(target_tensors, {});
+
+  // Print retained grad
+  {
+      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(fake_tensor);
+      auto fake_grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
+      float* ptr = fake_grad_dense->mutable_data<float>();
+      for(int i = 0; i < 20; i++) {
+          VLOG(2) << ptr[i];
+      }
+      // result: 8.0
+  }
+}
+
+/*
+Node1
+  | gradient_hook
+  | retain_grad
+Node0
+  |
+ inp0
+*/
+TEST(RetainGrad, HookAfterRetainGrad) {
+  // Create Target Tensor
+  // Use Empty Grad Tensor
+  std::vector<std::shared_ptr<pt::Tensor>> target_tensors;
+  paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
+  {
+      auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
+              pt::DataType::kFLOAT32, pt::DataLayout::kNCHW);
+      auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
+      auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
+      
+      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      target_tensors.emplace_back(std::move(tensor)); 
+  }
+  
+  // Create Node0
+  auto node0_ptr = std::make_shared<egr::GradNodeScale>();
+  node0_ptr->SetAttributes(5.0/*scale*/);
+  
+  // Create Node1
+  auto node1_ptr = std::make_shared<egr::GradNodeScale>();
+  node1_ptr->SetAttributes(10.0/*scale*/);
+
+  // Connect Input Tensor and Node0 via AutoGradMeta
+  {
+      auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
+      auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(node0_ptr));
+      auto_grad_meta->SetOutRank(0);
+      target_tensors[0]->SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+  }
+
+  // Connect Node0 -> Node1 via Edge
+  {
+      auto meta = egr::AutogradMeta();
+      meta.SetOutRank(0);
+      meta.SetGradNode(node1_ptr);
+      node0_ptr->AddEdge({ &meta });
+  }
+  
+  // Retain Grad for tensor1 
+  pt::Tensor fake_tensor = pt::Tensor();
+  {
+      // Node1 Hook
+      std::function<pt::Tensor(const pt::Tensor&)> hook1 = [](const pt::Tensor& t) { 
+        pt::Tensor ret = pt::Tensor();
+
+        // Copy t::impl()
+        ret = t;
+        auto ret_dense = std::dynamic_pointer_cast<pt::DenseTensor>(ret.impl());
+        float* ret_ptr = ret_dense->mutable_data<float>();
+
+        for(int i = 0; i < ret_dense->numel(); i++) {
+            ret_ptr[i] += 3.0;
+        }
+        return ret;
+      };
+
+      auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
+      auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(node1_ptr));
+      auto_grad_meta->SetOutRank(0);
+      fake_tensor.SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+      
+      egr::RetainGradForTensor(fake_tensor);
+      egr::RegisterGradientHookForTensor(fake_tensor, hook1);
+  }
+
+  // Use Empty Grad Tensor
+  egr::RunBackward(target_tensors, {});
+
+  // Print retained grad
+  {
+      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(fake_tensor);
+      auto fake_grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
+      float* ptr = fake_grad_dense->mutable_data<float>();
+      for(int i = 0; i < 20; i++) {
+          VLOG(2) << ptr[i];
+      }
+      // result: 8.0
+  }
+}
+
 TEST(GradientHook, SingleNode) {
   // Create Target Tensor
   // Use Empty Grad Tensor

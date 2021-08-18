@@ -49,6 +49,16 @@ std::shared_ptr<GradNodeBase> EagerUtils::grad_node(pt::Tensor& target) {
   return autograd_meta(target)->GetMutableGradNode();
 }
 
+bool EagerUtils::IsLeafTensor(pt::Tensor& target) {
+    std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
+/*
+    if(auto k = std::dynamic_pointer_cast<AccumulationNode>(grad_node)) {
+        return true;
+    }
+*/
+    return false;
+}
+
 void PassStopGradient(AutogradMeta** outs, size_t outs_num,
                       bool generate_grad) {
   for (size_t i = 0; i < outs_num; ++i) {

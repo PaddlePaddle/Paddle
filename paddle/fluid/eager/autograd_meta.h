@@ -75,6 +75,8 @@ class AutogradMeta : public AbstractAutogradMeta {
   ~AutogradMeta() override = default;
 
   const pt::Tensor& Grad() const { return grad_; }
+
+  pt::Tensor& MutableGrad() { return grad_; }
   
   void SetGradNode(std::shared_ptr<GradNodeBase> grad_node) {
     PADDLE_ENFORCE_NOT_NULL(grad_node.get(),
@@ -155,6 +157,11 @@ class EagerUtils {
 
   static void PassStopGradient(AutogradMeta** outs, size_t outs_num,
                                bool generate_grad);
+
+  // If and only if the tensor holds an AccumulationNode
+  // Then it's treated as a leaf tensor
+  static bool IsLeafTensor(pt::Tensor& target);
+    
 };
 
 }  // namespace egr
