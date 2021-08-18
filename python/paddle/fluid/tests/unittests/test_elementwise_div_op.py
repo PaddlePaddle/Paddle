@@ -18,6 +18,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.static import Program, program_guard
 from op_test import OpTest, skip_check_grad_ci
 
 
@@ -335,20 +336,22 @@ class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
         self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
 
 
-class TestDivApi(unittest.TestCase):
+class TestDivInplaceApi(unittest.TestCase):
     def _executed_api(self, x, y, name=None):
-        return paddle.divide(x, y, name)
+        return paddle.divide_(x, y, name)
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+        with paddle.static.program_guard(Program(), Program()):
+            paddle.enable_static()
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = self._executed_api(x, y, name='divide_res')
             self.assertEqual(('divide_res' in y_1.name), True)
 
     def test_declarative(self):
-        with fluid.program_guard(fluid.Program()):
+        with paddle.static.program_guard(Program(), Program()):
+            paddle.enable_static()
 
             def gen_data():
                 return {
@@ -356,31 +359,25 @@ class TestDivApi(unittest.TestCase):
                     "y": np.array([1, 5, 2]).astype('float32')
                 }
 
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[3], dtype='float32')
+            y = paddle.static.data(name="y", shape=[3], dtype='float32')
             z = self._executed_api(x, y)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            exe = paddle.static.Executor(paddle.CPUPlace())
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
             z_expected = np.array([2, 0.6, 2], dtype='float32')
             self.assertEqual((np.array(z_value) == z_expected).all(), True)
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
-            np_x = np.array([2, 3, 4]).astype('float64')
-            np_y = np.array([1, 5, 2]).astype('float64')
-            x = fluid.dygraph.to_variable(np_x)
-            y = fluid.dygraph.to_variable(np_y)
-            z = self._executed_api(x, y)
-            np_z = z.numpy()
-            z_expected = np.array([2, 0.6, 2])
-            self.assertEqual((np_z == z_expected).all(), True)
-
-
-class TestDivInplaceApi(TestDivApi):
-    def _executed_api(self, x, y, name=None):
-        return x.divide_(y, name)
+        paddle.disable_static()
+        np_x = np.array([2, 3, 4]).astype('float64')
+        np_y = np.array([1, 5, 2]).astype('float64')
+        x = paddle.to_tensor(np_x)
+        y = paddle.to_tensor(np_y)
+        z = self._executed_api(x, y)
+        np_z = z.numpy()
+        z_expected = np.array([2, 0.6, 2])
+        self.assertEqual((np_z == z_expected).all(), True)
 
 
 class TestDivInplaceBroadcastSuccess(unittest.TestCase):
