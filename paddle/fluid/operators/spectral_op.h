@@ -33,6 +33,20 @@ struct FFTC2CFunctor {
 };
 
 template <typename DeviceContext, typename T>
+struct FFTR2CFunctor {
+  void operator()(const DeviceContext& ctx, const Tensor* X, Tensor* out,
+                  const std::vector<int64_t>& axes, FFTNormMode normalization,
+                  bool forward, bool onesided);
+};
+
+template <typename DeviceContext, typename T>
+struct FFTC2RFunctor {
+  void operator()(const DeviceContext& ctx, const Tensor* X, Tensor* out,
+                  const std::vector<int64_t>& axes, FFTNormMode normalization,
+                  bool forward, bool onesided);
+};
+
+template <typename DeviceContext, typename T>
 class FFTC2CKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -74,5 +88,91 @@ class FFTC2CGradKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class FFTR2CKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using U = paddle::platform::complex<T>;
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+
+    auto axes = ctx.Attr<std::vector<int64_t>>("axes");
+    const std::string& norm_str = ctx.Attr<std::string>("normalization");
+    const bool forward = ctx.Attr<bool>("forward");
+    const bool onesided = ctx.Attr<bool>("onesided");
+    const auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Output<Tensor>("Out");
+
+    y->mutable_data<U>(ctx.GetPlace());
+    auto normalization = get_norm_from_string(norm_str, forward);
+
+    FFTR2CFunctor<DeviceContext, U> fft_r2c_func;
+    fft_r2c_func(dev_ctx, x, y, axes, normalization, forward, onesided);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class FFTR2CGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using U = paddle::platform::complex<T>;
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+
+    auto axes = ctx.Attr<std::vector<int64_t>>("axes");
+    const std::string& norm_str = ctx.Attr<std::string>("normalization");
+    const bool forward = ctx.Attr<bool>("forward");
+
+    const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    dx->mutable_data<U>(ctx.GetPlace());
+    auto normalization = get_norm_from_string(norm_str, forward);
+
+    FFTC2RFunctor<DeviceContext, U> fft_c2r_func;
+    fft_c2r_func(dev_ctx, dy, dx, axes, normalization, forward);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class FFTC2RKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using U = paddle::platform::complex<T>;
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+
+    auto axes = ctx.Attr<std::vector<int64_t>>("axes");
+    const std::string& norm_str = ctx.Attr<std::string>("normalization");
+    const bool forward = ctx.Attr<bool>("forward");
+    const auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Output<Tensor>("Out");
+
+    y->mutable_data<U>(ctx.GetPlace());
+    auto normalization = get_norm_from_string(norm_str, forward);
+
+    FFTC2RFunctor<DeviceContext, U> fft_c2r_func;
+    fft_c2r_func(dev_ctx, x, y, axes, normalization, forward);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class FFTC2RGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using U = paddle::platform::complex<T>;
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+
+    auto axes = ctx.Attr<std::vector<int64_t>>("axes");
+    const std::string& norm_str = ctx.Attr<std::string>("normalization");
+    const bool forward = ctx.Attr<bool>("forward");
+    const bool onesided = true;
+    const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    dx->mutable_data<U>(ctx.GetPlace());
+    auto normalization = get_norm_from_string(norm_str, forward);
+
+    FFTR2CFunctor<DeviceContext, U> fft_r2c_func;
+    fft_r2c_func(dev_ctx, dy, dx, axes, normalization, forward, onesided);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
