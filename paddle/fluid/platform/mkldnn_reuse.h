@@ -1072,99 +1072,6 @@ class ActivationMKLDNNHandler
   }
 };
 
-template <typename T>
-class TransposeMKLDNNHandler : public MKLDNNHandler {
- public:
-  TransposeMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
-                         std::vector<int>& axis,      // NOLINT
-                         const platform::MKLDNNDeviceContext& dev_ctx,
-                         mkldnn::engine engine, const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key),
-        dims_(dims),
-        axis_(axis),
-        logical_axis_(dims.size(), 0) {}
-
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const MKLDNNMemoryFormat& fmt, void* ptr) {
-    auto local_key = key_ + "@user_src_mem_p";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      // Make memory descriptor using input format, unless it
-      // cannot be trusted (nchw) then make up memory fmt manually
-      for (size_t i = 0; i < logical_axis_.size(); ++i) {
-        logical_axis_[i] = i;
-      }
-
-      auto src_md = fmt != MKLDNNMemoryFormat::nchw
-                        ? platform::MKLDNNMemDesc(
-                              dims_, platform::MKLDNNGetDataType<T>(), fmt)
-                        : Axis2MemoryDesc(dims_, logical_axis_);
-      mem_p = std::make_shared<mkldnn::memory>(src_md, engine_, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output,
-                                                   platform::Place place) {
-    auto local_key = key_ + "@user_dst_mem_p";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      auto dst_md = Axis2MemoryDesc(dims_, axis_);
-
-      auto dst_data = output->mutable_data<T>(place, dst_md.get_size());
-
-      mem_p = std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      auto dst_data = output->mutable_data<T>(place);
-      mem_p->set_data_handle(dst_data);
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::reorder> AcquireTranspose(
-      std::shared_ptr<mkldnn::memory> dst_memory_p,
-      std::shared_ptr<mkldnn::memory> src_memory_p) {
-    auto prim_key = key_ + "@transpose_p";
-    auto transpose_p =
-        std::static_pointer_cast<mkldnn::reorder>(dev_ctx_.GetBlob(prim_key));
-    if (transpose_p == nullptr) {
-      transpose_p =
-          std::make_shared<mkldnn::reorder>(*(src_memory_p), *(dst_memory_p));
-      dev_ctx_.SetBlob(prim_key, transpose_p);
-    }
-    return transpose_p;
-  }
-
- protected:
-  mkldnn::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
-                                       std::vector<int>& axis          // NOLINT
-                                       ) {
-    size_t ndims = axis.size();
-
-    std::vector<int64_t> strides(ndims);
-    unsigned int total_stride = 1;
-    for (int i = ndims - 1; i >= 0; --i) {
-      strides[axis[i]] = total_stride;
-      total_stride *= nchw_tz[axis[i]];
-    }
-    mkldnn::memory::desc mem_d(nchw_tz, platform::MKLDNNGetDataType<T>(),
-                               strides);
-
-    return mem_d;
-  }
-
- private:
-  std::vector<int64_t> dims_;
-  std::vector<int> axis_;
-  std::vector<int> logical_axis_;
-};
-
 class ReorderMKLDNNHandler : public MKLDNNHandler {
  public:
   ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
@@ -1519,7 +1426,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
   std::shared_ptr<typename forward_t::primitive_desc>
   AcquireConvolutionPrimitiveDescriptor(
       const mkldnn::memory::desc& src, const mkldnn::memory::desc& weights,
-      boost::optional<const mkldnn::memory::desc&> bias,
+      paddle::optional<const mkldnn::memory::desc&> bias,
       const mkldnn::memory::desc& dst, const std::vector<int64_t>& strides,
       const std::vector<int64_t>& dilations,
       const std::vector<int64_t>& paddings, const mkldnn::engine& engine,

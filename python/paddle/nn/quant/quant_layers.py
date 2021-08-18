@@ -31,6 +31,7 @@ __all__ = [
     'FakeQuantMovingAverageAbsMax',
     'FakeQuantChannelWiseAbsMax',
     'QuantizedConv2D',
+    'QuantizedConv2DTranspose',
     'QuantizedLinear',
     'MovingAverageAbsMaxScale',
     'MAOutputScaleLayer',
@@ -478,6 +479,112 @@ class QuantizedConv2D(layers.Layer):
             stride=self._stride,
             dilation=self._dilation,
             groups=self._groups,
+            data_format=self._data_format)
+
+
+class QuantizedConv2DTranspose(layers.Layer):
+    """
+    The computational logic of QuantizedConv2DTranspose is the same with Conv2DTranspose.
+    The only difference is that its inputs are all fake quantized.
+    
+    Examples:
+       .. code-block:: python
+          import paddle
+          import paddle.nn as nn
+          from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
+          x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+          conv = nn.Conv2DTranspose(4, 6, (3, 3))
+          conv_quantized = QuantizedConv2DTranspose(conv)
+          y_quantized = conv_quantized(x_var)
+          y_var = conv(x_var)
+          y_quantized_np = y_quantized.numpy()
+          y_np = y_var.numpy()
+          print(y_np.shape, y_quantized_np.shape)
+          # (2, 6, 10, 10), (2, 6, 10, 10)
+    """
+
+    def __init__(self,
+                 layer,
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 weight_quantize_type='abs_max',
+                 activation_quantize_type='abs_max',
+                 weight_pre_layer=None,
+                 act_pre_layer=None,
+                 weight_quant_layer=None,
+                 act_quant_layer=None):
+        r"""
+        Constructor.
+
+        The arguments are the same as ImperativeQuantAware.
+        """
+        super(QuantizedConv2DTranspose, self).__init__()
+        # For Conv2DTranspose
+        self._groups = getattr(layer, '_groups')
+        self._stride = getattr(layer, '_stride')
+        self._padding = getattr(layer, '_padding')
+        self._output_padding = getattr(layer, 'output_padding')
+        self._dilation = getattr(layer, '_dilation')
+        self._data_format = getattr(layer, '_data_format')
+        self.weight = getattr(layer, 'weight')
+        self.bias = getattr(layer, 'bias')
+        # For FakeQuant
+        self._conv2d_transpose_quant_axis = 1
+        if weight_quant_layer is not None:
+            self._fake_quant_weight = weight_quant_layer()
+        else:
+            self._fake_quant_weight = _get_fake_quant_type(
+                weight_quantize_type,
+                name=self.weight.name,
+                moving_rate=moving_rate,
+                quant_bits=weight_bits,
+                dtype=self._dtype,
+                quant_on_weight=True,
+                channel_num=self.weight.shape[
+                    self._conv2d_transpose_quant_axis],
+                quant_axis=self._conv2d_transpose_quant_axis)
+        if act_quant_layer is not None:
+            self._fake_quant_input = act_quant_layer()
+        else:
+            self._fake_quant_input = _get_fake_quant_type(
+                activation_quantize_type,
+                name=layer.full_name(),
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                dtype=self._dtype,
+                quant_on_weight=False)
+
+        self._act_preprocess = act_pre_layer(
+        ) if act_pre_layer is not None else None
+        self._weight_preprocess = weight_pre_layer(
+        ) if weight_pre_layer is not None else None
+
+    def forward(self, input, output_size=None):
+        if self._act_preprocess is not None:
+            input = self._act_preprocess(input)
+        quant_input = self._fake_quant_input(input)
+
+        weight = self.weight
+        if self._weight_preprocess is not None:
+            weight = self._weight_preprocess(self.weight)
+        quant_weight = self._fake_quant_weight(weight)
+
+        if output_size is None:
+            output_padding = self._output_padding
+        else:
+            output_padding = 0
+
+        return F.conv2d_transpose(
+            quant_input,
+            quant_weight,
+            bias=self.bias,
+            padding=self._padding,
+            output_padding=output_padding,
+            stride=self._stride,
+            dilation=self._dilation,
+            groups=self._groups,
+            output_size=output_size,
             data_format=self._data_format)
 
 
