@@ -734,7 +734,7 @@ class TestPad3dOpError(unittest.TestCase):
 
         paddle.disable_static()
         for place in self.places:
-            self.assertRaises(TypeError, test_variable)
+            self.assertRaises(ValueError, test_variable)
             self.assertRaises(Exception, test_reflect_1)
             self.assertRaises(Exception, test_reflect_2)
             self.assertRaises(Exception, test_reflect_3)
