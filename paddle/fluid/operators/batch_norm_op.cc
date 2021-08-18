@@ -56,13 +56,14 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
   const auto x_dims = ctx->GetInputDim("X");
 
-  PADDLE_ENFORCE_NE(framework::product(x_dims), 0,
-                    platform::errors::PreconditionNotMet(
-                        "The Input variable X(%s) has not "
-                        "been initialized. You may need to confirm "
-                        "if you put exe.run(startup_program) "
-                        "after optimizer.minimize function.",
-                        ctx->Inputs("X").front()));
+  for (int i = 0; i < x_dims.size(); i++) {
+    PADDLE_ENFORCE_EQ(
+        (x_dims[i] == -1) || (x_dims[i] > 0), true,
+        platform::errors::InvalidArgument(
+            "Each dimension of input tensor is expected to be -1 or a "
+            "positive number, but recieved %d. Input's shape is [%s].",
+            x_dims[i], x_dims));
+  }
 
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
