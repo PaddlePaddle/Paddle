@@ -109,28 +109,38 @@ def fp16_initialize(enable_pure_fp16, model, optimizer):
         return model, optimizer
 
     for layer in model.sublayers(include_self=True):
-        if (layer._dtype is 'float16') or isinstance(layer, (
-                paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
-            continue
-        layer.to(dtype='float16')
+        if len(layer._sub_layers) is 0:
+            if (layer._dtype is 'float16') or isinstance(layer, (
+                    paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
+                continue
+            layer.to(dtype='float16')
 
     optimizer._parameter_list = model.parameters()
     return model, optimizer
     #
 
 
+'''
 # 获取master weight
-def master_weight(optimizer):
+def init_master_weight(optimizer):
     fp16_groups = []
-    fp16_from_fp32_groups = []
     fp32_groups = []
-    for group in optimizer._param_groups:
+    for i, group in enumerate(optimizer._param_groups):
         fp16_this_group = []
         fp32_this_group = []
-        fp16_from_fp32_this_group = []
-        for param in group['params']:
+        for i, param in enumerate(group['params']):
             if param._grad_ivar() is not None:
-                pass
+                if param.dtype is 'float16':
+                    fp16_this_group.append(param)
+                elif param.dtype is 'float32':
+                    fp32_this_group.append(param)
+                else:
+                    raise TypeError("Optimizer's parameters must be either "
+                                        "float16 or float32. "
+                                        "Received {}".format(param.dtype()))
+        fp16_groups.append(fp16_this_group)
+        fp32_groups.append(fp32_this_group)
+'''
 
 
 @signature_safe_contextmanager
