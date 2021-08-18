@@ -65,11 +65,11 @@ int GetVectorizedSizeImpl(const T *pointer) {
   int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
   constexpr int vec8 =
-      std::alignment_of<CudaAlignedVector<T, 8>>::value;  // NOLINT
+      std::alignment_of<platform::CudaAlignedVector<T, 8>>::value;  // NOLINT
   constexpr int vec4 =
-      std::alignment_of<CudaAlignedVector<T, 4>>::value;  // NOLINT
+      std::alignment_of<platform::CudaAlignedVector<T, 4>>::value;  // NOLINT
   constexpr int vec2 =
-      std::alignment_of<CudaAlignedVector<T, 2>>::value;  // NOLINT
+      std::alignment_of<platform::CudaAlignedVector<T, 2>>::value;  // NOLINT
   if (address % vec8 == 0) {
     /*
     * Currently, decide to deal with no more than 4 data once while adopting
