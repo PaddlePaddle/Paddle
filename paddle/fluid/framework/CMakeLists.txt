@@ -25,6 +25,7 @@ add_subdirectory(ir)
 add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
+add_subdirectory(new_executor)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
