@@ -19,7 +19,6 @@ from __future__ import print_function
 import math
 
 import paddle
-from paddle import ParamAttr
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.nn import Conv2D, BatchNorm, Linear
@@ -63,7 +62,7 @@ class ConvBNLayer(nn.Layer):
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
-            weight_attr=ParamAttr(name=name + "_weights"),
+            weight_attr=paddle.ParamAttr(name=name + "_weights"),
             bias_attr=False,
             data_format=data_format)
         if name == "conv1":
@@ -73,8 +72,8 @@ class ConvBNLayer(nn.Layer):
         self._batch_norm = BatchNorm(
             num_filters,
             act=act,
-            param_attr=ParamAttr(name=bn_name + '_scale'),
-            bias_attr=ParamAttr(bn_name + '_offset'),
+            param_attr=paddle.ParamAttr(name=bn_name + '_scale'),
+            bias_attr=paddle.ParamAttr(bn_name + '_offset'),
             moving_mean_name=bn_name + '_mean',
             moving_variance_name=bn_name + '_variance',
             data_layout=data_format)
@@ -223,9 +222,9 @@ class ResNeXt(nn.Layer):
         self.out = Linear(
             self.pool2d_avg_channels,
             class_num,
-            weight_attr=ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=Uniform(-stdv, stdv), name="fc_weights"),
-            bias_attr=ParamAttr(name="fc_offset"))
+            bias_attr=paddle.ParamAttr(name="fc_offset"))
 
     def forward(self, inputs):
         with paddle.static.amp.fp16_guard():
