@@ -273,6 +273,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   }
 
   auto use_static_engine = Get<bool>("use_static_engine");
+  op_desc->SetAttr("use_static_engine", use_static_engine);
+  if (use_static_engine)
+    op_desc->SetAttr("model_opt_cache_dir",
+                     Get<std::string>("model_opt_cache_dir"));
+
   // TODO(NHZlX)
   // There are models with the same structure but the different parameters,
   // when running in the 'use_serialize' mode, there is a bug.

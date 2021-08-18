@@ -83,12 +83,12 @@ static void RuntimeDynamicShapeCheck(
     const std::string &x, const std::vector<int32_t> &runtime_input_shape,
     const std::vector<int32_t> &min_input_shape,
     const std::vector<int32_t> &max_input_shape) {
-  PADDLE_ENFORCE_EQ(
-      runtime_input_shape.size(), min_input_shape.size(),
-      platform::errors::InvalidArgument(
-          "TRT engine runtime input %s dims size(%d) inconsistent "
-          "with the dynamic shape size(%d)",
-          x, runtime_input_shape.size(), min_input_shape.size()));
+  // PADDLE_ENFORCE_EQ(
+  //     runtime_input_shape.size(), min_input_shape.size(),
+  //     platform::errors::InvalidArgument(
+  //         "TRT engine runtime input %s dims size(%d) inconsistent "
+  //         "with the dynamic shape size(%d)",
+  //         x, runtime_input_shape.size(), min_input_shape.size()));
   auto is_input_shape_valid = [&](
       const std::vector<int32_t> &runtime_input_shape,
       const std::vector<int32_t> &min_input_shape,
@@ -148,6 +148,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
   int device_id_;
   bool allow_build_at_runtime_;
   std::string shape_range_info_path_;
+  std::string model_opt_cache_dir_;
+  bool use_static_engine_;
   AnalysisConfig::Precision precision_mode_;
 
  public:
@@ -169,8 +171,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
     predictor_id_ = Attr<int>("predictor_id");
     allow_build_at_runtime_ = false;
     shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
-    if (HasAttr("allow_build_at_runtime")) {
-      allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
+    allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
+    use_static_engine_ = Attr<bool>("use_static_engine");
+    if (use_static_engine_) {
+      model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
 
     auto params = Attr<std::vector<std::string>>("parameters");
@@ -257,8 +261,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
         // compare runtime_input_shape and trt_engine dynamic shapes.
-        bool is_adjusted =
-            trt_engine->AdjustDynamicShapeRange(runtime_input_shape);
+        std::vector<std::string> shape_changed_name;
+        bool is_adjusted = trt_engine->AdjustDynamicShapeRange(
+            runtime_input_shape, &shape_changed_name);
         if (is_adjusted) {
           LOG(INFO) << "Adjust dynamic shape range, rebuild trt engine!";
           trt_engine->ResetContext();
@@ -271,9 +276,25 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
           // update shape_range_info_pbtxt
           if (!shape_range_info_path_.empty()) {
-            inference::SerializeShapeRangeInfo(
+            inference::UpdateShapeRangeInfo(
                 shape_range_info_path_, trt_engine->min_input_shape(),
-                trt_engine->max_input_shape(), trt_engine->optim_input_shape());
+                trt_engine->max_input_shape(), trt_engine->optim_input_shape(),
+                shape_changed_name);
+          }
+
+          if (use_static_engine_) {
+            nvinfer1::IHostMemory *serialized_engine_data =
+                trt_engine->Serialize();
+            std::string trt_engine_serialized_data =
+                std::string((const char *)serialized_engine_data->data(),
+                            serialized_engine_data->size());
+            inference::analysis::SaveTrtEngineSerializedDataToFile(
+                inference::analysis::GetTrtEngineSerializedPath(
+                    model_opt_cache_dir_, engine_key_),
+                trt_engine_serialized_data);
+            LOG(INFO) << "Save TRT Optimized Info to "
+                      << inference::analysis::GetTrtEngineSerializedPath(
+                             model_opt_cache_dir_, engine_key_);
           }
         }
       }

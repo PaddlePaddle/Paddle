@@ -233,5 +233,34 @@ void DeserializeShapeRangeInfo(
   }
 }
 
+void UpdateShapeRangeInfo(
+    const std::string &path,
+    const std::map<std::string, std::vector<int32_t>> &min_shape,
+    const std::map<std::string, std::vector<int32_t>> &max_shape,
+    const std::map<std::string, std::vector<int32_t>> &opt_shape,
+    const std::vector<std::string> &names) {
+  paddle::inference::proto::ShapeRangeInfos shape_range_infos;
+  DeserializeShapeRangeInfo(path, &shape_range_infos);
+
+  for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
+    auto *info = shape_range_infos.mutable_shape_range_info(i);
+    for (const auto &name : names) {
+      if (info->name() == name) {
+        info->clear_min_shape();
+        info->clear_max_shape();
+        info->clear_opt_shape();
+        for (size_t j = 0; j < min_shape.at(name).size(); ++j)
+          info->add_min_shape(min_shape.at(name)[j]);
+        for (size_t j = 0; j < max_shape.at(name).size(); ++j)
+          info->add_max_shape(max_shape.at(name)[j]);
+        for (size_t j = 0; j < opt_shape.at(name).size(); ++j)
+          info->add_opt_shape(opt_shape.at(name)[j]);
+        break;
+      }
+    }
+  }
+  inference::SerializeShapeRangeInfo(path, shape_range_infos);
+}
+
 }  // namespace inference
 }  // namespace paddle

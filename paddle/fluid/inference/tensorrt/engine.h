@@ -372,8 +372,10 @@ class TensorRTEngine {
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
 
-  bool AdjustDynamicShapeRange(const ShapeMapType& runtime_input_shape) {
+  bool AdjustDynamicShapeRange(const ShapeMapType& runtime_input_shape,
+                               std::vector<std::string>* changed) {
     bool ret = false;
+    changed->clear();
     for (const auto& it : runtime_input_shape) {
       auto name = it.first;
       auto input_shape = it.second;
@@ -390,29 +392,30 @@ class TensorRTEngine {
                             input_shape.size()));
       auto bak_min_shape = min_input_shape_[name];
       auto bak_max_shape = max_input_shape_[name];
-      bool min_show_log = false;
-      bool max_show_log = false;
+      bool min_change = false;
+      bool max_change = false;
       for (size_t d = 0; d < input_shape.size(); ++d) {
         if (input_shape[d] < min_input_shape_[name][d]) {
           ret = true;
-          min_show_log = true;
+          min_change = true;
           min_input_shape_[name][d] = input_shape[d];
         }
         if (input_shape[d] > max_input_shape_[name][d]) {
           ret = true;
-          max_show_log = true;
+          max_change = true;
           max_input_shape_[name][d] = input_shape[d];
         }
       }
 
-      if (min_show_log)
+      if (min_change)
         LOG(INFO) << "refactor shape range: " << name << ", min_shape from "
                   << Vec2Str(bak_min_shape) << " to "
                   << Vec2Str(min_input_shape_[name]);
-      if (max_show_log)
+      if (max_change)
         LOG(INFO) << "refactor shape range: " << name << ", max_shape from "
                   << Vec2Str(bak_max_shape) << " to "
                   << Vec2Str(max_input_shape_[name]);
+      if (min_change || max_change) changed->push_back(name);
     }
     return ret;
   }

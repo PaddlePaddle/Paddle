@@ -58,5 +58,12 @@ void DeserializeShapeRangeInfo(
     std::map<std::string, std::vector<int32_t>>* min_shape,
     std::map<std::string, std::vector<int32_t>>* max_shape,
     std::map<std::string, std::vector<int32_t>>* opt_shape);
+
+void UpdateShapeRangeInfo(
+    const std::string& path,
+    const std::map<std::string, std::vector<int32_t>>& min_shape,
+    const std::map<std::string, std::vector<int32_t>>& max_shape,
+    const std::map<std::string, std::vector<int32_t>>& opt_shape,
+    const std::vector<std::string>& names);
 }  // namespace inference
 }  // namespace paddle

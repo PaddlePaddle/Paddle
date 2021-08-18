@@ -117,6 +117,9 @@ TEST(TensorRTEngineOp, manual) {
   int device_id = 0;
   engine_op_desc.SetAttr("gpu_id", device_id);
   engine_op_desc.SetAttr("shape_range_info_path", std::string(""));
+  engine_op_desc.SetAttr("model_opt_cache_dir", std::string(""));
+  engine_op_desc.SetAttr("allow_build_at_runtime", false);
+  engine_op_desc.SetAttr("use_static_engine", false);
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
