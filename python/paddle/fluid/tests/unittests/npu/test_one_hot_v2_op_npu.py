@@ -180,6 +180,38 @@ class TestOneHotOp_dtype_int64(OpTest):
         self.check_output_with_place(paddle.NPUPlace(0), check_dygraph=False)
 
 
+class TestOneHotOpApi(unittest.TestCase):
+    def test_api(self):
+        depth = 10
+        self._run(depth)
+
+    def test_api_with_depthTensor(self):
+        depth = fluid.layers.assign(input=np.array([10], dtype=np.int32))
+        self._run(depth)
+
+    def test_api_with_dygraph(self):
+        depth = 10
+        label = np.array([np.random.randint(0, depth - 1)
+                          for i in range(6)]).reshape([6, 1])
+        with fluid.dygraph.guard(paddle.NPUPlace(0)):
+            one_hot_label = fluid.one_hot(
+                input=fluid.dygraph.to_variable(label), depth=depth)
+
+    def _run(self, depth):
+        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        one_hot_label = fluid.one_hot(input=label, depth=depth)
+
+        place = fluid.NPUPlace(0)
+        label_data = np.array([np.random.randint(0, 10 - 1)
+                               for i in range(6)]).reshape([6, 1])
+
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(feed={'label': label_data, },
+                      fetch_list=[one_hot_label],
+                      return_numpy=False)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
