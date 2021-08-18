@@ -510,6 +510,8 @@ class TheOnePSRuntime(RuntimeBase):
             return kwargs
 
         proto_txt = str(worker) + "\n" + str(server)
+        with open('/work/git/PaddleRec/models/rank/slot_dnn_test/test.prototxt') as f:
+            proto_txt = f.read()
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
@@ -823,6 +825,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
+        with open('/work/git/PaddleRec/models/rank/slot_dnn_test/test.prototxt') as f:
+            proto_txt = f.read()
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
