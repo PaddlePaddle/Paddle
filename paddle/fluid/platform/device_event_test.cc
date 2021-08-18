@@ -18,11 +18,11 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
-using ::paddle::platform::DeviceType::CUDA;
-using ::paddle::platform::DeviceType::CPU;
-USE_EVENT(CUDA);
-USE_EVENT_WAIT(CUDA, CUDA)
-USE_EVENT_WAIT(CPU, CUDA)
+using ::paddle::platform::kCUDA;
+using ::paddle::platform::kCPU;
+USE_EVENT(kCUDA);
+USE_EVENT_WAIT(kCUDA, kCUDA)
+USE_EVENT_WAIT(kCPU, kCUDA)
 
 TEST(DeviceEvent, CUDA) {
   VLOG(1) << "In Test";
@@ -63,11 +63,11 @@ TEST(DeviceEvent, CUDA) {
   status = event.Query();
   ASSERT_EQ(status, false);
 
-  event.Wait(CUDA, context);  // step 2. add streamWaitEvent
+  event.Wait(kCUDA, context);  // step 2. add streamWaitEvent
   status = event.Query();
   ASSERT_EQ(status, false);  // async
 
-  event.Wait(CPU, context);  // step 3. EventSynchornize
+  event.Wait(kCPU, context);  // step 3. EventSynchornize
   status = event.Query();
   ASSERT_EQ(status, true);  // sync
 

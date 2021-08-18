@@ -92,14 +92,14 @@ void DeviceEventCPUWaitCUDA(const DeviceEvent* event, DeviceContext* context) {
 }  // namespace platform
 }  // namespace paddle
 
-using ::paddle::platform::DeviceType::CUDA;
-using ::paddle::platform::DeviceType::CPU;
-REGISTER_EVENT_CREATE_FUNCTION(CUDA, paddle::platform::DeviceEventCreateCUDA)
-REGISTER_EVENT_RECORD_FUNCTION(CUDA, paddle::platform::DeviceEventRecordCUDA)
-REGISTER_EVENT_QUERY_FUNCTION(CUDA, paddle::platform::DeviceEventQueryCUDA)
-REGISTER_EVENT_FINISH_FUNCTION(CUDA, paddle::platform::DeviceEventFinishCUDA)
-REGISTER_EVENT_WAIT_FUNCTION(CUDA, CUDA,
+using ::paddle::platform::kCUDA;
+using ::paddle::platform::kCPU;
+REGISTER_EVENT_CREATE_FUNCTION(kCUDA, paddle::platform::DeviceEventCreateCUDA)
+REGISTER_EVENT_RECORD_FUNCTION(kCUDA, paddle::platform::DeviceEventRecordCUDA)
+REGISTER_EVENT_QUERY_FUNCTION(kCUDA, paddle::platform::DeviceEventQueryCUDA)
+REGISTER_EVENT_FINISH_FUNCTION(kCUDA, paddle::platform::DeviceEventFinishCUDA)
+REGISTER_EVENT_WAIT_FUNCTION(kCUDA, kCUDA,
                              paddle::platform::DeviceEventCUDAWaitCUDA)
-REGISTER_EVENT_WAIT_FUNCTION(CPU, CUDA,
+REGISTER_EVENT_WAIT_FUNCTION(kCPU, kCUDA,
                              paddle::platform::DeviceEventCPUWaitCUDA)
 #endif
