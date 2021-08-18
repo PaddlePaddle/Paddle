@@ -5256,12 +5256,12 @@ class PipelineOptimizer(object):
                 name='FusedGrad_{}'.format(grad_segment[0].name),
                 dtype=grad_segment[0].dtype,
                 persistable=False,
-                stop_gradient=True)
+                stop_gradient=False)
             fused_merged_grad = main_block.create_var(
                 name='FusedMergedGrad_{}'.format(fused_grad_segment[0].name),
                 dtype=fused_grad_segment[0].dtype,
                 persistable=True,
-                stop_gradient=True)
+                stop_gradient=False)
             fused_gradients.append(fused_grad)
             fused_merged_gradients.append(fused_merged_grad)
 
@@ -5304,7 +5304,7 @@ class PipelineOptimizer(object):
                     "FusedOutput": fused_merged_grad
                 },
                 attrs={
-                    "copy_data": False,
+                    "copy_data": True,
                     "use_align": True,
                     "dtype": merged_grads[0].dtype,
                     self._op_role_key: self._op_role.Backward
