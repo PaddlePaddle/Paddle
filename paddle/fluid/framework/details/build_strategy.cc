@@ -36,8 +36,8 @@ static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
          !strategy.enable_parallel_graph_;
 }
 
-static inline void ConvertDefaultValue(boost::optional<bool> *default_value) {
-  if (*default_value == boost::none) {
+static inline void ConvertDefaultValue(paddle::optional<bool> *default_value) {
+  if (*default_value == paddle::none) {
     *default_value = true;
   }
 }
@@ -247,7 +247,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
   }
 
-  void AppendPassWithCheck(const boost::optional<bool> &append_pass,
+  void AppendPassWithCheck(const paddle::optional<bool> &append_pass,
                            const std::string &pass_name) {
     AppendPassWithCheck(append_pass == true, pass_name);
   }

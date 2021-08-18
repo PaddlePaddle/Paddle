@@ -38,6 +38,55 @@ __all__ = []
 
 
 @dygraph_only
+def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+    This function fill the value into the x Tensor's diagonal inplace.
+    Args:
+        x(Tensor): ``x`` is the original Tensor
+        value(Scale): ``value`` is the value to filled in x
+        offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
+        wrap(bool,optional): the diagonal 'wrapped' after N columns for tall matrices.
+        name(str,optional): Name for the operation (optional, default is None)
+    Returns:
+        Tensor: Tensor with diagonal filled with value.
+    Returns type:
+        dtype is same as x Tensor
+    Examples:
+        .. code-block:: python
+            import paddle
+            x = paddle.ones((4, 3)) * 2
+            x.fill_diagonal_(1.0)
+            print(x.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+    """
+    helper = LayerHelper("fill_diagonal_", **locals())
+    check_type(x, 'X', (Variable), 'fill_diagonal_')
+    dtype = helper.input_dtype('x')
+    check_dtype(dtype, 'X',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'fill_diagonal_')
+    check_type(value, 'value', (bool, int, float), 'fill_diagonal_')
+    check_type(wrap, 'wrap', (bool), 'fill_diagonal_')
+
+    inshape = x.shape
+    inshapeset = set(inshape)
+    assert len(inshape) >= 2, ('Tensor dims should >= 2 in fill_diagonal_ API')
+    if len(inshape) > 2:
+        assert len(inshapeset) == 1, (
+            'Tensor dims should be equal while input dims > 2 in fill_diagonal_ API'
+        )
+    if len(inshape) == 2:
+        return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset,
+                                       'wrap', wrap)
+    return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
+                                   True)
+
+
+setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
+
+
+@dygraph_only
 def tolist(x):
     """
     **Notes**:
@@ -715,6 +764,112 @@ def squeeze_(x, axis=None, name=None):
 
     out, _ = _C_ops.squeeze2_(x, 'axes', axis)
     return out
+
+
+def unique_consecutive(x,
+                       return_inverse=False,
+                       return_counts=False,
+                       axis=None,
+                       dtype="int64",
+                       name=None):
+    r"""
+    Eliminates all but the first element from every consecutive group of equivalent elements.
+
+    .. note:: This function is different from :func:`paddle.unique` in the sense that this function
+        only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
+
+    Args:
+        x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        return_inverse(bool, optional): If True, also return the indices for where elements in
+            the original input ended up in the returned unique consecutive tensor. Default is False.
+        return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
+            Default is False.
+        axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
+            Default is None.
+        dtype(np.dtype|str, optional): The data type `inverse` tensor: int32 or int64.
+            Default: int64.
+        name(str, optional): Name for the operation. For more information, please refer to
+            :ref:`api_guide_Name`. Default is None.
+
+    Returns:
+        tuple: (out, inverse, counts). `out` is the unique consecutive tensor for `x`. `inverse` is provided only if `return_inverse` is True. `counts` is provided only if `return_counts` is True.
+
+    Example:
+        .. code-block:: python
+
+            import paddle 
+
+            x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
+            output = paddle.unique_consecutive(x) # 
+            np_output = output.numpy() # [1 2 3 1 2]
+            _, inverse, counts = paddle.unique_consecutive(x, return_inverse=True, return_counts=True)
+            np_inverse = inverse.numpy() # [0 0 1 1 2 3 3 4]
+            np_counts = inverse.numpy() # [2 2 1 2 1]
+
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
+            output = paddle.unique_consecutive(x, axis=0) # 
+            np_output = output.numpy() # [2 1 3 0 1 2 1 3 2 1 3]
+
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
+            output = paddle.unique_consecutive(x, axis=0) # 
+            np_output = output.numpy()
+            # [[2 1 3]
+            #  [3 0 1]
+            #  [2 1 3]]
+    """
+
+    if axis is None:
+        axis = []
+    else:
+        axis = [axis]
+    attr_dtype = convert_np_dtype_to_dtype_(dtype)
+    if in_dygraph_mode():
+        out, inverse, counts = core.ops.unique_consecutive(
+            x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
+            'return_counts', return_counts, 'axis', axis)
+        outs = [out]
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+        if len(outs) == 1:
+            return outs[0]
+        return tuple(outs)
+    check_variable_and_dtype(x, "input",
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'unique_consecutive')
+    check_type(return_inverse, 'return_inverse', bool, 'unique_consecutive')
+    check_type(return_counts, 'return_counts', bool, 'unique_consecutive')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'unique_consecutive')
+    if len(axis) != 0:
+        check_type(axis[0], 'axis', int, 'unique_consecutive')
+    helper = LayerHelper('unique_consecutive', **locals())
+    attrs = {
+        'dtype': attr_dtype,
+        "return_inverse": return_inverse,
+        "return_counts": return_counts,
+        "axis": axis,
+    }
+    out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+    inverse = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
+    counts = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
+    outputs = {"Out": out, "Index": inverse, "Counts": counts}
+    outs = [out]
+    if return_inverse:
+        outs.append(inverse)
+    if return_counts:
+        outs.append(counts)
+    helper.append_op(
+        type="unique_consecutive",
+        inputs={"X": x},
+        attrs=attrs,
+        outputs=outputs)
+    if len(outs) == 1:
+        return outs[0]
+    return tuple(outs)
 
 
 def unique(x,
