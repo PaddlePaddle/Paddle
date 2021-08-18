@@ -5226,14 +5226,11 @@ class PipelineOptimizer(object):
         # split the grad based on dtype and fused size
         for grad, param in grad_param_pairs:
             real_grad = main_block.var(grad)
-            merged_grad_name = grad.name + merged_suffix
-            if not main_block.has_var(merged_grad_name):
-                main_block.create_var(
-                    name=merged_grad_name,
-                    dtype=dtype if dtype is not None else paddle.float32,
-                    persistable=False,
-                    stop_gradient=True)
-            merged_grad_var = main_block.var(merged_grad_name)
+            merged_grad_var = main_block.create_var(
+                name=grad + merged_suffix,
+                dtype=dtype if dtype is not None else paddle.float32,
+                persistable=False,
+                stop_gradient=True)
             real_param = main_block.var(param)
             tmp_size = self._get_var_size(real_grad)
             if len(grad_param_segments) == 0 \
@@ -5254,15 +5251,15 @@ class PipelineOptimizer(object):
         # create fused vars for grad and param
         for grad_param_segment in grad_param_segments:
             grad_segment = grad_param_segment[0]
+            fused_grad_segment = grad_param_segments[2]
             fused_grad = main_block.create_var(
                 name='FusedGrad_{}'.format(grad_segment[0].name),
                 dtype=grad_segment[0].dtype,
                 persistable=False,
                 stop_gradient=True)
             fused_merged_grad = main_block.create_var(
-                name='FusedMergedGrad_{}'.format(grad_segment[0].name) +
-                merged_suffix,
-                dtype=dtype if dtype is not None else grad_segment[0].dtype,
+                name='FusedMergedGrad_{}'.format(fused_grad_segment[0].name),
+                dtype=fused_grad_segment[0].dtype,
                 persistable=True,
                 stop_gradient=True)
             fused_gradients.append(fused_grad)
@@ -5275,7 +5272,7 @@ class PipelineOptimizer(object):
         first_back_op_idx = None
         for index, op in enumerate(main_block.ops):
             if self._is_backward_op(op) and first_back_op_idx is None:
-                first_back_op_idx = index + 1
+                first_back_op_idx = index
                 break
         assert first_back_op_idx is not None
         offset = 0
@@ -5309,11 +5306,12 @@ class PipelineOptimizer(object):
                 attrs={
                     "copy_data": False,
                     "use_align": True,
-                    "dtype": dtype if dtype is not None else grads[0].dtype,
+                    "dtype": merged_grads[0].dtype,
                     self._op_role_key: self._op_role.Backward
                 })
             offset += 1
 
+        # insert gradient merge relating ops
         first_opt_op_idx += offset
         offset = 0
         for i in range(len(fused_gradients)):
@@ -5358,7 +5356,7 @@ class PipelineOptimizer(object):
                 type='sum',
                 inputs={'X': [fused_merged_grad, fused_grad]},
                 outputs={'Out': fused_merged_grad},
-                attrs={self._op_role_key: self._op_role.Backward, })
+                attrs={self._op_role_key: self._op_role.Backward})
             offset += 1
 
         if fp16:
