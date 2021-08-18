@@ -16,6 +16,12 @@ limitations under the License. */
 #include <string>
 #include <typeindex>
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
+#endif
+
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
