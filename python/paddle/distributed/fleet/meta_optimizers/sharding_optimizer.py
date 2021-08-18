@@ -400,7 +400,14 @@ class ShardingOptimizer(MetaOptimizerBase):
             logger.info("Sharding with optimize offload !")
             offload_helper = OffloadHelper()
             offload_helper.offload(main_block, startup_block)
+            # The optimize_cast is already included in offload_fp32param
             offload_helper.offload_fp32param(main_block, startup_block)
+        elif sharding_configs['optimize_cast']:
+            logger.info("Sharding with optimize cast !")
+            # NOTE(wangxi): optimize_cast will persist fp16 param, it
+            # will take more memory, but will be faster. Trade space for time.
+            offload_helper = OffloadHelper()
+            offload_helper.cast_fp32param_in_optimize(main_block, startup_block)
 
     def _dump_program_for_debug(self):
         main_block = self._main_program.global_block()
@@ -444,6 +451,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # loss div dp_degree
         self._insert_loss_grad_scale_op()
 
+        # apply optimize offload or optimize cast
         self._apply_optimize_offload_pass()
 
         # step6: (optional) sharding gradient merge
