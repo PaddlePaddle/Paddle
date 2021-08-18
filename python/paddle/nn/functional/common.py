@@ -1160,10 +1160,9 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     Parameters:
         x (Tensor): The input tensor with data type float32/double/int32/int64_t.
-        pad (Tensor | List[int] | Tuple[int]): The padding size with data type int. [len(padding)/2]
-            dimensions of input will be padded. 
-            If len(padding)/2 is equal with x's dimension, then x will be padded from the first 
-            dimension to the last dimension.
+        pad (Tensor | List[int] | Tuple[int]): The padding size with data type int.
+            If mode is 'constant' and length of pad is twice as length of x dimension, then x will 
+            be padded from the first  dimension to the last dimension.
             Else: 1. If input dimension is 3, then the pad has the form (pad_left,
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
