@@ -5257,8 +5257,12 @@ class PipelineOptimizer(object):
                 dtype=grad_segment[0].dtype,
                 persistable=False,
                 stop_gradient=False)
+            fused_merged_grad_name_prefix = 'FusedMergedGrad.cast_fp16.' if \
+                fused_grad_segment[0].dtype == paddle.float16 else 'FusedMergedGrad'
+            fused_merged_grad_name = fused_merged_grad_name_prefix + '_{}'.format(
+                fused_grad_segment[0].name)
             fused_merged_grad = main_block.create_var(
-                name='FusedMergedGrad_{}'.format(fused_grad_segment[0].name),
+                name=fused_merged_grad_name,
                 dtype=fused_grad_segment[0].dtype,
                 persistable=True,
                 stop_gradient=False)
