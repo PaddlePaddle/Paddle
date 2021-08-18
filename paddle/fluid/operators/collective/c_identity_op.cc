@@ -74,6 +74,9 @@ class CIdentityOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(CIdentityInplaceInferer, {"X", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -83,7 +86,7 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(c_identity, ops::CIdentityOp,
                   ops::CIdentityOpGradMaker<paddle::framework::OpDesc>,
                   ops::CIdentityOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CIdentityOpMaker);
+                  ops::CIdentityOpMaker, ops::CIdentityInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(c_identity, ops::CIdentityOpCPUKernel<float>,
                        ops::CIdentityOpCPUKernel<double>,
