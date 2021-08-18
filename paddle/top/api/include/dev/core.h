@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+// See Note: [ How do we organize the kernel directory ]
 #include "paddle/top/core/convert_utils.h"
 #include "paddle/top/core/dense_tensor.h"
 #include "paddle/top/core/kernel_context.h"

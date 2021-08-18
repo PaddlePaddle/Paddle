@@ -42,7 +42,7 @@ static std::map<framework::proto::VarType::Type, aclDataType>
         {framework::proto::VarType::FP64, ACL_DOUBLE},
 };
 
-static std::map<pt::DataType aclDataType> PT_DTYPE_2_ACL_DTYPE = {
+static std::map<pt::DataType, aclDataType> PT_DTYPE_2_ACL_DTYPE = {
     {pt::DataType::kBOOL, ACL_BOOL},       {pt::DataType::kINT8, ACL_INT8},
     {pt::DataType::kUINT8, ACL_UINT8},     {pt::DataType::kINT16, ACL_INT16},
     {pt::DataType::kINT32, ACL_INT32},     {pt::DataType::kINT64, ACL_INT64},
@@ -331,7 +331,7 @@ NpuOpRunner &NpuOpRunner::AddOutput(const Tensor &tensor) {
   return *this;
 }
 
-NpuOpRunner &NpuOpRunner::AdOutput(const pt::DenseTensor &tensor) {
+NpuOpRunner &NpuOpRunner::AddOutput(const pt::DenseTensor &tensor) {
   // create aclTensorDesc
   output_descs_.emplace_back(CreateTensorDesc(tensor));
   // create aclDataBuffer
@@ -355,7 +355,7 @@ NpuOpRunner &NpuOpRunner::AddInputs(
     const std::vector<pt::DenseTensor> &tensors) {
   input_descs_.reserve(tensors.size());
   input_buffers_.reserve(tensors.size());
-  for (auto tensor : tensors) {
+  for (auto &tensor : tensors) {
     // create aclTensorDesc
     input_descs_.emplace_back(CreateTensorDesc(tensor));
     // create aclDataBuffer
@@ -395,7 +395,7 @@ NpuOpRunner &NpuOpRunner::AddOutputs(
     const std::vector<pt::DenseTensor> &tensors) {
   output_descs_.reserve(tensors.size());
   output_buffers_.reserve(tensors.size());
-  for (auto tensor : tensors) {
+  for (auto &tensor : tensors) {
     // create aclTensorDesc
     output_descs_.emplace_back(CreateTensorDesc(tensor));
     // create aclDataBuffer
@@ -506,7 +506,7 @@ aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
 }
 
 aclDataBuffer *NpuOpRunner::CreateDataBuffer(const pt::DenseTensor &tensor) {
-  const void *ptr = tensor.data<void>();
+  void *ptr = const_cast<void *>(tensor.data<void>());
   VLOG(4) << "NPU ptr: " << ptr << ", size: " << tensor.MemorySize();
   auto *buffer = aclCreateDataBuffer(ptr, tensor.MemorySize());
   PADDLE_ENFORCE_NOT_NULL(

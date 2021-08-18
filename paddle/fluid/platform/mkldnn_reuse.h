@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/top/api/dev/core.h"
+#include "paddle/top/api/include/dev/core.h"
 
 namespace paddle {
 namespace platform {

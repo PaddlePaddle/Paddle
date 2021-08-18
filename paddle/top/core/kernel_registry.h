@@ -88,18 +88,18 @@ class OpKernelRegistrar {
                                   DATATYPE(dtype),                        \
                                   kernel_fn)
 
-#define PT_REGISTER_KERNEL_AUTO_SPECIALIZE(                              \
-    op_name, backend, layout, meta_kernel_fn, dtype)                     \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
-      __reg_pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__, \
-      "PT_REGISTER_KERNEL_AUTO_SPECIALIZE must be called in global "     \
-      "namespace.");                                                     \
-  static ::pt::OpKernelRegistrar                                         \
-      __pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__ =    \
-          ::pt::OpKernelRegistrar(#op_name,                              \
-                                  BACKEND(backend),                      \
-                                  DATALAYOUT(layout),                    \
-                                  ::pt::CppTypeToDataType<dtype>().type, \
+#define PT_REGISTER_KERNEL_AUTO_SPECIALIZE(                               \
+    op_name, backend, layout, meta_kernel_fn, dtype)                      \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
+      __reg_pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__,  \
+      "PT_REGISTER_KERNEL_AUTO_SPECIALIZE must be called in global "      \
+      "namespace.");                                                      \
+  static ::pt::OpKernelRegistrar                                          \
+      __pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__ =     \
+          ::pt::OpKernelRegistrar(#op_name,                               \
+                                  BACKEND(backend),                       \
+                                  DATALAYOUT(layout),                     \
+                                  ::pt::CppTypeToDataType<dtype>::Type(), \
                                   PT_KERNEL(meta_kernel_fn<dtype>))
 
 #define PT_TORCH_KERNEL_REGISTRAR(op_name, backend, layout, dtype)          \

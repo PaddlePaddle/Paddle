@@ -1,1 +1,5 @@
-nv_library(math_cuda SRCS math.cu DEPS eigen_function dense_tensor convert_utils kernel_context kernel_factory)
+if(WITH_GPU)
+  nv_library(math_cuda SRCS math.cu DEPS eigen_function dense_tensor convert_utils kernel_context kernel_factory)
+elseif(WITH_ROCM)
+  hip_library(math_cuda SRCS math.cu DEPS eigen_function dense_tensor convert_utils kernel_context kernel_factory)
+endif()

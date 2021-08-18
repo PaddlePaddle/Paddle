@@ -2,7 +2,7 @@ add_subdirectory(src)
 
 set(TOP_DEPS convert_utils dense_tensor selected_rows_tensor kernel_factory kernel_context)
 set(TOP_DEPS ${TOP_DEPS} math_cpu)
-if(WITH_GPU)
+if(WITH_GPU OR WITH_ROCM)
   set(TOP_DEPS ${TOP_DEPS} math_cuda)
 endif()
 if(WITH_XPU)

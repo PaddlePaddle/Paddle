@@ -89,7 +89,7 @@ PT_FOR_EACH_DATA_TYPE(PT_SPECIALIZE_DataTypeToCppType)
 #define PT_SPECIALIZE_CppTypeToDataType(cpp_type, data_type) \
   template <>                                                \
   struct CppTypeToDataType<cpp_type> {                       \
-    DataType type = data_type;                               \
+    constexpr static DataType Type() { return data_type; }   \
   };
 
 PT_FOR_EACH_DATA_TYPE(PT_SPECIALIZE_CppTypeToDataType)

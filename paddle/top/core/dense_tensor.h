@@ -103,7 +103,7 @@ class DenseTensor : public TensorInterface {
 
   template <typename T>
   const T* data() const {
-    static_assert(std::is_pod<T>::value,
+    static_assert(std::is_pod<T>::value || std::is_same<T, void>::value,
                   "T must be POD when call Tensor.data<T>().");
     return reinterpret_cast<const T*>(data());
   }

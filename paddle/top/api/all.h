@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 // develop apis
-#include "paddle/top/api/dev/core.h"
-#include "paddle/top/api/dev/math.h"
+#include "paddle/top/api/include/dev/core.h"
+#include "paddle/top/api/include/dev/math.h"
 
 // user apis
