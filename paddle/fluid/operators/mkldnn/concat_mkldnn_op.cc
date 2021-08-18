@@ -35,7 +35,7 @@ class ConcatMKLDNNHandler
  public:
   ConcatMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                       const mkldnn::engine mkldnn_engine,
-                      const std::vector<const Tensor*> inputs, Tensor* output)
+                      const std::vector<const Tensor*>& inputs, Tensor* output)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::concat>(mkldnn_engine,
                                                            ctx.GetPlace()) {
     int concat_axis = ctx.Attr<int>("axis");
@@ -66,8 +66,9 @@ class ConcatMKLDNNHandler
     srcs_md.reserve(inputs.size());
 
     // Create memory descriptors for each of inputs
-    const auto dims = paddle::framework::vectorize<int64_t>(inputs[0]->dims());
     for (size_t i = 0; i < inputs.size(); i++) {
+      const auto dims =
+          paddle::framework::vectorize<int64_t>(inputs[i]->dims());
       srcs_md.emplace_back(memory::desc(dims, dt, inputs[i]->format()));
     }
 
