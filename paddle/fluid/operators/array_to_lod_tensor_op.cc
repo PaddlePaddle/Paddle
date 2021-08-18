@@ -41,7 +41,7 @@ struct ArrayToLoDFunctorImpl {
   void apply();
 };
 
-struct ArrayToLoDFunctor : public boost::static_visitor<void> {
+struct ArrayToLoDFunctor : public paddle::static_visitor<void> {
   std::vector<framework::Tensor> in;
   mutable framework::Tensor *out;
 

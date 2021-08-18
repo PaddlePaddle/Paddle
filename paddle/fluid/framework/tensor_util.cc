@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/utils/variant.hpp"
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl_debug.h"  // NOLINT
 #endif
@@ -478,7 +479,7 @@ inline void AnyImpl(Predicate predicate, const framework::Tensor& tensor,
 }
 
 template <typename Predicate>
-class AnyVisitor : public boost::static_visitor<bool> {
+class AnyVisitor : public paddle::static_visitor<bool> {
  private:
   const framework::Tensor& tensor_;
   Predicate predicate_;
@@ -544,7 +545,7 @@ class AnyVisitor : public boost::static_visitor<bool> {
 };
 
 template <typename Predicate>
-class AnyOutVisitor : public boost::static_visitor<> {
+class AnyOutVisitor : public paddle::static_visitor<> {
  private:
   const framework::Tensor& tensor_;
   mutable framework::Tensor* out_;
@@ -606,7 +607,7 @@ inline void AllImpl(Predicate predicate, const framework::Tensor& tensor,
 }
 
 template <typename Predicate>
-class AllOutVisitor : public boost::static_visitor<> {
+class AllOutVisitor : public paddle::static_visitor<> {
  private:
   const framework::Tensor& tensor_;
   mutable framework::Tensor* out_;
@@ -703,7 +704,7 @@ static inline void __global__ BothFalse(const T* cmp, T* out, int element_num) {
 }
 #endif
 
-struct BothFalseVisitor : public boost::static_visitor<> {
+struct BothFalseVisitor : public paddle::static_visitor<> {
   const framework::Tensor& in_;
   mutable framework::Tensor* out_;
   BothFalseVisitor(const framework::Tensor& in, framework::Tensor* out)

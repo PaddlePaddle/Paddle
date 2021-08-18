@@ -25,7 +25,7 @@ namespace platform {
 
 namespace detail {
 
-class PlacePrinter : public boost::static_visitor<> {
+class PlacePrinter : public paddle::static_visitor<> {
  public:
   explicit PlacePrinter(std::ostream &os) : os_(os) {}
   void operator()(const CPUPlace &) { os_ << "CPUPlace"; }

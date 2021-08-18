@@ -62,6 +62,16 @@
 
 namespace paddle {
 
+// static visitor
+template <typename R = void>
+struct static_visitor {
+  using result_type = R;
+
+ protected:
+  static_visitor() {}
+  ~static_visitor() {}
+};
+
 // XXX This should derive from std::logic_error instead of std::runtime_error.
 //     See https://github.com/mapbox/variant/issues/48 for details.
 class bad_variant_access : public std::runtime_error {

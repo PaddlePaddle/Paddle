@@ -77,7 +77,7 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
 #undef REG_DL_DATA_TYPE
 }
 
-struct DLContextVisitor : public boost::static_visitor<::DLContext> {
+struct DLContextVisitor : public paddle::static_visitor<::DLContext> {
   inline ::DLContext operator()(const platform::CPUPlace &place) const {
     ::DLContext ctx;
     ctx.device_type = kDLCPU;

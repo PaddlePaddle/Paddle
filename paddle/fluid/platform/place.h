@@ -93,7 +93,7 @@ struct NPUPinnedPlace {
   inline bool operator<(const NPUPinnedPlace &) const { return false; }
 };
 
-struct IsCUDAPlace : public boost::static_visitor<bool> {
+struct IsCUDAPlace : public paddle::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const XPUPlace &) const { return false; }
   bool operator()(const NPUPlace &) const { return false; }
@@ -102,7 +102,7 @@ struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
-struct IsCPUPlace : public boost::static_visitor<bool> {
+struct IsCPUPlace : public paddle::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return true; }
   bool operator()(const XPUPlace &) const { return false; }
   bool operator()(const NPUPlace &) const { return false; }
@@ -111,7 +111,7 @@ struct IsCPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
-struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
+struct IsCUDAPinnedPlace : public paddle::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const XPUPlace &) const { return false; }
   bool operator()(const NPUPlace &) const { return false; }
@@ -120,7 +120,7 @@ struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPinnedPlace &cuda_pinned) const { return true; }
 };
 
-struct IsXPUPlace : public boost::static_visitor<bool> {
+struct IsXPUPlace : public paddle::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const XPUPlace &) const { return true; }
   bool operator()(const NPUPlace &) const { return false; }
@@ -129,7 +129,7 @@ struct IsXPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
-struct IsNPUPlace : public boost::static_visitor<bool> {
+struct IsNPUPlace : public paddle::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const XPUPlace &) const { return false; }
   bool operator()(const NPUPlace &) const { return true; }
@@ -138,7 +138,7 @@ struct IsNPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
-struct IsNPUPinnedPlace : public boost::static_visitor<bool> {
+struct IsNPUPinnedPlace : public paddle::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const XPUPlace &) const { return false; }
   bool operator()(const NPUPlace &) const { return false; }
@@ -187,7 +187,7 @@ std::ostream &operator<<(std::ostream &, const Place &);
 
 template <typename Visitor>
 struct PlaceVisitorWrapper
-    : public boost::static_visitor<typename Visitor::result_type> {
+    : public paddle::static_visitor<typename Visitor::result_type> {
   const Visitor &visitor_;
   explicit PlaceVisitorWrapper(const Visitor &visitor) : visitor_(visitor) {}
 

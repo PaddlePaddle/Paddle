@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 struct InputsVisitor
-    : public boost::static_visitor<const framework::VariableNameMap *> {
+    : public paddle::static_visitor<const framework::VariableNameMap *> {
   template <typename OpType>
   const framework::VariableNameMap *operator()(const OpType *op) const {
     return &(op->Inputs());
@@ -26,7 +26,7 @@ struct InputsVisitor
 };
 
 struct OutputsVisitor
-    : public boost::static_visitor<const framework::VariableNameMap *> {
+    : public paddle::static_visitor<const framework::VariableNameMap *> {
   template <typename OpType>
   const framework::VariableNameMap *operator()(const OpType *op) const {
     return &(op->Outputs());
@@ -34,7 +34,7 @@ struct OutputsVisitor
 };
 
 struct AttributeMapVisitor
-    : public boost::static_visitor<const framework::AttributeMap *> {
+    : public paddle::static_visitor<const framework::AttributeMap *> {
   const framework::AttributeMap *operator()(const framework::OpDesc *op) const {
     return &(op->GetAttrMap());
   }
@@ -45,7 +45,7 @@ struct AttributeMapVisitor
   }
 };
 
-struct RawPointerVisitor : public boost::static_visitor<const void *> {
+struct RawPointerVisitor : public paddle::static_visitor<const void *> {
   template <typename OpType>
   const void *operator()(const OpType *op) const {
     return op;

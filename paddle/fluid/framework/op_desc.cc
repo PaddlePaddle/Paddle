@@ -669,7 +669,7 @@ void OpDesc::RenameInput(const std::string &old_name,
   need_update_ = true;
 }
 
-struct SetAttrDescVisitor : public boost::static_visitor<void> {
+struct SetAttrDescVisitor : public paddle::static_visitor<void> {
   explicit SetAttrDescVisitor(proto::OpDesc::Attr *attr) : attr_(attr) {}
   mutable proto::OpDesc::Attr *attr_;
   void operator()(int v) const { attr_->set_i(v); }

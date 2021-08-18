@@ -70,7 +70,7 @@ static void MoveOrCopyVar(framework::Variable* dst, framework::Variable* src,
 }
 
 template <typename T>
-class TensorAddFunctor : public boost::static_visitor<> {
+class TensorAddFunctor : public paddle::static_visitor<> {
  public:
   TensorAddFunctor(int64_t numel, const T* x, T* y)
       : numel_(numel), x_(x), y_(y) {}

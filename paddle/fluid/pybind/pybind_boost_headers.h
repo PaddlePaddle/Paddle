@@ -39,7 +39,7 @@ namespace detail {
 
 // Can be replaced by a generic lambda in C++14
 struct PYBIND11_HIDDEN paddle_variant_caster_visitor
-    : public boost::static_visitor<handle> {
+    : public paddle::static_visitor<handle> {
   return_value_policy policy;
   handle parent;
 

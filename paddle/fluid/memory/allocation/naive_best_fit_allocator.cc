@@ -60,7 +60,7 @@ uint64_t Release(const Place &place);
 template <typename Place>
 size_t Used(const Place &place);
 
-struct Usage : public boost::static_visitor<size_t> {
+struct Usage : public paddle::static_visitor<size_t> {
   size_t operator()(const platform::CPUPlace &cpu) const;
   size_t operator()(const platform::CUDAPlace &gpu) const;
   size_t operator()(const platform::CUDAPinnedPlace &cuda_pinned) const;
@@ -619,7 +619,7 @@ uint64_t Release<platform::CUDAPinnedPlace>(
 #endif
 }
 
-struct AllocVisitor : public boost::static_visitor<void *> {
+struct AllocVisitor : public paddle::static_visitor<void *> {
   inline explicit AllocVisitor(size_t size) : size_(size) {}
 
   template <typename Place>
@@ -631,7 +631,7 @@ struct AllocVisitor : public boost::static_visitor<void *> {
   size_t size_;
 };
 
-struct FreeVisitor : public boost::static_visitor<void> {
+struct FreeVisitor : public paddle::static_visitor<void> {
   inline explicit FreeVisitor(void *ptr, size_t size)
       : ptr_(ptr), size_(size) {}
 
@@ -645,7 +645,7 @@ struct FreeVisitor : public boost::static_visitor<void> {
   size_t size_;
 };
 
-struct ReleaseVisitor : public boost::static_visitor<uint64_t> {
+struct ReleaseVisitor : public paddle::static_visitor<uint64_t> {
   template <typename Place>
   inline uint64_t operator()(const Place &place) const {
     return Release<Place>(place);
