@@ -212,10 +212,19 @@ class AmpScaler(object):
     def _unscale(self, optimizer):
         if not self._enable:
             return
-        param_grads = [
-            param._grad_ivar() for param in optimizer._parameter_list
-            if param._grad_ivar() is not None
-        ]
+
+        if getattr(optimizer, '_param_groups', None) and isinstance(
+                optimizer._param_groups[0], dict):
+            param_grads = []
+            for group in optimizer._param_groups:
+                for param in group['params']:
+                    if param._grad_ivar() is not None:
+                        param_grads.append(param._grad_ivar())
+        else:
+            param_grads = [
+                param._grad_ivar() for param in optimizer._parameter_list
+                if param._grad_ivar() is not None
+            ]
         _C_ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
                                         self._found_inf)
 
@@ -357,3 +366,55 @@ class AmpScaler(object):
             new_decr_every_n_nan_or_inf(int):  The new_decr_every_n_nan_or_inf used to update the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
         """
         self._decr_every_n_nan_or_inf = new_decr_every_n_nan_or_inf
+
+    def state_dict(self):
+        """
+        Returns the state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
+
+        Reurns:
+            A dict of scaler includes:
+            scale (tensor): The loss scaling factor.
+            incr_ratio(float): The multiplier to use when increasing the loss scaling.
+            decr_ratio(float): The less-than-one-multiplier to use when decreasing the loss scaling.
+            incr_every_n_steps(int): Increases loss scaling every n consecutive steps with finite gradients.
+            decr_every_n_nan_or_inf(int): Decreases loss scaling every n accumulated steps with nan or inf gradients.
+            incr_count(int): The number of recent consecutive unskipped steps.
+            decr_count(int): The number of recent consecutive skipped steps.
+            use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
+        """
+        return {
+            "scale": self._scale.numpy(),
+            "incr_ratio": self._incr_ratio,
+            "decr_ratio": self._decr_ratio,
+            "incr_every_n_steps": self._incr_every_n_steps,
+            "decr_every_n_nan_or_inf": self._decr_every_n_nan_or_inf,
+            "incr_count": self._incr_count,
+            "decr_count": self._decr_count,
+            "use_dynamic_loss_scaling": self._use_dynamic_loss_scaling
+        } if self._enable else {}
+
+    def load_state_dict(self, state_dict):
+        """
+        Loads the scaler state.
+        
+        Args:
+           state_dict(dict): scaler state.  Should be an object returned from a call to `AmpScaler.state_dict()`.
+        """
+        if not self._enable:
+            return
+
+        if len(state_dict) == 0:
+            raise RuntimeError(
+                "The input state dict is empty, possibly because it was saved "
+                "from a disabled instance of GradScaler.")
+
+        self._init_loss_scaling = state_dict["scale"][0]
+        self._scale = to_variable(
+            np.array([self._init_loss_scaling]).astype(np.float32))
+        self._incr_ratio = state_dict["incr_ratio"]
+        self._decr_ratio = state_dict["decr_ratio"]
+        self._incr_every_n_steps = state_dict["incr_every_n_steps"]
+        self._decr_every_n_nan_or_inf = state_dict["decr_every_n_nan_or_inf"]
+        self._incr_count = state_dict["incr_count"]
+        self._decr_count = state_dict["decr_count"]
+        self._use_dynamic_loss_scaling = state_dict["use_dynamic_loss_scaling"]

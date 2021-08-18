@@ -225,6 +225,79 @@ class AdamNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    VLOG(3) << "NPU AdamW Kernel";
+    bool skip_update = false;
+    if (ctx.HasInput("SkipUpdate")) {
+      VLOG(3) << "Has SkipUpdate";
+      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(SkipUpdate) size must be 1, but get %d",
+                            skip_update_tensor->numel()));
+      std::vector<bool> skip_update_vec;
+      TensorToVector(*skip_update_tensor, ctx.device_context(),
+                     &skip_update_vec);
+      skip_update = skip_update_vec[0];
+    }
+    VLOG(3) << "Skip update" << skip_update;
+    bool with_decay = ctx.Attr<bool>("with_decay");
+    if (!skip_update && with_decay) {
+      float coeff = ctx.Attr<float>("coeff");
+      auto* lr = ctx.Input<LoDTensor>("LearningRate");
+
+      auto place = ctx.GetPlace();
+
+      auto stream =
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+
+      Tensor one(framework::proto::VarType::FP32);
+      Tensor decay(framework::proto::VarType::FP32);
+      Tensor tmp(framework::proto::VarType::FP32);
+
+      tmp.mutable_data<float>({1}, place);
+      one.mutable_data<float>({1}, place);
+      decay.mutable_data<float>({1}, place);
+
+      FillNpuTensorWithConstant<float>(&one, 1.0f);
+      framework::NPUAttributeMap attr_input = {{"value", coeff}};
+
+      const auto& runner1 = NpuOpRunner("Muls", {*lr}, {tmp}, attr_input);
+      runner1.Run(stream);
+
+      const auto& runner2 = NpuOpRunner("Sub", {one, tmp}, {decay}, {});
+      runner2.Run(stream);
+
+      if (ctx.HasInput("MasterParam")) {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Master Parma is not supported on npu"));
+      } else {
+        auto* param_out = ctx.Output<LoDTensor>("ParamOut");
+        param_out->mutable_data<T>(ctx.GetPlace());
+
+        const auto* param_var = ctx.InputVar("Param");
+        PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+                          platform::errors::InvalidArgument(
+                              "The Var(%s)'s type should be LoDTensor, "
+                              "but the received is %s",
+                              ctx.InputNames("Param").front(),
+                              framework::ToTypeName(param_var->Type())));
+        auto* param = ctx.Input<LoDTensor>("Param");
+
+        const auto& runner =
+            NpuOpRunner("Mul", {*param, decay},
+                        {*const_cast<framework::LoDTensor*>(param)}, {});
+        runner.Run(stream);
+      }
+    }
+    AdamNPUKernel<platform::NPUDeviceContext, T>::Compute(ctx);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -234,3 +307,6 @@ REGISTER_OP_NPU_KERNEL(
     adam, ops::AdamNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AdamNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(adamw, ops::AdamWNPUKernel<float>,
+                       ops::AdamWNPUKernel<paddle::platform::float16>);
