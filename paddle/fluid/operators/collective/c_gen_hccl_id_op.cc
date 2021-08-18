@@ -32,9 +32,24 @@ namespace operators {
 #ifdef PADDLE_WITH_ASCEND_CL
 
 static void GenHCCLID(std::vector<HcclRootInfo>* hccl_ids) {
+  constexpr int timeout = 2 * 60 + 10;  // 2MSL+10s
+  constexpr int retry_time = 1;
   for (size_t i = 0; i < hccl_ids->size(); ++i) {
-    PADDLE_ENFORCE_NPU_SUCCESS(
-        platform::dynload::HcclGetRootInfo(&(*hccl_ids)[i]));
+    bool failed = true;
+    for (auto retry_times = 0; retry_times * retry_time < timeout;
+         ++retry_times) {
+      auto err = platform::dynload::HcclGetRootInfo(&(*hccl_ids)[i]);
+      if (err == 0) {
+        failed = false;
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::seconds(retry_time));
+      LOG(WARNING) << "HcclGetRootInfo failed, err is: " << err << ", retry "
+                   << retry_times << " times";
+    }
+    if (failed) {
+      PADDLE_THROW(platform::errors::External("HcclGetRootInfo failed!"));
+    }
   }
 }
 
