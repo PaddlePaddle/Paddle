@@ -206,7 +206,7 @@ static int Bind(int port) {
       bind(client, (struct sockaddr*)&my_addr, sizeof(struct sockaddr_in));
 
   VLOG(10) << "bind to addr:" << my_addr.sin_addr.s_addr << ", port:" << port
-           << ", socket:" << client;
+           << ", socket:" << client << ", ret:" << ret;
 
   if (ret != 0) {
     // close(client);
@@ -360,8 +360,8 @@ void WaitHcclPorts(int device_id) {
     }
   }
 
-  // LOG(INFO) << "begin to 2MSL time under steps:" << g_avoid_hccl_ports_steps
-  //          << ", device_id" << device_id;
+  LOG(INFO) << "begin to 2MSL time under steps:" << g_avoid_hccl_ports_steps
+            << ", device_id" << device_id;
   // std::this_thread::sleep_for(std::chrono::seconds(120));
   g_avoid_hccl_ports_steps += 1;
   LOG(INFO) << "end to wait to avoid hccl conflicts steps:"

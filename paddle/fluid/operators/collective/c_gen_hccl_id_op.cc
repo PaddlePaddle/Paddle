@@ -36,8 +36,16 @@ namespace operators {
 
 static void GenHCCLID(std::vector<HcclRootInfo>* hccl_ids) {
   for (size_t i = 0; i < hccl_ids->size(); ++i) {
-    PADDLE_ENFORCE_NPU_SUCCESS(
-        platform::dynload::HcclGetRootInfo(&(*hccl_ids)[i]));
+    // PADDLE_ENFORCE_NPU_SUCCESS(
+    while (1) {
+      int ret = platform::dynload::HcclGetRootInfo(&(*hccl_ids)[i]);
+      if (!ret) {
+        break;
+      }
+
+      LOG(WARNING) << "get root info error";
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
   }
 }
 
@@ -82,9 +90,11 @@ class CGenHCCLIdOp : public framework::OperatorBase {
     VLOG(10) << "WaitHcclPorts flags:" << FLAGS_avoid_hccl_port_conflict
              << ", device_id:" << device_id << ", rank:" << rank;
 
+    /*
     if (FLAGS_avoid_hccl_port_conflict) {
       platform::WaitHcclPorts(device_id);
     }
+    */
 
     if (rank == 0) {
       GenHCCLID(&hccl_ids);
