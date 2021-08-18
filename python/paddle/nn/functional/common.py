@@ -1160,12 +1160,13 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     Parameters:
         x (Tensor): The input tensor with data type float32/double/int32/int64_t.
-        pad (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. 1. If input dimension is 3, then the pad has the form (pad_left,
+        pad (Tensor | List[int] | Tuple[int]): The padding size with data type int.
+            If mode is 'constant' and length of pad is twice as length of x dimension, then x will 
+            be padded from the first  dimension to the last dimension.
+            Else: 1. If input dimension is 3, then the pad has the form (pad_left,
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-            
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
@@ -1189,6 +1190,15 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                     [4., 5., 6.]]]]]
 
             Case 0:
+                pad = [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
+                mode = 'constant'
+                value = 0
+                Out = [[[[[0., 0., 0.],
+                          [1., 2., 3.],
+                          [4., 5., 6.],
+                          [0., 0., 0.]]]]]
+
+            Case 1:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'constant'
                 value = 0
@@ -1197,7 +1207,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [0. 0. 4. 5. 6. 0. 0.]
                           [0. 0. 0. 0. 0. 0. 0.]]]]]
 
-            Case 1:
+            Case 2:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'reflect'
                 Out = [[[[[6. 5. 4. 5. 6. 5. 4.]
@@ -1205,7 +1215,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [6. 5. 4. 5. 6. 5. 4.]
                           [3. 2. 1. 2. 3. 2. 1.]]]]]
 
-            Case 2:
+            Case 3:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'replicate'
                 Out = [[[[[1. 1. 1. 2. 3. 3. 3.]
@@ -1213,7 +1223,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [4. 4. 4. 5. 6. 6. 6.]
                           [4. 4. 4. 5. 6. 6. 6.]]]]]
 
-            Case 3:
+            Case 4:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'circular'
                 Out = [[[[[5. 6. 4. 5. 6. 4. 5.]
@@ -1231,11 +1241,18 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             # example 1
             x_shape = (1, 1, 3)
             x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
-            y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
+            y = F.pad(x, [0, 0, 0, 0, 2, 3], value=1, mode='constant', data_format="NCL")
             print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
             
             # example 2
+            x_shape = (1, 1, 3)
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
+            print(y)
+            # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
+            
+            # example 3
             x_shape = (1, 1, 2, 3)
             x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [1, 2, 1, 1], value=1, mode='circular')
@@ -1295,6 +1312,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
     else:
+        pad = list(pad)
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
