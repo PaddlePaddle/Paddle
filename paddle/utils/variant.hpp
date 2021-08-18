@@ -577,7 +577,7 @@ class variant {
   VARIANT_INLINE variant<Types...>& operator=(variant<Types...>&& other)
       // note we check for nothrow-constructible, not nothrow-assignable, since
       // move_assign uses move-construction via placement new.
-      noexcept(detail::conjunction<
+      noexcept(paddle::detail::conjunction<
                std::is_nothrow_move_constructible<Types>...>::value) {
     if (this ==
         &other) {  // playing safe in release mode, hit assertion in debug.
