@@ -330,6 +330,19 @@ std::vector<std::vector<std::string>> GraphPyClient::get_node_feat(
   return v;
 }
 
+void GraphPyClient::set_node_feat(
+    std::string node_type, std::vector<uint64_t> node_ids,
+    std::vector<std::string> feature_names,
+    const std::vector<std::vector<std::string>> features) {
+  if (this->table_id_map.count(node_type)) {
+    uint32_t table_id = this->table_id_map[node_type];
+    auto status =
+        worker_ptr->set_node_feat(table_id, node_ids, feature_names, features);
+    status.wait();
+  }
+  return;
+}
+
 std::vector<FeatureNode> GraphPyClient::pull_graph_list(std::string name,
                                                         int server_index,
                                                         int start, int size,
