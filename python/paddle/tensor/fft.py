@@ -52,32 +52,32 @@ def ihfft(x, n=None, axis=-1, norm="backward", name=None):
 # public APIs nd
 def fftn(x, s=None, axes=None, norm="backward", name=None):
     if is_floating_point(x):
-        return fft_r2c(x, s, axes, norm, forward=True, onesided=False)
+        return fftn_r2c(x, s, axes, norm, forward=True, onesided=False)
     else:
-        return fft_c2c(x, s, axes, norm, forward=True)
+        return fftn_c2c(x, s, axes, norm, forward=True)
 
 
 def ifftn(x, s=None, axes=None, norm="backward", name=None):
     if is_floating_point(x):
-        return fft_r2c(x, s, axes, norm, forward=False, onesided=False)
+        return fftn_r2c(x, s, axes, norm, forward=False, onesided=False)
     else:
-        return fft_c2c(x, s, axes, norm, forward=False)
+        return fftn_c2c(x, s, axes, norm, forward=False)
 
 
 def rfftn(x, s=None, axes=None, norm="backward", name=None):
-    return fft_r2c(x, s, axes, norm, forward=True, onesided=True)
+    return fftn_r2c(x, s, axes, norm, forward=True, onesided=True)
 
 
 def irfftn(x, s=None, axes=None, norm="backward", name=None):
-    return fft_c2r(x, s, axes, norm, forward=False)
+    return fftn_c2r(x, s, axes, norm, forward=False)
 
 
 def hfftn(x, s=None, axes=None, norm="backward", name=None):
-    return fft_c2r(x, s, axes, norm, forward=True)
+    return fftn_c2r(x, s, axes, norm, forward=True)
 
 
 def ihfftn(x, s=None, axes=None, norm="backward", name=None):
-    return fft_r2c(x, s, axes, norm, forward=False, onesided=True)
+    return fftn_r2c(x, s, axes, norm, forward=False, onesided=True)
 
 
 ## public APIs 2d
@@ -318,9 +318,8 @@ def fftn_c2c(x, s, axes, norm, forward):
     if in_dygraph_mode():
         attrs = ('s', s, 'axes', axes, 'normalization', norm, 'forward',
                  forward)
-        out = getattr(_C_ops, "fftc2c")(x, *attrs)
+        out = getattr(_C_ops, op_type)(x, *attrs)
     else:
-        op_type
         inputs = {'X': [x], }
         attrs = {
             's': s,
@@ -340,8 +339,120 @@ def fftn_c2c(x, s, axes, norm, forward):
 
 
 def fftn_r2c(x, s, axes, norm, forward, onesided):
-    pass
+    # TODO, move error checking to operators
+    if norm not in ['forward', 'backward', 'ortho']:
+        raise ValueError(
+            "Unexpected norm: {}. Norm should be forward, backward or ortho".
+            form(norm))
+    rank = x.ndim
+    if axes is None:
+        if s is None:
+            axes = list(range(rank))
+            s = paddle.shape(x)
+        else:
+            fft_ndims = len(s)
+            axes = list(range(rank - fft_ndims, rank))
+    else:
+        axes_ = axes.copy()
+        for i in len(axes_):
+            if axes_[i] < -rank or axes_[i] >= rank:
+                raise ValueError(
+                    "Invalid axis. Input's ndim is {}, axis should be [-{}, {})".
+                    format(rank, rank, rank))
+            if axes_[i] < 0:
+                axes_[i] += rank
+        axes = axes_
+        axes.sort()
+        if s is None:
+            shape = paddle.shape(x)
+            s = [shape[axis] for axis in axes]
+        else:
+            assert len(axes) == len(s)
+    op_type = 'fft_r2c'
+
+    if in_dygraph_mode():
+        attrs = ('s', s, 'axes', axes, 'normalization', norm, 'forward',
+                 forward, 'onesided', True)
+        out = getattr(_C_ops, op_type)(x, *attrs)
+    else:
+        inputs = {'X': [x], }
+        attrs = {
+            's': s,
+            'axes': axes,
+            'normalization': norm,
+            'forward': forward,
+            'onesided': True,
+        }
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 op_type)
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        out = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Out": [out]}
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+
+    if not onesided:
+        last_fft_axis = axes[-1]
+        conj_amount = (x.shape[last_fft_axis] - 1) // 2
+        conj_part = paddle.conj(
+            paddle.flip(
+                paddle.slice(out, [last_fft_axis], [1], [1 + conj_amount]),
+                last_fft_axis))
+        out = paddle.concat([out, conj_part], last_fft_axis)
+    return out
 
 
 def fftn_c2r(x, s, axes, norm, forward):
-    pass
+    # TODO, move error checking to operators
+    if norm not in ['forward', 'backward', 'ortho']:
+        raise ValueError(
+            "Unexpected norm: {}. Norm should be forward, backward or ortho".
+            form(norm))
+    rank = x.ndim
+    if axes is None:
+        if s is None:
+            axes = list(range(rank))
+            s = paddle.shape(x)
+        else:
+            fft_ndims = len(s)
+            axes = list(range(rank - fft_ndims, rank))
+    else:
+        axes_ = axes.copy()
+        for i in len(axes_):
+            if axes_[i] < -rank or axes_[i] >= rank:
+                raise ValueError(
+                    "Invalid axis. Input's ndim is {}, axis should be [-{}, {})".
+                    format(rank, rank, rank))
+            if axes_[i] < 0:
+                axes_[i] += rank
+        axes = axes_
+        axes.sort()
+        if s is None:
+            shape = paddle.shape(x)
+            s = [shape[axis] for axis in axes]
+        else:
+            assert len(axes) == len(s)
+    op_type = 'fft_c2r'
+
+    if in_dygraph_mode():
+        attrs = ('s', s, 'axes', axes, 'normalization', norm, 'forward',
+                 forward)
+        out = getattr(_C_ops, op_type)(x, *attrs)
+    else:
+        inputs = {'X': [x], }
+        attrs = {
+            's': s,
+            'axes': axes,
+            'normalization': norm,
+            'forward': forward
+        }
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 op_type)
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        out = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Out": [out]}
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+    return out
