@@ -621,7 +621,7 @@ class RandomVerticalFlip(BaseTransform):
             from PIL import Image
             from paddle.vision.transforms import RandomVerticalFlip
 
-            transform = RandomVerticalFlip(224)
+            transform = RandomVerticalFlip()
 
             fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
 
