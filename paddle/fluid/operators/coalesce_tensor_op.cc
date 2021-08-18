@@ -97,6 +97,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     auto in_tensors = context.MultiInput<framework::LoDTensor>("Input");
     bool use_align = context.Attr<bool>("use_align");
     auto align_size = context.Attr<int>("align_size");
+    auto size_of_dtype = context.Attr<int>("size_of_dtype");
 
     if (context.Attr<bool>("check_name")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
@@ -121,7 +122,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     size_t numel = 0;
     auto dtype = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
-    size_t size_of_dtype = framework::SizeOfType(dtype);
+    if (size_of_dtype == -1) {
+      size_of_dtype = framework::SizeOfType(dtype);
+    }
     GetMemSizeAndDtype(in_tensors, in_var_names, &numel, size_of_dtype,
                        context.GetPlace(), use_align, align_size);
 
@@ -253,10 +256,13 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
     }
     auto use_align = ctx->Attrs().Get<bool>("use_align");
     auto align_size = ctx->Attrs().Get<int>("align_size");
+    auto size_of_dtype = ctx->Attrs().Get<int>("size_of_dtype");
 
     auto dtype = static_cast<framework::proto::VarType::Type>(
         ctx->Attrs().Get<int>("dtype"));
-    size_t size_of_dtype = framework::SizeOfType(dtype);
+    if (size_of_dtype == -1) {
+      size_of_dtype = framework::SizeOfType(dtype);
+    }
 
     auto alignment = [](size_t size, size_t align_size) {
       size_t remaining = size % align_size;
@@ -334,6 +340,7 @@ class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddAttr<int>("align_size", "The alignment size when use_align is True")
         .SetDefault(-1);
+    AddAttr<int>("size_of_dtype", "The size of dtype").SetDefault(-1);
     AddComment(R"DOC(
 CoalesceTensor Operator.
 

@@ -5293,6 +5293,7 @@ class PipelineOptimizer(object):
                 outputs={"Output": grads,
                          "FusedOutput": fused_grad},
                 attrs={
+                    "size_of_dtype": 2,
                     "copy_data": False,
                     "use_align": True,
                     "dtype": grads[0].dtype,
@@ -5308,6 +5309,7 @@ class PipelineOptimizer(object):
                     "FusedOutput": fused_merged_grad
                 },
                 attrs={
+                    "size_of_dtype": 2,
                     "set_constant": True,
                     "constant": float(0.0),
                     "copy_data": False,
