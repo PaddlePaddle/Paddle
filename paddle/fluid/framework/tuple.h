@@ -27,8 +27,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-typedef boost::variant<int, int64_t, float, double, std::string, Tensor,
-                       LoDTensor /*, ChannelHolder*/>
+typedef paddle::variant<int, int64_t, float, double, std::string, Tensor,
+                        LoDTensor /*, ChannelHolder*/>
     ElementVar;
 
 class Tuple {

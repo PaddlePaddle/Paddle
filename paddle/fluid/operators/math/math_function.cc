@@ -203,7 +203,8 @@ void set_constant(const platform::DeviceContext& context,
                   framework::Tensor* tensor, float value) {
   TensorSetConstantWithPlace func(context, tensor, value);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  tensor->place().apply_visitor(func);
+  // tensor->place().apply_visitor(func);
+  paddle::apply_visitor(func, tensor->place());
 #else
   func(platform::CPUPlace());
 #endif

@@ -147,11 +147,11 @@ struct IsNPUPinnedPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
-class Place : public boost::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace,
-                                    CUDAPinnedPlace, NPUPinnedPlace> {
+class Place : public paddle::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace,
+                                     CUDAPinnedPlace, NPUPinnedPlace> {
  private:
-  using PlaceBase = boost::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace,
-                                   CUDAPinnedPlace, NPUPinnedPlace>;
+  using PlaceBase = paddle::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace,
+                                    CUDAPinnedPlace, NPUPinnedPlace>;
 
  public:
   Place() = default;
@@ -251,7 +251,7 @@ struct PlaceVisitorWrapper
 template <typename Visitor>
 typename Visitor::result_type VisitPlace(const Place &place,
                                          const Visitor &visitor) {
-  return boost::apply_visitor(PlaceVisitorWrapper<Visitor>(visitor), place);
+  return paddle::apply_visitor(PlaceVisitorWrapper<Visitor>(visitor), place);
 }
 
 }  // namespace platform

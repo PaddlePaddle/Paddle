@@ -678,7 +678,7 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 namespace allocation {
 
 Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
-  void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
+  void *ptr = paddle::apply_visitor(legacy::AllocVisitor(size), place_);
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
       static_cast<void *>(tmp_alloc), place_, size);
@@ -686,7 +686,7 @@ Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
 }
 
 void NaiveBestFitAllocator::FreeImpl(Allocation *allocation) {
-  boost::apply_visitor(
+  paddle::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
   platform::MemEvenRecorder::Instance().PopMemRecord(
@@ -695,7 +695,7 @@ void NaiveBestFitAllocator::FreeImpl(Allocation *allocation) {
 }
 
 uint64_t NaiveBestFitAllocator::ReleaseImpl(const platform::Place &place) {
-  return boost::apply_visitor(legacy::ReleaseVisitor(), place);
+  return paddle::apply_visitor(legacy::ReleaseVisitor(), place);
 }
 
 }  // namespace allocation

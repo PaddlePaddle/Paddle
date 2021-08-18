@@ -19,10 +19,11 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/utils/variant.hpp"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-// Cast boost::variant for PyBind.
+// Cast paddle::variant for PyBind.
 // Copy from
 // https://github.com/pybind/pybind11/issues/576#issuecomment-269563199
 namespace pybind11 {
@@ -108,7 +109,7 @@ struct paddle_variant_caster<V<Ts...>> {
   static handle cast(Type const &src, return_value_policy policy,
                      handle parent) {
     paddle_variant_caster_visitor visitor(policy, parent);
-    return boost::apply_visitor(visitor, src);
+    return paddle::apply_visitor(visitor, src);
   }
 
   PYBIND11_TYPE_CASTER(Type, _("Variant"));
@@ -117,8 +118,8 @@ struct paddle_variant_caster<V<Ts...>> {
 
 // Add specialization for concrete variant type
 template <class... Args>
-struct type_caster<boost::variant<Args...>>
-    : paddle_variant_caster<boost::variant<Args...>> {};
+struct type_caster<paddle::variant<Args...>>
+    : paddle_variant_caster<paddle::variant<Args...>> {};
 
 }  // namespace detail
 }  // namespace pybind11

@@ -436,7 +436,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
           auto &inside_tensor =
               cur_scope.FindVar(inside_grad_name)->Get<framework::LoDTensor>();
           framework::AttributeMap attrs;
-          attrs["dtype"] = inside_tensor.type();
+          attrs["dtype"] = static_cast<int>(inside_tensor.type());
           attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
           attrs["value"] = 0.0f;
 

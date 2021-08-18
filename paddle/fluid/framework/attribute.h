@@ -39,8 +39,8 @@ struct ExtractAttribute {
   T* operator()(Attribute& attr) const {
     T* attr_value = nullptr;
     try {
-      attr_value = &boost::get<T>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<T>(attr);
+    } catch (paddle::bad_variant_access& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type %s, its type is %s.", attr_name_,
           paddle::platform::demangle(typeid(T).name()),
@@ -73,8 +73,8 @@ struct ExtractAttribute<bool> {
     }
     bool* attr_value = nullptr;
     try {
-      attr_value = &boost::get<bool>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<bool>(attr);
+    } catch (paddle::bad_variant_access& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type bool, its type is %s.", attr_name_,
           paddle::platform::demangle(attr.type().name())));
@@ -100,8 +100,8 @@ struct ExtractAttribute<int64_t> {
     }
     int64_t* attr_value = nullptr;
     try {
-      attr_value = &boost::get<int64_t>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<int64_t>(attr);
+    } catch (paddle::bad_variant_access& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type int64_t, its type is %s.",
           attr_name_, paddle::platform::demangle(attr.type().name())));
@@ -129,8 +129,8 @@ struct ExtractAttribute<std::vector<int64_t>> {
     }
     std::vector<int64_t>* attr_value = nullptr;
     try {
-      attr_value = &boost::get<std::vector<int64_t>>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<std::vector<int64_t>>(attr);
+    } catch (paddle::bad_variant_access& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type std::vector<int64_t>, its type is "
           "%s.",
@@ -157,8 +157,8 @@ struct ExtractAttribute<float> {
     }
     float* attr_value = nullptr;
     try {
-      attr_value = &boost::get<float>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<float>(attr);
+    } catch (paddle::bad_variant_access& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type float, its type is %s.",
           attr_name_, paddle::platform::demangle(attr.type().name())));
@@ -186,8 +186,8 @@ struct ExtractAttribute<std::vector<double>> {
     }
     std::vector<double>* attr_value = nullptr;
     try {
-      attr_value = &boost::get<std::vector<double>>(attr);
-    } catch (boost::bad_get& bad_get) {
+      attr_value = &paddle::get<std::vector<double>>(attr);
+    } catch (paddle::bad_variant_access& bad_get) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot get attribute (%s) by type std::vector<double>, its type is "
           "%s.",

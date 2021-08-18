@@ -195,7 +195,7 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
     TensorAddFunctor<cpp_type> func(                                 \
         numel, src_tensor.data<cpp_type>(),                          \
         dst_tensor->mutable_data<cpp_type>(place));                  \
-    boost::apply_visitor(func, place);                               \
+    paddle::apply_visitor(func, place);                              \
     return;                                                          \
   }
 

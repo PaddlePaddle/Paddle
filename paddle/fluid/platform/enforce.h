@@ -598,20 +598,21 @@ struct EnforceNotMet : public std::exception {
   } while (0)
 
 /*
- * Summary: This BOOST_GET(_**) series macros are used to call boost::get
- *   safely. boost::get is not a completely safe api, although it will not
+ * Summary: This BOOST_GET(_**) series macros are used to call paddle::get
+ *   safely. paddle::get is not a completely safe api, although it will not
  *   go wrong in most cases, but in extreme cases, it may fail and directly
- *   throw a boost::bad_get exception, without any stack information.
+ *   throw a paddle::bad_variant_access exception, without any stack
+ *information.
  *   This kind of problems is difficult to debug, so add these macros to
- *   enrich boost::get error information. At the same time, we restrict
- *   the direct use of boost::get by CI rule.
+ *   enrich paddle::get error information. At the same time, we restrict
+ *   the direct use of paddle::get by CI rule.
  *
  * Parameters:
  *     __TYPE: the target variable type
  *     __VALUE: the target variable to get
  *
  * Examples:
- *     - unsafe writing: int x = boost::get<int>(y);
+ *     - unsafe writing: int x = paddle::get<int>(y);
  *     - safe writing: int x = BOOST_GET(int, y);
  *
  * Note: GCC 4.8 cannot select right overloaded function here, so need
@@ -628,12 +629,12 @@ namespace details {
       ->typename std::conditional<std::is_pointer<InputType>::value,           \
                                   __OutputTypePtr, __OutputType>::type {       \
     try {                                                                      \
-      return boost::get<OutputType>(input);                                    \
-    } catch (boost::bad_get&) {                                                \
+      return paddle::get<OutputType>(input);                                   \
+    } catch (paddle::bad_variant_access&) {                                    \
       HANDLE_THE_ERROR                                                         \
       throw ::paddle::platform::EnforceNotMet(                                 \
           ::paddle::platform::errors::InvalidArgument(                         \
-              "boost::get failed, cannot get value "                           \
+              "paddle::get failed, cannot get value "                          \
               "(%s) by type %s, its type is %s.",                              \
               expression,                                                      \
               paddle::platform::demangle(typeid(OutputType).name()),           \

@@ -132,7 +132,7 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
 
   // init ctx, DLContext type with device_type and device_id
   auto place = tensor.place();
-  t_.ctx = boost::apply_visitor(internal::DLContextVisitor(), place);
+  t_.ctx = paddle::apply_visitor(internal::DLContextVisitor(), place);
 
   // init dtype
   t_.dtype = internal::GetDLDataTypeFromTypeIndex(tensor.type());

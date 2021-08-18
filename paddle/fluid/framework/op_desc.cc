@@ -745,7 +745,7 @@ void OpDesc::Flush() {
       attr_desc->set_type(
           static_cast<proto::AttrType>(attr.second.which() - 1));
       SetAttrDescVisitor visitor(attr_desc);
-      boost::apply_visitor(visitor, attr.second);
+      paddle::apply_visitor(visitor, attr.second);
     }
 
     need_update_ = false;

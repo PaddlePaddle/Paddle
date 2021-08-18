@@ -44,27 +44,27 @@ class PlacePrinter : public boost::static_visitor<> {
 }  // namespace detail
 
 bool is_gpu_place(const Place &p) {
-  return boost::apply_visitor(IsCUDAPlace(), p);
+  return paddle::apply_visitor(IsCUDAPlace(), p);
 }
 
 bool is_xpu_place(const Place &p) {
-  return boost::apply_visitor(IsXPUPlace(), p);
+  return paddle::apply_visitor(IsXPUPlace(), p);
 }
 
 bool is_npu_place(const Place &p) {
-  return boost::apply_visitor(IsNPUPlace(), p);
+  return paddle::apply_visitor(IsNPUPlace(), p);
 }
 
 bool is_cpu_place(const Place &p) {
-  return boost::apply_visitor(IsCPUPlace(), p);
+  return paddle::apply_visitor(IsCPUPlace(), p);
 }
 
 bool is_cuda_pinned_place(const Place &p) {
-  return boost::apply_visitor(IsCUDAPinnedPlace(), p);
+  return paddle::apply_visitor(IsCUDAPinnedPlace(), p);
 }
 
 bool is_npu_pinned_place(const Place &p) {
-  return boost::apply_visitor(IsNPUPinnedPlace(), p);
+  return paddle::apply_visitor(IsNPUPinnedPlace(), p);
 }
 
 bool places_are_same_class(const Place &p1, const Place &p2) {
@@ -89,7 +89,7 @@ bool is_same_place(const Place &p1, const Place &p2) {
 
 std::ostream &operator<<(std::ostream &os, const Place &p) {
   detail::PlacePrinter printer(os);
-  boost::apply_visitor(printer, p);
+  paddle::apply_visitor(printer, p);
   return os;
 }
 

@@ -68,7 +68,7 @@ void* Tensor::mutable_data(const platform::Place& place,
             requested_size, size));
     size = requested_size;
   }
-  /* some versions of boost::variant don't have operator!= */
+  /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
     // Reset holder first before re-allocate to save memory

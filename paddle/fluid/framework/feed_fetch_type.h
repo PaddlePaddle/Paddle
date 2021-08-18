@@ -23,11 +23,11 @@ namespace framework {
 using FeedType = LoDTensor;
 using FeedList = std::vector<FeedType>;
 
-using FetchType = boost::variant<LoDTensor, LoDTensorArray>;
+using FetchType = paddle::variant<LoDTensor, LoDTensorArray>;
 using FetchList = std::vector<FetchType>;
 
 using FetchUnmergedList = std::vector<std::vector<FetchType>>;
-using FetchResultType = boost::variant<FetchList, FetchUnmergedList>;
+using FetchResultType = paddle::variant<FetchList, FetchUnmergedList>;
 
 inline bool data_is_lod_tensor(const FetchType &data) {
   if (data.type() == typeid(LoDTensor)) {

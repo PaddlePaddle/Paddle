@@ -374,7 +374,7 @@ class WhileGradOp : public framework::OperatorBase {
               var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
-            attrs["dtype"] = inside_tensor.type();
+            attrs["dtype"] = static_cast<int>(inside_tensor.type());
             attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
             attrs["value"] = 0.0f;
 

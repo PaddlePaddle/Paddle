@@ -110,8 +110,9 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
     const framework::proto::VarType::Type dst_type) {
   const auto& tracer = imperative::GetCurrentTracer();
   imperative::NameVarBaseMap ins = {{"X", {var}}};
-  framework::AttributeMap attrs = {{"in_dtype", var->DataType()},
-                                   {"out_dtype", dst_type}};
+  framework::AttributeMap attrs = {
+      {"in_dtype", static_cast<int>(var->DataType())},
+      {"out_dtype", static_cast<int>(dst_type)}};
   auto out = std::shared_ptr<imperative::VarBase>(
       new imperative::VarBase(tracer->GenerateUniqueName()));
   imperative::NameVarBaseMap outs = {{"Out", {out}}};

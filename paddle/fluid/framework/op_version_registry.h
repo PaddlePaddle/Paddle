@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_proto.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/none.h"
+#include "paddle/utils/variant.hpp"
 
 namespace paddle {
 namespace framework {
@@ -33,18 +34,18 @@ class OpVersionMap;
 }  // namespace pb
 
 using OpAttrVariantT =
-    boost::variant<bool,                     /* AttrType::BOOL */
-                   float,                    /* AttrType::FLOAT */
-                   int32_t,                  /* AttrType::INT */
-                   int64_t,                  /* AttrType::LONG*/
-                   std::string,              /* AttrType::STRING */
-                   std::vector<bool>,        /* AttrType::BOOLS */
-                   std::vector<float>,       /* AttrType::FLOATS */
-                   std::vector<int32_t>,     /* AttrType::INTS */
-                   std::vector<int64_t>,     /* AttrType::LONGS */
-                   std::vector<std::string>, /* AttrType::STRINGS */
-                   paddle::none_t            /* None */
-                   >;
+    ::paddle::variant<bool,                     /* AttrType::BOOL */
+                      float,                    /* AttrType::FLOAT */
+                      int32_t,                  /* AttrType::INT */
+                      int64_t,                  /* AttrType::LONG*/
+                      std::string,              /* AttrType::STRING */
+                      std::vector<bool>,        /* AttrType::BOOLS */
+                      std::vector<float>,       /* AttrType::FLOATS */
+                      std::vector<int32_t>,     /* AttrType::INTS */
+                      std::vector<int64_t>,     /* AttrType::LONGS */
+                      std::vector<std::string>, /* AttrType::STRINGS */
+                      paddle::none_t            /* None */
+                      >;
 
 struct OpUpdateInfo {
   virtual ~OpUpdateInfo() = default;

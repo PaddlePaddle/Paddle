@@ -68,8 +68,8 @@ class OpVariant {
   };
 
  private:
-  const boost::variant<const framework::OperatorBase *,
-                       const framework::OpDesc *>
+  const paddle::variant<const framework::OperatorBase *,
+                        const framework::OpDesc *>
       op_;
 };
 

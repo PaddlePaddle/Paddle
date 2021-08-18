@@ -45,9 +45,9 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
       // Copy all elements of input matrix A to a temporary memory space to
       // avoid being overriden by getrf.
       tmp_gpu_mat_data = memory::Alloc(context, a.numel() * sizeof(T));
-      memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
+      memory::Copy(paddle::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_gpu_mat_data->ptr(),
-                   boost::get<platform::CUDAPlace>(context.GetPlace()),
+                   paddle::get<platform::CUDAPlace>(context.GetPlace()),
                    a.data<void>(), a.numel() * sizeof(T), context.stream());
       gpu_mat = reinterpret_cast<const T*>(tmp_gpu_mat_data->ptr());
     }
@@ -61,7 +61,7 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
     // Copy the addresses of A and A_inv from host to device.
     memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
         memory::Alloc(context, cpu_ptrs.size() * sizeof(T*));
-    memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
+    memory::Copy(paddle::get<platform::CUDAPlace>(context.GetPlace()),
                  tmp_gpu_ptrs_data->ptr(), platform::CPUPlace(),
                  static_cast<void*>(cpu_ptrs.data()),
                  cpu_ptrs.size() * sizeof(T*), context.stream());
