@@ -97,7 +97,6 @@ class CollectiveCPUBarrierText(unittest.TestCase):
         for proc in jobs:
             proc.join()
         for _, v in procs_out_dict.items():
-            print("v: ", v)
             self.assertTrue(v > sleep_time)
 
     def test_barrier_op_with_multiprocess(self):
@@ -118,7 +117,6 @@ class CollectiveCPUBarrierText(unittest.TestCase):
         for proc in jobs:
             proc.join()
         for _, v in procs_out_dict.items():
-            print("v: ", v)
             self.assertTrue(v > sleep_time)
 
 

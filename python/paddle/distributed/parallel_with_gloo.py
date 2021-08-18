@@ -37,15 +37,14 @@ def _start_kv_server(port, http_server_d, size):
     http_server.stop()
 
 
-def init_gloo_parallel_env(rank_id, rank_num, server_endpoint, with_gloo=True):
+def init_gloo_parallel_env(rank_id, rank_num, server_endpoint):
     """
-    Initialize parallel environment with gloo.
+    Initialize parallel environment with gloo for cpu only.
 
     Args:
-        rank_id: int, the index of current rank
-        rank_num: int, the number of ranks in this parallel env
-        server_endpoint: str, endpoint of server to init gloo context in ip:port format
-        with_gloo: bool, True as default
+        - rank_id（int, required) - the index of current rank;
+        - rank_num (int, required) - the number of ranks in this parallel env;
+        - server_endpoint (str, required) - endpoint of server to init gloo context in ip:port format;
 
     Returns:
         None
@@ -95,7 +94,6 @@ def init_gloo_parallel_env(rank_id, rank_num, server_endpoint, with_gloo=True):
 
     assert (rank_num < 2) is False, \
         "rank_num should greater than or equal to 2 for parallel environment initialzation."
-    assert with_gloo is True, "flag with_gloo is not set!"
 
     # init gloo context
     manager = Manager()
@@ -137,6 +135,12 @@ def init_gloo_parallel_env(rank_id, rank_num, server_endpoint, with_gloo=True):
 def barrier_func():
     """
     Call barrier function with initialized gloo context.
+
+    Args:
+        None
+
+    Returns:
+        None
 
     Examples:
         .. code-block:: python
@@ -190,7 +194,10 @@ def release_gloo(rank_id):
     Release the parallel environment initialized by gloo
 
     Args:
-        rank_id: int, only the rank with id == 0 can do the release.
+        None
+
+    Returns:
+        None
 
     Examples:
         .. code-block:: python
@@ -237,5 +244,4 @@ def release_gloo(rank_id):
                 test_release_gloo_with_multiprocess(2)
     """
 
-    if (rank_id == 0):
-        _global_gloo_ctx.release()
+    _global_gloo_ctx.release()
