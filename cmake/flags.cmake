@@ -164,6 +164,7 @@ if(NOT APPLE)
                 -Wno-ignored-qualifiers # Warning in boost gcc 8.2
                 -Wno-ignored-attributes # Warning in Eigen gcc 8.3
                 -Wno-parentheses # Warning in Eigen gcc 8.3
+                -lcusolver 
                 )
     endif()
 endif(NOT APPLE)
