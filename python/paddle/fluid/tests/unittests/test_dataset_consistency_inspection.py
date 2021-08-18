@@ -342,12 +342,12 @@ class TestDataset(unittest.TestCase):
                 fluid.layers.data(
                     name=str(feat_name), shape=[1], dtype='float32'))
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.distributed.InMemoryDataset()
 
         print("========================================")
         generator_class = CTRDataset(mode=0)
         try:
-            dataset.check_use_var_with_data_generator(
+            dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, "test_run_with_dump_a.txt")
             print("case 1: check passed!")
         except Exception as e:
@@ -359,7 +359,7 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=2)
         try:
-            dataset.check_use_var_with_data_generator(
+            dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, "test_run_with_dump_a.txt")
         except Exception as e:
             print("warning: case 2 catch expected error")
@@ -370,7 +370,7 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=3)
         try:
-            dataset.check_use_var_with_data_generator(
+            dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, "test_run_with_dump_a.txt")
         except Exception as e:
             print("warning: case 3 catch expected error")
@@ -381,7 +381,7 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=4)
         try:
-            dataset.check_use_var_with_data_generator(
+            dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, "test_run_with_dump_a.txt")
         except Exception as e:
             print("warning: case 4 catch expected error")
@@ -392,7 +392,7 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=5)
         try:
-            dataset.check_use_var_with_data_generator(
+            dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, "test_run_with_dump_a.txt")
         except Exception as e:
             print("warning: case 5 catch expected error")
