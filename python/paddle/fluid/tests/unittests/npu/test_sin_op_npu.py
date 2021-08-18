@@ -48,6 +48,7 @@ def test_class(op_type, typename):
             self.op_type = "sin"
             self.__class__.use_npu = True
             self.place = paddle.NPUPlace(0)
+            self.__class__.no_need_check_grad = True
             np.random.seed(1024)
             x = np.random.uniform(-1, 1, [10, 12]).astype(typename)
             out = np.sin(x)
