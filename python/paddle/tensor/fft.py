@@ -231,6 +231,15 @@ def fft_r2c(x, n, axis, norm, forward, onesided):
         outputs = {"Out": [out]}
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+
+    if not onesided:
+        last_fft_axis = axes[-1]
+        conj_amount = (x.shape[last_fft_axis] - 1) // 2
+        conj_part = paddle.conj(
+            paddle.flip(
+                paddle.slice(out, [last_fft_axis], [1], [1 + conj_amount]),
+                last_fft_axis))
+        out = paddle.concat([out, conj_part], last_fft_axis)
     return out
 
 
