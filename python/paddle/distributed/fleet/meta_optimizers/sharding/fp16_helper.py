@@ -197,7 +197,6 @@ class FP16Utils(object):
             if op.type == "update_loss_scaling":
                 update_loss_scaling_op_idx = idx
                 inf_var_name = op.desc.input('FoundInfinite')[0]
-                op._rename_input(inf_var_name, inf_var_name + "@GLOBAL_WORLD")
                 break
 
         # not use amp
@@ -246,10 +245,10 @@ class FP16Utils(object):
             update_loss_scaling_op_idx,
             type='cast',
             inputs={'X': inf_var_int32},
-            outputs={'Out': inf_var_global},
+            outputs={'Out': inf_var},
             attrs={
                 "in_dtype": inf_var_int32.dtype,
-                "out_dtype": inf_var_global.dtype,
+                "out_dtype": inf_var.dtype,
                 OP_ROLE_KEY: OpRole.Optimize
             })
         update_loss_scaling_op_idx += 1

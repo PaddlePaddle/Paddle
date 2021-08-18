@@ -13342,7 +13342,7 @@ def shuffle_channel(x, group, name=None):
                           [[0.7, 0.8],
                            [0.8, 0.9]]]]
             Given group: 2
-            then we get a 4-D tensor out whth the same shape of input:
+            then we get a 4-D tensor out with the same shape of input:
             out.shape = (1, 4, 2, 2)
             out.data = [[[[0.1, 0.2],
                           [0.2, 0.3]],
@@ -13370,7 +13370,9 @@ def shuffle_channel(x, group, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+	      import paddle.fluid as fluid
+	      paddle.enable_static()
             input = fluid.data(name='input', shape=[None,4,2,2], dtype='float32')
             out = fluid.layers.shuffle_channel(x=input, group=2)
     """
