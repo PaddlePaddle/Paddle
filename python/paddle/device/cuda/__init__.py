@@ -113,6 +113,7 @@ def device_count():
 
     '''
 
-    num_gpus = core.get_cuda_device_count() if hasattr(core, 'get_cuda_device_count') else 0
+    num_gpus = core.get_cuda_device_count() if hasattr(
+        core, 'get_cuda_device_count') else 0
 
     return num_gpus
