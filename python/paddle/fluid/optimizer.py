@@ -5046,7 +5046,7 @@ class PipelineOptimizer(object):
         """
         if user_defined_strategy.fuse_param_grad:
             fused_gradient_names = self._accumulate_gradients_with_fuse(
-                block, startup_block, fp16_allreduce,
+                block, fp16_allreduce,
                 user_defined_strategy.fuse_grad_size_in_MB)
             return fused_gradient_names
 
@@ -5179,8 +5179,7 @@ class PipelineOptimizer(object):
 
         return merged_gradient_names
 
-    def _accumulate_gradients_with_fuse(self, main_block, startup_block, fp16,
-                                        fused_size):
+    def _accumulate_gradients_with_fuse(self, main_block, fp16, fused_size):
         first_opt_op_idx = None
         grad_param_pairs = []
         # obtain all param/grad pairs that needed to be fused
@@ -5230,8 +5229,8 @@ class PipelineOptimizer(object):
                 name=grad + merged_suffix,
                 dtype=dtype if dtype is not None else paddle.float32,
                 shape=real_grad.shape,
-                persistable=False,
-                stop_gradient=True)
+                persistable=True,
+                stop_gradient=False)
             real_param = main_block.var(param)
             tmp_size = self._get_var_size(real_grad)
             if len(grad_param_segments) == 0 \
@@ -5339,7 +5338,7 @@ class PipelineOptimizer(object):
                     name=cast_grad_var_name,
                     dtype=dtype if dtype is not None else fused_grad.dtype,
                     persistable=False,
-                    stop_gradient=True)
+                    stop_gradient=False)
                 main_block._insert_op(
                     index=first_opt_op_idx + offset,
                     type='cast',
@@ -5365,16 +5364,16 @@ class PipelineOptimizer(object):
             for i in range(len(fused_merged_gradients)):
                 fp16_grads = grad_param_segments[i][2]
                 grads = grad_param_segments[i][0]
-                for i in range(len(fp16_grads)):
-                    fp16_grad = fp16_grads[i]
-                    grad = grads[i]
+                for j in range(len(fp16_grads)):
+                    fp16_grad = fp16_grads[j]
+                    grad = grads[j]
                     fp32_grad_name = grad.name + '@MERGED'
                     fp32_grad = main_block.create_var(
                         name=fp32_grad_name,
                         dtype=paddle.float32,
                         shape=grad.shape,
-                        persistable=False,
-                        stop_gradient=True)
+                        persistable=True,
+                        stop_gradient=False)
                     main_block._insert_op(
                         index=first_opt_op_idx + offset,
                         type='cast',
@@ -5390,6 +5389,8 @@ class PipelineOptimizer(object):
         # repalce the var with it's name
         for i in range(len(fused_merged_gradients)):
             fused_merged_gradients[i] = fused_merged_gradients[i].name
+
+        main_block._sync_with_cpp()
 
         return fused_merged_gradients
 
