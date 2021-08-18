@@ -73,6 +73,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
@@ -505,6 +506,8 @@ PYBIND11_MODULE(core_noavx, m) {
   BindException(&m);
 
   m.def("set_num_threads", &platform::SetNumThreads);
+
+  m.def("disable_signal_handler", &DisableSignalHandler);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);
@@ -2054,6 +2057,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindOpDesc(&m);
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
+  BindProcessMeshDesc(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -2216,7 +2220,15 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_ASCEND_CL
   m.def("get_npu_device_count", platform::GetNPUDeviceCount);
-  m.def("npu_finalize", []() { platform::AclInstance::Instance().Finalize(); });
+  m.def("npu_finalize", []() {
+    auto &pool = platform::DeviceContextPool::Instance();
+    auto devices = platform::GetSelectedNPUDevices();
+    for (size_t i = 0; i < devices.size(); ++i) {
+      platform::NPUDeviceGuard guard(devices[i]);
+      pool.Get(platform::NPUPlace(devices[i]))->Wait();
+    }
+    platform::AclInstance::Instance().Finalize();
+  });
 
   py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
 
@@ -2544,6 +2556,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("Customized", BuildStrategy::GradientScaleStrategy::kCustomized);
 
   build_strategy.def(py::init())
+      .def("_clear_finalized", &BuildStrategy::ClearFinalized)
       .def_property(
           "reduce_strategy",
           [](const BuildStrategy &self) { return self.reduce_; },
@@ -2900,7 +2913,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property("fuse_broadcast_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_broadcast_ops_ == true ||
-                             self.fuse_broadcast_ops_ == boost::none;
+                             self.fuse_broadcast_ops_ == paddle::none;
                     },
                     [](BuildStrategy &self, bool b) {
                       PADDLE_ENFORCE_NE(self.IsFinalized(), true,
@@ -2930,7 +2943,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_all_optimizer_ops_ == true ||
-                             self.fuse_all_optimizer_ops_ == boost::none;
+                             self.fuse_all_optimizer_ops_ == paddle::none;
                     },
                     [](BuildStrategy &self, bool b) {
                       PADDLE_ENFORCE_NE(self.IsFinalized(), true,
@@ -2979,7 +2992,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, const py::handle &value) {
             auto *py_obj = value.ptr();
             if (py_obj == nullptr || py_obj == Py_None) {
-              self.memory_optimize_ = boost::none;
+              self.memory_optimize_ = paddle::none;
             } else if (PyBool_Check(py_obj)) {
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
@@ -3036,7 +3049,7 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) {
             return self.fuse_all_reduce_ops_ == true ||
-                   self.fuse_all_reduce_ops_ == boost::none;
+                   self.fuse_all_reduce_ops_ == paddle::none;
           },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
       .def_property("enable_backward_optimizer_op_deps",
@@ -3065,6 +3078,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool fix_op_run_order) {
             self.fix_op_run_order_ = fix_op_run_order;
           })
+      .def("_copy",
+           [](const BuildStrategy &self) {
+             auto new_bs = self;
+             new_bs.ClearFinalized();
+             return new_bs;
+           })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

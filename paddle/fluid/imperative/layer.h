@@ -110,6 +110,7 @@ class VarBase {
 
   void SetGradVarBase(const VarBase& grad_var) {
     MutableGradVarBase()->CopyFrom(grad_var, true);
+    MutableGradVarBase()->SharedVar()->SetIsEmpty(false);
   }
 
   const std::shared_ptr<VarBase>& MutableGradVarBase() {
@@ -142,6 +143,8 @@ class VarBase {
     return grad_var_->MutableVar();
   }
 
+  bool IsLeaf() const { return var_->IsLeaf(); }
+
   void SetOverridedStopGradient(bool stop_gradient) {
     var_->SetOverridedStopGradient(stop_gradient);
     if (grad_var_) {
@@ -151,15 +154,17 @@ class VarBase {
 
   bool OverridedStopGradient() const { return var_->OverridedStopGradient(); }
 
-  bool IsLeaf() const { return var_->IsLeaf(); }
-
   void InnerSetOverridedStopGradient(bool stop_gradient) {
-    if (var_->InnerOverridedStopGradient() == -1) {
+    if (InnerOverridedStopGradient() == -1) {
       var_->InnerSetOverridedStopGradient(stop_gradient);
       if (grad_var_) {
         grad_var_->InnerSetOverridedStopGradient(stop_gradient);
       }
     }
+  }
+
+  int InnerOverridedStopGradient() const {
+    return var_->InnerOverridedStopGradient();
   }
 
   void SetPersistable(bool persistable) { var_->SetPersistable(persistable); }

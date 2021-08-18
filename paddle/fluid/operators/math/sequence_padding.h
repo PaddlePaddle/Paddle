@@ -107,6 +107,8 @@ class PaddingLoDTensorFunctor {
                   framework::LoDTensor* pad_tensor,
                   const framework::LoDTensor& pad_value, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
+                  bool norm_by_batchsize = false,
+                  bool norm_by_total_logits_len = false,
                   const PadLayout layout = kBatchLengthWidth);
 };
 
@@ -117,6 +119,8 @@ class UnpaddingLoDTensorFunctor {
                   const framework::LoDTensor& pad_tensor,
                   framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
+                  bool norm_by_batchsize = false,
+                  bool norm_by_total_logits_len = false,
                   const PadLayout layout = kBatchLengthWidth);
 };
 
