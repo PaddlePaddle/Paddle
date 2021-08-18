@@ -112,7 +112,7 @@ def fp16_initialize(enable_pure_fp16, model, optimizer):
         if (layer._dtype is 'float16') or isinstance(layer, (
                 paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
             continue
-        layer.to(dtyppe='float16')
+        layer.to(dtype='float16')
 
     optimizer._parameter_list = model.parameters()
     return model, optimizer
