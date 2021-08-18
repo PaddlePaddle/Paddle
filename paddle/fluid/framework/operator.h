@@ -474,9 +474,9 @@ class OperatorWithKernel : public OperatorBase {
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  static ska::flat_hash_map<std::string /* op_type */, OpKernelMap>&
+  static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
-    static ska::flat_hash_map<std::string, OpKernelMap> g_all_op_kernels;
+    static paddle::flat_hash_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
   }
 
