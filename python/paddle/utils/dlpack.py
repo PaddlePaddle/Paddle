@@ -14,6 +14,9 @@
 
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
+from ..fluid.core import LoDTensor
+from ..fluid.framework import in_dygraph_mode
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 
 
 def to_dlpack(x):
@@ -41,18 +44,26 @@ def to_dlpack(x):
             # <capsule object "dltensor" at 0x7f6103c681b0>
     """
 
-    if not isinstance(x, paddle.Tensor):
-        raise TypeError("The type of 'x' in to_dlpack must be paddle.Tensor,"
-                        " but received {}.".format(type(x)))
+    if in_dygraph_mode():
+        if not isinstance(x, paddle.Tensor):
+            raise TypeError(
+                "The type of 'x' in to_dlpack must be paddle.Tensor,"
+                " but received {}.".format(type(x)))
 
-    dtype = convert_dtype(x.dtype)
+        dtype = convert_dtype(x.dtype)
 
-    if dtype not in ['bool', 'int32', 'int64', 'float32', 'float64']:
-        raise TypeError(
-            "the dtype of 'x' in to_dlpack must be any of [bool, int32, int64, "
-            "float32, float64], but received {}.".format(dtype))
+        if dtype not in ['bool', 'int32', 'int64', 'float32', 'float64']:
+            raise TypeError(
+                "the dtype of 'x' in to_dlpack must be any of [bool, int32, int64, "
+                "float32, float64], but received {}.".format(dtype))
 
-    return x.value().get_tensor()._to_dlpack()
+        return x.value().get_tensor()._to_dlpack()
+
+    check_type(x, 'x', (LoDTensor), 'to_dlpack')
+    check_dtype(x, 'x', ['bool', 'int32', 'int64', 'float32', 'float64'],
+                'to_dlpack')
+
+    return x._to_dlpack()
 
 
 def from_dlpack(dlpack):
@@ -83,7 +94,10 @@ def from_dlpack(dlpack):
             "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
             " but received {}.".format(type(dlpack)))
 
-    out = paddle.fluid.core.from_dlpack(dlpack)
-    out = paddle.to_tensor(out)
-
-    return out
+    if in_dygraph_mode():
+        out = paddle.fluid.core.from_dlpack(dlpack)
+        out = paddle.to_tensor(out)
+        return out
+    else:
+        out = paddle.fluid.core.from_dlpack(dlpack)
+        return out
