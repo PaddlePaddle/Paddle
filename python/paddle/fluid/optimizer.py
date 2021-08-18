@@ -5361,30 +5361,28 @@ class PipelineOptimizer(object):
 
         if fp16:
             # if using fp16 allreduce, the optimizer needs fp32 grads, cast them back to fp32
-            for i in range(len(fused_merged_gradients)):
-                fp16_grads = grad_param_segments[i][2]
-                grads = grad_param_segments[i][0]
-                for j in range(len(fp16_grads)):
-                    fp16_grad = fp16_grads[j]
-                    grad = grads[j]
-                    fp32_grad_name = grad.name + '@MERGED'
-                    fp32_grad = main_block.create_var(
-                        name=fp32_grad_name,
-                        dtype=paddle.float32,
-                        shape=grad.shape,
-                        persistable=True,
-                        stop_gradient=False)
-                    main_block._insert_op(
-                        index=first_opt_op_idx + offset,
-                        type='cast',
-                        inputs={'X': fp16_grad},
-                        outputs={'Out': fp32_grad},
-                        attrs={
-                            'in_dtype': paddle.float16,
-                            'out_dtype': paddle.float32,
-                            self._op_role_key: self._op_role.Optimize,
-                        })
-                    offset += 1
+            for grad, param in grad_param_pairs:
+                fp16_grad_name = grad.name + '@MERGED@FP16'
+                assert main_block.has_var(fp16_grad_name)
+                fp16_grad = main_block.var(fp16_grad_name)
+                fp32_grad_name = grad.name + '@MERGED'
+                fp32_grad = main_block.create_var(
+                    name=fp32_grad_name,
+                    dtype=paddle.float32,
+                    shape=grad.shape,
+                    persistable=True,
+                    stop_gradient=False)
+                main_block._insert_op(
+                    index=first_opt_op_idx + offset,
+                    type='cast',
+                    inputs={'X': fp16_grad},
+                    outputs={'Out': fp32_grad},
+                    attrs={
+                        'in_dtype': paddle.float16,
+                        'out_dtype': paddle.float32,
+                        self._op_role_key: self._op_role.Optimize,
+                    })
+                offset += 1
 
         # repalce the var with it's name
         for i in range(len(fused_merged_gradients)):
