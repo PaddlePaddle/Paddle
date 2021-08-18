@@ -122,9 +122,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
       }
     } else if (context.Attr<bool>("set_constant")) {
       // TODO(Liu yuang) ADD NPU SET_CONSTANT FUNCTION.
-      math::SetConstant<DeviceContext, T> set_constant;
+      math::SetConstant<DeviceContext, dtype> set_constant;
       set_constant(dev_ctx, fused_tensor,
-                   static_cast<T>(context.Attr<float>("constant")));
+                   static_cast<dtype>(context.Attr<float>("constant")));
     } else if (context.Attr<bool>("persist_output")) {
       for (size_t i = 0; i < out_var_names.size(); ++i) {
         size_t len = static_cast<size_t>(out_tensors[i]->numel());

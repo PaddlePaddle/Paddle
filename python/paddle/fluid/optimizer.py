@@ -5304,10 +5304,12 @@ class PipelineOptimizer(object):
                     "FusedOutput": fused_merged_grad
                 },
                 attrs={
-                    "copy_data": True,
+                    "set_constant": True,
+                    "constant": float(0.0),
+                    "copy_data": False,
                     "use_align": True,
                     "dtype": merged_grads[0].dtype,
-                    self._op_role_key: self._op_role.Backward
+                    self._op_role_key: self._op_role.Optimize.LRSched
                 })
             offset += 1
 
@@ -5317,17 +5319,18 @@ class PipelineOptimizer(object):
         for i in range(len(fused_gradients)):
             fused_grad = fused_gradients[i]
             fused_merged_grad = fused_merged_gradients[i]
-            main_block._insert_op(
-                index=first_opt_op_idx + offset,
-                type='fill_constant',
-                inputs={},
-                outputs={'Out': [fused_merged_grad]},
-                attrs={
-                    'dtype': fused_merged_grad.dtype,
-                    'value': float(0),
-                    self._op_role_key: self._op_role.Optimize.LRSched,
-                })
-            offset += 1
+            # main_block._insert_op(
+            #     index=first_opt_op_idx + offset,
+            #     type='fill_constant',
+            #     inputs={},
+            #     outputs={'Out': [fused_merged_grad]},
+            #     attrs={
+            #         'shape': fused_merged_grad.shape,
+            #         'dtype': fused_merged_grad.dtype,
+            #         'value': float(0),
+            #         self._op_role_key: self._op_role.Optimize.LRSched,
+            #     })
+            # offset += 1
 
             is_fp16_grad = 'cast_fp16' in fused_grad.name
             need_cast = (is_fp16_grad is not fp16)
