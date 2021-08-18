@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # 1. download the mobilenetv1 model to test config and predictor
-if [ ! -d mobilenetv1 ];then
+if [ ! -d mobilenetv1 ]; then
     wget https://paddle-inference-dist.bj.bcebos.com/Paddle-Inference-Demo/mobilenetv1.tgz
     tar xzf mobilenetv1.tgz 
 fi
