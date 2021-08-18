@@ -230,7 +230,8 @@ NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
                                   const NameVarBaseMap& ins) {
   NameVarBaseMap new_ins(ins);
   auto dst_type = framework::proto::VarType::FP16;
-  if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type)) {
+  if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type) ||
+      AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
     dst_type = framework::proto::VarType::FP32;
   }
   for (auto& pair : new_ins) {
