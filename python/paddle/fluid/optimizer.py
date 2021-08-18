@@ -5226,7 +5226,7 @@ class PipelineOptimizer(object):
         for grad, param in grad_param_pairs:
             real_grad = main_block.var(grad)
             merged_grad_var = main_block.create_var(
-                name=grad + merged_suffix,
+                name=grad.replace('.cast_fp16', '') + merged_suffix,
                 dtype=dtype if dtype is not None else paddle.float32,
                 shape=real_grad.shape,
                 persistable=True,
@@ -5362,14 +5362,15 @@ class PipelineOptimizer(object):
         if fp16:
             # if using fp16 allreduce, the optimizer needs fp32 grads, cast them back to fp32
             for grad, param in grad_param_pairs:
-                fp16_grad_name = grad.name + '@MERGED@FP16'
+                real_grad = main_block.var(grad)
+                fp16_grad_name = grad.replace('.cast_fp16', '') + '@MERGED@FP16'
                 assert main_block.has_var(fp16_grad_name)
                 fp16_grad = main_block.var(fp16_grad_name)
-                fp32_grad_name = grad.name + '@MERGED'
+                fp32_grad_name = grad.replace('.cast_fp16', '') + '@MERGED'
                 fp32_grad = main_block.create_var(
                     name=fp32_grad_name,
                     dtype=paddle.float32,
-                    shape=grad.shape,
+                    shape=real_grad.shape,
                     persistable=True,
                     stop_gradient=False)
                 main_block._insert_op(
