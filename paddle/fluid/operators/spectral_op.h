@@ -145,7 +145,7 @@ class FFTC2RKernel : public framework::OpKernel<T> {
     const auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Output<Tensor>("Out");
 
-    y->mutable_data<U>(ctx.GetPlace());
+    y->mutable_data<T>(ctx.GetPlace());
     auto normalization = get_norm_from_string(norm_str, forward);
 
     FFTC2RFunctor<DeviceContext, U> fft_c2r_func;

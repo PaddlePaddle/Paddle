@@ -350,17 +350,18 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward) {
+    using R = typename T::value_type;
+    using C = std::complex<R>;
+
     const auto& input_dim = x->dims();
     const std::vector<size_t> in_sizes =
         framework::vectorize<size_t>(input_dim);
     std::vector<int64_t> in_strides =
         framework::vectorize<int64_t>(framework::stride(input_dim));
-    const int64_t data_size = sizeof(T);
+    const int64_t data_size = sizeof(C);
     std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
                    [](int64_t s) { return s * data_size; });
 
-    using R = typename T::value_type;
-    using C = std::complex<R>;
     const auto* in_data = reinterpret_cast<const C*>(x->data<T>());
     auto* out_data = reinterpret_cast<C*>(out->data<T>());
     // well, we have to use std::vector<size_t> here
@@ -391,7 +392,7 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, T> {
     std::vector<int64_t> in_strides =
         framework::vectorize<int64_t>(framework::stride(input_dim));
     {
-      const int64_t data_size = sizeof(T);
+      const int64_t data_size = sizeof(R);
       std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
                      [](int64_t s) { return s * data_size; });
     }
@@ -438,7 +439,7 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, T> {
     std::vector<int64_t> in_strides =
         framework::vectorize<int64_t>(framework::stride(input_dim));
     {
-      const int64_t data_size = sizeof(T);
+      const int64_t data_size = sizeof(C);
       std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
                      [](int64_t s) { return s * data_size; });
     }
@@ -449,7 +450,7 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, T> {
     std::vector<int64_t> out_strides =
         framework::vectorize<int64_t>(framework::stride(output_dim));
     {
-      const int64_t data_size = sizeof(C);
+      const int64_t data_size = sizeof(R);
       std::transform(out_strides.begin(), out_strides.end(),
                      out_strides.begin(),
                      [](int64_t s) { return s * data_size; });

@@ -194,11 +194,84 @@ def fft_c2c(x, n, axis, norm, forward):
 
 
 def fft_r2c(x, n, axis, norm, forward, onesided):
-    pass
+    # TODO, move error checking to operators
+    if norm not in ['forward', 'backward', 'ortho']:
+        raise ValueError(
+            "Unexpected norm: {}. Norm should be forward, backward or ortho".
+            form(norm))
+    rank = x.ndim
+    if axis < -rank or axis >= rank:
+        raise ValueError(
+            "Invalid axis. Input's ndim is {}, axis should be [-{}, {})".format(
+                rank, rank, rank))
+    if axis < 0:
+        axis += rank
+    s = [axis]
+    axes = [axis]
+    op_type = 'fft_r2c'
+
+    if in_dygraph_mode():
+        attrs = ('s', s, 'axes', axes, 'normalization', norm, 'forward',
+                 forward, 'onesided', True)
+        out = getattr(_C_ops, op_type)(x, *attrs)
+    else:
+        inputs = {'X': [x], }
+        attrs = {
+            's': s,
+            'axes': axes,
+            'normalization': norm,
+            'forward': forward,
+            'onesided': True,
+        }
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 op_type)
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        out = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Out": [out]}
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+    return out
 
 
 def fft_c2r(x, n, axis, norm, forward):
-    pass
+    # TODO, move error checking to operators
+    if norm not in ['forward', 'backward', 'ortho']:
+        raise ValueError(
+            "Unexpected norm: {}. Norm should be forward, backward or ortho".
+            form(norm))
+    rank = x.ndim
+    if axis < -rank or axis >= rank:
+        raise ValueError(
+            "Invalid axis. Input's ndim is {}, axis should be [-{}, {})".format(
+                rank, rank, rank))
+    if axis < 0:
+        axis += rank
+    s = [axis]
+    axes = [axis]
+    op_type = 'fft_c2r'
+
+    if in_dygraph_mode():
+        attrs = ('s', s, 'axes', axes, 'normalization', norm, 'forward',
+                 forward)
+        out = getattr(_C_ops, op_type)(x, *attrs)
+    else:
+        inputs = {'X': [x], }
+        attrs = {
+            's': s,
+            'axes': axes,
+            'normalization': norm,
+            'forward': forward
+        }
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 op_type)
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        out = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Out": [out]}
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+    return out
 
 
 def fftn_c2c(x, s, axes, norm, forward):
