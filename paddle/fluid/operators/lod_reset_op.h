@@ -51,7 +51,8 @@ class LoDResetKernel : public framework::OpKernel<T> {
       } else {
         auto* lod = lod_t->data<int>();
         framework::Tensor lod_cpu;
-        if (platform::is_gpu_place(lod_t->place())) {
+        if (platform::is_gpu_place(lod_t->place()) ||
+            platform::is_npu_place(lod_t->place())) {
           framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
         }
