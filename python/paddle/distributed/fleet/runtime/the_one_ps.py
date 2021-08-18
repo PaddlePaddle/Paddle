@@ -49,7 +49,7 @@ def parse_table_class(varname, o_main_program):
             if op.has_attr('table_class') and op.attr("table_class") != "none":
                 return op.attr('table_class')
             else:
-                return "CommonSparseTable"
+                return "CtrSparseTable"
 
 
 class Accessor:
