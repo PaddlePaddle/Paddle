@@ -161,5 +161,5 @@ REGISTER_OP_VERSION(flip)
         R"ROC(Upgrade flip, add new attr [axis] and delete attr [dims].)ROC",
         paddle::framework::compatible::OpVersionDesc()
             .NewAttr("axis", "The added attr 'axis' doesn't set default value.",
-                     boost::none)
+                     paddle::none)
             .DeleteAttr("dims", "The attr 'dims' is deleted."));

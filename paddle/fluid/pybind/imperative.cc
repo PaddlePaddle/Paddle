@@ -785,7 +785,8 @@ void BindImperative(py::module *m_ptr) {
              const int size = PyTuple_GET_SIZE(index_ptr);
              for (int dim = 0; dim < size; ++dim) {
                PyObject *slice_item = PyTuple_GetItem(index_ptr, dim);
-               if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item))) {
+               if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item) ||
+                     slice_item == Py_Ellipsis || slice_item == Py_None)) {
                  parse_index = false;
                  break;
                }
@@ -807,7 +808,8 @@ void BindImperative(py::module *m_ptr) {
                    {"starts", starts},
                    {"ends", ends},
                    {"steps", steps},
-                   {"decrease_axes", decrease_axes}};
+                   {"decrease_axes", decrease_axes},
+                   {"none_axes", none_axes}};
 
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                imperative::NameVarBaseMap outs = {{"Out", {self}}};
