@@ -35,12 +35,12 @@ namespace memory {
 namespace allocation {
 
 struct SpinLockGuard {
-  explicit SpinLockGuard(pthread_spinlock_t *mutex) {
+  explicit SpinLockGuard(MLOCK_T *mutex) {
     mutex_ = mutex;
-    pthread_spin_lock(mutex_);
+    ACQUIRE_LOCK(mutex_);
   }
-  ~SpinLockGuard() { pthread_spin_unlock(mutex_); }
-  pthread_spinlock_t *mutex_;
+  ~SpinLockGuard() { RELEASE_LOCK(mutex_); }
+  MLOCK_T *mutex_;
 };
 
 AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
@@ -50,7 +50,7 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
           std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
       alignment_(alignment),
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)) {
-  pthread_spin_init(&mtx_, 0);
+  INITIAL_LOCK(&mtx_);
 }
 
 Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
