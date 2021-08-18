@@ -32,9 +32,24 @@ namespace operators {
 #ifdef PADDLE_WITH_ASCEND_CL
 
 static void GenHCCLID(std::vector<HcclRootInfo>* hccl_ids) {
+  constexpr int timeout = 2 * 60 + 10;  // 2MSL+10s
+  constexpr int retry_time = 1;
   for (size_t i = 0; i < hccl_ids->size(); ++i) {
-    PADDLE_ENFORCE_NPU_SUCCESS(
-        platform::dynload::HcclGetRootInfo(&(*hccl_ids)[i]));
+    bool failed = true;
+    for (auto retry_times = 0; retry_times * retry_time < timeout;
+         ++retry_times) {
+      auto err = platform::dynload::HcclGetRootInfo(&(*hccl_ids)[i]);
+      if (err == 0) {
+        failed = false;
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::seconds(retry_time));
+      LOG(WARNING) << "HcclGetRootInfo failed, err is: " << err << ", retry "
+                   << retry_times << " times";
+    }
+    if (failed) {
+      PADDLE_THROW(platform::errors::External("HcclGetRootInfo failed!"));
+    }
   }
 }
 
@@ -63,7 +78,7 @@ class CGenHCCLIdOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
     int rank = Attr<int>("rank");
-    framework::Scope& local_scope = scope.NewScope();
+    int ring_id = Attr<int>("ring_id");
 
     std::function<std::string(size_t)> func = [&](size_t i) -> std::string {
       return Output("Out");
@@ -79,13 +94,12 @@ class CGenHCCLIdOp : public framework::OperatorBase {
       GenHCCLID(&hccl_ids);
       std::vector<std::string> endpoint_list =
           Attr<std::vector<std::string>>("other_endpoints");
-      platform::SendBroadCastCommID(endpoint_list, &hccl_ids);
+      platform::SendBroadCastCommID(endpoint_list, &hccl_ids, ring_id);
     } else {
-      platform::RecvBroadCastCommID(server_fd, endpoint, &hccl_ids);
+      platform::RecvBroadCastCommID(server_fd, endpoint, &hccl_ids, ring_id);
     }
 
     CopyHCCLIDToVar(hccl_ids, func, scope);
-    scope.DeleteScope(&local_scope);
   }
 };
 
@@ -127,6 +141,8 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
     AddAttr<int>("rank",
                  "(int default 0) "
                  "The rank of the trainer in distributed training.")
+        .SetDefault(0);
+    AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
   }
 };

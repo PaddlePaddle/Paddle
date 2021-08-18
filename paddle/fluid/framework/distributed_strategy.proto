@@ -42,6 +42,7 @@ message ShardingConfig {
   optional bool optimize_offload = 9 [ default = false ];
   optional bool pp_allreduce_in_optimize = 10 [ default = false ];
   optional int32 pp_degree = 11 [ default = 1 ];
+  optional bool optimize_cast = 12 [ default = false ];
 }
 
 message HybridConfig {
@@ -111,6 +112,7 @@ message BuildStrategy {
   optional bool fuse_bn_add_act_ops = 10 [ default = true ];
   optional bool enable_auto_fusion = 11 [ default = false ];
   optional bool enable_addto = 12 [ default = false ];
+  optional bool fix_op_run_order = 13 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -182,7 +184,7 @@ message DistributedStrategy {
   optional bool use_hierarchical_allreduce = 15 [ default = false ];
   optional int32 hierarchical_allreduce_inter_nranks = 16 [ default = 1 ];
   optional bool sync_batch_norm = 17 [ default = false ];
-  optional bool fuse_all_reduce_ops = 18 [ default = false ];
+  optional bool fuse_all_reduce_ops = 18 [ default = true ];
   optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
   optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
   optional bool cudnn_exhaustive_search = 21 [ default = false ];
@@ -195,7 +197,7 @@ message DistributedStrategy {
   optional bool find_unused_parameters = 28 [ default = false ];
   optional bool tensor_parallel = 29 [ default = false ];
   optional bool without_graph_optimization = 30 [ default = false ];
-  optional int32 fuse_grad_size_in_num = 31 [ default = 1 ];
+  optional int32 fuse_grad_size_in_num = 31 [ default = 8 ];
   optional bool calc_comm_same_stream = 32 [ default = false ];
   optional bool asp = 33 [ default = false ];
 

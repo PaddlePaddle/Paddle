@@ -269,11 +269,27 @@ class Fleet(object):
             cg.set_comm_group('global', global_rank, global_world_size,
                               global_ring_id, global_ranks)
 
-            # hybrid group
-            if use_sharding is False: return
+            use_tensor_parallel = self._user_defined_strategy.tensor_parallel
+            use_mp = use_sharding or use_tensor_parallel
 
-            sharding_configs = self._user_defined_strategy.sharding_configs
-            mp_degree = int(sharding_configs['mp_degree'])
+            # hybrid group
+            if use_mp is False: return
+
+            mp_degree_sharding = 1
+            mp_degree_tensor_parallel = 1
+            if use_sharding:
+                sharding_configs = self._user_defined_strategy.sharding_configs
+                mp_degree_sharding = int(sharding_configs['mp_degree'])
+
+            if use_tensor_parallel:
+                tensor_parallel_configs = self._user_defined_strategy.tensor_parallel_configs
+                mp_degree_tensor_parallel = int(tensor_parallel_configs[
+                    'tensor_parallel_degree'])
+
+            if use_sharding and use_tensor_parallel:
+                assert mp_degree_sharding == mp_degree_tensor_parallel
+
+            mp_degree = mp_degree_sharding if use_sharding else mp_degree_tensor_parallel
 
             if mp_degree > 1:
                 assert global_world_size % mp_degree == 0

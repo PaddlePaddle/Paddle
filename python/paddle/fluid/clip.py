@@ -19,16 +19,44 @@ import six
 import warnings
 
 import functools
+import paddle
 from . import layers
 from . import framework
 from . import core
 from . import name_scope
 from .dygraph import base as imperative_base
+from .data_feeder import check_variable_and_dtype
+from .framework import in_dygraph_mode
+from .layer_helper import LayerHelper
 
 __all__ = [
     'set_gradient_clip', 'ErrorClipByValue', 'ClipGradByValue',
     'ClipGradByNorm', 'ClipGradByGlobalNorm'
 ]
+
+
+def _squared_l2_norm(x):
+    r"""
+    This OP returns the squared L2 norm of a tensor.
+    """
+
+    if core.is_compiled_with_xpu():
+        square = layers.square(x)
+        sum_square = layers.reduce_sum(square)
+        return sum_square
+
+    if in_dygraph_mode():
+        return core.ops.squared_l2_norm(x)
+
+    op_type = 'squared_l2_norm'
+    check_variable_and_dtype(x, 'x', ['float32'], op_type)
+    helper = LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    inputs = {"X": x}
+    outputs = {'Out': out}
+    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out
 
 
 class BaseErrorClipAttr(object):
@@ -258,18 +286,18 @@ class ClipGradByNorm(ClipGradBase):
 
     .. math::
         Out =
-        \\left \{
-        \\begin{aligned}
-        & X & & if (norm(X) \\leq clip\_norm) \\\\
-        & \\frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\\\
-        \\end{aligned}
-        \\right.
+        \left\{
+            \begin{array}{ccl}
+                X & & if (norm(X) \leq clip\_norm) \\
+                \frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\
+        \end{array}
+        \right.
 
 
     where :math:`norm(X)` represents the L2 norm of :math:`X`.
 
     .. math::
-        norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
+        norm(X) = ( \sum_{i=1}^{n}|x\_i|^2)^{ \frac{1}{2}}
 
     Note:
         ``need_clip`` of ``ClipGradByNorm`` HAS BEEN DEPRECATED since 2.0. 
@@ -361,7 +389,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     .. math::
 
-        t\_list[i] = t\_list[i] * \\frac{clip\_norm}{\max(global\_norm, clip\_norm)}
+        t\_list[i] = t\_list[i] * \frac{clip\_norm}{\max(global\_norm, clip\_norm)}
 
     where:
 
@@ -416,8 +444,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
-            square = layers.square(merge_grad)
-            sum_square = layers.reduce_sum(square)
+
+            sum_square = _squared_l2_norm(merge_grad)
             sum_square_list.append(sum_square)
 
         # all parameters have been filterd out
@@ -439,6 +467,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if getattr(p, 'need_clip', True) is False:
                 params_and_grads.append((p, g))
                 continue
+            # TODO(wangxi): use inplace elementwise_mul
             new_grad = layers.elementwise_mul(x=g, y=clip_var)
             params_and_grads.append((p, new_grad))
 
@@ -460,8 +489,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         merge_grad = layers.get_tensor_from_selected_rows(
                             merge_grad)
 
-                    square = layers.square(merge_grad)
-                    sum_square = layers.reduce_sum(input=square)
+                    sum_square = _squared_l2_norm(merge_grad)
                     sum_square_list.append(sum_square)
 
             # all parameters have been filterd out
@@ -489,9 +517,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     continue
 
                 with p.block.program._optimized_guard([p, g]):
-                    new_grad = layers.elementwise_mul(x=g, y=scale_var)
-                param_new_grad_name_dict[p.name] = new_grad.name
-                params_and_grads.append((p, new_grad))
+                    # inplace
+                    p.block.append_op(
+                        type='elementwise_mul',
+                        inputs={'X': g,
+                                'Y': scale_var},
+                        outputs={'Out': g})
+                param_new_grad_name_dict[p.name] = g.name
+                params_and_grads.append((p, g))
 
         _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
         return params_and_grads
@@ -513,8 +546,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             merge_grad = layers.merge_selected_rows(grad)
             merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
-        square = layers.square(merge_grad)
-        local_norm_var = layers.reduce_sum(input=square)
+        local_norm_var = _squared_l2_norm(merge_grad)
         context[self.group_name].append(local_norm_var)
 
         self.context = context
@@ -532,10 +564,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
             assert group_scale_var.shape == (1, )
             self.context[group_scale_name] = group_scale_var
 
-        new_grad = layers.elementwise_mul(
-            x=grad, y=self.context[group_scale_name])
+        # inplace
+        param.block.append_op(
+            type='elementwise_mul',
+            inputs={'X': grad,
+                    'Y': self.context[group_scale_name]},
+            outputs={'Out': grad})
 
-        return param, new_grad
+        return param, grad
 
 
 @framework.dygraph_not_support
@@ -709,7 +745,7 @@ def _correct_clip_op_role_var(params_grads, param_new_grad_name_dict):
             continue
         block_id_list.append(block_id)
         for op in param.block.program.global_block().ops:
-            if 'op_namescope' in op.all_attrs() and "gradient_clip" in op.attr(
+            if op.has_attr("op_namescope") and "gradient_clip" in op.attr(
                     "op_namescope") and op.attr('op_role_var'):
                 param_name = op.attr('op_role_var')[0]
                 if param_name in param_new_grad_name_dict:
