@@ -5219,7 +5219,7 @@ class PipelineOptimizer(object):
 
         grad_param_segments = []
         merged_suffix = '@MERGED@FP16' if fp16 else '@MERGED'
-        dtype = paddle.float16 if fp16 else None
+        dtype = paddle.float16 if fp16 else paddle.float32
         cur_size = 0.
         last_dtype = None
         # split the grad based on dtype and fused size
@@ -5227,7 +5227,7 @@ class PipelineOptimizer(object):
             real_grad = main_block.var(grad)
             merged_grad_var = main_block.create_var(
                 name=param + core.grad_var_suffix() + merged_suffix,
-                dtype=dtype if dtype is not None else real_grad.dtype,
+                dtype=dtype,
                 shape=real_grad.shape,
                 persistable=True,
                 stop_gradient=False)
@@ -5329,7 +5329,7 @@ class PipelineOptimizer(object):
                 cast_grad_var_name = fused_grad.name + '@TMP'
                 cast_grad_var = main_block.create_var(
                     name=cast_grad_var_name,
-                    dtype=dtype if dtype is not None else fused_grad.dtype,
+                    dtype=dtype,
                     persistable=False,
                     stop_gradient=False)
                 main_block._insert_op(
