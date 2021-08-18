@@ -941,3 +941,24 @@ def mv(x, vec, name=None):
         type='mv', inputs={'X': x,
                            'Vec': vec}, outputs={'Out': out})
     return out
+
+
+def eigh(x, UPLO='L', name=None):
+    if in_dygraph_mode():
+        if UPLO == "L":
+            lower = True
+        else:
+            lower = False
+        out_vector, out_value = _C_ops.eigh(x, 'UPLO', lower)
+        return out_value, out_vector
+
+    helper = LayerHelper('eigh', **locals())
+    out_vector, out_value = helper.create_variable_for_type_inference(
+        dtype=x.dtype)
+    helper.append_op(
+        type='eigh',
+        inputs={'X': [x]},
+        outputs={'OutVector': [out_vector],
+                 'OutValue': [out_value]},
+        attrs={'UPLO': lower})
+    return out_value, out_vector
