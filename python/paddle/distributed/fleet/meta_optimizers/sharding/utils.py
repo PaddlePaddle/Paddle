@@ -343,7 +343,9 @@ def insert_allreduce_ops(block,
 
     if user_defined_strategy and \
             user_defined_strategy.fuse_all_reduce_ops and \
-            not user_defined_strategy.fuse_param_grad:
+            not user_defined_strategy.fuse_grad_merge:
+        # If fuse_grad_merge is enable, the grad vars have already been fused during
+        # gradient merge pass, therefore, those vars are not need to be fused here
         insert_fused_allreduce_ops(block, insert_idx, ring_id, allreduce_vars,
                                    op_role, use_calc_stream,
                                    user_defined_strategy.fuse_grad_size_in_MB)

@@ -968,7 +968,7 @@ class DistributedStrategy(object):
             )
 
     @property
-    def fuse_param_grad(self):
+    def fuse_grad_merge(self):
         """
         Set whether fuse the param and grad.
         Note: this flag only supports adam optimizer with GlobalGradClip
@@ -979,15 +979,15 @@ class DistributedStrategy(object):
             strategy = fleet.DistributedStrategy()
             strategy.fuse_param_grad = True
         """
-        return self.strategy.fuse_param_grad
+        return self.strategy.fuse_grad_merge
 
-    @fuse_param_grad.setter
+    @fuse_grad_merge.setter
     @is_strict_auto
-    def fuse_param_grad(self, fuse_param_grad):
-        if isinstance(fuse_param_grad, bool):
-            self.strategy.fuse_param_grad = fuse_param_grad
+    def fuse_grad_merge(self, fuse_grad_merge):
+        if isinstance(fuse_grad_merge, bool):
+            self.strategy.fuse_grad_merge = fuse_grad_merge
         else:
-            print("WARNING: fuse_param_grad should have value of boolean type")
+            print("WARNING: fuse_grad_merge should have value of boolean type")
 
     @property
     def fuse_grad_size_in_num(self):
