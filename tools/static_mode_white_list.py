@@ -390,6 +390,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_positive_negative_pair_op',
     'test_precision_recall_op',
     'test_prelu_op',
+    'test_prelu_mkldnn_op',
     'test_print_op',
     'test_prior_box_op',
     'test_profiler',
@@ -625,6 +626,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_lrn_mkldnn_op',
     'test_matmul_mkldnn_op',
     'test_matmul_bf16_mkldnn_op',
+    'test_matmul_v2_mkldnn_op',
     'test_mul_int8_mkldnn_op',
     'test_multi_gru_mkldnn_op',
     'test_multi_gru_fuse_pass',
@@ -717,4 +719,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_sgd_op_bf16',
     'test_marker_op',
     'test_c_embedding_op',
+    'test_class_center_sample_op',
+    'test_margin_cross_entropy_op',
 ]

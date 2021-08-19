@@ -44,7 +44,7 @@ namespace reader = operators::reader;
 
 // Check whether the tensor shape matches the VarDesc shape
 // Return the different shape if exists
-static boost::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
+static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
     const framework::LoDTensor &tensor, const framework::VarDesc &var_desc,
     size_t num_places) {
   auto tensor_shape = tensor.dims();
@@ -56,7 +56,7 @@ static boost::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
     if (desc_shape.size() != 0) {  // Tensor rank = 0 but desc does not match
       return framework::vectorize<int64_t>(tensor_shape);
     } else {
-      return boost::none;
+      return paddle::none;
     }
   }
 
@@ -92,7 +92,7 @@ static boost::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
     }
   }
 
-  return boost::none;
+  return paddle::none;
 }
 
 static const std::shared_ptr<reader::LoDTensorBlockingQueue> &GetQueue(

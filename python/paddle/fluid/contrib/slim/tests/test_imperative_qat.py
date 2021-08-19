@@ -17,8 +17,8 @@ from __future__ import print_function
 import os
 import numpy as np
 import random
-import shutil
 import time
+import tempfile
 import unittest
 import logging
 
@@ -28,10 +28,10 @@ from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.dygraph.container import Sequential
-from paddle.nn import Linear, Conv2D, Softmax
+from paddle.nn import Linear, Conv2D, Softmax, Conv2DTranspose
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.contrib.slim.quantization.imperative.quant_nn import QuantizedConv2D
+from paddle.nn.quant.quant_layers import QuantizedConv2D, QuantizedConv2DTranspose
 
 from imperative_test_utils import fix_model_dict, ImperativeLenet
 
@@ -49,19 +49,6 @@ class TestImperativeQat(unittest.TestCase):
     """
     QAT = quantization-aware training
     """
-
-    @classmethod
-    def setUpClass(cls):
-        timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-        cls.root_path = os.path.join(os.getcwd(), "imperative_qat_" + timestamp)
-        cls.save_path = os.path.join(cls.root_path, "lenet")
-
-    @classmethod
-    def tearDownClass(cls):
-        try:
-            shutil.rmtree(cls.root_path)
-        except Exception as e:
-            print("Failed to delete {} due to {}".format(cls.root_path, str(e)))
 
     def set_vars(self):
         self.weight_quantize_type = 'abs_max'
@@ -87,6 +74,12 @@ class TestImperativeQat(unittest.TestCase):
             quant_conv1 = QuantizedConv2D(conv1)
             data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
             quant_conv1(fluid.dygraph.to_variable(data))
+
+            conv_transpose = Conv2DTranspose(4, 6, (3, 3))
+            quant_conv_transpose = QuantizedConv2DTranspose(conv_transpose)
+            x_var = paddle.uniform(
+                (2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
+            quant_conv_transpose(x_var)
 
             seed = 1
             np.random.seed(seed)
@@ -170,34 +163,35 @@ class TestImperativeQat(unittest.TestCase):
             lenet.eval()
             before_save = lenet(test_img)
 
-        # save inference quantized model
-        imperative_qat.save_quantized_model(
-            layer=lenet,
-            path=self.save_path,
-            input_spec=[
-                paddle.static.InputSpec(
-                    shape=[None, 1, 28, 28], dtype='float32')
-            ])
-        print('Quantized model saved in {%s}' % self.save_path)
+        with tempfile.TemporaryDirectory(prefix="qat_save_path_") as tmpdir:
+            # save inference quantized model
+            imperative_qat.save_quantized_model(
+                layer=lenet,
+                path=os.path.join(tmpdir, "lenet"),
+                input_spec=[
+                    paddle.static.InputSpec(
+                        shape=[None, 1, 28, 28], dtype='float32')
+                ])
+            print('Quantized model saved in %s' % tmpdir)
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(
-             dirname=self.root_path,
-             executor=exe,
-             model_filename="lenet" + INFER_MODEL_SUFFIX,
-             params_filename="lenet" + INFER_PARAMS_SUFFIX)
-        after_save, = exe.run(inference_program,
-                              feed={feed_target_names[0]: test_data},
-                              fetch_list=fetch_targets)
-        # check
-        self.assertTrue(
-            np.allclose(after_save, before_save.numpy()),
-            msg='Failed to save the inference quantized model.')
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+            else:
+                place = core.CPUPlace()
+            exe = fluid.Executor(place)
+            [inference_program, feed_target_names,
+             fetch_targets] = fluid.io.load_inference_model(
+                 dirname=tmpdir,
+                 executor=exe,
+                 model_filename="lenet" + INFER_MODEL_SUFFIX,
+                 params_filename="lenet" + INFER_PARAMS_SUFFIX)
+            after_save, = exe.run(inference_program,
+                                  feed={feed_target_names[0]: test_data},
+                                  fetch_list=fetch_targets)
+            # check
+            self.assertTrue(
+                np.allclose(after_save, before_save.numpy()),
+                msg='Failed to save the inference quantized model.')
 
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
-file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
+file(GLOB TEST_OPS RELATIVE
+"${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FLAGS_memory_fraction_of_eager_deletion=1.0)
 set(dist_ENVS http_proxy="" https_proxy="")
@@ -17,6 +18,7 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
+list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer_with_recompute)
 list(APPEND DIST_TEST_OPS test_fleet_raw_program_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
@@ -25,7 +27,10 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_control_flow)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_pipeline_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_tensor_parallel)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_sharding_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mp_layers)
+list(APPEND DIST_TEST_OPS test_parallel_class_center_sample)
+list(APPEND DIST_TEST_OPS test_parallel_margin_cross_entropy)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
@@ -55,6 +60,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_recompute_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer_with_recompute)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_raw_program_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_init)
@@ -106,6 +112,8 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_wait)
     LIST(REMOVE_ITEM TEST_OPS test_memcpy_op)
     LIST(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
+    LIST(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
 endif()
 
 if(WIN32)
@@ -185,10 +193,14 @@ if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_pipeline_parallel)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_tensor_parallel)
+    list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sharding_parallel)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mp_layers)
     LIST(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
+    LIST(REMOVE_ITEM TEST_OPS test_mixed_precision)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_base_single)
     LIST(REMOVE_ITEM TEST_OPS test_dygraph_recompute)
+    list(REMOVE_ITEM TEST_OPS test_parallel_class_center_sample)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_margin_cross_entropy)
 elseif(WITH_GPU)
     if (${CUDNN_VERSION} VERSION_LESS 7100)
         LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -266,6 +278,12 @@ function(py_test_modules TARGET_NAME)
                 COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
                 COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
                 ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    elseif(WITH_ASCEND_CL)
+        # AscendCL need to include ascend toolkit python path, or ACL error will be thrown when running ctest
+        add_test(NAME ${TARGET_NAME}
+                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH} ${py_test_modules_ENVS}
+                ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
@@ -482,6 +500,9 @@ py_test_modules(test_imperative_static_runner_while MODULES test_imperative_stat
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -655,6 +676,10 @@ if (WITH_XPU_BKCL)
     py_test(test_collective_allreduce_api_xpu SRCS "test_collective_allreduce_api.py")
 endif()
 
+if(WIN32)
+    cc_test(cc_imp_py_test SRCS cc_imp_py_test.cc DEPS python)
+endif()
+
 if (WITH_ASCEND_CL)
     add_subdirectory(npu)
 endif()
@@ -667,8 +692,11 @@ add_subdirectory(asp)
 
 add_subdirectory(ir)
 
+add_subdirectory(interpreter)
+
 if (WITH_TESTING)
     set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=all_reduce_deps_pass=10)
+    set_property(TEST test_parallel_executor_fix_op_run_order PROPERTY ENVIRONMENT GLOG_vmodule=fix_op_run_order_pass=10)
 endif()
 
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
@@ -882,7 +910,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU AND WITH_NCCL)
     set_tests_properties(test_parallel_dygraph_control_flow PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_pipeline_parallel PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT 200)
+    set_tests_properties(test_parallel_dygraph_sharding_parallel PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_mp_layers PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_parallel_class_center_sample PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_parallel_margin_cross_entropy PROPERTIES TIMEOUT 120)
     if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
         set_tests_properties(test_parallel_dygraph_sparse_embedding PROPERTIES TIMEOUT 120)
         set_tests_properties(test_parallel_dygraph_transformer PROPERTIES TIMEOUT 120)
@@ -894,10 +925,24 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_sendrecv_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
     if(WITH_DISTRIBUTE)
+        set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
         set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
         set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
+        set_tests_properties(test_collective_split_embedding
+            test_collective_split_embedding_none_divisible
+            test_collective_split_row_linear
+            test_collective_split_col_linear
+            test_collective_scatter_api
+            test_collective_barrier_api
+            test_collective_reduce_api
+            test_pipeline_parallel
+            test_collective_allreduce_api
+            test_new_group_api
+            test_collective_broadcast_api
+            test_collective_allgather_api
+            test_collective_alltoall_api
+            PROPERTIES LABELS "RUN_TYPE=DIST")
     endif()
     set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_broadcast PROPERTIES TIMEOUT 120)
@@ -914,20 +959,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_collective_split_embedding
-        test_collective_split_embedding_none_divisible
-        test_collective_split_row_linear
-        test_collective_split_col_linear
-        test_collective_scatter_api
-        test_collective_barrier_api
-        test_collective_reduce_api
-        test_pipeline_parallel
-        test_collective_allreduce_api
-        test_new_group_api
-        test_collective_broadcast_api
-        test_collective_allgather_api
-        test_collective_alltoall_api
-        PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_GPU OR WITH_ROCM)
     set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT 120)

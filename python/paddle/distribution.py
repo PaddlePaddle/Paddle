@@ -34,6 +34,7 @@ import numpy as np
 import warnings
 
 from .fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from paddle import _C_ops
 
 __all__ = ['Distribution', 'Uniform', 'Normal', 'Categorical']
 
@@ -151,8 +152,8 @@ class Distribution(object):
                 warnings.warn(
                     "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
                 )
-                return core.ops.cast(value, 'in_dtype', value.dtype,
-                                     'out_dtype', param.dtype)
+                return _C_ops.cast(value, 'in_dtype', value.dtype, 'out_dtype',
+                                   param.dtype)
             return value
 
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
@@ -322,19 +323,19 @@ class Uniform(Distribution):
           Tensor: log probability.The data type is same with value.
 
         """
-        name = self.name + '_log_prob'
         value = self._check_values_dtype_in_probs(self.low, value)
         if in_dygraph_mode():
             # ensure value in [low, high]
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = core.ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
-                               value.dtype)
-            ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
-                               value.dtype)
+            lb = _C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
+                             value.dtype)
+            ub = _C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
+                             value.dtype)
             return nn.log(lb * ub) - nn.log(self.high - self.low)
 
+        name = self.name + '_log_prob'
         lb_bool = self.low < value
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
@@ -352,18 +353,18 @@ class Uniform(Distribution):
           Tensor: probability.The data type is same with value.
 
         """
-        name = self.name + '_probs'
         value = self._check_values_dtype_in_probs(self.low, value)
         if in_dygraph_mode():
             lb_bool = self.low < value
             ub_bool = value < self.high
 
-            lb = core.ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
-                               value.dtype)
-            ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
-                               value.dtype)
+            lb = _C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
+                             value.dtype)
+            ub = _C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
+                             value.dtype)
             return (lb * ub) / (self.high - self.low)
 
+        name = self.name + '_probs'
         lb_bool = self.low < value
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)

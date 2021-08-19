@@ -34,6 +34,7 @@ import numpy as np
 from functools import reduce
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
+from paddle import _C_ops
 
 __all__ = [
     'prior_box',
@@ -2990,7 +2991,7 @@ def generate_proposals(scores,
         assert return_rois_num, "return_rois_num should be True in dygraph mode."
         attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
                  'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta)
-        rpn_rois, rpn_roi_probs, rpn_rois_num = core.ops.generate_proposals(
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals(
             scores, bbox_deltas, im_info, anchors, variances, *attrs)
         return rpn_rois, rpn_roi_probs, rpn_rois_num
 
@@ -3756,7 +3757,7 @@ def distribute_fpn_proposals(fpn_rois,
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
         attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
                  refer_level, 'refer_scale', refer_scale)
-        multi_rois, restore_ind, rois_num_per_level = core.ops.distribute_fpn_proposals(
+        multi_rois, restore_ind, rois_num_per_level = _C_ops.distribute_fpn_proposals(
             fpn_rois, rois_num, num_lvl, num_lvl, *attrs)
         return multi_rois, restore_ind, rois_num_per_level
 
@@ -3945,8 +3946,6 @@ def collect_fpn_proposals(multi_rois,
                 max_level=5, 
                 post_nms_top_n=2000)
     """
-    check_type(multi_rois, 'multi_rois', list, 'collect_fpn_proposals')
-    check_type(multi_scores, 'multi_scores', list, 'collect_fpn_proposals')
     num_lvl = max_level - min_level + 1
     input_rois = multi_rois[:num_lvl]
     input_scores = multi_scores[:num_lvl]
@@ -3954,9 +3953,11 @@ def collect_fpn_proposals(multi_rois,
     if in_dygraph_mode():
         assert rois_num_per_level is not None, "rois_num_per_level should not be None in dygraph mode."
         attrs = ('post_nms_topN', post_nms_top_n)
-        output_rois, rois_num = core.ops.collect_fpn_proposals(
+        output_rois, rois_num = _C_ops.collect_fpn_proposals(
             input_rois, input_scores, rois_num_per_level, *attrs)
 
+    check_type(multi_rois, 'multi_rois', list, 'collect_fpn_proposals')
+    check_type(multi_scores, 'multi_scores', list, 'collect_fpn_proposals')
     helper = LayerHelper('collect_fpn_proposals', **locals())
     dtype = helper.input_dtype('multi_rois')
     check_dtype(dtype, 'multi_rois', ['float32', 'float64'],
