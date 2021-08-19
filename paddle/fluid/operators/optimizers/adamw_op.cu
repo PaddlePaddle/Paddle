@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -149,7 +149,6 @@ template <typename T>
 class AdamWOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(0) << "GPU adamw";
     const auto* param_var = ctx.InputVar("Param");
     PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
                       platform::errors::InvalidArgument(
@@ -223,7 +222,7 @@ class AdamWOpCUDAKernel : public framework::OpKernel<T> {
     // if with_decay = false, coeff = 0
     bool with_decay = ctx.Attr<bool>("with_decay");
     if (!with_decay) {
-      coeff = static_cast<float> 0.0;
+      coeff = static_cast<float>(0.0);
     }
 
     MPDType beta1 = static_cast<MPDType>(ctx.Attr<float>("beta1"));
