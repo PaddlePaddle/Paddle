@@ -103,7 +103,7 @@ class SelectGatherOpCUDAKernel : public framework::OpKernel<T> {
         if (cpu_local_expert_count_data[idx]) {
           PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
               recv_buf + expert_ptr[idx] * out_feat,
-              cpu_global_expert_count_data[idx] * out_feat, dtype, j,
+              cpu_local_expert_count_data[idx] * out_feat, dtype, j,
               comm->comm(), stream));
         }
       }
