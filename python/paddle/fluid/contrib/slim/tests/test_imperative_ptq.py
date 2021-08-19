@@ -177,9 +177,9 @@ class TestImperativePTQ(unittest.TestCase):
         model = ImperativeLenet()
         model_state_dict = paddle.load(params_path)
         model.set_state_dict(model_state_dict)
-
         # Quantize, calibrate and save
-        quant_model = self.ptq.quantize(model)
+        f_l = [['features.0', 'features.1']]
+        quant_model = self.ptq.quantize(model, fuse=True, fuse_list=f_l)
         before_acc_top1 = self.model_test(quant_model, self.batch_num,
                                           self.batch_size)
 
