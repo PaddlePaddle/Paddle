@@ -5224,6 +5224,7 @@ class PipelineOptimizer(object):
         # split the grad based on dtype and fused size
         for grad, param in grad_param_pairs:
             real_grad = main_block.var(grad)
+            # create the gradient merged var for each grad
             merged_grad_var = main_block.create_var(
                 name=param + core.grad_var_suffix() + merged_suffix,
                 dtype=dtype,
@@ -5232,6 +5233,9 @@ class PipelineOptimizer(object):
                 stop_gradient=False)
             real_param = main_block.var(param)
             tmp_size = self._get_var_size(real_grad)
+            # two strategies for splitting the grad
+            # 1. the current segment's size reach the user defined grad_size_in_MB
+            # 2. the upcoming grad holds different dtype compared with grads in current segment
             if len(grad_param_segments) == 0 \
                     or cur_size + tmp_size > fused_size \
                     or real_grad.dtype != last_dtype:
@@ -5256,6 +5260,7 @@ class PipelineOptimizer(object):
                 dtype=grad_segment[0].dtype,
                 persistable=False,
                 stop_gradient=False)
+            # keep the '.cast_fp16' info in the fuse var name
             fused_merged_grad_name_prefix = 'FusedMergedGrad.cast_fp16.' if \
                 fused_grad_segment[0].dtype == paddle.float16 else 'FusedMergedGrad'
             fused_merged_grad_name = fused_merged_grad_name_prefix + '_{}'.format(
@@ -5271,7 +5276,8 @@ class PipelineOptimizer(object):
         assert len(fused_gradients) == len(grad_param_segments)
         assert len(fused_merged_gradients) == len(grad_param_segments)
 
-        # insert coalesce op to init fused values
+        # insert coalesce op at the start of the backward pass
+        # use param as the coalesce input to make sure the two Fused vars are in same shape
         first_back_op_idx = None
         for index, op in enumerate(main_block.ops):
             if self._is_backward_op(op) and first_back_op_idx is None:
@@ -5299,6 +5305,9 @@ class PipelineOptimizer(object):
                     self._op_role_key: self._op_role.Backward
                 })
             offset += 1
+            # For the gradient_merged_fused_var, given a init value during the coalesce op
+            # this will remove a problematic fill_constant op. This op role of this coalesce
+            # is set to be LRSched to make this coalesce (with init) only run once
             main_block._insert_op_without_sync(
                 first_back_op_idx + offset,
                 type="coalesce_tensor",
@@ -5327,6 +5336,8 @@ class PipelineOptimizer(object):
             is_fp16_grad = 'cast_fp16' in fused_grad.name
             need_cast = (is_fp16_grad is not fp16)
             if need_cast:
+                # for fp16 allreduce, cast fp32 grad to fp16
+                # for fp32 allreduce, cast fp16 grad to fp32
                 cast_grad_var_name = fused_grad.name + '@TMP'
                 cast_grad_var = main_block.create_var(
                     name=cast_grad_var_name,
@@ -5379,7 +5390,7 @@ class PipelineOptimizer(object):
                     })
                 offset += 1
 
-        # repalce the var with it's name
+        # replace the var with it's name, which will be used for inserting allreduce
         for i in range(len(fused_merged_gradients)):
             fused_merged_gradients[i] = fused_merged_gradients[i].name
 

@@ -970,9 +970,9 @@ class DistributedStrategy(object):
     @property
     def fuse_grad_merge(self):
         """
-        Set whether fuse the param and grad.
-        Note: this flag only supports adam optimizer with GlobalGradClip
-        The default value for the fuse_param_grad is False
+        Set whether fuse the grad for gradient merge.
+        Note: this flag will only effect the gradient merge under pipeline mode
+        The default value for the fuse_grad_merge is False
         Examples:
           .. code-block:: python
             import paddle.distributed.fleet as fleet
