@@ -13,16 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/eigh_op.h"
-// #include <memory>
-// #include <string>
-// #include <vector>
+
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
-// using complex64 = paddle::platform::complex<float>;
-// using complex128 = paddle::platform::complex<double>;
 
 class EighOp : public framework::OperatorWithKernel {
  public:
