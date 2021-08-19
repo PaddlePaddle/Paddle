@@ -55,6 +55,16 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
           "Variance and VarianceOut should share the same memory"));
 
   const auto x_dims = ctx->GetInputDim("X");
+
+  for (int i = 0; i < x_dims.size(); i++) {
+    PADDLE_ENFORCE_EQ(
+        (x_dims[i] == -1) || (x_dims[i] > 0), true,
+        platform::errors::InvalidArgument(
+            "Each dimension of input tensor is expected to be -1 or a "
+            "positive number, but recieved %d. Input's shape is [%s].",
+            x_dims[i], x_dims));
+  }
+
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
