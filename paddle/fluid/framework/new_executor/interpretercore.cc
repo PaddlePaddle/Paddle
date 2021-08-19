@@ -42,8 +42,8 @@ std::string GetMemcpyType(const platform::Place& src_place,
  * Parse the var_ids that need to be associated with an event.
  * The caller should guarantee front_op and back_op satisfy the
  * following conditions:
- *   1. kAsync -> kEvent
- *   2. kEvent -> kAsync
+ *   1. kQueueAsync -> kQueueAsync
+ *   2. kQueueAsync -> kQueueSync
  *
  * For example: matmul(gpu) -> out_var -> memcpy_d2h
  * out_var should be associated with an event.
@@ -66,10 +66,11 @@ std::vector<size_t> ParseEventVarIds(const Instruction& cur_instr,
   return new_event_var_ids;
 }
 
-void AssociateInputEvents(
+void AssociateInputWithEvents(
     const std::vector<size_t>& new_event_var_id, Instruction* next_instr,
     std::map<size_t, std::shared_ptr<platform::CudaEvent>>* var_id2event,
     bool is_sync) {
+#ifdef PADDLE_WITH_CUDA
   for (auto var_id : new_event_var_id) {
     if (var_id2event->count(var_id) == 0) {
       auto cuda_event = std::make_shared<platform::CudaEvent>(
@@ -80,6 +81,7 @@ void AssociateInputEvents(
     next_instr->intput_events_.emplace_back(var_id, var_id2event->at(var_id),
                                             is_sync);
   }
+#endif
 }
 
 void ParseDirectAndEventRunOps(
@@ -87,23 +89,18 @@ void ParseDirectAndEventRunOps(
     const std::vector<size_t>& downstream_ops, size_t op_index,
     std::map<size_t, std::shared_ptr<platform::CudaEvent>>* var_id2event,
     std::vector<Instruction>* instructions) {
-  // In build_op_func_list:
-  // 1. all memcpy_op is kEvent
-  // 2. all CPU Kernel is kSync
-  // 3. all rest GPU Kernel is kAsync temporarily
-
   auto& op_func_type = op_func_nodes[op_index].type_;
   auto& cur_instr = instructions->at(op_index);
   auto& next_instruction = cur_instr.next_instruction_;
   std::vector<size_t> event_var_ids;
 
   if (op_func_type == OpFuncType::kQueueSync) {
-    // all downstream ops of CPU can directly run.
+    // all downstream ops of kQueueSync can directly run.
     next_instruction.direct_run_ = downstream_ops;
   } else {  // kQueueAsync
     for (auto next_op_id : downstream_ops) {
       auto& next_instr = instructions->at(next_op_id);
-      // case 1: GPU -> GPU
+      // case 1: GPU -> GPU(same stream)
       if (cur_instr.dev_ctx_ == next_instr.dev_ctx_) {
         next_instruction.direct_run_.emplace_back(next_op_id);
         continue;
@@ -115,12 +112,12 @@ void ParseDirectAndEventRunOps(
 
       bool is_sync =
           (op_func_nodes[next_op_id].type_ == OpFuncType::kQueueSync);
-      AssociateInputEvents(new_event_var_ids, &next_instr, var_id2event,
-                           is_sync);
+      AssociateInputWithEvents(new_event_var_ids, &next_instr, var_id2event,
+                               is_sync);
 
       if (is_sync) {  // GPU -> CPU
         next_instruction.synchronize_run_.emplace_back(next_op_id);
-      } else {  // GPU -> D2H
+      } else {  // GPU -> GPU(different stream)
         next_instruction.event_wait_run_.emplace_back(next_op_id);
       }
     }
