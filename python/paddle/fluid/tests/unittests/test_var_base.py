@@ -711,6 +711,7 @@ class TestVarBase(unittest.TestCase):
             var_tensor[None, 2, None, 1].numpy(),
             var_tensor[None].numpy(),
             var_tensor[0, 0, None, 0, 0, None].numpy(),
+            var_tensor[None, None, 0, ..., None].numpy(),
             var_tensor[0, 1:10:2, None, None, ...].numpy(),
         ]
 
@@ -724,11 +725,13 @@ class TestVarBase(unittest.TestCase):
         self.assertTrue(np.array_equal(var[7], np_value[None]))
         self.assertTrue(
             np.array_equal(var[8], np_value[0, 0, None, 0, 0, None]))
+        self.assertTrue(
+            np.array_equal(var[9], np_value[None, None, 0, ..., None]))
 
         # TODO(zyfncg) there is a bug of dimensions when slice step > 1 and 
         #              indexs has int type 
         # self.assertTrue(
-        #     np.array_equal(var[9], np_value[0, 1:10:2, None, None, ...]))
+        #     np.array_equal(var[10], np_value[0, 1:10:2, None, None, ...]))
 
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')

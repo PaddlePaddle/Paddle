@@ -124,6 +124,21 @@ void DeviceCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
   }                                                     \
   auto *tensor = static_cast<framework::LoDTensor *>(tensor_.get());
 
+#define GET_INNER_PLACE                               \
+  platform::Place place;                              \
+  switch (place_) {                                   \
+    case PlaceType::kCPU:                             \
+      place = platform::CPUPlace();                   \
+      break;                                          \
+    case PlaceType::kGPU:                             \
+      place = platform::CUDAPlace();                  \
+      break;                                          \
+    default:                                          \
+      PADDLE_THROW(platform::errors::Unavailable(     \
+          "Custom operator unsupported place id(%d)", \
+          static_cast<int>(place_)));                 \
+  }
+
 void Tensor::reshape(const std::vector<int64_t> &shape) {
   GET_CASTED_TENSOR
   auto new_dim = framework::make_ddim(shape);
@@ -254,6 +269,16 @@ Tensor Tensor::copy_to(const PlaceType &target_place) const {
         "Not supported place transform of place: %d to place: %d",
         static_cast<int>(src_place), static_cast<int>(target_place)));
   }
+  return target;
+}
+
+Tensor Tensor::slice(const int64_t begin_idx, const int64_t end_idx) const {
+  GET_CASTED_TENSOR
+  GET_INNER_PLACE
+  framework::Tensor intermediate = tensor->Slice(begin_idx, end_idx);
+  Tensor target = Tensor(place_);
+  framework::CustomTensorUtils::ShareDataFrom(
+      static_cast<const void *>(&intermediate), target);
   return target;
 }
 
