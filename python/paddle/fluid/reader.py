@@ -401,6 +401,7 @@ class DataLoader(object):
                     shuffle=shuffle,
                     drop_last=drop_last)
 
+        self.drop_last = drop_last
         self.auto_collate_batch = self.batch_sampler is not None
 
         self.pin_memory = False
