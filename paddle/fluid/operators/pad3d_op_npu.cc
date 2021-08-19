@@ -12,9 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
-#include <cmath>
-#include <string>
-#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
@@ -24,28 +21,14 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-static inline std::vector<int> GetPaddings(
-    const framework::ExecutionContext& context) {
-  std::vector<int> paddings(6);
-  auto* paddings_t = context.Input<Tensor>("Paddings");
-  if (paddings_t) {
-    auto paddings_data = paddings_t->data<int>();
-    std::memcpy(paddings.data(), paddings_data, paddings.size() * sizeof(int));
-  } else {
-    auto pads = context.Attr<std::vector<int>>("paddings");
-    std::copy(pads.begin(), pads.end(), paddings.data());
-  }
-  return paddings;
-}
-
-template <typename DeviceContext, typename T>
+template <typename T>
 class Pad3dNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
     auto in_dims = x->dims();
 
-    std::vector<int> pads = GetPaddings(context);
+    std::vector<int> pads = context.Attr<std::vector<int>>("paddings");
     auto mode = context.Attr<std::string>("mode");
     float value = context.Attr<float>("value");
     auto data_format = context.Attr<std::string>("data_format");
@@ -95,13 +78,14 @@ class Pad3dNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class Pad3dGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    std::vector<int> pads = GetPaddings(context);
+    std::vector<int> pads = context.Attr<std::vector<int>>("paddings");
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
+
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* d_in = context.Output<Tensor>(framework::GradVarName("X"));
     auto d_in_dims = d_in->dims();
@@ -135,10 +119,8 @@ class Pad3dGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(
-    pad3d, ops::Pad3dNPUKernel<plat::NPUDeviceContext, plat::float16>,
-    ops::Pad3dNPUKernel<plat::NPUDeviceContext, float>,
-    ops::Pad3dNPUKernel<plat::NPUDeviceContext, int>);
+REGISTER_OP_NPU_KERNEL(pad3d, ops::Pad3dNPUKernel<plat::float16>,
+                       ops::Pad3dNPUKernel<float>, ops::Pad3dNPUKernel<int>);
 
-REGISTER_OP_NPU_KERNEL(pad3d_grad,
-                       ops::Pad3dGradNPUKernel<plat::NPUDeviceContext, float>);
+REGISTER_OP_NPU_KERNEL(pad3d_grad, ops::Pad3dNPUKernel<plat::float16>,
+                       ops::Pad3dGradNPUKernel<float>);

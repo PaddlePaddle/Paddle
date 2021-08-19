@@ -32,7 +32,6 @@ class TestPad3dNPUOp(op_test.OpTest):
         self.op_type = "pad3d"
         self.place = paddle.NPUPlace(0)
 
-        self.variable_paddings = False
         self.x_type = "float32"
         self.mode = "constant"
         self.initTestCase()
@@ -40,13 +39,8 @@ class TestPad3dNPUOp(op_test.OpTest):
         self.value = 0  #Asend npu only support constant_values = 0 right now.
         self.inputs = {'X': np.random.random(self.shape).astype(self.x_type)}
         self.attrs = {}
-        if self.variable_paddings:
-            self.attrs['paddings'] = []
-            self.inputs['Paddings'] = np.array(self.paddings).flatten().astype(
-                "int32")
-        else:
-            self.attrs['paddings'] = np.array(self.paddings).flatten().astype(
-                "int32")
+        self.attrs['paddings'] = np.array(self.paddings).flatten().astype(
+            "int32")
         self.attrs['value'] = self.value
         self.attrs['mode'] = self.mode
         self.attrs['data_format'] = self.data_format
@@ -88,32 +82,24 @@ class TestPad3dNPUOp(op_test.OpTest):
 
 class TestCase1(TestPad3dNPUOp):
     def initTestCase(self):
-        self.shape = (2, 3, 4, 5, 6)
+        self.shape = (3, 4, 5, 6, 7)
         self.paddings = [0, 1, 2, 3, 4, 5]
         self.data_format = "NCDHW"
+        self.x_type = "float16"
+
+    def test_check_grad(self):
+        self.__class__.no_need_check_grad = True
+        pass
 
 
 class TestCase2(TestPad3dNPUOp):
     def initTestCase(self):
-        self.shape = (2, 3, 4, 5, 6)
+        self.shape = (4, 5, 6, 7, 8)
         self.paddings = [1, 1, 1, 1, 1, 1]
-        #self.mode = "constant"
-        self.data_format = "NDHWC"
-
-
-class TestCase3(TestPad3dNPUOp):
-    def initTestCase(self):
-        self.shape = (4, 4, 4, 4, 4)
-        self.paddings = [0, 1, 2, 1, 2, 3]
-        #self.mode = "circular"
         self.data_format = "NDHWC"
 
 
 class TestPadAPI(unittest.TestCase):
-    def setUp(self):
-        self.place = fluid.NPUPlace(0) if fluid.core.is_compiled_with_npu(
-        ) else fluid.CPUPlace()
-
     def _get_numpy_out(self,
                        input_data,
                        pad,
@@ -170,6 +156,8 @@ class TestPadAPI(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
+        self.place = fluid.NPUPlace(0) if fluid.core.is_compiled_with_npu(
+        ) else fluid.CPUPlace()
         with program_guard(Program(), Program()):
             input_shape = (1, 2, 3, 4, 5)
             pad = [1, 2, 1, 1, 3, 4]
@@ -201,19 +189,19 @@ class TestPadAPI(unittest.TestCase):
 
     def test_dygraph_1(self):
         paddle.disable_static()
+        paddle.device.set_device("npu")
         input_shape = (1, 2, 3, 4, 5)
         pad = [1, 2, 1, 1, 3, 4]
-        pad_3 = [1, 2, 1, 1, 3, 4, 5, 6, 7, 8]
+
         mode = "constant"
         value = 0
         input_data = np.random.rand(*input_shape).astype(np.float32)
+        tensor_data = paddle.to_tensor(input_data)
+
         np_out1 = self._get_numpy_out(
             input_data, pad, mode, value, data_format="NCDHW")
         np_out2 = self._get_numpy_out(
             input_data, pad, mode, value, data_format="NDHWC")
-        np_out3 = self._get_numpy_out(
-            input_data, pad_3, mode, value, data_format="NCDHW")
-        tensor_data = paddle.to_tensor(input_data)
 
         y1 = F.pad(tensor_data,
                    pad=pad,
@@ -225,90 +213,69 @@ class TestPadAPI(unittest.TestCase):
                    mode=mode,
                    value=value,
                    data_format="NDHWC")
-        y3 = F.pad(tensor_data,
-                   pad=pad_3,
-                   mode=mode,
-                   value=value,
-                   data_format="NCDHW")
 
         self.assertTrue(np.allclose(y1.numpy(), np_out1))
         self.assertTrue(np.allclose(y2.numpy(), np_out2))
-        self.assertTrue(np.allclose(y3.numpy(), np_out3))
 
     def test_dygraph_2(self):
         paddle.disable_static()
+        paddle.device.set_device("npu")
         input_shape = (2, 3, 4, 5)
         pad = [1, 1, 3, 4]
-        pad_3 = [1, 2, 1, 1, 3, 4, 5, 6]
+
         mode = "constant"
         value = 0
         input_data = np.random.rand(*input_shape).astype(np.float32)
+        tensor_data = paddle.to_tensor(input_data)
+
         np_out1 = self._get_numpy_out(
             input_data, pad, mode, value, data_format="NCHW")
         np_out2 = self._get_numpy_out(
             input_data, pad, mode, value, data_format="NHWC")
-        np_out3 = self._get_numpy_out(
-            input_data, pad_3, mode, value, data_format="NCHW")
-
-        tensor_data = paddle.to_tensor(input_data)
-        tensor_pad = paddle.to_tensor(pad, dtype="int32")
 
         y1 = F.pad(tensor_data,
-                   pad=tensor_pad,
+                   pad=pad,
                    mode=mode,
                    value=value,
                    data_format="NCHW")
         y2 = F.pad(tensor_data,
-                   pad=tensor_pad,
+                   pad=pad,
                    mode=mode,
                    value=value,
                    data_format="NHWC")
-        y3 = F.pad(tensor_data,
-                   pad=pad_3,
-                   mode=mode,
-                   value=value,
-                   data_format="NCHW")
 
         self.assertTrue(np.allclose(y1.numpy(), np_out1))
         self.assertTrue(np.allclose(y2.numpy(), np_out2))
-        self.assertTrue(np.allclose(y3.numpy(), np_out3))
 
     def test_dygraph_3(self):
         paddle.disable_static()
+        paddle.device.set_device("npu")
         input_shape = (3, 4, 5)
         pad = [3, 4]
-        pad_3 = [3, 4, 5, 6, 7, 8]
+
         mode = "constant"
         value = 0
         input_data = np.random.rand(*input_shape).astype(np.float32)
+        tensor_data = paddle.to_tensor(input_data)
+
         np_out1 = self._get_numpy_out(
             input_data, pad, mode, value, data_format="NCL")
         np_out2 = self._get_numpy_out(
             input_data, pad, mode, value, data_format="NLC")
-        np_out3 = self._get_numpy_out(
-            input_data, pad_3, mode, value, data_format="NCL")
-        tensor_data = paddle.to_tensor(input_data)
-        tensor_pad = paddle.to_tensor(pad, dtype="int32")
 
         y1 = F.pad(tensor_data,
-                   pad=tensor_pad,
+                   pad=pad,
                    mode=mode,
                    value=value,
                    data_format="NCL")
         y2 = F.pad(tensor_data,
-                   pad=tensor_pad,
+                   pad=pad,
                    mode=mode,
                    value=value,
                    data_format="NLC")
-        y3 = F.pad(tensor_data,
-                   pad=pad_3,
-                   mode=mode,
-                   value=value,
-                   data_format="NCL")
 
         self.assertTrue(np.allclose(y1.numpy(), np_out1))
         self.assertTrue(np.allclose(y2.numpy(), np_out2))
-        self.assertTrue(np.allclose(y3.numpy(), np_out3))
 
 
 class TestPad1dAPI(unittest.TestCase):
@@ -336,6 +303,7 @@ class TestPad1dAPI(unittest.TestCase):
 
     def test_class(self):
         paddle.disable_static()
+        paddle.device.set_device("npu")
         input_shape = (3, 4, 5)
         pad = [1, 2]
         pad_int = 1
@@ -389,7 +357,7 @@ class TestPad2dAPI(unittest.TestCase):
 
     def test_class(self):
         paddle.disable_static()
-
+        paddle.device.set_device("npu")
         input_shape = (3, 4, 5, 6)
         pad = [1, 2, 2, 1]
         pad_int = 1
@@ -445,6 +413,7 @@ class TestPad3dAPI(unittest.TestCase):
 
     def test_class(self):
         paddle.disable_static()
+        paddle.device.set_device("npu")
         input_shape = (3, 4, 5, 6, 7)
         pad = [1, 2, 2, 1, 1, 0]
         pad_int = 1
