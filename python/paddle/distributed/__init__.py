@@ -35,8 +35,8 @@ from .collective import recv  # noqa: F401
 from .collective import get_group  # noqa: F401
 from .collective import send  # noqa: F401
 from .collective import wait  # noqa: F401
-from .collective import selectscatter
-from .collective import selectgather
+from .collective import select_scatter
+from .collective import select_gather
 from .collective import moe_expert_exchange
 
 from .fleet import BoxPSDataset  # noqa: F401

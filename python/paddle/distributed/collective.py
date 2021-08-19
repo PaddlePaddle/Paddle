@@ -1531,23 +1531,30 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     out_tensor_list.extend(paddle.split(out, nranks, 0))
 
 
-def selectscatter(local_input_buf, local_expert_count, \
+def select_scatter(local_input_buf, local_expert_count, \
                     global_expert_count, \
                     in_feat, n_expert, world_size, \
                     group=None, use_calc_stream=True):
     """
-    Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
+    Scatter tensors in local_input_buf to n_expert * world_size exeperts according to
+    local_expert_count and receive tensors from n_expert * world_size experts according
+    to global_expert_count.
     
     Args:
-        in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
+        local_input_buf (Tensor): Tensor (len(eff_gate) * seq_len, d_model). Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
-        out_tensor_list (Tensor): A list of output Tensors. The data type of its elements should be the same as the
-            data type of the input Tensors.
+        local_expert_count (Tensor): N_expert * world_size Tensors that indicate how many tensors needed to be sent. 
+            Every element in the list must be a Tensor whose data type should be int32 or int64.
+        global_expert_count (Tensor): N_expert * world_size Tensors that indicate how many tensors needed to be received. 
+            Every element in the list must be a Tensor whose data type should be int32 or int64.
+        in_feat (int): The feature shape of the local_input_buf.
+        n_expert (int): The number of experts in every rank.
+        world_size (int): The number of rank.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
     
     Returns:
-        None.
+        out (Tensor): The data received from all experts. 
     
     Examples:
         .. code-block:: python
@@ -1556,20 +1563,37 @@ def selectscatter(local_input_buf, local_expert_count, \
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
-            
+
             init_parallel_env()
-            out_tensor_list = []
-            if paddle.distributed.ParallelEnv().rank == 0:
-                np_data1 = np.array([[1, 2, 3], [4, 5, 6]])
-                np_data2 = np.array([[7, 8, 9], [10, 11, 12]])
+            n_expert = 2
+            world_size = 2
+            d_model = 2
+            in_feat = d_model
+            local_input_buf = np.array([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]], \
+                                        dtype=np.float32)
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                local_expert_count = np.array([2, 1, 1, 1]) # (world_size * num_experts)
+                global_expert_count = np.array([2, 1, 1, 1]) # (world_size * num_experts)
             else:
-                np_data1 = np.array([[13, 14, 15], [16, 17, 18]])
-                np_data2 = np.array([[19, 20, 21], [22, 23, 24]])
-            data1 = paddle.to_tensor(np_data1)
-            data2 = paddle.to_tensor(np_data2)
-            paddle.distributed.alltoall([data1, data2], out_tensor_list)
-            # out for rank 0: [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]
-            # out for rank 1: [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]]
+                local_expert_count = np.array([1, 1, 2, 1]) # (world_size * num_experts)
+                global_expert_count = np.array([1, 1, 2, 1]) # (world_size * num_experts)
+            input_buf = np.empty(shape=(np.sum(global_expert_count), in_feat), dtype=np.float32)
+            
+            local_input_buf = paddle.to_tensor(local_input_buf, dtype="float32", stop_gradient=False)
+            local_expert_count = paddle.to_tensor(local_expert_count, dtype="int32")
+            global_expert_count = paddle.to_tensor(global_expert_count, dtype="int32")
+            input_buf = paddle.to_tensor(input_buf, dtype="float32", stop_gradient=False)
+            in_feat = paddle.to_tensor(in_feat, dtype="int32")
+            n_expert = paddle.to_tensor(n_expert, dtype="int32")
+            world_size = paddle.to_tensor(world_size, dtype="int32")
+
+            a = paddle.distributed.selectscatter(local_input_buf, \
+            local_expert_count, global_expert_count, \
+            in_feat, n_expert, world_size)
+            a.stop_gradient = False
+            print(a)
+            # out for rank 0: [[1, 2], [3, 4], [1, 2], [5, 6], [3, 4]]
+            # out for rank 1: [[7, 8], [5, 6], [7, 8], [9, 10], [9, 10]]
     """
     if group is not None and not group.is_member():
         return
@@ -1631,9 +1655,9 @@ def selectscatter(local_input_buf, local_expert_count, \
         return out
 
 
-def selectgather(output_buf, local_expert_count, \
+def select_gather(output_buf, local_expert_count, \
                     global_expert_count, \
-                    in_feat, n_expert, world_size, \
+                    out_feat, n_expert, world_size, \
                     group=None, use_calc_stream=True):
     """
     Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
@@ -1676,13 +1700,13 @@ def selectgather(output_buf, local_expert_count, \
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        return core.ops.select_scatter(output_buf, global_expert_count, \
+        return core.ops.select_gather(output_buf, global_expert_count, \
                                     local_expert_count,  \
-                                    'in_feat', in_feat, 'n_expert', n_expert, 'world_size', world_size, \
+                                    'out_feat', out_feat, 'n_expert', n_expert, 'world_size', world_size, \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
     else:
-        op_type = 'select_scatter'
+        op_type = 'select_gather'
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=output_buf.dtype)
 
@@ -1716,7 +1740,7 @@ def selectgather(output_buf, local_expert_count, \
             attrs={
                 'local_expert_count': [local_expert_count],
                 'global_expert_count': [global_expert_count],
-                'in_feat': [in_feat],
+                'out_feat': [out_feat],
                 'n_expert': [n_expert],
                 'world_size': [world_size],
                 'ring_id': group,
