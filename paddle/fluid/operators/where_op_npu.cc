@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/where_op.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {

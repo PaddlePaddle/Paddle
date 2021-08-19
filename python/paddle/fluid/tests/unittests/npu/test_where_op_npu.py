@@ -18,10 +18,10 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program
 from paddle.fluid.backward import append_backward
 
 paddle.enable_static()
@@ -128,7 +128,7 @@ class TestNPUWhereAPI(unittest.TestCase):
                                               self.ref_y_backward(out[1]))
 
     def test_api_broadcast(self, use_cuda=False):
-        train_prog = Program()
+        train_prog = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
             x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
@@ -150,7 +150,7 @@ class TestNPUWhereAPI(unittest.TestCase):
 
 class TestWhereDygraphAPI(unittest.TestCase):
     def test_api(self):
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(paddle.NPUPlace(0)):
             x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
             y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float64")
             cond_i = np.array([False, False, True, True]).astype("bool")
@@ -159,27 +159,6 @@ class TestWhereDygraphAPI(unittest.TestCase):
             cond = fluid.dygraph.to_variable(cond_i)
             out = paddle.where(cond, x, y)
             assert np.array_equal(out.numpy(), np.where(cond_i, x_i, y_i))
-
-
-class TestWhereOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
-            y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float64")
-            cond_i = np.array([False, False, True, True]).astype("bool")
-
-            def test_Variable():
-                paddle.where(cond_i, x_i, y_i)
-
-            self.assertRaises(TypeError, test_Variable)
-
-            def test_type():
-                x = fluid.layers.data(name='x', shape=[4], dtype='bool')
-                y = fluid.layers.data(name='y', shape=[4], dtype='float16')
-                cond = fluid.layers.data(name='cond', shape=[4], dtype='int32')
-                paddle.where(cond, x, y)
-
-            self.assertRaises(TypeError, test_type)
 
 
 if __name__ == '__main__':
