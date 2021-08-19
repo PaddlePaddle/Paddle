@@ -148,7 +148,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
 
     auto out_dims_vec = ComputeOutputShape(ctx);
     framework::DDim dim_out = framework::make_ddim(out_dims_vec);
-    z->reshape(dim_out);
+    z->Resize(dim_out);
 
     InterpolateMKLDNNHandler<T> handler(algo, mkldnn_engine, ctx.GetPlace(), x,
                                         z);
