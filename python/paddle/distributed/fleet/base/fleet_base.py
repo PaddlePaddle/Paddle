@@ -49,6 +49,19 @@ def apply_ir_passes(main_program, startup_program, config):
         startup_program = startup_program._pipeline_opt["startup_program"]
 
     pass_attrs = {"use_cuda": config._is_collective, }
+
+    settings = {
+        "fuse_relu_depthwise_conv": True,
+        "fuse_bn_act_ops": True,
+        "fuse_bn_add_act_ops": True,
+        "fuse_elewise_add_act_ops": True,
+        "fuse_all_optimizer_ops": True,
+        "enable_addto": True,
+        "enable_inplace": True,
+    }
+    for k, v in settings.items():
+        setattr(build_strategy, k, v)
+
     if build_strategy.fuse_all_reduce_ops and build_strategy.fuse_all_optimizer_ops:
         # FIXME(zjl): currently, fuse_all_optimizer_ops
         # have conflict with fuse_all_reduce_ops because 
@@ -1454,6 +1467,9 @@ class Fleet(object):
 
         applied_meta_list = self.strategy_compiler._get_applied_meta_list()
         applied_graph_list = self.strategy_compiler._get_applied_graph_list()
+
+        print('meta: {}, graph: {}'.format(applied_meta_list,
+                                           applied_graph_list))
 
         context['applied_meta_list'] = applied_meta_list
         context['applied_graph_list'] = applied_graph_list

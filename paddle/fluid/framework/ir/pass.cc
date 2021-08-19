@@ -129,6 +129,7 @@ static void MergePrograms(ProgramDesc *dst, const details::ProgramDescs &srcs,
 void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
                                 ProgramDesc *main_program,
                                 ProgramDesc *startup_program) {
+  LOG(INFO) << "ApplyPassesToProgram is called";
   PADDLE_ENFORCE_NOT_NULL(
       main_program,
       platform::errors::InvalidArgument("The main program must be provided."));
@@ -140,6 +141,7 @@ void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
   for (auto *p : passes) {
     PADDLE_ENFORCE_NOT_NULL(p, platform::errors::InvalidArgument(
                                    "The provided pass cannot be nullptr."));
+    LOG(INFO) << "Pass " << p->Type();
     if (passes.size() > 1) {
       PADDLE_ENFORCE_EQ(p->SupportApplyProgramViaGraph(), true,
                         platform::errors::PermissionDenied(
