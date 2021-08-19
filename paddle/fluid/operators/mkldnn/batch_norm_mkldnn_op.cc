@@ -125,27 +125,23 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   }
 
   std::shared_ptr<mkldnn::memory> AcquireScaleShiftMemory(const Tensor *scale,
-                                                          const Tensor *shift,
-                                                          const bool is_test) {
-    std::shared_ptr<mkldnn::memory> scaleshift_memory;
-    if (!is_test) {
-      auto scale_tz = paddle::framework::vectorize(scale->dims());
-      const unsigned int C = scale_tz[0];
-      PADDLE_ENFORCE_EQ(
-          scale_tz.size(), 1,
-          platform::errors::InvalidArgument(
-              "Dims of scale tensor must be 1, but received scale's size is %d",
-              scale_tz.size()));
+                                                          const Tensor *shift) {
+    auto scale_tz = paddle::framework::vectorize(scale->dims());
+    const unsigned int C = scale_tz[0];
+    PADDLE_ENFORCE_EQ(
+        scale_tz.size(), 1,
+        platform::errors::InvalidArgument(
+            "Dims of scale tensor must be 1, but received scale's size is %d",
+            scale_tz.size()));
 
-      scaleshift_memory =
-          this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
+    auto scaleshift_memory =
+        this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
 
-      // MKLDNN requires a single piece of memory for scale and shift/bias data
-      auto mem_data_handle =
-          reinterpret_cast<T *>(scaleshift_memory->get_data_handle());
-      std::copy(scale->data<T>(), scale->data<T>() + C, mem_data_handle);
-      std::copy(shift->data<T>(), shift->data<T>() + C, mem_data_handle + C);
-    }
+    // MKLDNN requires a single piece of memory for scale and shift/bias data
+    auto mem_data_handle =
+        reinterpret_cast<T *>(scaleshift_memory->get_data_handle());
+    std::copy(scale->data<T>(), scale->data<T>() + C, mem_data_handle);
+    std::copy(shift->data<T>(), shift->data<T>() + C, mem_data_handle + C);
     return scaleshift_memory;
   }
 
@@ -210,8 +206,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                       test_mode);
 
     auto src_memory = handler.AcquireSrcMemory(x);
-    auto scaleshift_memory =
-        handler.AcquireScaleShiftMemory(scale, shift, is_test);
+    auto scaleshift_memory = handler.AcquireScaleShiftMemory(scale, shift);
     auto dst_memory = handler.AcquireDstMemory(y);
 
     auto batch_norm_p = handler.AcquireForwardPrimitive();
@@ -300,8 +295,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto mean_memory = handler.AcquireMeanMemory(batch_mean);
     auto variance_memory = handler.AcquireVarianceMemory(batch_variance);
     auto diff_dst_memory = handler.AcquireDiffDstMemory(diff_y);
-    auto scaleshift_memory =
-        handler.AcquireScaleShiftMemory(scale, shift, false);
+    auto scaleshift_memory = handler.AcquireScaleShiftMemory(scale, shift);
     auto diff_src_memory = handler.AcquireDiffSrcMemory(diff_x);
     auto diff_scaleshift_memory =
         handler.AcquireDiffScaleShiftMemory(diff_scaleshift_data.data());
