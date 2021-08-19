@@ -6176,6 +6176,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         elif isinstance(shape, Variable):
             shape.stop_gradient = True
             out, _ = _C_ops.reshape2(x, shape)
+        else:
+            raise ValueError(
+                "shape must be an instance of `list`, `tuple` or `Variable`,"
+                " got '{}.'".format(type(shape)))
 
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
