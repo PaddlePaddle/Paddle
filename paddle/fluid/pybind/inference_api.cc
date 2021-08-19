@@ -296,22 +296,24 @@ void CopyPaddleInferTensor(paddle_infer::Tensor &dst,
 #ifdef PADDLE_WITH_CUDA
 class PtrWrapper {
  public:
-  PtrWrapper() : ptr(nullptr) {}
-  explicit PtrWrapper(void *ptr) : ptr(ptr) {}
-  PtrWrapper(const PtrWrapper &other) : ptr(other.ptr) {}
-  void *get() const { return ptr; }
+  PtrWrapper() : ptr_(nullptr) {}
+  explicit PtrWrapper(void *ptr) : ptr_(ptr) {}
+  PtrWrapper(const PtrWrapper &other) : ptr_(other.ptr_) {}
+  void *get() const { return ptr_; }
+  void set(void *ptr) { ptr_ = ptr; }
 
  private:
-  void *ptr;
+  void *ptr_;
 };
 using CudaStream = PtrWrapper;
 
-CudaStream CopyPaddleInferTensorAsyncStream(paddle_infer::Tensor &dst,
-                                            const paddle_infer::Tensor &src) {
+void CopyPaddleInferTensorAsyncStream(paddle_infer::Tensor &dst,
+                                      const paddle_infer::Tensor &src,
+                                      CudaStream &py_stream) {
   cudaStream_t stream;
   paddle_infer::contrib::utils::CopyTensorAsync(dst, src,
                                                 static_cast<void *>(&stream));
-  return CudaStream(reinterpret_cast<void *>(stream));
+  py_stream.set(reinterpret_cast<void *>(stream));
 }
 
 void CopyPaddleInferTensorAsyncCallback(paddle_infer::Tensor &dst,
@@ -334,8 +336,8 @@ void SyncGpuStream(const CudaStream &py_stream) {
   cudaStreamSynchronize(stream);
 }
 
-py::array PaddleInferTensorToNumpyAsyncCallback(paddle_infer::Tensor &tensor,
-                                                const py::object &cb) {
+py::array PaddleInferTensorToNumpyAsyncCallback(
+    const paddle_infer::Tensor &tensor, const py::object &cb) {
   py::object *p_obj = new py::object;
   *p_obj = cb;
   auto cb_func = [](void *cb_params) -> void {
@@ -382,7 +384,8 @@ py::array PaddleInferTensorToNumpyAsyncCallback(paddle_infer::Tensor &tensor,
   return array;
 }
 
-py::tuple PaddleInferTensorToNumpyAsync(paddle_infer::Tensor &tensor) {
+py::array PaddleInferTensorToNumpyAsync(const paddle_infer::Tensor &tensor,
+                                        CudaStream &py_stream) {
   py::dtype dt = PaddleDTypeToNumpyDType(tensor.type());
   auto tensor_shape = tensor.shape();
   py::array::ShapeContainer shape(tensor_shape.begin(), tensor_shape.end());
@@ -420,7 +423,8 @@ py::tuple PaddleInferTensorToNumpyAsync(paddle_infer::Tensor &tensor) {
           "Unsupported data type. Now only supports INT32, INT64 and "
           "FLOAT32."));
   }
-  return py::make_tuple(array, CudaStream(reinterpret_cast<void *>(stream)));
+  py_stream.set(reinterpret_cast<void *>(stream));
+  return array;
 }
 #endif
 

@@ -31,15 +31,20 @@ class TestCallback:
         self.num = 1024
 
     def test(self):
-        print(self.num)
+        self.num = 2048
 
 
 class CopyFromTensor(InferencePassTest):
+    def setUpParams(self):
+        self.data_type = "float32"
+
     def setUp(self):
+        self.setUpParams()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
-                name="data", shape=[-1, 128, 768], dtype="float32")
-            data_y = fluid.data(name="y", shape=[-1, 128, 768], dtype="float32")
+                name="data", shape=[-1, 128, 768], dtype=self.data_type)
+            data_y = fluid.data(
+                name="y", shape=[-1, 128, 768], dtype=self.data_type)
             fc_out1 = fluid.layers.fc(input=data,
                                       size=3072,
                                       num_flatten_dims=2,
@@ -48,7 +53,9 @@ class CopyFromTensor(InferencePassTest):
                                       size=768,
                                       num_flatten_dims=2)
 
-        self.feeds = {"data": np.random.random((4, 128, 768)).astype("float32")}
+        self.feeds = {
+            "data": np.random.random((4, 128, 768)).astype(self.data_type)
+        }
         self.fetch_list = [fc_out2]
         self.check_output()
         self.place_1_gpu = False
@@ -81,14 +88,30 @@ class CopyFromTensor(InferencePassTest):
         output_tensor_2 = predictor_2.get_output_handle(output_names[0])
         output_data = output_tensor_2.copy_to_cpu()
 
-    def test_cpu_to_cpu(self):
+    def test_devices(self):
+        self.cpu_to_cpu()
+        self.cpu_to_gpu()
+        self.gpu_to_cpu()
+        self.gpu_to_gpu()
+
+    def cpu_to_cpu(self):
         self.place_1_gpu = False
         self.place_2_gpu = False
         self.execute_two_models()
 
-    def test_cpu_to_gpu(self):
+    def cpu_to_gpu(self):
         self.place_1_gpu = False
         self.place_2_gpu = True
+        self.execute_two_models()
+
+    def gpu_to_gpu(self):
+        self.place_1_gpu = True
+        self.place_2_gpu = True
+        self.execute_two_models()
+
+    def gpu_to_cpu(self):
+        self.place_1_gpu = True
+        self.place_2_gpu = False
         self.execute_two_models()
 
 
