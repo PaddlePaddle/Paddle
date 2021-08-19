@@ -394,7 +394,8 @@ class TestResnet2(unittest.TestCase):
     def train_resnet(self,
                      enable_amp=True,
                      use_data_loader=False,
-                     use_param_group=False):
+                     use_param_group=False,
+                     enable_pure_fp16=False):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -471,7 +472,11 @@ class TestResnet2(unittest.TestCase):
                 label = paddle.to_tensor(y_data)
             label.stop_gradient = True
 
-            with paddle.amp.auto_cast(enable=enable_amp):
+            with paddle.amp.auto_cast(
+                    enable=enable_amp,
+                    enable_pure_fp16=enable_pure_fp16,
+                    model=resnet,
+                    optimizer=optimizer):
                 out = resnet(img)
 
             loss = paddle.nn.functional.cross_entropy(input=out, label=label)
@@ -502,26 +507,47 @@ class TestResnet2(unittest.TestCase):
 
     def test_resnet(self):
         with fluid.dygraph.guard():
-            out_fp32 = self.train_resnet(enable_amp=False)
-            out_amp = self.train_resnet(enable_amp=True)
-        print(out_fp32[0], out_amp[0])
+            out_fp32 = self.train_resnet(
+                enable_amp=False, enable_pure_fp16=False)
+            out_amp = self.train_resnet(enable_amp=True, enable_pure_fp16=False)
+            out_pure_fp16 = self.train_resnet(
+                enable_amp=True, enable_pure_fp16=True)
+        print(out_fp32[0], out_amp[0], out_pure_fp16[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
+        self.assertTrue(np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-5))
 
     def test_with_data_loader(self):
         with fluid.dygraph.guard():
-            out_fp32 = self.train_resnet(enable_amp=False, use_data_loader=True)
-            out_amp = self.train_resnet(enable_amp=True, use_data_loader=True)
-        print(out_fp32[0], out_amp[0])
+            out_fp32 = self.train_resnet(
+                enable_amp=False, enable_pure_fp16=False, use_data_loader=True)
+            out_amp = self.train_resnet(
+                enable_amp=True, enable_pure_fp16=False, use_data_loader=True)
+            out_pure_fp16 = self.train_resnet(
+                enable_amp=True, enable_pure_fp16=True, use_data_loader=True)
+        print(out_fp32[0], out_amp[0], out_pure_fp16[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
+        self.assertTrue(np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-5))
 
     def test_param_group(self):
         with fluid.dygraph.guard():
             out_fp32 = self.train_resnet(
-                enable_amp=False, use_data_loader=True, use_param_group=True)
+                enable_amp=False,
+                enable_pure_fp16=False,
+                use_data_loader=True,
+                use_param_group=True)
             out_amp = self.train_resnet(
-                enable_amp=True, use_data_loader=True, use_param_group=True)
-        print(out_fp32[0], out_amp[0])
+                enable_amp=True,
+                enable_pure_fp16=False,
+                use_data_loader=True,
+                use_param_group=True)
+            out_pure_fp16 = self.train_resnet(
+                enable_amp=True,
+                enable_pure_fp16=True,
+                use_data_loader=True,
+                use_param_group=True)
+        print(out_fp32[0], out_amp[0], out_pure_fp16[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
+        self.assertTrue(np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-5))
 
 
 class TestResnet(unittest.TestCase):
@@ -529,7 +555,7 @@ class TestResnet(unittest.TestCase):
     Use paddle-1.x API
     """
 
-    def train_resnet(self, enable_amp=True):
+    def train_resnet(self, enable_amp=True, enable_pure_fp16=False):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -567,7 +593,11 @@ class TestResnet(unittest.TestCase):
                 img = fluid.dygraph.to_variable(dy_x_data)
                 label = fluid.dygraph.to_variable(y_data)
                 label.stop_gradient = True
-                with paddle.fluid.dygraph.amp_guard(enable=enable_amp):
+                with paddle.fluid.dygraph.amp_guard(
+                        enable=enable_amp,
+                        enable_pure_fp16=enable_pure_fp16,
+                        model=resnet,
+                        optimizer=optimizer):
                     out = resnet(img)
 
                 loss = fluid.layers.cross_entropy(input=out, label=label)
@@ -597,10 +627,13 @@ class TestResnet(unittest.TestCase):
         return dy_out, dy_param_value, dy_grad_value
 
     def test_resnet(self):
-        out_fp32 = self.train_resnet(enable_amp=False)
-        out_amp = self.train_resnet(enable_amp=True)
-        print(out_fp32[0], out_amp[0])
+        out_fp32 = self.train_resnet(enable_amp=False, enable_pure_fp16=False)
+        out_amp = self.train_resnet(enable_amp=True, enable_pure_fp16=False)
+        out_pure_fp16 = self.train_resnet(
+            enable_amp=True, enable_pure_fp16=True)
+        print(out_fp32[0], out_amp[0], out_pure_fp16[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
+        self.assertTrue(np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
 
 
 class TestLayerNormFp16(unittest.TestCase):
