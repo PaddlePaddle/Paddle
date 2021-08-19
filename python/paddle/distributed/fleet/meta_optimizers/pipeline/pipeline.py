@@ -21,11 +21,20 @@ import paddle.fluid.core as core
 class PipelineInferHelper(object):
     """
     A helper class to split program for inference with pipeline parallelism.
+    
+    Args:
+        startup_program (Program): the startup program.
+        main_program (Program): the main program.
+        stage (int): the current pipeline stage.
+    
+    Returns:
+        None.
     """
 
     def __init__(self, startup_program, main_program, stage):
         assert isinstance(startup_program, Program)
         assert isinstance(main_program, Program)
+        assert isinstance(stage, int)
 
         self._device = None
         if core.is_compiled_with_npu():
@@ -162,11 +171,14 @@ class PipelineInferHelper(object):
 
         for op in block.ops:
             if op.type in device_all_ops:
-                # We use "gpu:all" to represent ops should be put on all
+                # We use "gpu:all" to represent an op should be put on all
                 # pipeline stages, such as read ops. Note that: "gpu:all"
                 # is only used by pipeline as an indicator.
                 op._set_attr(self._op_device_key, self._device + ":all")
-                continue
+            if op.type == "while":
+                sub_block_id = op.attr('sub_block').id
+                sub_block = block.program.block(sub_block_id)
+                self._add_op_device_attr(sub_block)
 
     def _check_validation(self, block):
         """
@@ -185,6 +197,9 @@ class PipelineInferHelper(object):
             if not op._has_kernel(op.type):
                 assert op.type == "while", (
                     "The only supported op without kernel is while.")
+                sub_block_id = op.attr('sub_block').id
+                sub_block = block.program.block(sub_block_id)
+                self._check_validation(sub_block)
             assert op.has_attr(self._op_device_key), (
                 "{} has no {} set.".format(op.type, self._op_device_key))
 
@@ -254,6 +269,7 @@ class PipelineInferHelper(object):
                 device_type = cur_device.split(':')[0] + ':'
 
                 def _insert_send_recv(cur_id, prev_id):
+                    assert cur_id > prev_id
                     cur_dev = device_type + str(cur_id)
                     prev_dev = device_type + str(prev_id)
                     if (cur_dev, prev_dev) in input_var_to_device[var_name]:
@@ -320,27 +336,24 @@ class PipelineInferHelper(object):
     def gen_infer_program(self):
         """
         Generate inference program.
-        
-        Returns:
-            tuple(main_program, startup_program)
         """
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
 
+        # step1: add op_device attribute for all ops
+        self._add_op_device_attr(startup_block)
+        self._check_validation(startup_block)
         self._add_op_device_attr(main_block)
         self._check_validation(main_block)
 
-        self._add_op_device_attr(startup_block)
-        self._check_validation(startup_block)
-
+        # step2: add send/recv ops
         out_var_to_op, in_var_to_op = self._get_input_output_info(main_block)
         self._output_var_to_op = out_var_to_op
         self._input_var_to_op = in_var_to_op
-
         self._insert_sendrecv_ops_for_boundaries(main_block)
 
+        # step3: split programs
         self._update_param_device_map()
-
         self._split_program(self._startup_program, self._stage, 0)
         self._split_program(self._main_program, self._stage, 0)
 
