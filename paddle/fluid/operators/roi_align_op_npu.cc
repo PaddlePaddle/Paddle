@@ -10,15 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/roi_align_op.h"
-#include <iostream>
-#include <typeinfo>
-#include <vector>
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/operators/stack_op.h"
-
-using std::cout;
-using std::endl;
 
 namespace paddle {
 namespace operators {
@@ -41,9 +34,9 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     auto aligned = ctx.Attr<bool>("aligned");
     auto roi_end_mode = 0;
     PADDLE_ENFORCE_EQ(
-        aligned, 0,
+        aligned, False,
         platform::errors::InvalidArgument(
-            "ROIAlign only support Aligned attribute equaled to False"));
+            "ROIAlignNPU only support Aligned attribute equaled to False"));
 
     framework::NPUAttributeMap attr_roi = {{"spatial_scale", spatial_scale},
                                            {"pooled_height", pooled_height},
