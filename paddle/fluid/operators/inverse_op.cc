@@ -35,6 +35,14 @@ class InverseOp : public framework::OperatorWithKernel {
             "The dimension of Input(Input) is expected to be no less than 2. "
             "But recieved: Input(Input)'s dimension = %d, shape = [%s].",
             input_rank, input_dims));
+    for (int64_t i = 0; i < input_rank; ++i) {
+      PADDLE_ENFORCE_EQ(
+          (input_dims[i] == -1) || (input_dims[i] > 0), true,
+          platform::errors::InvalidArgument(
+              "Each dimension of input tensor is expected to be -1 or a "
+              "positive number, but recieved %d. Input's shape is [%s].",
+              input_dims[i], input_dims));
+    }
     if (input_dims[input_rank - 2] > 0 && input_dims[input_rank - 1] > 0) {
       PADDLE_ENFORCE_EQ(input_dims[input_rank - 2], input_dims[input_rank - 1],
                         platform::errors::InvalidArgument(
