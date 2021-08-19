@@ -253,6 +253,17 @@ function check_op_benchmark_result {
   return $check_status_code
 }
 
+function check_CHANGE_OP_MAP {
+  for op_name in ${!CHANGE_OP_MAP[@]}
+  do
+    if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
+    then
+      exit_code=8
+      LOG "[ERROR] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
+    fi
+  done
+}
+
 # diff benchmakr result and miss op
 function summary_problems {
   local op_name exit_code
@@ -262,14 +273,7 @@ function summary_problems {
     check_op_benchmark_result
     exit_code=$?
   fi
-  for op_name in ${!CHANGE_OP_MAP[@]}
-  do
-    if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
-    then
-      exit_code=8
-      LOG "[ERROR] Missing test script of \"${op_name}\"(${CHANGE_OP_MAP[$op_name]}) in benchmark."
-    fi
-  done
+  check_CHANGE_OP_MAP
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
     LOG "[INFO] Or you can apply for one RD (Avin0323(Recommend), Xreki, luotao1) approval to pass this PR."
@@ -285,7 +289,7 @@ function cpu_op_benchmark {
   load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
   build_whl
-  summary_problems
+  check_CHANGE_OP_MAP
   LOG "[INFO] Op benchmark run success and no error!"
   exit 0
 }

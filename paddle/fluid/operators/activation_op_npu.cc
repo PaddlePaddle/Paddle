@@ -208,6 +208,47 @@ class SqrtNPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
+class LeakyReluNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+    auto alpha = ctx.Attr<float>("alpha");
+
+    out->mutable_data<T>(ctx.GetPlace());
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner =
+        NpuOpRunner("LeakyRelu", {*x}, {*out}, {{"negative_slope", alpha}});
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class LeakyReluGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto alpha = ctx.Attr<float>("alpha");
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    dx->mutable_data<T>(ctx.GetPlace());
+    const auto& runner = NpuOpRunner("LeakyReluGrad", {*dout, *x}, {*dx},
+                                     {{"negative_slope", alpha}});
+
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
 class SqrtGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -342,6 +383,35 @@ class SquareNPUKernel : public framework::OpKernel<T> {
 
     const auto& runner = NpuOpRunner("Square", {*x}, {*out}, {});
     runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SquareGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    auto factor = static_cast<float>(2.0);
+
+    auto place = ctx.GetPlace();
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    // Step 1: Compute x_muls_factor = factor * x
+    Tensor x_muls_factor(x->type());
+    x_muls_factor.mutable_data<T>(x->dims(), place);
+    const auto& runner_muls_1 =
+        NpuOpRunner("Muls", {*x}, {x_muls_factor}, {{"value", factor}});
+    runner_muls_1.Run(stream);
+
+    // Step 2: Compute dx = dout * factor * x
+    dx->mutable_data<T>(place);
+    const auto& runner_mul_2 =
+        NpuOpRunner("Mul", {*dout, x_muls_factor}, {*dx}, {});
+    runner_mul_2.Run(stream);
   }
 };
 
@@ -800,6 +870,18 @@ REGISTER_OP_NPU_KERNEL(
                             paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
+    leaky_relu,
+    ops::LeakyReluNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::LeakyReluNPUKernel<paddle::platform::NPUDeviceContext,
+                            paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    leaky_relu_grad,
+    ops::LeakyReluGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::LeakyReluGradNPUKernel<paddle::platform::NPUDeviceContext,
+                                paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
     sqrt, ops::SqrtNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SqrtNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
@@ -836,6 +918,12 @@ REGISTER_OP_NPU_KERNEL(
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>,
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, int>);
+
+REGISTER_OP_NPU_KERNEL(
+    square_grad,
+    ops::SquareGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
+                         paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     sigmoid, ops::SigmoidNPUKernel<paddle::platform::NPUDeviceContext, float>,
