@@ -1086,24 +1086,24 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # ring: mp, pp_group, pp_pair, pp_pair
         self.assertEqual(startup_prog_op_types, [
-            'uniform_random', 'fill_constant', 'uniform_random',
-            'fill_constant', 'uniform_random', 'fill_constant',
-            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'uniform_random', 'cast', 'fill_constant', 'cast', 'uniform_random',
+            'cast', 'fill_constant', 'cast', 'uniform_random', 'cast',
+            'fill_constant', 'cast', 'uniform_random', 'cast', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
-            'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_gen_nccl_id', 'c_comm_init', 'c_sync_comm_stream'
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_sync_comm_stream'
         ])
 
         self.assertEqual(main_prog_op_types, [
-            'recv_v2', 'cast', 'mul', 'cast', 'elementwise_add', 'tanh', 'cast',
-            'mul', 'cast', 'elementwise_add', 'tanh', 'cast', 'mul', 'cast',
-            'elementwise_add', 'tanh', 'cast', 'mul', 'cast', 'elementwise_add',
-            'softmax', 'cross_entropy2', 'mean', 'elementwise_mul',
-            'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
-            'coalesce_tensor', 'fill_constant', 'scale', 'scale',
-            'elementwise_mul_grad', 'mean_grad', 'cross_entropy_grad2',
+            'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'cast', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
+            'elementwise_mul', 'coalesce_tensor', 'coalesce_tensor',
+            'coalesce_tensor', 'coalesce_tensor', 'fill_constant', 'scale',
+            'scale', 'elementwise_mul_grad', 'mean_grad', 'cross_entropy_grad2',
             'softmax_grad', 'elementwise_add_grad', 'cast', 'mul_grad',
             'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
@@ -1112,8 +1112,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'cast', 'cast', 'cast', 'cast', 'cast', 'cast', 'cast',
             'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
             'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
-            'momentum', 'momentum', 'momentum', 'momentum', 'momentum',
-            'momentum', 'momentum'
+            'cast', 'momentum', 'cast', 'momentum', 'cast', 'momentum', 'cast',
+            'momentum', 'cast', 'momentum', 'cast', 'momentum', 'momentum',
+            'cast'
         ])
 
         # amp check_finite_and_unscale, allreduce(pp)
@@ -1155,7 +1156,6 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "mp_degree": 1,
             "pp_degree": 2,
             "dp_degree": 2,
-            "optimize_cast": True,
         }
         strategy.pipeline = True
         strategy.pipeline_configs = {
