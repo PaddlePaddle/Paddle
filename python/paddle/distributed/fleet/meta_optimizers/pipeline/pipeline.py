@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.framework import Block, Operator
+from collections import defaultdict
+from paddle.fluid.framework import Program, Block, Operator
 from paddle.fluid.framework import in_dygraph_mode
 import paddle.fluid.core as core
 
@@ -22,29 +23,65 @@ class PipelineInferHelper(object):
     A helper class to split program for inference with pipeline parallelism.
     """
 
-    def __init__(
-            self,
-            startup_program,
-            main_program, ):
+    def __init__(self, startup_program, main_program, stage):
+        assert isinstance(startup_program, Program)
+        assert isinstance(main_program, Program)
+
         self._device = None
         if core.is_compiled_with_npu():
             self._device = "npu"
         elif core.is_compiled_with_cuda():
             self._device = "gpu"
-        assert self._device, "Now only gpu and npu are supported."
-        assert in_dygraph_mode(), "Now only static mode is supported."
+        assert self._device, "Only gpu and npu are supported."
+        assert not in_dygraph_mode(), "Only static mode is supported."
+        self._stage = stage
+
         op_maker = core.op_proto_and_checker_maker
+        self._op_role = op_maker.OpRole
         self._op_role_key = op_maker.kOpRoleAttrName()
         self._op_device_key = op_maker.kOpDeviceAttrName()
+
         self._param_device_map = None
+
         self._pipeline_pair = []
         self._pp_ring_map = dict()
+
         self._output_var_to_op = None
         self._input_var_to_op = None
         self._main_program = main_program
         self._startup_program = startup_program
 
-    def _split_program(self, stage, block_idx):
+    def _get_input_output_info(self, block):
+        '''
+        Get info of op input and output.
+        '''
+        # A map from output var to op which generate it.
+        output_var_to_op = defaultdict(list)
+        # A map from var to op which takes it as input.
+        input_var_to_op = defaultdict(list)
+
+        for index, op in enumerate(block.ops):
+            for var_name in op.input_arg_names:
+                input_var_to_op[var_name].append([op, index])
+            for var_name in op.output_arg_names:
+                output_var_to_op[var_name].append([op, index])
+
+        return output_var_to_op, input_var_to_op
+
+    def _update_param_device_map(self):
+        """
+        Get the device info for parameters.
+        """
+        params = self._main_program.all_parameters()
+        for each_block in self._main_program.blocks:
+            for op in each_block.ops:
+                for var_name in op.input_arg_names:
+                    if not var_name in params or var_name in self._param_device_map:
+                        continue
+                    device = op.attr(self._op_device_key)
+                    self._param_device_map[var_name] = device
+
+    def _split_program(self, program, stage, block_idx):
         """
         Split a program and get the one with the given pipeline stage.
 
@@ -54,7 +91,7 @@ class PipelineInferHelper(object):
         """
 
         used_var_names = set()
-        block = self._main_program.block(block_idx)
+        block = program.block(block_idx)
         op_idx = 0
         for op in list(block.ops):
             op_stage = op.attr(self._op_device_key).split(':')[1]
@@ -64,8 +101,8 @@ class PipelineInferHelper(object):
                     used_var_names.add(var_name)
                 op_idx += 1
                 if op.type == "while":
-                    sub_block_id = int(op.attr('sub_block'))
-                    self._split_program(stage, sub_block_id)
+                    sub_block_id = int(op.attr('sub_block').id)
+                    self._split_program(program, stage, sub_block_id)
             else:
                 block._remove_op(op_idx)
 
@@ -82,7 +119,7 @@ class PipelineInferHelper(object):
         if '.cast_fp16' in var_name:
             var_name = var_name.replace('.cast_fp16', '')
 
-        post_ops = self.input_var_to_op[var_name]
+        post_ops = self._input_var_to_op[var_name]
         if post_ops == None: return None
         result_op = None
         for post_op, post_idx in reversed(post_ops):
@@ -96,7 +133,7 @@ class PipelineInferHelper(object):
         Find the previous op of op with index that outputs
         variable named var_name.
         """
-        prev_ops = self.output_var_to_op[var_name]
+        prev_ops = self._output_var_to_op[var_name]
         if prev_ops == None: return None
         result_op = None
         for prev_op, prev_idx in reversed(prev_ops):
@@ -105,27 +142,6 @@ class PipelineInferHelper(object):
                 break
         return result_op
 
-    def _rename_arg(self, op, old_name, new_name):
-        op._rename_input(old_name, new_name)
-        op._rename_output(old_name, new_name)
-
-    def _get_op_device_attr(self, op):
-        """
-        Get the op_device attribute of a op.
-        
-        Args:
-            op (Operator): the op to process.
-        """
-        assert isinstance(op, Operator)
-
-        device = op.attr(self._op_device_key) \
-            if op.has_attr(self._op_device_key) else None
-        if device:
-            assert device[0:3] == 'gpu' or device[0:3] == 'npu', (
-                "Only gpu and npu devices are supported in pipeline parallemism."
-            )
-        return device
-
     def _add_op_device_attr(self, block):
         """
         Add op_device attrribute for ops in block that have 
@@ -133,23 +149,21 @@ class PipelineInferHelper(object):
         
         Args:
             block (Block): the block to process.
-            device_type (str): the device type, such as 'gpu', 'npu'
         """
         assert isinstance(block, Block)
-        assert isinstance(device_type, str)
 
-        read_ops = [
+        # Ops should be copied to all pipeline stages.
+        device_all_ops = [
             "create_py_reader",
             "read",
             "create_double_buffer_reader",
+            "while",
         ]
 
-        for idx, op in enumerate(list(block.ops)):
-            if op.type in read_ops:
-                # Copy read related ops to all section to make them exit 
-                # after each epoch.
+        for op in block.ops:
+            if op.type in device_all_ops:
                 # We use "gpu:all" to represent ops should be put on all
-                # sub-programs, such as lr ops. Note that: "gpu:all"
+                # pipeline stages, such as read ops. Note that: "gpu:all"
                 # is only used by pipeline as an indicator.
                 op._set_attr(self._op_device_key, self._device + ":all")
                 continue
@@ -159,41 +173,34 @@ class PipelineInferHelper(object):
         Check whether ops in a block have both the op_device and the 
         op_role attributes set.
         """
-        pre_stage_id = None
+        assert isinstance(block, Block)
 
+        pre_stage_id = None
         for op in block.ops:
-            assert op.has_attr(self._op_role_key), \
-                "op ({}) has no {} attribute.".format(op.type, self._op_role_key)
+            assert op.has_attr(self._op_role_key), (
+                "{} has no {} set .".format(op.type, self._op_role_key))
             op_role = op.attr(self._op_role_key)
-            assert op_role == int(_OP_ROLE.Forward)
+            assert op_role == int(self._op_role.Forward), (
+                "Only forward is supported for inference.")
             if not op._has_kernel(op.type):
                 assert op.type == "while", (
-                    "Now, the only supported op without kernel is "
-                    "while with the op_role Forward.")
-
+                    "The only supported op without kernel is while.")
             assert op.has_attr(self._op_device_key), (
-                "op ({}) has no {} attribute.".format(op.type,
-                                                      self._op_device_key))
+                "{} has no {} set.".format(op.type, self._op_device_key))
 
             device = op.attr(self._op_device_key)
-            assert device, ("op_device attribute for op "
-                            "{} has not been set.".format(op.type))
+            assert device, (
+                "{} has no {} set.".format(op.type, self._op_device_key))
             if device.split(':')[1] == "all": continue
 
             dev_type = device.split(':')[0]
+            assert dev_type == self._device
             stage_id = int(device.split(':')[1])
-            assert dev_type == "gpu" or dev_type == 'npu', (
-                "Now only gpu and npu devices are supported "
-                "for pipeline parallelism.")
-
-            if device not in device_list:
-                device_list.append(device)
 
             if pre_stage_id is not None:
                 interval = stage_id - pre_stage_id
-                assert interval >= 0 and interval <= 1, \
-                    "The stage interval of two consecutive ops in the pipeline must be < = 1," \
-                    "but the interval of op={} and prev op is {}".format(op, interval)
+                assert 0 <= interval <= 1, (
+                    "The stage in the pipeline must be consecutive.")
             pre_stage_id = stage_id
 
     def _insert_sendrecv_ops_for_boundaries(self, block):
@@ -209,17 +216,20 @@ class PipelineInferHelper(object):
 
         for index, op in enumerate(list(block.ops)):
             if op.type == 'while':
-                sub_block_id = int(op.attr('sub_block'))
+                sub_block_id = op.attr('sub_block').id
                 self._insert_sendrecv_ops_for_boundaries(
                     block.program.block(sub_block_id))
-            cur_device = op.attr(_OP_DEVICE_KEY)
+            cur_device = op.attr(self._op_device_key)
             if cur_device.split(':')[-1] == "all": continue
             for var_name in op.input_arg_names:
+                if not block.has_var(var_name) and block._find_var_recursive(
+                        var_name):
+                    continue
                 var = block.var(var_name)
                 # skip data var
                 if var.is_data: continue
                 prev_device = None
-                generate_ops = self.output_var_to_op.get(var_name)
+                generate_ops = self._output_var_to_op.get(var_name)
                 if generate_ops is None:
                     if var_name not in self._param_device_map:
                         continue
@@ -314,3 +324,65 @@ class PipelineInferHelper(object):
         Returns:
             tuple(main_program, startup_program)
         """
+        main_block = self._main_program.global_block()
+        startup_block = self._startup_program.global_block()
+
+        self._add_op_device_attr(main_block)
+        self._check_validation(main_block)
+
+        self._add_op_device_attr(startup_block)
+        self._check_validation(startup_block)
+
+        out_var_to_op, in_var_to_op = self._get_input_output_info(main_block)
+        self._output_var_to_op = out_var_to_op
+        self._input_var_to_op = in_var_to_op
+
+        self._insert_sendrecv_ops_for_boundaries(main_block)
+
+        self._update_param_device_map()
+
+        self._split_program(self._startup_program, self._stage, 0)
+        self._split_program(self._main_program, self._stage, 0)
+
+
+if __name__ == "__main__":
+    import numpy as np
+    import paddle
+    import paddle.fluid as fluid
+    paddle.enable_static()
+    main_prog = paddle.fluid.Program()
+    startup_prog = paddle.fluid.Program()
+    with paddle.fluid.program_guard(main_prog, startup_prog):
+        with fluid.device_guard("gpu:0"):
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            loop_len = fluid.layers.fill_constant(
+                shape=[1], dtype='int64', value=10)
+            one = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=1)
+            data = fluid.data(name='data', shape=[1], dtype='float32')
+            sums = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=0)
+
+            cond = fluid.layers.less_than(x=i, y=loop_len)
+            while_op = fluid.layers.While(cond=cond)
+            with while_op.block():
+                sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
+                fluid.layers.assign(input=sums_tensor, output=sums)
+                i = fluid.layers.increment(x=i, value=1, in_place=True)
+                data = fluid.layers.elementwise_add(x=data, y=one)
+                fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+
+    with open("./while_main_raw", 'w') as f:
+        f.writelines(str(main_prog))
+    helper = PipelineInferHelper(startup_prog, main_prog, 0)
+    helper.gen_infer_program()
+    with open("./while_main", 'w') as f:
+        f.writelines(str(main_prog))
+
+    feed_data = np.ones([1]).astype('float32')
+    exe = fluid.Executor(fluid.CPUPlace())
+    exe.run(fluid.default_startup_program())
+    res = exe.run(fluid.default_main_program(),
+                  feed={'data': feed_data},
+                  fetch_list=sums)
+    print(res[0])
