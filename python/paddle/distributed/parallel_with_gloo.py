@@ -71,16 +71,16 @@ def gloo_init_parallel_env(rank_id, rank_num, server_endpoint):
                         port_set.add(port)
                         return port
 
-            def test_init_gloo(id, rank_num, server_endpoint):
-                paddle.distributed.init_gloo_parallel_env(
+            def test_gloo_init(id, rank_num, server_endpoint):
+                paddle.distributed.gloo_init_parallel_env(
                     id, rank_num, server_endpoint)
 
-            def test_init_gloo_with_multiprocess(num_of_ranks):
+            def test_gloo_init_with_multiprocess(num_of_ranks):
                 jobs = []
                 server_endpoint = "127.0.0.1:%s" % (find_free_port())
                 for id in range(num_of_ranks):
                     p = multiprocessing.Process(
-                        target=test_init_gloo,
+                        target=test_gloo_init,
                         args=(id, num_of_ranks, server_endpoint))
                     jobs.append(p)
                     p.start()
@@ -89,7 +89,7 @@ def gloo_init_parallel_env(rank_id, rank_num, server_endpoint):
 
             if __name__ == '__main__':
                 # Arg: number of ranks (processes)
-                test_init_gloo_with_multiprocess(2)
+                test_gloo_init_with_multiprocess(2)
     """
 
     assert (rank_num < 2) is False, \
@@ -164,17 +164,17 @@ def gloo_barrier():
                         port_set.add(port)
                         return port
 
-            def test_barrier_func(id, rank_num, server_endpoint):
-                paddle.distributed.init_gloo_parallel_env(
+            def test_gloo_barrier(id, rank_num, server_endpoint):
+                paddle.distributed.gloo_init_parallel_env(
                     id, rank_num, server_endpoint)
-                paddle.distributed.barrier_func()
+                paddle.distributed.gloo_barrier()
 
-            def test_barrier_with_multiprocess(num_of_ranks):
+            def test_gloo_barrier_with_multiprocess(num_of_ranks):
                 jobs = []
                 server_endpoint = "127.0.0.1:%s" % (find_free_port())
                 for id in range(num_of_ranks):
                     p = multiprocessing.Process(
-                        target=test_barrier_func,
+                        target=test_gloo_barrier,
                         args=(id, num_of_ranks, server_endpoint))
                     jobs.append(p)
                     p.start()
@@ -183,7 +183,7 @@ def gloo_barrier():
 
             if __name__ == '__main__':
                 # Arg: number of ranks (processes)
-                test_barrier_with_multiprocess(2)
+                test_gloo_barrier_with_multiprocess(2)
     """
 
     assert _global_gloo_ctx is not None, "gloo context is not initialzed."
@@ -222,18 +222,18 @@ def gloo_release():
                         port_set.add(port)
                         return port
 
-            def test_release_gloo(id, rank_num, server_endpoint):
-                paddle.distributed.init_gloo_parallel_env(
+            def test_gloo_release(id, rank_num, server_endpoint):
+                paddle.distributed.gloo_init_parallel_env(
                     id, rank_num, server_endpoint)
-                paddle.distributed.barrier_func()
-                paddle.distributed.release_gloo(id)
+                paddle.distributed.gloo_barrier()
+                paddle.distributed.gloo_release()
 
-            def test_release_gloo_with_multiprocess(num_of_ranks):
+            def test_gloo_release_with_multiprocess(num_of_ranks):
                 jobs = []
                 server_endpoint = "127.0.0.1:%s" % (find_free_port())
                 for id in range(num_of_ranks):
                     p = multiprocessing.Process(
-                        target=test_release_gloo,
+                        target=test_gloo_release,
                         args=(id, num_of_ranks, server_endpoint))
                     jobs.append(p)
                     p.start()
@@ -242,7 +242,7 @@ def gloo_release():
 
             if __name__ == '__main__':
                 # Arg: number of ranks (processes)
-                test_release_gloo_with_multiprocess(2)
+                test_gloo_release_with_multiprocess(2)
     """
 
     if _global_gloo_ctx is not None:
