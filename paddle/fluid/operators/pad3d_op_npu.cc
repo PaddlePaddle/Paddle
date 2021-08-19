@@ -21,6 +21,20 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+static inline std::vector<int> GetPaddings(
+    const framework::ExecutionContext& context) {
+  std::vector<int> paddings(6);
+  auto* paddings_t = context.Input<Tensor>("Paddings");
+  if (paddings_t) {
+    VLOG(3) << "run in here";
+    TensorToVector(*paddings_t, context.device_context(), &paddings);
+  } else {
+    auto pads = context.Attr<std::vector<int>>("paddings");
+    std::copy(pads.begin(), pads.end(), paddings.data());
+  }
+  return paddings;
+}
+
 template <typename T>
 class Pad3dNPUKernel : public framework::OpKernel<T> {
  public:
@@ -28,13 +42,12 @@ class Pad3dNPUKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto in_dims = x->dims();
 
-    std::vector<int> pads = context.Attr<std::vector<int>>("paddings");
+    std::vector<int> pads = GetPaddings(context);
     auto mode = context.Attr<std::string>("mode");
     float value = context.Attr<float>("value");
     auto data_format = context.Attr<std::string>("data_format");
 
     auto* out = context.Output<Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
 
     PADDLE_ENFORCE_LT(abs(value), 1e-5,
                       platform::errors::Unimplemented(
@@ -61,6 +74,7 @@ class Pad3dNPUKernel : public framework::OpKernel<T> {
       paddings = {0,       0,       pads[4], pads[5], pads[2],
                   pads[3], pads[0], pads[1], 0,       0};
     }
+    out->mutable_data<T>(context.GetPlace());
 
     NpuOpRunner runner;
     runner.SetType("PadV3")
@@ -82,7 +96,7 @@ template <typename T>
 class Pad3dGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    std::vector<int> pads = context.Attr<std::vector<int>>("paddings");
+    std::vector<int> pads = GetPaddings(context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
 

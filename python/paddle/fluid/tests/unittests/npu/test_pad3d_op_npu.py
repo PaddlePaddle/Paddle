@@ -34,13 +34,19 @@ class TestPad3dNPUOp(op_test.OpTest):
 
         self.x_type = "float32"
         self.mode = "constant"
+        self.variable_paddings = False
         self.initTestCase()
 
         self.value = 0  #Asend npu only support constant_values = 0 right now.
         self.inputs = {'X': np.random.random(self.shape).astype(self.x_type)}
         self.attrs = {}
-        self.attrs['paddings'] = np.array(self.paddings).flatten().astype(
-            "int32")
+        if self.variable_paddings:
+            self.attrs['paddings'] = []
+            self.inputs['Paddings'] = np.array(self.paddings).flatten().astype(
+                "int32")
+        else:
+            self.attrs['paddings'] = np.array(self.paddings).flatten().astype(
+                "int32")
         self.attrs['value'] = self.value
         self.attrs['mode'] = self.mode
         self.attrs['data_format'] = self.data_format
@@ -97,6 +103,7 @@ class TestCase2(TestPad3dNPUOp):
         self.shape = (4, 5, 6, 7, 8)
         self.paddings = [1, 1, 1, 1, 1, 1]
         self.data_format = "NDHWC"
+        self.variable_paddings = True
 
 
 class TestPadAPI(unittest.TestCase):
