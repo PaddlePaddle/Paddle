@@ -150,30 +150,36 @@ def _getitem_impl_(var, item):
                 end = MAX_INTEGER if step > 0 else -1
 
         elif isinstance(slice_item, list):
-            is_bool_list = False
+            all_bool = True
             for i in slice_item:
-                if not isinstance(i, (int, bool)):
+                if type(i) is int:
+                    all_bool = False
+                elif not isinstance(i, bool):
                     raise TypeError("Only support int or bool in index list.")
-
-                if isinstance(i, bool):
-                    is_bool_list = True
-                    break
 
             if len(item) != 1:
                 raise IndexError(
                     "When index contains a list, its length must be 1, but received {}".
                     format(len(item)))
-
-            if is_bool_list:
-                new_slice_item = []
+            new_slice_item = []
+            if all_bool:
+                if len(slice_item) != var.shape[0]:
+                    raise IndexError(
+                        "The dimension of bool index doesn't match indexed array along "\
+                        "dimension 0, the target dimension is {}, but received {}.".
+                        format(var.shape[0], len(slice_item)))
                 for idx, ele in enumerate(slice_item):
-                    if not isinstance(ele, bool):
-                        raise TypeError(
-                            "Mixed bool index with other types is not supported."
-                        )
-
                     if ele is True:
                         new_slice_item.append(idx)
+                slice_item = new_slice_item
+            else:
+                for idx, ele in enumerate(slice_item):
+                    if type(ele) is int:
+                        new_slice_item.append(ele)
+                    elif ele is True:
+                        new_slice_item.append(1)
+                    else:
+                        new_slice_item.append(0)
                 slice_item = new_slice_item
 
             from .layers import assign
@@ -188,7 +194,9 @@ def _getitem_impl_(var, item):
                     "When index contains a Tensor, its length must be 1, but received {}".
                     format(len(item)))
 
-            from ..tensor import index_select
+            from ..tensor import index_select, masked_select
+            if slice_item.dtype == core.VarDesc.VarType.BOOL:
+                return masked_select(var, slice_item)
             return index_select(var, index=slice_item, axis=0)
 
         else:

@@ -733,6 +733,36 @@ class TestVarBase(unittest.TestCase):
         # self.assertTrue(
         #     np.array_equal(var[10], np_value[0, 1:10:2, None, None, ...]))
 
+    def _test_bool_index(self):
+        shape = (4, 8, 5, 64)
+        np_value = np.random.random(shape).astype('float32')
+        var_tensor = paddle.to_tensor(np_value)
+        index = [[True, True, True, True], [True, False, True, True],
+                 [True, False, False, True], [False, 0, 1, True, True]]
+        var = [
+            var_tensor[index[0]].numpy(),
+            var_tensor[index[1]].numpy(),
+            var_tensor[index[2]].numpy(),
+            var_tensor[index[3]].numpy(),
+        ]
+        self.assertTrue(np.array_equal(var[0], np_value[index[0]]))
+        self.assertTrue(np.array_equal(var[1], np_value[index[1]]))
+        self.assertTrue(np.array_equal(var[2], np_value[index[2]]))
+        self.assertTrue(np.array_equal(var[3], np_value[index[3]]))
+        self.assertTrue(
+            np.array_equal(var_tensor[var_tensor > 0.67], np_value[np_value >
+                                                                   0.67]))
+        self.assertTrue(
+            np.array_equal(var_tensor[var_tensor < 0.55], np_value[np_value <
+                                                                   0.55]))
+
+        with self.assertRaises(ValueError):
+            var_tensor[[False, False, False, False]]
+        with self.assertRaises(ValueError):
+            var_tensor[[True, False]]
+        with self.assertRaises(ValueError):
+            var_tensor[[True, False, False, False, False]]
+
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')
         w = fluid.dygraph.to_variable(np_value)
@@ -747,6 +777,7 @@ class TestVarBase(unittest.TestCase):
             self._test_for_var()
             self._test_for_getitem_ellipsis_index()
             self._test_none_index()
+            self._test_bool_index()
 
             var = fluid.dygraph.to_variable(self.array)
             self.assertTrue(np.array_equal(var[1, :].numpy(), self.array[1, :]))

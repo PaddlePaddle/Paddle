@@ -252,26 +252,39 @@ class TestVariable(unittest.TestCase):
             x = paddle.assign(data)
             idx0 = [True, False]
             idx1 = [False, True]
-            idx2 = [False, False]
-            idx3 = [True, True]
+            idx2 = [True, True]
+            idx3 = [False, False, 1]
+            idx4 = [True, False, 0]
 
             out0 = x[idx0]
             out1 = x[idx1]
             out2 = x[idx2]
             out3 = x[idx3]
+            out4 = x[idx4]
+            out5 = x[x < 0.36]
+            out6 = x[x > 0.6]
 
         exe = paddle.static.Executor(place)
-        result = exe.run(prog, fetch_list=[out0, out1, out2, out3])
+        result = exe.run(prog,
+                         fetch_list=[out0, out1, out2, out3, out4, out5, out6])
 
-        expected = [data[idx0], data[idx1], data[idx2], data[idx3]]
+        expected = [
+            data[idx0], data[idx1], data[idx2], data[idx3], data[idx4],
+            data[data < 0.36], data[data > 0.6]
+        ]
 
         self.assertTrue((result[0] == expected[0]).all())
         self.assertTrue((result[1] == expected[1]).all())
         self.assertTrue((result[2] == expected[2]).all())
         self.assertTrue((result[3] == expected[3]).all())
+        self.assertTrue((result[4] == expected[4]).all())
+        self.assertTrue((result[5] == expected[5]).all())
+        self.assertTrue((result[6] == expected[6]).all())
 
-        with self.assertRaises(TypeError):
-            res = x[[True, 0]]
+        with self.assertRaises(IndexError):
+            res = x[[True, False, False]]
+        with self.assertRaises(ValueError):
+            res = x[[False, False]]
 
     def test_slice(self):
         places = [fluid.CPUPlace()]
