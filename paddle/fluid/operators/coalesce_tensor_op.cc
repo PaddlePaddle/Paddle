@@ -43,8 +43,17 @@ struct FillConstantVisitor {
   void apply(typename std::enable_if<!(std::is_same<T, int8_t>::value ||
                                        std::is_same<T, int16_t>::value)>::type
                  * = nullptr) const {
+#ifdef PADDLE_WITH_ASCEND_CL
+    if (platform::is_npu_place(dev_ctx_.GetPlace())) {
+      FillNpuTensorWithConstant<T>(tensor_, value_);
+    } else {
+      math::SetConstant<DeviceContext, T> set_constant;
+      set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
+    }
+#else
     math::SetConstant<DeviceContext, T> set_constant;
     set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
+#endif
   }
 
   const DeviceContext &dev_ctx_;
