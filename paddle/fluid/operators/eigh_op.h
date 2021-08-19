@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
-extern "C" {
-#include <lapacke.h>
-}
+// extern "C" {
+#include <Eigen/src/misc/lapacke.h>
+// }
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/transpose_op.h"
 
@@ -32,9 +32,9 @@ inline void computeValues<paddle::platform::complex<double>, double>(
     char jobz, char uplo, int n, paddle::platform::complex<double>* a, int lda,
     double* w, paddle::platform::complex<double>* work, int lwork,
     double* rwork, int lrwork, int* iwork, int liwork, int* info) {
-  zheevd_(&jobz, &uplo, &n, reinterpret_cast<double _Complex *>(a), &lda,
-          w, reinterpret_cast<double _Complex *>(work), &lwork, rwork,
-          &lrwork, iwork, &liwork, info);
+  zheevd_(&jobz, &uplo, &n, reinterpret_cast<double _Complex*>(a), &lda, w,
+          reinterpret_cast<double _Complex*>(work), &lwork, rwork, &lrwork,
+          iwork, &liwork, info);
 }
 
 template <>
@@ -42,8 +42,8 @@ inline void computeValues<paddle::platform::complex<float>, float>(
     char jobz, char uplo, int n, paddle::platform::complex<float>* a, int lda,
     float* w, paddle::platform::complex<float>* work, int lwork, float* rwork,
     int lrwork, int* iwork, int liwork, int* info) {
-  cheevd_(&jobz, &uplo, &n, reinterpret_cast<float _Complex *>(a), &lda, w,
-          reinterpret_cast<float _Complex *>(work), &lwork, rwork, &lrwork,
+  cheevd_(&jobz, &uplo, &n, reinterpret_cast<float _Complex*>(a), &lda, w,
+          reinterpret_cast<float _Complex*>(work), &lwork, rwork, &lrwork,
           iwork, &liwork, info);
 }
 
