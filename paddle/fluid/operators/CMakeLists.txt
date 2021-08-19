@@ -79,7 +79,7 @@ if(WITH_UNITY_BUILD)
 endif()
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op lstm_op run_program_op eye_op recurrent_op
-        sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+        sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
 
@@ -91,6 +91,13 @@ if (WITH_GPU OR WITH_ROCM)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
+        find_library(CUFFT_LIB libcufft.so
+          PATHS
+          ${CUDA_TOOLKIT_ROOT_DIR}/lib64/
+          NO_DEFAULT_PATH
+        )
+        op_library(spectral_op SRCS spectral_op.cc spectral_op.cu DEPS ${OP_HEADER_DEPS})
+        target_link_libraries(spectral_op ${CUFFT_LIB})
     endif()
     op_library(sync_batch_norm_op)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
