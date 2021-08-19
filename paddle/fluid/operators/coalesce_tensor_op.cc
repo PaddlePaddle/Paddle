@@ -30,6 +30,7 @@ struct FillConstantVisitor {
                       framework::LoDTensor *tensor, const float value)
       : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
 
+  // TODO(WHO?) set_constant supports NPU
   template <typename T>
   void apply(typename std::enable_if<std::is_same<T, int8_t>::value ||
                                      std::is_same<T, int16_t>::value>::type * =
