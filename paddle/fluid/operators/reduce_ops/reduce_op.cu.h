@@ -514,12 +514,11 @@ __device__ void ReduceHigherDim(const Tx* x, Ty* y, ReduceOp reducer,
                                 TransformOp transformer, MPType init,
                                 int reduce_num, int left_num, int block_size) {
   // NY = 4, NX = 1
-  const int NY = 4;
+  const int NY = 1;  // 4;
   int idx = blockIdx.x * blockDim.x;
   int idy = blockIdx.y * block_size;
   MPType reduce_var[NY];
   MPType result = init;
-  Tx input_reg[NY];
 
   int block_offset = idy * left_num + idx + blockIdx.z * reduce_num * left_num;
   int store_offset =
@@ -529,22 +528,33 @@ __device__ void ReduceHigherDim(const Tx* x, Ty* y, ReduceOp reducer,
   size = size > 0 ? size : 0;
   int loop = reduce_num - idy;
   loop = loop > block_size ? block_size : loop;
-  int fix = 0;
+  int repeat = 0;   // loop / NY;
+  int tail = loop;  // - repeat * NY;
 
-  while (fix < loop + NY - 1) {
-    int num = loop - fix;
-    kps::Init<MPType, NY>(&reduce_var[0], init);
-    kps::ReadDataStride<Tx, MPType, 1, NY, 1>(&reduce_var[0],
-                                              x + block_offset + fix * left_num,
-                                              size, num, 1, left_num);
-    kps::Reduce<MPType, NY, 1, 1, ReduceOp, kps::ReduceMode::LocalMode>(
-        &result, &reduce_var[0], reducer, false);
-    fix += NY;
+  if (size >= blockDim.x) {
+    repeat = loop / NY;
+    tail = loop - repeat * NY;
+
+    for (int i = 0; i < repeat; ++i) {
+      kps::ReadDataStrideBase<Tx, MPType, 1, NY, 1>(
+          &reduce_var[0], x + block_offset + i * NY * left_num, 1, left_num);
+      kps::Reduce<MPType, NY, 1, 1, ReduceOp, kps::ReduceMode::LocalMode>(
+          &result, &reduce_var[0], reducer, false);
+    }
   }
 
-  Ty store_data;
-  kps::Cast<MPType, Ty, 1>(&store_data, &result);
-  kps::WriteDataBase<Ty, 1, 1, 1>(y + store_offset, &store_data, 1);
+  for (int i = 0; i < tail; i += NY) {
+    int size_ny = tail - i;
+    kps::Init<MPType, NY>(&reduce_var[0], init);
+    kps::ReadDataStride<Tx, MPType, 1, NY, 1>(
+        &reduce_var[0], x + block_offset + (repeat * NY + i) * left_num, size,
+        size_ny, 1, left_num);
+    kps::Reduce<MPType, NY, 1, 1, ReduceOp, kps::ReduceMode::LocalMode>(
+        &result, &reduce_var[0], reducer, false);
+  }
+
+  Ty temp_data = static_cast<Ty>(result);
+  kps::WriteDataBase<Ty, 1, 1, 1>(y + store_offset, &temp_data, size);
 }
 
 // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
@@ -558,15 +568,18 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
                           const IndexCalculator& reduce_index_calculator,
                           const IndexCalculator& left_index_calculator) {
   int input_idx, left_idx, stride;
+  int block_size = 0;
   // the last dim gets involved in reduction
   if (reduce_lastdim) {
-    input_idx = blockIdx.y* blockDim.x left_idx =
-        blockIdx.x * blockDim.y + threadIdx.y;
+    input_idx = blockIdx.y * blockDim.x;
+    left_idx = blockIdx.x * blockDim.y + threadIdx.y;
     stride = gridDim.y * blockDim.x;
+    block_size = blockDim.x;
   } else {
     input_idx = blockIdx.y * blockDim.y;
     left_idx = blockIdx.x * blockDim.x + threadIdx.x;
     stride = gridDim.y * blockDim.y;
+    block_size = blockDim.y;
   }
   int store_offset = blockIdx.y * left_num + left_idx;
   bool need_store = (reduce_lastdim && threadIdx.x == 0) ||
@@ -583,7 +596,22 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
     Tx input_reg[REDUCE_VEC_SIZE];
     MPType input_compute[REDUCE_VEC_SIZE];
     int bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
-    while (input_idx < reduce_num + REDUCE_VEC_SIZE * stride) {
+    // int bound = reduce_num / (REDUCE_VEC_SIZE * stride) * (REDUCE_VEC_SIZE *
+    // strides);
+    for (; input_idx + block_size < bound;
+         input_idx += REDUCE_VEC_SIZE * stride) {
+      kps::Init<Tx, REDUCE_VEC_SIZE>(&input_reg[0], static_cast<Tx>(init));
+      kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, IndexCalculator>(
+          &input_reg[0], input, input_idx, reduce_index_calculator, 1, stride,
+          reduce_lastdim);
+      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+          &input_compute[0], &input_reg[0], transformer);
+      kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
+                  kps::ReduceMode::LocalMode>(&reduce_var, &input_compute[0],
+                                              reducer, false);
+    }
+
+    if (input_idx < reduce_num) {
       kps::Init<Tx, REDUCE_VEC_SIZE>(&input_reg[0], static_cast<Tx>(init));
       kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, IndexCalculator>(
           &input_reg[0], input, input_idx, reduce_index_calculator, 1,
@@ -593,7 +621,6 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
       kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
                   kps::ReduceMode::LocalMode>(&reduce_var, &input_compute[0],
                                               reducer, false);
-      input_idx += REDUCE_VEC_SIZE * stride;
     }
   }
 

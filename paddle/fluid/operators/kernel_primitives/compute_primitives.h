@@ -247,6 +247,7 @@ __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
     bool block_reduce_y = (!reduce_lastDim) && (blockDim.y > 1);
     // blockYReduce
     if (blockDim.y > 1) {
+#pragma unroll
       for (int i = 0; i < NY; i++) {
         out[i] = BlockYReduce<T, OpFunc>(out[i], reducer);
       }
@@ -254,12 +255,15 @@ __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
 
     // blockXReduce
     if (reduce_lastDim) {
+#pragma unroll
       for (int i = 0; i < NY; i++) {
         out[i] = BlockXReduce<T, OpFunc>(out[i], reducer);
       }
     }
   } else {  // else  LocalMode
+#pragma unroll
     for (int i = 0; i < NY; ++i) {
+#pragma unroll
       for (int j = 0; j < NX; ++j) {
         out[i] = reducer(out[i], in[i * NX + j]);
       }

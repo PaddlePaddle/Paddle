@@ -119,19 +119,45 @@ __device__ __forceinline__ void ReadDataBase(T* dst, const T* __restrict__ src,
 
 // dst[NY][NX];
 template <typename Tx, typename Ty, int NX, int NY, int BlockSize>
+__device__ void ReadDataStrideBase(Ty* dst, const Tx* __restrict__ src,
+                                   int stride_nx, int stride_ny) {
+  if (NY == 1 && NX == 1) {
+    dst[0] = static_cast<Ty>(src[threadIdx.x * NX]);
+  } else if (NX == 1) {
+    int dx = threadIdx.x * NX;
+#pragma unroll
+    for (int idy = 0; idy < NY; ++idy) {
+      dst[idy * NX] = static_cast<Ty>(src[dx + idy * stride_ny]);
+    }
+  } else {
+    int dx = threadIdx.x * NX;
+#pragma unroll
+    for (int idy = 0; idy < NY; ++idy) {
+#pragma unroll
+      for (int idx = 0; idx < NX; ++idx) {
+        dst[idy * NX + idx] =
+            static_cast<Ty>(src[idx * stride_nx + dx + idy * stride_ny]);
+      }
+    }
+  }
+}
+
+// dst[NY][NX];
+template <typename Tx, typename Ty, int NX, int NY, int BlockSize>
 __device__ __forceinline__ void ReadDataStride(Ty* dst,
                                                const Tx* __restrict__ src,
                                                int size_nx, int size_ny,
                                                int stride_nx, int stride_ny) {
   int dx = threadIdx.x * NX;
+  int size = size_nx - dx;
 #pragma unroll
-  for (int idy = 0; idy < NY; ++idy) {
-    if (idy >= size_ny) {
+  for (int idx = 0; idx < NX; ++idx) {
+    if (idx >= size) {
       break;
     }
 #pragma unroll
-    for (int idx = 0; idx < NX; ++idx) {
-      if (dx + idx >= size_nx) {
+    for (int idy = 0; idy < NY; ++idy) {
+      if (idy >= size_ny) {
         break;
       }
       dst[idy * NX + idx] =
@@ -154,14 +180,14 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
 
   // Vector per thread
   if (blockDim.x * NX > size) {
-    ReadDataBase<T, NX, NY, BlockSize>(dst, src, size);
+    ReadDataStrideBase<T, NX, NY, BlockSize>(dst, src, size, NY, 1, 1);
   } else {
     // Vector type
     using VecType = details::VectorType<T, VECTOR_SIZE>;
     VecType vec_temp[VECTORS_PER_THREAD];
     const VecType* vec_input = reinterpret_cast<const VecType*>(src);
-    ReadDataBase<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
-        vec_temp, vec_input, VECTORS_PER_THREAD * blockDim.x);
+    ReadDataStrideBase<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
+        vec_temp, vec_input, VECTORS_PER_THREAD * blockDim.x, 1, 1);
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       dst[idx] = *(reinterpret_cast<T*>(vec_temp) + idx);
@@ -201,6 +227,32 @@ __device__ __forceinline__ void ReadDataBc(
         }
         dst[nx + ny * NX] = src[offset];
       }
+    }
+  }
+}
+
+// stride_nx = 1
+template <typename T, int NX, int NY, int BlockSize, int ShapeSize,
+          typename IndexCal>
+__device__ __forceinline__ void ReadDataReduce(T* dst,
+                                               const T* __restrict__ src,
+                                               int fix, IndexCal index_cal,
+                                               int stride_nx, int stride_ny,
+                                               bool reduce_lastdim) {
+  int base_offset = fix;
+  if (reduce_lastdim) {
+    base_offset += threadIdx.x;
+  } else {
+    base_offset += threadIdx.y;
+  }
+
+#pragma unroll
+  for (int ny = 0; ny < NY; ++ny) {
+#pragma unroll
+    for (int nx = 0; nx < NX; ++nx) {
+      int idx = base_offset + ny * stride_ny + nx * stride_nx;
+      uint32_t offset = index_cal(idx);
+      dst[nx + ny * NX] = src[offset];
     }
   }
 }
