@@ -33,7 +33,7 @@ template <typename T>
 class ConcatMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::concat> {
  public:
-  ConcatMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
+  ConcatMKLDNNHandler(const framework::ExecutionContext& ctx,
                       const mkldnn::engine mkldnn_engine,
                       const std::vector<const Tensor*>& inputs, Tensor* output)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::concat>(mkldnn_engine,
@@ -60,19 +60,17 @@ class ConcatMKLDNNHandler
       concat_axis = concat_axis + rank;
     }
 
-    memory::data_type dt =
-        paddle::framework::ToMKLDNNDataType(inputs[0]->type());
+    memory::data_type dt = framework::ToMKLDNNDataType(inputs[0]->type());
     std::vector<memory::desc> srcs_md;
     srcs_md.reserve(inputs.size());
 
     // Create memory descriptors for each of inputs
-    for (size_t i = 0; i < inputs.size(); i++) {
-      const auto dims =
-          paddle::framework::vectorize<int64_t>(inputs[i]->dims());
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      const auto dims = framework::vectorize<int64_t>(inputs[i]->dims());
       srcs_md.emplace_back(memory::desc(dims, dt, inputs[i]->format()));
     }
 
-    auto dst_dims = paddle::framework::vectorize<int64_t>(output->dims());
+    auto dst_dims = framework::vectorize<int64_t>(output->dims());
     auto dst_md = memory::desc(dst_dims, dt, MKLDNNMemoryFormat::any);
 
     this->AcquireForwardPrimitiveDescriptor(dst_md, concat_axis, srcs_md);
@@ -81,14 +79,13 @@ class ConcatMKLDNNHandler
   // (jczaja) concat oneDNN prim is not having .desc attribute so
   // we cannot use base AcquireForwardPrimitiveDescriptor
   void AcquireForwardPrimitiveDescriptor(
-      const mkldnn::memory::desc& dst_md, const int concat_axis,
-      const std::vector<mkldnn::memory::desc>& srcs_md) {
+      const memory::desc& dst_md, const int concat_axis,
+      const std::vector<memory::desc>& srcs_md) {
     this->fwd_pd_.reset(new dnnl::concat::primitive_desc(
         dst_md, concat_axis, srcs_md, this->engine_));
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const framework::Tensor& input, int i) {
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(const Tensor& input, int i) {
     const T* input_data = input.data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->src_desc(i),
                                             to_void_cast<T>(input_data));
