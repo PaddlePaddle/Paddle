@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import gast
+from paddle.utils import gast
 
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list

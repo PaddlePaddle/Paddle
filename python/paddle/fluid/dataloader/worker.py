@@ -36,6 +36,10 @@ class _IterableDatasetStopIteration(object):
         self.worker_id = worker_id
 
 
+class _ResumeIteration(object):
+    pass
+
+
 class _DatasetKind(object):
     MAP = 0
     ITER = 1
@@ -249,7 +253,7 @@ def _generate_states(base_seed=0, worker_id=0):
 
 
 def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
-                 auto_collate_batch, collate_fn, init_fn, worker_id,
+                 auto_collate_batch, collate_fn, drop_last, init_fn, worker_id,
                  num_workers, use_shared_memory):
     try:
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
@@ -278,8 +282,9 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
         try:
             if init_fn is not None:
                 init_fn(worker_id)
-            fetcher = _DatasetKind.create_fetcher(
-                dataset_kind, dataset, auto_collate_batch, collate_fn, True)
+            fetcher = _DatasetKind.create_fetcher(dataset_kind, dataset,
+                                                  auto_collate_batch,
+                                                  collate_fn, drop_last)
         except:
             init_exception = _WorkerException(worker_id)
 
@@ -290,6 +295,13 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
             try:
                 data = indices_queue.get(MP_STATUS_CHECK_INTERVAL)
             except queue.Empty:
+                continue
+
+            if isinstance(data, _ResumeIteration):
+                out_queue.put((data, None, None))
+                iterator_drained = False
+                fetcher = _DatasetKind.create_fetcher(
+                    dataset_kind, dataset, auto_collate_batch, collate_fn, True)
                 continue
 
             # None as poison piil, so worker event should be set

@@ -25,7 +25,21 @@ class AucOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Predict"), "Input", "Predict", "Auc");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "Auc");
-    auto predict_width = ctx->GetInputDim("Predict")[1];
+    auto predict_dims = ctx->GetInputDim("Predict");
+    auto label_dims = ctx->GetInputDim("Label");
+    auto predict_width = predict_dims[1];
+    PADDLE_ENFORCE_NE(
+        framework::product(predict_dims), 0,
+        platform::errors::InvalidArgument(
+            "The Input(Predict) has not been initialized properly. The "
+            "shape of Input(Predict) = [%s], the shape can not involes 0.",
+            predict_dims));
+    PADDLE_ENFORCE_NE(
+        framework::product(label_dims), 0,
+        platform::errors::InvalidArgument(
+            "The Input(Label) has not been initialized properly. The "
+            "shape of Input(Label) = [%s], the shape can not involes 0.",
+            label_dims));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_LE(predict_width, 2,
                         platform::errors::InvalidArgument(
