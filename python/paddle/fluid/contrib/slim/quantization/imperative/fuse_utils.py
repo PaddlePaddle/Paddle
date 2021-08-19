@@ -76,9 +76,8 @@ def fuse_conv_bn(conv, bn):
     assert(conv.training == bn.training),\
         "Conv and BN both must be in the same mode (train or eval)."
     if conv.training:
-        assert bn.num_channels == conv.out_channels, 'Output channel of Conv2d must match num_features of BatchNorm2d'
-        if fused_module_class is not None:
-            raise NotImplementedError
+        assert bn._num_features == conv._out_channels, 'Output channel of Conv2d must match num_features of BatchNorm2d'
+        raise NotImplementedError
     else:
         return fuse_conv_bn_eval(conv, bn)
 
@@ -108,7 +107,7 @@ def fuse_conv_bn_weights(conv_w, conv_b, bn_rm, bn_rv, bn_eps, bn_w, bn_b):
     if bn_b is None:
         bn_b = paddle.zeros_like(bn_rm)
     bn_var_rsqrt = paddle.rsqrt(bn_rv + bn_eps)
-    conv_w = conv_w *
+    conv_w = conv_w * \
         (bn_w * bn_var_rsqrt).reshape([-1] + [1] * (len(conv_w.shape) - 1))
     conv_b = (conv_b - bn_rm) * bn_var_rsqrt * bn_w + bn_b
     return conv_w, conv_b
@@ -117,11 +116,10 @@ def fuse_conv_bn_weights(conv_w, conv_b, bn_rm, bn_rv, bn_eps, bn_w, bn_b):
 def fuse_linear_bn(linear, bn):
     '''fuse linear and bn'''
     assert (linear.training == bn.training),\
-        "Conv and BN both must be in the same mode (train or eval)."
+        "Linear and BN both must be in the same mode (train or eval)."
     if linear.training:
-        assert bn.num_channels == conv.out_channels, 'Output channel of Conv2d must match num_features of BatchNorm2d'
-        if fused_module_class is not None:
-            raise NotImplementedError
+        assert bn._num_features == linear.weight.shape[1], 'Output channel of Linear must match num_features of BatchNorm'
+        raise NotImplementedError
     else:
         return fuse_linear_bn_eval(linear, bn)
 
@@ -145,8 +143,8 @@ def fuse_linear_bn_eval(linear, bn):
 def fuse_linear_bn_weights(linear_w, linear_b, bn_rm, bn_rv, bn_eps, bn_w, bn_b):
     '''fuse weights and bias of linear and bn'''
     if linear_b is None:
-        linear_b = torch.zeros_like(bn_rm)
-    bn_scale = bn_w * torch.rsqrt(bn_rv + bn_eps)
+        linear_b = paddle.zeros_like(bn_rm)
+    bn_scale = bn_w * paddle.rsqrt(bn_rv + bn_eps)
     fused_w = linear_w * bn_scale.unsqueeze(-1)
     fused_b = (linear_b - bn_rm) * bn_scale + bn_b
     return fused_w, fused_b

@@ -73,10 +73,10 @@ class ImperativePTQ(object):
         """
         assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
-
         if not inplace:
             model = copy.deepcopy(model)
         if fuse:
+            model.eval()
             model = fuse_utils.fuse_layers(model, fuse_list)
         for name, layer in model.named_sublayers():
             if PTQRegistry.is_supported_layer(layer) \
