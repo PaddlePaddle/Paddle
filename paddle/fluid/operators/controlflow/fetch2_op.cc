@@ -57,7 +57,7 @@ static void DataCopy(const framework::LoDTensor &src_item,
     } else {
       if (platform::is_gpu_place(src_item.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        TensorCopy(src_item, platform::CUDAPinnedPlace(), ctx, dst_item);
+        TensorCopy(src_item, platform::CUDAPinnedPlace(), dev_ctx, dst_item);
 #endif
       } else {
         TensorCopy(src_item, platform::CPUPlace(), dst_item);
@@ -66,7 +66,7 @@ static void DataCopy(const framework::LoDTensor &src_item,
 #else
     if (platform::is_gpu_place(src_item.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      TensorCopy(src_item, platform::CUDAPinnedPlace(), ctx, dst_item);
+      TensorCopy(src_item, platform::CUDAPinnedPlace(), dev_ctx, dst_item);
 #endif
     } else {
       TensorCopy(src_item, platform::CPUPlace(), dst_item);
@@ -123,6 +123,7 @@ class Fetch2InferVarType : public framework::VarTypeInference {
 class Fetch2Kernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
+    auto fetch_var_name = ctx.InputName("X");
     auto *fetch_var = ctx.InputVar("X");
     if (fetch_var == nullptr) {
       return;
@@ -141,7 +142,7 @@ class Fetch2Kernel {
                     "operator 'Fetch') of current fetching variable to be "
                     "no less than 0. But received column index = %d.",
                     col));
-    auto fetch_var_name = ctx.InputName("X");
+
     auto *fetch_list = out_var->GetMutable<framework::FetchList>();
 
     if (static_cast<size_t>(col) >= fetch_list->size()) {
