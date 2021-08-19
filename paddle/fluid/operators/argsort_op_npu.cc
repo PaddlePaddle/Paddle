@@ -85,14 +85,13 @@ class ArgsortNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T, typename Type>
+template <typename Type>
 static void ReshapeNPU(const framework::ExecutionContext& ctx,
                        const framework::Tensor* input,
                        const std::vector<Type>& input_shapes,
                        framework::Tensor* output) {
   output->ShareDataWith(*input);
   output->Resize(framework::make_ddim(std::move(input_shapes)));
-  input = output;
 }
 
 template <typename T, typename Type>
@@ -106,12 +105,12 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
   Type input_shape = ind_lastdim * outer_dim;
   std::vector<Type> input_shapes = {input_shape};
   Tensor input_reshape_tensor(input->type());
-  ReshapeNPU<T, Type>(ctx, input, input_shapes, &input_reshape_tensor);
+  ReshapeNPU<Type>(ctx, input, input_shapes, &input_reshape_tensor);
   // reshape index
   std::vector<Type> index_shapes = {outer_dim, ind_lastdim};
   framework::DDim ind_2d = framework::make_ddim({outer_dim, ind_lastdim});
   Tensor ind_2d_tensor(indices->type());
-  ReshapeNPU<int32_t, Type>(ctx, indices, index_shapes, &ind_2d_tensor);
+  ReshapeNPU<Type>(ctx, indices, index_shapes, &ind_2d_tensor);
   // range_flatten_index
   std::vector<int32_t> range_flatten_index;
   for (Type i = 0; i < input_shape; i += ind_lastdim) {
@@ -125,8 +124,8 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
                    &range_flatten_index_tensor);
   Tensor range_flatten_index_expand_tensor(range_flatten_index_tensor.type());
   std::vector<Type> flatten_shape = {outer_dim, 1};
-  ReshapeNPU<int32_t, Type>(ctx, &range_flatten_index_tensor, flatten_shape,
-                            &range_flatten_index_expand_tensor);
+  ReshapeNPU<Type>(ctx, &range_flatten_index_tensor, flatten_shape,
+                   &range_flatten_index_expand_tensor);
   auto stream =
       ctx.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
@@ -137,12 +136,11 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
       {ind_2d_add_tensor}, {});
   runner_ind_2d_tensor.Run(stream);
   Tensor ind_reshape_tensor(ind_2d_add_tensor.type());
-  ReshapeNPU<int32_t, Type>(ctx, &ind_2d_add_tensor, input_shapes,
-                            &ind_reshape_tensor);
+  ReshapeNPU<Type>(ctx, &ind_2d_add_tensor, input_shapes, &ind_reshape_tensor);
   Tensor ind_reshape_expand_tensor(ind_reshape_tensor.type());
   std::vector<Type> ind_shape = {input_shape, 1};
-  ReshapeNPU<int32_t, Type>(ctx, &ind_reshape_tensor, ind_shape,
-                            &ind_reshape_expand_tensor);
+  ReshapeNPU<Type>(ctx, &ind_reshape_tensor, ind_shape,
+                   &ind_reshape_expand_tensor);
   // expand_index
   Tensor input_scatter_tensor;
   input_scatter_tensor.Resize({input_shape});
@@ -162,7 +160,10 @@ static void FullAssignNPU(const framework::ExecutionContext& ctx,
       .AddInput(input_reshape_tensor)
       .AddOutput(input_scatter_tensor);
   runner_scatter.Run(stream);
-  ReshapeNPU<T, Type>(ctx, &input_scatter_tensor, trans_shapes, t_out);
+  framework::TensorCopy(input_scatter_tensor, ctx.GetPlace(),
+                        ctx.template device_context<platform::DeviceContext>(),
+                        t_out);
+  t_out->Resize(framework::make_ddim(trans_shapes));
 }
 
 template <typename DeviceContext, typename T>
