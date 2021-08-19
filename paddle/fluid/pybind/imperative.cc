@@ -421,8 +421,8 @@ static void ParseIndexingSlice(
     std::vector<int> *decrease_axis, std::vector<int> *none_axes,
     std::vector<int> *infer_flags, std::vector<int> *list_select_idxs,
     bool *list_select_flag) {
-  // We allow indexing by Integers, Slices, Ellipsis, None and tuples of those
-  // types.
+  // We allow indexing by Integers, Slices, Ellipsis, None, tuples of those
+  // types, and list of Bool and Integers.
   // wrap to tuple
   PyObject *index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
   PADDLE_ENFORCE_EQ(
@@ -493,7 +493,7 @@ static void ParseIndexingSlice(
       if (size != 1) {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "When index contains a list, its length is excepted to 1, "
-            "but received %s",
+            "but received %d",
             size));
       }
       bool all_bool = true;
@@ -1022,9 +1022,6 @@ void BindImperative(py::module *m_ptr) {
                auto *dev_ctx = platform::DeviceContextPool::Instance().Get(
                    tracer->ExpectedPlace());
                TensorFromVector(list_select_idxs, *dev_ctx, idx_tensor);
-               for (int v : list_select_idxs) {
-                 VLOG(4) << v;
-               }
 
                imperative::NameVarBaseMap ins = {{"X", {self}},
                                                  {"Index", {select_index}}};

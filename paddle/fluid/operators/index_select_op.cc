@@ -54,7 +54,7 @@ class IndexSelectOp : public framework::OperatorWithKernel {
                   "the dimension of Input(Index) is [%d].",
                   index_dim, index_dim.size()));
 
-    PADDLE_ENFORCE_EQ(index_dim[0] > 0, true,
+    PADDLE_ENFORCE_EQ(index_dim[0] != 0, true,
                       platform::errors::InvalidArgument(
                           "The length of Input(Index) can't be 0."));
 
