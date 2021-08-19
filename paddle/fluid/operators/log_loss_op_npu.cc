@@ -64,8 +64,6 @@ template <typename T, typename AttrType = T>
 class LogLossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    //  y = - label * log (pred+epsilon) - (1-label) * log (1-pred+epsilon)
-    //    = - label * log (pred+epsilon) + (label-1) * log (1-pred+epsilon)
     auto* y = ctx.Output<Tensor>("Loss");
     auto* pred = ctx.Input<Tensor>("Predicted");
     auto* label = ctx.Input<Tensor>("Labels");
@@ -80,9 +78,6 @@ class LogLossNPUKernel : public framework::OpKernel<T> {
     Tensor input;
     LogLossAdds<T>(place, stream, pred, epsilon, &input);
     LogLossMuls<T>(place, stream, &input, 1 / (1 + 2 * epsilon), &input);
-    // Tensor tmp;
-    // LogLossBCE<T>(place, stream, &input, label, &tmp);
-    // LogLossAdds<T>(place, stream, &tmp, coef, y);
     LogLossBCE<T>(place, stream, &input, label, y);
     LogLossAdds<T>(place, stream, y, coef, y);
   }
