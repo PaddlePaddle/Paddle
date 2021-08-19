@@ -20,6 +20,9 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/operators/npu_op_runner.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -45,7 +48,7 @@ struct FillConstantVisitor {
                  * = nullptr) const {
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(dev_ctx_.GetPlace())) {
-      FillNpuTensorWithConstant<T>(tensor_, value_);
+      FillNpuTensorWithConstant<T>(tensor_, static_cast<T>(value_));
     } else {
       math::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
