@@ -67,15 +67,12 @@ class MatrixRankeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("TolTensor",
              "(Tensor<float>, optional). Tol tensor, shape is same as X batch.")
         .AsDispensable();
-
+    AddOutput("Out", "(Tensor), The output tensor of matrix_rank op.");
     AddAttr<float>("tol", "(float, optional). tol").SetDefault(0.0f);
     AddAttr<bool>("hermitian", "(bool, optional). whether is hermitian matrix")
         .SetDefault(false);
-
-    AddOutput("Out", "(Tensor), The output tensor of matrix_rank op.");
     AddComment(R"DOC(
 MatrixRank Operator.
-
 This operator is used to perform MatrixRank operation for batched matrics.
 $$out = matrix_rank(X, tol, hermitian)$$
 )DOC");

@@ -16,6 +16,8 @@
 
 #include <Eigen/Dense>
 #include <Eigen/SVD>
+#include <Eigen/Eigenvalues> 
+
 #include <cstdarg>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -88,6 +90,7 @@ void BatchRankUseEigenvalues(const T* x_data, int32_t* out_data, float tol,
   }
 }
 
+
 template <typename T>
 class MatrixRankCPUKernel : public framework::OpKernel<T> {
  public:
@@ -116,20 +119,10 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
       BatchRankUseEigenvalues<T>(x_data, out_data, tol, batches, rows, cols);
     } else {
       BatchRankUseSVD<T>(x_data, out_data, tol, batches, rows, cols);
-
-      // Tensor s;
-      // auto* s_data = s.mutable_data<T>( context.GetPlace(), size_t(batches *
-      // std::min(rows, cols) * sizeof(T)) );
-      /*SVD Use the Eigen Library*/
-      // math::BatchSvdOnlyS<T>(x_data, s_data, rows, cols, batches);
-      // coumpute rank
-      // for (int i = 0; i < batches; i++) {
-      //   math::BatchRank<T>(s_out, out_data, *tol, batches, k);
-      // }
     }
-
-    // 广播可以使用expand算子/broadcast_tensors算子/broadcast_shape、broadcast_tensors
   }
 };
+
+
 }  // namespace operators
 }  // namespace paddle
