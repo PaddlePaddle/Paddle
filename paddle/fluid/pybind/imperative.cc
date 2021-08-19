@@ -822,6 +822,7 @@ void BindImperative(py::module *m_ptr) {
       .def("__setitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
               py::object &value_obj) {
+             VLOG(4) << "Call __setitem__";
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
              PyObject *index_ptr;
@@ -910,6 +911,7 @@ void BindImperative(py::module *m_ptr) {
                }
              } else {
                auto self_numpy = TensorToPyArray(*self_tensor);
+               VLOG(4) << "value is tensor";
 
                if (value_is_tensor) {
                  auto value =
@@ -917,14 +919,8 @@ void BindImperative(py::module *m_ptr) {
                  auto value_tensor =
                      value->MutableVar()->GetMutable<framework::LoDTensor>();
                  auto value_numpy = TensorToPyArray(*value_tensor);
-
-                 self_numpy[_index] = value_numpy;
-                 SetTensorFromPyArray(self_tensor, self_numpy,
-                                      self_tensor->place(), true);
-               } else {
-                 VLOG(4) << "value IS not TENSOR";
                  if (is_tensor(_index)) {
-                   VLOG(4) << "INDEX IS TENSOR";
+                   VLOG(4) << "index is tensor";
                    auto index_var =
                        py::cast<std::shared_ptr<imperative::VarBase>>(_index);
                    auto index_tensor = index_var->MutableVar()
@@ -932,7 +928,23 @@ void BindImperative(py::module *m_ptr) {
                    auto index_numpy = TensorToPyArray(*index_tensor);
                    self_numpy[index_numpy] = value_obj;
                  } else {
-                   VLOG(4) << "INDEX IS not TENSOR";
+                   self_numpy[_index] = value_numpy;
+                 }
+
+                 SetTensorFromPyArray(self_tensor, self_numpy,
+                                      self_tensor->place(), true);
+               } else {
+                 VLOG(4) << "value is not tensor";
+                 if (is_tensor(_index)) {
+                   VLOG(4) << "index is tensor";
+                   auto index_var =
+                       py::cast<std::shared_ptr<imperative::VarBase>>(_index);
+                   auto index_tensor = index_var->MutableVar()
+                                           ->GetMutable<framework::LoDTensor>();
+                   auto index_numpy = TensorToPyArray(*index_tensor);
+                   self_numpy[index_numpy] = value_obj;
+                 } else {
+                   VLOG(4) << "index is not tensor";
                    self_numpy[_index] = value_obj;
                  }
                  SetTensorFromPyArray(self_tensor, self_numpy,
