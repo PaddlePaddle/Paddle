@@ -9765,11 +9765,11 @@ def prelu(x, mode, param_attr=None, name=None):
 
         mode (str): The mode for weight sharing.
 
-        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
-        weight (alpha), it can be create by ParamAttr. None by default.
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable \
+        weight (alpha), it can be create by ParamAttr. None by default. \
         For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
 
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str, optional): Name for the operation (optional, default is None). \
         For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
