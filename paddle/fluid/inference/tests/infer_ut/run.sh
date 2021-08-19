@@ -95,6 +95,12 @@ for model_name in $det_download_list; do
     download $url_prefix $model_name
 done
 
+unknown_download_list='resnet50_quant'
+for model_name in $unknown_download_list; do
+    url_prefix="https://paddle-qa.bj.bcebos.com/inference_model/unknown"
+    download $url_prefix $model_name
+done
+
 function compile_test() {
     mkdir -p ${build_dir}
     cd ${build_dir}
@@ -191,6 +197,18 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         --gtest_output=xml:test_ppyolov2_r50vd.xml
     if [ $? -ne 0 ]; then
         echo "test_ppyolov2_r50vd runs failed" >> ${current_dir}/build/test_summary.txt
+        EXIT_CODE=1
+    fi
+
+    printf "${YELLOW} start test_resnet50_quant ${NC} \n";
+    compile_test "test_resnet50_quant"
+    ./test_resnet50_quant \
+        --int8dir=$DATA_DIR/resnet50_quant/resnet50_quant/resnet50_quant \
+        --modeldir=$DATA_DIR/resnet50/resnet50 \
+        --datadir=$DATA_DIR/resnet50_quant/resnet50_quant/imagenet-eval-binary/9.data \
+        --gtest_output=xml:test_resnet50_quant.xml
+    if [ $? -ne 0 ]; then
+        echo "test_resnet50_quant runs failed" >> ${current_dir}/build/test_summary.txt
         EXIT_CODE=1
     fi
 
