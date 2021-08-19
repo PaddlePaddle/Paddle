@@ -52,7 +52,7 @@ paddle::test::Record PrepareInput(int batch_size) {
   return image_Record;
 }
 
-TEST(DISABLED_test_resnet50_quant, multi_thread4_trt_int8_bz1) {
+TEST(test_resnet50_quant, multi_thread4_trt_int8_bz1) {
   int thread_num = 4;
   // init input data
   std::map<std::string, paddle::test::Record> input_data_map;
