@@ -14,7 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 
-#include "paddle/fluid/framework/ir/graph_helper.h"
+#include <gflags/gflags.h>
+#include <algorithm>
+
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
@@ -27,51 +30,13 @@ namespace framework {
 namespace ir {
 
 void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
-  // Remove the unneeded variables after memory optimization.
-  std::unordered_set<std::string> vars2remove;
-  if (graph->Has(kGraphToProgramVarsToRemove)) {
-    vars2remove = graph->Get<std::unordered_set<std::string>>(
-        kGraphToProgramVarsToRemove);
-    VLOG(2) << "graph to program remove " << vars2remove.size() << " nodes";
-  }
-
-  ProgramDesc& program = Get<ProgramDesc>("program");
-
-  std::unique_ptr<proto::ProgramDesc> program_pb(
-      new proto::ProgramDesc(*program.Proto()));
-
-  auto block = program_pb->mutable_blocks(kRootBlockIndex);
-  block->set_idx(kRootBlockIndex);
-  block->clear_vars();
-  std::unordered_set<std::string> visited_vars;
-  for (ir::Node* n : graph->Nodes()) {
-    if (n->IsVar()) {
-      if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
-          !vars2remove.count(n->Var()->Name())) {
-        visited_vars.insert(n->Var()->Name());
-        block->add_vars()->MergeFrom(*n->Var()->Proto());
-      }
-    }
-  }
-  block->clear_ops();
-
-  std::vector<ir::Node*> nodes;
+  auto& program = Get<ProgramDesc>("program");
   if (Has(kGraphToProgramSortKind)) {
-    // Inference Memory Optimize relays on this branch.
-    int sort_kind = Get<int>(kGraphToProgramSortKind);
-    nodes = TopologyVarientSort(
-        *graph, static_cast<framework::ir::SortKind>(sort_kind));
+    auto sort_kind = static_cast<SortKind>(Get<int>(kGraphToProgramSortKind));
+    GraphToProgram(*graph, &program, &sort_kind);
   } else {
-    nodes = TopologySortOperations(*graph);
+    GraphToProgram(*graph, &program, nullptr);
   }
-
-  for (ir::Node* n : nodes) {
-    if (!n->Op()) continue;
-
-    block->add_ops()->MergeFrom(*n->Op()->Proto());
-  }
-
-  program.CopyFrom(*program_pb);
 }
 
 }  // namespace ir

@@ -75,6 +75,19 @@ void SetAllowTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
 bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
 #endif  // PADDLE_WITH_CUDA
 
+DeviceType Place2DeviceType(const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    return platform::DeviceType::CPU;
+  } else if (platform::is_gpu_place(place)) {
+    return platform::DeviceType::CUDA;
+  } else if (platform::is_xpu_place(place)) {
+    return platform::DeviceType::XPU;
+  } else {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported place %s to convert into platform::DeviceType.", place));
+  }
+}
+
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
@@ -183,7 +196,10 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 Place CPUDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
+XPUDeviceContext::XPUDeviceContext() {
+  context_ = xpu::create_context();
+  xpu_version_ = get_xpu_version(place_.device);
+}
 
 XPUDeviceContext::~XPUDeviceContext() {}
 

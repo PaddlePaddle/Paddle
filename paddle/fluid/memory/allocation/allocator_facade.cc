@@ -33,7 +33,7 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
 #include "paddle/fluid/platform/npu_info.h"
 
@@ -238,6 +238,12 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetXPUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::XPUPlace(dev_id));
+    }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+    int device_count = platform::GetNPUDeviceCount();
+    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
+      places.emplace_back(platform::NPUPlace(dev_id));
     }
 #endif
 

@@ -51,7 +51,7 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(4) << "handle " + conv_type() + "+" + activation_type() + " fuse";
 
     if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "Pass op compat failed.";
+      LOG(WARNING) << "conv_activation_mkldnn_fuse_pass op compat failed.";
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight,
@@ -113,6 +113,10 @@ ConvActivationFusePass::ConvActivationFusePass() {
       .AddInput("Bias")
       .IsOptional()
       .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Output")
       .IsTensor()

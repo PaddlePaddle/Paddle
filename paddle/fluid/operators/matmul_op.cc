@@ -232,7 +232,9 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
-    head_number = context.Attr<int>("head_number");
+    if (context.HasAttr("head_number")) {
+      head_number = context.Attr<int>("head_number");
+    }
 #endif
 
     if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
@@ -328,6 +330,12 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
   auto axis =
       ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
   auto dim = ctx.GetInputDim(input_name);
+
+  PADDLE_ENFORCE_GT(dim.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "The Input(%s) has not been initialized properly. The "
+                        "shape of Input(%s) = [%s].",
+                        dim));
   if (!shape.empty() && !axis.empty()) {
     PADDLE_ENFORCE_GE(
         shape.size(), 2,
