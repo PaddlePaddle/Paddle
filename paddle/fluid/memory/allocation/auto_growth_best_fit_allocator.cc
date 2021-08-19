@@ -34,29 +34,18 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-struct SpinLockGuard {
-  explicit SpinLockGuard(MLOCK_T *mutex) {
-    mutex_ = mutex;
-    ACQUIRE_LOCK(mutex_);
-  }
-  ~SpinLockGuard() { RELEASE_LOCK(mutex_); }
-  MLOCK_T *mutex_;
-};
-
 AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
     const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
     size_t chunk_size)
     : underlying_allocator_(
           std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
       alignment_(alignment),
-      chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)) {
-  INITIAL_LOCK(&mtx_);
-}
+      chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)) {}
 
 Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
   size = AlignedSize(size, alignment_);
 
-  SpinLockGuard guard(&mtx_);
+  std::lock_guard<SpinLock> guard(spinlock_);
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
   BlockIt block_it;
   if (iter != free_blocks_.end()) {
@@ -110,7 +99,7 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
 }
 
 void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
-  SpinLockGuard guard(&mtx_);
+  std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;
 

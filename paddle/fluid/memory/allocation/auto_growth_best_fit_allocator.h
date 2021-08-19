@@ -87,7 +87,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
   size_t alignment_;
   size_t chunk_size_;
 
-  MLOCK_T mtx_;
+  SpinLock spinlock_;
 };
 
 }  // namespace allocation
