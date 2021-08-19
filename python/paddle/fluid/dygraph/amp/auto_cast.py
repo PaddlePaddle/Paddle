@@ -117,30 +117,6 @@ def fp16_initialize(enable_pure_fp16, model, optimizer):
 
     optimizer._parameter_list = model.parameters()
     return model, optimizer
-    #
-
-
-'''
-# 获取master weight
-def init_master_weight(optimizer):
-    fp16_groups = []
-    fp32_groups = []
-    for i, group in enumerate(optimizer._param_groups):
-        fp16_this_group = []
-        fp32_this_group = []
-        for i, param in enumerate(group['params']):
-            if param._grad_ivar() is not None:
-                if param.dtype is 'float16':
-                    fp16_this_group.append(param)
-                elif param.dtype is 'float32':
-                    fp32_this_group.append(param)
-                else:
-                    raise TypeError("Optimizer's parameters must be either "
-                                        "float16 or float32. "
-                                        "Received {}".format(param.dtype()))
-        fp16_groups.append(fp16_this_group)
-        fp32_groups.append(fp32_this_group)
-'''
 
 
 @signature_safe_contextmanager
