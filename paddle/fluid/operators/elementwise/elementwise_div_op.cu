@@ -22,6 +22,24 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
+template <typename T, typename Enable = void>
+struct CudaDivFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    return args[0] / args[1];
+  }
+};
+
+template <typename T>
+struct CudaDivFunctor<T,
+                      typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    PADDLE_ENFORCE(args[1] != 0,
+                   "Invalid Argument Error: Integer division by zero "
+                   "encountered in divide. Please check the input value.");
+    return args[0] / args[1];
+  }
+};
+
 template <typename T>
 class ElementwiseDivKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
@@ -34,7 +52,7 @@ class ElementwiseDivKernel<platform::CUDADeviceContext, T>
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, kernel_primitives::DivFunctor<T>());
+        cuda_ctx, ins, &outs, axis, CudaDivFunctor<T>());
   }
 };
 
