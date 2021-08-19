@@ -2491,25 +2491,25 @@ def neg(x, name=None):
 
     return layers.scale(x, scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name)
 
-def atan2(y, x, name=None):
+def atan2(x, y, name=None):
     r"""
-    Element-wise arctangent of y/x with consideration of the quadrant.
+    Element-wise arctangent of x/y with consideration of the quadrant.
 
     Equation:
         .. math::
 
-          atan2(y,x)=\left\{\begin{matrix}
-          & tan^{-1}(\frac{y}{x}) & x > 0 \\
-          & tan^{-1}(\frac{y}{x}) + \pi & y>=0, x < 0 \\
-          & tan^{-1}(\frac{y}{x}) - \pi & y<0, x < 0 \\
-          & +\frac{\pi}{2} & y>0, x = 0 \\
-          & -\frac{\pi}{2} & y<0, x = 0 \\
-          &\text{undefined} & y=0, x = 0
-          \end{matrix}\right.
+            atan2(x,y)=\left\{\begin{matrix}
+            & tan^{-1}(\frac{x}{y}) & y > 0 \\
+            & tan^{-1}(\frac{x}{y}) + \pi & x>=0, y < 0 \\
+            & tan^{-1}(\frac{x}{y}) - \pi & x<0, y < 0 \\
+            & +\frac{\pi}{2} & x>0, y = 0 \\
+            & -\frac{\pi}{2} & x<0, y = 0 \\
+            &\text{undefined} & x=0, y = 0
+            \end{matrix}\right.
 
     Args:
-        y (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
-        x (Tensor): An N-D Tensor, must have the same type as `x`.
+        x (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
+        y (Tensor): An N-D Tensor, must have the same type as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2518,30 +2518,30 @@ def atan2(y, x, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            import paddle
 
-          y = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
-          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-          #       [-1,  1,  1, -1])
+            x = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
+            #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [-1,  1,  1, -1])
 
-          x = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
-          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-          #       [-1,  -1,  1, 1])
+            y = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
+            #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [-1,  -1,  1, 1])
 
-          out = paddle.atan2(y, x)
-          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-          #       [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
+            out = paddle.atan2(x, y)
+            #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
 
     """
 
     if in_dygraph_mode():
-        return _C_ops.atan2(y, x)
+        return _C_ops.atan2(x, y)
     else:
-        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
         check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
+        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
 
         helper = LayerHelper('atan2', **locals())
-        inputs = {'X1' : y, 'X2' : x}
+        inputs = {'X1' : x, 'X2' : y}
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
                 type='atan2', inputs=inputs, outputs={'Out': out})
