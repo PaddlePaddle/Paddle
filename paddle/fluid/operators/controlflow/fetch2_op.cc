@@ -53,13 +53,26 @@ static void DataCopy(const framework::LoDTensor &src_item,
                                  : paddle::platform::MKLDNNDeviceContext::tls()
                                        .get_cur_paddle_data_layout(),
           src_item, &out, platform::CPUPlace());
-      TensorCopy(src_item, platform::CUDAPinnedPlace(), dev_ctx, dst_item);
+      TensorCopy(src_item, platform::CPUPlace(), dev_ctx, dst_item);
     } else {
-      TensorCopy(src_item, platform::CUDAPinnedPlace(), dev_ctx, dst_item);
+      if (platform::is_gpu_place(src_item.place())) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        TensorCopy(src_item, platform::CUDAPinnedPlace(), ctx, dst_item);
+#endif
+      } else {
+        TensorCopy(src_item, platform::CPUPlace(), dst_item);
+      }
     }
 #else
-    TensorCopy(src_item, platform::CUDAPinnedPlace(), dev_ctx, dst_item);
+    if (platform::is_gpu_place(src_item.place())) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      TensorCopy(src_item, platform::CUDAPinnedPlace(), ctx, dst_item);
 #endif
+    } else {
+      TensorCopy(src_item, platform::CPUPlace(), dst_item);
+    }
+#endif
+
   } else {
     // Not copy, if the src tensor is empty.
     dst_item->clear();
