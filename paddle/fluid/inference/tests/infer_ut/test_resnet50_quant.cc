@@ -30,9 +30,9 @@ paddle::test::Record PrepareInput(int batch_size) {
 
   // load from binary data
   std::ifstream fs(FLAGS_datadir, std::ifstream::binary);
-  if (!fs.is_open()) {
-    LOG(FATAL) << "open input file fail.";
-  }
+  EXPECT_TRUE(fs.is_open());
+  CHECK(fs.is_open());
+
   float* input = new float[input_num];
   memset(input, 0, input_num * sizeof(float));
   auto input_data_tmp = input;
