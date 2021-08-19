@@ -37,7 +37,7 @@ def _start_kv_server(port, http_server_d, size):
     http_server.stop()
 
 
-def init_gloo_parallel_env(rank_id, rank_num, server_endpoint):
+def gloo_init_parallel_env(rank_id, rank_num, server_endpoint):
     """
     Initialize parallel environment with gloo for cpu only.
 
@@ -132,7 +132,7 @@ def init_gloo_parallel_env(rank_id, rank_num, server_endpoint):
         http_server_proc.join()
 
 
-def barrier_func():
+def gloo_barrier():
     """
     Call barrier function with initialized gloo context.
 
@@ -186,10 +186,11 @@ def barrier_func():
                 test_barrier_with_multiprocess(2)
     """
 
+    assert _global_gloo_ctx is not None, "gloo context is not initialzed."
     _global_gloo_ctx.barrier()
 
 
-def release_gloo(rank_id):
+def gloo_release():
     """
     Release the parallel environment initialized by gloo
 
@@ -244,4 +245,5 @@ def release_gloo(rank_id):
                 test_release_gloo_with_multiprocess(2)
     """
 
-    _global_gloo_ctx.release()
+    if _global_gloo_ctx is not None:
+        _global_gloo_ctx.release()

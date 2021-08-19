@@ -27,7 +27,7 @@ port_set = set()
 paddle.enable_static()
 
 
-class CollectiveCPUBarrierText(unittest.TestCase):
+class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
     def find_free_port(self):
         def _free_port():
             with closing(socket.socket(socket.AF_INET,
@@ -42,42 +42,50 @@ class CollectiveCPUBarrierText(unittest.TestCase):
                 return port
 
     def barrier_func(self, id, rank_num, server_endpoint, out_dict, sleep_time):
-        paddle.distributed.init_gloo_parallel_env(id, rank_num, server_endpoint)
-        # 1st barrier
-        # Run barrier to synchronize processes after starting
-        paddle.distributed.barrier_func()
-        # 2nd barrier
-        # Let rank 0 sleep for one second and check that all processes
-        # saw that artificial delay through the barrier
-        start = time.time()
-        if (id == 0):
-            time.sleep(sleep_time)
-        paddle.distributed.barrier_func()
-        end = time.time()
-        out_dict[id] = end - start
-        # Release
-        paddle.distributed.release_gloo(id)
+        try:
+            paddle.distributed.gloo_init_parallel_env(id, rank_num,
+                                                      server_endpoint)
+            # 1st barrier
+            # Run barrier to synchronize processes after starting
+            paddle.distributed.gloo_barrier()
+            # 2nd barrier
+            # Let rank 0 sleep for one second and check that all processes
+            # saw that artificial delay through the barrier
+            start = time.time()
+            if (id == 0):
+                time.sleep(sleep_time)
+            paddle.distributed.gloo_barrier()
+            end = time.time()
+            out_dict[id] = end - start
+            # Release
+            paddle.distributed.gloo_release()
+        except:
+            out_dict[id] = 0
 
     def barrier_op(self, id, rank_num, server_endpoint, out_dict, sleep_time):
-        main_prog = fluid.Program()
-        startup_prog = fluid.Program()
-        paddle.distributed.init_gloo_parallel_env(id, rank_num, server_endpoint)
-        place = fluid.CPUPlace()
-        with fluid.program_guard(main_prog, startup_prog):
-            paddle.distributed.barrier()
-        exe = fluid.Executor(place)
-        # Run barrier to synchronize processes after starting
-        exe.run(main_prog)
-        # Let rank 0 sleep for one second and check that all processes
-        # saw that artificial delay through the barrier
-        start = time.time()
-        if (id == 0):
-            time.sleep(sleep_time)
-        exe.run(main_prog)
-        end = time.time()
-        out_dict[id] = end - start
-        # Release
-        paddle.distributed.release_gloo(id)
+        try:
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
+            paddle.distributed.gloo_init_parallel_env(id, rank_num,
+                                                      server_endpoint)
+            place = fluid.CPUPlace()
+            with fluid.program_guard(main_prog, startup_prog):
+                paddle.distributed.barrier()
+            exe = fluid.Executor(place)
+            # Run barrier to synchronize processes after starting
+            exe.run(main_prog)
+            # Let rank 0 sleep for one second and check that all processes
+            # saw that artificial delay through the barrier
+            start = time.time()
+            if (id == 0):
+                time.sleep(sleep_time)
+            exe.run(main_prog)
+            end = time.time()
+            out_dict[id] = end - start
+            # Release
+            paddle.distributed.gloo_release()
+        except:
+            out_dict[id] = 0
 
     def test_barrier_func_with_multiprocess(self):
         num_of_ranks = 4
@@ -90,7 +98,7 @@ class CollectiveCPUBarrierText(unittest.TestCase):
         jobs = []
         for id in range(num_of_ranks):
             p = multiprocessing.Process(
-                target=self.barrier_op,
+                target=self.barrier_func,
                 args=(id, num_of_ranks, ep_str, procs_out_dict, sleep_time))
             jobs.append(p)
             p.start()
