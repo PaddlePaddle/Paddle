@@ -74,11 +74,11 @@ class LogLossNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    float coef = -std::log(1 + 2 * epsilon);
-    Tensor input;
-    LogLossAdds<T>(place, stream, pred, epsilon, &input);
-    LogLossMuls<T>(place, stream, &input, 1 / (1 + 2 * epsilon), &input);
-    LogLossBCE<T>(place, stream, &input, label, y);
+    float factor = 1 / (1 + 2 * epsilon);
+    float coef = std::log(factor);
+    LogLossAdds<T>(place, stream, pred, epsilon, y);
+    LogLossMuls<T>(place, stream, y, factor, y);
+    LogLossBCE<T>(place, stream, y, label, y);
     LogLossAdds<T>(place, stream, y, coef, y);
   }
 };
