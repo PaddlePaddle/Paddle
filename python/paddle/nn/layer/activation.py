@@ -917,12 +917,13 @@ class Silu(Layer):
     Silu Activation.
 
     .. math::
+
         Silu(x) = \frac{x}{1 + e^{-x}}
 
     Parameters:
-        - x (Tensor): The input Tensor with data type float32, or float64.
-        - name (str, optional): Name for the operation (optional, default is None).
-          For more information, please refer to :ref:`api_guide_Name`.
+        x (Tensor): The input Tensor with data type float32, or float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: Tensor with any shape.

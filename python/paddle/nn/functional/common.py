@@ -531,7 +531,6 @@ def upsample(x,
     area will directly call `paddle.nn.functional.adaptive_avg_pool1d` or
     `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
 
-    Example:
     .. code-block:: text
 
         For scale_factor:
@@ -647,10 +646,12 @@ def upsample(x,
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+
     Raises:
         TypeError: size should be a list or tuple or Tensor.
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
@@ -666,8 +667,10 @@ def upsample(x,
         TypeError: align_corners should be a bool value
         ValueError: align_mode can only be '0' or '1'
         ValueError: data_format can only be 'NCW', 'NWC', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
-        Examples:
+
+    Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
             import paddle.nn.functional as F
