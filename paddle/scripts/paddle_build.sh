@@ -2422,6 +2422,11 @@ function main() {
         python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         gen_fluid_lib ${parallel_number}
         ;;
+      gpu_inference)
+        test_fluid_lib
+        test_go_inference_api
+        check_approvals_of_unittest 3
+        ;;
       test_train)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib_train
