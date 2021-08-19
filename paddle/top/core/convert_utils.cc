@@ -82,6 +82,28 @@ DataLayout TransToPtLayout(const paddle::framework::DataLayout& layout) {
   }
 }
 
+paddle::platform::Place TransToFluidPlace(const Backend& backend) {
+  // TODO(chenweihang): add other trans cases
+  switch (backend) {
+    case pt::Backend::kCPU:
+      return paddle::platform::CPUPlace();
+    case pt::Backend::kCUDA:
+      return paddle::platform::CUDAPlace();
+    case pt::Backend::kXPU:
+      return paddle::platform::XPUPlace();
+    case pt::Backend::kNPU:
+      return paddle::platform::NPUPlace();
+    case pt::Backend::kMKLDNN:
+      return paddle::platform::CPUPlace();
+    case pt::Backend::kCUDNN:
+      return paddle::platform::CUDAPlace();
+    default:
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported backend `%s` when casting it to paddle place type.",
+          backend));
+  }
+}
+
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const pt::DataType& dtype) {
   // Set the order of case branches according to the frequency with
@@ -111,9 +133,27 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
       return paddle::framework::proto::VarType::BOOL;
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "Unsupported data type code(%d) when casting enum data type into "
+          "Unsupported data type `%s` when casting it into "
           "paddle data type.",
-          static_cast<int>(dtype)));
+          dtype));
+  }
+}
+
+paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout) {
+  switch (layout) {
+    case DataLayout::kNHWC:
+      return paddle::framework::DataLayout::kNHWC;
+    case DataLayout::kNCHW:
+      return paddle::framework::DataLayout::kNCHW;
+    case DataLayout::kAny:
+      return paddle::framework::DataLayout::kAnyLayout;
+    case DataLayout::kMKLDNN:
+      return paddle::framework::DataLayout::kMKLDNN;
+    default:
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported data layout `%s` when casting it into "
+          "paddle data layout.",
+          layout));
   }
 }
 

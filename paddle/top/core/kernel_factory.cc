@@ -24,6 +24,11 @@ OpKernelFactory& OpKernelFactory::Instance() {
   return g_op_kernel_factory;
 }
 
+bool OpKernelFactory::ContainsOperation(const char* op_type) const {
+  auto iter = kernels_.find(OperationName(op_type));
+  return (iter != kernels_.end());
+}
+
 const OpKernel& OpKernelFactory::SelectKernel(
     const OperationName& op_name, const OpKernelKey& kernel_key) const {
   auto iter = kernels_.find(op_name);

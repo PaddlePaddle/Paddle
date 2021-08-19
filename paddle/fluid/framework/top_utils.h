@@ -24,6 +24,12 @@ namespace framework {
 
 template <typename TensorImplT>
 std::shared_ptr<TensorImplT> MakeTensorImpl(const Tensor& tensor,
+                                            pt::Backend backend,
+                                            pt::DataType dtype,
+                                            pt::DataLayout layout);
+
+template <typename TensorImplT>
+std::shared_ptr<TensorImplT> MakeTensorImpl(const Tensor& tensor,
                                             const platform::Place& place,
                                             proto::VarType::Type type);
 

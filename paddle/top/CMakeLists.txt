@@ -21,9 +21,8 @@ if(WITH_XPU)
 endif()
 # top kernels for other tensor
 add_subdirectory(selected_rows)
-# top infershape and dtype
+# top infershape
 add_subdirectory(infershape)
-add_subdirectory(inferdtype)
 # top public functors
 add_subdirectory(module)
 # top tests

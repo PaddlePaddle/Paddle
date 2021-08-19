@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/top_utils.h"
 
-#include "paddle/top/api/include/tensor.h"
-
 namespace paddle {
 namespace framework {
 
@@ -23,13 +21,11 @@ namespace framework {
 
 template <>
 std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
-    const Tensor& tensor, const platform::Place& place,
-    proto::VarType::Type type) {
+    const Tensor& tensor, pt::Backend backend, pt::DataType dtype,
+    pt::DataLayout layout) {
   auto holder = tensor.Holder();
   auto tensor_impl = std::make_shared<pt::DenseTensor>(
-      pt::TensorMeta(tensor.dims(), pt::TransToPtBackend(place),
-                     pt::TransToPtDataType(type),
-                     pt::TransToPtLayout(tensor.layout()), tensor.offset()),
+      pt::TensorMeta(tensor.dims(), backend, dtype, layout, tensor.offset()),
       pt::TensorStatus());
 
   if (holder != nullptr) {
@@ -38,6 +34,15 @@ std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
     LOG(WARNING) << "Old Tensor holder is nullptr.";
   }
   return tensor_impl;
+}
+
+template <>
+std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
+    const Tensor& tensor, const platform::Place& place,
+    proto::VarType::Type type) {
+  return MakeTensorImpl<pt::DenseTensor>(tensor, pt::TransToPtBackend(place),
+                                         pt::TransToPtDataType(type),
+                                         pt::TransToPtLayout(tensor.layout()));
 }
 
 template <>

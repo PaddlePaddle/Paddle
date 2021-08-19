@@ -33,7 +33,10 @@ Backend TransToPtBackend(const paddle::platform::Place& place);
 DataType TransToPtDataType(
     const paddle::framework::proto::VarType::Type& dtype);
 DataLayout TransToPtLayout(const paddle::framework::DataLayout& layout);
+
+paddle::platform::Place TransToFluidPlace(const Backend& backend);
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const DataType& dtype);
+paddle::framework::DataLayout TransToFluidDataLayout(const DataLayout& layout);
 
 }  // namespace pt

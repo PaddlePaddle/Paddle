@@ -33,11 +33,11 @@ enum class Backend {
   kUndef = 0,
   kCPU,
   kCUDA,
-  kCUDAPinned,  // need to be removed
-  kHIP,
+  kCUDAPinned,  // TODO(chenweihang): need to be removed
+  kHIP,         // TODO(chenweihang): hip is not need now
   kXPU,
   kNPU,
-  kNPUPinned,  // need to be removed
+  kNPUPinned,  // TODO(chenweihang): need to be removed
   kMKLDNN,
   kCUDNN,
   kNumBackends,

@@ -47,7 +47,7 @@ class InferNoNeedBufferVarsFN;
  * the value T not modifiable. To modify the value you have to call the value()
  * method of the iterator to get a mutable reference. Example:
  *
- *      tsl::ordered_map<int, int> map = {{1, 1}, {2, 1}, {3, 1}};
+ *      paddle::ordered_map<int, int> map = {{1, 1}, {2, 1}, {3, 1}};
  *      for(auto it = map.begin(); it != map.end(); ++it) {
  *          //it->second = 2; // Illegal
  *          it.value() = 2; // Ok
@@ -67,6 +67,7 @@ using Attribute = boost::variant<
     std::vector<std::string>, bool, std::vector<bool>, BlockDesc*, int64_t,
     std::vector<BlockDesc*>, std::vector<int64_t>, std::vector<double>>;
 
+// TODO(chenweihang): AttirbuteMap also need to be ordered
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL

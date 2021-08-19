@@ -138,6 +138,7 @@ class OpKernelKey {
   uint32_t hash_value_;
 };
 
+// TODO(chenweihang): how deal with vector<Param>?
 struct ParamDef {
   Backend backend;
   DataLayout layout;
@@ -158,6 +159,10 @@ class OpKernelParamDef {
   void AppendOutput(Backend backend, DataLayout layout, DataType dtype) {
     output_defs_.emplace_back(ParamDef(backend, layout, dtype));
   }
+
+  const std::vector<ParamDef>& input_defs() const { return input_defs_; }
+
+  const std::vector<ParamDef>& output_defs() const { return output_defs_; }
 
   void SetSameAsKernelKey() { same_as_kernel_key_ = true; }
 
@@ -180,13 +185,21 @@ class OpKernel {
 
   void operator()(OpKernelContext* ctx) const { fn_(ctx); }
 
-  OpKernelParamDef& param_def() { return param_def_; }
+  OpKernelParamDef* mutable_param_def() { return &param_def_; }
+
+  const OpKernelParamDef& param_def() const { return param_def_; }
 
  private:
   OpKernelFn fn_{nullptr};
   OpKernelParamDef param_def_;
 };
 
+/**
+ * Note: Each Operation need a basic kernel map that named by op_type.
+ *       Such as for scale op, OpKernelMap contains a `scale` kernel map,
+ *       if it still need other overload kernel, the op name can be
+ *       `scale.***`.
+ */
 class OpKernelFactory {
  public:
   // replaced by paddle::flat_hash_map later
@@ -198,6 +211,8 @@ class OpKernelFactory {
   static OpKernelFactory& Instance();
 
   OpKernelMap& kernels() { return kernels_; }
+
+  bool ContainsOperation(const char* op_type) const;
 
   const OpKernel& SelectKernel(const OperationName& op_name,
                                const OpKernelKey& kernel_key) const;

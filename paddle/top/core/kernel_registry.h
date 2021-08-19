@@ -39,8 +39,8 @@ class OpKernelRegistrar {
   OpKernelRegistrar& Input(Backend backend, DataLayout layout, DataType dtype) {
     OpKernelFactory::Instance()
         .kernels()[op_name_][op_kernel_key_]
-        .param_def()
-        .AppendInput(backend, layout, dtype);
+        .mutable_param_def()
+        ->AppendInput(backend, layout, dtype);
     return *this;
   }
 
@@ -49,16 +49,16 @@ class OpKernelRegistrar {
                             DataType dtype) {
     OpKernelFactory::Instance()
         .kernels()[op_name_][op_kernel_key_]
-        .param_def()
-        .AppendOutput(backend, layout, dtype);
+        .mutable_param_def()
+        ->AppendOutput(backend, layout, dtype);
     return *this;
   }
 
   OpKernelRegistrar& SetSameAsKernelKey() {
     OpKernelFactory::Instance()
         .kernels()[op_name_][op_kernel_key_]
-        .param_def()
-        .SetSameAsKernelKey();
+        .mutable_param_def()
+        ->SetSameAsKernelKey();
     return *this;
   }
 

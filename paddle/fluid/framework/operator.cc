@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/top_utils.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -1073,6 +1074,85 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
+static OpKernelType TransPtOpKernelKeyToOpKernelType(
+    const pt::OpKernelKey& kernel_key) {
+  proto::VarType::Type data_type = pt::TransToProtoVarType(kernel_key.dtype());
+  platform::Place place = pt::TransToFluidPlace(kernel_key.backend());
+  DataLayout data_layout = pt::TransToFluidDataLayout(kernel_key.layout());
+  LibraryType library_type = LibraryType::kPlain;
+  if (kernel_key.backend() == pt::Backend::kMKLDNN) {
+    library_type = LibraryType::kMKLDNN;
+  } else if (kernel_key.backend() == pt::Backend::kCUDNN) {
+    library_type = LibraryType::kCUDNN;
+  } else {
+    // do nothing
+  }
+  // TODO(chenweihang): the customized_type_value is lost
+  return OpKernelType(data_type, place, data_layout, library_type);
+}
+
+static std::string RuntimeContextDebugString(const RuntimeContext& ctx) {
+  std::stringstream ss;
+  ss << "RuntimeContext(Inputs: ";
+  for (auto& var_pair : ctx.inputs) {
+    ss << var_pair.first << ", ";
+  }
+  ss << "Outputs: ";
+  for (auto& var_pair : ctx.outputs) {
+    ss << var_pair.first << ", ";
+  }
+  ss << ")";
+  return ss.str();
+}
+
+static pt::OpKernelContext BuildOpKernelContext(
+    const pt::OpKernel& pt_kernel, const RuntimeContext& ctx,
+    const platform::DeviceContext& dev_ctx) {
+  VLOG(1) << RuntimeContextDebugString(ctx);
+
+  // TODO(chenweihang): now only work for very simple case (sign op),
+  // many cases need to be deal with later:
+  // 1. the input and output are not tensor
+  // 2. the dispensbale, duplicable input and output
+  // 3. needless attributes remove
+  // 4. use pt Tensor directly
+  // 5. kernel input is not DenseTensor
+  pt::OpKernelContext op_kernel_ctx(dev_ctx);
+  auto input_defs = pt_kernel.param_def().input_defs();
+  auto output_defs = pt_kernel.param_def().output_defs();
+
+  size_t i = 0;
+  for (auto& var_pair : ctx.inputs) {
+    // TODO(chenweihang): deal with diff param in vector
+    auto in_def = input_defs.at(i);
+    for (auto* var : var_pair.second) {
+      const auto& tensor = var->Get<Tensor>();
+      auto pt_in = MakeTensorImpl<pt::DenseTensor>(tensor, in_def.backend,
+                                                   in_def.dtype, in_def.layout);
+      op_kernel_ctx.EmplaceBackInput(pt_in);
+    }
+    ++i;
+  }
+  // ordered_map access mutable value need iter
+  i = 0;
+  for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); ++it) {
+    auto out_def = output_defs.at(i);
+    for (auto* var : it.value()) {
+      auto* tensor = var->GetMutable<Tensor>();
+      // mutable_data before run kernel, to avoid share output form
+      // OpKernelContext to original tensor
+      tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
+                           pt::TransToProtoVarType(out_def.dtype));
+      auto pt_out = MakeTensorImpl<pt::DenseTensor>(
+          *tensor, out_def.backend, out_def.dtype, out_def.layout);
+      op_kernel_ctx.EmplaceBackOutput(pt_out);
+    }
+    ++i;
+  }
+  // TODO(chenweihang): append attrs
+  return op_kernel_ctx;
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -1105,8 +1185,18 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
-    ChooseKernel(*runtime_ctx, scope, place);
+  // TODO(chenweihang): Now we are still reusing a lot of the original fluid
+  // implementation, this is a gradual replacement process
+  run_pt_kernel_ =
+      pt::OpKernelFactory::Instance().ContainsOperation(type_.c_str());
+  if (run_pt_kernel_) {
+    if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
+      ChoosePtKernel(*runtime_ctx, *dev_ctx);
+    }
+  } else {
+    if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
+      ChooseKernel(*runtime_ctx, scope, place);
+    }
   }
 
   // do data transformScope &transfer_scope;
@@ -1116,6 +1206,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("prepare_data",
                                        platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
+      if (run_pt_kernel_) {
+        kernel_type_.reset(new OpKernelType(
+            TransPtOpKernelKeyToOpKernelType(*pt_kernel_key_)));
+      }
       transfer_scope = PrepareData(scope, *kernel_type_,
                                    &transfered_inplace_vars, runtime_ctx);
     }
@@ -1144,8 +1238,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
-    (*kernel_func_)(
-        ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
+    if (run_pt_kernel_) {
+      // TODO(chenweihang): here will intrduce copy
+      auto op_kernel_ctx =
+          BuildOpKernelContext(*pt_kernel_, *runtime_ctx, *dev_ctx);
+      (*pt_kernel_)(&op_kernel_ctx);
+      // need share output into fluid tensor
+
+    } else {
+      (*kernel_func_)(
+          ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
+    }
   }
 
   if (!transfered_inplace_vars.empty()) {
@@ -1191,6 +1294,21 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
     scope.DeleteScope(transfer_scope);
   }
+}
+
+void OperatorWithKernel::ChoosePtKernel(
+    const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
+  // 1. construct operation name
+  // TODO(chenweihang): add rules for construct op name
+  pt::OperationName op_name(Type().c_str());
+
+  // 2. construct op kernel key
+  pt_kernel_key_.reset(
+      new pt::OpKernelKey(ConstructPtOpKernelKey(ctx, dev_ctx.GetPlace())));
+
+  // 3. selecte op kernel
+  pt_kernel_.reset(new pt::OpKernel(
+      pt::OpKernelFactory::Instance().SelectKernel(op_name, *pt_kernel_key_)));
 }
 
 void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
@@ -1547,11 +1665,10 @@ Scope* OperatorWithKernel::PrepareData(
 }
 
 void OperatorWithKernel::ParseInputDataType(
-    const ExecutionContext& ctx, const std::string& name,
+    const std::vector<Variable*>& vars, const std::string& name,
     proto::VarType::Type* data_type) const {
   proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
-  const std::vector<Variable*> vars = ctx.MultiInputVar(name);
   for (size_t i = 0; i < vars.size(); ++i) {
     const Variable* var = vars[i];
     if (var != nullptr) {
@@ -1576,7 +1693,7 @@ void OperatorWithKernel::ParseInputDataType(
             platform::errors::InvalidArgument(
                 "The Tensor in the %s Op's Input Variable %s(%s) is "
                 "not initialized.",
-                Type(), name, ctx.InputNames(name).at(i)));
+                Type(), name, Inputs().at(name).at(i)));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(
             tmp == *data_type || *data_type == default_data_type,
@@ -1598,7 +1715,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
   for (auto& input : ctx.InNameList()) {
-    ParseInputDataType(ctx, input, &data_type);
+    const std::vector<Variable*> vars = ctx.MultiInputVar(input);
+    ParseInputDataType(vars, input, &data_type);
   }
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
@@ -1612,7 +1730,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  ParseInputDataType(ctx, name, &data_type);
+  ParseInputDataType(ctx.MultiInputVar(name), name, &data_type);
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       platform::errors::InvalidArgument(
@@ -1693,6 +1811,44 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
     const OpKernelType& expected_kernel_type) const {
   return OpKernelType(expected_kernel_type.data_type_, tensor.place(),
                       tensor.layout());
+}
+
+pt::OpKernelKey OperatorWithKernel::ConstructPtOpKernelKey(
+    const RuntimeContext& ctx, const platform::Place& ctx_place) const {
+  // 1. get backend based place and attrs
+  pt::Backend backend = pt::TransToPtBackend(ctx_place);
+  if (HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn") == true) {
+    backend = pt::Backend::kMKLDNN;
+  } else if (HasAttr("use_cudnn") && Attr<bool>("use_cudnn") == true) {
+    backend = pt::Backend::kCUDNN;
+  } else {
+    // do nothing
+  }
+  // TODO(chenweihang): add more rules
+  // if (HasAttr("op_device"))
+
+  // 2. get layout
+  // default layout same as tensor default layout, need futher check
+  pt::DataLayout layout = pt::DataLayout::kNCHW;
+  if (backend == pt::Backend::kMKLDNN) {
+    layout = pt::DataLayout::kMKLDNN;
+  }
+
+  // 3. parse data_type form inputs
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = dafault_data_type;
+  for (auto& var_pair : ctx.inputs) {
+    ParseInputDataType(var_pair.second, var_pair.first, &data_type);
+  }
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      platform::errors::NotFound(
+          "DataType should be indicated by input Variable at %s.", Type()));
+  pt::DataType dtype = pt::TransToPtDataType(data_type);
+
+  // 4. build pt OpKernelKey
+  return pt::OpKernelKey(backend, layout, dtype);
 }
 
 }  // namespace framework
