@@ -97,7 +97,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     auto in_tensors = context.MultiInput<framework::LoDTensor>("Input");
     bool use_align = context.Attr<bool>("use_align");
     auto align_size = context.Attr<int>("align_size");
-    auto size_of_dtype = context.Attr<int>("size_of_dtype");
+    auto size_of_dtype = context.Attr<int>("user_defined_size_of_dtype");
 
     if (context.Attr<bool>("check_name")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
@@ -256,7 +256,7 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
     }
     auto use_align = ctx->Attrs().Get<bool>("use_align");
     auto align_size = ctx->Attrs().Get<int>("align_size");
-    auto size_of_dtype = ctx->Attrs().Get<int>("size_of_dtype");
+    auto size_of_dtype = ctx->Attrs().Get<int>("user_defined_size_of_dtype");
 
     auto dtype = static_cast<framework::proto::VarType::Type>(
         ctx->Attrs().Get<int>("dtype"));
@@ -340,7 +340,15 @@ class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddAttr<int>("align_size", "The alignment size when use_align is True")
         .SetDefault(-1);
-    AddAttr<int>("size_of_dtype", "The size of dtype").SetDefault(-1);
+    AddAttr<int>("user_defined_size_of_dtype",
+                 "The user defined size of dtype. This is used to coalesce "
+                 "grad vars and merged_grad vars at the same time. For some "
+                 "strategy, the dtype of fused_grad_vars and the dtype of "
+                 "fused_grad_merged_vars are not identical, which will cause "
+                 "the shape of these two coalesced vars are different. To "
+                 "make sure the shape of these two vars are identical with "
+                 "each other, this attr is added.")
+        .SetDefault(-1);
     AddComment(R"DOC(
 CoalesceTensor Operator.
 
