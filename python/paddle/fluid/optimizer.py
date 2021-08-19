@@ -5036,7 +5036,6 @@ class PipelineOptimizer(object):
 
     def _accumulate_gradients(self,
                               block,
-                              startup_block,
                               pp_allreduce_in_optimize=False,
                               fp16_allreduce=False,
                               user_defined_strategy=None):

@@ -320,7 +320,6 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         accumulated_grad_names = self._pp_optimizer._accumulate_gradients(
             main_block,
-            startup_block,
             fp16_allreduce=fp16_allreduce,
             user_defined_strategy=strategy)
 
