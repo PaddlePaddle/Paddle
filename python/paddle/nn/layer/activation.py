@@ -918,7 +918,7 @@ class Silu(Layer):
 
     .. math::
 
-        Silu(x) = \frac{x}{1 + e^{-x}}
+        Silu(x) = \\frac{x}{1 + e^{-x}}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, or float64.
