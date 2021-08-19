@@ -871,6 +871,7 @@ void BindImperative(py::module *m_ptr) {
              // TODO(liym27): Try not to call TensorToPyArray because it always
              // copys data to cpu place, which reduces performance.
              if (parse_index && value_is_tensor) {
+               VLOG(4) << "index is integer/slice/ellipsis and value is tensor";
                std::vector<int> axes, starts, ends, steps, decrease_axes,
                    none_axes, infer_flags, list_select_idxs;
                // if index is a list, list_select_flag will be true
@@ -926,11 +927,11 @@ void BindImperative(py::module *m_ptr) {
                    auto index_tensor = index_var->MutableVar()
                                            ->GetMutable<framework::LoDTensor>();
                    auto index_numpy = TensorToPyArray(*index_tensor);
-                   self_numpy[index_numpy] = value_obj;
+                   self_numpy[index_numpy] = value_numpy;
                  } else {
+                   VLOG(4) << "index is not tensor";
                    self_numpy[_index] = value_numpy;
                  }
-
                  SetTensorFromPyArray(self_tensor, self_numpy,
                                       self_tensor->place(), true);
                } else {
