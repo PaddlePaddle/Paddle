@@ -74,14 +74,13 @@ class AdamWOpKernel : public AdamOpKernel<DeviceContext, T> {
       skip_update = skip_update_vec[0];
     }
     VLOG(3) << "Skip update" << skip_update;
-    bool with_decay = ctx.Attr<bool>("with_decay");
+    float coeff = ctx.Attr<float>("weight_decay_coeff");
 
-    if (skip_update || !with_decay) {
+    if (skip_update || coeff == 0.0f) {
       AdamOpKernel<DeviceContext, T>::Compute(ctx);
       return;
     }
 
-    float coeff = ctx.Attr<float>("coeff");
     auto* lr = ctx.Input<LoDTensor>("LearningRate");
 
     LoDTensor* param;
@@ -93,7 +92,6 @@ class AdamWOpKernel : public AdamOpKernel<DeviceContext, T> {
       param = const_cast<LoDTensor*>(ctx.Input<LoDTensor>("Param"));
     }
 
-    // AdamWFunctor(float coeff, const float* learning_rate, T* parma)
     AdamWFunctor<T, CPUAdamW> functor(coeff, *lr->data<float>(),
                                       param->data<T>());
     functor(param->numel());

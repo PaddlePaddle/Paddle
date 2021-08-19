@@ -244,9 +244,8 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
       skip_update = skip_update_vec[0];
     }
     VLOG(3) << "Skip update" << skip_update;
-    bool with_decay = ctx.Attr<bool>("with_decay");
-    if (!skip_update && with_decay) {
-      float coeff = ctx.Attr<float>("coeff");
+    float coeff = ctx.Attr<float>("weight_decay_coeff");
+    if (!skip_update && coeff != 0.0f) {
       auto* lr = ctx.Input<LoDTensor>("LearningRate");
 
       auto place = ctx.GetPlace();
@@ -288,9 +287,9 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
                               framework::ToTypeName(param_var->Type())));
         auto* param = ctx.Input<LoDTensor>("Param");
 
-        const auto& runner =
-            NpuOpRunner("Mul", {*param, decay},
-                        {*const_cast<framework::LoDTensor*>(param)}, {});
+        framework::LoDTensor tmp_out;
+        tmp_out.ShareDataWith(*param);
+        const auto& runner = NpuOpRunner("Mul", {*param, decay}, {tmp_out}, {});
         runner.Run(stream);
       }
     }
