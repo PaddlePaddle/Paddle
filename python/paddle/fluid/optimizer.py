@@ -5254,7 +5254,7 @@ class PipelineOptimizer(object):
         # create fused vars for grad and param
         for grad_param_segment in grad_param_segments:
             grad_segment = grad_param_segment[0]
-            fused_grad_segment = grad_param_segment[2]
+            merged_grad_segment = grad_param_segment[2]
             fused_grad = main_block.create_var(
                 name='FusedGrad_{}'.format(grad_segment[0].name),
                 dtype=grad_segment[0].dtype,
@@ -5262,12 +5262,12 @@ class PipelineOptimizer(object):
                 stop_gradient=False)
             # keep the '.cast_fp16' info in the fuse var name
             fused_merged_grad_name_prefix = 'FusedMergedGrad.cast_fp16.' if \
-                fused_grad_segment[0].dtype == paddle.float16 else 'FusedMergedGrad'
+                merged_grad_segment[0].dtype == paddle.float16 else 'FusedMergedGrad'
             fused_merged_grad_name = fused_merged_grad_name_prefix + '_{}'.format(
-                fused_grad_segment[0].name)
+                merged_grad_segment[0].name)
             fused_merged_grad = main_block.create_var(
                 name=fused_merged_grad_name,
-                dtype=fused_grad_segment[0].dtype,
+                dtype=merged_grad_segment[0].dtype,
                 persistable=True,
                 stop_gradient=False)
             fused_gradients.append(fused_grad)
@@ -5298,6 +5298,17 @@ class PipelineOptimizer(object):
                 outputs={"Output": grads,
                          "FusedOutput": fused_grad},
                 attrs={
+                    # Explanation of user_defined_size_of_dtype:
+                    # In coalesce op, the align size is 256 bytes
+                    # the float takes 4 bytes while fp16 takes 2 bytes.
+                    # To meet the requirement, 128 fp16 or 64 float will be aligned
+                    # Think the total shape of the input tensors if [64],
+                    # if the dtype is float, then the shape of the fuse var is [64]
+                    # however if the dytpe if fp16, the shape of the fuse var is [128],
+                    # which will cause the fused vars' shape vary between each other.
+                    # To make sure the shape of the fused vars are identical,
+                    # we set the dtype of float and fp16 both to 2.
+                    # Under this way, the fused vars' shape for float and fp16 are all [128]
                     "user_defined_size_of_dtype": 2,
                     "copy_data": False,
                     "use_align": True,
@@ -5376,7 +5387,7 @@ class PipelineOptimizer(object):
                     name=fp32_grad_name,
                     dtype=paddle.float32,
                     shape=real_grad.shape,
-                    persistable=True,
+                    persistable=False,
                     stop_gradient=False)
                 main_block._insert_op(
                     index=first_opt_op_idx + offset,
