@@ -34,7 +34,7 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     auto aligned = ctx.Attr<bool>("aligned");
     auto roi_end_mode = 0;
     PADDLE_ENFORCE_EQ(
-        aligned, False,
+        aligned, false,
         platform::errors::InvalidArgument(
             "ROIAlignNPU only support Aligned attribute equaled to False"));
 
