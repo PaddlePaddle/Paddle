@@ -424,7 +424,18 @@ static void ParseIndexingSlice(
   // We allow indexing by Integers, Slices, Ellipsis, None, tuples of those
   // types, and list of Bool and Integers.
   // wrap to tuple
-  PyObject *index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
+
+  PyObject *index;
+  // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New +
+  // PyTuple_SetItem not.
+  // see details:
+  // https://stackoverflow.com/questions/8528483/reference-counts-in-a-python-c-extension
+  if (PyTuple_Check(_index)) {
+    index = _index;
+  } else {
+    index = PyTuple_New(1);
+    PyTuple_SetItem(index, 0, _index);
+  }
   PADDLE_ENFORCE_EQ(
       tensor->IsInitialized(), true,
       platform::errors::InvalidArgument("tensor has not been initialized"));
@@ -814,7 +825,8 @@ void BindImperative(py::module *m_ptr) {
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
              PyObject *index_ptr;
-             // NOTE(zhiqiu):
+             // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
+             // + PyTuple_SetItem not.
              // see details:
              // https://stackoverflow.com/questions/8528483/reference-counts-in-a-python-c-extension
              if (PyTuple_Check(_index.ptr())) {
