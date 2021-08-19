@@ -292,6 +292,138 @@ void CopyPaddleInferTensor(paddle_infer::Tensor &dst,
                            const paddle_infer::Tensor &src) {
   return paddle_infer::contrib::utils::CopyTensor(dst, src);
 }
+
+#ifdef PADDLE_WITH_CUDA
+class PtrWrapper {
+ public:
+  PtrWrapper() : ptr(nullptr) {}
+  explicit PtrWrapper(void *ptr) : ptr(ptr) {}
+  PtrWrapper(const PtrWrapper &other) : ptr(other.ptr) {}
+  void *get() const { return ptr; }
+
+ private:
+  void *ptr;
+};
+using CudaStream = PtrWrapper;
+
+CudaStream CopyPaddleInferTensorAsyncStream(paddle_infer::Tensor &dst,
+                                            const paddle_infer::Tensor &src) {
+  cudaStream_t stream;
+  paddle_infer::contrib::utils::CopyTensorAsync(dst, src,
+                                                static_cast<void *>(&stream));
+  return CudaStream(reinterpret_cast<void *>(stream));
+}
+
+void CopyPaddleInferTensorAsyncCallback(paddle_infer::Tensor &dst,
+                                        const paddle_infer::Tensor &src,
+                                        const py::object &cb) {
+  py::object *p_obj = new py::object;
+  *p_obj = cb;
+  paddle_infer::contrib::utils::CopyTensorAsync(
+      dst, src,
+      [](void *cb_params) -> void {
+        py::object *obj = static_cast<py::object *>(cb_params);
+        (*obj)();
+        delete obj;
+      },
+      static_cast<void *>(p_obj));
+}
+
+void SyncGpuStream(const CudaStream &py_stream) {
+  cudaStream_t stream = reinterpret_cast<cudaStream_t>(py_stream.get());
+  cudaStreamSynchronize(stream);
+}
+
+py::array PaddleInferTensorToNumpyAsyncCallback(paddle_infer::Tensor &tensor,
+                                                const py::object &cb) {
+  py::object *p_obj = new py::object;
+  *p_obj = cb;
+  auto cb_func = [](void *cb_params) -> void {
+    py::object *obj = static_cast<py::object *>(cb_params);
+    (*obj)();
+    delete obj;
+  };
+  py::dtype dt = PaddleDTypeToNumpyDType(tensor.type());
+  auto tensor_shape = tensor.shape();
+  py::array::ShapeContainer shape(tensor_shape.begin(), tensor_shape.end());
+  py::array array(dt, std::move(shape));
+
+  switch (tensor.type()) {
+    case PaddleDType::INT32:
+      tensor.CopyToCpuAsync(static_cast<int32_t *>(array.mutable_data()),
+                            cb_func, static_cast<void *>(p_obj));
+      break;
+    case PaddleDType::INT64:
+      tensor.CopyToCpuAsync(static_cast<int64_t *>(array.mutable_data()),
+                            cb_func, static_cast<void *>(p_obj));
+      break;
+    case PaddleDType::FLOAT32:
+      tensor.CopyToCpuAsync<float>(static_cast<float *>(array.mutable_data()),
+                                   cb_func, static_cast<void *>(p_obj));
+      break;
+    case PaddleDType::FLOAT16:
+      tensor.CopyToCpuAsync<paddle::platform::float16>(
+          static_cast<paddle::platform::float16 *>(array.mutable_data()),
+          cb_func, static_cast<void *>(p_obj));
+      break;
+    case PaddleDType::UINT8:
+      tensor.CopyToCpuAsync(static_cast<uint8_t *>(array.mutable_data()),
+                            cb_func, static_cast<void *>(p_obj));
+      break;
+    case PaddleDType::INT8:
+      tensor.CopyToCpuAsync(static_cast<int8_t *>(array.mutable_data()),
+                            cb_func, static_cast<void *>(p_obj));
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type. Now only supports INT32, INT64 and "
+          "FLOAT32."));
+  }
+  return array;
+}
+
+py::tuple PaddleInferTensorToNumpyAsync(paddle_infer::Tensor &tensor) {
+  py::dtype dt = PaddleDTypeToNumpyDType(tensor.type());
+  auto tensor_shape = tensor.shape();
+  py::array::ShapeContainer shape(tensor_shape.begin(), tensor_shape.end());
+  py::array array(dt, std::move(shape));
+
+  cudaStream_t stream;
+  switch (tensor.type()) {
+    case PaddleDType::INT32:
+      tensor.CopyToCpuAsync(static_cast<int32_t *>(array.mutable_data()),
+                            static_cast<void *>(&stream));
+      break;
+    case PaddleDType::INT64:
+      tensor.CopyToCpuAsync(static_cast<int64_t *>(array.mutable_data()),
+                            static_cast<void *>(&stream));
+      break;
+    case PaddleDType::FLOAT32:
+      tensor.CopyToCpuAsync<float>(static_cast<float *>(array.mutable_data()),
+                                   static_cast<void *>(&stream));
+      break;
+    case PaddleDType::FLOAT16:
+      tensor.CopyToCpuAsync<paddle::platform::float16>(
+          static_cast<paddle::platform::float16 *>(array.mutable_data()),
+          static_cast<void *>(&stream));
+      break;
+    case PaddleDType::UINT8:
+      tensor.CopyToCpuAsync(static_cast<uint8_t *>(array.mutable_data()),
+                            static_cast<void *>(&stream));
+      break;
+    case PaddleDType::INT8:
+      tensor.CopyToCpuAsync(static_cast<int8_t *>(array.mutable_data()),
+                            static_cast<void *>(&stream));
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type. Now only supports INT32, INT64 and "
+          "FLOAT32."));
+  }
+  return py::make_tuple(array, CudaStream(reinterpret_cast<void *>(stream)));
+}
+#endif
+
 }  // namespace
 
 void BindInferenceApi(py::module *m) {
@@ -323,7 +455,15 @@ void BindInferenceApi(py::module *m) {
                                            new paddle_infer::Predictor(config));
                                    return std::move(pred);
                                  });
+  py::class_<CudaStream>(*m, "CudaStream")
+      .def(py::init<>())
+      .def(py::init<const CudaStream &>());
   m->def("copy_tensor", &CopyPaddleInferTensor);
+#ifdef PADDLE_WITH_CUDA
+  m->def("copy_tensor_async_gpu", &CopyPaddleInferTensorAsyncStream);
+  m->def("sync_gpu", &SyncGpuStream);
+  m->def("copy_tensor_async_gpu", &CopyPaddleInferTensorAsyncCallback);
+#endif
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
   m->def("get_version", &paddle_infer::GetVersion);
@@ -706,6 +846,10 @@ void BindPaddleInferTensor(py::module *m) {
       .def("copy_from_cpu", &PaddleInferTensorCreate<float>)
       .def("copy_from_cpu", &PaddleInferTensorCreate<paddle_infer::float16>)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
+#ifdef PADDLE_WITH_CUDA
+      .def("copy_to_cpu_async_from_gpu", &PaddleInferTensorToNumpyAsync)
+      .def("copy_to_cpu_async_from_gpu", &PaddleInferTensorToNumpyAsyncCallback)
+#endif
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)
       .def("lod", &paddle_infer::Tensor::lod)
