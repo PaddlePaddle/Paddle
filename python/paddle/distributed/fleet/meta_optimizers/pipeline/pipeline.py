@@ -230,10 +230,6 @@ class PipelineInferHelper(object):
         extra_index_info = {'index': 0, }
 
         for index, op in enumerate(list(block.ops)):
-            if op.type == 'while':
-                sub_block_id = op.attr('sub_block').id
-                self._insert_sendrecv_ops_for_boundaries(
-                    block.program.block(sub_block_id))
             cur_device = op.attr(self._op_device_key)
             if cur_device.split(':')[-1] == "all": continue
             for var_name in op.input_arg_names:
@@ -333,6 +329,20 @@ class PipelineInferHelper(object):
                     int(prev_device.split(':')[1]))
         block._sync_with_cpp()
 
+    def _get_while_block():
+        """
+        Get the while sub-block.
+        """
+        main_block = self._main_program.global_block()
+        found = False
+        sub_block_id = None
+        for op in main_block.ops:
+            assert not sub_block_id, "More than one while op found."
+            if op.type == 'while':
+                sub_block_id = op.attr('sub_block').id
+        if sub_block_id: return self._main_program.block(sub_block_id)
+        return None
+
     def gen_infer_program(self):
         """
         Generate inference program.
@@ -347,13 +357,22 @@ class PipelineInferHelper(object):
         self._check_validation(main_block)
 
         # step2: add send/recv ops
+        self._update_param_device_map()
+        # step2.1: add send/recv for main_block
         out_var_to_op, in_var_to_op = self._get_input_output_info(main_block)
         self._output_var_to_op = out_var_to_op
         self._input_var_to_op = in_var_to_op
         self._insert_sendrecv_ops_for_boundaries(main_block)
+        # step2.2: add send/recv for while_block
+        while_block = self._get_while_block()
+        if while_block:
+            out_var_to_op, in_var_to_op = self._get_input_output_info(
+                while_block)
+            self._output_var_to_op = out_var_to_op
+            self._input_var_to_op = in_var_to_op
+            self._insert_sendrecv_ops_for_boundaries(while_block)
 
         # step3: split programs
-        self._update_param_device_map()
         self._split_program(self._startup_program, self._stage, 0)
         self._split_program(self._main_program, self._stage, 0)
 
