@@ -290,10 +290,10 @@ class MulPrimitiveFactory {
   }
 
   const mkldnn::engine &engine_;
-  boost::optional<memory> x_input_;
-  boost::optional<memory> y_input_;
-  boost::optional<memory> output_;
-  boost::optional<inner_product_forward> mul_;
+  paddle::optional<memory> x_input_;
+  paddle::optional<memory> y_input_;
+  paddle::optional<memory> output_;
+  paddle::optional<inner_product_forward> mul_;
   static constexpr bool is_int8_ =
       std::is_same<XT, int8_t>::value || std::is_same<XT, uint8_t>::value;
 };
