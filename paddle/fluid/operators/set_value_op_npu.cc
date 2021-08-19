@@ -10,14 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/set_value_op.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/assign_value_op.h"
-#include "paddle/fluid/operators/mean_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/slice_utils.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -25,17 +22,16 @@ template <typename DeviceContext, typename T>
 class SetValueNPUKernel : public framework::OpKernel<T> {
  private:
   using vec64 = std::vector<int64_t>;
-  using vec32 = std::vector<int32_t>;
   using vec_vec64 = std::vector<std::vector<int64_t>>;
-  inline void GetNPUStartEndSteps(vec_vec64& output, vec64& start, vec64& end,
-                                  vec64& steps, vec64& axes,
-                                  framework::DDim in_dim) const {
+  void GetNPUStartEndSteps(const vec64& start, const vec64& end,
+                           const vec64& steps, const vec64& axes,
+                           const framework::DDim in_dim,
+                           vec_vec64& output) const {
     int rank = in_dim.size();
     for (int i = 0; i < rank; ++i) {
       int axis_size = in_dim[i];
       auto iter = find(axes.begin(), axes.end(), i);
       if (iter != axes.end()) {
-        // find
         int idx = iter - axes.begin();
         output[0].push_back(start[idx]);  // set as the same as raw input
         output[1].push_back(end[idx]);
@@ -49,8 +45,8 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
   }
 
   inline std::vector<int> MininumPadNumberMakeSureLastDimGT8(
-      vec_vec64& npu_slice) const {
-    int min_value = 32 / sizeof(T);  // 16 for float16 , 8 for float32
+      const vec_vec64& npu_slice) const {
+    int min_value = min_last_dim_value;
     int rank = npu_slice[0].size();
     int last_dim_start = npu_slice[0][rank - 1];
     int last_dim_end = npu_slice[1][rank - 1];
@@ -61,53 +57,36 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
         {std::max(0, min_end - last_dim_end), min_value - raw_last_dim_len});
   }
 
-  inline void UnsqueezeLastDim(const framework::ExecutionContext* ctx,
-                               Tensor* output, const Tensor* input) const {
-    return;
-    VLOG(4) << "Start Unsqueeze tensor" << std::endl;
-    auto after_reshape_dims = framework::vectorize<int>(input->dims());
-    after_reshape_dims.push_back(1);
-    output->mutable_data<T>(framework::make_ddim(after_reshape_dims),
-                            ctx->GetPlace());
-    framework::NPUAttributeMap attr;
-    attr["axes"] = static_cast<int>(input->dims().size());
-    auto stream =
-        ctx->template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    NpuOpRunner("Unsqueeze", {*input}, {*output}, attr).Run(stream);
-  }
-
-  inline void TileTensor(const framework::ExecutionContext* ctx, Tensor* output,
-                         const Tensor* input, int pad_number) const {
-    VLOG(4) << "start Tile tensor function, which call the NPU operator PadD"
-            << std::endl;
-    // UNSQUEEZE last dim + TILE last dim * 8
-    Tensor after_reshape_tensor;
-    auto after_reshape_dims = framework::vectorize<int>(input->dims());
-    after_reshape_dims.push_back(1);
-    after_reshape_tensor.ShareDataWith(*input);
-    after_reshape_tensor.Resize(framework::make_ddim(after_reshape_dims));
-    // UnsqueezeLastDim(ctx, &after_reshape_tensor, input) ;
+  inline void TileTensor(const framework::ExecutionContext* ctx,
+                         const Tensor* input, Tensor* output) const {
+    VLOG(4) << "start to tile tensor function, which calls the npu operator "
+               "TileWithAxis";
+    // UNSQUEEZE last dim + TILE last dim * min_last_dim_value
+    Tensor reshape_tensor;
+    auto reshape_dims = framework::vectorize<int>(input->dims());
+    reshape_dims.push_back(1);
+    reshape_tensor.ShareDataWith(*input);
+    reshape_tensor.Resize(framework::make_ddim(reshape_dims));
 
     auto output_dims = framework::vectorize<int>(input->dims());
-    output_dims.push_back(8);
+    output_dims.push_back(min_last_dim_value);
     output->mutable_data<T>(framework::make_ddim(output_dims), ctx->GetPlace());
 
     framework::NPUAttributeMap attr;
-    attr["axis"] = static_cast<int>(after_reshape_dims.size() - 1);
-    attr["tiles"] = 8;
+    attr["axis"] = static_cast<int>(reshape_dims.size() - 1);
+    attr["tiles"] = min_last_dim_value;
     auto stream =
         ctx->template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    NpuOpRunner("TileWithAxis", {after_reshape_tensor}, {*output}, attr)
-        .Run(stream);
+    NpuOpRunner("TileWithAxis", {reshape_tensor}, {*output}, attr).Run(stream);
   }
 
   inline void BroadcastToD(const framework::ExecutionContext* ctx,
-                           Tensor* output, const Tensor* input,
-                           std::vector<int64_t> shape) const {
-    VLOG(4) << "Start BroadCast To" << std::endl;
-    vec32 shape32 = vec32(shape.begin(), shape.end());
+                           const Tensor* input,
+                           const std::vector<int64_t>* shape,
+                           Tensor* output) const {
+    VLOG(4) << "Start BroadCast To";
+    auto shape32 = std::vector<int32_t>(shape->begin(), shape->end());
     output->mutable_data<T>(framework::make_ddim(shape32), ctx->GetPlace());
     framework::NPUAttributeMap attr;
     attr["shape"] = shape32;
@@ -117,8 +96,8 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     NpuOpRunner("BroadcastToD", {*input}, {*output}, attr).Run(stream);
   }
 
-  inline void CropTensor(const framework::ExecutionContext* ctx, Tensor* output,
-                         const Tensor* input) const {
+  inline void CropTensor(const framework::ExecutionContext* ctx,
+                         const Tensor* input, Tensor* output) const {
     auto out_dims = output->dims();
     auto in_dims = input->dims();
     int rank = in_dims.size();
@@ -134,18 +113,19 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     output->Resize(out_dims);  // restore it
   }
 
-  inline void SliceAssignNPU(const framework::ExecutionContext* ctx,
-                             Tensor* lefthand, const Tensor* righthand,
-                             vec64& start, vec64& end, vec64& steps,
-                             vec64& axes) const {
-    // must ensure lefthand and righthand have the same shape
+  void SliceAssignNPU(const framework::ExecutionContext* ctx,
+                      const Tensor* value_tensor, vec64& start /*modified*/,
+                      vec64& end /*modified*/, vec64& steps /*modified*/,
+                      vec64& axes /*modified*/,
+                      Tensor* assigned_tensor /*modified*/) const {
+    // must ensure assigned_tensor and value_tensor have the same shape
     // not support steps < 0
-    // output is also the lefthand.
-    VLOG(4) << "start function SliceAssignND" << std::endl;
+    // output is also the assigned_tensor.
+    VLOG(4) << "start function SliceAssignND";
     auto stream =
         ctx->template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    for (long unsigned int i = 0; i < steps.size(); ++i) {
+    for (size_t i = 0; i < steps.size(); ++i) {
       PADDLE_ENFORCE_GT(steps[i], 0,
                         platform::errors::InvalidArgument(
                             "currently NPU set_value operator don't support "
@@ -153,22 +133,23 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
                             steps[i]));
     }
     vec_vec64 npu_slice(3);
-    GetNPUStartEndSteps(npu_slice, start, end, steps, axes, lefthand->dims());
+    GetNPUStartEndSteps(start, end, steps, axes, assigned_tensor->dims(),
+                        npu_slice);
     auto tile_numbers = MininumPadNumberMakeSureLastDimGT8(npu_slice);
-    int lefthand_tile_number = tile_numbers[0];
-    int righthand_tile_number = tile_numbers[1];
+    int assigned_tensor_tile_number = tile_numbers[0];
+    int value_tensor_tile_number = tile_numbers[1];
 
-    VLOG(4) << "tile number is : " << lefthand_tile_number << " "
-            << righthand_tile_number << std::endl;
+    VLOG(4) << "tile number is : " << assigned_tensor_tile_number << " "
+            << value_tensor_tile_number;
 
-    Tensor tiled_left, tiled_right;
-    if (lefthand_tile_number > 0) {
-      TileTensor(ctx, &tiled_left, lefthand, 0);
-      TileTensor(ctx, &tiled_right, righthand, 0);
+    Tensor tiled_assigned_tns, tiled_value_tns;
+    if (assigned_tensor_tile_number > 0) {
+      TileTensor(ctx, assigned_tensor, &tiled_assigned_tns);
+      TileTensor(ctx, value_tensor, &tiled_value_tns);
       // output have different shape, so use a tmp variable before_crop_output;
-      // add last dim = 8 in slice
+      // add last dim = min_last_dim_value in slice
       npu_slice[0].push_back(0);
-      npu_slice[1].push_back(8);
+      npu_slice[1].push_back(min_last_dim_value);
       npu_slice[2].push_back(1);
     }
 
@@ -184,32 +165,33 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     attr_input["ellipsis_mask"] = 0;
     attr_input["new_axis_mask"] = 0;
     attr_input["shrink_axis_mask"] = 0;
-    if (lefthand_tile_number > 0) {
-      NpuOpRunner("StridedSliceAssignD", {tiled_left, tiled_right},
-                  {tiled_left}, attr_input)
+    if (assigned_tensor_tile_number > 0) {
+      NpuOpRunner("StridedSliceAssignD", {tiled_assigned_tns, tiled_value_tns},
+                  {tiled_assigned_tns}, attr_input)
           .Run(stream);  // Remember, set output = input, and this op will
                          // change the input value.
     } else {
-      NpuOpRunner("StridedSliceAssignD", {*lefthand, *righthand}, {*lefthand},
-                  attr_input)
+      NpuOpRunner("StridedSliceAssignD", {*assigned_tensor, *value_tensor},
+                  {*assigned_tensor}, attr_input)
           .Run(stream);
     }
-    if (lefthand_tile_number > 0) {
-      CropTensor(ctx, lefthand /*initalized*/, &tiled_left /*initialzied*/);
+    if (assigned_tensor_tile_number > 0) {
+      CropTensor(ctx, &tiled_assigned_tns /*initialzied*/,
+                 assigned_tensor /*initalized*/);
     }
   }
 
-  inline void ModifyAxesAccordingNoneAxes(const vec64& none_axes,
-                                          vec64& axes_to_modify) const {
-    if (!none_axes.size()) return;
+  void ModifyAxesAccordingNoneAxes(const vec64& none_axes,
+                                   vec64& axes_to_modify) const {
+    if (none_axes.empty()) return;
     auto none_axes_copy = none_axes;
     sort(none_axes_copy.begin(), none_axes_copy.end());
-    for (unsigned int i = 0; i < axes_to_modify.size(); ++i) {
+    for (size_t i = 0; i < axes_to_modify.size(); ++i) {
       int axis = axes_to_modify[i];
       auto upper =
           upper_bound(none_axes_copy.begin(), none_axes_copy.end(), axis);
       // Example: none_axes = [1,3,4,5,7]
-      // 	    axis = 4
+      //          axis = 4
       //          find the element number less or equal than 4, which is
       //          3(1,3,4)
       //          axis becomes  4 + 3 = 7 ;
@@ -217,16 +199,16 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     }
   }
 
-  inline void UnsqueezeAccordingNoneAxes(vec64& slice_dims,
-                                         vec64& none_axes) const {
+  void UnsqueezeAccordingNoneAxes(const vec64& none_axes,
+                                  vec64& slice_dims) const {
     // note : axes will change, because new axes inserted.
     // sum array to modify the axes. because more simply
-    if (!none_axes.size()) return;
+    if (none_axes.empty()) return;
     vec64 slice_dims_with_none;
     size_t none_axes_cur = 0;
-    for (unsigned int i = 0; i < slice_dims.size(); ++i) {
+    for (size_t i = 0; i < slice_dims.size(); ++i) {
       while (none_axes_cur < none_axes.size() &&
-             none_axes[none_axes_cur] <= i) {
+             none_axes[none_axes_cur] <= static_cast<int>(i)) {
         slice_dims_with_none.push_back(1);
         none_axes_cur++;
       }
@@ -240,21 +222,20 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     slice_dims = slice_dims_with_none;
   }
 
-  inline void ModiftyDimsAccordingNoneAndDecrease(vec64& slice_dim,
-                                                  vec64& value_dim, vec64& axes,
-                                                  vec64& none_axes,
-                                                  vec64& dec_axes) const {
+  void ModiftyDimsAccordingNoneAndDecrease(vec64& slice_dim, vec64& value_dim,
+                                           vec64& axes, vec64& none_axes,
+                                           vec64& dec_axes) const {
     // change the value of slice_dim, value_dim, start, end, steps, axes by none
     // and decrease axes
     // after change, this values can be passed to SliceAssignNPU() directly.
 
     // Modity Slice Dim
-    UnsqueezeAccordingNoneAxes(slice_dim, none_axes);
+    UnsqueezeAccordingNoneAxes(none_axes, slice_dim);
     ModifyAxesAccordingNoneAxes(none_axes, dec_axes);
     ModifyAxesAccordingNoneAxes(none_axes, axes);
     // Modity Value Dim by new slice dim
-    vec64 slice_dim_reverse = slice_dim;
-    vec64 value_dim_reverse = value_dim;
+    auto slice_dim_reverse = slice_dim;
+    auto value_dim_reverse = value_dim;
     std::reverse(slice_dim_reverse.begin(), slice_dim_reverse.end());
     std::reverse(value_dim_reverse.begin(), value_dim_reverse.end());
 
@@ -266,8 +247,8 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
                                           slice_dim.size(), value_dim.size()));
 
     size_t value_cur = 0;
-    int rank = slice_dim.size();
-    for (int i = 0; i < rank; ++i) {
+    size_t rank = slice_dim.size();
+    for (size_t i = 0; i < rank; ++i) {
       auto& xsize = slice_dim_reverse[i];
       if (value_cur >= value_dim_reverse.size()) {
         new_value_dim.push_back(1);
@@ -306,7 +287,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(2) << "Start Set Value Npu Kernel" << std::endl;
+    VLOG(2) << "Start Set Value Npu Kernel";
     auto* in = ctx.Input<framework::LoDTensor>("Input");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     auto* value_tensor = ctx.Input<framework::LoDTensor>("ValueTensor");
@@ -351,14 +332,16 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
 
     // aforementioned code is copyed directly from CPU kernel.
     // (@xiongkun03) the following is redesigned by xiongkun. because NPU can do
-    // step slice assignment. so we deal all none_axes and decrease_axes here.
-    // 1. we insert 1 into lefthand_shape according to none_axes;
-    // 2. we insert 1 into righthand_shape(value tensor) according to
+    // step slice assignment. so we deal with all none_axes and decrease_axes
+    // here.
+    // 1. we insert 1 into assigned_tensor_shape according to none_axes;
+    // 2. we insert 1 into value_tensor_shape(value tensor) according to
     // decrease_axes;
-    // 3. we reshape back the lefthand. and return it.
-    // note : we use a tmp_value_tensor as right hand. it shares data with
+    // 3. we reshape back the assigned_tensor. and return it.
+    // note : we use a tmp_value_tensor as value_tns. it shares data with
     // value_tensor;
     // I believe the logic is more simple than cpu logic.
+
     TensorCopy(*in, place, out);
     Tensor value_t(dtype);
 
@@ -376,7 +359,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     auto slice_dims_vec = framework::vectorize(slice_dims);
     auto in_dims_vec = framework::vectorize(in_dims);
 
-    UnsqueezeAccordingNoneAxes(in_dims_vec, none_axes);
+    UnsqueezeAccordingNoneAxes(none_axes, in_dims_vec);
     ModiftyDimsAccordingNoneAndDecrease(slice_dims_vec, value_dims_vec, axes,
                                         none_axes,
                                         decrease_axes);  // Modify and Check
@@ -385,14 +368,18 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     reshaped_value_tensor.ShareDataWith(*value_tensor_ptr);
     reshaped_value_tensor.Resize(framework::make_ddim(value_dims_vec));
 
-    BroadcastToD(&ctx, &broadcast_value_tensor /*inner function initialized*/,
-                 &reshaped_value_tensor, slice_dims_vec);
+    BroadcastToD(&ctx, &reshaped_value_tensor, &slice_dims_vec,
+                 &broadcast_value_tensor /*inner function initialized*/);
 
     out->Resize(framework::make_ddim(in_dims_vec));
-    SliceAssignNPU(&ctx, out, &broadcast_value_tensor, starts, ends, steps,
-                   axes);
+    SliceAssignNPU(&ctx, &broadcast_value_tensor, starts, ends, steps, axes,
+                   out);
     out->Resize(in_dims);  // Reshape Back
   }
+
+ private:
+  const int min_last_dim_value =
+      32 / sizeof(T);  // 16 for float16 , 8 for float32
 };
 
 }  // namespace operators

@@ -18,8 +18,6 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-#sys.path.append("/root/xiongkun/Paddle/python/paddle/fluid/tests/unittests/")
-#sys.path.append("/root/xiongkun/Paddle/python/")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
@@ -279,10 +277,6 @@ class TestSetValueItemTensor5(TestSetValueApi):
         self.data[0:, 1:2:2, :] = self.value
 
 
-""" DEBUG HERE
-"""
-
-
 # 1.5 item is None
 class TestSetValueItemNone1(TestSetValueApi):
     def _call_setitem(self, x):
@@ -295,7 +289,6 @@ class TestSetValueItemNone1(TestSetValueApi):
 class TestSetValueItemNone2(TestSetValueApi):
     def _call_setitem(self, x):
         x[0, None, 1] = self.value
-        print("OOO", x)
 
     def _get_answer(self):
         self.data[0, None, 1] = self.value
@@ -648,24 +641,6 @@ class TestError(TestSetValueBase):
             self._dtype_error()
             self._step_error()
         self._broadcast_mismatch()
-
-
-# 5. Test backward
-
-
-class Model(paddle.nn.Layer):
-    def __init__(self):
-        super(Model, self).__init__()
-        self.conv = paddle.nn.Conv2D(12, 12, 3)
-
-    def forward(self, x, y):
-        x = self.conv(x)
-        y = self.conv(y)
-        var = y.flatten()
-
-        x[0, :, 0, 0] = var
-        loss = paddle.mean(x)
-        return loss, var, x
 
 
 if __name__ == '__main__':
