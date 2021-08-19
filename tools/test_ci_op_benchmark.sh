@@ -253,15 +253,7 @@ function check_op_benchmark_result {
   return $check_status_code
 }
 
-# diff benchmakr result and miss op
-function summary_problems {
-  local op_name exit_code
-  exit_code=0
-  if [ ${#BENCHMARK_OP_MAP[*]} -ne 0 ]
-  then
-    check_op_benchmark_result
-    exit_code=$?
-  fi
+function check_CHANGE_OP_MAP {
   for op_name in ${!CHANGE_OP_MAP[@]}
   do
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
@@ -277,6 +269,18 @@ function summary_problems {
   fi
 }
 
+# diff benchmakr result and miss op
+function summary_problems {
+  local op_name exit_code
+  exit_code=0
+  if [ ${#BENCHMARK_OP_MAP[*]} -ne 0 ]
+  then
+    check_op_benchmark_result
+    exit_code=$?
+  fi
+  check_CHANGE_OP_MAP
+}
+
 
 function cpu_op_benchmark {
   LOG "[INFO] Start run op benchmark cpu test ..."
@@ -284,8 +288,8 @@ function cpu_op_benchmark {
   prepare_benchmark_environment
   load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
+  check_CHANGE_OP_MAP
   build_whl
-  summary_problems
   LOG "[INFO] Op benchmark run success and no error!"
   exit 0
 }
