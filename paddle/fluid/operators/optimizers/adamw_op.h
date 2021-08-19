@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,24 +29,6 @@ template <typename T, typename Flavour>
 class AdamWFunctor;
 
 template <typename T>
-class AdamWFunctor<T, GPUAdamW> {
- private:
-  const float coeff_;
-  const float learning_rate_;
-  T* param_;
-
- public:
-  AdamWFunctor(const float& coeff, const float& learning_rate, T* param)
-      : coeff_(coeff), learning_rate_(learning_rate), param_(param) {}
-
-  inline HOSTDEVICE void operator()(size_t i) const {
-    T p = param_[i];
-    p = p * (1 - learning_rate_ * coeff_);
-    param_[i] = p;
-  }
-};
-
-template <typename T>
 class AdamWFunctor<T, CPUAdamW> {
  private:
   const float coeff_;
@@ -74,7 +56,7 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
   MT beta1_;
   MT beta2_;
   MT epsilon_;
-  MT weight_decay_;
+  MT coeff_;
 
   const MT* beta1_pow_;
   const MT* beta2_pow_;
@@ -95,7 +77,7 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
   bool lazy_mode_;
 
  public:
-  SparseAdamWFunctor(MT beta1, MT beta2, MT epsilon, MT weight_decay,
+  SparseAdamWFunctor(MT beta1, MT beta2, MT epsilon, MT coeff,
                      const MT* beta1_pow, const MT* beta2_pow, const MT* mom1,
                      MT* mom1_out, const MT* mom2, MT* mom2_out, const MT* lr,
                      const T* grad, const T* param, T* param_out,
@@ -105,7 +87,7 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
-        weight_decay_(weight_decay),
+        coeff_(coeff),
         beta1_pow_(beta1_pow),
         beta2_pow_(beta2_pow),
         moment1_(mom1),
@@ -133,7 +115,7 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
     MT p = master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
 
     // Calculation
-    MT wd = static_cast<MT>(1.0) - weight_decay_ * lr;
+    MT wd = static_cast<MT>(1.0) - coeff_ * lr;
     lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
           (static_cast<MT>(1.0) - beta1_pow);
 
@@ -170,7 +152,6 @@ template <typename DeviceContext, typename T>
 class AdamWOpKernel : public AdamOpKernel<DeviceContext, T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(0) << "CPU adamw";
     const auto* param_var = ctx.InputVar("Param");
     PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
                       platform::errors::InvalidArgument(
