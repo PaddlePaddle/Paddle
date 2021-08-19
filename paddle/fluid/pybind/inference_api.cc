@@ -459,11 +459,11 @@ void BindInferenceApi(py::module *m) {
                                            new paddle_infer::Predictor(config));
                                    return std::move(pred);
                                  });
+  m->def("copy_tensor", &CopyPaddleInferTensor);
+#ifdef PADDLE_WITH_CUDA
   py::class_<CudaStream>(*m, "CudaStream")
       .def(py::init<>())
       .def(py::init<const CudaStream &>());
-  m->def("copy_tensor", &CopyPaddleInferTensor);
-#ifdef PADDLE_WITH_CUDA
   m->def("copy_tensor_async_gpu", &CopyPaddleInferTensorAsyncStream);
   m->def("sync_gpu", &SyncGpuStream);
   m->def("copy_tensor_async_gpu", &CopyPaddleInferTensorAsyncCallback);
