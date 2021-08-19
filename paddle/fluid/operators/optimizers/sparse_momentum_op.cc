@@ -97,10 +97,9 @@ This optimizer has a flag for Nestrov Momentum.
 The update equations are as follows:
 
 $$
-velocity = mu * velocity \\
-velocity[index] = velocity[index] + gradient \\
+velocity = mu * velocity + gradient \\
 if (use\_nesterov):   \\
-  param = param - (gradient + mu * velocity[index]) * learning\_rate \\
+  param = param - (gradient + mu * velocity) * learning\_rate \\
 else:   \\
   param = param - learning\_rate * velocity. \\
 $$
