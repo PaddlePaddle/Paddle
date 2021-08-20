@@ -1700,8 +1700,8 @@ def select_gather(output_buf, local_expert_count, \
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        return core.ops.select_gather(output_buf, global_expert_count, \
-                                    local_expert_count,  \
+        return core.ops.select_gather(output_buf, local_expert_count, \
+                                    global_expert_count,  \
                                     'out_feat', out_feat, 'n_expert', n_expert, 'world_size', world_size, \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
