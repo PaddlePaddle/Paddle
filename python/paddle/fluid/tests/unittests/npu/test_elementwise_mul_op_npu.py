@@ -26,8 +26,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseMul(OpTest):
     def setUp(self):
         self.set_npu()
@@ -54,7 +52,7 @@ class TestElementwiseMul(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     # TODO(ascendrc): Mul grad test
     # def test_check_grad(self):
@@ -64,8 +62,6 @@ class TestElementwiseMul(OpTest):
     #
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseMulFp16(OpTest):
     def setUp(self):
         self.set_npu()
@@ -93,11 +89,9 @@ class TestElementwiseMulFp16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
+        self.check_output_with_place(self.place, atol=1e-5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseMulNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

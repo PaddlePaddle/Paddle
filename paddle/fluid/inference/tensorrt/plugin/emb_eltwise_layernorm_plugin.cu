@@ -128,7 +128,7 @@ template <typename T>
 int EmbEltwiseLayernormPluginDynamicImpl<T>::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) {
+    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   auto id_dims = input_desc[0].dims;
   int batch = id_dims.d[0];
   int seq_len = id_dims.d[1];
@@ -181,17 +181,19 @@ template class EmbEltwiseLayernormPluginDynamicImpl<float>;
 template class EmbEltwiseLayernormPluginDynamicImpl<half>;
 #endif
 
-int EmbEltwiseLayernormPluginDynamic::initialize() {
+int EmbEltwiseLayernormPluginDynamic::initialize() TRT_NOEXCEPT {
   impl_->initialize();
 
   return 0;
 }
 
-void EmbEltwiseLayernormPluginDynamic::terminate() { impl_->terminate(); }
+void EmbEltwiseLayernormPluginDynamic::terminate() TRT_NOEXCEPT {
+  impl_->terminate();
+}
 
 nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {  // NOLINT
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {  // NOLINT
   PADDLE_ENFORCE_EQ(output_index, 0,
                     platform::errors::InvalidArgument(
                         "There is only one output of the EmbEltwiseLayernorm, "
@@ -208,7 +210,7 @@ nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic::getOutputDimensions(
 
 bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
@@ -256,7 +258,8 @@ bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType EmbEltwiseLayernormPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
       index, 0, platform::errors::InvalidArgument(
                     "The EmbEltwiseLayernorm Plugin only has one input, so the "
@@ -271,7 +274,7 @@ nvinfer1::DataType EmbEltwiseLayernormPluginDynamic::getOutputDataType(
 int EmbEltwiseLayernormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) {
+    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   impl_->enqueue(input_desc, output_desc, inputs, outputs, workspace, stream);
   return cudaGetLastError() != cudaSuccess;
 }

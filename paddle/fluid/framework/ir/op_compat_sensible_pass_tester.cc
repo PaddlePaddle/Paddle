@@ -23,7 +23,7 @@ namespace ir {
 
 TEST(OpCompatSensiblePass, compatOp) {
   auto lambda = [](const std::string& str) { return str == "tanh"; };
-  OpCompat compat("fc");
+  OpCompat compat("fc_test");
   compat.AddAttr("in_num_col_dims")
       .IsIntIn({1, 2})
       .IsNumLE(1)
@@ -66,74 +66,118 @@ TEST(OpCompatSensiblePass, compatOp) {
   fc_op.SetInput("Bias", std::vector<std::string>{"test_input_1"});
   fc_op.SetOutput("Out", std::vector<std::string>{"test_output"});
 
-  EXPECT_STREQ(compat.Name().c_str(), "fc");
-  EXPECT_TRUE(compat.Judge(fc_op));
+  OpInfo info;
+  info.proto_ = new proto::OpProto;
+  info.proto_->set_type("fc_test");
+  info.proto_->set_comment("");
+  auto* attr = info.proto_->add_attrs();
+  attr->set_name("in_num_col_dims");
+  attr = info.proto_->add_attrs();
+  attr->set_name("test_attr");
+  OpInfoMap::Instance().Insert("fc_test", info);
+
+  EXPECT_STREQ(compat.Name().c_str(), "fc_test");
+  EXPECT_TRUE(compat.Judge(fc_op, "test_pass"));
+
+  delete info.proto_;
+  OpInfoMap::Instance().mutable_map()->erase("fc_test");
 }
 
 TEST(OpCompatSensiblePass, compatOpAttribute) {
-  OpCompat compat("fc");
+  OpCompat compat("fc_test");
 
   OpDesc fc_op;
-
   std::unordered_map<std::string, Attribute> attr_map;
   attr_map["in_num_col_dims"] = 1;
   fc_op.SetAttrMap(attr_map);
 
   OpInfo info;
+  info.proto_ = new proto::OpProto;
+  info.proto_->set_type("fc_test");
+  info.proto_->set_comment("");
+  auto* attr = info.proto_->add_attrs();
+  attr->set_name("in_num_col_dims");
   info.checker_ = new OpAttrChecker();
-  OpInfoMap::Instance().Insert("fc", info);
+  OpInfoMap::Instance().Insert("fc_test", info);
+  EXPECT_FALSE(compat.Judge(fc_op, "test_pass"));
 
-  EXPECT_FALSE(compat.Judge(fc_op));
-
+  OpCompat compat_1("fc_test");
   info.checker_->AddAttrChecker<int>("in_num_col_dims").SetDefault(1);
-
-  EXPECT_TRUE(compat.Judge(fc_op));
+  EXPECT_TRUE(compat_1.Judge(fc_op, "test_pass"));
   delete info.checker_;
+  delete info.proto_;
+  OpInfoMap::Instance().mutable_map()->erase("fc_test");
 }
 
 TEST(OpCompatSensiblePass, opDefNotFound) {
-  OpCompat compat("fc_1");
+  OpCompat compat("fc_test");
 
   OpDesc fc_op;
-
-  compat.Judge(fc_op);
-
-  OpCompat compat_1("");
-
-  compat_1.Judge(fc_op);
+  OpInfo info;
+  info.proto_ = new proto::OpProto;
+  info.proto_->set_type("fc_test");
+  info.proto_->set_comment("");
+  OpInfoMap::Instance().Insert("fc_test", info);
+  compat.Judge(fc_op, "test_pass");
+  delete info.proto_;
+  OpInfoMap::Instance().mutable_map()->erase("fc_test");
 }
 
 TEST(OpCompatSensiblePass, compatOpAttributeOptional) {
-  OpCompat compat("fc");
+  OpCompat compat("fc_test");
   compat.AddAttr("activation_type")
       .IsOptional()
       .IsStringIn({"tanh", "sigmoid"});
   OpDesc fc_op;
-  EXPECT_TRUE(compat.Judge(fc_op));
+  OpInfo info;
+  info.proto_ = new proto::OpProto;
+  info.proto_->set_type("fc_test");
+  info.proto_->set_comment("");
+  auto* attr = info.proto_->add_attrs();
+  attr->set_name("activation_type");
+  OpInfoMap::Instance().Insert("fc_test", info);
+  EXPECT_TRUE(compat.Judge(fc_op, "test_pass"));
+  delete info.proto_;
+  OpInfoMap::Instance().mutable_map()->erase("fc_test");
 }
 
 TEST(OpCompatSensiblePass, compatOpInput) {
-  OpCompat compat("fc");
+  OpInfo info;
+  info.proto_ = new proto::OpProto;
+  info.proto_->set_type("fc_test");
+  info.proto_->set_comment("");
+  OpInfoMap::Instance().Insert("fc_test", info);
+
+  OpCompat compat("fc_test");
 
   OpDesc fc_op;
   fc_op.SetInput("Input", std::vector<std::string>{"test_input"});
 
-  EXPECT_FALSE(compat.Judge(fc_op));
+  EXPECT_FALSE(compat.Judge(fc_op, "test_pass"));
 
   compat.AddInput("Input").IsTensor().End().AddInput("Bias").IsTensor().End();
-  EXPECT_FALSE(compat.Judge(fc_op));
+  EXPECT_FALSE(compat.Judge(fc_op, "test_pass"));
 
   fc_op.SetInput("Bias", std::vector<std::string>{"test_input", ""});
-  EXPECT_FALSE(compat.Judge(fc_op));
+  EXPECT_FALSE(compat.Judge(fc_op, "test_pass"));
+
+  delete info.proto_;
+  OpInfoMap::Instance().mutable_map()->erase("fc_test");
 }
 
 TEST(OpCompatSensiblePass, compatOutput) {
-  OpCompat compat("fc");
+  OpInfo info;
+  info.proto_ = new proto::OpProto;
+  info.proto_->set_type("fc_test");
+  info.proto_->set_comment("");
+  OpInfoMap::Instance().Insert("fc_test", info);
+
+  OpCompat compat("fc_test");
 
   OpDesc fc_op;
   fc_op.SetOutput("Output", std::vector<std::string>{"test_output"});
 
-  EXPECT_FALSE(compat.Judge(fc_op));
+  EXPECT_FALSE(compat.Judge(fc_op, "test_pass"));
 
   compat.AddOutput("Output")
       .IsTensor()
@@ -141,10 +185,13 @@ TEST(OpCompatSensiblePass, compatOutput) {
       .AddOutput("Output_2")
       .IsTensor()
       .End();
-  EXPECT_FALSE(compat.Judge(fc_op));
+  EXPECT_FALSE(compat.Judge(fc_op, "test_pass"));
 
   fc_op.SetOutput("Output_2", std::vector<std::string>{"test_output", ""});
-  EXPECT_FALSE(compat.Judge(fc_op));
+  EXPECT_FALSE(compat.Judge(fc_op, "test_pass"));
+
+  delete info.proto_;
+  OpInfoMap::Instance().mutable_map()->erase("fc_test");
 }
 
 class OpCompatSensiblePassTest : public OpCompatSensiblePass {
@@ -158,7 +205,7 @@ class OpCompatSensiblePassTest : public OpCompatSensiblePass {
 };
 
 OpCompatSensiblePassTest::OpCompatSensiblePassTest() {
-  AddOpCompat(OpCompat("fc"))
+  AddOpCompat(OpCompat("fc_test"))
       .AddAttr("in_num_col_dims")
       .IsNumLE(1)
       .End()
@@ -180,9 +227,19 @@ OpCompatSensiblePassTest::OpCompatSensiblePassTest() {
 }
 
 TEST(OpCompatSensiblePass, IsCompat) {
+  OpInfo info;
+  info.proto_ = new proto::OpProto;
+  info.proto_->set_type("fc_test");
+  info.proto_->set_comment("");
+  auto* attr = info.proto_->add_attrs();
+  attr->set_name("in_num_col_dims");
+  attr = info.proto_->add_attrs();
+  attr->set_name("activation_type");
+  OpInfoMap::Instance().Insert("fc_test", info);
+
   OpCompatSensiblePassTest test;
   OpDesc fc_op;
-  fc_op.SetType("fc");
+  fc_op.SetType("fc_test");
   std::unordered_map<std::string, Attribute> attr_map;
   attr_map["in_num_col_dims"] = 1;
   attr_map["activation_type"] = std::string("tanh");
@@ -194,9 +251,23 @@ TEST(OpCompatSensiblePass, IsCompat) {
   fc_op.SetOutput("Out", std::vector<std::string>{"test_output"});
 
   EXPECT_TRUE(test.TestIsCompat(fc_op));
+
+  delete info.proto_;
+  OpInfoMap::Instance().mutable_map()->erase("fc_test");
 }
 
 TEST(OpCompatSensiblePass, IsCompatFail) {
+  OpInfo info;
+  info.proto_ = new proto::OpProto;
+  info.proto_->set_type("fc_test");
+  info.proto_->set_comment("");
+  auto* attr = info.proto_->add_attrs();
+  attr->set_name("activation_type");
+  attr = info.proto_->add_attrs();
+  attr->set_name("in_num_col_dims");
+  OpInfoMap::Instance().Insert("fc_test", info);
+  OpInfoMap::Instance().Insert("op2", info);
+
   OpCompatSensiblePassTest test;
   GraphPatternDetector::subgraph_t subgraph;
   PDPattern pattern;
@@ -204,13 +275,21 @@ TEST(OpCompatSensiblePass, IsCompatFail) {
   ProgramDesc prog;
   Graph g(prog);
   OpDesc fc_op;
-  fc_op.SetType("op1");
+  std::unordered_map<std::string, Attribute> attr_map;
+  attr_map["in_num_col_dims"] = 1;
+  attr_map["activation_type"] = std::string("tanh");
+  fc_op.SetAttrMap(attr_map);
+  fc_op.SetType("fc_test");
+  subgraph[pd_node] = g.CreateOpNode(&fc_op);
+  EXPECT_FALSE(test.TestIsCompat(subgraph, &g));
+
+  fc_op.SetType("op2");
   subgraph[pd_node] = g.CreateOpNode(&fc_op);
   EXPECT_TRUE(test.TestIsCompat(subgraph, &g));
 
-  fc_op.SetType("mul");
-  subgraph[pd_node] = g.CreateOpNode(&fc_op);
-  EXPECT_FALSE(test.TestIsCompat(subgraph, &g));
+  delete info.proto_;
+  OpInfoMap::Instance().mutable_map()->erase("fc_test");
+  OpInfoMap::Instance().mutable_map()->erase("op2");
 }
 
 }  // namespace ir

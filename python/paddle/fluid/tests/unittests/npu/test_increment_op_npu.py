@@ -29,8 +29,6 @@ SEED = 2021
 NPUPlace = 0
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestIncrement(OpTest):
     def setUp(self):
         self.set_npu()
@@ -54,11 +52,9 @@ class TestIncrement(OpTest):
         self.dtype = np.int64
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestIncrementFP16(OpTest):
     def setUp(self):
         self.set_npu()
@@ -82,11 +78,9 @@ class TestIncrementFP16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestIncrementInplace(unittest.TestCase):
     def test_npu(self):
         main_prog = paddle.static.Program()

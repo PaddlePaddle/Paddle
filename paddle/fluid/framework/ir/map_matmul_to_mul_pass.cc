@@ -191,11 +191,6 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
   int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "Pass in op compat failed.";
-      return;
-    }
-
     VLOG(4) << "map matmul to mul";
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_x, matmul_in_x, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
@@ -221,6 +216,10 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
            next_ops[0]->Name() == "elementwise_add";
 
     if (flag) {
+      if (!IsCompat(subgraph, g)) {
+        LOG(WARNING) << "Pass in op compat failed.";
+        return;
+      }
       OpDesc desc;
       desc.SetType("mul");
       desc.SetInput("X", {matmul_in_x->Name()});

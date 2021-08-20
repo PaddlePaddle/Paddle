@@ -391,17 +391,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
         }
       }
 
-      if (need_pad_num == 0) {
-        // do not need padding, pass if data address same, else copy
-        if (d_input->mutable_data<T>(context.GetPlace()) == d_out->data<T>()) {
-          // inplace, do not any operator, pass
-        } else {
-          framework::TensorCopy(
-              *d_out, context.GetPlace(),
-              context.template device_context<platform::DeviceContext>(),
-              d_input);
-        }
-      } else if (need_pad_num == 1) {
+      if (need_pad_num == 1) {
         // only need padding one dimension, we can reduce dimension.
         // only the padding dimension is available for us.
         // How to reduce dimension(5 to 3 for example):

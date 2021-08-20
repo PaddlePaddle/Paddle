@@ -122,6 +122,16 @@ class OpDesc {
 
   const VariableNameMap &Outputs() const { return outputs_; }
 
+  VariableNameMap *MutableInputs() {
+    this->need_update_ = true;
+    return &this->inputs_;
+  }
+
+  VariableNameMap *MutableOutputs() {
+    this->need_update_ = true;
+    return &this->outputs_;
+  }
+
   AttributeMap *MutableAttrMap() {
     this->need_update_ = true;
     return &this->attrs_;

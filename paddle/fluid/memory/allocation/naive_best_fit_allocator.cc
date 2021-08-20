@@ -31,7 +31,7 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
 #endif
 
 DEFINE_bool(init_allocated_mem, false,

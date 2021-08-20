@@ -19,6 +19,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include <algorithm>
 
 namespace paddle {
 namespace framework {
@@ -109,7 +110,8 @@ void EagerDeletionOpHandle::CallOnce() {
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
-  if (vars_.size() != var_infos_.size()) {
+  if (vars_.size() != var_infos_.size() || is_variant_scope_) {
+    vars_.clear();
     CallOnce();
   }
 
@@ -119,6 +121,7 @@ void EagerDeletionOpHandle::RunImpl() {
     auto *var_info = var_infos_[i];
     if (var_info->IsSkippedAllMemoryOptimization() ||
         !var_info->DecreaseRefCnt()) {
+      VLOG(4) << "skip memory optimization with var: " << var_info->Name();
       continue;
     }
 
@@ -173,6 +176,16 @@ void EagerDeletionOpHandle::ClearGarbages(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
+}
+
+std::vector<std::string> EagerDeletionOpHandle::VarsToDelete() const {
+  std::vector<std::string> var_names;
+  var_names.reserve(var_infos_.size());
+  for (auto &info : var_infos_) {
+    var_names.emplace_back(info->Name());
+  }
+  std::sort(var_names.begin(), var_names.end());
+  return var_names;
 }
 
 }  // namespace details

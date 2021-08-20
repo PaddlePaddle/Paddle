@@ -135,9 +135,19 @@ void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
                     precision, adaptive_seqlen);
 }
 
+void PD_ConfigEnableNpu(__pd_keep PD_Config* pd_config, int32_t device_id) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableNpu(device_id);
+}
+
 PD_Bool PD_ConfigUseXpu(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->use_xpu();
+}
+
+PD_Bool PD_ConfigUseNpu(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->use_npu();
 }
 
 int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
@@ -147,6 +157,10 @@ int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
 int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->xpu_device_id();
+}
+int32_t PD_ConfigNpuDeviceId(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->npu_device_id();
 }
 int32_t PD_ConfigMemoryPoolInitSizeMb(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -402,6 +416,13 @@ __pd_give PD_OneDimArrayCstr* PD_ConfigAllPasses(
   CHECK_AND_CONVERT_PD_CONFIG;
   std::vector<std::string> passes = config->pass_builder()->AllPasses();
   return paddle_infer::CvtVecToOneDimArrayCstr(passes);
+}
+const char* PD_ConfigSummary(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  auto sum_str = config->Summary();
+  char* c = reinterpret_cast<char*>(malloc(sum_str.length() + 1));
+  snprintf(c, sum_str.length() + 1, "%s", sum_str.c_str());
+  return c;
 }
 
 }  // extern "C"

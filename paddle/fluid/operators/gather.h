@@ -80,7 +80,7 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                           "input dim size of axis which is %d, but received "
                           "index element which is %d in the %d index.",
                           input_size, p_index[i], i));
-    PADDLE_ENFORCE_GE(p_index[i], 0UL,
+    PADDLE_ENFORCE_GE(p_index[i], 0,
                       platform::errors::OutOfRange(
                           "The element of Index must be greater than or equal "
                           "to 0, but received index element which is %d in the "
@@ -128,7 +128,7 @@ void CPUGatherNd(const platform::DeviceContext& ctx, const Tensor& input,
           platform::errors::InvalidArgument(
               "Input(index[-1)] has wrong value, it is [%d]", index_value));
       PADDLE_ENFORCE_GE(
-          index_value, 0UL,
+          index_value, 0,
           platform::errors::InvalidArgument(
               "The value of Input(index) must be no less than 0"));
 
@@ -160,7 +160,7 @@ void GatherV2Function(const Tensor* input, const Tensor* index, int axis,
                           "input dim size of axis which is %d, but received "
                           "index element which is %d in the %d index.",
                           input_index_dim_size, index_data[i], i));
-    PADDLE_ENFORCE_GE(index_data[i], 0UL,
+    PADDLE_ENFORCE_GE(index_data[i], 0,
                       platform::errors::OutOfRange(
                           "The element of Index must be greater than or equal "
                           "to 0, but received index element which is %d in the "

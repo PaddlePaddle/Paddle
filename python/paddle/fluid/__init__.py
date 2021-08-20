@@ -179,6 +179,7 @@ def __bootstrap__():
     sysstr = platform.system()
     read_env_flags = [
         'check_nan_inf',
+        'convert_all_blocks',
         'benchmark',
         'eager_delete_scope',
         'fraction_of_cpu_memory_to_use',
@@ -235,6 +236,7 @@ def __bootstrap__():
             'local_exe_sub_scope_limit',
             'gpu_memory_limit_mb',
             'conv2d_disable_cudnn',
+            'get_host_by_name_time',
         ]
 
     if core.is_compiled_with_npu():
@@ -244,10 +246,18 @@ def __bootstrap__():
             'initial_gpu_memory_in_mb',
             'reallocate_gpu_memory_in_mb',
             'gpu_memory_limit_mb',
+            'npu_config_path',
+            'get_host_by_name_time',
         ]
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
-    core.init_glog(sys.argv[0])
+    # Note(zhouwei25): sys may not have argv in some cases, 
+    # Such as: use Python/C API to call Python from C++
+    try:
+        core.init_glog(sys.argv[0])
+    except Exception:
+        sys.argv = [""]
+        core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices()
 
@@ -262,3 +272,5 @@ monkey_patch_varbase()
 # do some clean up manually.
 if core.is_compiled_with_npu():
     atexit.register(core.npu_finalize)
+# NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
+atexit.register(core.clear_executor_cache)

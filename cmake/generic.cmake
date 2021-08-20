@@ -932,12 +932,8 @@ function(generate_dummy_static_lib)
   if(NOT dummy_GENERATOR)
     message(FATAL_ERROR "You must provide a generator file name.")
   endif()
-  # if ${dummy_GENERATOR} contains "/", it may be a file path
-  if(NOT ${dummy_GENERATOR} MATCHES ".*/.*")
-    set(dummy_GENERATOR "${CMAKE_CURRENT_LIST_DIR}/${dummy_GENERATOR}")
-  endif()
   if(NOT dummy_CONTENT)
-    set(dummy_CONTENT "${dummy_FILE_PATH} for lib ${dummy_LIB_NAME}")
+    set(dummy_CONTENT "${dummy_LIB_NAME}_dummy.c for lib ${dummy_LIB_NAME}")
   endif()
 
   configure_file(${PROJECT_SOURCE_DIR}/cmake/dummy.c.in ${dummy_FILE_PATH} @ONLY)

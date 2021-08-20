@@ -26,8 +26,6 @@ import paddle.fluid.core as core
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOpBase(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
@@ -77,50 +75,36 @@ class TestStackOpBase(OpTest):
         self.check_grad_with_place(self.place, self.get_x_names(), 'Y')
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp1(TestStackOpBase):
     def initParameters(self):
         self.num_inputs = 16
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp2(TestStackOpBase):
     def initParameters(self):
         self.num_inputs = 20
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp3(TestStackOpBase):
     def initParameters(self):
         self.axis = -1
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp4(TestStackOpBase):
     def initParameters(self):
         self.axis = -4
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp5(TestStackOpBase):
     def initParameters(self):
         self.axis = 1
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp6(TestStackOpBase):
     def initParameters(self):
         self.axis = 3
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):
     """
     Test stack api when the input(x) is a LoDTensorArray.
@@ -157,8 +141,6 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
                     [self.x] * self.iter_num, axis=self.axis)))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
     """
     Test stack api when the input(x) is a LoDTensorArray.
@@ -195,8 +177,6 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
                     [self.x] * self.iter_num, axis=self.axis)))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class API_test(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -223,8 +203,6 @@ class API_test(unittest.TestCase):
             self.assertRaises(TypeError, paddle.stack, x)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class API_DygraphTest(unittest.TestCase):
     def test_out(self):
         data1 = np.array([[1.0, 2.0]])

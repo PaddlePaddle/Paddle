@@ -406,7 +406,7 @@ class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
         self.dygraph_func = for_enumerate_var_numpy_with_break
 
 
-class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
+class TestForEnumerateVarNumpyWithContinue(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_numpy_with_continue
 
@@ -416,7 +416,7 @@ class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
         self.dygraph_func = for_enumerate_var_numpy_with_start_break
 
 
-class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
+class TestForEnumerateVarNumpyWithStartAndContinue(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_numpy_with_start_continue
 

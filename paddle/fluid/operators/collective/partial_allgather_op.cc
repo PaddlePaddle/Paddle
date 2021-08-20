@@ -68,14 +68,19 @@ reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(PartialAllGatherOpInplaceInferer, {"X", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(partial_allgather, ops::PartialAllGatherOp,
-                             ops::PartialAllGatherOpMaker);
+REGISTER_OPERATOR(
+    partial_allgather, ops::PartialAllGatherOp, ops::PartialAllGatherOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::PartialAllGatherOpInplaceInferer)
 
 REGISTER_OP_CPU_KERNEL(partial_allgather,
                        ops::PartialAllGatherOpCPUKernel<float>,

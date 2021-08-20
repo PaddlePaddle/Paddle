@@ -578,6 +578,7 @@ class PostTrainingQuantization(object):
             var_tensor = _load_variable_data(self._scope, var_name)
             var_tensor = var_tensor.flatten()
             abs_max_value = float(np.max(np.abs(var_tensor)))
+            abs_max_value = 1e-8 if abs_max_value == 0.0 else abs_max_value
             s = 0.3
             if var_name not in self._best_mse_loss:
                 self._best_mse_loss[var_name] = float('inf')

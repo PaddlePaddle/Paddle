@@ -23,6 +23,7 @@ from ..fluid import unique_name
 from ..fluid import layers
 import paddle.fluid as fluid
 from paddle.fluid.regularizer import L2DecayRegularizer
+from paddle import _C_ops
 
 __all__ = []
 
@@ -293,7 +294,7 @@ class Momentum(Optimizer):
         if framework.in_dygraph_mode():
             if isinstance(param_and_grad, dict):
                 self._update_regularization(param_and_grad['weight_decay'])
-            _, _ = core.ops.momentum(
+            _, _ = _C_ops.momentum(
                 param_and_grad[0], param_and_grad[1], velocity_acc, lr,
                 param_and_grad[0], velocity_acc, 'mu', self._momentum,
                 'use_nesterov', self._use_nesterov, 'regularization_method',

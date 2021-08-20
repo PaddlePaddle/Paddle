@@ -266,7 +266,7 @@ for dims in xpu_support_dims_list:
 
 
             # Test case n-dim
-def generate_compatible_shapes(dim, transpose_X, transpose_Y):
+def generate_compatible_shapes_(dim, transpose_X, transpose_Y):
     M = 2
     N = 4
     K = 3
@@ -293,8 +293,8 @@ for dim in [4]:
             test_name = (
                 'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
                     dim, dim, transpose_X, transpose_Y))
-            shape_X, shape_Y = generate_compatible_shapes(dim, transpose_X,
-                                                          transpose_Y)
+            shape_X, shape_Y = generate_compatible_shapes_(dim, transpose_X,
+                                                           transpose_Y)
             globals()[test_name] = type(test_name, (Generator, XPUOpTest), {
                 'shape_X': shape_X,
                 'shape_Y': shape_Y,
