@@ -39,6 +39,7 @@ _logger = get_logger(
 class TestFuseLinearBn(unittest.TestCase):
     """
     """
+
     def test_fuse(self):
         model = ImperativeLinearBn()
         inputs = paddle.randn((3, 10), dtype="float32")
@@ -47,13 +48,13 @@ class TestFuseLinearBn(unittest.TestCase):
         f_l = [['linear', 'bn']]
         quant_model = ptq.quantize(model, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
-            print(name, layer) 
+            print(name, layer)
         out = model(inputs)
         out_quant = quant_model(inputs)
         cos_sim_func = nn.CosineSimilarity(axis=0)
         print(cos_sim_func(out.flatten(), out_quant.flatten()))
- 
-        
+
+
 class TestImperativePTQ(unittest.TestCase):
     """
     """
