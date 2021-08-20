@@ -47,7 +47,7 @@ def _fuse_layers(model, layers_list):
     new_layers = fuse_func(lay_list)
     for i, item in enumerate(layers_list):
         parent_layer, sub_name = utils.find_parent_layer_and_sub_name(model,
-            item)
+                                                                      item)
         setattr(parent_layer, sub_name, new_layers[i])
 
 
@@ -118,7 +118,8 @@ def fuse_linear_bn(linear, bn):
     assert (linear.training == bn.training),\
         "Linear and BN both must be in the same mode (train or eval)."
     if linear.training:
-        assert bn._num_features == linear.weight.shape[1], 'Output channel of Linear must match num_features of BatchNorm'
+        assert bn._num_features == linear.weight.shape[
+            1], 'Output channel of Linear must match num_features of BatchNorm'
         raise NotImplementedError
     else:
         return fuse_linear_bn_eval(linear, bn)
@@ -126,12 +127,12 @@ def fuse_linear_bn(linear, bn):
 
 def fuse_linear_bn_eval(linear, bn):
     '''fuse linear and bn for eval'''
-    assert(not (linear.training or bn.training)), "Fusion only for eval!"
+    assert (not (linear.training or bn.training)), "Fusion only for eval!"
     fused_linear = copy.deepcopy(linear)
 
     fused_weight, fused_bias = fuse_linear_bn_weights(
-        fused_linear.weight, fused_linear.bias, bn._mean, bn._variance, bn._epsilon, 
-        bn.weight, bn.bias)
+        fused_linear.weight, fused_linear.bias, bn._mean, bn._variance,
+        bn._epsilon, bn.weight, bn.bias)
     fused_linear.weight.set_value(fused_weight)
     if fused_linear.bias is None:
         fused_linear.bias = paddle.create_parameter(
@@ -140,7 +141,8 @@ def fuse_linear_bn_eval(linear, bn):
     return fused_linear
 
 
-def fuse_linear_bn_weights(linear_w, linear_b, bn_rm, bn_rv, bn_eps, bn_w, bn_b):
+def fuse_linear_bn_weights(linear_w, linear_b, bn_rm, bn_rv, bn_eps, bn_w,
+                           bn_b):
     '''fuse weights and bias of linear and bn'''
     if linear_b is None:
         linear_b = paddle.zeros_like(bn_rm)
@@ -151,6 +153,6 @@ def fuse_linear_bn_weights(linear_w, linear_b, bn_rm, bn_rv, bn_eps, bn_w, bn_b)
 
 
 layer_list_to_fuse_method = {
-(nn.Conv2D, nn.BatchNorm2D): fuse_conv_bn,
-(nn.Linear, nn.BatchNorm): fuse_linear_bn,
+    (nn.Conv2D, nn.BatchNorm2D): fuse_conv_bn,
+    (nn.Linear, nn.BatchNorm): fuse_linear_bn,
 }

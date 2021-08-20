@@ -178,8 +178,62 @@ class TestImperativePTQ(unittest.TestCase):
         model_state_dict = paddle.load(params_path)
         model.set_state_dict(model_state_dict)
         # Quantize, calibrate and save
-        f_l = [['features.0', 'features.1']]
+        quant_model = self.ptq.quantize(model)
+        before_acc_top1 = self.model_test(quant_model, self.batch_num,
+                                          self.batch_size)
+
+        input_spec = [
+            paddle.static.InputSpec(
+                shape=[None, 1, 28, 28], dtype='float32')
+        ]
+        self.ptq.save_quantized_model(
+            model=quant_model, path=self.save_path, input_spec=input_spec)
+        print('Quantized model saved in {%s}' % self.save_path)
+
+        after_acc_top1 = self.model_test(quant_model, self.batch_num,
+                                         self.batch_size)
+
+        paddle.enable_static()
+        infer_acc_top1 = self.program_test(self.save_path, self.batch_num,
+                                           self.batch_size)
+        paddle.disable_static()
+
+        # Check
+        print('Before converted acc_top1: %s' % before_acc_top1)
+        print('After converted acc_top1: %s' % after_acc_top1)
+        print('Infer acc_top1: %s' % infer_acc_top1)
+
+        self.assertTrue(
+            after_acc_top1 >= self.eval_acc_top1,
+            msg="The test acc {%f} is less than {%f}." %
+            (after_acc_top1, self.eval_acc_top1))
+        self.assertTrue(
+            infer_acc_top1 >= after_acc_top1,
+            msg='The acc is lower after converting model.')
+
+        end_time = time.time()
+        print("total time: %ss \n" % (end_time - start_time))
+
+
+class TestImperativePTQfuse(TestImperativePTQ):
+    def test_ptq(self):
+        start_time = time.time()
+
+        self.set_vars()
+
+        # Load model
+        params_path = self.download_model(self.lenet_url, self.lenet_md5,
+                                          "lenet")
+        params_path += "/lenet_pretrained/lenet.pdparams"
+
+        model = ImperativeLenet()
+        model_state_dict = paddle.load(params_path)
+        model.set_state_dict(model_state_dict)
+        # Quantize, calibrate and save
+        f_l = [['features.0', 'features.1'], ['features.4', 'features.5']]
         quant_model = self.ptq.quantize(model, fuse=True, fuse_list=f_l)
+        for name, layer in quant_model.named_sublayers():
+            print(name, layer)
         before_acc_top1 = self.model_test(quant_model, self.batch_num,
                                           self.batch_size)
 
