@@ -246,7 +246,7 @@ class ImperativeLinearBn(fluid.dygraph.Layer):
             out_features=10,
             weight_attr=fc_w_attr,
             bias_attr=fc_b_attr)
-        self.bn =  BatchNorm1D(10, weight_attr=bn_w_attr)
+        self.bn = BatchNorm1D(10, weight_attr=bn_w_attr)
 
     def forward(self, inputs):
         x = self.linear(inputs)
