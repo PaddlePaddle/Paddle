@@ -991,9 +991,12 @@ def sparse_embedding(input,
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         size[0] + padding_idx)
 
-    if table_class not in ["CommonSparseTable", "SSDSparseTable", "CtrSparseTable"]:
+    if table_class not in [
+            "CommonSparseTable", "SSDSparseTable", "CtrSparseTable"
+    ]:
         raise ValueError(
-            "table_class must be in [CommonSparseTable, SSDSparseTable, CtrSparseTable]")
+            "table_class must be in [CommonSparseTable, SSDSparseTable, CtrSparseTable]"
+        )
 
     entry_str = "none"
 
