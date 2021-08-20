@@ -104,9 +104,7 @@ def test_class3(op_type, typename):
             index = np.array([[1], [2]]).astype("int64")
 
             self.inputs = {'X': xnp, 'Index': index}
-            self.outputs = {
-                'Out': xnp[tuple(index.T)]
-            }  #[[14, 25, 1], [76, 22, 3]]
+            self.outputs = {'Out': xnp[tuple(index.T)]}
             self.x_grad = gather_nd_grad(xnp, index)
 
         def set_npu(self):
@@ -243,89 +241,7 @@ def test_class7(op_type, typename):
     globals()[cls_name] = TestGatherNdOpWithHighRankDiff
 
 
-#Test Python API
-class TestGatherNdOpAPI(unittest.TestCase):
-    def test_case1(self):
-        x1 = fluid.layers.data(
-            name='x1', shape=[30, 40, 50, 60], dtype='float32')
-        index1 = fluid.layers.data(name='index1', shape=[2, 4], dtype='int32')
-        output1 = fluid.layers.gather_nd(x1, index1)
-
-    def test_case2(self):
-        x2 = fluid.layers.data(name='x2', shape=[30, 40, 50], dtype='float32')
-        index2 = fluid.layers.data(name='index2', shape=[2, 2], dtype='int64')
-        output2 = fluid.layers.gather_nd(x2, index2)
-
-    def test_case3(self):
-        x3 = fluid.layers.data(name='x3', shape=[3, 4, 5], dtype='float32')
-        index3 = fluid.layers.data(name='index3', shape=[2, 1], dtype='int32')
-        output3 = fluid.layers.gather_nd(x3, index3, name="gather_nd_layer")
-
-
-#Test Raise Index Error
-class TestGatherNdOpRaise(unittest.TestCase):
-    def test_check_raise(self):
-        def check_raise_is_test():
-            try:
-                x = fluid.layers.data(
-                    name='x', shape=[3, 4, 5], dtype='float32')
-                index = fluid.layers.data(
-                    name='index', shape=[2, 10], dtype='int32')
-                output = fluid.layers.gather_nd(x, index)
-            except Exception as e:
-                t = \
-                "Input(Index).shape[-1] should be no greater than Input(X).rank"
-                if t in str(e):
-                    raise IndexError
-
-        self.assertRaises(IndexError, check_raise_is_test)
-
-
-class TestGatherNdError(unittest.TestCase):
-    def test_error(self):
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
-
-            shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
-            index = paddle.fluid.data(shape=shape, dtype='bool', name='index')
-            index_float = paddle.fluid.data(
-                shape=shape, dtype='float32', name='index_float')
-            np_x = np.random.random(shape).astype('float32')
-            np_index = np.array(np.random.randint(2, size=shape, dtype=bool))
-
-            def test_x_type():
-                paddle.gather_nd(np_x, index)
-
-            self.assertRaises(TypeError, test_x_type)
-
-            def test_index_type():
-                paddle.gather_nd(x, np_index)
-
-            self.assertRaises(TypeError, test_index_type)
-
-            def test_index_dtype():
-                paddle.gather_nd(x, index_float)
-
-            self.assertRaises(TypeError, test_index_dtype)
-
-
-class TestGatherNdAPI2(unittest.TestCase):
-    def test_static(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float64')
-            index = fluid.layers.data('index', shape=[-1, 1], dtype='int32')
-            out = paddle.gather_nd(data1, index)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            input = np.array([[1, 2], [3, 4], [5, 6]])
-            index_1 = np.array([[1]])
-            result, = exe.run(feed={"data1": input,
-                                    "index": index_1},
-                              fetch_list=[out])
-            expected_output = np.array([[3, 4]])
-        self.assertTrue(np.allclose(result, expected_output))
-
+class TestGatherNdAPI(unittest.TestCase):
     def test_imperative(self):
         paddle.disable_static()
         input_1 = np.array([[1, 2], [3, 4], [5, 6]])

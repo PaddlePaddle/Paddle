@@ -70,7 +70,7 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
     auto *x = ctx.Input<Tensor>("X");
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *p2 = dx->mutable_data<T>(ctx.GetPlace());
+    auto *p = dx->mutable_data<T>(ctx.GetPlace());
 
     if (index->numel() == 0) {
       *dx = *dout;
@@ -100,8 +100,8 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    platform::NPUMemsetAsync(static_cast<void *>(p2), 0,
-                             dx->numel() * sizeof(T), stream);
+    platform::NPUMemsetAsync(static_cast<void *>(p), 0, dx->numel() * sizeof(T),
+                             stream);
 
     const auto &runner_scatter = NpuOpRunner(
         "ScatterNdAdd", {*dx, *index, *dout}, {*dx}, {{"use_locking", false}});
@@ -118,16 +118,8 @@ REGISTER_OP_NPU_KERNEL(
                                       paddle::platform::float16>,
     ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, bool>,
-    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
-    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
-    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
-    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>);
+    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, bool>);
 
 REGISTER_OP_NPU_KERNEL(
     gather_nd_grad,
-    ops::GatherNdGradNPUKernel<paddle::platform::NPUDeviceContext,
-                               paddle::platform::float16>,
-    ops::GatherNdGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::GatherNdGradNPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
-    ops::GatherNdGradNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>);
+    ops::GatherNdGradNPUKernel<paddle::platform::NPUDeviceContext, float>);
