@@ -76,7 +76,7 @@ function run_model_benchmark {
     cd ${cache_dir}/benchmark_data
     if [ -d "benchmark" ];then rm -rf benchmark
     fi
-    #test 
+    #testtest 
     git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/xiegegege/benchmark.git
     export data_path=${cfs_dir}/model_dataset/model_benchmark_data
     export prepare_path=${cfs_dir}/model_dataset/model_benchmark_prepare
