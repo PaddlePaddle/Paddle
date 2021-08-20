@@ -178,35 +178,6 @@ class CuFFTConfig {
                           "But signal_ndim is: [%d], sizes.size() - 1 is: [%d]",
                           signal_ndim, sizes.size() - 1));
 
-// Since cuFFT has limited non-unit stride support and various constraints, we
-// use a flag to keep track throughout this function to see if we need to
-// input = input.clone();
-/*
-#ifdef __HIPCC__
-    // clone input to avoid issues with hipfft clobering the input and failing
-tests
-    clone_input = true;
-#else
-    clone_input = false;
-#endif
-
-    CuFFTDataLayout in_layout;
-    if (clone_input) {
-      in_layout = cufft_simple_embed(sizes, fft_type == FFTTransformType::C2R);
-    } else {
-      in_layout = as_cufft_embed(in_strides, sizes, fft_type ==
-FFTTransformType::C2R);
-    }
-    auto out_layout = as_cufft_embed(out_strides, sizes, fft_type ==
-FFTTransformType::R2C);
-    clone_input |= in_layout.must_clone;
-
-    // Check if we can take advantage of simple data layout.
-    //
-    // See NOTE [ cuFFT Embedded Strides ] in native/cuda/SpectralOps.cu.
-
-    const bool simple_layout = in_layout.simple && out_layout.simple;
-*/
 #ifdef __HIPCC__
     hipfftType exec_type = [&] {
       if (dtype == framework::proto::VarType::FP32) {
@@ -260,15 +231,6 @@ FFTTransformType::R2C);
     size_t ws_size_t;
 
 // make plan
-/*
-    if (simple_layout) {
-      // If with unit-stride, we tell cuFFT by setting inembed == onembed ==
-   NULL.
-      // In such case, cuFFT ignores istride, ostride, idist, and odist
-      // by assuming istride = ostride = 1.
-      //
-      // See NOTE [ cuFFT Embedded Strides ] in native/cuda/SpectralOps.cu.
-*/
 #ifdef __HIPCC__
     CUFFT_CHECK(hipfftMakePlanMany(
         plan(), signal_ndim, signal_sizes.data(),
@@ -282,24 +244,7 @@ FFTTransformType::R2C);
         /* onembed */ nullptr, /* base_ostride */ 1, /* odist */ 1, otype,
         batch, &ws_size_t, exec_type));
 #endif
-    /*
-        } else {
-    #ifdef __HIPCC__
-          CUFFT_CHECK(hipfftMakePlanMany(plan(), signal_ndim,
-    signal_sizes.data(),
-            in_layout.embed.data(), in_layout.stride, in_layout.dist,
-            out_layout.embed.data(), out_layout.stride, out_layout.dist,
-            exec_type, batch, &ws_size_t));
-    #else
-          CUFFT_CHECK(cufftXtMakePlanMany(plan(), signal_ndim,
-    signal_sizes.data(),
-                in_layout.embed.data(), in_layout.stride, in_layout.dist, itype,
-                out_layout.embed.data(), out_layout.stride, out_layout.dist,
-    otype,
-                batch, &ws_size_t, exec_type));
-    #endif
-        }
-    */
+
     ws_size = ws_size_t;
   }
 
@@ -568,9 +513,9 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
               const std::vector<int64_t> out_sizes,
               const std::vector<int64_t> dim, bool forward) {
   const auto x_dims = framework::vectorize(X->dims());
-  const auto ndim = static_cast<int64_t>(X->dims().size());
-  const int64_t signal_ndim = dim.size();
-  const auto batch_dims = ndim - signal_ndim;
+  const int64_t ndim = static_cast<int64_t>(X->dims().size());
+  const int64_t signal_ndim = static_cast<int64_t>(dim.size());
+  const int64_t batch_dims = ndim - signal_ndim;
   auto tensor_place = ctx.GetPlace();
 
   // Transpose batch dimensions first, then with transforming dims
@@ -593,31 +538,32 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
     reverse_dim_permute[dim_permute[i]] =
         static_cast<int>(i);  // reverse of dim permute
   }
-  framework::Tensor* input;
-  input->Resize(framework::make_ddim(trans_dims));
-  input->mutable_data<T>(tensor_place);
+  framework::Tensor input;
+  input.Resize(framework::make_ddim(trans_dims));
+  input.mutable_data<T>(tensor_place);
   /*
   auto in_ret = TransposeSimple<T>::run(ctx, *X, dim_permute, input);
   if (!in_ret) {
     TransCompute<DeviceContext, T>(ndim, ctx, *X, input, dim_permute);
   }
   */
-  TransCompute<DeviceContext, T>(ndim, ctx, *X, input, dim_permute);
+  TransCompute<DeviceContext, T>(ndim, ctx, *X, &input, dim_permute);
 
   // Reshape batch dimensions into a single dimension
   std::vector<int64_t> batched_sizes(signal_ndim + 1);
   auto batch_size =
-      std::accumulate(dim_permute.begin(), batch_end, static_cast<int>(1),
-                      std::multiplies<int>());
+      std::accumulate(trans_dims.begin(), trans_dims.begin() + batch_dims,
+                      static_cast<int>(1), std::multiplies<int>());
   batched_sizes[0] = batch_size;
-  std::copy(dim.cbegin(), dim.cend(), batched_sizes.begin() + 1);
-  input->Resize(framework::make_ddim(batched_sizes));
+  std::copy(trans_dims.begin() + batch_dims, trans_dims.end(),
+            batched_sizes.begin() + 1);
+  input.Resize(framework::make_ddim(batched_sizes));
 
   // Check the shape of transforming dims with input and output
   std::vector<int64_t> signal_size(signal_ndim + 1);
   signal_size[0] = batch_size;
   for (int64_t i = 0; i < signal_ndim; ++i) {
-    auto in_size = input->dims()[i + 1];
+    auto in_size = input.dims()[i + 1];
     auto out_size = out_sizes[dim[i]];
     signal_size[i + 1] = std::max(in_size, out_size);
     PADDLE_ENFORCE_EQ(
@@ -626,8 +572,7 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
         true,
         platform::errors::InvalidArgument(
             "The dimension[%d] of Input size: [%d] must be equal or half to "
-            "The dimension[%d] of Output size: [%d]"
-            "Input(Scale) is [%d]",
+            "The dimension[%d] of Output size: [%d]",
             dim[i], in_size, dim[i], out_size));
     PADDLE_ENFORCE_EQ(
         (out_size == signal_size[i + 1] ||
@@ -635,8 +580,7 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
         true,
         platform::errors::InvalidArgument(
             "The dimension[%d] of Output size: [%d] must be equal or half to "
-            "The dimension[%d] of Input size: [%d]"
-            "Input(Scale) is [%d]",
+            "The dimension[%d] of Input size: [%d]",
             dim[i], out_size, dim[i], in_size));
   }
 
@@ -651,15 +595,15 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
   }
 
   // output
-  framework::Tensor* output;
-  output->Resize(framework::make_ddim(batched_out_sizes));
-  output->mutable_data<T>(tensor_place);
+  framework::Tensor output;
+  output.Resize(framework::make_ddim(batched_out_sizes));
+  output.mutable_data<T>(tensor_place);
 
   // Create the transform plan (either from cache or locally)
-  const auto value_type = framework::ToRealType(input->type());
-  auto fft_type = GetFFTTransformType(input->type(), output->type());
-  PlanKey Key(framework::vectorize(input->dims()),
-              framework::vectorize(output->dims()), signal_size, fft_type,
+  const auto value_type = framework::ToRealType(input.type());
+  auto fft_type = GetFFTTransformType(input.type(), output.type());
+  PlanKey Key(framework::vectorize(input.dims()),
+              framework::vectorize(output.dims()), signal_size, fft_type,
               value_type);
   PlanLRUCache& plan_cache = cufft_get_plan_cache(static_cast<int64_t>(
       (reinterpret_cast<platform::CUDAPlace*>(&tensor_place))->GetDeviceId()));
@@ -687,10 +631,10 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
   CUFFT_CHECK(cufftSetWorkArea(plan, workspace_tensor.data<T>()));
 
   // execute transform plan
-  exec_cufft_plan(*config, input->data<T>(), output->data<T>(), forward);
+  exec_cufft_plan(*config, input.data<T>(), output.data<T>(), forward);
 
   // Inverting output by reshape and transpose to original batch and dimension
-  output->Resize(framework::make_ddim(reshape_out_sizes));
+  output.Resize(framework::make_ddim(reshape_out_sizes));
   // Todo: transpose out
   out->Resize(framework::make_ddim(out_sizes));
   /*
@@ -701,20 +645,7 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
                                    reverse_dim_permute);
   }
   */
-  TransCompute<DeviceContext, T>(ndim, ctx, *output, out, reverse_dim_permute);
-
-  /*
-  std::vector<int64_t> out_strides(ndim);
-  int64_t batch_numel = 1;
-  for (int64_t i = batch_dims - 1; i >= 0; --i) {
-    out_strides[dim_permute[i]] = batch_numel * out.strides()[0];
-    batch_numel *= out_sizes[dim_permute[i]];
-  }
-  for (int64_t i = batch_dims; i < ndim; ++i) {
-    out_strides[dim_permute[i]] = out.strides()[1 + (i - batch_dims)];
-  }
-  return out.as_strided_(out_sizes, out_strides, out.storage_offset());
-  */
+  TransCompute<DeviceContext, T>(ndim, ctx, output, out, reverse_dim_permute);
 }
 
 // Calculates the normalization constant and applies it in-place to out
@@ -747,50 +678,6 @@ void exec_normalization(Tensor* out, FFTNormMode normalization,
   }
 }
 
-/*
-template <typename DeviceContext, typename T>
-void fft_c2c_cufft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
-                   const std::vector<int64_t>& axes, FFTNormMode normalization,
-                   bool forward) {
-  if (axes.empty()) {
-    framework::TensorCopy(*X, ctx.GetPlace(), out);
-    return;
-  }
-
-  auto out_dims = framework::vectorize(X->dims());
-  std::vector<int64_t> working_axes(axes.begin(), axes.end());
-  framework::Tensor working_tensor;
-  working_tensor.mutable_data<T>(ctx.GetPlace());
-  framework::TensorCopy(*X, ctx.GetPlace(), &working_tensor);
-
-  while (true) {
-    const auto max_dims =
-        std::min(static_cast<size_t>(kMaxCUFFTNdim), working_axes.size());
-    auto first_dims =
-        std::vector<int64_t>(working_axes.end() - max_dims, working_axes.end());
-
-    exec_fft<DeviceContext, T>(ctx, out, working_tensor, out_dims, first_dims,
-                               forward);
-    working_axes.resize(working_axes.size() - max_dims);
-
-    if (working_axes.empty()) {
-      break;
-    }
-
-    std::swap(*out, working_tensor);
-  }
-
-  exec_normalization(output, normalization, out_dims, dim);
-}
-
-template <typename DeviceContext, typename T>
-void fft_c2c_cufft_backward(const DeviceContext& ctx, const Tensor* d_y,
-                            Tensor* d_x, const std::vector<int64_t>& axes,
-                            FFTNormMode normalization, bool forward) {
-  fft_c2c_cufft(ctx, d_y, d_x, axes, normalization, forward);
-}
-*/
-
 }  // anonymous namespace
 
 template <typename T>
@@ -807,16 +694,17 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, T> {
     std::vector<int64_t> working_axes(axes.begin(), axes.end());
     std::vector<int64_t> first_dims;
     size_t max_dims;
-    framework::Tensor* working_tensor;
-    working_tensor->mutable_data<T>(ctx.GetPlace());
-    framework::TensorCopy(*X, ctx.GetPlace(), working_tensor);
+    framework::Tensor working_tensor;
+    working_tensor.mutable_data<T>(X->dims(), ctx.GetPlace());
+    framework::Tensor* p_working_tensor = &working_tensor;
+    framework::TensorCopy(*X, ctx.GetPlace(), &working_tensor);
 
     while (true) {
       max_dims =
           std::min(static_cast<size_t>(kMaxCUFFTNdim), working_axes.size());
       first_dims.assign(working_axes.end() - max_dims, working_axes.end());
 
-      exec_fft<platform::CUDADeviceContext, T>(ctx, out, working_tensor,
+      exec_fft<platform::CUDADeviceContext, T>(ctx, out, p_working_tensor,
                                                out_dims, first_dims, forward);
       working_axes.resize(working_axes.size() - max_dims);
       first_dims.clear();
@@ -825,58 +713,11 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, T> {
         break;
       }
 
-      std::swap(out, working_tensor);
+      std::swap(out, p_working_tensor);
     }
     exec_normalization(out, normalization, out_dims, axes);
   }
 };
-
-/*
-template <typename T>
-class FFTC2CKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    using U = paddle::platform::complex<T>;
-    auto& dev_ctx = ctx.device_context();
-
-    // axes must be sorted before Compute
-    auto axes = ctx.Attr<std::vector<int64_t>>("axes");
-    const std::string norm_str = ctx.Attr<std::string>("normalization");
-    const bool forward = ctx.Attr<bool>("forward");
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Output<Tensor>("Out");
-
-    y->mutable_data<U>(ctx.GetPlace());
-    auto normalization = get_norm_from_string(norm_str, forward);
-
-    FFTC2CFunctor<platform::CUDADeviceContext, U>(dev_ctx, x, y, axes,
-                                                  normalization, forward);
-  }
-};
-
-template <typename T>
-class FFTC2CGradKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    using U = paddle::platform::complex<T>;
-    auto& dev_ctx = ctx.device_context();
-
-    auto axes = ctx.Attr<std::vector<int64_t>>("axes");
-    const int64_t normalization = ctx.Attr<int64_t>("normalization");
-    const bool forward = ctx.Attr<bool>("forward");
-    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
-
-    d_y->mutable_data<T>(ctx.GetPlace());
-    auto normalization = get_norm_from_string(norm_str, forward);
-
-    FFTC2CFunctor<platform::CUDADeviceContext, U>(dev_ctx, d_y, d_x, axes,
-                                                  normalization, forward);
-  }
-};
-*/
 
 }  // namespace operators
 }  // namespace paddle
