@@ -21,12 +21,11 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class SetValueNPUKernel : public framework::OpKernel<T> {
  private:
-  using vec64 = std::vector<int64_t>;
-  using vec_vec64 = std::vector<std::vector<int64_t>>;
-  void GetNPUStartEndSteps(const vec64& start, const vec64& end,
-                           const vec64& steps, const vec64& axes,
-                           const framework::DDim in_dim,
-                           vec_vec64& output) const {
+  using Vector_Int64 = std::vector<int64_t>;
+  void GetNPUStartEndSteps(const Vector_Int64& start, const Vector_Int64& end,
+                           const Vector_Int64& steps, const Vector_Int64& axes,
+                           const framework::DDim& in_dim,
+                           std::vector<std::vector<int64_t>>& output) const {
     int rank = in_dim.size();
     for (int i = 0; i < rank; ++i) {
       int axis_size = in_dim[i];
@@ -45,23 +44,22 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
   }
 
   inline std::vector<int> MininumPadNumberMakeSureLastDimGT8(
-      const vec_vec64& npu_slice) const {
-    int min_value = min_last_dim_value;
+      const std::vector<std::vector<int64_t>>& npu_slice) const {
     int rank = npu_slice[0].size();
     int last_dim_start = npu_slice[0][rank - 1];
     int last_dim_end = npu_slice[1][rank - 1];
     int last_dim_step = npu_slice[2][rank - 1];
-    int min_end = last_dim_start + last_dim_step * min_value;
+    int min_end = last_dim_start + last_dim_step * min_last_dim_value_;
     int raw_last_dim_len = (last_dim_end - last_dim_start) / last_dim_step;
-    return std::vector<int>(
-        {std::max(0, min_end - last_dim_end), min_value - raw_last_dim_len});
+    return std::vector<int>({std::max(0, min_end - last_dim_end),
+                             min_last_dim_value_ - raw_last_dim_len});
   }
 
   inline void TileTensor(const framework::ExecutionContext* ctx,
                          const Tensor* input, Tensor* output) const {
     VLOG(4) << "start to tile tensor function, which calls the npu operator "
                "TileWithAxis";
-    // UNSQUEEZE last dim + TILE last dim * min_last_dim_value
+    // UNSQUEEZE last dim + TILE last dim * min_last_dim_value_
     Tensor reshape_tensor;
     auto reshape_dims = framework::vectorize<int>(input->dims());
     reshape_dims.push_back(1);
@@ -69,12 +67,12 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     reshape_tensor.Resize(framework::make_ddim(reshape_dims));
 
     auto output_dims = framework::vectorize<int>(input->dims());
-    output_dims.push_back(min_last_dim_value);
+    output_dims.push_back(min_last_dim_value_);
     output->mutable_data<T>(framework::make_ddim(output_dims), ctx->GetPlace());
 
     framework::NPUAttributeMap attr;
     attr["axis"] = static_cast<int>(reshape_dims.size() - 1);
-    attr["tiles"] = min_last_dim_value;
+    attr["tiles"] = min_last_dim_value_;
     auto stream =
         ctx->template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -86,10 +84,10 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
                            const std::vector<int64_t>* shape,
                            Tensor* output) const {
     VLOG(4) << "Start BroadCast To";
-    auto shape32 = std::vector<int32_t>(shape->begin(), shape->end());
-    output->mutable_data<T>(framework::make_ddim(shape32), ctx->GetPlace());
+    auto new_shape = std::vector<int32_t>(shape->begin(), shape->end());
+    output->mutable_data<T>(framework::make_ddim(new_shape), ctx->GetPlace());
     framework::NPUAttributeMap attr;
-    attr["shape"] = shape32;
+    attr["shape"] = new_shape;
     auto stream =
         ctx->template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -114,10 +112,9 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
   }
 
   void SliceAssignNPU(const framework::ExecutionContext* ctx,
-                      const Tensor* value_tensor, vec64& start /*modified*/,
-                      vec64& end /*modified*/, vec64& steps /*modified*/,
-                      vec64& axes /*modified*/,
-                      Tensor* assigned_tensor /*modified*/) const {
+                      const Tensor* value_tensor, Vector_Int64& start,
+                      Vector_Int64& end, Vector_Int64& steps,
+                      Vector_Int64& axes, Tensor* assigned_tensor) const {
     // must ensure assigned_tensor and value_tensor have the same shape
     // not support steps < 0
     // output is also the assigned_tensor.
@@ -128,11 +125,11 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < steps.size(); ++i) {
       PADDLE_ENFORCE_GT(steps[i], 0,
                         platform::errors::InvalidArgument(
-                            "currently NPU set_value operator don't support "
+                            "Currently NPU set_value operator doesn't support "
                             "negative steps, but got %d as step",
                             steps[i]));
     }
-    vec_vec64 npu_slice(3);
+    std::vector<std::vector<int64_t>> npu_slice(3);
     GetNPUStartEndSteps(start, end, steps, axes, assigned_tensor->dims(),
                         npu_slice);
     auto tile_numbers = MininumPadNumberMakeSureLastDimGT8(npu_slice);
@@ -147,9 +144,9 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
       TileTensor(ctx, assigned_tensor, &tiled_assigned_tns);
       TileTensor(ctx, value_tensor, &tiled_value_tns);
       // output have different shape, so use a tmp variable before_crop_output;
-      // add last dim = min_last_dim_value in slice
+      // add last dim = min_last_dim_value_ in slice
       npu_slice[0].push_back(0);
-      npu_slice[1].push_back(min_last_dim_value);
+      npu_slice[1].push_back(min_last_dim_value_);
       npu_slice[2].push_back(1);
     }
 
@@ -181,8 +178,8 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     }
   }
 
-  void ModifyAxesAccordingNoneAxes(const vec64& none_axes,
-                                   vec64& axes_to_modify) const {
+  void ModifyAxesAccordingNoneAxes(const Vector_Int64& none_axes,
+                                   Vector_Int64& axes_to_modify) const {
     if (none_axes.empty()) return;
     auto none_axes_copy = none_axes;
     sort(none_axes_copy.begin(), none_axes_copy.end());
@@ -199,12 +196,12 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     }
   }
 
-  void UnsqueezeAccordingNoneAxes(const vec64& none_axes,
-                                  vec64& slice_dims) const {
+  void UnsqueezeAccordingNoneAxes(const Vector_Int64& none_axes,
+                                  Vector_Int64& slice_dims) const {
     // note : axes will change, because new axes inserted.
     // sum array to modify the axes. because more simply
     if (none_axes.empty()) return;
-    vec64 slice_dims_with_none;
+    Vector_Int64 slice_dims_with_none;
     size_t none_axes_cur = 0;
     for (size_t i = 0; i < slice_dims.size(); ++i) {
       while (none_axes_cur < none_axes.size() &&
@@ -222,9 +219,11 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     slice_dims = slice_dims_with_none;
   }
 
-  void ModiftyDimsAccordingNoneAndDecrease(vec64& slice_dim, vec64& value_dim,
-                                           vec64& axes, vec64& none_axes,
-                                           vec64& dec_axes) const {
+  void ModiftyDimsAccordingNoneAndDecrease(Vector_Int64& slice_dim,
+                                           Vector_Int64& value_dim,
+                                           Vector_Int64& axes,
+                                           Vector_Int64& none_axes,
+                                           Vector_Int64& dec_axes) const {
     // change the value of slice_dim, value_dim, start, end, steps, axes by none
     // and decrease axes
     // after change, this values can be passed to SliceAssignNPU() directly.
@@ -239,7 +238,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     std::reverse(slice_dim_reverse.begin(), slice_dim_reverse.end());
     std::reverse(value_dim_reverse.begin(), value_dim_reverse.end());
 
-    vec64 new_value_dim;
+    Vector_Int64 new_value_dim;
     PADDLE_ENFORCE_GE(
         slice_dim.size(), value_dim.size(),
         platform::errors::InvalidArgument("The size of expanded slice_dim(%d) "
@@ -378,7 +377,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
   }
 
  private:
-  const int min_last_dim_value =
+  const int min_last_dim_value_ =
       32 / sizeof(T);  // 16 for float16 , 8 for float32
 };
 
