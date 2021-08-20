@@ -707,10 +707,6 @@ void BindPaddleInferTensor(py::module *m) {
       .def("copy_from_cpu", &PaddleInferTensorCreate<float>)
       .def("copy_from_cpu", &PaddleInferTensorCreate<paddle_infer::float16>)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
-#ifdef PADDLE_WITH_CUDA
-      .def("copy_to_cpu_async_from_gpu", &PaddleInferTensorToNumpyAsync)
-      .def("copy_to_cpu_async_from_gpu", &PaddleInferTensorToNumpyAsyncCallback)
-#endif
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)
       .def("lod", &paddle_infer::Tensor::lod)
