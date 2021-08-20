@@ -148,6 +148,12 @@ class Pass {
         "The virtual pass called is not implemented."));
   }
 
+  virtual void ApplyImpl(ProgramDesc *main_program,
+                         ProgramDesc *startup_program) const;
+
+  static void MergePrograms(ProgramDesc *dst, const details::ProgramDescs &srcs,
+                            bool append);
+
   // Some Pass must be placed before this Pass, and some
   // Pass must be placed after this Pass.
   virtual void CheckPrevPass() const {}
