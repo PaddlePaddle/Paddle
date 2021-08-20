@@ -102,7 +102,7 @@ def device_count():
     Return the number of GPUs available.
     
     Returns:
-        the number of GPUs available.
+        int: the number of GPUs available.
 
     Examples:
         .. code-block:: python
