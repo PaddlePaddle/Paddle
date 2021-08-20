@@ -1160,12 +1160,13 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     Parameters:
         x (Tensor): The input tensor with data type float32/double/int32/int64_t.
-        pad (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. 1. If input dimension is 3, then the pad has the form (pad_left,
+        pad (Tensor | List[int] | Tuple[int]): The padding size with data type int.
+            If mode is 'constant' and length of pad is twice as length of x dimension, then x will 
+            be padded from the first  dimension to the last dimension.
+            Else: 1. If input dimension is 3, then the pad has the form (pad_left,
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-            
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
@@ -1189,6 +1190,15 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                     [4., 5., 6.]]]]]
 
             Case 0:
+                pad = [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
+                mode = 'constant'
+                value = 0
+                Out = [[[[[0., 0., 0.],
+                          [1., 2., 3.],
+                          [4., 5., 6.],
+                          [0., 0., 0.]]]]]
+
+            Case 1:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'constant'
                 value = 0
@@ -1197,7 +1207,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [0. 0. 4. 5. 6. 0. 0.]
                           [0. 0. 0. 0. 0. 0. 0.]]]]]
 
-            Case 1:
+            Case 2:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'reflect'
                 Out = [[[[[6. 5. 4. 5. 6. 5. 4.]
@@ -1205,7 +1215,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [6. 5. 4. 5. 6. 5. 4.]
                           [3. 2. 1. 2. 3. 2. 1.]]]]]
 
-            Case 2:
+            Case 3:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'replicate'
                 Out = [[[[[1. 1. 1. 2. 3. 3. 3.]
@@ -1213,7 +1223,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [4. 4. 4. 5. 6. 6. 6.]
                           [4. 4. 4. 5. 6. 6. 6.]]]]]
 
-            Case 3:
+            Case 4:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'circular'
                 Out = [[[[[5. 6. 4. 5. 6. 4. 5.]
@@ -1231,11 +1241,18 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             # example 1
             x_shape = (1, 1, 3)
             x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
-            y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
+            y = F.pad(x, [0, 0, 0, 0, 2, 3], value=1, mode='constant', data_format="NCL")
             print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
             
             # example 2
+            x_shape = (1, 1, 3)
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
+            print(y)
+            # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
+            
+            # example 3
             x_shape = (1, 1, 2, 3)
             x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [1, 2, 1, 1], value=1, mode='circular')
@@ -1295,6 +1312,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
     else:
+        pad = list(pad)
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
@@ -1564,3 +1582,156 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         outputs={"Out": smooth_label},
         attrs={"epsilon": float(epsilon)})
     return smooth_label
+
+
+def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
+    """
+    Class center sample method is proposed from the paper PartialFC that only sample a subset of the class centers.
+    The process of sampling subset class centers is straightforward: 
+
+    1. First select the positive class centers;
+    2. Then randomly sample negative class centers.
+
+    Specifically, given a label tensor, shape [batch_size], select all the positive class centers and randomly 
+    sample negative class centers, then remap the input label tensor using the sampled class centers.
+
+    For more information, Partial FC: Training 10 Million Identities on a Single Machine
+    arxiv: https://arxiv.org/abs/2010.05222
+    
+    .. hint::
+        If the number of the positive class centers is greater than the input num_samples, it keeps all the positive 
+        class centers and the shape of sampled_class_center will be [num_positive_class_centers].
+    
+        The API supports CPU, single GPU and multi GPU.
+
+    Args:
+    	label (Tensor): 1-D tensor with shape [N], each label in [0, num_classes)
+    	num_classes (int): A positive integer to specify the number of classes at local rank.
+            Note that num_classes of each GPU can be different.
+    	num_samples (int): A positive integer to specify the number of class center to sample.
+        group (Group, optional): The abstract representation of group.
+            See paddle.distributed.collective.Group. Default is ``None``.
+        seed (int, optional): Random seed. Default is ``None``.
+
+    Returns:
+        Tuple of two ``Tensor`` : (remapped_label, sampled_class_center), remapped label using sampled class center,
+        sampled class center from [0, num_classes).
+
+    Examples:
+
+    .. code-block:: python
+
+        # CPU or single GPU
+        import paddle
+        num_classes = 20
+        batch_size = 10
+        num_samples = 6
+        label = paddle.randint(low=0, high=num_classes, shape=[batch_size], dtype='int64')
+        remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(label, num_classes, num_samples)
+
+        print(label)
+        print(remapped_label)
+        print(sampled_class_index)
+
+        # the output is
+        #Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #       [11, 5 , 1 , 3 , 12, 2 , 15, 19, 18, 19])
+        #Tensor(shape=[10], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #       [4, 3, 0, 2, 5, 1, 6, 8, 7, 8])
+        #Tensor(shape=[9], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #       [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
+
+    .. code-block:: python
+
+        # required: distributed
+        # Multi GPU, test_class_center_sample.py
+        import paddle
+        import paddle.distributed as dist
+        strategy = dist.fleet.DistributedStrategy()
+        dist.fleet.init(is_collective=True, strategy=strategy)
+        batch_size = 10
+        num_samples = 6
+        rank_id = dist.get_rank()
+        # num_classes of each GPU can be different, e.g num_classes_list = [10, 8]
+        num_classes_list = [10, 10]
+        num_classes = paddle.sum(paddle.to_tensor(num_classes_list))
+        label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')
+        label_list = []
+        dist.all_gather(label_list, label)
+        label = paddle.concat(label_list, axis=0)
+        remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(label, num_classes_list[rank_id], num_samples)
+
+        print(label)
+        print(remapped_label)
+        print(sampled_class_index)
+
+        #python -m paddle.distributed.launch --gpus=0,1 test_class_center_sample.py
+        # rank 0 output:
+        #Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
+        #Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
+        #Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #       [0, 2, 4, 8, 9, 3])
+        
+        # rank 1 output:
+        #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+        #       [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])
+        #Tensor(shape=[20], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+        #       [6 , 11, 10, 7 , 4 , 8 , 12, 12, 11, 12, 13, 1 , 3 , 9 , 7 , 9 , 4 , 6 , 0 , 2 ])
+        #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+        #       [0, 1, 2, 3, 5, 7, 8])
+    """
+    if group is not None and not group.is_member():
+        return
+
+    ring_id = 0 if group is None else group.id
+    rank = 0
+    nranks = 1
+    if core.is_compiled_with_dist():
+        parallel_env = paddle.distributed.ParallelEnv()
+        global_rank = parallel_env.rank
+        rank = global_rank if group is None else group.get_group_rank(
+            global_rank)
+        nranks = parallel_env.world_size if group is None else group.nranks
+
+    if num_samples > num_classes:
+        raise ValueError(
+            'Expected num_samples less than or equal to {}, got num_samples {}'.
+            format(num_classes, num_samples))
+
+    if (seed is None or seed == 0) and default_main_program().random_seed != 0:
+        seed = default_main_program().random_seed
+
+    if in_dygraph_mode():
+        remapped_label, sampled_class_center = core.ops.class_center_sample(
+            label, 'num_classes', num_classes, 'num_samples', num_samples,
+            'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed',
+            seed is not None, 'seed', seed if seed is not None else 0)
+        return remapped_label, sampled_class_center
+
+    check_variable_and_dtype(label, 'label', ['int64', 'int32'],
+                             'class_center_sample')
+    op_type = 'class_center_sample'
+    helper = LayerHelper(op_type, **locals())
+    remapped_label = helper.create_variable_for_type_inference(
+        dtype=label.dtype)
+    sampled_class_center = helper.create_variable_for_type_inference(
+        dtype=label.dtype)
+    helper.append_op(
+        type=op_type,
+        inputs={'Label': label},
+        outputs={
+            'RemappedLabel': remapped_label,
+            'SampledLocalClassCenter': sampled_class_center
+        },
+        attrs={
+            'num_classes': num_classes,
+            'num_samples': num_samples,
+            'ring_id': ring_id,
+            'nranks': nranks,
+            'rank': rank,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0
+        })
+    return remapped_label, sampled_class_center

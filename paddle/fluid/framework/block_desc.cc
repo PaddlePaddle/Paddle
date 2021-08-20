@@ -238,5 +238,41 @@ BlockDesc *BlockDesc::ForwardBlock() const {
   return prog_->MutableBlock(static_cast<size_t>(desc_->forward_block_idx()));
 }
 
+void BlockDesc::MoveFrom(BlockDesc *block) {
+  PADDLE_ENFORCE_NOT_NULL(
+      block, platform::errors::InvalidArgument("Block must be provided."));
+  if (this == block) {
+    return;
+  }
+
+  for (auto &pair : block->vars_) {
+    const auto &name = pair.first;
+    auto &var_ptr = pair.second;
+    auto &old_var_ptr = vars_[name];
+    if (old_var_ptr == nullptr) {
+      VLOG(10) << "Create new variable " << var_ptr->Name();
+      old_var_ptr = std::move(var_ptr);
+    } else {
+      // NOTE(zjl): cannot release old_var_ptr, because Python
+      // Variable holds the reference of the C++ VarDesc object.
+      // If the C++ VarDesc object is destructed, any call to the
+      // methods of Python Variable may raise segmentation fault.
+      VLOG(10) << "Update old variable " << var_ptr->Name();
+      *old_var_ptr = *var_ptr;
+    }
+  }
+  ops_.clear();
+  for (const auto &src_op : block->ops_) {
+    AppendOp()->CopyFrom(*src_op);
+  }
+  need_update_ = true;
+  Flush();
+
+  block->ops_.clear();
+  block->vars_.clear();
+  block->need_update_ = true;
+  block->Flush();
+}
+
 }  // namespace framework
 }  // namespace paddle
