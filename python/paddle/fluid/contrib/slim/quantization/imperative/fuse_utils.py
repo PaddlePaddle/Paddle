@@ -154,5 +154,5 @@ def fuse_linear_bn_weights(linear_w, linear_b, bn_rm, bn_rv, bn_eps, bn_w,
 
 layer_list_to_fuse_method = {
     (nn.Conv2D, nn.BatchNorm2D): fuse_conv_bn,
-    (nn.Linear, nn.BatchNorm): fuse_linear_bn,
+    (nn.Linear, nn.BatchNorm1D): fuse_linear_bn,
 }
