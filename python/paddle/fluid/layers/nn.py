@@ -3720,6 +3720,10 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     # create intput and parameters
     inputs = {'Weight': weight}
     input_shape = weight.shape
+    assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
+    assert dim < len(input_shape), ("The input `dim` should be less than the "
+                                    "rank of `weight`, but received dim="
+                                    "{}".format(dim))
     h = input_shape[dim]
     w = np.prod(input_shape) // h
 
