@@ -85,8 +85,8 @@ class SelectScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("select_gather");
     retv->SetInput("output_buf", this->OutputGrad("Out"));
-    retv->SetInput("local_expert_count", this->Input("global_expert_count"));
-    retv->SetInput("global_expert_count", this->Input("local_expert_count"));
+    retv->SetInput("local_expert_count", this->Input("local_expert_count"));
+    retv->SetInput("global_expert_count", this->Input("global_expert_count"));
     retv->SetOutput("Out", this->InputGrad("local_input_buf"));
     retv->SetAttrMap(this->Attrs());
     retv->SetAttr("out_feat", retv->GetAttr("in_feat"));
