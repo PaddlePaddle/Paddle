@@ -112,7 +112,8 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   }
   for (auto& var : main_program.Block(0).AllVars()) {
     if (var->Persistable()) {
-      auto it = std::find(need_merge_var_names_.begin(), need_merge_var_names_.end(), var->Name());
+      auto it = std::find(need_merge_var_names_.begin(),
+                          need_merge_var_names_.end(), var->Name());
       if (it == need_merge_var_names_.end()) {
         VLOG(2) << "train param: " << var->Name();
         trainable_param_.push_back(var->Name());
@@ -144,15 +145,15 @@ Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 template <typename T>
 void PSGPUTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
   LoDTensor tmp_root;
-  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  TensorCopySync(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   LoDTensor tmp_tensor;
-  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+  TensorCopySync(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
     tmp_root_data[i] += data[i];
   }
-  TensorCopy(tmp_root, platform::CPUPlace(), root_tensor);
+  TensorCopySync(tmp_root, platform::CPUPlace(), root_tensor);
 }
 
 void PSGPUTrainer::MergeDenseParam() {
@@ -163,7 +164,7 @@ void PSGPUTrainer::MergeDenseParam() {
     LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
     Variable* var = thread_scope->FindVar(name);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    TensorCopy((*tensor), root_tensor->place(), root_tensor);
+    TensorCopySync((*tensor), root_tensor->place(), root_tensor);
   }
 }
 
