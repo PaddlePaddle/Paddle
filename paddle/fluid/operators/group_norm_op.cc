@@ -37,6 +37,13 @@ class GroupNormOp : public framework::OperatorWithKernel {
                    "GroupNorm");
 
     auto x_dim = ctx->GetInputDim("X");
+    PADDLE_ENFORCE_GE(
+        x_dim.size(), 2,
+        platform::errors::InvalidArgument(
+            "The Input(X)'s dimension of Op(group_norm) must be "
+            "greater than 1. But received: %u-D Tensor, which shape is [%s].",
+            x_dim.size(), x_dim));
+
     const std::string data_layout_str =
         ctx->Attrs().Get<std::string>("data_layout");
     const framework::DataLayout data_layout =
