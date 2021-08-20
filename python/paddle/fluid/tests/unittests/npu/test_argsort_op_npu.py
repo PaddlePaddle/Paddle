@@ -76,7 +76,7 @@ class TestArgsortOp(OpTest):
         self.axis = -1
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def init_direction(self):
         self.descending = False
@@ -152,7 +152,7 @@ class TestArgsortOpAxis0NPUFP32(TestArgsortOp):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-2)
+        self.check_output_with_place(self.place, atol=1e-2)
 
     def set_npu(self):
         self.__class__.use_npu = True
