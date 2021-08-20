@@ -88,7 +88,7 @@ void Communicator::InitBrpcClient(
     servers_ = host_sign_list.size();
     _ps_env = paddle::distributed::PaddlePSEnvironment();
     _ps_env.set_ps_servers(&host_sign_list, servers_);
-    _worker_ptr = std::shared_ptr<paddle::distributed::PSClient>(
+    _worker_ptr = std::unique_ptr<paddle::distributed::PSClient>(
         paddle::distributed::PSClientFactory::create(_ps_param));
     _worker_ptr->configure(_ps_param, _dense_pull_regions, _ps_env,
                            trainer_id_);
@@ -581,6 +581,7 @@ AsyncCommunicator::~AsyncCommunicator() {
   running_ = false;
   if (main_thread_) main_thread_->join();
   if (recv_thread_) recv_thread_->join();
+  std::cout << "zcb debug async comm deconstructor";
 }
 
 void AsyncCommunicator::Start() {
@@ -604,23 +605,25 @@ void AsyncCommunicator::Start() {
 }
 
 void AsyncCommunicator::Stop() {
-  VLOG(1) << "Communicator stop";
+  VLOG(0) << "Communicator stop begin";
+  _worker_ptr->finalize_worker();
+  VLOG(0) << "client finalize_worker done"; 
   running_ = false;
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
     if (recv_thread_) {
-      VLOG(1) << "stop recv thread";
+      VLOG(0) << "stop recv thread";
       recv_thread_->join();
       recv_thread_.reset(nullptr);
     }
     if (main_thread_) {
-      VLOG(1) << "stop main thread";
+      VLOG(0) << "stop main thread";
       main_thread_->join();
       main_thread_.reset(nullptr);
     }
   }
-  VLOG(1) << "Communicator stop done";
+  VLOG(0) << "Communicator stop done";
 }
 
 bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {

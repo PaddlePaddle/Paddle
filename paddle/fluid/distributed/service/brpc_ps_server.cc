@@ -159,6 +159,7 @@ void BrpcPsService::service(google::protobuf::RpcController *cntl_base,
     return;
   }
 
+  std::cout << "zcb debug service cmd_id: " << request->cmd_id() << "\n";
   response->set_err_code(0);
   response->set_err_msg("");
   auto *table = _server->table(request->table_id());
@@ -402,6 +403,7 @@ int32_t BrpcPsService::push_sparse(Table *table,
   |---keysData---|---valuesData---|
   |---8*{num}B---|----------------|
   */
+  std::cout << "debug zcb, server::push_sparse\n";
   const uint64_t *keys = (const uint64_t *)push_data.data();
   const float *values =
       (const float *)(push_data.data() + sizeof(uint64_t) * num);

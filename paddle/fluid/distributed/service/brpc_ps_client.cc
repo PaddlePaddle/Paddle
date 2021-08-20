@@ -404,23 +404,31 @@ std::future<int32_t> BrpcPsClient::clear(uint32_t table_id) {
 }
 
 std::future<int32_t> BrpcPsClient::flush() {
+  std::cout << "flush begin\n";
   _flushing = true;
   std::promise<int> promise;
   std::future<int32_t> fut = promise.get_future();
   do {
-    VLOG(3) << "wait _async_call_num:" << _async_call_num;
+    VLOG(0) << "wait _async_call_num:" << _async_call_num;
     usleep(100000);  // sleep 100ms wait async end
   } while (_async_call_num > 0);
+  std::cout << "flush _async_call_num = 0\n";
   promise.set_value(0);
-  _flushing = false;
+  //_flushing = false;
+  std::cout << "flush done\n";
   return fut;
 }
 
 void BrpcPsClient::finalize_worker() {
   flush();
+  std::cout << "finalize_worker begin join thread\n";
   _running = false;
+  _async_push_dense_thread.join();
+  _async_push_sparse_thread.join();
+  std::cout << "finalize_worker begin join server\n";
   _server.Stop(1000);
   _server.Join();
+  std::cout << "finalize_worker done\n";
 }
 
 std::future<int32_t> BrpcPsClient::stop_server() {
@@ -1054,9 +1062,11 @@ std::future<int32_t> BrpcPsClient::push_sparse(
     }
   }
   for (size_t i = 0; i < num; ++i) {
-    size_t shard_id = get_sparse_shard(
-        shard_num, request_call_num, keys[i]);
+    //size_t shard_id = get_sparse_shard(
+    //    shard_num, request_call_num, keys[i]);
+    size_t shard_id = keys[i] % request_call_num;
     shard_sorted_kv_list[shard_id].push_back({keys[i], update_values[i]});
+    //std::cout << "zcb client push_sparse(): " << keys[i] << " -> " << shard_id << "\n";
   }
   auto sparse_task_data = _sparse_task_pool.get();
   sparse_task_data->shared_data.resize(request_call_num);
@@ -1090,6 +1100,7 @@ std::future<int32_t> BrpcPsClient::push_sparse(
 
 void BrpcPsClient::push_sparse_task_consume() {
   uint64_t merge_size = FLAGS_pserver_push_sparse_merge_limit;
+  //std::cout << "zcb merge_size: " << merge_size << "\n";
   std::vector<std::shared_ptr<SparseAsyncTask>> task_list;
   size_t request_call_num = _server_channels.size();
   ThreadPool<int> async_push_sparse_shard_threads(FLAGS_pserver_sparse_merge_thread);
@@ -1180,6 +1191,8 @@ void BrpcPsClient::push_sparse_task_consume() {
         merge_status.clear();
         std::vector<std::future<int>>().swap(merge_status);
         _push_sparse_merge_count_map[table_id] = 0;
+
+        auto queue_size = task_queue->size();
       }
 
       //未达到阈值 只做多路归并
@@ -1263,6 +1276,11 @@ int BrpcPsClient::push_sparse_async_shard_merge(
     if (sorted_kv_size == 0) {
         shard_kv_data.kv_num = 0;
         return 0;
+    } else if (sorted_kv_size == 1) {
+        shard_kv_data.kv_num = 1;
+        shard_kv_data.key_list[0] = sorted_kv_list[0].first;
+        shard_kv_data.value_list[0].assign((const char*)(sorted_kv_list[0].second), value_size);
+        return 0;
     }
 
     //去重 本地merge
@@ -1320,6 +1338,25 @@ int BrpcPsClient::push_sparse_async_shard_push(
       
     //merged_key_list.resize(request_kv_num[shard_idx]);
     //merged_value_list.resize(request_kv_num[shard_idx]);
+    
+    //for debug zcb
+    /*
+    for (int i = 0; i < task_list.size(); ++ i) {
+        size_t kv_n = task_list[i]->data()->shared_data[shard_idx].kv_num;
+        auto& kv_k = task_list[i]->data()->shared_data[shard_idx].key_list;
+        auto& kv_v = task_list[i]->data()->shared_data[shard_idx].value_list;
+        
+        if (kv_n > 0) {
+            for (int k = 0; k < kv_n; ++ k) {
+                float* task_v_ptr = (float*)kv_v[k].data();
+                std::cout << "key: " << k << "\n";
+                for (int j = 0; j < (accessor->update_size() / 4); ++ j) {
+                    std::cout << task_v_ptr[j] << " ";
+                }
+                std::cout << "\n";
+            }
+        }
+    }*/
 
     //发送RPC请求
     auto* push_request = closure->request(shard_idx);
@@ -1336,6 +1373,14 @@ int BrpcPsClient::push_sparse_async_shard_push(
         const char* task_data_ptr = merged_value_list[i].data();
 
         memcpy(push_data_ptr, (float*)task_data_ptr, accessor->update_size());
+        //zcb
+        /*
+        std::cout << "zcb task data: ";
+        float* test_task = (float*)task_data_ptr;
+        for (int j = 0; j < accessor->update_size() / 4; ++ j)
+            std::cout << test_task[j] << " ";
+        std::cout << "\n";*/
+
         push_data_ptr += accessor->update_size();
     }
     PsService_Stub rpc_stub(get_sparse_channel(shard_idx));

@@ -240,6 +240,52 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             ]
             w = program.global_block().vars[ops[0].output("W@GRAD")[0]]
 
+            ######TODO
+            #show = fluid.global_scope().find_var("show")
+            #clk = fluid.global_scope().find_var("click")
+            show = None
+            clk = None
+            if "show" not in program.global_block().vars:
+                print('debug zcb append show var')
+                show = program.global_block().create_var(
+                        name="show",
+                        dtype=core.VarDesc.VarType.INT64,
+                        persistable=False,
+                        stop_gradient=True)
+                program.global_block().append_op(
+                        type='fill_constant',
+                        inputs={},
+                        outputs={'Out': show},
+                        attrs={
+                            'shape': [1],
+                            'dtype': show.dtype,
+                            'value': 1,
+                        #OP_ROLE_KEY: OpRole.Forward
+                        })
+            else:
+                print('find var show')
+                show = program.global_block().vars["show"]
+            if "click" not in program.global_block().vars:
+                print('debug zcb append click var')
+                clk = program.global_block().create_var(
+                        name="clk",
+                        dtype=core.VarDesc.VarType.INT64,
+                        persistable=False,
+                        stop_gradient=True)
+                program.global_block().append_op(
+                        type='fill_constant',
+                        inputs={},
+                        outputs={'Out': clk},
+                        attrs={
+                            'shape': [1],
+                            'dtype': clk.dtype,
+                            'value': 0,
+                        #OP_ROLE_KEY: OpRole.Forward
+                        })
+            else:
+                print('find var click')
+                clk = program.global_block().vars["click"]
+
             table_id = w_2_table_id[param]
 
             padding_idx = ops[0].attr("padding_idx")
@@ -274,7 +320,9 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     type="distributed_push_sparse",
                     inputs={"Ids": inputs,
                             'W': w,
-                            "Outputs": outputs},
+                            "Outputs": outputs,
+                            "Shows": show,
+                            "Clicks": clk},
                     outputs={"Outputs": outputs},
                     attrs={
                         "is_distributed": is_distributed,
@@ -283,8 +331,8 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                         "size": emb_size[param]
                     })
 
-    def _push_dense_fuse(program)
-        int cur_table = -1
+    def _push_dense_fuse(program):
+        cur_table = -1
         for i in w_2_table_id.values():
             if (i >= cur_table):
                 cur_table = i
@@ -346,6 +394,8 @@ def append_send_ops_pass(program, config):
 
     print("yxf::sends: {}".format(sends))
     for merged_name, send in sends.items():
+        if send.is_sparse():
+            continue
         is_sparse = 1 if send.is_sparse() else 0
         is_sparse = 2 if send.is_distributed() else is_sparse
         dummys.append(

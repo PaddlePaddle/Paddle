@@ -197,6 +197,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   }
 
   if (need_dump_field_ || need_dump_param_) {
+    std::cout << "debug zcb flush dump_field";
     writer_.Flush();
   }
 

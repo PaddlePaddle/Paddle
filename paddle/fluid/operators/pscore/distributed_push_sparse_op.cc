@@ -63,6 +63,16 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
              "THe ids to be looked up in W.")
         .AsDuplicable();
 
+    AddInput("Shows",
+             "(LoDTensor) Shows's type should be LoDTensor"
+             "THe shows default to be 1.")
+        .AsDuplicable();
+
+    AddInput("Clicks",
+             "(LoDTensor) Clicks's type should be LoDTensor"
+             "THe clicks usually equal to label.")
+        .AsDuplicable();
+
     AddOutput("Outputs",
               "(LoDTensor) The lookup results, which have the same type as W.")
         .AsDuplicable();

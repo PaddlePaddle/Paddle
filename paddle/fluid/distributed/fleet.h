@@ -162,6 +162,8 @@ class FleetWrapper {
     uint64_t padding_id,
     platform::Place place,
     std::vector<const LoDTensor*>* inputs,
+    const LoDTensor* shows,
+    const LoDTensor* clicks,
     std::vector<LoDTensor*>* outputs);
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names

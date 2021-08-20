@@ -1,5 +1,6 @@
 #include "paddle/fluid/distributed/table/ctr_sparse_sgd.h"
 #include <gflags/gflags.h>
+#include "glog/logging.h"
 
 DEFINE_bool(enable_show_scale_gradient, true, "enable show scale gradient");
 

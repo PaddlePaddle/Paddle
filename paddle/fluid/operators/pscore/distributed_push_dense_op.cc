@@ -21,7 +21,7 @@ namespace operators {
 
 constexpr int64_t kNoPadding = -1;
 
-class DistributedPushSparseOp : public framework::OperatorWithKernel {
+class DistributedPushDenseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -38,7 +38,7 @@ class DistributedPushSparseOp : public framework::OperatorWithKernel {
   }
 };
 
-class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
+class DistributedPushDenseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddAttr<int>("TableId", "(int, the table id of this embedding")
@@ -60,9 +60,9 @@ The input gradients is all dense gradient tensors in a table.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(distributed_push_sparse, ops::DistributedPushSparseOp,
-                  ops::DistributedPushSparseOpMaker);
+REGISTER_OPERATOR(distributed_push_dense, ops::DistributedPushDenseOp,
+                  ops::DistributedPushDenseOpMaker);
 
-REGISTER_OP_CPU_KERNEL(distributed_push_sparse,
-                       ops::DistributedPushSparseKernel<
+REGISTER_OP_CPU_KERNEL(distributed_push_dense,
+                       ops::DistributedPushDenseKernel<
                            paddle::platform::CPUDeviceContext, float>);

@@ -83,6 +83,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         _main = compiled_config.origin_main_program.clone()
         _startup = compiled_config.origin_startup_program.clone()
 
+        with open("test_main_program_origin.pbtxt", "w") as fout:
+            print(_main, file=fout)
+
         use_ps_gpu = self.user_defined_strategy.a_sync_configs["use_ps_gpu"]
 
         if not compiled_config.is_geo_mode():
@@ -316,16 +319,56 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         compiled_config = public.CompileTimeStrategy(_origin_main_program,
                                                      _origin_startup_program,
                                                      strategy, self.role_maker)
-        print("yxf::origin_sparse_pairs: {}".format(compiled_config.origin_sparse_pairs))
-        print("yxf::origin_dense_pairs: {}".format(compiled_config.origin_dense_pairs))
-        print("yxf::merged_variables_pairs: {}".format(compiled_config.merged_variables_pairs))
-        print("yxf::merged_dense_pairs: {}".format(compiled_config.merged_dense_pairs))
-        print("yxf::merged_sparse_pairs: {}".format(compiled_config.merged_sparse_pairs))
-        print("yxf::merged_variable_map: {}".format(compiled_config.merged_variable_map))
-        print("yxf::param_name_to_grad_name: {}".format(compiled_config.param_name_to_grad_name))
-        print("yxf::grad_name_to_param_name: {}".format(compiled_config.grad_name_to_param_name))
-        print("yxf::param_grad_ep_mapping: {}".format(compiled_config.param_grad_ep_mapping))
-        print("yxf::grad_param_mapping: {}".format(compiled_config.grad_param_mapping))
+        print("yxf::origin_sparse_pairs:")
+        for cc in compiled_config.origin_sparse_pairs:
+            p, g = cc
+            print("param p: {} => grad g: {}".format(str(p), str(g)))
+        print("yxf::origin_sparse_pairs: end")
+        print("yxf::origin_dense_pairs:")
+        for cc in compiled_config.origin_dense_pairs:
+            p, g = cc
+            print("param p: {} => grad g: {}".format(str(p), str(g)))
+        print("yxf::origin_dense_pairs end")
+        print("yxf::merged_variables_pairs:")
+        for cc in compiled_config.merged_variables_pairs:
+            p, g = cc
+            print("param p: {} => grad g: {}".format(str(p), str(g)))
+        print("yxf::merged_variables_pairs: end")
+        print("yxf::merged_dense_pairs:")
+        for cc in compiled_config.merged_dense_pairs:
+            p, g = cc
+            print("param p: {} => grad g: {}".format(str(p), str(g)))
+        print("yxf::merged_dense_pairs: end")
+        print("yxf::merged_sparse_pairs: {}")
+        for cc in compiled_config.merged_sparse_pairs:
+            p, g = cc
+            print("param p: {} => grad g: {}".format(str(p), str(g)))
+        print("yxf::merged_sparse_pairs: end")
+        print("yxf::merged_variable_map: {}")
+        for k in compiled_config.merged_variable_map.keys():
+            print('{} => {}'.format(str(k), str(compiled_config.merged_variable_map[k])))
+        print("yxf::merged_variable_map: end")
+        print("yxf::param_name_to_grad_name: {}")
+        for k in compiled_config.param_name_to_grad_name.keys():
+            print('{} => {}'.format(str(k), str(compiled_config.param_name_to_grad_name[k])))
+        print("yxf::param_name_to_grad_name: end")
+        print("yxf::grad_name_to_param_name: {}")
+        for k in compiled_config.grad_name_to_param_name.keys():
+            print('{} => {}'.format(str(k), str(compiled_config.grad_name_to_param_name[k])))
+        print("yxf::grad_name_to_param_name: end")
+        print("yxf::param_grad_ep_mapping: {}")
+        for k in compiled_config.param_grad_ep_mapping.keys():
+            print(str(k))
+            for k1 in compiled_config.param_grad_ep_mapping[k]:
+                print(str(k1))
+                for v in compiled_config.param_grad_ep_mapping[k][k1]:
+                    print(str(v))
+        print("yxf::param_grad_ep_mapping: end")
+        print("yxf::grad_param_mapping: {}")
+        for k in compiled_config.grad_param_mapping.keys():
+            print('{} => {}'.format(str(k), str(compiled_config.grad_param_mapping[k])))
+        print("yxf::grad_param_mapping: end")
+
 
         compiled_config.strategy = strategy
 

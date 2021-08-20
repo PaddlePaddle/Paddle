@@ -4,6 +4,7 @@
 #include "paddle/fluid/distributed/table/ctr_accessor.h"
 #include "paddle/fluid/distributed/table/ctr_sparse_sgd.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "glog/logging.h"
 
 
 namespace paddle {
@@ -26,6 +27,8 @@ int CtrDoubleUnitAccessor::initialize() {
     unit_feature_value.embedx_sgd_dim = _embedx_sgd_rule->dim();
     _show_click_decay_rate = _config.downpour_accessor_param().show_click_decay_rate();
     
+    LOG(INFO) << "zcb debug accessor initializing: sgd_rule: " << name;
+
     return 0;
 }
 

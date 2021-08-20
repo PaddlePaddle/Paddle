@@ -306,13 +306,13 @@ class Communicator {
 
   PSClient *GetPsClient() { return _worker_ptr.get(); }
 
-  std::shared_ptr<paddle::distributed::PSClient> GetPsClientPtr() {
-    return _worker_ptr;
+  std::unique_ptr<paddle::distributed::PSClient> GetPsClientPtr() {
+    return std::move(_worker_ptr);
   }
 
   RecvCtxMap &GetRecvCtxMap() { return recv_varname_to_ctx_; }
 
-  std::shared_ptr<PSClient> _worker_ptr;  // pointer to worker
+  std::unique_ptr<PSClient> _worker_ptr;  // pointer to worker
 
  protected:
   bool running_ = false;

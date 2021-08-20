@@ -117,6 +117,10 @@ class MergedVariable:
         self.ordered_vars = ordered
         self.offsets = offsets
 
+    def __str__(self):
+        ov = ','.join([str(oo) for oo in self.ordered_vars])
+        return 'merged_var: {}, ordered_vars: {}, offsets: {}'.format(self.merged_var, ov, self.offsets)
+
 
 def Singleton(cls):
     _instance = {}
@@ -658,6 +662,9 @@ class CompileTimeStrategy(object):
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], origin_varnames, trainer_id,
                                     aggregate, False, False, idx, False)
+            print('debug zcb dense_ctx')
+            print('k: {}, v: {}'.format(grad_name, str([origin_varnames, var_numel])))
+
             send_ctx[grad_name] = dense_ctx
             idx += 1
         else:
@@ -715,6 +722,8 @@ class CompileTimeStrategy(object):
             sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
                                      [grad_name], trainer_id, True, True,
                                      is_distributed, idx, False)
+            print('debug zcb: send_ctx:')
+            print('k: {}, v: {}'.format(str(sparse_ctx.var_name()), str([grad_name, splited_varname, ep_list, shape, trainer_id, idx])))
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx

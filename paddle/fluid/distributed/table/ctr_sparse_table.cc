@@ -42,6 +42,7 @@ int32_t CtrSparseTable::initialize() {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
   initialize_value();
+  VLOG(0) << "initalize ctrSparseTable succ";
   return 0;
 }
 
@@ -372,6 +373,16 @@ int32_t CtrSparseTable::pull_sparse(float* pull_values,
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
+  
+  std::cout << "zcb debug table::pull_sparse";
+  for (int i = 0; i < pull_value.numel_; ++ i) {
+      std::cout << "key: " << i << ": " << pull_value.feasigns_[i];
+      for (int j = 0; j < select_value_size; ++ j)
+          std::cout << " value " << j << ": " << pull_values[i*select_value_size + j];
+      std::cout << "\n";
+  }
+  std::cout << "zcb debug table::pull_sparse end";
+
   return 0;
 }
 
@@ -409,6 +420,7 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys,
             const float* update_data = values + offset * update_value_col;
             auto itr = local_shard->Find(key);
             if (itr == local_shard->end()) {
+              VLOG(0) << "zcb debug table push_sparse: " << key << "not found!" ;
               if (FLAGS_pslib_enable_create_feasign_randomly
                 && !_value_accesor->create_value(1, update_data)) {
                 continue;
@@ -419,10 +431,23 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys,
               _value_accesor->create(&data_buffer_ptr, 1);
               memcpy(const_cast<float*>(feature_value->data()), data_buffer_ptr, value_size * sizeof(float));
               itr = local_shard->Find(key);
+            } else {
+              VLOG(0) << "zcb debug table push_sparse: " << key << " found!" ;
             }
+
             auto* feature_value = itr->second;
             float* value_data = const_cast<float*>(feature_value->data());
             size_t value_size = feature_value->size();
+
+            std::cout << "push sparse, key: " << key << " value: ";
+            for (int i = 0; i < value_size; ++ i)
+                std::cout << value_data[i] << " ";
+            std::cout << "\n";
+            std::cout << "update_data: ";
+            for (int i = 0; i < update_value_col; ++ i)
+                std::cout << update_data[i] << " ";
+            std::cout << "\n";
+
             if (value_size == value_col) { //已拓展到最大size, 则就地update
               _value_accesor->update(&value_data, &update_data, 1);
             } else {//拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
@@ -436,6 +461,11 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys,
               }
               memcpy(value_data, data_buffer_ptr, value_size * sizeof(float));
             }
+            std::cout << "after update key:" << key << "\n";
+            for(int i = 0; i < feature_value->size(); ++ i)
+                std::cout << value_data[i] << " ";
+            std::cout << "\n";
+
           }
           return 0;
         });

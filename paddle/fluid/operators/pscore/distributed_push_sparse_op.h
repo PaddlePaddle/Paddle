@@ -36,6 +36,8 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
 
 
     auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
+    auto shows = context.Input<framework::LoDTensor>("Shows");
+    auto clks = context.Input<framework::LoDTensor>("Clicks");
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
     auto fleet = distributed::FleetWrapper::GetInstance();
@@ -44,7 +46,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       fleet->PushSparseFromTensorAsync(static_cast<uint64_t>(table_id), emb_dim,
                                     static_cast<uint64_t>(padding_idx),
                                     context.GetPlace(), &inputs,
-                                    &outputs);
+                                    shows, clks, &outputs);
     } else {
       auto inputs_variable = context.MultiInputVar("Ids");
       auto outputs_variable = context.MultiOutputVar("Outputs");

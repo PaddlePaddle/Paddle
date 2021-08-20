@@ -296,6 +296,17 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
     LOG(ERROR) << "fleet pull sparse failed, status[" << ret << "]";
     sleep(sleep_seconds_before_fail_exit_);
   }
+
+  //check zcb
+  std::cout << "pull sparse check zcb\n";
+  for (int i = 0; i < fea_keys.size(); ++ i) {
+    std::cout << "key " << fea_keys[i] << ": ";
+    for (int j = 0; j < fea_dim; ++ j) {
+        std::cout << pull_result_ptr[i][j] << " ";
+    }
+    std::cout << "\n";
+  }
+
 }
 
 void FleetWrapper::PullDenseVarsAsync(
@@ -422,6 +433,8 @@ void FleetWrapper::PushSparseFromTensorAsync(
     uint64_t padding_id,
     platform::Place place,
     std::vector<const LoDTensor*>* inputs,
+    const LoDTensor* shows,
+    const LoDTensor* clks,
     std::vector<LoDTensor*>* outputs) {
   
   int batch_size = -1;
@@ -435,14 +448,21 @@ void FleetWrapper::PushSparseFromTensorAsync(
     }
   }
   CHECK(batch_size > 0);  // NOLINT
+  
+  //TODO: check batch_size of show clks
+  int show_size = shows->lod().size() ? shows->lod()[0].size() - 1 : shows->dims()[0];
+  CHECK(show_size == batch_size || show_size == 1);
+  int clk_size = clks->lod().size() ? clks->lod()[0].size() - 1 : clks->dims()[0];
+  CHECK(clk_size == batch_size || clk_size == 1);
 
   std::vector<float> g;
   for (const framework::LoDTensor* g_tensor : *outputs) {
     size_t origin = g.size();
     size_t add = g_tensor->numel();
     g.resize(origin + add);
-    memcpy(g.data() + origin, g_tensor->data<float>(), add);
+    memcpy(g.data() + origin, g_tensor->data<float>(), add * sizeof(float));
   }
+
   std::vector<uint64_t> push_keys;
   push_keys.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<std::vector<float>> push_values;
@@ -451,30 +471,70 @@ void FleetWrapper::PushSparseFromTensorAsync(
   size_t input_idx = 0;
 
   VLOG(0) << "yxf::fleet.cc::emb_dim: " << fea_dim;
+
+  //TODO: type of show/clk is int? float? uint64?
+  const long int* show_tensor = shows->data<int64_t>();
+  const long int* clk_tensor = clks->data<int64_t>();
+
   for (size_t index = 0; index < inputs->size(); ++index) {
     const framework::LoDTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
-    for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
-      if (static_cast<uint64_t>(ids[i]) == padding_id) {
-        continue;
+
+    if (tensor->lod().size() > 0 ) {
+      for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
+        for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1]; ++ j, output_len += fea_dim) {
+          if (static_cast<uint64_t>(ids[j]) == padding_id) {
+            continue;
+          }
+          push_keys.emplace_back(ids[j]);
+          ///fake by zcb
+          push_values.emplace_back(fea_dim + 3);
+          push_values.back()[0] = 2; //TODO: slot
+          push_values.back()[1] = (i >= show_size? 1: (float)show_tensor[i]);
+          push_values.back()[2] = (i >= clk_size? 0: (float)clk_tensor[i]);
+
+          float* data = push_values.back().data() + 3;
+      
+          memcpy(data, g.data() + output_len,
+                   sizeof(float) * fea_dim);
+
+          ++ input_idx;
+        }
       }
-      push_keys.emplace_back(ids[i]);
-      push_values.emplace_back(fea_dim);
-      float* data = push_values.back().data();
+    } else {
+      for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
+        if (static_cast<uint64_t>(ids[i]) == padding_id) {
+          continue;
+        }
+        push_keys.emplace_back(ids[i]);
+        ///fake by zcb
+        push_values.emplace_back(fea_dim + 3);
+        push_values.back()[0] = 2; //TODO: slot
+        push_values.back()[1] = (i >= show_size? 1: (float)show_tensor[i]);
+        push_values.back()[2] = (i >= clk_size? 0: (float)clk_tensor[i]);
+
+        float* data = push_values.back().data() + 3;
       
-      memcpy(data, g.data() + output_len,
-               sizeof(float) * fea_dim);
+        memcpy(data, g.data() + output_len,
+                 sizeof(float) * fea_dim);
       
-      ++input_idx;
+        ++input_idx;
+      }
     }
   }
   VLOG(0) << "output_len: " << output_len << " g.size(): " << g.size();
   CHECK(output_len == g.size());
 
   std::vector<float*> push_g_vec(input_idx, nullptr);
+  std::cout << "zcb debug push sparse\n";
   for (auto i = 0u; i < push_keys.size(); ++i) {
     push_g_vec[i] = push_values.at(i).data();
+
+    std::cout << "key: " << push_keys[i] << " ";
+    for (int j = 0; j < fea_dim + 3; ++ j)
+        std::cout << push_g_vec[i][j] << " ";
+    std::cout << "\n";
   }
   auto* communicator = Communicator::GetInstance();
   PADDLE_ENFORCE_EQ(
