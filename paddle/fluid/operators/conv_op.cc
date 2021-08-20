@@ -194,15 +194,14 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
             paddle::framework::DataTypeToString(input_data_type),
             paddle::framework::DataTypeToString(filter_data_type)));
   }
-
-  paddle::platform::Place place = ctx.device_context().GetPlace();
-  if (input_data_type == framework::proto::VarType::FP16 &&
-      !platform::is_npu_place(place)) {
+#ifndef PADDLE_WITH_ASCEND_CL
+  if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(
         library, framework::LibraryType::kCUDNN,
         platform::errors::InvalidArgument(
             "float16 can only be used when CUDNN or NPU is used"));
   }
+#endif
 #if PADDLE_WITH_CUDA
   if (input_data_type == framework::proto::VarType::BF16 &&
       library == framework::LibraryType::kCUDNN) {
