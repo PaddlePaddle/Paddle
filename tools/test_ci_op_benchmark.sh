@@ -280,7 +280,7 @@ function check_CHANGE_OP_MAP {
 
 # diff benchmakr result and miss op
 function summary_problems {
-  LOG "[INFO] run function summary_problems"
+  LOG "[INFO]  run function summary_problems"
   local op_name exit_code
   exit_code=0
   if [ ${#BENCHMARK_OP_MAP[*]} -ne 0 ]
