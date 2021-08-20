@@ -741,7 +741,7 @@ endif()
 
 if (WITH_DISTRIBUTE AND NOT WIN32)
     set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_collective_cpu_barrier_with_gloo PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_cpu_barrier_with_gloo PROPERTIES TIMEOUT 40)
 endif()
 
 if (WITH_DISTRIBUTE)
