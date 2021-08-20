@@ -3720,6 +3720,10 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     # create intput and parameters
     inputs = {'Weight': weight}
     input_shape = weight.shape
+    assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
+    assert dim < len(input_shape), ("The input `dim` should be less than the "
+                                    "rank of `weight`, but received dim="
+                                    "{}".format(dim))
     h = input_shape[dim]
     w = np.prod(input_shape) // h
 
@@ -4890,6 +4894,7 @@ def split(input, num_or_sections, dim=-1, name=None):
         if isinstance(dim, Variable):
             dim = dim.numpy()
             dim = dim.item(0)
+        assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
         dim = (len(input.shape) + dim) if dim < 0 else dim
         attrs += ('axis', dim)
 
@@ -4951,6 +4956,7 @@ def split(input, num_or_sections, dim=-1, name=None):
         dim.stop_gradient = True
         inputs['AxisTensor'] = dim
     else:
+        assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
         dim = (len(input_shape) + dim) if dim < 0 else dim
         attrs['axis'] = dim
 
@@ -6174,6 +6180,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         elif isinstance(shape, Variable):
             shape.stop_gradient = True
             out, _ = _C_ops.reshape2(x, shape)
+        else:
+            raise ValueError(
+                "shape must be an instance of `list`, `tuple` or `Variable`,"
+                " got '{}.'".format(type(shape)))
 
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
@@ -7097,17 +7107,17 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
 
     .. math::
 
-        dice\_loss &= 1 - \\frac{2 * intersection\_area}{total\_area} \\\\
-                  &= \\frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\\\
-                  &= \\frac{(union\_area - intersection\_area)}{total\_area}
+        dice\_loss &= 1 - \frac{2 * intersection\_area}{total\_area} \\
+                  &= \frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\
+                  &= \frac{(union\_area - intersection\_area)}{total\_area}
 
 
     Parameters:
-        input (Tensor): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_D]`, where :math:`N_1` is
-                          the batch_size, :math:`N_D` is 1. It is usually the output predictions of sigmoid activation.
-                          The data type can be float32 or float64.
-        label (Tensor): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_D]`.
-                          where :math:`N_1` is the batch_size, :math:`N_D` is 1. The data type can be float32 or float64.
+        input (Tensor): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_k, D]`, where :math:`N_1` is
+                          the batch_size, :math:`D` is the number of categories. It is usually the output
+                          predictions of sigmoid activation. The data type can be float32 or float64.
+        label (Tensor): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_k, 1]`.
+                          where :math:`N_1` is the batch_size. The data type can be int32 or int64.
         epsilon (float): The epsilon will be added to the numerator and denominator.
                          If both input and label are empty, it makes sure dice is 1.
                          Default: 0.00001
@@ -7129,6 +7139,21 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
             predictions = F.softmax(x)
             loss = F.dice_loss(input=predictions, label=label)
     """
+    assert input.dtype in (paddle.float32, paddle.float64)
+    assert label.dtype in (paddle.int32, paddle.int64)
+    assert len(input.shape) >= 2, \
+        "The rank of input should be greater than or equal to 2."
+    assert len(input.shape) == len(label.shape), (
+        "The rank of input and label should be equal, "
+        "but received input: %d, label: %d." %
+        (len(input.shape), len(label.shape)))
+    assert label.shape[-1] == 1, ("The last dimension of label should be 1, "
+                                  "but received %d." % label.shape[-1])
+    assert input.shape[:-1] == label.shape[:-1], (
+        "All dimensions should be equal except the last one.")
+    assert input.numel() > 0 and label.numel() > 0, \
+        "Any dimension of input and label cannot be equal to 0."
+
     label = one_hot(label, depth=input.shape[-1])
     reduce_dim = list(range(1, len(input.shape)))
     inse = reduce_sum(input * label, dim=reduce_dim)
@@ -13065,8 +13090,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
 
     .. math::
 
-        Out = -label * \\log{(input + \\epsilon)}
-              - (1 - label) * \\log{(1 - input + \\epsilon)}
+        Out = -label * \log{(input + \epsilon)}
+              - (1 - label) * \log{(1 - input + \epsilon)}
 
     Args:
         input (Tensor|list):  A 2-D tensor with shape [N x 1], where N is the
@@ -13325,7 +13350,7 @@ def shuffle_channel(x, group, name=None):
                           [[0.7, 0.8],
                            [0.8, 0.9]]]]
             Given group: 2
-            then we get a 4-D tensor out whth the same shape of input:
+            then we get a 4-D tensor out with the same shape of input:
             out.shape = (1, 4, 2, 2)
             out.data = [[[[0.1, 0.2],
                           [0.2, 0.3]],
@@ -13353,7 +13378,9 @@ def shuffle_channel(x, group, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+	      import paddle.fluid as fluid
+	      paddle.enable_static()
             input = fluid.data(name='input', shape=[None,4,2,2], dtype='float32')
             out = fluid.layers.shuffle_channel(x=input, group=2)
     """
@@ -14500,17 +14527,17 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     .. math::
 
-        dkernel[0] &= dilations[0] \\times (kernel\_sizes[0] - 1) + 1
+        dkernel[0] &= dilations[0] \times (kernel\_sizes[0] - 1) + 1
 
-        dkernel[1] &= dilations[1] \\times (kernel\_sizes[1] - 1) + 1
+        dkernel[1] &= dilations[1] \times (kernel\_sizes[1] - 1) + 1
 
-        hout &= \\frac{H + paddings[0] + paddings[2] - dkernel[0]}{strides[0]} + 1
+        hout &= \frac{H + paddings[0] + paddings[2] - dkernel[0]}{strides[0]} + 1
 
-        wout &= \\frac{W + paddings[1] + paddings[3] - dkernel[1]}{strides[1]} + 1
+        wout &= \frac{W + paddings[1] + paddings[3] - dkernel[1]}{strides[1]} + 1
 
-        Cout &= C \\times kernel\_sizes[0] \\times kernel\_sizes[1]
+        Cout &= C \times kernel\_sizes[0] \times kernel\_sizes[1]
 
-        Lout &= hout \\times wout
+        Lout &= hout \times wout
 
 
     Parameters:

@@ -205,6 +205,9 @@ copy(inference_lib_dist
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
 
 # CAPI inference library for only inference
 set(PADDLE_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_c_install_dir" CACHE STRING

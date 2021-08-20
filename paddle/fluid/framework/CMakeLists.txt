@@ -17,7 +17,7 @@ function(windows_symbolic TARGET)
     add_custom_command(OUTPUT ${final_path}/.${src}.cu
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
             COMMENT "create hidden file of ${src}.cu")
-    add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
+    add_custom_target(${TARGET} ALL DEPENDS ${final_path}/.${src}.cu)
   endforeach()
 endfunction()
 
@@ -25,6 +25,7 @@ add_subdirectory(ir)
 add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
+add_subdirectory(new_executor)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
@@ -202,7 +203,7 @@ cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute shape_inference op_info operator glog version)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc process_mesh_desc.cc DEPS attribute shape_inference op_info operator glog version)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 
@@ -411,9 +412,18 @@ configure_file(commit.h.in commit.h)
 # to avoid exposing the path of the underlying file
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include)
+include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
 
-if(WITH_ROCM)
-  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+if (WITH_GPU)
+  if (WIN32)
+    windows_symbolic(ext_tensor_cu SRCS ext_tensor.cu PATH ../extension/src)
+    nv_library(custom_tensor SRCS ../extension/src/.ext_tensor.cu DEPS lod_tensor memory enforce)
+    add_dependencies(custom_tensor ext_tensor_cu)
+  else()
+    nv_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
+  endif(WIN32)
+elseif (WITH_ROCM)
+  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
 else()
   cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
 endif()
@@ -426,6 +436,9 @@ if(WITH_ROCM)
 else()
   cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
 endif()
+
+#cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
+#cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 

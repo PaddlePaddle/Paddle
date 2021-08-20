@@ -121,35 +121,44 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
 };
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-// return true if found_inf_or_nan or return false;
-template <typename T>
-bool CheckNumerics(const framework::ExecutionContext& exe_ctx,
-                   aclrtStream stream, const paddle::framework::Tensor* in) {
-  auto& dev_ctx =
-      exe_ctx.template device_context<paddle::platform::NPUDeviceContext>();
+// return true if found_nan or return false;
+inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
+                        aclrtStream stream,
+                        const paddle::framework::Tensor* in) {
   using Tensor = paddle::framework::Tensor;
   Tensor out(in->type());
-  out.Resize(in->dims());
-  out.mutable_data<T>(dev_ctx.GetPlace());
 
-  bool found_inf_data = false;
-
-  try {
-    const auto& runner =
-        NpuOpRunner("CheckNumerics", {*in}, {out},
-                    {{"message", std::string("check_numberics")}});
-    runner.Run(stream);
-    dev_ctx.Wait();
-  } catch (platform::EnforceNotMet& exception) {
-    LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
-    found_inf_data = true;
-  } catch (...) {
-    LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
-    found_inf_data = true;
+  Tensor mean(in->type());
+  mean.Resize({1});
+  mean.mutable_data<float>(dev_ctx.GetPlace());
+  std::vector<int> axes;
+  for (int i = 0; i < in->dims().size(); ++i) {
+    axes.push_back(i);
   }
 
-  return found_inf_data;
+  std::vector<float> vec;
+  try {
+    const auto& runner_mean = paddle::operators::NpuOpRunner(
+        "ReduceMeanD", {*in}, {mean}, {{"axes", axes}, {"keep_dims", false}});
+    TensorToVector(mean, dev_ctx, &vec);
+  } catch (...) {
+    LOG(WARNING) << "ContainsNan catch exception";
+    return true;
+  }
+
+  VLOG(4) << "reducemeand result:" << vec[0];
+  if (std::isnan(static_cast<float>(vec[0]))) {
+    LOG(WARNING) << "ContainsNan detects nan";
+    return true;
+  }
+
+  if (std::isinf(static_cast<float>(vec[0]))) {
+    LOG(WARNING) << "ContainsNan detects inf";
+  }
+
+  return false;
 }
+
 #endif
 
 template <ReduceType red_type, typename T>
@@ -216,22 +225,24 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     framework::Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
 
-    bool check_numerics = false;
+    bool found_nan = false;
 
     auto d_type = in->type();
     switch (d_type) {
-      case framework::proto::VarType::FP16:
+      case framework::proto::VarType::FP16: {
+        break;
+      }
       case framework::proto::VarType::FP32: {
         VLOG(4) << "prepare to FoundNanInf";
-        check_numerics = CheckNumerics<T>(ctx, dev_ctx->stream(), in);
-        VLOG(4) << "check_numerics:" << check_numerics;
+        found_nan = ContainsNan(*dev_ctx, dev_ctx->stream(), in);
+        VLOG(4) << "check_numerics:" << found_nan;
         break;
       }
       default:
         break;
     }
 
-    if (check_numerics) {
+    if (found_nan) {
       T inf = static_cast<T>(std::numeric_limits<float>::infinity());
       VLOG(4) << "fill input data constant inf";
       auto dims = in->dims();

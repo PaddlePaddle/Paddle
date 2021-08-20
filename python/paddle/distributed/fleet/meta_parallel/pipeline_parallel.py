@@ -14,7 +14,7 @@
 import paddle
 import paddle.fluid as fluid
 from .meta_parallel_base import MetaParallelBase
-from .pp_utils.utils import is_float_tensor
+from .pp_utils.utils import is_float_tensor, _initialize_recompute_hcg
 from .parallel_layers.pp_layers import PipelineLayer
 
 from ..utils.hybrid_parallel_util import broadcast_mp_parameters
@@ -48,6 +48,8 @@ class PipelineParallel(MetaParallelBase):
 
         p2p.initialize_p2p_groups(hcg)
 
+        _initialize_recompute_hcg(hcg)
+
         self.is_first_stage = self.stage_id == 0
         self.is_last_stage = (self.stage_id == (self.num_stages - 1))
         self.global_rank = self._hcg.get_global_rank()
@@ -63,18 +65,6 @@ class PipelineParallel(MetaParallelBase):
         if self.use_data_parallel:
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
-
-    def _set_tensor_trainable(self, tensor):
-        if tensor is None:
-            return
-
-        if isinstance(tensor, tuple):
-            for t in tensor:
-                if is_float_tensor(t):
-                    t.stop_gradient = False
-        else:
-            if is_float_tensor(tensor):
-                tensor.stop_gradient = False
 
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         assert isinstance(optimizer, HybridParallelOptimizer), (
@@ -117,7 +107,6 @@ class PipelineParallel(MetaParallelBase):
 
         for step_id in range(startup_steps):
             input_tensor = p2p.recv_forward()
-            self._set_tensor_trainable(input_tensor)
 
             output_tensor = self._forward_step(input_tensor)
             p2p.send_forward(output_tensor)
@@ -131,7 +120,6 @@ class PipelineParallel(MetaParallelBase):
         for i in range(steady_steps):
             last_iter = (i == (steady_steps - 1))
 
-            self._set_tensor_trainable(input_tensor)
             output_tensor = self._forward_step(input_tensor)
 
             output_tensor_grad = p2p.send_forward_recv_backward(output_tensor)
@@ -227,6 +215,9 @@ class PipelineParallel(MetaParallelBase):
         if self.is_first_stage:
             assert len(inputs) == 2, "length of input should be 2"
             if isinstance(inputs[0], tuple):
+                assert len(
+                    inputs[0]
+                ) > 1, "If you use tuple for input data, it should have at least two inputs."
                 batch_size = inputs[0][0].shape[0]
                 assert self.micro_batch_size * self.accumulate_steps == batch_size, (
                     "batch_size needs to be divisible by micro_batch_size. Currently, "

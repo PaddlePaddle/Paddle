@@ -1312,6 +1312,7 @@ class QuantizationFreezePass(object):
                 assert self._is_float(
                     scale_v), 'The scale of parameter %s is not a float.' % (
                         original_var_name)
+                scale_v = 1e-8 if scale_v == 0.0 else scale_v
                 max_range *= param_range / scale_v
             else:
                 max_range *= act_range
@@ -1413,6 +1414,7 @@ class QuantizationFreezePass(object):
                     x[:, i] = _clip(x[:, i], s)
                     x[:, i] = np.round(x[:, i] / s * bnt)
         else:
+            scale = 1e-8 if scale == 0.0 else scale
             x = _clip(x, scale)
             x = np.round(x / scale * bnt)
         return x
