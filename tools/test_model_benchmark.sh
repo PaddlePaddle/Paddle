@@ -78,7 +78,8 @@ function run_model_benchmark {
     fi
     #test 
     git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/xiegegege/benchmark.git
-    export data_path=${cache_dir}/benchmark_data/dataset
+    export data_path=${cfs_dir}/model_dataset/model_benchmark_data
+    export prepare_path=${cfs_dir}/model_dataset/model_benchmark_prepare
     export BENCHMARK_ROOT=${cache_dir}/benchmark_data/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
     bash model_ci.sh
