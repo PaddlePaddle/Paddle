@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/expand_v2_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace {
@@ -45,8 +46,15 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
           GetExtendedFormatTag(x_vec_dims, out_vec_dims.size(), x_format_tag);
     }
 
-    out->set_format(x_format_tag);
+    auto out_new_dims = paddle::operators::get_expand_shape(ctx);
+    for (size_t i = 0; i < out_new_dims.size(); ++i) {
+      out_new_dims[i] = out_new_dims[i] > 0 ? out_vec_dims[i] : x_vec_dims[i];
 
+      if (std::abs(out_new_dims[i]) == 1) out_new_dims[i] = x_vec_dims[i];
+    }
+
+    out->Resize(paddle::framework::make_ddim(out_new_dims));
+    out->set_format(x_format_tag);
     paddle::platform::BroadcastDataMKLDNNHandler<T> handler(
         dnnl::algorithm::binary_add, dev_ctx, onednn_engine, ctx.GetPlace(),
         out, x, 0.0f, 1.0f, ctx.InputName("X"), x_vec_dims);
