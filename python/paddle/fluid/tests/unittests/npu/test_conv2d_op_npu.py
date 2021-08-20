@@ -29,8 +29,6 @@ paddle.enable_static()
 
 
 def create_test_channel_last_class(parent):
-    @unittest.skipIf(not paddle.is_compiled_with_npu(),
-                     "core is not compiled with NPU")
     class TestChannelLastCase(parent):
         def init_data_format(self):
             self.data_format = "NHWC"
@@ -45,8 +43,6 @@ def create_test_channel_last_class(parent):
 
 
 def create_test_padding_SAME_class(parent):
-    @unittest.skipIf(not paddle.is_compiled_with_npu(),
-                     "core is not compiled with NPU")
     class TestPaddingSMAECase(parent):
         def init_paddings(self):
             self.pad = [0, 0]
@@ -58,8 +54,6 @@ def create_test_padding_SAME_class(parent):
 
 
 def create_test_padding_VALID_class(parent):
-    @unittest.skipIf(not paddle.is_compiled_with_npu(),
-                     "core is not compiled with NPU")
     class TestPaddingVALIDCase(parent):
         def init_paddings(self):
             self.pad = [1, 1]
@@ -71,8 +65,6 @@ def create_test_padding_VALID_class(parent):
 
 
 def create_test_fp16_class(parent):
-    @unittest.skipIf(not paddle.is_compiled_with_npu(),
-                     "core is not compiled with NPU")
     class TestFp16Case(parent):
         def init_dtype(self):
             self.dtype = np.float16
@@ -82,8 +74,6 @@ def create_test_fp16_class(parent):
     globals()[cls_name] = TestFp16Case
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestConv2DOp(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
@@ -171,8 +161,6 @@ class TestConv2DOp(OpTest):
         self.groups = 1
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithPad(TestConv2DOp):
     def init_test_case(self):
         self.pad = [1, 1]
@@ -183,8 +171,6 @@ class TestWithPad(TestConv2DOp):
         self.filter_size = [6, f_c, 3, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithStride(TestConv2DOp):
     def init_test_case(self):
         self.pad = [1, 1]
@@ -195,8 +181,6 @@ class TestWithStride(TestConv2DOp):
         self.filter_size = [6, f_c, 3, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithGroup(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -208,8 +192,6 @@ class TestWithGroup(TestConv2DOp):
         self.filter_size = [18, f_c, 3, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWith1x1(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -226,8 +208,6 @@ class TestWith1x1(TestConv2DOp):
         self.groups = 1
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithDepthWise5x5(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -241,8 +221,6 @@ class TestWithDepthWise5x5(TestConv2DOp):
         self.groups = 4
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithDepthWise7x7(TestConv2DOp):
     def init_test_case(self):
         self.pad = [1, 1]
@@ -256,8 +234,6 @@ class TestWithDepthWise7x7(TestConv2DOp):
         self.groups = 8
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithDilation(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -274,8 +250,6 @@ class TestWithDilation(TestConv2DOp):
         self.groups = 3
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithInput1x1Filter1x1(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -289,8 +263,6 @@ class TestWithInput1x1Filter1x1(TestConv2DOp):
         self.groups = 1
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestConv2DOp_v2(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
@@ -384,16 +356,12 @@ class TestConv2DOp_v2(OpTest):
         pass
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestConv2DOp_AsyPadding(TestConv2DOp_v2):
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithPad_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
@@ -407,8 +375,6 @@ class TestWithPad_AsyPadding(TestConv2DOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithStride_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [2, 2]
@@ -422,8 +388,6 @@ class TestWithStride_AsyPadding(TestConv2DOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithGroup_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -435,8 +399,6 @@ class TestWithGroup_AsyPadding(TestConv2DOp_v2):
         self.filter_size = [24, f_c, 4, 3]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWith1x1_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
@@ -453,8 +415,6 @@ class TestWith1x1_AsyPadding(TestConv2DOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithDepthWise3x3_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
@@ -474,8 +434,6 @@ class TestWithDepthWise3x3_AsyPadding(TestConv2DOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithDepthWise5x5_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
@@ -492,8 +450,6 @@ class TestWithDepthWise5x5_AsyPadding(TestConv2DOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithDepthWise7x7_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [2, 2]
@@ -510,8 +466,6 @@ class TestWithDepthWise7x7_AsyPadding(TestConv2DOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithDilation_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
@@ -531,8 +485,6 @@ class TestWithDilation_AsyPadding(TestConv2DOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestWithInput1x1Filter1x1_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
