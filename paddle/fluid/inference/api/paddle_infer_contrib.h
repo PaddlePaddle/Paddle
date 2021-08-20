@@ -20,6 +20,9 @@ namespace paddle_infer {
 namespace contrib {
 namespace utils {
 
+void* CudaMallocPinnedMemory(size_t size);
+void CudaFreePinnedMemory(void* mem);
+
 void CopyTensor(Tensor& dst, const Tensor& src);
 void CopyTensorAsync(Tensor& dst, const Tensor& src, void* exec_stream);
 void CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,

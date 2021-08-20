@@ -24,6 +24,22 @@ namespace utils {
 
 using paddle::PaddleDType;
 
+void* CudaMallocPinnedMemory(size_t size) {
+#if defined(PADDLE_WITH_CUDA)
+  void* ptr = nullptr;
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMallocHost(&ptr, size));
+  return ptr;
+#else
+  return nullptr;
+#endif
+}
+
+void CudaFreePinnedMemory(void* ptr) {
+#if defined(PADDLE_WITH_CUDA)
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaFreeHost(ptr));
+#endif
+}
+
 void CopyTensorImp(Tensor& dst, const Tensor& src, void* exec_stream,
                    CallbackFunc cb, void* cb_params) {
   dst.Reshape(src.shape());
