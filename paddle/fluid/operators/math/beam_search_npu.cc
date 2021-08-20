@@ -148,33 +148,38 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         "FillD", {false_tmp_tensor}, {first_pos_false_tensors}, fill_attr);
     runner_fill_false_tensors.Run(stream);
 
-    Tensor true_tmp_tensor(framework::proto::VarType::INT32);
-    true_tmp_tensor.mutable_data<int>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<int>(&true_tmp_tensor, static_cast<int>(true));
-
-    Tensor second_pos_true_tensors(framework::proto::VarType::INT32);
-    second_pos_true_tensors.Resize(
-        framework::make_ddim({batch_size, seq_width - 1}));
-    second_pos_true_tensors.mutable_data<int>(place);
-    std::vector<int64_t> fill_dims2 = {batch_size, seq_width - 1};
-    framework::NPUAttributeMap fill_attr2 = {{"dims", fill_dims2}};
-    const auto& runner_fill_true_tensors = NpuOpRunner(
-        "FillD", {true_tmp_tensor}, {second_pos_true_tensors}, fill_attr2);
-    runner_fill_true_tensors.Run(stream);
-
     Tensor pos_tensors(framework::proto::VarType::INT32);
-    pos_tensors.Resize(framework::make_ddim({batch_size, seq_width}));
-    pos_tensors.mutable_data<int>(place);
-    std::vector<framework::Tensor> concat_inputs = {first_pos_false_tensors,
-                                                    second_pos_true_tensors};
-    std::vector<std::string> concat_names = {"x0", "x1"};
-    NpuOpRunner runner_concat_false_true{"ConcatD",
-                                         {concat_inputs},
-                                         {pos_tensors},
-                                         {{"concat_dim", 1}, {"N", 2}}};
-    runner_concat_false_true.AddInputNames(concat_names);
-    runner_concat_false_true.Run(stream);
-    pos_tensors.Resize(ids_int32.dims());
+    if (seq_width > 1) {
+      pos_tensors.Resize(framework::make_ddim({batch_size, seq_width}));
+      pos_tensors.mutable_data<int>(place);
+
+      Tensor true_tmp_tensor(framework::proto::VarType::INT32);
+      true_tmp_tensor.mutable_data<int>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<int>(&true_tmp_tensor, static_cast<int>(true));
+
+      Tensor second_pos_true_tensors(framework::proto::VarType::INT32);
+      second_pos_true_tensors.Resize(
+          framework::make_ddim({batch_size, seq_width - 1}));
+      second_pos_true_tensors.mutable_data<int>(place);
+      std::vector<int64_t> fill_dims2 = {batch_size, seq_width - 1};
+      framework::NPUAttributeMap fill_attr2 = {{"dims", fill_dims2}};
+      const auto& runner_fill_true_tensors = NpuOpRunner(
+          "FillD", {true_tmp_tensor}, {second_pos_true_tensors}, fill_attr2);
+      runner_fill_true_tensors.Run(stream);
+
+      std::vector<framework::Tensor> concat_inputs = {first_pos_false_tensors,
+                                                      second_pos_true_tensors};
+      std::vector<std::string> concat_names = {"x0", "x1"};
+      NpuOpRunner runner_concat_false_true{"ConcatD",
+                                           {concat_inputs},
+                                           {pos_tensors},
+                                           {{"concat_dim", 1}, {"N", 2}}};
+      runner_concat_false_true.AddInputNames(concat_names);
+      runner_concat_false_true.Run(stream);
+      pos_tensors.Resize(ids_int32.dims());
+    } else {
+      pos_tensors.ShareDataWith(first_pos_false_tensors);
+    }
 
     Tensor cast_pos_tensors_bool(framework::proto::VarType::BOOL);
     cast_pos_tensors_bool.Resize(pos_tensors.dims());
@@ -365,6 +370,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 1}));
     std::vector<framework::Tensor> concat_inputs2 = {batch_ids,
                                                      sorted_score_indices};
+    std::vector<std::string> concat_names = {"x0", "x1"};
     NpuOpRunner runner_concat_score_indices{"ConcatD",
                                             {concat_inputs2},
                                             {gather_nd_score_indices},
@@ -415,12 +421,13 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     // TODO(pangyoki): PruneEndBeams
 
     // Step 4: set lod of output Tensor
-    // define Tensor with value `beam_size`
-    Tensor beam_size_tensor(framework::proto::VarType::INT32);
-    beam_size_tensor.mutable_data<int>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<int>(&beam_size_tensor, beam_size);
+    // define Tensor with value `seq_width`
+    Tensor seq_width_tensor(framework::proto::VarType::INT32);
+    seq_width_tensor.mutable_data<int>({1}, ctx.GetPlace());
+    FillNpuTensorWithConstant<int>(&seq_width_tensor,
+                                   static_cast<int>(seq_width));
 
-    // beam_ids = tmp_indices // beam_size
+    // beam_ids = tmp_indices // seq_width
     Tensor beam_ids(framework::proto::VarType::INT32);
     beam_ids.Resize(
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
@@ -429,7 +436,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
 
     const auto& runner_div = NpuOpRunner(
-        "Div", {cast_sort_tmp_indices, beam_size_tensor}, {beam_ids}, {});
+        "Div", {cast_sort_tmp_indices, seq_width_tensor}, {beam_ids}, {});
     runner_div.Run(stream);
 
     // get parent_idx by adding batch_ids to beam_ids

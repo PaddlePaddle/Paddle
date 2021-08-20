@@ -40,7 +40,7 @@ class TestBeamSearchNPUOp(OpTest):
         # The `target_lod` attribute is still based on offset
         self.attrs = {
             'level': 0,
-            'beam_size': 2,
+            'beam_size': self.beam_size,
             'end_id': 0,
             'is_accumulated': self.is_accumulated
         }
@@ -54,6 +54,7 @@ class TestBeamSearchNPUOp(OpTest):
         self.__class__.use_npu = True
 
     def init_data(self):
+        self.beam_size = 2
         self.is_accumulated = True
         self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int64')
         self.ids = np.array(
@@ -80,6 +81,7 @@ class TestBeamSearchNPUOp(OpTest):
 
 class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
     def init_data(self):
+        self.beam_size = 2
         self.is_accumulated = True
         self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int64')
         self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int64')
@@ -102,6 +104,7 @@ class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
 class TestBeamSearchNPUOp3(TestBeamSearchNPUOp):
     def init_data(self):
         # end_id = 0
+        self.beam_size = 2
         self.is_accumulated = True
         self.pre_ids = np.array([[1], [0], [0], [4]], dtype='int64')
         self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int64')
@@ -124,6 +127,7 @@ class TestBeamSearchNPUOp3(TestBeamSearchNPUOp):
 class TestBeamSearchNPUOp4(TestBeamSearchNPUOp):
     def init_data(self):
         # is_accumulated = False
+        self.beam_size = 2
         self.is_accumulated = False
         self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int64')
         self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int64')
@@ -142,6 +146,29 @@ class TestBeamSearchNPUOp4(TestBeamSearchNPUOp):
         self.selected_scores = np.array(
             [1.50685, 0.996027, 0.194639, 0.043325])[:, np.newaxis]
         self.parent_idx = np.array([1, 1, 2, 3])
+
+
+class TestBeamSearchNPUOp5(TestBeamSearchNPUOp):
+    def init_data(self):
+        # beam_size = 1
+        self.beam_size = 1
+        self.is_accumulated = True
+        self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int64')
+        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int64')
+        self.lod = [[1, 1, 1, 1], [1, 1, 1, 1]]
+        self.out_lod = [[1, 1, 1, 1], [1, 1, 1, 1]]
+        self.offset_lod = [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]]
+        self.score = np.array(
+            [
+                [0.6, 0.9],
+                [0.5, 0.3],
+                [0.9, 0.5],
+                [0.1, 0.7],
+            ], dtype='float32')
+        self.pre_score = np.array([[0.1], [0.2], [0.3], [0.4]], dtype='float32')
+        self.selected_ids = np.array([2, 7, 3, 1])[:, np.newaxis]
+        self.selected_scores = np.array([0.9, 0.5, 0.9, 0.7])[:, np.newaxis]
+        self.parent_idx = np.array([0, 1, 2, 3])
 
 
 if __name__ == '__main__':
