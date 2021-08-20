@@ -223,7 +223,6 @@ option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
-option(WITH_ONEMKL       "Compile with onemkl support"         ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -314,11 +313,6 @@ else()
      if(WITH_ROCM)
          MESSAGE(WARNING "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used.")
      endif()
-endif()
-
-if(WITH_ONEMKL)
-  include(onemkl)
-  add_definitions(-DPADDLE_WITH_ONEMKL)
 endif()
 
 if(WITH_DISTRIBUTE)
