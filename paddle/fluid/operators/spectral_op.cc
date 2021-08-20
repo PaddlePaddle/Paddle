@@ -21,7 +21,10 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/complex.h"
 
-#ifdef PADDLE_WITH_POCKETFFT
+#if defined(PADDLE_WITH_ONEMKL)
+// #include "mkl_dfti.h"
+// #include "mkl_service.h"
+#elif defined(PADDLE_WITH_POCKETFFT)
 #include "extern_pocketfft/pocketfft_hdronly.h"
 #endif
 
@@ -345,6 +348,29 @@ T compute_factor(int64_t size, FFTNormMode normalization) {
 }
 
 ////////////////// Functors
+#if defined(PADDLE_WITH_ONEMKL)
+template <typename T>
+struct FFTC2CFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
+                  Tensor* out, const std::vector<int64_t>& axes,
+                  FFTNormMode normalization, bool forward) {}
+};
+
+template <typename T>
+struct FFTR2CFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
+                  Tensor* out, const std::vector<int64_t>& axes,
+                  FFTNormMode normalization, bool forward, bool onesided) {}
+};
+
+template <typename T>
+struct FFTC2RFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
+                  Tensor* out, const std::vector<int64_t>& axes,
+                  FFTNormMode normalization, bool forward) {}
+};
+
+#elif defined(PADDLE_WITH_POCKETFFT)
 template <typename T>
 struct FFTC2CFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
@@ -472,6 +498,7 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
+#endif
 // mkl fft for all cases
 void exec_fft(const Tensor* x, Tensor* out, const std::vector<int64_t>& out_dim,
               int64_t normalization, bool forward) {
