@@ -271,6 +271,7 @@ if %errorlevel% NEQ 0 exit /b 1
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_inference || goto test_inference_error
+call :test_inference_ut || goto test_inference_ut_error
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
 goto:success
@@ -653,6 +654,37 @@ goto:eof
 ::echo 1 > %cache_dir%\error_code.txt
 ::type %cache_dir%\error_code.txt
 echo Testing fluid library for inference failed!
+exit /b 1
+
+rem ---------------------------------------------------------------------------------------------
+:test_inference_ut
+@ECHO OFF
+echo    ========================================
+echo    Step 7. Testing fluid library with infer_ut for inference ...
+echo    ========================================
+
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "1 card TestCases Total"
+call :timestamp "%start%" "%end%" "TestCases Total"
+
+tree /F %cd%\paddle_inference_install_dir\paddle
+%cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
+set /p libsize=< lib_size.txt
+for /F %%i in ("%libsize%") do (
+    set /a libsize_m=%%i/1024
+    echo "Windows Paddle_Inference Size: !libsize_m!M"
+    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
+)
+
+cd %work_dir%\paddle\fluid\inference\tests\infer_ut
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %MSVC_STATIC_CRT%
+goto:eof
+
+:test_inference_ut_error
+::echo 1 > %cache_dir%\error_code.txt
+::type %cache_dir%\error_code.txt
+echo Testing fluid library with infer_ut for inference failed!
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
