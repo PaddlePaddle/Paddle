@@ -20,9 +20,48 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/operators/npu_op_runner.h"
+#endif
 
 namespace paddle {
 namespace operators {
+
+template <typename DeviceContext>
+struct FillConstantVisitor {
+  FillConstantVisitor(const DeviceContext &dev_ctx,
+                      framework::LoDTensor *tensor, const float value)
+      : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
+
+  template <typename T>
+  void apply(typename std::enable_if<std::is_same<T, int8_t>::value ||
+                                     std::is_same<T, int16_t>::value>::type * =
+                 nullptr) const {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Not support data type for set_constant attr"));
+  }
+
+  template <typename T>
+  void apply(typename std::enable_if<!(std::is_same<T, int8_t>::value ||
+                                       std::is_same<T, int16_t>::value)>::type
+                 * = nullptr) const {
+#ifdef PADDLE_WITH_ASCEND_CL
+    if (platform::is_npu_place(dev_ctx_.GetPlace())) {
+      FillNpuTensorWithConstant<T>(tensor_, static_cast<T>(value_));
+    } else {
+      math::SetConstant<DeviceContext, T> set_constant;
+      set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
+    }
+#else
+    math::SetConstant<DeviceContext, T> set_constant;
+    set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
+#endif
+  }
+
+  const DeviceContext &dev_ctx_;
+  framework::LoDTensor *tensor_;
+  float value_;
+};
 
 template <typename DeviceContext, typename T>
 class CoalesceTensorOpKernel : public framework::OpKernel<T> {
@@ -70,6 +109,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     auto in_tensors = context.MultiInput<framework::LoDTensor>("Input");
     bool use_align = context.Attr<bool>("use_align");
     auto align_size = context.Attr<int>("align_size");
+    auto size_of_dtype = context.Attr<int>("user_defined_size_of_dtype");
 
     if (context.Attr<bool>("check_name")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
@@ -94,7 +134,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     size_t numel = 0;
     auto dtype = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
-    size_t size_of_dtype = framework::SizeOfType(dtype);
+    if (size_of_dtype == -1) {
+      size_of_dtype = framework::SizeOfType(dtype);
+    }
     GetMemSizeAndDtype(in_tensors, in_var_names, &numel, size_of_dtype,
                        context.GetPlace(), use_align, align_size);
 
@@ -121,10 +163,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                       : len;
       }
     } else if (context.Attr<bool>("set_constant")) {
-      // TODO(Liu yuang) ADD NPU SET_CONSTANT FUNCTION.
-      math::SetConstant<DeviceContext, T> set_constant;
-      set_constant(dev_ctx, fused_tensor,
-                   static_cast<T>(context.Attr<float>("constant")));
+      framework::VisitDataType(
+          dtype, FillConstantVisitor<DeviceContext>(
+                     dev_ctx, fused_tensor, context.Attr<float>("constant")));
     } else if (context.Attr<bool>("persist_output")) {
       for (size_t i = 0; i < out_var_names.size(); ++i) {
         size_t len = static_cast<size_t>(out_tensors[i]->numel());
@@ -227,10 +268,13 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
     }
     auto use_align = ctx->Attrs().Get<bool>("use_align");
     auto align_size = ctx->Attrs().Get<int>("align_size");
+    auto size_of_dtype = ctx->Attrs().Get<int>("user_defined_size_of_dtype");
 
     auto dtype = static_cast<framework::proto::VarType::Type>(
         ctx->Attrs().Get<int>("dtype"));
-    size_t size_of_dtype = framework::SizeOfType(dtype);
+    if (size_of_dtype == -1) {
+      size_of_dtype = framework::SizeOfType(dtype);
+    }
 
     auto alignment = [](size_t size, size_t align_size) {
       size_t remaining = size % align_size;
@@ -307,6 +351,15 @@ class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
                   "account for inputs and outputs.")
         .SetDefault(true);
     AddAttr<int>("align_size", "The alignment size when use_align is True")
+        .SetDefault(-1);
+    AddAttr<int>("user_defined_size_of_dtype",
+                 "The user defined size of dtype. This is used to coalesce "
+                 "grad vars and merged_grad vars at the same time. For some "
+                 "strategy, the dtype of fused_grad_vars and the dtype of "
+                 "fused_grad_merged_vars are not identical, which will cause "
+                 "the shape of these two coalesced vars are different. To "
+                 "make sure the shape of these two vars are identical with "
+                 "each other, this attr is added.")
         .SetDefault(-1);
     AddComment(R"DOC(
 CoalesceTensor Operator.

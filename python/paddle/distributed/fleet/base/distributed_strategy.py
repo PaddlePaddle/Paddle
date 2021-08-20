@@ -968,6 +968,28 @@ class DistributedStrategy(object):
             )
 
     @property
+    def fuse_grad_merge(self):
+        """
+        Set whether fuse the grad for gradient merge.
+        Note: this flag will only effect the gradient merge under pipeline mode
+        The default value for the fuse_grad_merge is False
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_param_grad = True
+        """
+        return self.strategy.fuse_grad_merge
+
+    @fuse_grad_merge.setter
+    @is_strict_auto
+    def fuse_grad_merge(self, fuse_grad_merge):
+        if isinstance(fuse_grad_merge, bool):
+            self.strategy.fuse_grad_merge = fuse_grad_merge
+        else:
+            print("WARNING: fuse_grad_merge should have value of boolean type")
+
+    @property
     def fuse_grad_size_in_num(self):
         """
         This based on raw_program_optimizer program and allreduce the num of the fused op
