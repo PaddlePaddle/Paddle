@@ -854,13 +854,12 @@ TEST(CpuQuantizePass, elementwise_add) {
 
 TEST(CpuQuantizePass, elementwise_add_output_scale_missing) {
   int elementwise_add_count = 1;
-  int quant_count = 2;
+  int quant_count = 0;
   int dequant_count = 2;
-  // 2 Quant + 2 IN
-  int added_nodes_count = 4;
+  int added_nodes_count = 0;
   MainTestElementwiseAdd(BuildProgramDescElementwiseAdd(),
                          elementwise_add_count, quant_count, dequant_count,
-                         added_nodes_count, 2.0f * 127, true);
+                         added_nodes_count, 1.f, true);
 }
 
 TEST(CpuQuantizePass, elementwise_add_unsigned_and_signed_input) {
