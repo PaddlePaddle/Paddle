@@ -743,7 +743,7 @@ def max_unpool2d(x,
                                       output_size)
 
     if in_dygraph_mode():
-        output = _C_ops.unpool2d(x, Indices, 'unpooling_type', 'max', 'ksize',
+        output = _C_ops.unpool2d(x, indices, 'unpooling_type', 'max', 'ksize',
                                  kernel_size, 'strides', stride, 'paddings',
                                  padding, "output_size", output_size,
                                  "data_format", data_format)
