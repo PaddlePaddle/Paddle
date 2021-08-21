@@ -31,6 +31,7 @@ from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
 
 from imperative_test_utils import fix_model_dict, ImperativeLenet, ImperativeLinearBn
+from imperative_test_utils import ImperativeLinearBn_hook
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -42,17 +43,22 @@ class TestFuseLinearBn(unittest.TestCase):
 
     def test_fuse(self):
         model = ImperativeLinearBn()
+        model_h = ImperativeLinearBn_hook()
         inputs = paddle.randn((3, 10), dtype="float32")
         config = PTQConfig(AbsmaxQuantizer(), AbsmaxQuantizer())
         ptq = ImperativePTQ(config)
         f_l = [['linear', 'bn']]
         quant_model = ptq.quantize(model, fuse=True, fuse_list=f_l)
+        quant_h = ptq.quantize(model, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
             print(name, layer)
         out = model(inputs)
+        out_h = model_h(inputs)
         out_quant = quant_model(inputs)
+        out_quant_h = quant_h(inputs)
         cos_sim_func = nn.CosineSimilarity(axis=0)
-        print(cos_sim_func(out.flatten(), out_quant.flatten()))
+        print('fuse linear+bn', cos_sim_func(out.flatten(), out_quant.flatten()))
+        print(cos_sim_func(out_h.flatten(), out_quant_h.flatten()))
 
 
 class TestImperativePTQ(unittest.TestCase):

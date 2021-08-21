@@ -44,6 +44,13 @@ def fix_model_dict(model):
     return model
 
 
+def pre_hook(layer, input):
+    input_return = (input[0] * 2)
+    return input_return
+
+def post_hook(layer, input, output):
+    return output * 2
+
 def train_lenet(lenet, reader, optimizer):
     loss_list = []
     lenet.train()
@@ -247,6 +254,29 @@ class ImperativeLinearBn(fluid.dygraph.Layer):
             weight_attr=fc_w_attr,
             bias_attr=fc_b_attr)
         self.bn = BatchNorm1D(10, weight_attr=bn_w_attr)
+
+    def forward(self, inputs):
+        x = self.linear(inputs)
+        x = self.bn(x)
+
+        return x
+
+class ImperativeLinearBn_hook(fluid.dygraph.Layer):
+    def __init__(self):
+        super(ImperativeLinearBn_hook, self).__init__()
+
+        fc_w_attr = paddle.ParamAttr(
+            name="linear_weight",
+            initializer=paddle.nn.initializer.Constant(value=0.5))
+
+        self.linear = Linear(
+            in_features=10,
+            out_features=10,
+            weight_attr=fc_w_attr)
+        self.bn = BatchNorm1D(10)
+
+        forward_pre = self.linear.register_forward_pre_hook(pre_hook)
+        forward_post = self.bn.register_forward_post_hook(post_hook)
 
     def forward(self, inputs):
         x = self.linear(inputs)
