@@ -48,8 +48,10 @@ def pre_hook(layer, input):
     input_return = (input[0] * 2)
     return input_return
 
+
 def post_hook(layer, input, output):
     return output * 2
+
 
 def train_lenet(lenet, reader, optimizer):
     loss_list = []
@@ -261,6 +263,7 @@ class ImperativeLinearBn(fluid.dygraph.Layer):
 
         return x
 
+
 class ImperativeLinearBn_hook(fluid.dygraph.Layer):
     def __init__(self):
         super(ImperativeLinearBn_hook, self).__init__()
@@ -270,9 +273,7 @@ class ImperativeLinearBn_hook(fluid.dygraph.Layer):
             initializer=paddle.nn.initializer.Constant(value=0.5))
 
         self.linear = Linear(
-            in_features=10,
-            out_features=10,
-            weight_attr=fc_w_attr)
+            in_features=10, out_features=10, weight_attr=fc_w_attr)
         self.bn = BatchNorm1D(10)
 
         forward_pre = self.linear.register_forward_pre_hook(pre_hook)
