@@ -45,6 +45,7 @@ from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
 from .linalg import eigh
+from .linalg import matrix_power  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -89,6 +90,7 @@ from .manipulation import squeeze_  # noqa: F401
 from .manipulation import stack  # noqa: F401
 from .manipulation import strided_slice  # noqa: F401
 from .manipulation import unique  # noqa: F401
+from .manipulation import unique_consecutive  # noqa: F401
 from .manipulation import unsqueeze  # noqa: F401
 from .manipulation import unsqueeze_  # noqa: F401
 from .manipulation import unstack  # noqa: F401
@@ -220,6 +222,7 @@ tensor_method_func  = [ #noqa
            'bmm',
            'histogram',
            'mv',
+           'matrix_power',
            'abs',
            'acos',
            'all',
@@ -334,6 +337,7 @@ tensor_method_func  = [ #noqa
            'strided_slice',
            'transpose',
            'unique',
+           'unique_consecutive',
            'unsqueeze',
            'unsqueeze_',
            'unstack',

@@ -156,7 +156,8 @@ void BindBlockDesc(pybind11::module *m) {
            pybind11::return_value_policy::reference)
       .def("op_size", &pd::BlockDesc::OpSize)
       .def("op", &pd::BlockDesc::Op, pybind11::return_value_policy::reference)
-      .def("serialize_to_string", SerializeMessage<pd::BlockDesc>);
+      .def("serialize_to_string", SerializeMessage<pd::BlockDesc>)
+      .def("_move_from", &pd::BlockDesc::MoveFrom);
 }
 
 void BindVarDsec(pybind11::module *m) {

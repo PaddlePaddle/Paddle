@@ -1524,7 +1524,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             inputs={'X': [temp]},
             outputs={'Out': [out]},
             attrs={
-                'ring_id': group,
+                'ring_id': ring_id,
                 'use_calc_stream': use_calc_stream,
             })
     out_tensor_list.extend(paddle.split(out, nranks, 0))

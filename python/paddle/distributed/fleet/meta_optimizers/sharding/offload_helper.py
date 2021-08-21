@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..common import is_optimizer_op, OP_ROLE_KEY, OpRole
+from ..common import is_optimizer_op, OP_ROLE_KEY, OpRole, is_update_op
 from paddle.fluid import core, unique_name
 
 __all__ = []
@@ -84,7 +84,7 @@ class OffloadHelper(object):
                 dtype=var.dtype,
                 persistable=True)
 
-    def offload_fp32param(self, block, startup_block):
+    def offload_fp32param(self, block, startup_block, offload=True):
         """
         (p_fp16) = cast(p)
         (p_fp16_recompute) = cast(p)
@@ -113,19 +113,23 @@ class OffloadHelper(object):
 
         # step1: record param
         for idx, op in reversed(list(enumerate(block.ops))):
-            if op.type in ('adam', 'momentum', 'lars', 'lamb'):
+            if is_update_op(op):
                 param = op.desc.input("Param")[0]
                 param_to_idx[param] = idx
 
-        # step2: remove param which can't offload
+        # step2: remove param which can't offload and
+        #        record param->fp16param, fp16param->recompute_var
         for idx, op in enumerate(block.ops):
             if is_optimizer_op(op):
                 break
+            # TODO (Yuang Liu): tmp solution for fuse_grad_merge + optimize_cast
+            if not offload and op.type == 'coalesce_tensor':
+                continue
             for input_name in op.desc.input_arg_names():
                 if input_name not in param_to_idx:
                     continue
 
-                # param is real used by fp32 op
+                # param which will be used by fp32 op
                 if op.type != 'cast':
                     remove_param(input_name)
                     continue
@@ -154,17 +158,19 @@ class OffloadHelper(object):
         # step3: main_block add offload, cast op
         # change recompute to fp16, remove cast(param) to fp16
         for idx, op in reversed(list(enumerate(block.ops))):
-            if op.type in ('adam', 'momentum', 'lars', 'lamb'):
+            if is_update_op(op):
                 param = op.desc.input("Param")[0]
                 if param not in param_to_idx: continue
                 # step3.1: create offload_var
                 offload_var_name = self._get_offload_var_name(param)
                 param_name_to_offload_name[param] = offload_var_name
-                self._create_offload_var(param, offload_var_name,
-                                         [block, startup_block])
+                if offload:
+                    self._create_offload_var(param, offload_var_name,
+                                             [block, startup_block])
 
-                # step3.2: insert cast op and offload op
-                self._insert_offload_op(block, idx + 1, param, offload_var_name)
+                    # step3.2: insert cast op and offload op
+                    self._insert_offload_op(block, idx + 1, param,
+                                            offload_var_name)
 
                 assert param in param_to_fp16
                 fp16_param_name = param_to_fp16[param]
@@ -173,8 +179,9 @@ class OffloadHelper(object):
                 self._insert_cast_op(block, idx + 1, param,
                                      param_to_fp16[param])
 
-                # step3.3: insert fetch op
-                self._insert_fetch_op(block, idx, offload_var_name, param)
+                if offload:
+                    # step3.3: insert fetch op
+                    self._insert_fetch_op(block, idx, offload_var_name, param)
                 continue
 
             # step3.4: remove cast op
@@ -206,9 +213,10 @@ class OffloadHelper(object):
 
                 if out_name in param_name_to_offload_name:
                     var_name = out_name
-                    offload_var_name = param_name_to_offload_name[var_name]
-                    self._insert_offload_op(startup_block, idx + 1, var_name,
-                                            offload_var_name)
+                    if offload:
+                        offload_var_name = param_name_to_offload_name[var_name]
+                        self._insert_offload_op(startup_block, idx + 1,
+                                                var_name, offload_var_name)
                     self._insert_cast_op(startup_block, idx + 1, var_name,
                                          param_to_fp16[var_name])
 
@@ -216,6 +224,19 @@ class OffloadHelper(object):
 
         block._sync_with_cpp()
         startup_block._sync_with_cpp()
+
+    def cast_fp32param_in_optimize(self, block, startup_block):
+        """
+        (p_fp16) = cast(p)
+        (p_fp16_recompute) = cast(p)
+        (pout,) = adam(p)
+        ===========================>
+        rename(p_fp16_recompute, p_fp16)
+
+        (pout,) = adam(p)
+        (p_fp16) = cast(p)
+        """
+        self.offload_fp32param(block, startup_block, offload=False)
 
     def offload(self, block, startup_block):
         """
