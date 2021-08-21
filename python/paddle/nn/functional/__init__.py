@@ -100,6 +100,7 @@ from .pooling import adaptive_max_pool3d  # noqa: F401
 from .pooling import adaptive_avg_pool1d  # noqa: F401
 from .pooling import adaptive_avg_pool2d  # noqa: F401
 from .pooling import adaptive_avg_pool3d  # noqa: F401
+from .pooling import maxunpool2d
 
 from .vision import affine_grid  # noqa: F401
 from .vision import grid_sample  # noqa: F401
@@ -165,6 +166,7 @@ __all__ = [     #noqa
            'max_pool1d',
            'max_pool2d',
            'max_pool3d',
+           'maxunpool_2d',
            'adaptive_avg_pool1d',
            'adaptive_avg_pool2d',
            'adaptive_avg_pool3d',

@@ -54,6 +54,16 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "unpooling_type",
         "(string), unpooling type, can be \"max\" for max-unpooling ")
         .InEnum({"max"});
+    AddAttr<std::vector<int>>("output_size",
+                              "(vector, optional). The shape of output.")
+        .SetDefault({0, 0});
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("NCHW");
     AddComment(R"DOC(
 Input shape is: $(N, C_{in}, H_{in}, W_{in})$, Output shape is:
 $(N, C_{out}, H_{out}, W_{out})$, where
@@ -93,6 +103,8 @@ class UnpoolOp : public framework::OperatorWithKernel {
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    std::vector<int> output_size =
+        ctx->Attrs().Get<std::vector<int>>("output_size");
     PADDLE_ENFORCE_EQ(in_x_dims.size() == 4, true,
                       platform::errors::InvalidArgument(
                           "Unpool Intput(X) must be of 4-dimensional, but "
@@ -111,8 +123,7 @@ class UnpoolOp : public framework::OperatorWithKernel {
       if (!ctx->IsRuntime() && in_x_dims[i + 2] <= 0) {
         output_shape.push_back(-1);
       } else {
-        output_shape.push_back(UnpoolOutputSize(in_x_dims[i + 2], ksize[i],
-                                                paddings[i], strides[i]));
+        output_shape.push_back(output_size[i]);
       }
     }
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
@@ -156,15 +167,15 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker,
+REGISTER_OPERATOR(unpool2d, ops::UnpoolOp, ops::Unpool2dOpMaker,
                   ops::UnpoolOpGradMaker<paddle::framework::OpDesc>,
                   ops::UnpoolOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(unpool_grad, ops::UnpoolOpGrad);
+REGISTER_OPERATOR(unpool2d_grad, ops::UnpoolOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    unpool, ops::UnpoolKernel<paddle::platform::CPUDeviceContext, float>,
+    unpool2d, ops::UnpoolKernel<paddle::platform::CPUDeviceContext, float>,
     ops::UnpoolKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    unpool_grad,
+    unpool2d_grad,
     ops::UnpoolGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::UnpoolGradKernel<paddle::platform::CPUDeviceContext, double>);
