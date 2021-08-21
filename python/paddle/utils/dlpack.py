@@ -16,7 +16,7 @@ import paddle
 from paddle.fluid.data_feeder import convert_dtype
 from ..fluid.core import LoDTensor
 from ..fluid.framework import in_dygraph_mode
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from ..fluid.data_feeder import check_type, check_dtype, convert_dtype
 
 
 def to_dlpack(x):
@@ -28,10 +28,6 @@ def to_dlpack(x):
 
     Returns:
         dltensor, and the data type is PyCapsule.
-    
-    Raises:
-        ValueError: The :attr:`dtype` must be float32, float64, int32 or int64.
-        TypeError: The type of :attr:`axis` must be int, list or tuple.
     
     Examples:
         .. code-block:: python
@@ -60,8 +56,8 @@ def to_dlpack(x):
         return x.value().get_tensor()._to_dlpack()
 
     check_type(x, 'x', (LoDTensor), 'to_dlpack')
-    check_dtype(x, 'x', ['bool', 'int32', 'int64', 'float32', 'float64'],
-                'to_dlpack')
+    check_dtype(x._dtype(), 'x',
+                ['bool', 'int32', 'int64', 'float32', 'float64'], 'to_dlpack')
 
     return x._to_dlpack()
 
@@ -98,6 +94,6 @@ def from_dlpack(dlpack):
         out = paddle.fluid.core.from_dlpack(dlpack)
         out = paddle.to_tensor(out)
         return out
-    else:
-        out = paddle.fluid.core.from_dlpack(dlpack)
-        return out
+
+    out = paddle.fluid.core.from_dlpack(dlpack)
+    return out
