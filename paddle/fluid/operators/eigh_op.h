@@ -13,9 +13,17 @@
 // limitations under the License.
 
 #pragma once
-// extern "C" {
+#include <complex.h>
+
+#ifdef PADDLE_WITH_MKLML
+#define MKL_Complex8 std::complex<float>
+#define MKL_Complex16 std::complex<double>
+#include "third_party/install/mklml/include/mkl_lapack.h"
+#else
+#define lapack_complex_float std::complex<float>
+#define lapack_complex_double std::complex<double>
 #include <Eigen/src/misc/lapacke.h>
-// }
+#endif
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/transpose_op.h"
 
@@ -32,8 +40,8 @@ inline void computeValues<paddle::platform::complex<double>, double>(
     char jobz, char uplo, int n, paddle::platform::complex<double>* a, int lda,
     double* w, paddle::platform::complex<double>* work, int lwork,
     double* rwork, int lrwork, int* iwork, int liwork, int* info) {
-  zheevd_(&jobz, &uplo, &n, reinterpret_cast<double _Complex*>(a), &lda, w,
-          reinterpret_cast<double _Complex*>(work), &lwork, rwork, &lrwork,
+  zheevd_(&jobz, &uplo, &n, reinterpret_cast<std::complex<double>*>(a), &lda, w,
+          reinterpret_cast<std::complex<double>*>(work), &lwork, rwork, &lrwork,
           iwork, &liwork, info);
 }
 
@@ -42,8 +50,8 @@ inline void computeValues<paddle::platform::complex<float>, float>(
     char jobz, char uplo, int n, paddle::platform::complex<float>* a, int lda,
     float* w, paddle::platform::complex<float>* work, int lwork, float* rwork,
     int lrwork, int* iwork, int liwork, int* info) {
-  cheevd_(&jobz, &uplo, &n, reinterpret_cast<float _Complex*>(a), &lda, w,
-          reinterpret_cast<float _Complex*>(work), &lwork, rwork, &lrwork,
+  cheevd_(&jobz, &uplo, &n, reinterpret_cast<std::complex<float>*>(a), &lda, w,
+          reinterpret_cast<std::complex<float>*>(work), &lwork, rwork, &lrwork,
           iwork, &liwork, info);
 }
 
@@ -75,16 +83,16 @@ class EighKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input_var = ctx.Input<Tensor>("X");
-    auto* output_w_var = ctx.Output<Tensor>("OutVector");
     auto* output_v_var = ctx.Output<Tensor>("OutValue");
+    auto* output_w_var = ctx.Output<Tensor>("OutVector");
 
-    auto* output_vector =
-        output_w_var->mutable_data<T>(ctx.GetPlace());  // eigenvectors
     auto* output_value =
         output_v_var->mutable_data<ValueType>(ctx.GetPlace());  // eigenvalues
-    bool lower = ctx.Attr<bool>("UPLO");
+    auto* output_vector =
+        output_w_var->mutable_data<T>(ctx.GetPlace());  // eigenvectors
 
-    // std::cout << "###lower:" << lower << std::endl;
+    std::string lower = ctx.Attr<std::string>("UPLO");
+
     auto dims = input_var->dims();
     int dim_size = dims.size();
     int64_t batch_size = 1;
@@ -98,33 +106,39 @@ class EighKernel : public framework::OpKernel<T> {
         *input_var, input_var->place(), dev_ctx,
         output_w_var);  // copy input data to temp data
 
-    int stride = dims[dim_size - 1] * dims[dim_size - 2];
-    // std::cout << "stride: " << stride << std::endl;
+    int vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
     auto values_stride = dims[dim_size - 1];
-    // std::cout << "values_stride: " << values_stride << std::endl;
 
     Tensor info_tensor;
     auto* infos_data = info_tensor.mutable_data<int>(
-        framework::make_ddim({std::max<int64_t>(1, batch_size)}),
-        ctx.GetPlace());
-    char uplo = lower ? 'U' : 'L';
-    // std::cout << "uplo: " << uplo << std::endl;
+        framework::make_ddim({batch_size}), ctx.GetPlace());
+
+    std::vector<int> axis(dim_size - 2);
+    std::iota(axis.begin(), axis.end(), 0);
+    axis.insert(axis.end(), {dim_size - 1, dim_size - 2});
+    Tensor output_w_var_trans;
+    output_w_var_trans.mutable_data<T>(dims, ctx.GetPlace());
+    TransCompute<DeviceContext, T>(dim_size, dev_ctx, *output_w_var,
+                                   &output_w_var_trans, axis);
+
+    paddle::framework::TensorCopy(
+        output_w_var_trans, output_w_var_trans.place(), dev_ctx, output_w_var);
+
+    char uplo = (lower == "L") ? 'L' : 'U';
     char jobz = 'V';
     auto n = dims[dim_size - 1];
-    // std::cout << "n: " << n << std::endl;
     auto lda = std::max<int64_t>(1, n);
-    // std::cout << "lda: " << lda << std::endl;
     int lwork = -1;
     int lrwork = -1;
     int liwork = -1;
     int iwork_query;
     ValueType rwork_query;
     T lwork_query;
+
     computeValues<T, ValueType>(jobz, uplo, n, output_vector, lda, output_value,
                                 &lwork_query, lwork, &rwork_query, lrwork,
                                 &iwork_query, liwork, infos_data);
 
-    // std::cout << "lwork_query: " << lwork_query << std::endl;
     lwork = std::max<int>(1, static_cast<int>(lwork_query));
     liwork = std::max<int>(1, iwork_query);
 
@@ -132,15 +146,11 @@ class EighKernel : public framework::OpKernel<T> {
     ValueType* rwork_data = nullptr;
     // complex type
     if (framework::IsComplexType(input_var->type())) {
-      // lwork_query = paddle::platform::complex<ValueType>(lwork_query);
       lrwork = std::max<int>(1, static_cast<int>(rwork_query));
       rwork_data = rwork_tensor.mutable_data<ValueType>(
           framework::make_ddim({lrwork}), ctx.GetPlace());
     }
-    // std::cout << "lwork: " << lwork << "\n";
-    // std::cout << "lrwork: " << lrwork << "\n";
-    // std::cout << "liwork: " << liwork << "\n";
-    // std::cout << "iwork_query: " << iwork_query << "\n";
+
     Tensor iwork_tensor;
     auto* iwork_data = iwork_tensor.mutable_data<int>(
         framework::make_ddim({liwork}), ctx.GetPlace());
@@ -150,31 +160,32 @@ class EighKernel : public framework::OpKernel<T> {
                                                   ctx.GetPlace());
 
     for (auto i = 0; i < batch_size; i++) {
-      auto* vector_data = output_vector + i * stride;
+      auto* vector_data = output_vector + i * vector_stride;
       auto* value_data = output_value + i * values_stride;
-      int* info_working_ptr = &infos_data[i];
+      int* info_ptr = &infos_data[i];
       computeValues<T, ValueType>(jobz, uplo, n, vector_data, lda, value_data,
                                   work_data, lwork, rwork_data, lrwork,
-                                  iwork_data, liwork, info_working_ptr);
-      // std::cout << "reslut: " << *info_working_ptr << std::endl;
-      if (*info_working_ptr != 0) {
-        return;
-      }
+                                  iwork_data, liwork, info_ptr);
+
+      // std::cout << "info_ptr: " << *info_ptr << std::endl;
+      // PADDLE_ENFORCE_GT(*info_ptr, 0,
+      //                   platform::errors::InvalidArgument(
+      //                       "the [%d] argument had an illegal value",
+      //                       *info_ptr));
+      // PADDLE_ENFORCE_LT(*info_ptr, 0,
+      //                   platform::errors::InvalidArgument(
+      //         "if JOBZ = \'N\', [%d] off-diagonal elements of an intermediate
+      //         tridiagonal form did not converge to zero;if JOBZ = \'V\', then
+      //         the algorithm failed to compute an eigenvalue",
+      //         *info_ptr));
     }
-    std::vector<int> axis(dim_size - 2);
-    std::iota(axis.begin(), axis.end(), 0);
-    axis.insert(axis.end(), {dim_size - 1, dim_size - 2});
-    Tensor output_w_var_trans;
-    output_w_var_trans.mutable_data<T>(dims, ctx.GetPlace());
     TransCompute<DeviceContext, T>(dim_size, dev_ctx, *output_w_var,
                                    &output_w_var_trans, axis);
+
     paddle::framework::TensorCopy(
         output_w_var_trans, output_w_var_trans.place(), dev_ctx, output_w_var);
   }
 };
-
-template <typename DeviceContext, typename T, typename ValueType>
-class EighGradKernel : public framework::OpKernel<T> {};
 
 }  // namespace operators
 }  // namespace paddle

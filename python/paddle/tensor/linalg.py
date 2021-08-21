@@ -944,21 +944,61 @@ def mv(x, vec, name=None):
 
 
 def eigh(x, UPLO='L', name=None):
+    """
+    Return the eigenvalues and eigenvectors of a complex Hermitian (conjugate symmetric) or a real symmetric matrix.
+
+    Args:
+        x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
+            should be one of float32, float64, complex64, complex128.
+        UPLO(str, optional): (Tensor): Specifies whether the calculation 
+           is done with the lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Returns two objects, a 1-D array containing the eigenvalues of a, and a 2-D square array 
+        or matrix (depending on the input type) of the corresponding eigenvectors (in columns).
+
+    Examples:
+        .. code-block:: python
+
+            # x: [M, M], UPLO: L
+            # paddle.eigh(x, UPLO='L')  
+
+            import numpy as np
+            import paddle
+
+            x_data = np.array([[1, -2j], [2j, 5]])
+            x = paddle.to_tensor(x_data)
+            out_value, out_vector = paddle.eigh(x)
+    """
     if in_dygraph_mode():
-        if UPLO == "L":
-            lower = True
+        if UPLO is 'L' or UPLO is 'U':
+            out_value, out_vector = _C_ops.eigh(x, 'UPLO', UPLO)
+            return out_value, out_vector
         else:
-            lower = False
-        out_vector, out_value = _C_ops.eigh(x, 'UPLO', lower)
-        return out_value, out_vector
+            raise ValueError(
+                "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
+
+    def __check_input(x):
+        x_shape = list(x.shape)
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                "The input matrix must be batches of square matrices. But received x's dimention: {}".
+                format(x_shape))
+
+    __check_input(x)
 
     helper = LayerHelper('eigh', **locals())
-    out_vector, out_value = helper.create_variable_for_type_inference(
-        dtype=x.dtype)
+    # check_variable_and_dtype(x, 'x', ['float32', 'float64', 'complex32', 'complex64'],
+    #                          'eigh')
+
+    out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out_vector = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='eigh',
-        inputs={'X': [x]},
-        outputs={'OutVector': [out_vector],
-                 'OutValue': [out_value]},
-        attrs={'UPLO': lower})
+        inputs={'X': x},
+        outputs={'OutValue': out_value,
+                 'OutVector': out_vector},
+        attrs={'UPLO': UPLO})
     return out_value, out_vector

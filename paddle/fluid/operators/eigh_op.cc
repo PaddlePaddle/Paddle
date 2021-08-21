@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/eigh_op.h"
 
-
 namespace paddle {
 namespace operators {
 
@@ -28,19 +27,28 @@ class EighOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       platform::errors::InvalidArgument(
                           "Input(X) of EighOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("OutVector"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("OutValue"), true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of EighOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("OutValue"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("OutVector"), true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of EighOp should not be null."));
 
     auto input_dim = ctx->GetInputDim("X");
-    int batch = 1;
-    if (input_dim.size() == 3) {
-      batch = input_dim[0];
+
+    int64_t batch_size = 1;
+    for (int i = 0; i < input_dim.size() - 2; i++) {
+      batch_size *= input_dim[i];
     }
-    std::vector<int64_t> v_dim = {batch, input_dim[1]};
+    std::vector<int64_t> v_dim = {input_dim[1]};
+    if (batch_size > 1) {
+      v_dim = {batch_size, input_dim[1]};
+    }
+
+    PADDLE_ENFORCE_EQ(
+        input_dim[input_dim.size() - 1], input_dim[input_dim.size() - 2],
+        platform::errors::InvalidArgument("ShapeError: The input matrix must "
+                                          "be batches of square matrices."));
 
     ctx->SetOutputDim("OutValue", framework::make_ddim(v_dim));
     ctx->SetOutputDim("OutVector", input_dim);
@@ -60,18 +68,19 @@ class EignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Hermitian or real symmetric matrices whose eigenvalues and "
              "eigenvectors are to be computed ");
-    AddOutput("OutVector",
+    AddOutput("OutValue",
               "The eigenvalues in ascending order, "
               "each repeated according to its multiplicity.");
     AddOutput(
-        "OutValue",
+        "OutVector",
         "The column v[:, i] is the normalized eigenvector corresponding to the,"
         "eigenvalue w[i]. Will return a matrix object if a is a matrix "
         "object.");
-    AddAttr<bool>("UPLO",
-                  "the lower triangular part of a (‘L’, default) or the upper "
-                  "triangular part (‘U’)")
-        .SetDefault(true);
+    AddAttr<std::string>(
+        "UPLO",
+        "the lower triangular part of a (‘L’, default) or the upper "
+        "triangular part (‘U’)")
+        .SetDefault("L");
     AddComment(R"DOC(
 Eigh Operator.
 
