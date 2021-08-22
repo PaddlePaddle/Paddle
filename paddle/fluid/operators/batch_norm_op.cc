@@ -204,10 +204,6 @@ framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
 }
 
 void BatchNormOpMaker::Make() {
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
   AddAttr<float>("momentum", "").SetDefault(0.9);
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)

@@ -62,10 +62,6 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                             platform::errors::InvalidArgument(
                                 "'dropout_prob' must be between 0.0 and 1.0."));
         });
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddAttr<bool>("fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "

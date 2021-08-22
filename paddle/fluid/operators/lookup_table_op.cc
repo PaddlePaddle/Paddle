@@ -108,11 +108,6 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                          "entry")
         .SetDefault("");
 
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training.")
-        .SetDefault(false);
-
     AddAttr<std::string>("entry",
                          "(std::string, default "
                          ") for entry attribute.")

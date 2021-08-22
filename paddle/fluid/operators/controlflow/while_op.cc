@@ -191,10 +191,6 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
               "variables generated in the i'th step.");
     AddAttr<framework::BlockDesc *>(kStepBlock,
                                     "The step block inside WhileOp");
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
                                       "Vars that would skip eager deletion."
                                       "Users should not set this manually.")

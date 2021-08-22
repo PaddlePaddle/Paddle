@@ -282,10 +282,6 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
 
     AddComment(R"DOC(
 Local Response Normalization Operator.

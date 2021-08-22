@@ -162,7 +162,6 @@ class RNNOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>(
         "mode",
         "(string) rnn types, including: LSTM, GRU, RNN_RELU, RNN_TANH.");
-    AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(0);
     AddComment(R"DOC(
 )DOC");

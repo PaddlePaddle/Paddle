@@ -185,10 +185,6 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
         .InEnum({"float32", "bfloat16"});
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
 
     AddComment(R"DOC(
 Assume feature vectors exist on dimensions

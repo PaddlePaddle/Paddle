@@ -242,10 +242,6 @@ framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
 }
 
 void Conv2DTransposeOpMaker::Make() {
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
   AddInput("Input",
            "(Tensor) The input tensor of convolution transpose operator. "
            "The format of input tensor is NCHW or NHWC. Where N is batch size, "

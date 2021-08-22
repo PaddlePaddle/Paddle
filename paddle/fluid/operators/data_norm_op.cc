@@ -198,7 +198,6 @@ class DataNormOp : public framework::OperatorWithKernel {
 class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    // AddAttr<bool>("is_test", "").SetDefault(false);
     AddAttr<float>("epsilon", "")
         .SetDefault(1e-4)
         .AddCustomChecker([](const float &epsilon) {

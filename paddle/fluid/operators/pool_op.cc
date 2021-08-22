@@ -363,10 +363,6 @@ void Pool2dOpMaker::Make() {
       "Defaults to \"NHWC\". Specify the data format of the output data, "
       "the input will be transformed automatically. ")
       .SetDefault("NCHW");
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
 
   AddAttr<std::string>(
       "padding_algorithm",

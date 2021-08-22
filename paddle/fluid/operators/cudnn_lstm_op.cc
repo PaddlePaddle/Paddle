@@ -175,7 +175,6 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("hidden_size", "hidden size of the LSTM").SetDefault(100);
     AddAttr<int>("num_layers", "the total layer number of the LSTM")
         .SetDefault(1);
-    AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(0);
     AddComment(R"DOC(
 CUDNN LSTM implementation

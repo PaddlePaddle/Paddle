@@ -405,10 +405,6 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddComment(R"DOC(
 The scale of FakeChannelWiseQuantize operator is a vector.
 In detail, each channel of the input X has a scale value.
@@ -544,10 +540,6 @@ class FakeQuantizeRangeAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddComment(R"DOC(
 FakeQuantize operator is used in static quantization.
 
@@ -618,10 +610,6 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddComment(R"DOC(
 This is a Base Op which supports FakeQuantMovingAverageAbsMaxOp and FakeQuantDequantMovingAverageAbsMaxOp.
 FakeQuantMovingAverageAbsMaxOp operator is used in the static quantization.
@@ -686,10 +674,6 @@ class MovingAverageAbsMaxScaleOpMaker
     AddOutput("OutAccum", "(Tensor) accum buffer.").AsDispensable();
     AddAttr<float>("moving_rate", "(float, default 0.9) moving rate.")
         .SetDefault(0.9);
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set true for inference only and false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddComment(R"DOC(
 MovingAverageAbsMaxScale operator is only used for calculating the quantization scale.
 And it will not quantize the input tensor.
