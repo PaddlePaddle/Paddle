@@ -319,8 +319,7 @@ class AdamW(Adam):
             "lazy_mode": self._lazy_mode,
             "min_row_size_to_use_multithread": 1000,
             "multi_precision": find_master,
-            "with_decay": with_decay,
-            "coeff": self._coeff,
+            "weight_decay_coeff": self._coeff if with_decay else 0.0,
         }
 
         if isinstance(self._beta1, Variable):
