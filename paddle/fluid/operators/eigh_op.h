@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #pragma once
-extern "C" {
+// extern "C" {
+// #include <Eigen/src/misc/lapacke.h>
+// }
 #include <Eigen/src/misc/lapacke.h>
-}
 // #include <complex.h>
 // #define lapack_complex_float std::complex<float>
 // #define lapack_complex_double std::complex<double>

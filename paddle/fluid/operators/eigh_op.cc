@@ -45,10 +45,13 @@ class EighOp : public framework::OperatorWithKernel {
       v_dim = {batch_size, input_dim[1]};
     }
 
-    PADDLE_ENFORCE_EQ(
-        input_dim[input_dim.size() - 1], input_dim[input_dim.size() - 2],
-        platform::errors::InvalidArgument("ShapeError: The input matrix must "
-                                          "be batches of square matrices."));
+    PADDLE_ENFORCE_EQ(input_dim[input_dim.size() - 1],
+                      input_dim[input_dim.size() - 2],
+                      platform::errors::InvalidArgument(
+                          "ShapeError: The input matrix must "
+                          "be batches of square matrices.But received: the "
+                          "'shape' of Input is [%d]",
+                          input_dim.size()));
 
     ctx->SetOutputDim("OutValue", framework::make_ddim(v_dim));
     ctx->SetOutputDim("OutVector", input_dim);
