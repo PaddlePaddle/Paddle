@@ -54,6 +54,14 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   if (found1 != std::string::npos && found2 != std::string::npos) {
     ProgramDesc program_desc;
     GraphToProgram(*graph, &program_desc);
+    // TODO(wilber): GraphToProgram seems have bugs.
+    for (size_t i = 0; i < program_desc.Size(); ++i) {
+      for (size_t j = 0; j < program_desc.Block(i).OpSize(); ++j) {
+        if (program_desc.Block(i).Op(j)->Type() == "tensorrt_engine") {
+          program_desc.Block(i).Op(j)->RemoveAttr("sub_block");
+        }
+      }
+    }
     std::string program_bytes = program_desc.Proto()->SerializeAsString();
     // rename from "17_ir_fc_fuse_pass.dot" to "fc_fuse_pass.pdmodel"
     program_path =
