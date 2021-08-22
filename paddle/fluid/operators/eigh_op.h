@@ -13,17 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include <complex.h>
-
-#ifdef PADDLE_WITH_MKLML
-#define MKL_Complex8 std::complex<float>
-#define MKL_Complex16 std::complex<double>
-#include "third_party/install/mklml/include/mkl_lapack.h"
-#else
-#define lapack_complex_float std::complex<float>
-#define lapack_complex_double std::complex<double>
+extern "C" {
 #include <Eigen/src/misc/lapacke.h>
-#endif
+}
+// #include <complex.h>
+// #define lapack_complex_float std::complex<float>
+// #define lapack_complex_double std::complex<double>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/transpose_op.h"
 
@@ -40,8 +35,8 @@ inline void computeValues<paddle::platform::complex<double>, double>(
     char jobz, char uplo, int n, paddle::platform::complex<double>* a, int lda,
     double* w, paddle::platform::complex<double>* work, int lwork,
     double* rwork, int lrwork, int* iwork, int liwork, int* info) {
-  zheevd_(&jobz, &uplo, &n, reinterpret_cast<std::complex<double>*>(a), &lda, w,
-          reinterpret_cast<std::complex<double>*>(work), &lwork, rwork, &lrwork,
+  zheevd_(&jobz, &uplo, &n, reinterpret_cast<double _Complex*>(a), &lda, w,
+          reinterpret_cast<double _Complex*>(work), &lwork, rwork, &lrwork,
           iwork, &liwork, info);
 }
 
@@ -50,8 +45,8 @@ inline void computeValues<paddle::platform::complex<float>, float>(
     char jobz, char uplo, int n, paddle::platform::complex<float>* a, int lda,
     float* w, paddle::platform::complex<float>* work, int lwork, float* rwork,
     int lrwork, int* iwork, int liwork, int* info) {
-  cheevd_(&jobz, &uplo, &n, reinterpret_cast<std::complex<float>*>(a), &lda, w,
-          reinterpret_cast<std::complex<float>*>(work), &lwork, rwork, &lrwork,
+  cheevd_(&jobz, &uplo, &n, reinterpret_cast<float _Complex*>(a), &lda, w,
+          reinterpret_cast<float _Complex*>(work), &lwork, rwork, &lrwork,
           iwork, &liwork, info);
 }
 

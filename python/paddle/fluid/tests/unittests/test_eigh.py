@@ -38,11 +38,11 @@ class TestEighOp(OpTest):
         self.UPLO = 'L'
 
     def init_dtype_type(self):
-        self.x_shape = (3, 3)
+        self.x_shape = (2, 2)
         self.x_type = np.float64
 
     def test_check_output(self):
-        self.check_output(atol=1e-5)
+        self.check_output()
 
 
 class TestEighDataTypeCase(TestEighOp):
