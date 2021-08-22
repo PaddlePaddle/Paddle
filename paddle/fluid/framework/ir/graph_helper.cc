@@ -530,11 +530,9 @@ void GraphToProgram(const Graph &graph, ProgramDesc *program,
     VLOG(3) << "Graph to program need convert " << graph.SubGraphsSize()
             << " sub graph";
     for (size_t idx = 0; idx < graph.SubGraphsSize(); ++idx) {
-      // avoid kRootBlockIndex not 0
-      if (idx == kRootBlockIndex) continue;
-
       block = program_pb.add_blocks();
-      block->set_idx(idx);
+      block->set_idx(program_pb.blocks_size());
+      block->set_parent_idx(kRootBlockIndex);
       GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind);
     }
   } else {
