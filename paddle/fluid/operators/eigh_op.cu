@@ -110,7 +110,6 @@ class EighGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    // std::cout << "##########" << std::endl;
     const auto *input_var = ctx.Input<Tensor>("X");
 
     auto *output_w_var = ctx.Output<Tensor>("OutVector");
