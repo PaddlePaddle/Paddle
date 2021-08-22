@@ -57,7 +57,7 @@ class TestFuseLinearBn(unittest.TestCase):
         out_quant = quant_model(inputs)
         out_quant_h = quant_h(inputs)
         cos_sim_func = nn.CosineSimilarity(axis=0)
-        print('fuse linear+bn', 
+        print('fuse linear+bn',
               cos_sim_func(out.flatten(), out_quant.flatten()))
         print(cos_sim_func(out_h.flatten(), out_quant_h.flatten()))
 
