@@ -49,7 +49,7 @@ class TestFuseLinearBn(unittest.TestCase):
         ptq = ImperativePTQ(config)
         f_l = [['linear', 'bn']]
         quant_model = ptq.quantize(model, fuse=True, fuse_list=f_l)
-        quant_h = ptq.quantize(model, fuse=True, fuse_list=f_l)
+        quant_h = ptq.quantize(model_h, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
             print(name, layer)
         out = model(inputs)
@@ -57,7 +57,8 @@ class TestFuseLinearBn(unittest.TestCase):
         out_quant = quant_model(inputs)
         out_quant_h = quant_h(inputs)
         cos_sim_func = nn.CosineSimilarity(axis=0)
-        print('fuse linear+bn', cos_sim_func(out.flatten(), out_quant.flatten()))
+        print('fuse linear+bn', 
+              cos_sim_func(out.flatten(), out_quant.flatten()))
         print(cos_sim_func(out_h.flatten(), out_quant_h.flatten()))
 
 
