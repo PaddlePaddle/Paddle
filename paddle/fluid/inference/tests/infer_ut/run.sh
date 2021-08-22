@@ -168,7 +168,6 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
 
     printf "${YELLOW} start test_det_mv3_db ${NC} \n";
     compile_test "test_det_mv3_db"
-    make -j$(nproc)
     ${exe_dir}/test_det_mv3_db \
         --modeldir=$DATA_DIR/ocr_det_mv3_db/ocr_det_mv3_db \
         --gtest_output=xml:${log_dir}/test_det_mv3_db.xml
