@@ -943,7 +943,65 @@ def mv(x, vec, name=None):
     return out
 
 
-<<<<<<< HEAD
+def matrix_power(x, n, name=None):
+    r"""
+    Computes the n-th power of a square matrix or a batch of square matrices.
+    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
+    an exponent, the equation should be:
+    .. math::
+        Out = X ^ {n}
+    
+    Specifically,
+    - If `n > 0`, it returns the matrix or a batch of matrices raised to the power
+    of `n`.
+    
+    - If `n = 0`, it returns the identity matrix or a batch of identity matrices.
+    - If `n < 0`, it returns the inverse of each matrix (if invertible) raised to
+    the power of `abs(n)`.
+    Args:
+        x (Tensor): A square matrix or a batch of square matrices to be raised
+            to power `n`. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        n (int): The exponent. It can be any positive, negative integer or zero.
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: The n-th power of the matrix (or the batch of matrices) `x`. Its
+            data type should be the same as that of `x`.
+    Examples:
+        .. code-block:: python
+            import paddle
+            x = paddle.to_tensor([[1, 2, 3],
+                                  [1, 4, 9],
+                                  [1, 8, 27]], dtype='float64')
+            print(paddle.matrix_power(x, 2))
+            # [[6.  , 34. , 102.],
+            #  [14. , 90. , 282.],
+            #  [36. , 250., 804.]]
+            print(paddle.matrix_power(x, 0))
+            # [[1., 0., 0.],
+            #  [0., 1., 0.],
+            #  [0., 0., 1.]]
+            print(paddle.matrix_power(x, -2))
+            # [[ 12.91666667, -12.75000000,  2.83333333 ],
+            #  [-7.66666667 ,  8.         , -1.83333333 ],
+            #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
+    """
+    if in_dygraph_mode():
+        return core.ops.matrix_power(x, "n", n)
+
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
+    check_type(n, 'n', int, 'matrix_power')
+    helper = LayerHelper('matrix_power', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='matrix_power',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'n': n})
+    return out
+
+
 def eigh(x, UPLO='L', name=None):
     """
     Return the eigenvalues and eigenvectors of a complex Hermitian (conjugate symmetric) or a real symmetric matrix.
@@ -959,44 +1017,9 @@ def eigh(x, UPLO='L', name=None):
     Returns:
         Tensor: Returns two objects, a 1-D array containing the eigenvalues of a, and a 2-D square array 
         or matrix (depending on the input type) of the corresponding eigenvectors (in columns).
-=======
-def matrix_power(x, n, name=None):
-    r"""
-    Computes the n-th power of a square matrix or a batch of square matrices.
-
-    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
-    an exponent, the equation should be:
-
-    .. math::
-        Out = X ^ {n}
-    
-    Specifically,
-
-    - If `n > 0`, it returns the matrix or a batch of matrices raised to the power
-    of `n`.
-    
-    - If `n = 0`, it returns the identity matrix or a batch of identity matrices.
-
-    - If `n < 0`, it returns the inverse of each matrix (if invertible) raised to
-    the power of `abs(n)`.
-
-    Args:
-        x (Tensor): A square matrix or a batch of square matrices to be raised
-            to power `n`. Its shape should be `[*, M, M]`, where `*` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
-        n (int): The exponent. It can be any positive, negative integer or zero.
-        name (str, optional): Name for the operation (optional, default is None). 
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: The n-th power of the matrix (or the batch of matrices) `x`. Its
-            data type should be the same as that of `x`.
->>>>>>> develop
 
     Examples:
         .. code-block:: python
-
-<<<<<<< HEAD
             # x: [M, M], UPLO: L
             # paddle.eigh(x, UPLO='L')  
 
@@ -1037,38 +1060,3 @@ def matrix_power(x, n, name=None):
                  'OutVector': out_vector},
         attrs={'UPLO': UPLO})
     return out_value, out_vector
-=======
-            import paddle
-
-            x = paddle.to_tensor([[1, 2, 3],
-                                  [1, 4, 9],
-                                  [1, 8, 27]], dtype='float64')
-            print(paddle.matrix_power(x, 2))
-            # [[6.  , 34. , 102.],
-            #  [14. , 90. , 282.],
-            #  [36. , 250., 804.]]
-
-            print(paddle.matrix_power(x, 0))
-            # [[1., 0., 0.],
-            #  [0., 1., 0.],
-            #  [0., 0., 1.]]
-
-            print(paddle.matrix_power(x, -2))
-            # [[ 12.91666667, -12.75000000,  2.83333333 ],
-            #  [-7.66666667 ,  8.         , -1.83333333 ],
-            #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
-    """
-    if in_dygraph_mode():
-        return core.ops.matrix_power(x, "n", n)
-
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
-    check_type(n, 'n', int, 'matrix_power')
-    helper = LayerHelper('matrix_power', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='matrix_power',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'n': n})
-    return out
->>>>>>> develop
