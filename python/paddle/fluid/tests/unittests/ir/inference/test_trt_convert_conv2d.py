@@ -81,7 +81,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
         self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
         self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-5)
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-2)
 
     def test_trt_int8_check_output(self):
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
