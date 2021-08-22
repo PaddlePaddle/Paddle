@@ -246,7 +246,8 @@ class TestVariable(unittest.TestCase):
             res = x[[1.2, 0]]
 
     def _test_slice_index_list_bool(self, place):
-        data = np.random.rand(2, 3).astype("float32")
+        data = np.random.rand(2, 3, 4).astype("float32")
+        np_idx = np.array([[True, False, False], [True, False, True]])
         prog = paddle.static.Program()
         with paddle.static.program_guard(prog):
             x = paddle.assign(data)
@@ -255,22 +256,24 @@ class TestVariable(unittest.TestCase):
             idx2 = [True, True]
             idx3 = [False, False, 1]
             idx4 = [True, False, 0]
+            idx5 = paddle.assign(np_idx)
 
             out0 = x[idx0]
             out1 = x[idx1]
             out2 = x[idx2]
             out3 = x[idx3]
             out4 = x[idx4]
-            out5 = x[x < 0.36]
-            out6 = x[x > 0.6]
+            out5 = x[idx5]
+            out6 = x[x < 0.36]
+            out7 = x[x > 0.6]
 
         exe = paddle.static.Executor(place)
-        result = exe.run(prog,
-                         fetch_list=[out0, out1, out2, out3, out4, out5, out6])
+        result = exe.run(
+            prog, fetch_list=[out0, out1, out2, out3, out4, out5, out6, out7])
 
         expected = [
             data[idx0], data[idx1], data[idx2], data[idx3], data[idx4],
-            data[data < 0.36], data[data > 0.6]
+            data[np_idx], data[data < 0.36], data[data > 0.6]
         ]
 
         self.assertTrue((result[0] == expected[0]).all())
@@ -280,6 +283,7 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[4] == expected[4]).all())
         self.assertTrue((result[5] == expected[5]).all())
         self.assertTrue((result[6] == expected[6]).all())
+        self.assertTrue((result[7] == expected[7]).all())
 
         with self.assertRaises(IndexError):
             res = x[[True, False, False]]

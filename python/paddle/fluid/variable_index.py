@@ -159,7 +159,7 @@ def _getitem_impl_(var, item):
 
             if len(item) != 1:
                 raise IndexError(
-                    "When index contains a list, its length must be 1, but received {}".
+                    "When index contains a list, its length must be 1, but received {}.".
                     format(len(item)))
             new_slice_item = []
             if all_bool:
@@ -191,12 +191,27 @@ def _getitem_impl_(var, item):
         elif isinstance(slice_item, Variable):
             if len(item) != 1:
                 raise IndexError(
-                    "When index contains a Tensor, its length must be 1, but received {}".
+                    "When index contains a Tensor, its length must be 1, but received {}.".
                     format(len(item)))
 
-            from ..tensor import index_select, masked_select
+            from ..tensor import index_select, gather_nd
+            from .layers.nn import where
+
             if slice_item.dtype == core.VarDesc.VarType.BOOL:
-                return masked_select(var, slice_item)
+                if len(slice_item.shape) > len(var.shape):
+                    raise IndexError(
+                        "The dims of bool index doesn't match indexed array, "
+                        "the dims of bool index except to be equal or less "
+                        "than {}, but received {}.".format(
+                            len(var.shape), len(slice_item.shape)))
+                for i, dim_len in enumerate(slice_item.shape):
+                    if dim_len != var.shape[i]:
+                        raise IndexError(
+                            "The dimension of bool index doesn't match indexed array along "\
+                            "dimension {}, the target dimension is {}, but received {}.".
+                            format(i, var.shape[i], dim_len))
+                bool_2_idx = where(slice_item == True)
+                return gather_nd(var, bool_2_idx)
             return index_select(var, index=slice_item, axis=0)
 
         else:
