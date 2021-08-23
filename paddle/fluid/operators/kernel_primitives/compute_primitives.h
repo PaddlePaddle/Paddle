@@ -246,12 +246,13 @@ __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
   if (ReduceMode == ReduceMode::GlobalMode) {
     bool block_reduce_y = (!reduce_lastDim) && (blockDim.y > 1);
     // blockYReduce
-    if (blockDim.y > 1) {
+    if (block_reduce_y) {
 #pragma unroll
       for (int i = 0; i < NY; i++) {
         out[i] = BlockYReduce<T, OpFunc>(out[i], reducer);
       }
     }
+    __syncthreads();
 
     // blockXReduce
     if (reduce_lastDim) {

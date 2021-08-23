@@ -234,11 +234,9 @@ __device__ __forceinline__ void ReadDataBc(
 // stride_nx = 1
 template <typename T, int NX, int NY, int BlockSize, int ShapeSize,
           typename IndexCal>
-__device__ __forceinline__ void ReadDataReduce(T* dst,
-                                               const T* __restrict__ src,
-                                               int fix, IndexCal index_cal,
-                                               int stride_nx, int stride_ny,
-                                               bool reduce_lastdim) {
+__device__ __forceinline__ void ReadDataReduce(
+    T* dst, const T* __restrict__ src, int fix, const IndexCal& index_cal,
+    int stride_nx, int stride_ny, bool reduce_lastdim) {
   int base_offset = fix;
   if (reduce_lastdim) {
     base_offset += threadIdx.x;
@@ -246,13 +244,22 @@ __device__ __forceinline__ void ReadDataReduce(T* dst,
     base_offset += threadIdx.y;
   }
 
+  if (NX == 1) {
 #pragma unroll
-  for (int ny = 0; ny < NY; ++ny) {
+    for (int ny = 0; ny < NY; ++ny) {
+      int idx = base_offset + ny * stride_ny;
+      uint32_t offset = index_cal(idx);
+      dst[ny] = src[offset];
+    }
+  } else {
 #pragma unroll
     for (int nx = 0; nx < NX; ++nx) {
-      int idx = base_offset + ny * stride_ny + nx * stride_nx;
-      uint32_t offset = index_cal(idx);
-      dst[nx + ny * NX] = src[offset];
+#pragma unroll
+      for (int ny = 0; ny < NY; ++ny) {
+        int idx = base_offset + ny * stride_ny + nx * stride_nx;
+        uint32_t offset = index_cal(idx);
+        dst[ny] = src[offset];
+      }
     }
   }
 }
@@ -261,8 +268,9 @@ __device__ __forceinline__ void ReadDataReduce(T* dst,
 template <typename T, int NX, int NY, int BlockSize, int ShapeSize,
           typename IndexCal>
 __device__ __forceinline__ void ReadDataReduce(
-    T* dst, const T* __restrict__ src, int fix, IndexCal index_cal, int size_nx,
-    int size_ny, int stride_nx, int stride_ny, bool reduce_lastdim) {
+    T* dst, const T* __restrict__ src, int fix, const IndexCal& index_cal,
+    int size_nx, int size_ny, int stride_nx, int stride_ny,
+    bool reduce_lastdim) {
   int base_offset = fix;
   if (reduce_lastdim) {
     base_offset += threadIdx.x;
@@ -270,15 +278,25 @@ __device__ __forceinline__ void ReadDataReduce(
     base_offset += threadIdx.y;
   }
 
+  if (NX == 1) {
 #pragma unroll
-  for (int ny = 0; ny < NY; ++ny) {
-    if (base_offset + ny * stride_ny >= size_ny) break;
+    for (int ny = 0; ny < NY; ++ny) {
+      if (base_offset >= size_ny) break;
+      uint32_t offset = index_cal(base_offset);
+      dst[ny] = src[offset];
+      base_offset += stride_ny;
+    }
+  } else {
 #pragma unroll
     for (int nx = 0; nx < NX; ++nx) {
       if (nx * stride_nx >= size_nx) break;
-      int idx = base_offset + ny * stride_ny + nx * stride_nx;
-      uint32_t offset = index_cal(idx);
-      dst[nx + ny * NX] = src[offset];
+#pragma unroll
+      for (int ny = 0; ny < NY; ++ny) {
+        if (base_offset >= size_ny) break;
+        uint32_t offset = index_cal(base_offset);
+        dst[nx + ny * NX] = src[offset];
+        base_offset += stride_ny;
+      }
     }
   }
 }

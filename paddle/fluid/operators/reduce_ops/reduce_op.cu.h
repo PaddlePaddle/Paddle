@@ -569,21 +569,25 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
                           const IndexCalculator& left_index_calculator) {
   int input_idx, left_idx, stride;
   int block_size = 0;
+  bool need_store = true;
   // the last dim gets involved in reduction
   if (reduce_lastdim) {
     input_idx = blockIdx.y * blockDim.x;
     left_idx = blockIdx.x * blockDim.y + threadIdx.y;
     stride = gridDim.y * blockDim.x;
     block_size = blockDim.x;
+    need_store = (threadIdx.x == 0) && (left_idx < left_num);
   } else {
     input_idx = blockIdx.y * blockDim.y;
     left_idx = blockIdx.x * blockDim.x + threadIdx.x;
     stride = gridDim.y * blockDim.y;
     block_size = blockDim.y;
+    need_store = (threadIdx.y == 0) && (left_idx < left_num);
   }
   int store_offset = blockIdx.y * left_num + left_idx;
-  bool need_store = (reduce_lastdim && threadIdx.x == 0) ||
-                    ((!reduce_lastdim) && threadIdx.y == 0);
+  // bool need_store = ((reduce_lastdim && threadIdx.x == 0) ||
+  //                   ((!reduce_lastdim) && threadIdx.y == 0))&&(left_idx
+  //                   <left_num);
   // calculate the offset, means the addr where each thread really start.
   int input_offset = left_index_calculator(left_idx);
   const Tx* input = x + input_offset;
@@ -596,11 +600,8 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
     Tx input_reg[REDUCE_VEC_SIZE];
     MPType input_compute[REDUCE_VEC_SIZE];
     int bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
-    // int bound = reduce_num / (REDUCE_VEC_SIZE * stride) * (REDUCE_VEC_SIZE *
-    // strides);
     for (; input_idx + block_size < bound;
          input_idx += REDUCE_VEC_SIZE * stride) {
-      kps::Init<Tx, REDUCE_VEC_SIZE>(&input_reg[0], static_cast<Tx>(init));
       kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, IndexCalculator>(
           &input_reg[0], input, input_idx, reduce_index_calculator, 1, stride,
           reduce_lastdim);
@@ -608,27 +609,28 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
           &input_compute[0], &input_reg[0], transformer);
       kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
                   kps::ReduceMode::LocalMode>(&reduce_var, &input_compute[0],
-                                              reducer, false);
+                                              reducer, reduce_lastdim);
     }
 
-    if (input_idx < reduce_num) {
-      kps::Init<Tx, REDUCE_VEC_SIZE>(&input_reg[0], static_cast<Tx>(init));
-      kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, IndexCalculator>(
-          &input_reg[0], input, input_idx, reduce_index_calculator, 1,
-          reduce_num, 1, stride, reduce_lastdim);
-      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
-          &input_compute[0], &input_reg[0], transformer);
-      kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
-                  kps::ReduceMode::LocalMode>(&reduce_var, &input_compute[0],
-                                              reducer, false);
-    }
+    // if (input_idx < reduce_num) {
+    kps::Init<Tx, REDUCE_VEC_SIZE>(&input_reg[0], static_cast<Tx>(init));
+    kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, IndexCalculator>(
+        &input_reg[0], input, input_idx, reduce_index_calculator, 1, reduce_num,
+        1, stride, reduce_lastdim);
+    kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+        &input_compute[0], &input_reg[0], transformer);
+    kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
+                kps::ReduceMode::LocalMode>(&reduce_var, &input_compute[0],
+                                            reducer, reduce_lastdim);
+    ///// }
   }
 
   kps::Reduce<MPType, 1, 1, 1, ReduceOp, kps::GlobalMode>(
       &reduce_var, &reduce_var, reducer, reduce_lastdim);
   if (need_store) {
-    kps::Cast<MPType, Ty, REDUCE_VEC_SIZE>(&store_data, &reduce_var);
-    kps::WriteDataBase<Ty, 1, 1, 1>(y + store_offset, &store_data, 1);
+    y[store_offset] = static_cast<Ty>(reduce_var);
+    // kps::Cast<MPType, Ty, REDUCE_VEC_SIZE>(&store_data, &reduce_var);
+    // kps::WriteDataBase<Ty, 1, 1, 1>(y + store_offset, &store_data, 1);
   }
 }
 
