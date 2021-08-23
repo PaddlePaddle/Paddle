@@ -85,16 +85,7 @@ class Fetch2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    auto type = ctx->GetInputsVarType("X")[0];
-    if (type == framework::proto::VarType::SELECTED_ROWS ||
-        type == framework::proto::VarType::LOD_TENSOR) {
-      // ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-      if (type == framework::proto::VarType::LOD_TENSOR) {
-        // ctx->ShareLoD("X", /*->*/ "Out");
-      }
-    }
-  }
+  void InferShape(framework::InferShapeContext *ctx) const override {}
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
@@ -177,7 +168,7 @@ class Fetch2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
               "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddComment(R"DOC(
-Fetch Operator.
+Fetch2 Operator.
 
 It should not be configured by users directly.
 
