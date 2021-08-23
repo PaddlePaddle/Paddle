@@ -521,16 +521,16 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
         std::vector<int> ends =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
-        std::vector<int> decrease_axis =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
+        // std::vector<int> decrease_axis =
+        //    BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
         if (axes.size() != starts.size() || axes.size() != ends.size()) {
           return false;
         }
-        if (decrease_axis.size() > 0) {
-          VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                     "is not supported in TensorRT";
-          return false;
-        }
+        // if (decrease_axis.size() > 0) {
+        //  VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
+        //             "is not supported in TensorRT";
+        //  return false;
+        //}
         if (!with_dynamic_shape) {
           for (size_t i = 0; i < axes.size(); i++) {
             if (axes[i] == 0) {
