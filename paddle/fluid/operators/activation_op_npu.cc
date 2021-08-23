@@ -811,6 +811,27 @@ class ExpGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class SinNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+
+    auto* out = ctx.Output<Tensor>("Out");
+
+    auto place = ctx.GetPlace();
+
+    out->mutable_data<T>(place);
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    const auto& runner = NpuOpRunner("Sin", {*x}, {*out}, {});
+    runner.Run(stream);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -975,3 +996,9 @@ REGISTER_OP_NPU_KERNEL(
 REGISTER_OP_NPU_KERNEL(
     exp_grad, ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ExpGradNPUKernel<paddle::platform::NPUDeviceContext, double>);
+
+REGISTER_OP_NPU_KERNEL(
+    sin, ops::SinNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SinNPUKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::SinNPUKernel<paddle::platform::NPUDeviceContext,
+                      paddle::platform::float16>);
