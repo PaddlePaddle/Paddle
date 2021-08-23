@@ -128,6 +128,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "roi_align",
       "affine_channel",
       "nearest_interp",
+      "bilinear_interp",
       "anchor_generator",
       "reduce_sum",
   };
@@ -392,6 +393,42 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
       auto registry = GetPluginRegistry();
       if (registry == nullptr) return false;
+    }
+
+    if (op_type == "bilinear_interp") {
+      std::vector<std::string> attrs{"data_layout",   "interp_method",
+                                     "align_corners", "scale",
+                                     "out_h",         "out_w"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) return false;
+      }
+      auto data_layout = framework::StringToDataLayout(
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW &&
+          data_layout != framework::DataLayout::kNHWC)
+        return false;
+      auto interp_method =
+          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+      if (interp_method != "bilinear") return false;
+
+      if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
+          !desc.HasAttr("out_w")) {
+        return false;
+      } else {
+        auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
+        auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+        auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+        if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
+          if (out_h <= 0) {
+            VLOG(3) << "out_h must be greater than 0 if scale is not set.";
+            return false;
+          }
+          if (out_w <= 0) {
+            VLOG(3) << "out_w must be greater than 0 if scale is not set.";
+            return false;
+          }
+        }
+      }
     }
 
     if (op_type == "nearest_interp") {
