@@ -42,17 +42,18 @@ class ImperativeQuantAware(object):
     Applying quantization aware training (QAT) to the dgraph model.
     """
 
-    def __init__(self,
-                 quantizable_layer_type=['Conv2D', 'Linear'],
-                 weight_quantize_type='abs_max',
-                 activation_quantize_type='moving_average_abs_max',
-                 weight_bits=8,
-                 activation_bits=8,
-                 moving_rate=0.9,
-                 weight_preprocess_layer=None,
-                 act_preprocess_layer=None,
-                 weight_quantize_layer=None,
-                 act_quantize_layer=None):
+    def __init__(
+            self,
+            quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+            weight_quantize_type='abs_max',
+            activation_quantize_type='moving_average_abs_max',
+            weight_bits=8,
+            activation_bits=8,
+            moving_rate=0.9,
+            weight_preprocess_layer=None,
+            act_preprocess_layer=None,
+            weight_quantize_layer=None,
+            act_quantize_layer=None):
         """
         The constructor for ImperativeQuantAware.
 
@@ -212,9 +213,44 @@ class ImperativeQuantAware(object):
         the out_scale value of outputs would be calculated.
 
         Args:
-            model(fluid.dygraph.Layer): the model to be quantized.
+            model(paddle.nn.Layer): the model to be quantized.
         Returns:
             None
+
+        Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.fluid.contrib.slim.quantization \
+                import ImperativeQuantAware
+
+            class ImperativeModel(paddle.nn.Layer):
+                def __init__(self):
+                    super(ImperativeModel, self).__init__()
+                    # self.linear_0 would skip the quantization.
+                    self.linear_0 = paddle.nn.Linear(784, 400)
+                    self.linear_0.skip_quant = True
+
+                    # self.linear_1 would not skip the quantization.
+                    self.linear_1 = paddle.nn.Linear(400, 10)
+                    self.linear_1.skip_quant = False
+
+                def forward(self, inputs):
+                    x = self.linear_0(inputs)
+                    x = self.linear_1(inputs)
+                    return x
+
+            model = ImperativeModel()
+            imperative_qat = ImperativeQuantAware(
+                weight_quantize_type='abs_max',
+                activation_quantize_type='moving_average_abs_max')
+
+            # Add the fake quant logical.
+            # The original model will be rewrite.
+            #
+            # There is only one Layer(self.linear1) would be added the
+            # fake quant logical.
+            imperative_qat.quantize(model)
         """
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
@@ -232,17 +268,18 @@ class ImperativeQuantizeInputs(object):
     logic both for activation inputs and weight inputs.
     """
 
-    def __init__(self,
-                 quantizable_layer_type=['Conv2D', 'Linear'],
-                 weight_quantize_type='abs_max',
-                 activation_quantize_type='moving_average_abs_max',
-                 weight_bits=8,
-                 activation_bits=8,
-                 moving_rate=0.9,
-                 weight_preprocess_layer=None,
-                 act_preprocess_layer=None,
-                 weight_quantize_layer=None,
-                 act_quantize_layer=None):
+    def __init__(
+            self,
+            quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+            weight_quantize_type='abs_max',
+            activation_quantize_type='moving_average_abs_max',
+            weight_bits=8,
+            activation_bits=8,
+            moving_rate=0.9,
+            weight_preprocess_layer=None,
+            act_preprocess_layer=None,
+            weight_quantize_layer=None,
+            act_quantize_layer=None):
         """
         The constructor for ImperativeQuantizeInputs. 
 
@@ -303,6 +340,18 @@ class ImperativeQuantizeInputs(object):
         }
 
     def apply(self, model):
+        """
+        Quantize the weights and activations to calculate for specific 
+        layers.
+
+        Args:
+            model(paddle.nn.Layer): The target model which would
+                calculate the input quantization scale.
+
+        Returns:
+            None
+        """
+
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
 
@@ -354,7 +403,7 @@ class ImperativeQuantizeOutputs(object):
         output scales for specific layers in the dygraph model.
 
         Args:
-            model(fluid.dygraph.Layer): The target model which would be
+            model(paddle.nn.Layer): The target model which would be
                 calculate the output quantization scale.
 
         Returns:
@@ -544,7 +593,9 @@ class ImperativeQuantizeOutputs(object):
         1. the type of input op should be conv2d, depthwise_conv2d or matmul
         2. the previous ops of the input op are not fake_quantize_dequantize ops
         """
-        target_op_types = ["conv2d", "depthwise_conv2d", "matmul"]
+        target_op_types = [
+            "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose"
+        ]
         if in_op.type not in target_op_types:
             return False
 

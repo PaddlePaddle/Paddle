@@ -49,7 +49,7 @@ class TestFlattenOp(OpTest):
         self.check_output_with_place(self.place, no_check_set=["XShape"])
 
     def test_check_grad(self):
-        pass
+        self.check_grad_with_place(self.place, ["X"], "Out")
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -163,19 +163,22 @@ class TestFlattenOp_Float32(TestFlattenOp):
         }
 
 
-class TestFlattenOp_int(TestFlattenOp):
+class TestFlattenOp_int32(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = 0
         self.stop_axis = 1
         self.new_shape = (6, 5, 4)
-        self.dtype = np.int
+        self.dtype = np.int32
 
     def init_attrs(self):
         self.attrs = {
             "start_axis": self.start_axis,
             "stop_axis": self.stop_axis
         }
+
+    def test_check_grad(self):
+        pass
 
 
 class TestFlattenOp_uint8(TestFlattenOp):
@@ -192,6 +195,9 @@ class TestFlattenOp_uint8(TestFlattenOp):
             "stop_axis": self.stop_axis
         }
 
+    def test_check_grad(self):
+        pass
+
 
 class TestFlattenOp_int8(TestFlattenOp):
     def init_test_case(self):
@@ -207,6 +213,9 @@ class TestFlattenOp_int8(TestFlattenOp):
             "stop_axis": self.stop_axis
         }
 
+    def test_check_grad(self):
+        pass
+
 
 class TestFlattenOp_int64(TestFlattenOp):
     def init_test_case(self):
@@ -221,6 +230,9 @@ class TestFlattenOp_int64(TestFlattenOp):
             "start_axis": self.start_axis,
             "stop_axis": self.stop_axis
         }
+
+    def test_check_grad(self):
+        pass
 
 
 class TestFlatten2OpError(unittest.TestCase):

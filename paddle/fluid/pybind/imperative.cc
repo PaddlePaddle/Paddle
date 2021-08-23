@@ -414,17 +414,15 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
   return 0;
 }
 
-static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
-                               std::vector<int> *slice_axes,
-                               std::vector<int> *slice_starts,
-                               std::vector<int> *slice_ends,
-                               std::vector<int> *slice_strides,
-                               std::vector<int> *decrease_axis,
-                               std::vector<int> *none_axes,
-                               std::vector<int> *infer_flags) {
-  // We allow indexing by Integers, Slices, and tuples of those
-  // types.
-  // Ellipsis and None are not supported yet.
+static void ParseIndexingSlice(
+    framework::LoDTensor *tensor, PyObject *_index,
+    std::vector<int> *slice_axes, std::vector<int> *slice_starts,
+    std::vector<int> *slice_ends, std::vector<int> *slice_strides,
+    std::vector<int> *decrease_axis, std::vector<int> *none_axes,
+    std::vector<int> *infer_flags, std::vector<int> *list_select_idxs,
+    bool *list_select_flag) {
+  // We allow indexing by Integers, Slices, Ellipsis, None, tuples of those
+  // types, and list of Bool and Integers.
   // wrap to tuple
   PyObject *index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
   PADDLE_ENFORCE_EQ(
@@ -490,11 +488,58 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
       dim += rank - specified_dims;
     } else if (slice_item == Py_None) {
       none_axes->push_back(dim);
+    } else if (PyList_Check(slice_item)) {
+      *list_select_flag = true;
+      if (size != 1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "When index contains a list, its length is excepted to 1, "
+            "but received %d",
+            size));
+      }
+      bool all_bool = true;
+      int list_size = PyList_GET_SIZE(slice_item);
+      for (int j = 0; j < list_size; ++j) {
+        PyObject *list_item = PyList_GetItem(slice_item, j);
+        if (PyCheckInteger(list_item)) {
+          all_bool = false;
+        } else if (!PyBool_Check(list_item)) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Only support int or bool in index list."));
+        }
+      }
+      if (all_bool) {
+        if (list_size != shape[0]) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The dimension of bool index doesn't match indexed array along "
+              "dimension 0, the target dimension is %d, but received %d.",
+              shape[0], list_size));
+        }
+        for (int j = 0; j < list_size; ++j) {
+          PyObject *list_item = PyList_GetItem(slice_item, j);
+          if (list_item == Py_True) {
+            list_select_idxs->push_back(j);
+          }
+        }
+      } else {
+        for (int j = 0; j < list_size; ++j) {
+          PyObject *list_item = PyList_GetItem(slice_item, j);
+          if (PyCheckInteger(list_item)) {
+            list_select_idxs->push_back(
+                static_cast<int>(PyLong_AsLong(list_item)));
+          } else if (list_item == Py_True) {
+            list_select_idxs->push_back(1);
+          } else {
+            list_select_idxs->push_back(0);
+          }
+        }
+      }
+
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Currently, VarBase.__getitem__() only allows indexing"
-          "by Integers, Slices, Ellipsis, None and tuples of "
-          "these types, but received %s in %dth slice item",
+          "Currently, VarBase.__getitem__() only allows indexing "
+          "by Integers, Slices, Ellipsis, None, tuples of these types "
+          "and list of Bool and Integers, but received "
+          "%s in %dth slice item",
           std::string(Py_TYPE(slice_item)->tp_name), i + 1));
     }
   }
@@ -785,7 +830,8 @@ void BindImperative(py::module *m_ptr) {
              const int size = PyTuple_GET_SIZE(index_ptr);
              for (int dim = 0; dim < size; ++dim) {
                PyObject *slice_item = PyTuple_GetItem(index_ptr, dim);
-               if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item))) {
+               if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item) ||
+                     slice_item == Py_Ellipsis || slice_item == Py_None)) {
                  parse_index = false;
                  break;
                }
@@ -797,17 +843,21 @@ void BindImperative(py::module *m_ptr) {
              // copys data to cpu place, which reduces performance.
              if (parse_index && value_is_tensor) {
                std::vector<int> axes, starts, ends, steps, decrease_axes,
-                   none_axes, infer_flags;
+                   none_axes, infer_flags, list_select_idxs;
+               // if index is a list, list_select_flag will be true
+               bool list_select_flag;
                ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
                                   &steps, &decrease_axes, &none_axes,
-                                  &infer_flags);
+                                  &infer_flags, &list_select_idxs,
+                                  &list_select_flag);
 
                framework::AttributeMap attrs = {
                    {"axes", axes},
                    {"starts", starts},
                    {"ends", ends},
                    {"steps", steps},
-                   {"decrease_axes", decrease_axes}};
+                   {"decrease_axes", decrease_axes},
+                   {"none_axes", none_axes}};
 
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                imperative::NameVarBaseMap outs = {{"Out", {self}}};
@@ -858,21 +908,26 @@ void BindImperative(py::module *m_ptr) {
       .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              std::vector<int> slice_axes, slice_starts, slice_ends,
-                 slice_strides, decrease_axis, none_axes, infer_flags;
+                 slice_strides, decrease_axis, none_axes, infer_flags,
+                 list_select_idxs;
+             // if index is a list, list_select_flag will be true
+             bool list_select_flag = false;
              auto tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
              ParseIndexingSlice(tensor, _index.ptr(), &slice_axes,
                                 &slice_starts, &slice_ends, &slice_strides,
-                                &decrease_axis, &none_axes, &infer_flags);
+                                &decrease_axis, &none_axes, &infer_flags,
+                                &list_select_idxs, &list_select_flag);
              // release gil and do tracing
              py::gil_scoped_release release;
              const auto &tracer = imperative::GetCurrentTracer();
 
-             auto out = slice_axes.empty()
+             auto out = slice_axes.empty() && !list_select_flag
                             ? self
                             : std::shared_ptr<imperative::VarBase>(
                                   new imperative::VarBase(
                                       tracer->GenerateUniqueName()));
+
              if (!slice_axes.empty()) {
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                framework::AttributeMap attrs = {
@@ -921,6 +976,29 @@ void BindImperative(py::module *m_ptr) {
                    axis -= len;
                  }
 
+                 // Deal with cases that there are more than one
+                 // prefix none index, For example:
+                 // [None, None, :, :, None]
+                 // the none_axes int the return of ParseIndexingSlice is:
+                 // [0,    0,          2   ]
+                 // according to the interface of "unsqueeze2",
+                 // we should convert it to:
+                 // [0,    0,          4   ]
+                 int prefix_zero_cnt = 0;
+                 for (const auto &axis : none_axes) {
+                   if (axis == 0) {
+                     prefix_zero_cnt++;
+                   } else {
+                     break;
+                   }
+                 }
+                 if (prefix_zero_cnt > 0) {
+                   int none_axes_num = static_cast<int>(none_axes.size());
+                   for (int i = prefix_zero_cnt; i < none_axes_num; ++i) {
+                     none_axes[i] += prefix_zero_cnt;
+                   }
+                 }
+
                  imperative::NameVarBaseMap ins = {{"X", {out}}};
                  framework::AttributeMap attrs = {{"axes", none_axes}};
                  auto new_out = std::shared_ptr<imperative::VarBase>(
@@ -933,6 +1011,22 @@ void BindImperative(py::module *m_ptr) {
 
                  return new_out;
                }
+             }
+
+             // the index is a list
+             if (list_select_flag) {
+               auto select_index = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               auto *idx_tensor = select_index->MutableVar()
+                                      ->GetMutable<framework::LoDTensor>();
+               auto *dev_ctx = platform::DeviceContextPool::Instance().Get(
+                   tracer->ExpectedPlace());
+               TensorFromVector(list_select_idxs, *dev_ctx, idx_tensor);
+
+               imperative::NameVarBaseMap ins = {{"X", {self}},
+                                                 {"Index", {select_index}}};
+               imperative::NameVarBaseMap outs = {{"Out", {out}}};
+               tracer->TraceOp("index_select", ins, outs, {{"dim", 0}});
              }
 
              return out;

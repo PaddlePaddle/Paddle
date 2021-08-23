@@ -330,6 +330,12 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
   auto axis =
       ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
   auto dim = ctx.GetInputDim(input_name);
+
+  PADDLE_ENFORCE_GT(dim.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "The Input(%s) has not been initialized properly. The "
+                        "shape of Input(%s) = [%s].",
+                        dim));
   if (!shape.empty() && !axis.empty()) {
     PADDLE_ENFORCE_GE(
         shape.size(), 2,

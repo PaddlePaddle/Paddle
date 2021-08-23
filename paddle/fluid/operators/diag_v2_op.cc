@@ -79,7 +79,7 @@ class DiagV2OpMaker : public framework::OpProtoAndCheckerMaker {
                    "Tensor. The default value is 0.")
         .SetDefault(0.0f);
     AddComment(R"DOC(
-      If ``x`` is a vector (1-D tensor), a 2-D square tensor whth the elements of ``x`` as the diagonal is returned.
+      If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
 
       If ``x`` is a matrix (2-D tensor), a 1-D tensor with the diagonal elements of ``x`` is returned.
 

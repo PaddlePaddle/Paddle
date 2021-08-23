@@ -744,7 +744,7 @@ std::string AnalysisConfig::Summary() {
   // cpu info
   os.InsertRow(
       {"cpu_math_thread", std::to_string(cpu_math_library_num_threads_)});
-  os.InsertRow({"enable_mkdlnn", use_mkldnn_ ? "true" : "false"});
+  os.InsertRow({"enable_mkldnn", use_mkldnn_ ? "true" : "false"});
   os.InsertRow(
       {"mkldnn_cache_capacity", std::to_string(mkldnn_cache_capacity_)});
   os.InsetDivider();
