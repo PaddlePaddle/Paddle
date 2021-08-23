@@ -5413,9 +5413,10 @@ class PipelineOptimizer(object):
         return fused_merged_gradients
 
     def _sort_grad_param_by_dtype(self, main_block, grad_param_pairs):
-        # sort the grad param paris by the dtype, for now, only supports fp16 and fp32 sorting
+        # sort the grad param paris by the dtype
         fp16_pairs = []
         fp32_pairs = []
+        other_pairs = []
         for pairs in grad_param_pairs:
             dtype = main_block.var(pairs[0]).dtype
             if dtype == paddle.float32:
@@ -5423,9 +5424,10 @@ class PipelineOptimizer(object):
             elif dtype == paddle.float16:
                 fp16_pairs.append(pairs)
             else:
-                return grad_param_pairs
+                other_pairs.append(pairs)
         sorted_pairs = fp16_pairs
         sorted_pairs.extend(fp32_pairs)
+        sorted_pairs.extend(other_pairs)
         return sorted_pairs
 
     def _get_var_size(self, var):
