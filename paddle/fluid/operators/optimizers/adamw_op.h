@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ class AdamWOp : public AdamOp {
   using AdamOp::AdamOp;
 };
 
+struct GPUAdamW;
 struct CPUAdamW;
 
 template <typename T, typename Flavour>
@@ -43,6 +44,107 @@ class AdamWFunctor<T, CPUAdamW> {
         param_, static_cast<Eigen::Index>(numel)};
     // Calculation
     param = param * (1.0f - learning_rate_ * coeff_);
+  }
+};
+
+template <typename T, typename Flavour, typename MT = T>
+class SparseAdamWFunctor;
+
+template <typename T, typename MT>
+class SparseAdamWFunctor<T, GPUAdamW, MT> {
+ private:
+  MT beta1_;
+  MT beta2_;
+  MT epsilon_;
+  MT coeff_;
+
+  const MT* beta1_pow_;
+  const MT* beta2_pow_;
+  const MT* moment1_;
+  MT* moment1_out_;
+  const MT* moment2_;
+  MT* moment2_out_;
+  const MT* lr_;
+  const T* grad_;
+  const T* param_;
+  T* param_out_;
+  const MT* master_param_;
+  MT* master_param_out_;
+
+  const int64_t* rows_;
+  int64_t row_numel_;
+  int64_t row_count_;
+  bool lazy_mode_;
+
+ public:
+  SparseAdamWFunctor(MT beta1, MT beta2, MT epsilon, MT coeff,
+                     const MT* beta1_pow, const MT* beta2_pow, const MT* mom1,
+                     MT* mom1_out, const MT* mom2, MT* mom2_out, const MT* lr,
+                     const T* grad, const T* param, T* param_out,
+                     const MT* master_param, MT* master_param_out,
+                     const int64_t* rows, int64_t row_numel, int64_t row_count,
+                     bool lazy_mode)
+      : beta1_(beta1),
+        beta2_(beta2),
+        epsilon_(epsilon),
+        coeff_(coeff),
+        beta1_pow_(beta1_pow),
+        beta2_pow_(beta2_pow),
+        moment1_(mom1),
+        moment1_out_(mom1_out),
+        moment2_(mom2),
+        moment2_out_(mom2_out),
+        lr_(lr),
+        grad_(grad),
+        param_(param),
+        param_out_(param_out),
+        master_param_(master_param),
+        master_param_out_(master_param_out),
+        rows_(rows),
+        row_numel_(row_numel),
+        row_count_(row_count),
+        lazy_mode_(lazy_mode) {}
+
+  inline HOSTDEVICE void adamw_update(size_t i, MT g) const {
+    // The following code is the same as dense
+    MT mom1 = moment1_[i];
+    MT mom2 = moment2_[i];
+    MT lr = *lr_;
+    MT beta1_pow = *beta1_pow_;
+    MT beta2_pow = *beta2_pow_;
+    MT p = master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
+
+    // Calculation
+    MT wd = static_cast<MT>(1.0) - coeff_ * lr;
+    lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
+          (static_cast<MT>(1.0) - beta1_pow);
+
+    mom1 = beta1_ * mom1 + (static_cast<MT>(1.0) - beta1_) * g;
+    mom2 = beta2_ * mom2 + (static_cast<MT>(1.0) - beta2_) * g * g;
+    p = wd * p -
+        lr * (mom1 /
+              (sqrt(mom2) + epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+    // Write back to global memory
+    moment1_out_[i] = mom1;
+    moment2_out_[i] = mom2;
+    param_out_[i] = static_cast<T>(p);
+    if (master_param_out_) {
+      master_param_out_[i] = p;
+    }
+  }
+
+  inline HOSTDEVICE void operator()(size_t i) const {
+    auto row_idx =
+        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+    if (lazy_mode_ && row_idx < 0) {
+      return;
+    } else {
+      MT g = row_idx >= 0
+                 ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_])
+                 : static_cast<MT>(0);
+      adamw_update(i, g);
+    }
   }
 };
 
