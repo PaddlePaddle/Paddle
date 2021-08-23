@@ -16,6 +16,7 @@
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 
 #include <thread>  // NOLINT
+#include <utility>
 #include "butil/endpoint.h"
 #include "iomanip"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
@@ -157,6 +158,8 @@ int32_t GraphBrpcService::initialize() {
       &GraphBrpcService::add_graph_node;
   _service_handler_map[PS_GRAPH_REMOVE_GRAPH_NODE] =
       &GraphBrpcService::remove_graph_node;
+  _service_handler_map[PS_GRAPH_SET_NODE_FEAT] =
+      &GraphBrpcService::graph_set_node_feat;
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
 
@@ -400,5 +403,44 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
 
   return 0;
 }
+
+int32_t GraphBrpcService::graph_set_node_feat(Table *table,
+                                              const PsRequestMessage &request,
+                                              PsResponseMessage &response,
+                                              brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response)
+  if (request.params_size() < 3) {
+    set_response_code(
+        response, -1,
+        "graph_set_node_feat request requires at least 2 arguments");
+    return 0;
+  }
+  size_t node_num = request.params(0).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
+  std::vector<uint64_t> node_ids(node_data, node_data + node_num);
+
+  std::vector<std::string> feature_names =
+      paddle::string::split_string<std::string>(request.params(1), "\t");
+
+  std::vector<std::vector<std::string>> features(
+      feature_names.size(), std::vector<std::string>(node_num));
+
+  const char *buffer = request.params(2).c_str();
+
+  for (size_t feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
+    for (size_t node_idx = 0; node_idx < node_num; ++node_idx) {
+      size_t feat_len = *(size_t *)(buffer);
+      buffer += sizeof(size_t);
+      auto feat = std::string(buffer, feat_len);
+      features[feat_idx][node_idx] = feat;
+      buffer += feat_len;
+    }
+  }
+
+  ((GraphTable *)table)->set_node_feat(node_ids, feature_names, features);
+
+  return 0;
+}
+
 }  // namespace distributed
 }  // namespace paddle
