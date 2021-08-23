@@ -79,6 +79,11 @@ class GraphBrpcClient : public BrpcPsClient {
       const std::vector<std::string>& feature_names,
       std::vector<std::vector<std::string>>& res);
 
+  virtual std::future<int32_t> set_node_feat(
+      const uint32_t& table_id, const std::vector<uint64_t>& node_ids,
+      const std::vector<std::string>& feature_names,
+      const std::vector<std::vector<std::string>>& features);
+
   virtual std::future<int32_t> clear_nodes(uint32_t table_id);
   virtual std::future<int32_t> add_graph_node(
       uint32_t table_id, std::vector<uint64_t>& node_id_list,

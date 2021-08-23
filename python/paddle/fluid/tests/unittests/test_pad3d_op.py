@@ -682,46 +682,64 @@ class TestPad3dAPI(unittest.TestCase):
 
 
 class TestPad3dOpError(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
     def test_errors(self):
         def test_variable():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
-            F.pad(x=data, paddings=[1, 1, 1, 1, 1, 1])
+            y = F.pad(x=data, pad=[1, 1, 1, 1, 1, 1], data_format="NCDHW")
 
         def test_reflect_1():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
-            y = F.pad(x, pad=[5, 6, 1, 1, 1, 1], value=1, mode='reflect')
-            place = paddle.CPUPlace()
-            exe = Executor(place)
-            outputs = exe.run(feed={'x': data}, fetch_list=[y.name])
+            x = paddle.to_tensor(data)
+            y = F.pad(x,
+                      pad=[5, 6, 1, 1, 1, 1],
+                      value=1,
+                      mode='reflect',
+                      data_format="NCDHW")
 
         def test_reflect_2():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
-            y = F.pad(x, pad=[1, 1, 4, 3, 1, 1], value=1, mode='reflect')
-            place = paddle.CPUPlace()
-            exe = Executor(place)
-            outputs = exe.run(feed={'x': data}, fetch_list=[y.name])
+            x = paddle.to_tensor(data)
+            y = F.pad(x,
+                      pad=[1, 1, 4, 3, 1, 1],
+                      value=1,
+                      mode='reflect',
+                      data_format="NCDHW")
 
         def test_reflect_3():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
-            x = paddle.fluid.data(name="x", shape=input_shape)
-            y = F.pad(x, pad=[1, 1, 1, 1, 2, 3], value=1, mode='reflect')
-            place = paddle.CPUPlace()
-            exe = Executor(place)
-            outputs = exe.run(feed={'x': data}, fetch_list=[y.name])
+            x = paddle.to_tensor(data)
+            y = F.pad(x,
+                      pad=[1, 1, 1, 1, 2, 3],
+                      value=1,
+                      mode='reflect',
+                      data_format="NCDHW")
 
-        self.assertRaises(TypeError, test_variable)
+        def test_circular_1():
+            input_shape = (1, 2, 0, 4, 5)
+            data = np.random.rand(*input_shape).astype(np.float32)
+            x = paddle.to_tensor(data)
+            y = F.pad(x,
+                      pad=[1, 1, 1, 1, 2, 3],
+                      mode='circular',
+                      data_format="NCDHW")
 
-        self.assertRaises(Exception, test_reflect_1)
-
-        self.assertRaises(Exception, test_reflect_2)
-
-        self.assertRaises(Exception, test_reflect_3)
+        paddle.disable_static()
+        for place in self.places:
+            self.assertRaises(ValueError, test_variable)
+            self.assertRaises(Exception, test_reflect_1)
+            self.assertRaises(Exception, test_reflect_2)
+            self.assertRaises(Exception, test_reflect_3)
+            self.assertRaises(Exception, test_circular_1)
+        paddle.enable_static()
 
 
 class TestPadDataformatError(unittest.TestCase):
