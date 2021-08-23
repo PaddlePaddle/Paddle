@@ -847,6 +847,9 @@ void BindImperative(py::module *m_ptr) {
              }
 
              auto is_tensor = [](py::handle var) {
+               if (!var.ptr() || var.ptr() == Py_None) {
+                 return false;
+               }
                try {
                  py::cast<std::shared_ptr<imperative::VarBase>>(var);
                  return true;
