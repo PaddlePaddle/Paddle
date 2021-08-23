@@ -71,9 +71,11 @@ int GetVectorizedSizeForIO(const std::vector<const framework::Tensor *> &ins,
 template <int VecSize, typename InT, typename OutT, typename Functor>
 __global__ void ElementVectorizedUnary(const InT *__restrict__ in0, OutT *out,
                                        int size, Functor func) {
-  int tid = blockIdx.x * blockDim.x;
-  int data_offset = VecSize * tid;  // data offset of this block
-  int num = size - data_offset;     // remainder data
+  int data_offset =
+      VecSize * blockIdx.x * blockDim.x;  // data offset of this block
+  int num = size - data_offset;
+  num = (VecSize * blockDim.x) > num ? VecSize * blockDim.x : num;
+  // this time have to deal with
   InT args[VecSize];
   OutT result[VecSize];
 
@@ -88,9 +90,11 @@ template <int VecSize, typename InT, typename OutT, typename Functor>
 __global__ void ElementVectorizedBinary(const InT *__restrict__ in0,
                                         const InT *__restrict__ in1, OutT *out,
                                         int size, Functor func) {
-  int tid = blockIdx.x * blockDim.x;
-  int data_offset = VecSize * tid;  // data offset of this block
+  int data_offset =
+      VecSize * blockIdx.x * blockDim.x;  // data offset of this block
   int num = size - data_offset;
+  num = (VecSize * blockDim.x) > num ? VecSize * blockDim.x : num;
+  // this time have to deal with
   InT args[2][VecSize];
   OutT result[VecSize];
 
@@ -110,10 +114,11 @@ __global__ void ElementVectorizedTernary(const InT *__restrict__ in0,
                                          const InT *__restrict__ in1,
                                          const InT *__restrict__ in2, OutT *out,
                                          int size, Functor func) {
-  int tid = blockIdx.x * blockDim.x;
-  int data_offset = VecSize * tid;  // data offset of this block
+  int data_offset =
+      VecSize * blockIdx.x * blockDim.x;  // data offset of this block
   int num = size - data_offset;
-  num = num > 0 ? num : 0;
+  num = (VecSize * blockDim.x) > num ? VecSize * blockDim.x : num;
+  // this time have to deal with
   InT args[3][VecSize];
   OutT result[VecSize];
 
