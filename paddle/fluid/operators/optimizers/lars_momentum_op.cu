@@ -198,7 +198,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
 
     int l2_tmp_buffer_size = grid < BLOCK_SIZE ? grid : BLOCK_SIZE;
     framework::Tensor l2_tmp_buffer_t, l2_tmp_counter_t;
-    auto* l2_tmp_buffer_data = l2_tmp_buffer_t.mutable_data<MP0.fDType>(
+    auto* l2_tmp_buffer_data = l2_tmp_buffer_t.mutable_data<MPDType>(
         {l2_tmp_buffer_size}, ctx.GetPlace());
     int* l2_tmp_counter_data =
         l2_tmp_counter_t.mutable_data<int>({1}, ctx.GetPlace());
