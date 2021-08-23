@@ -38,19 +38,16 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
 
     auto x_vec_dims = vectorize(x->dims());
-    auto out_vec_dims = vectorize(out->dims());
-
-    dnnl::memory::format_tag x_format_tag = x->format();
-    if (x_vec_dims.size() != out_vec_dims.size()) {
-      x_format_tag =
-          GetExtendedFormatTag(x_vec_dims, out_vec_dims.size(), x_format_tag);
-    }
 
     auto out_new_dims = paddle::operators::get_expand_shape(ctx);
     for (size_t i = 0; i < out_new_dims.size(); ++i) {
-      out_new_dims[i] = out_new_dims[i] > 0 ? out_vec_dims[i] : x_vec_dims[i];
+      out_new_dims[i] = out_new_dims[i] > 0 ? out_new_dims[i] : x_vec_dims[i];
+    }
 
-      if (std::abs(out_new_dims[i]) == 1) out_new_dims[i] = x_vec_dims[i];
+    dnnl::memory::format_tag x_format_tag = x->format();
+    if (x_vec_dims.size() != out_new_dims.size()) {
+      x_format_tag =
+          GetExtendedFormatTag(x_vec_dims, out_new_dims.size(), x_format_tag);
     }
 
     out->Resize(paddle::framework::make_ddim(out_new_dims));
