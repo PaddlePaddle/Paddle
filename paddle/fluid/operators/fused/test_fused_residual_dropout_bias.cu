@@ -33,16 +33,16 @@ USE_OP(elementwise_add);
 USE_OP(dropout);
 
 template <typename T>
-void Dropout(const std::vector<T> &x, const framework::DDim &x_dim,
-             std::vector<T> *out, std::vector<uint8_t> *mask,
-             const platform::CUDADeviceContext &ctx, uint64_t seed,
-             float dropout_prob, bool is_upscale_in_train, bool is_test) {
+void Dropout(const T *x, const framework::DDim &x_dim, T *out,
+             std::vector<uint8_t> *mask, const platform::CUDADeviceContext &ctx,
+             uint64_t seed, float dropout_prob, bool is_upscale_in_train,
+             bool is_test) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
   auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
   tensor_x->Resize(x_dim);
   tensor_x->mutable_data<T>(ctx.GetPlace());
-  cudaMemcpy(tensor_x->data<T>(), x.data(), x_dim[0] * x_dim[1] * sizeof(T),
+  cudaMemcpy(tensor_x->data<T>(), x, x_dim[0] * x_dim[1] * sizeof(T),
              cudaMemcpyHostToDevice);
 
   auto var_out = scope.Var("Out");
@@ -65,8 +65,8 @@ void Dropout(const std::vector<T> &x, const framework::DDim &x_dim,
   auto op = framework::OpRegistry::CreateOp(
       "dropout", {{"X", {"X"}}}, {{"Out", {"Out"}}, {"Mask", {"Mask"}}}, attrs);
   op->Run(scope, ctx.GetPlace());
-  cudaMemcpy((*out).data(), tensor_out->data<T>(),
-             x_dim[0] * x_dim[1] * sizeof(T), cudaMemcpyDeviceToHost);
+  cudaMemcpy(out, tensor_out->data<T>(), x_dim[0] * x_dim[1] * sizeof(T),
+             cudaMemcpyDeviceToHost);
   if (!is_test) {
     cudaMemcpy((*mask).data(), tensor_mask->data<uint8_t>(),
                x_dim[0] * x_dim[1] * sizeof(uint8_t), cudaMemcpyDeviceToHost);
@@ -75,24 +75,23 @@ void Dropout(const std::vector<T> &x, const framework::DDim &x_dim,
 }
 
 template <typename T>
-void DropoutGrad(std::vector<T> *dx, const framework::DDim &x_dim,
-                 const std::vector<T> &dout, const std::vector<uint8_t> &mask,
-                 const platform::CUDADeviceContext &ctx, float dropout_prob,
-                 bool is_upscale_in_train) {
+void DropoutGrad(T *dx, const framework::DDim &x_dim, const T *dout,
+                 const uint8_t *mask, const platform::CUDADeviceContext &ctx,
+                 float dropout_prob, bool is_upscale_in_train) {
   framework::Scope scope;
   const size_t n = x_dim[0] * x_dim[1];
   auto var_out = scope.Var("DOut");
   auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
   tensor_out->Resize(x_dim);
   tensor_out->mutable_data<T>(ctx.GetPlace());
-  cudaMemcpy(tensor_out->data<T>(), dout.data(), n * sizeof(T),
+  cudaMemcpy(tensor_out->data<T>(), dout, n * sizeof(T),
              cudaMemcpyHostToDevice);
 
   auto var_mask = scope.Var("Mask");
   auto tensor_mask = var_mask->GetMutable<framework::LoDTensor>();
   tensor_mask->Resize(x_dim);
   tensor_mask->mutable_data<uint8_t>(ctx.GetPlace());
-  cudaMemcpy(tensor_mask->data<uint8_t>(), mask.data(), n * sizeof(uint8_t),
+  cudaMemcpy(tensor_mask->data<uint8_t>(), mask, n * sizeof(uint8_t),
              cudaMemcpyHostToDevice);
 
   auto var_dx = scope.Var("DX");
@@ -112,8 +111,8 @@ void DropoutGrad(std::vector<T> *dx, const framework::DDim &x_dim,
       {{"X@GRAD", {"DX"}}}, attrs);
   op->Run(scope, ctx.GetPlace());
 
-  cudaMemcpy((*dx).data(), tensor_dx->data<T>(),
-             x_dim[0] * x_dim[1] * sizeof(T), cudaMemcpyDeviceToHost);
+  cudaMemcpy(dx, tensor_dx->data<T>(), x_dim[0] * x_dim[1] * sizeof(T),
+             cudaMemcpyDeviceToHost);
   ctx.Wait();
 }
 
@@ -211,17 +210,20 @@ struct TestFusedResidualDropoutBias {
   void BaseForward() {
     std::vector<T> out1(_rows * _cols), out2(_rows * _cols);
     if (_has_bias) {
+      // add bias
       for (int i = 0; i < _rows; i++) {
         for (int j = 0; j < _cols; j++) {
           out1[i * _cols + j] = _src_vec[i * _cols + j] + _bias_vec[j];
         }
       }
-      Dropout<T>(out1, _src.dims(), &out2, &_correct_mask, *_ctx, _seed,
-                 _dropout_prob, _is_upscale_in_train, _is_test);
+      // call dropout
+      Dropout<T>(out1.data(), _src.dims(), out2.data(), &_correct_mask, *_ctx,
+                 _seed, _dropout_prob, _is_upscale_in_train, _is_test);
     } else {
-      Dropout<T>(_src_vec, _src.dims(), &out2, &_correct_mask, *_ctx, _seed,
-                 _dropout_prob, _is_upscale_in_train, _is_test);
+      Dropout<T>(_src_vec.data(), _src.dims(), out2.data(), &_correct_mask,
+                 *_ctx, _seed, _dropout_prob, _is_upscale_in_train, _is_test);
     }
+    // add residual
     for (int i = 0; i < _rows; i++) {
       for (int j = 0; j < _cols; j++) {
         _correct_out[i * _cols + j] =
@@ -232,14 +234,10 @@ struct TestFusedResidualDropoutBias {
   }
 
   void BaseBackward() {
-    if (!_is_upscale_in_train) {
-      for (int i = 0; i < _rows * _cols; i++) {
-        _correct_dsrc[i] = _correct_out[i] * static_cast<T>(_correct_mask[i]);
-      }
-    } else {
-      DropoutGrad<T>(&_correct_dsrc, _src.dims(), _correct_out, _correct_mask,
-                     *_ctx, _dropout_prob, _is_upscale_in_train);
-    }
+    DropoutGrad<T>(_correct_dsrc.data(), _src.dims(), _correct_out.data(),
+                   _correct_mask.data(), *_ctx, _dropout_prob,
+                   _is_upscale_in_train);
+    // calc dbias
     memset(&_correct_dbias[0], 0, _cols * sizeof(T));
     for (int i = 0; i < _rows; i++) {
       for (int j = 0; j < _cols; j++) {
