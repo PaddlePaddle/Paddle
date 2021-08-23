@@ -137,7 +137,7 @@ class ConcatPrimitiveFactory {
  private:
   std::vector<memory::desc> srcs_d;
   std::vector<mkldnn::memory> srcs;
-  boost::optional<mkldnn::memory> dst_mem;
+  paddle::optional<mkldnn::memory> dst_mem;
 };
 
 template <typename T>

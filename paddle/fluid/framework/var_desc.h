@@ -19,7 +19,9 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -137,6 +139,17 @@ class VarDesc {
     desc_.set_need_check_feed(need_check_feed);
   }
 
+  bool HasAttr(const std::string &name) const {
+    return attrs_.find(name) != attrs_.end();
+  }
+
+  std::vector<std::string> AttrNames() const;
+
+  void SetAttr(const std::string &name, const Attribute &v);
+  void RemoveAttr(const std::string &name);
+
+  Attribute GetAttr(const std::string &name) const;
+
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;
@@ -144,6 +157,7 @@ class VarDesc {
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
   proto::VarDesc desc_;
+  AttributeMap attrs_;
 };
 
 bool operator==(const VarDesc &left, const VarDesc &right);
