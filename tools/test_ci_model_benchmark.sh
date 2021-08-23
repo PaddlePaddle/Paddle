@@ -37,14 +37,14 @@ function check_whl {
     sed -i '/version.py/d' /tmp/pr/*/RECORD
     sed -i '/version.py/d' /tmp/develop/*/RECORD
     diff_whl=`diff /tmp/pr/*/RECORD /tmp/develop/*/RECORD|wc -l`
-    if [ ${diff_whl} -eq 0 ];then
-        echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
-        echo "ipipe_log_param_isSkipTest_model_benchmark: 1" 
-        echo "cpu_benchmark=ON" >${cfs_dir}/model_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt
-        exit 0
-    else
-        echo "ipipe_log_param_isSkipTest_model_benchmark: 0"
-    fi
+#    if [ ${diff_whl} -eq 0 ];then
+#        echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
+#        echo "ipipe_log_param_isSkipTest_model_benchmark: 1" 
+#        echo "cpu_benchmark=ON" >${cfs_dir}/model_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt
+#        exit 0
+#    else
+#        echo "ipipe_log_param_isSkipTest_model_benchmark: 0"
+#    fi
 }
 
 function compile_install_paddle {
