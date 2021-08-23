@@ -217,7 +217,7 @@ template <typename T, int NX, int NY, int BlockSize, class OpFunc,
           int ReduceMode>
 __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
                                        bool reduce_lastDim) {
-  if (ReduceMode == ReduceMode::GlobalMode) {
+  if (ReduceMode == details::ReduceMode::GlobalMode) {
     bool block_reduce_y = (!reduce_lastDim) && (blockDim.y > 1);
     // blockYReduce
     if (block_reduce_y) {
