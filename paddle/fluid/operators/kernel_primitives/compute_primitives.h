@@ -252,7 +252,6 @@ __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
         out[i] = BlockYReduce<T, OpFunc>(out[i], reducer);
       }
     }
-    __syncthreads();
 
     // blockXReduce
     if (reduce_lastDim) {

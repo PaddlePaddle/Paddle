@@ -585,9 +585,6 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
     need_store = (threadIdx.y == 0) && (left_idx < left_num);
   }
   int store_offset = blockIdx.y * left_num + left_idx;
-  // bool need_store = ((reduce_lastdim && threadIdx.x == 0) ||
-  //                   ((!reduce_lastdim) && threadIdx.y == 0))&&(left_idx
-  //                   <left_num);
   // calculate the offset, means the addr where each thread really start.
   int input_offset = left_index_calculator(left_idx);
   const Tx* input = x + input_offset;
@@ -612,7 +609,6 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
                                               reducer, reduce_lastdim);
     }
 
-    // if (input_idx < reduce_num) {
     kps::Init<Tx, REDUCE_VEC_SIZE>(&input_reg[0], static_cast<Tx>(init));
     kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, IndexCalculator>(
         &input_reg[0], input, input_idx, reduce_index_calculator, 1, reduce_num,
@@ -622,15 +618,12 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
     kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
                 kps::ReduceMode::LocalMode>(&reduce_var, &input_compute[0],
                                             reducer, reduce_lastdim);
-    ///// }
   }
 
   kps::Reduce<MPType, 1, 1, 1, ReduceOp, kps::GlobalMode>(
       &reduce_var, &reduce_var, reducer, reduce_lastdim);
   if (need_store) {
     y[store_offset] = static_cast<Ty>(reduce_var);
-    // kps::Cast<MPType, Ty, REDUCE_VEC_SIZE>(&store_data, &reduce_var);
-    // kps::WriteDataBase<Ty, 1, 1, 1>(y + store_offset, &store_data, 1);
   }
 }
 
