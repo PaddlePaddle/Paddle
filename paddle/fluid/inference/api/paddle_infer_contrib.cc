@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle_infer_contrib.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -23,6 +24,19 @@ namespace contrib {
 namespace utils {
 
 using paddle::PaddleDType;
+
+std::unique_ptr<Tensor> CreateInferTensorForTest(const std::string& name,
+                                                 PlaceType place,
+                                                 void* p_scope) {
+  auto var = static_cast<paddle::framework::Scope*>(p_scope)->Var(name);
+  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  (void)tensor;
+  std::unique_ptr<Tensor> res(new Tensor(p_scope));
+  res->input_or_output_ = true;
+  res->SetName(name);
+  res->SetPlace(place);
+  return res;
+}
 
 void* CudaMallocPinnedMemory(size_t size) {
 #if defined(PADDLE_WITH_CUDA)
