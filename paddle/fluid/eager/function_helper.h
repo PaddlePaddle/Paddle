@@ -19,5 +19,11 @@
 namespace egr {
 
 void ScaleAPI(const pt::Tensor& x, float scale, float bias, bool bias_after_scale, std::vector<pt::Tensor>& outs);
+void FillConstAPI(double value, const pt::DDim& ddim, const pt::Backend& backend, 
+                  const pt::DataType& dtype, const pt::DataLayout& layout,
+                  pt::Tensor& target);
+void AccumulateTensorsAPI(pt::Tensor& t0, const pt::Tensor& t1);
+
+
 
 } // namespace egr
