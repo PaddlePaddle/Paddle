@@ -62,7 +62,8 @@ def apply_ir_passes(main_program, startup_program, config):
     for k, v in settings.items():
         setattr(build_strategy, k, v)
 
-    if build_strategy.fuse_all_reduce_ops and build_strategy.fuse_all_optimizer_ops:
+    fuse_all_reduce = config._user_defined_strategy.fuse_all_reduce_ops
+    if fuse_all_reduce and build_strategy.fuse_all_optimizer_ops:
         # FIXME(zjl): currently, fuse_all_optimizer_ops
         # have conflict with fuse_all_reduce_ops because 
         # RawProgramOptimizer also inserts coalesce_tensor 

@@ -163,7 +163,7 @@ static void FillNotSpecifiedOpRole(const ProgramDesc &main_program) {
 void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
                                 ProgramDesc *main_program,
                                 ProgramDesc *startup_program) {
-  VLOG(10) << "ApplyPassesToProgram is called";
+  LOG(INFO) << "ApplyPassesToProgram is called";
   PADDLE_ENFORCE_NOT_NULL(
       main_program,
       platform::errors::InvalidArgument("The main program must be provided."));
@@ -175,7 +175,7 @@ void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
   for (auto *p : passes) {
     PADDLE_ENFORCE_NOT_NULL(p, platform::errors::InvalidArgument(
                                    "The provided pass cannot be nullptr."));
-    VLOG(10) << "Pass " << p->Type();
+    LOG(INFO) << "Pass " << p->Type();
     if (passes.size() > 1) {
       PADDLE_ENFORCE_EQ(p->SupportApplyProgramViaGraph(), true,
                         platform::errors::PermissionDenied(
@@ -185,10 +185,10 @@ void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
   }
 
   if (passes.size() == 1 && !passes[0]->SupportApplyProgramViaGraph()) {
-    VLOG(10) << "apply pass " << passes[0]->Type() << " to program";
+    LOG(INFO) << "apply pass " << passes[0]->Type() << " to program";
     passes[0]->ApplyImpl(main_program, startup_program);
     FillNotSpecifiedOpRole(*main_program);
-    VLOG(10) << "finish to apply pass " << passes[0]->Type() << " to program";
+    LOG(INFO) << "finish to apply pass " << passes[0]->Type() << " to program";
     return;
   }
 
