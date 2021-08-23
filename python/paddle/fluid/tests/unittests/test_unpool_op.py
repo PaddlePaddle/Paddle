@@ -140,6 +140,7 @@ class TestUnpoolOpOuput(TestUnpoolOp):
 
 class TestUnpoolOpException(unittest.TestCase):
     def test_exception(self):
+        import paddle
         import paddle.nn.functional as F
 
         def indices_size_error():
