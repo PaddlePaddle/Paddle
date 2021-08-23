@@ -42,6 +42,27 @@ def _check_instance(x, x_name, types=(int, float)):
                          format(types, x_name, type(x)))
 
 
+def _check_value_limitation(x, x_name, min_limit=1e-3, max_limit=None):
+    def _check_value(x, x_name, min_limit=1e-3, max_limit=None):
+        if isinstance(x, int) and min_limit is not None and x < min_limit:
+            raise ValueError(
+                "Excepted the input {} to be greater than {} but received x: {}. ".
+                format(x_name, min_limit, x))
+        if isinstance(x, int) and max_limit is not None and x > max_limit:
+            raise ValueError(
+                "Excepted the input {} to be less than {} but received x: {}. ".
+                format(x_name, max_limit, x))
+
+    if isinstance(x, (list, tuple)):
+        for ele in x:
+            _check_value(ele, x_name)
+    elif isinstance(x, (int, float)):
+        _check_value(x, x_name)
+    else:
+        raise ValueError("Excepted {} type for {} but received type: {}. ".
+                         format((int, list, tuple), x_name, type(x)))
+
+
 def _zero_padding_in_batch_and_channel(padding, channel_last):
     if channel_last:
         return list(padding[0]) == [0, 0] and list(padding[-1]) == [0, 0]
@@ -211,6 +232,10 @@ def avg_pool1d(x,
         stride = utils.convert_to_list(stride, 1, 'pool_stride')
         stride = [1] + stride
 
+    _check_value_limitation(
+        kernel_size, "kernel_size", min_limit=1e-3, max_limit=None)
+    _check_value_limitation(stride, "stride", min_limit=1e-3, max_limit=None)
+
     channel_last = _channel_last("NCL", 1)
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, channel_last=channel_last, ceil_mode=ceil_mode)
@@ -324,6 +349,10 @@ def avg_pool2d(x,
         stride = kernel_size
     else:
         stride = utils.convert_to_list(stride, 2, 'pool_stride')
+
+    _check_value_limitation(
+        kernel_size, "kernel_size", min_limit=1e-3, max_limit=None)
+    _check_value_limitation(stride, "stride", min_limit=1e-3, max_limit=None)
 
     channel_last = _channel_last(data_format, 2)
     padding, padding_algorithm = _update_padding_nd(
@@ -447,6 +476,10 @@ def avg_pool3d(x,
     channel_last = _channel_last(data_format, 3)
     padding, padding_algorithm = _update_padding_nd(
         padding, 3, channel_last=channel_last, ceil_mode=ceil_mode)
+
+    _check_value_limitation(
+        kernel_size, "kernel_size", min_limit=1e-3, max_limit=None)
+    _check_value_limitation(stride, "stride", min_limit=1e-3, max_limit=None)
 
     if in_dygraph_mode():
         output = _C_ops.pool3d(
