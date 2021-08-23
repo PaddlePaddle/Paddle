@@ -89,7 +89,6 @@ class EmbEltwiseLayernormPluginDynamicImpl
 
   framework::Tensor in_ptr_tensor_, emb_ptr_tensor_;
   int device_id_{0};
-  uintptr_t old_input_ptr_{0};
   bool is_initialized_{false};
 };
 

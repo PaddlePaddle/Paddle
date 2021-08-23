@@ -97,6 +97,8 @@ enum DeviceType {
   CUDA = 1,
   XPU = 2,
   NPU = 3,
+
+  MAX_DEVICE_TYPES = 4,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);

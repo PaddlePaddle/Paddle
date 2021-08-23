@@ -40,18 +40,18 @@ class BCEWithLogitsLoss(Layer):
     First this operator calculate loss function as follows:
 
     .. math::
-           Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))
+           Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
 
-    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\e^{-Logit}}`. By substituting this we get:
+    We know that :math:`\sigma(Logit) = \frac{1}{1 + e^{-Logit}}`. By substituting this we get:
 
     .. math::
-           Out = Logit - Logit * Labels + \\log(1 + \\e^{-Logit})
+           Out = Logit - Logit * Labels + \log(1 + e^{-Logit})
 
-    For stability and to prevent overflow of :math:`\\e^{-Logit}` when Logit < 0,
+    For stability and to prevent overflow of :math:`e^{-Logit}` when Logit < 0,
     we reformulate the loss as follows:
 
     .. math::
-           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\e^{-\|Logit\|})
+           Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
     Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
@@ -779,8 +779,6 @@ class BCELoss(Layer):
 
 class NLLLoss(Layer):
     r"""
-	:alias_main: paddle.nn.NLLLoss
-	:alias: paddle.nn.NLLLoss,paddle.nn.layer.NLLLoss,paddle.nn.layer.loss.NLLLoss
 
     This class accepts input and target label and returns negative log likelihood
     cross error. It is useful to train a classification problem with C classes.
@@ -800,20 +798,25 @@ class NLLLoss(Layer):
     The unreduced (i.e. with :attr:`reduction` set to ``'none'``) loss can be described as:
 
     .. math::
-        \ell(x, y) = L = \{l_1,\dots,l_N\}^\\top, \quad
+
+        \ell(x, y) = L = \{l_1,\dots,l_N\}^\top, \quad
         l_n = - w_{y_n} x_{n,y_n}, \quad
-        w_{c} = \\text{weight}[c] \cdot \mathbb{1}\{c \\not= \\text{ignore\\_index}\},
+        w_{c} = \text{weight}[c] \cdot \mathbb{1}\{c \not= \text{ignore\_index}\},
 
     where :math:`N` is the batch size. If :attr:`reduction` is not ``'none'``
     (default ``'mean'``), then
 
     .. math::
-        \ell(x, y) = \\begin{cases}
-            \\sum_{n=1}^N \\frac{1}{\\sum_{n=1}^N w_{y_n}} l_n, &
-            \\text{if reduction} = \\text{'mean';}\\\\
-            \\sum_{n=1}^N l_n,  &
-            \\text{if reduction} = \\text{'sum'.}
-        \\end{cases}
+
+        \ell(x, y) =
+        \left\{
+            \begin{array}{lcl}
+            \sum_{n=1}^N \frac{1}{\sum_{n=1}^N w_{y_n}} l_n, &
+            \text{if  reduction} = \text{'mean';}\\
+            \sum_{n=1}^N l_n,  &
+            \text{if  reduction} = \text{'sum'.}
+            \end{array}
+        \right.
 
     Parameters:
         weight (Tensor, optional): Weight tensor, a manual rescaling weight given
@@ -1116,7 +1119,9 @@ class CTCLoss(Layer):
                 labels,
                 input_lengths,
                 label_lengths,
-                norm_by_times=False):
+                norm_by_times=False,
+                norm_by_batchsize=False,
+                norm_by_total_logits_len=False):
         return paddle.nn.functional.ctc_loss(
             log_probs,
             labels,
@@ -1124,7 +1129,9 @@ class CTCLoss(Layer):
             label_lengths,
             self.blank,
             self.reduction,
-            norm_by_times=norm_by_times)
+            norm_by_times=norm_by_times,
+            norm_by_batchsize=norm_by_batchsize,
+            norm_by_total_logits_len=norm_by_total_logits_len)
 
 
 class SmoothL1Loss(Layer):
@@ -1136,16 +1143,16 @@ class SmoothL1Loss(Layer):
 
     .. math::
 
-         loss(x,y) = \\frac{1}{n}\\sum_{i}z_i
+         loss(x,y) = \frac{1}{n}\sum_{i}z_i
 
     where z_i is given by:
 
     .. math::
 
-         \\mathop{z_i} = \\left\\{\\begin{array}{rcl}
-        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\\\
+        \mathop{z_i} = \left\{\begin{array}{rcl}
+        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\
         delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
-        \\end{array} \\right.
+        \end{array} \right.
 
     Parameters:
         reduction (str, optional): Indicate how to average the loss by batch_size,

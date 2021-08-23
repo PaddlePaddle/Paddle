@@ -33,10 +33,10 @@ TEST(StringHelper, EndsWith) {
 
 TEST(StringHelper, FormatStringAppend) {
   std::string str("hello");
-  char fmt[] = "hhh";
+  char fmt[] = "%d";
 
-  paddle::string::format_string_append(str, fmt);
-  EXPECT_EQ(str, "hellohhh");
+  paddle::string::format_string_append(str, fmt, 10);
+  EXPECT_EQ(str, "hello10");
 }
 
 TEST(StringHelper, JoinStrings) {

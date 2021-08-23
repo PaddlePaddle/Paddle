@@ -332,6 +332,10 @@ class SimpleRNNCell(RNNCellBase):
                  bias_hh_attr=None,
                  name=None):
         super(SimpleRNNCell, self).__init__()
+        if hidden_size <= 0:
+            raise ValueError(
+                "hidden_size of {} must be greater than 0, but now equals to {}".
+                format(self.__class__.__name__, hidden_size))
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (hidden_size, input_size),
@@ -480,6 +484,10 @@ class LSTMCell(RNNCellBase):
                  bias_hh_attr=None,
                  name=None):
         super(LSTMCell, self).__init__()
+        if hidden_size <= 0:
+            raise ValueError(
+                "hidden_size of {} must be greater than 0, but now equals to {}".
+                format(self.__class__.__name__, hidden_size))
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (4 * hidden_size, input_size),
@@ -627,6 +635,10 @@ class GRUCell(RNNCellBase):
                  bias_hh_attr=None,
                  name=None):
         super(GRUCell, self).__init__()
+        if hidden_size <= 0:
+            raise ValueError(
+                "hidden_size of {} must be greater than 0, but now equals to {}".
+                format(self.__class__.__name__, hidden_size))
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (3 * hidden_size, input_size),

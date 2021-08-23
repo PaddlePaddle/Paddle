@@ -1,6 +1,7 @@
 # Adapt to custom op mechanism: Include the header files related to the data type
 # to avoid exposing the path of the underlying file
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
 
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
   feed_fetch_method pass pass_builder parallel_executor profiler layer tracer engine scope_pool
@@ -124,23 +125,20 @@ if(WITH_PYTHON)
   set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h)
   set(tmp_impl_file ${impl_file}.tmp)
 
+  set(OP_IMPL_DEPS op_function_generator)
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-      set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}")
+      set(op_impl_path "${CMAKE_CURRENT_BINARY_DIR}")
     else()
-      set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
+      set(op_impl_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
     endif()
-    file(TO_NATIVE_PATH ${op_function_generator_path} op_function_generator_path)
-    file(TO_NATIVE_PATH ${impl_file} impl_file)
-    file(TO_NATIVE_PATH ${tmp_impl_file} tmp_impl_file)
 
     file(WRITE ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat ""
     "set build_times=1\n"
     ":retry\n"
     "ECHO op_function_generator run %build_times% time\n"
-    "if exist ${tmp_impl_file} del ${tmp_impl_file}\n"
     "taskkill /f /im op_function_generator.exe 2>NUL\n"
-    "${op_function_generator_path}\\op_function_generator.exe ${tmp_impl_file}\n"
+    "${op_impl_path}/op_function_generator.exe ${tmp_impl_file}\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
     "    if %build_times% GEQ 10 (\n"
@@ -151,63 +149,62 @@ if(WITH_PYTHON)
     ")\n"
     "exit /b 0")
 
-    add_custom_command(TARGET op_function_generator POST_BUILD
-          COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
-          COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
-    )
-
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
-      add_custom_command(TARGET op_function_generator
-            PRE_LINK
-            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${op_function_generator_path}
-            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${op_function_generator_path}
-          )
+      ADD_CUSTOM_COMMAND(OUTPUT ${op_impl_path}/libiomp5md.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${op_impl_path}
+        DEPENDS mklml)
+      list(APPEND OP_IMPL_DEPS ${op_impl_path}/libiomp5md.dll)
     else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
-      add_custom_command(TARGET op_function_generator
-            PRE_LINK
-            COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${op_function_generator_path}
-          )
+      ADD_CUSTOM_COMMAND(OUTPUT ${op_impl_path}/openblas.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${op_impl_path}
+        DEPENDS extern_openblas)
+      list(APPEND OP_IMPL_DEPS ${op_impl_path}/openblas.dll)
     endif()
     if(WITH_MKLDNN)
-      add_custom_command(TARGET op_function_generator
-          PRE_LINK
-          COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${op_function_generator_path}
-          )
+      ADD_CUSTOM_COMMAND(OUTPUT ${op_impl_path}/mkldnn.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${op_impl_path}
+        DEPENDS mkldnn)
+        list(APPEND OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
     endif()
+
+    add_custom_command(OUTPUT ${impl_file}
+      COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
+      COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
+      DEPENDS ${OP_IMPL_DEPS})
   else(WIN32)
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
-    add_custom_command(TARGET op_function_generator
-          POST_BUILD
+    if(WITH_MKLML)
+      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libiomp5.so
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS mklml)
+      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libiomp5.so)
+    endif()
+    if(WITH_MKLDNN)
+      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS mkldnn)
+      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
+    endif()
+    add_custom_command(OUTPUT ${impl_file}
           COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
               "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
               "${tmp_impl_file}"
           COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
           COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
-          VERBATIM
-    )
-    if(WITH_MKL)
-      add_custom_command(TARGET op_function_generator
-            PRE_LINK
-            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
-            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}
-            )
-    endif(WITH_MKL)
-    if(WITH_MKLDNN)
-      add_custom_command(TARGET op_function_generator
-          PRE_LINK
-          COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
-          )
-    endif(WITH_MKLDNN)
+          DEPENDS ${OP_IMPL_DEPS}
+          VERBATIM)
   endif(WIN32)
+  add_custom_target(op_function_generator_cmd ALL DEPENDS ${impl_file})
 
+  list(APPEND PYBIND_DEPS interpretercore standalone_executor)
   cc_library(paddle_pybind SHARED
-  SRCS ${PYBIND_SRCS}
-  DEPS ${PYBIND_DEPS}
-  ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    SRCS ${PYBIND_SRCS}
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)
   endif(NOT APPLE AND NOT WIN32)
@@ -218,5 +215,5 @@ if(WITH_PYTHON)
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
-  add_dependencies(paddle_pybind op_function_generator)
+  add_dependencies(paddle_pybind op_function_generator_cmd)
 endif(WITH_PYTHON)
