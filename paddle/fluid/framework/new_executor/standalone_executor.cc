@@ -58,6 +58,15 @@ int StandaloneExecutor::Run(const std::vector<std::string>& feed_names,
   return 0;
 }
 
+const CostInfo& StandaloneExecutor::DryRun(
+    const std::vector<std::string>& vec_name,
+    const std::vector<framework::Tensor>& vec_tensor) {
+  auto core = GetInterpreterCore(vec_name, {});
+
+  auto& cost_info = core->DryRun(vec_name, vec_tensor);
+  return cost_info;
+}
+
 void StandaloneExecutor::BuildVariableOuterScope(
     const framework::ProgramDesc& pdesc, VariableScope* var_scope,
     Scope* outer_scope) {

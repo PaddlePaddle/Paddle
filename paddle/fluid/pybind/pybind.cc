@@ -1945,6 +1945,14 @@ All parameter, weight, gradient are variables in Paddle.
                  fetch_vars);
       });
 
+  py::class_<framework::CostInfo>(m, "CostInfo")
+      .def(py::init<>())
+      .def("total_time", [](CostInfo &self) { return self.total_time; })
+      .def("host_memory_bytes",
+           [](CostInfo &self) { return self.host_memory_bytes; })
+      .def("device_memory_bytes",
+           [](CostInfo &self) { return self.device_memory_bytes; });
+
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
       .def(py::init<const platform::Place &, const ProgramDesc &,
                     const ProgramDesc &, Scope *>())
@@ -1971,6 +1979,25 @@ All parameter, weight, gradient are variables in Paddle.
                vec_ret.push_back(TensorToPyArray(fetch_tensors[i], true));
              }
              return vec_ret;
+           })
+      .def("dry_run",
+           [](StandaloneExecutor &self,
+              const std::unordered_map<std::string, py::array> &input_dict) {
+             pybind11::gil_scoped_release release;
+             std::vector<framework::Tensor> vec_tensor;
+             std::vector<std::string> vec_name;
+
+             for (auto &item : input_dict) {
+               framework::LoDTensor t;
+               SetTensorFromPyArray<platform::CPUPlace>(
+                   &t, item.second, platform::CPUPlace(), false);
+               vec_name.push_back(item.first);
+               vec_tensor.push_back(t);
+             }
+
+             std::vector<framework::Tensor> vec_out;
+             auto &cost_info = self.DryRun(vec_name, vec_tensor);
+             return cost_info;
            });
 
   m.def("init_gflags", framework::InitGflags);

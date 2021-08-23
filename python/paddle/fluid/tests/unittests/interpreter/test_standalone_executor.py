@@ -56,6 +56,21 @@ class LinearTestCase(unittest.TestCase):
                     [2, 2], dtype="float32") * i
             }, [a.name, c.name])
 
+        # test for cost_info
+        cost_info = standaloneexecutor.dry_run({
+            "a": np.ones(
+                [2, 2], dtype="float32") * i
+        })
+        self.check_cost_info(cost_info)
+
+    def check_cost_info(self, cost_info):
+        if core.is_compiled_with_cuda():
+            self.assertEqual(cost_info.host_memory_bytes(), 16)
+            self.assertEqual(cost_info.device_memory_bytes(), 2560)  # 256 * 10
+        else:
+            self.assertEqual(cost_info.host_memory_bytes(), 120)  # 16*7 + 8
+            self.assertEqual(cost_info.device_memory_bytes(), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

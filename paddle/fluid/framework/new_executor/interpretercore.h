@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -38,6 +39,9 @@ class InterpreterCore {
   void Run(const std::vector<framework::Tensor>& feed_tensors,
            std::vector<framework::Tensor>* fetch_tensors);
 
+  const CostInfo& DryRun(const std::vector<std::string>& vec_name,
+                         const std::vector<framework::Tensor>& vec_tensor);
+
   static void BuildOpFuncList(const platform::Place& place,
                               const framework::ProgramDesc& pdesc,
                               std::vector<OperatorBase*>* op_list,
@@ -53,13 +57,17 @@ class InterpreterCore {
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
                               const VariableScope& var_scope,
-                              const platform::Place& place);
+                              const platform::Place& place,
+                              bool is_dry_run = false);
 
   std::vector<size_t> MergeVector(const std::vector<size_t>& first,
                                   const std::vector<size_t>& second);
 
   void BuildVariableScope(const framework::ProgramDesc& pdesc,
                           VariableScope* var_scope);
+
+  void Prepare(const std::vector<std::string>& vec_name,
+               const std::vector<framework::Tensor>& vec_tensor);
 
   const platform::Place& place_;
   const ProgramDesc& main_program_;
@@ -79,6 +87,7 @@ class InterpreterCore {
 
   std::vector<std::string> feed_names_;
   std::vector<std::string> fetch_names_;
+  InterpreterProfiler profiler_;
 };
 }  // namespace framework
 }  // namespace paddle

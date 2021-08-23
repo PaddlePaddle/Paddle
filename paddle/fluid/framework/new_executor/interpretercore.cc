@@ -203,7 +203,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node,
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr, const VariableScope& var_scope,
-    const platform::Place& place) {
+    const platform::Place& place, bool is_dry_run) {
   std::queue<size_t> working_queue;
   auto working_dependecy_count = dependecy_count_;
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
@@ -220,6 +220,10 @@ void InterpreterCore::ExecuteInstructionList(
     working_queue.pop();
     auto& instr_node = vec_instr[instr_id];
     RunInstruction(instr_node, var_scope, place);
+
+    if (is_dry_run) {
+      profiler_.ParseMemoryInfo(var_scope.var_list);
+    }
 
     auto& next_instr = instr_node.next_instruction_.direct_run_;
     ++run_op_number;
@@ -465,6 +469,42 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
     op_func_node.kernel_func_(exec_ctx);
     vec_func_list->push_back(op_func_node);
   }
+}
+void InterpreterCore::Prepare(
+    const std::vector<std::string>& vec_name,
+    const std::vector<framework::Tensor>& vec_tensor) {
+  if (is_build_ == false) {
+    BuildVariableScope(main_program_, global_scope_);
+  }
+  for (size_t i = 0; i < vec_name.size(); ++i) {
+    auto it = global_scope_->name2id.find(vec_name[i]);
+
+    auto feed_tensor =
+        global_scope_->var_list[it->second]->GetMutable<framework::LoDTensor>();
+    feed_tensor->ShareDataWith(vec_tensor[i]);
+  }
+  if (is_build_ == false) {
+    BuildOpFuncList(place_, main_program_, &op_list_, &vec_func_list_,
+                    global_scope_);
+    is_build_ = true;
+    Convert();
+  }
+}
+
+const CostInfo& InterpreterCore::DryRun(
+    const std::vector<std::string>& vec_name,
+    const std::vector<framework::Tensor>& vec_tensor) {
+  Prepare(vec_name, vec_tensor);
+  // DryRun may be called many times.
+  profiler_.Reset();
+  profiler_.Start();
+  ExecuteInstructionList(vec_instruction_, *global_scope_, place_,
+                         /*is_dry_run=*/true);
+  if (platform::is_gpu_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+  profiler_.Pause();
+  return profiler_.GetCostInfo();
 }
 
 }  // namespace framework
