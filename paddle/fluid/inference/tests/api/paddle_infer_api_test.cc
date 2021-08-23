@@ -18,7 +18,6 @@ limitations under the License. */
 #include <cstring>
 #include <numeric>
 #include "gflags/gflags.h"
-
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -106,7 +105,7 @@ TEST(Tensor, copy_to_cpu_async_stream) {
   cudaStream_t stream;
   output_t->CopyToCpuAsync(out_data, static_cast<void *>(&stream));
   for (int i = 0; i < 10; i++) {
-    EXPECT_NEAR(out_data[i], 0, 1e-5);
+    EXPECT_NEAR(out_data[i], 0, 1e-3);
   }
 
   // sync
@@ -166,14 +165,10 @@ TEST(Tensor, copy_to_cpu_async_callback) {
                              };
                              for (int i = 0; i < 10; i++) {
                                EXPECT_NEAR(data[i] / correct_out_data[i], 1.0,
-                                           1e-5);
+                                           1e-3);
                              }
                            },
                            (void *)out_data);
-
-  for (int i = 0; i < 10; i++) {
-    EXPECT_NEAR(out_data[i], 0, 1e-5);
-  }
 
   cudaDeviceSynchronize();
   contrib::utils::CudaFreePinnedMemory((void *)out_data);
