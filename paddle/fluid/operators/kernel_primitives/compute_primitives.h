@@ -54,24 +54,6 @@ class MPTypeTrait<platform::float16> {
 
 enum ReduceMode { GlobalMode, LocalMode };
 
-/*************************** Compute Functor****************************/
-template <typename T, typename Enable = void>
-struct DivFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] / args[1];
-  }
-};
-
-template <typename T>
-struct DivFunctor<T, typename std::enable_if_t<std::is_integral<T>::value>> {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    PADDLE_ENFORCE(args[1] != 0,
-                   "Invalid Argument Error: Integer division by zero "
-                   "encountered in divide. Please check the input value.");
-    return args[0] / args[1];
-  }
-};
-
 /*************************** Compute Function****************************/
 
 /**
