@@ -188,7 +188,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   if (instr_node.kernel_func_.operator_base_->Type() == "fetch2") {
-    fetch_context_pool_.Get(place);
+    dev_ctx = fetch_context_pool_.Get(place);
   }
   Scope scope;
 
