@@ -15,6 +15,7 @@
 import numpy as np
 import unittest
 import abc
+import os
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import NumpyArrayInitializer
@@ -61,7 +62,9 @@ class AutoScanTest(unittest.TestCase):
         return result
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
-        last_passed_program = 'transpose_flatten_concat_fuse_pass.pdmodel'
+        cur_path = os.path.dirname(__file__)
+        last_passed_program = os.path.join(
+            cur_path, 'transpose_flatten_concat_fuse_pass.pdmodel')
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
