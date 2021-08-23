@@ -425,17 +425,9 @@ static void ParseIndexingSlice(
   // types, and list of Bool and Integers.
   // wrap to tuple
 
-  PyObject *index;
-  // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New +
-  // PyTuple_SetItem not.
-  // see details:
-  // https://stackoverflow.com/questions/8528483/reference-counts-in-a-python-c-extension
-  if (PyTuple_Check(_index)) {
-    index = _index;
-  } else {
-    index = PyTuple_New(1);
-    PyTuple_SetItem(index, 0, _index);
-  }
+  // NOTE(zhiqiu): PyTuple_Pack increases refcount.
+  PyObject *index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
+
   PADDLE_ENFORCE_EQ(
       tensor->IsInitialized(), true,
       platform::errors::InvalidArgument("tensor has not been initialized"));
@@ -554,6 +546,7 @@ static void ParseIndexingSlice(
           std::string(Py_TYPE(slice_item)->tp_name), i + 1));
     }
   }
+  if (!PyTuple_Check(_index)) Py_DecRef(index);
 
   // valid_index is the number of dimensions exclude None index
   const int valid_indexs = size - none_axes->size();
@@ -561,8 +554,6 @@ static void ParseIndexingSlice(
                     platform::errors::InvalidArgument(
                         "Too many indices (%d) for tensor of dimension %d.",
                         valid_indexs, rank));
-
-  if (!PyTuple_Check(_index)) Py_DecRef(index);
 }
 
 template <typename P>
@@ -825,17 +816,10 @@ void BindImperative(py::module *m_ptr) {
              VLOG(4) << "Call __setitem__";
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
-             PyObject *index_ptr;
              // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
-             // + PyTuple_SetItem not.
-             // see details:
-             // https://stackoverflow.com/questions/8528483/reference-counts-in-a-python-c-extension
-             if (PyTuple_Check(_index.ptr())) {
-               index_ptr = _index.ptr();
-             } else {
-               index_ptr = PyTuple_New(1);
-               PyTuple_SetItem(index_ptr, 0, _index.ptr());
-             }
+             PyObject *index_ptr = !PyTuple_Check(_index.ptr())
+                                       ? PyTuple_Pack(1, _index.ptr())
+                                       : _index.ptr();
              // 1. Check argumnets
              // 1.1 Check whether value obj is a tensor.
              bool value_is_tensor = true;
@@ -868,6 +852,7 @@ void BindImperative(py::module *m_ptr) {
                  break;
                }
              }
+             if (!PyTuple_Check(_index)) Py_DecRef(index_ptr);
 
              // 2. Call op set_value to speed up if the condition is met,
              // otherwise call TensorToPyArray.
