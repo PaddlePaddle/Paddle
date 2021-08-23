@@ -53,7 +53,9 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
             with fluid.program_guard(self.test_main_program,
                                      self.startup_program):
                 network()
-        self.feeds = {"data": np.random.random((1, 28, 28)).astype("float32")}
+        self.feeds = {
+            "data": np.random.random((1, 28, 28)).astype("float32")
+        }
         self.fetch_list = [result]
         self.enable_trt = True
         self.trt_parameters = FCQuantDequantFusePassTRTDims3Cols1Test.TensorRTParam(
@@ -69,7 +71,6 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
             }, {'data': [1, 28, 28],
                 'reshape2_1.tmp_0': [1, 1, 10]
             }, False)
-        
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
 
@@ -96,7 +97,7 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
                                      num_flatten_dims=2,
                                      bias_attr=False,
                                      act=None)
-            c_out = fluid.layers.reshape(fc_out,shape=[1,1,784])
+            c_out = fluid.layers.reshape(fc_out,shape=[1, 1, 784])
             result = fluid.layers.relu(c_out)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
             avg_loss = fluid.layers.mean(loss)
@@ -115,7 +116,9 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
             with fluid.program_guard(self.test_main_program,
                                      self.startup_program):
                 network()
-        self.feeds = {"data": np.random.random((1, 28, 28)).astype("float32")}
+        self.feeds = {
+            "data": np.random.random((1, 28, 28)).astype("float32")
+        }
         self.fetch_list = [result]
         self.enable_trt = True
         self.trt_parameters = FCQuantDequantFusePassTRTDims3Cols2Test.TensorRTParam(
@@ -123,13 +126,13 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
         self.dynamic_shape_params = FCQuantDequantFusePassTRTDims3Cols2Test.DynamicShapeParam(
             {
                 'data': [1, 28, 28],
-                "reshape2_1.tmp_0": [1,1,784]
+                'reshape2_1.tmp_0': [1, 1, 784]
             }, {
                 'data': [4, 28, 28],
-                "reshape2_1.tmp_0": [4,1,784]
+                'reshape2_1.tmp_0': [4, 1, 784]
             }, {
                 'data': [1, 28, 28], 
-                "reshape2_1.tmp_0": [1,1,784]
+                'reshape2_1.tmp_0': [1, 1, 784]
             }, False)
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
@@ -158,7 +161,7 @@ class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
                                      num_flatten_dims=3,
                                      bias_attr=False,
                                      act=None)
-            c_out = fluid.layers.reshape(fc_out,shape=[1,1,2744])
+            c_out = fluid.layers.reshape(fc_out,shape=[1, 1, 2744])
             result = fluid.layers.relu(c_out)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
             avg_loss = fluid.layers.mean(loss)
@@ -186,15 +189,15 @@ class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
             {
                 'data': [1, 28, 28],
                 "reshape2_1.tmp_0": [1, 14, 14, 4],
-                "reshape2_2.tmp_0": [1,1,2744]
+                "reshape2_2.tmp_0": [1, 1, 2744]
             }, {
                 'data': [4, 28, 28],
                 "reshape2_1.tmp_0": [4, 14, 14, 4],
-                "reshape2_2.tmp_0": [4,1,2744]
+                "reshape2_2.tmp_0": [4, 1, 2744]
             }, {
                 'data': [1, 28, 28], 
                 "reshape2_1.tmp_0": [1, 14, 14, 4],
-                "reshape2_2.tmp_0": [1,1,2744]
+                "reshape2_2.tmp_0": [1, 1, 2744]
             }, False)
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'

@@ -43,13 +43,13 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
                 use_cudnn=self.use_cudnn,
                 act=None)
             if self.conv_padding == [1, 1]:
-                cout = fluid.layers.reshape(conv_out,shape=[1,1,10816])
+                cout = fluid.layers.reshape(conv_out,shape=[1, 1, 10816])
             elif self.conv_padding == 'VALID':
-                cout = fluid.layers.reshape(conv_out,shape=[1,1,7744])
+                cout = fluid.layers.reshape(conv_out,shape=[1, 1, 7744])
             elif self.conv_padding == 'SAME':
-                cout = fluid.layers.reshape(conv_out,shape=[1,1,12544])
+                cout = fluid.layers.reshape(conv_out,shape=[1, 1, 12544])
             elif self.conv_groups == 4:
-                cout = fluid.layers.reshape(conv_out,shape=[1,1,10816])
+                cout = fluid.layers.reshape(conv_out,shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
             avg_loss = fluid.layers.mean(loss)
@@ -68,15 +68,13 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
             with fluid.program_guard(self.test_main_program,
                                      self.startup_program):
                 network()
-        
-        self.feeds = {"data": np.random.random([1, 28, 28]).astype("float32")}
+        self.feeds = {
+            "data": np.random.random([1, 28, 28]).astype("float32")
+        }
         self.fetch_list = [result]
-
         self.enable_trt = True
-
         self.trt_parameters = QuantDequantTensorRTSubgraphPassConvTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
-        
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
 
@@ -158,35 +156,33 @@ class DynamicShapeQuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
             with fluid.program_guard(self.test_main_program,
                                      self.startup_program):
                 network()
-        self.feeds = {"data": np.random.random([1, 28, 28]).astype("float32")}
+        self.feeds = {
+            "data": np.random.random([1, 28, 28]).astype("float32")
+        }
         self.fetch_list = [result]
-
         self.enable_trt = True
-
         self.trt_parameters = DynamicShapeQuantDequantTensorRTSubgraphPassConvTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
-
         self.dynamic_shape_params = DynamicShapeQuantDequantTensorRTSubgraphPassConvTest.DynamicShapeParam(
             {
                 "conv2d_0.tmp_0": [1, 4, 14, 14],
                 "data": [1, 28, 28],
                 "depthwise_conv2d_0.tmp_0": [1, 4, 14, 14],
                 "reshape2_0.tmp_0": [1, 4, 14, 14],
-                "reshape2_2.tmp_0": [1,1,10816]
+                "reshape2_2.tmp_0": [1, 1, 10816]
             }, {
                 "conv2d_0.tmp_0": [4, 4, 14, 14],
                 "data": [4, 28, 28],
                 "depthwise_conv2d_0.tmp_0": [4, 4, 14, 14],
                 "reshape2_0.tmp_0": [4, 4, 14, 14],
-                "reshape2_2.tmp_0": [1,1,43264]
+                "reshape2_2.tmp_0": [1, 1, 43264]
             }, {
                 "conv2d_0.tmp_0": [1, 4, 14, 14],
                 "data": [1, 28, 28],
                 "depthwise_conv2d_0.tmp_0": [1, 4, 14, 14],
                 "reshape2_0.tmp_0": [1, 4, 14, 14],
-                "reshape2_2.tmp_0": [1,1,10816]
+                "reshape2_2.tmp_0": [1, 1, 10816]
             }, False)
-        
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
 
@@ -224,16 +220,14 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
                 bias_attr=False,
                 use_cudnn=self.use_cudnn,
                 act=None)
-
-            if   self.conv_padding == [1, 1]:
-                cout = fluid.layers.reshape(conv_out,shape=[1,1,14400])
+            if self.conv_padding == [1, 1]:
+                cout = fluid.layers.reshape(conv_out,shape=[1, 1, 14400])
             elif self.conv_padding == 'VALID':
-                cout = fluid.layers.reshape(conv_out,shape=[1,1,18496])
+                cout = fluid.layers.reshape(conv_out,shape=[1, 1, 18496])
             elif self.conv_padding == 'SAME':
-                cout = fluid.layers.reshape(conv_out,shape=[1,1,12544])
+                cout = fluid.layers.reshape(conv_out,shape=[1, 1, 12544])
             elif self.conv_groups == 4:
-                cout = fluid.layers.reshape(conv_out,shape=[1,1,10816])
-
+                cout = fluid.layers.reshape(conv_out,shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
             avg_loss = fluid.layers.mean(loss)
@@ -252,15 +246,13 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
             with fluid.program_guard(self.test_main_program,
                                      self.startup_program):
                 network()
-        
-        self.feeds = {"data": np.random.random([1, 28, 28]).astype("float32")}
+        self.feeds = {
+            "data": np.random.random([1, 28, 28]).astype("float32")
+        }
         self.fetch_list = [result]
-
         self.enable_trt = True
-
         self.trt_parameters = QuantDequantTensorRTSubgraphPassConvTransposeTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
-        
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
 
