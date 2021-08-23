@@ -319,7 +319,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                     main_block._remove_op(idx)
 
         accumulated_grad_names = self._pp_optimizer._accumulate_gradients(
-            main_block, fp16_allreduce=fp16_allreduce)
+            main_block,
+            fp16_allreduce=fp16_allreduce,
+            user_defined_strategy=strategy)
 
         len_of_ops = len(main_block.ops)
         first_optimize_op_index = get_first_optimize_op_idx(main_block)

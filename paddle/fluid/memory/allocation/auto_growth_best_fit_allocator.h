@@ -21,7 +21,6 @@
 #include <utility>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/allocation/spin_lock.h"
 
 namespace paddle {
 namespace memory {
@@ -87,7 +86,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
   size_t alignment_;
   size_t chunk_size_;
 
-  SpinLock spinlock_;
+  mutable std::mutex mtx_;
 };
 
 }  // namespace allocation
