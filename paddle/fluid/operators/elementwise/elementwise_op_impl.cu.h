@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-enum ElementwiseType { kUnary = 1, kBinary = 2 };
+enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3 };
 
 /*
 * According to NVIDIA, if number of threads per block is 64/128/256/512,
@@ -53,51 +53,17 @@ inline int GetThreadsConfig(const platform::CUDADeviceContext &ctx,
   return std::max(64, threads);
 }
 
-/*
-* Only the address of input data is the multiplier of 1,2,4, vectorized load
-* with corresponding multiplier-value is possible. Moreover, the maximum length
-* of vectorized load is 128 bits once. Hence, valid length of vectorized load
-* shall be determined under both former constraints.
-*/
-template <typename T>
-int GetVectorizedSizeImpl(const T *pointer) {
-  constexpr int max_load_bits = 128;
-  int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
-  uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec8 =
-      std::alignment_of<platform::CudaAlignedVector<T, 8>>::value;  // NOLINT
-  constexpr int vec4 =
-      std::alignment_of<platform::CudaAlignedVector<T, 4>>::value;  // NOLINT
-  constexpr int vec2 =
-      std::alignment_of<platform::CudaAlignedVector<T, 2>>::value;  // NOLINT
-  if (address % vec8 == 0) {
-    /*
-    * Currently, decide to deal with no more than 4 data once while adopting
-    * vectorization load/store, if performance test shows that dealing with
-    * 8 data once in vectorization load/store does get optimized, return code
-    * below can be changed into " return std::min(8, valid_vec_size); " .
-    */
-    return std::min(4, valid_vec_size);
-  } else if (address % vec4 == 0) {
-    return std::min(4, valid_vec_size);
-  } else if (address % vec2 == 0) {
-    return std::min(2, valid_vec_size);
-  } else {
-    return 1;
-  }
-}
-
 template <typename InT, typename OutT>
-int GetVectorizedSize(const std::vector<const framework::Tensor *> &ins,
-                      const std::vector<framework::Tensor *> &outs) {
+int GetVectorizedSizeForIO(const std::vector<const framework::Tensor *> &ins,
+                           const std::vector<framework::Tensor *> &outs) {
   int vec_size = 4;
   for (auto iter = ins.begin(); iter != ins.end(); ++iter) {
-    vec_size =
-        std::min<int>(vec_size, GetVectorizedSizeImpl((*iter)->data<InT>()));
+    vec_size = std::min<int>(vec_size,
+                             platform::GetVectorizedSize((*iter)->data<InT>()));
   }
   for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
-    vec_size =
-        std::min<int>(vec_size, GetVectorizedSizeImpl((*iter)->data<OutT>()));
+    vec_size = std::min<int>(
+        vec_size, platform::GetVectorizedSize((*iter)->data<OutT>()));
   }
   return vec_size;
 }
@@ -127,9 +93,7 @@ __global__ void ElementVectorizedBinary(const InT *__restrict__ in0,
   int tid = blockIdx.x * blockDim.x;
   int fix = VecSize * tid;
   int max_size = blockDim.x * VecSize;
-  int remain = size - fix;
-  int num = remain > max_size ? max_size : remain;
-  num = num > 0 ? num : 0;
+  int num = size - fix;
   InT args[2][VecSize];
   OutT result[VecSize];
 
@@ -141,34 +105,66 @@ __global__ void ElementVectorizedBinary(const InT *__restrict__ in0,
   kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
 }
 
+template <int VecSize, typename InT, typename OutT, typename Functor>
+__global__ void ElementVectorizedTernary(const InT *__restrict__ in0,
+                                         const InT *__restrict__ in1,
+                                         const InT *__restrict__ in2, OutT *out,
+                                         int size, Functor func) {
+  int tid = blockIdx.x * blockDim.x;
+  int fix = VecSize * tid;
+  int max_size = blockDim.x * VecSize;
+  int remain = size - fix;
+  int num = remain > max_size ? max_size : remain;
+  num = num > 0 ? num : 0;
+  InT args[3][VecSize];
+  OutT result[VecSize];
+
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[0], in0 + fix, num);
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[1], in1 + fix, num);
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[2], in1 + fix, num);
+
+  kernel_primitives::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
+      result, args[0], args[1], args[2], func);
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
+}
+
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchSameDimsElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, Functor func) {
   // calculate the max vec_size for all ins and outs
-  auto size = ins[0]->numel();
+  auto numel = ins[0]->numel();
   const int vec_size = 4;
-  int block_size = GetThreadsConfig(ctx, size, vec_size);
+  int block_size = GetThreadsConfig(ctx, numel, vec_size);
   int grid_size =
-      ((size + vec_size - 1) / vec_size + block_size - 1) / block_size;
+      ((numel + vec_size - 1) / vec_size + block_size - 1) / block_size;
   const InT *in0 = ins[0]->data<InT>();
-  const InT *in1 =
-      (ET == ElementwiseType::kBinary) ? ins[1]->data<InT>() : nullptr;
   OutT *out = (*outs)[0]->data<OutT>();
+
   // cuda kernel
   auto stream = ctx.stream();
   switch (ET) {
+    case ElementwiseType::kTernary:
+      ElementVectorizedTernary<vec_size, InT, OutT,
+                               Functor><<<grid_size, block_size, 0, stream>>>(
+          in0, ins[1]->data<InT>(), ins[2]->data<InT>(), out, numel, func);
+      break;
     case ElementwiseType::kBinary:
       ElementVectorizedBinary<vec_size, InT, OutT,
                               Functor><<<grid_size, block_size, 0, stream>>>(
-          in0, in1, out, size, func);
+          in0, ins[1]->data<InT>(), out, numel, func);
       break;
     case ElementwiseType::kUnary:
       ElementVectorizedUnary<vec_size, InT, OutT,
                              Functor><<<grid_size, block_size, 0, stream>>>(
-          in0, out, size, func);
+          in0, out, numel, func);
       break;
+    default: {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported input num is : %d !", ET));
+      break;
+    }
   }
 }
 

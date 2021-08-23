@@ -17,12 +17,12 @@
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 
-#define MAX_INPUT_NUM 2
-
-namespace kps = paddle::operators::kernel_primitives;
-
 namespace paddle {
 namespace operators {
+
+#define MAX_INPUT_NUM 3
+
+namespace kps = paddle::operators::kernel_primitives;
 
 struct DimensionsTransform {
   using DimVector = std::vector<int64_t>;
@@ -168,6 +168,56 @@ struct DimensionsTransform {
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
           int DATA_PER_THREAD, typename Functor>
+__global__ void BroadcastKernelTernary(
+    const InT *__restrict__ in0, const InT *__restrict__ in1,
+    const InT *__restrict__ in2, OutT *out,
+    framework::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
+    framework::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
+        configlists,
+    int main_tid, int tail_tid, Functor func) {
+  int fix = blockIdx.x * blockDim.x * VecSize;
+  int num = tail_tid;
+  InT arg0[VecSize * DATA_PER_THREAD];
+  InT arg1[VecSize * DATA_PER_THREAD];
+  InT arg2[VecSize * DATA_PER_THREAD];
+  OutT result[VecSize * DATA_PER_THREAD];
+  if (blockIdx.x < main_tid) {
+    num = blockDim.x * VecSize;  // blockIdx.x < main_tid
+  }
+
+  // load in0
+  if (use_broadcast[0]) {
+    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
+        arg0, in0, fix, configlists[0], numel, 1, 1);
+  } else {
+    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg0, in0 + fix, num);
+  }
+
+  // load in1
+  if (use_broadcast[1]) {
+    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
+        arg1, in1, fix, configlists[1], numel, 1, 1);
+  } else {
+    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg1, in1 + fix, num);
+  }
+
+  if (use_broadcast[2]) {
+    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
+        arg1, in1, fix, configlists[1], numel, 1, 1);
+  } else {
+    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg1, in1 + fix, num);
+  }
+
+  // compute
+  kernel_primitives::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
+      result, arg0, arg1, arg2, func);
+
+  // store
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
+}
+
+template <typename InT, typename OutT, int ShapeSize, int VecSize,
+          int DATA_PER_THREAD, typename Functor>
 __global__ void BroadcastKernelBinary(
     const InT *__restrict__ in0, const InT *__restrict__ in1, OutT *out,
     framework::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
@@ -245,9 +295,6 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
   int main_tid = numel / (data_per_thread * VecSize * threads);
   int tail_tid = numel % (data_per_thread * VecSize * threads);
   auto stream = ctx.stream();
-  const InT *in0 = ins[0]->data<InT>();
-  const InT *in1 =
-      (ET == ElementwiseType::kBinary) ? ins[1]->data<InT>() : nullptr;
   OutT *out_data = out->data<OutT>();
 
   framework::Array<kps::details::BroadcastConfig<Size>, MAX_INPUT_NUM>
@@ -265,12 +312,74 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
   if (ET == kUnary) {
     BroadcastKernelUnary<InT, OutT, Size, VecSize, data_per_thread,
                          Functor><<<blocks, threads, 0, stream>>>(
-        in0, out_data, numel, configlists[0], main_tid, tail_tid, func);
-  } else {  // kBinary
+        ins[0]->data<InT>(), out_data, numel, configlists[0], main_tid,
+        tail_tid, func);
+  } else if (ET == kBinary) {  // kBinary
     BroadcastKernelBinary<InT, OutT, Size, VecSize, data_per_thread,
                           Functor><<<blocks, threads, 0, stream>>>(
-        in0, in1, out_data, use_broadcast, numel, configlists, main_tid,
-        tail_tid, func);
+        ins[0]->data<InT>(), ins[1]->data<InT>(), out_data, use_broadcast,
+        numel, configlists, main_tid, tail_tid, func);
+  } else {  // Ternary
+    BroadcastKernelTernary<InT, OutT, Size, VecSize, data_per_thread,
+                           Functor><<<blocks, threads, 0, stream>>>(
+        ins[0]->data<InT>(), ins[1]->data<InT>(), ins[2]->data<InT>(), out_data,
+        use_broadcast, numel, configlists, main_tid, tail_tid, func);
+  }
+}
+template <typename InT, typename OutT, typename BroadcastArgsWrapper,
+          ElementwiseType ET>
+__device__ inline void ScalarizedBroadcastKernelImpl(
+    BroadcastArgsWrapper broadcast_wrapper, int tid) {
+  InT args[ET];
+  OutT args_out;
+  broadcast_wrapper.LoadScalarizedData(args, tid);
+
+  // Calcualtion of the in_tensor data.
+  args_out = broadcast_wrapper.func(args);
+
+  broadcast_wrapper.StoreScalarizedData(args_out, tid);
+}
+
+template <typename InT, typename OutT, typename BroadcastArgsWrapper,
+          ElementwiseType ET, int VecSize>
+__device__ inline void VectorizedBroadcastKernelImpl(
+    BroadcastArgsWrapper broadcast_wrapper, int tid) {
+  using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
+  OutVecType args_out;
+  InT ins[ET];
+  InT args[ET][VecSize];
+  broadcast_wrapper.LoadVectorizedData(args, tid);
+
+#pragma unroll(VecSize)
+  for (int i = 0; i < VecSize; ++i) {
+#pragma unroll(ET)
+    for (int j = 0; j < ET; ++j) {
+      ins[j] = args[j][i];
+    }
+    args_out.val[i] = broadcast_wrapper.func(ins);
+  }
+  broadcast_wrapper.StoreVectorizedData(args_out, tid);
+}
+
+template <typename InT, typename OutT, typename BroadcastArgsWrapper,
+          ElementwiseType ET, int VecSize>
+__global__ void ElementwiseBroadcastKernel(
+    BroadcastArgsWrapper broadcast_wrapper, int main_tid, int tail_tid) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  // Vectorized calculation of major data whose length is the max multipler of
+  // VecSize,
+  // eg: Calcualting the front 1024-length data in total 1027 data once VecSize
+  // is 4.
+  if (tid < main_tid) {
+    VectorizedBroadcastKernelImpl<InT, OutT, BroadcastArgsWrapper, ET, VecSize>(
+        broadcast_wrapper, tid);
+  }
+  // Scalarzed calculation of rest data whose lenght cannot fulfill VecSize.
+  // eg: Calcualting the rest 3-length data in total 1027 data once VecSize is
+  // 4.
+  if (tid < tail_tid) {
+    ScalarizedBroadcastKernelImpl<InT, OutT, BroadcastArgsWrapper, ET>(
+        broadcast_wrapper, tid);
   }
 }
 
@@ -300,6 +409,7 @@ void LaunchBroadcastKernelForDifferentDimSize(
   }
 #undef DIM_SIZE
 }
+
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
@@ -313,11 +423,11 @@ void LaunchBroadcastElementwiseCudaKernel(
   int in_vec_size = 4;
   framework::Tensor *out = (*outs)[0];
   for (auto *in : ins) {
-    auto temp_size = GetVectorizedSizeImpl<InT>(in->data<InT>());
+    auto temp_size = platform::GetVectorizedSize<InT>(in->data<InT>());
     in_vec_size = in->dims() == out->dims() ? std::min(temp_size, in_vec_size)
                                             : in_vec_size;
   }
-  int out_vec_size = GetVectorizedSizeImpl<OutT>(out->data<OutT>());
+  int out_vec_size = platform::GetVectorizedSize<OutT>(out->data<OutT>());
   int vec_size = std::min(out_vec_size, in_vec_size);
 
   switch (vec_size) {
@@ -368,6 +478,8 @@ void LaunchElementwiseCudaKernel(
                                                         axis, func);
   }
 }
+
+#undef MAX_INPUT_NUM
 
 }  // namespace operators
 }  // namespace paddle
