@@ -29,7 +29,7 @@ void HierarchicalHCCLReduceScatterOp(f::Scope* scope,
   // init
   auto x = scope->Var("Data");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
-  int rank_count = atoi(getenv("RANK_COUNT"));
+  int rank_count = FLAGS_rank_count;
 
   std::vector<float> init;
   int num1 = 4 * rank_count;
@@ -86,7 +86,6 @@ TEST(c_reducescatter, NPU) {
   // only support one device, if more than one device, use first default
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
-  PrepareUniqueId(&scope, ctx, group_name);
-  Prepare(&scope, ctx, group_name);
+  prepare(&scope, ctx, group_name);
   HierarchicalHCCLReduceScatterOp(&scope, ctx);
 }

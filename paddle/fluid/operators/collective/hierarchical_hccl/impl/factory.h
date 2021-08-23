@@ -39,9 +39,8 @@ class HierarchicalHcclFactory {
       return new paddle::operators::HierarchicalBackend(_init_config,
                                                         _brpc_store);
     }
-
-    throw std::runtime_error(
-        "unknown hierarchical hccl implementation backend");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "unknown hierarchical hccl implementation backend"));
   }
 
   static paddle::operators::HierarchicalHccl *create(
@@ -51,8 +50,8 @@ class HierarchicalHcclFactory {
     if (backend == "hccl-adapter") {
       return new paddle::operators::HcclBackend();
     }
-    throw std::runtime_error(
-        "unknown hierarchical hccl implementation backend");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "unknown hierarchical hccl implementation backend"));
   }
 
  private:

@@ -25,8 +25,8 @@ USE_OP_DEVICE_KERNEL(c_allgather, NPU);
 DECLARE_string(selected_npus);
 
 void HierarchicalHCCLAllGatherOp(f::Scope* scope, const p::DeviceContext& ctx) {
-  int rank_id = atoi(getenv("RANK_ID"));
-  int rank_count = atoi(getenv("RANK_COUNT"));
+  int rank_id = FLAGS_rank_id;
+  int rank_count = FLAGS_rank_count;
 
   // init
   auto x = scope->Var("Data");
@@ -91,7 +91,6 @@ TEST(c_allgather, NPU) {
   // only support one device, if more than one device, use first default
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
-  PrepareUniqueId(&scope, ctx, group_name);
-  Prepare(&scope, ctx, group_name);
+  prepare(&scope, ctx, group_name);
   HierarchicalHCCLAllGatherOp(&scope, ctx);
 }

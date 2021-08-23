@@ -30,7 +30,7 @@ void HierarchicalHCCLReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   auto x = scope->Var("Data");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
 
-  int rank_id = atoi(getenv("RANK_ID"));
+  int rank_id = FLAGS_rank_id;
   int num1 = 3;
   int num2 = 128;
 
@@ -89,8 +89,7 @@ TEST(c_reduce_sum, NPU) {
   // only support one device, if more than one device, use first default
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
-  PrepareUniqueId(&scope, ctx, group_name);
-  Prepare(&scope, ctx, group_name);
+  prepare(&scope, ctx, group_name);
   for (int i = 0; i < 2; i++) {
     VLOG(2) << "iter num: " << i;
     HierarchicalHCCLReduceOp(&scope, ctx, i);

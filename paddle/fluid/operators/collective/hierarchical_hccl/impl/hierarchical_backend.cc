@@ -245,7 +245,8 @@ HierarchicalHcclResult HierarchicalBackend::reduce_scatter(
     HierarchicalHcclDataType data_type, HierarchicalHcclReductionOp op,
     HierarchicalHcclCommGroupIdType group_id,
     HierarchicalHcclRuntimeStream stream) {
-  throw std::runtime_error("unsupported operation: reduce_scatter");
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "unsupported operation: reduce_scatter"));
 }
 
 // layered all gather

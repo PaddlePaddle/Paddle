@@ -25,13 +25,13 @@ USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
 DECLARE_string(selected_npus);
 
 void HierarchicalHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
-  int root = atoi(getenv("ROOT_ID"));
+  int root = FLAGS_root_id;
   // init
   auto x = scope->Var("Data");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
   int num = 2;
   std::vector<float> init;
-  int rank_id = atoi(getenv("RANK_ID"));
+  int rank_id = FLAGS_rank_id;
 
   for (int64_t i = 0; i < num * num; ++i) {
     init.push_back(rank_id);
@@ -81,7 +81,6 @@ TEST(c_broadcast, NPU) {
   // only support one device, if more than one device, use first default
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
-  PrepareUniqueId(&scope, ctx, group_name);
-  Prepare(&scope, ctx, group_name);
+  prepare(&scope, ctx, group_name);
   HierarchicalHCCLBroadcastOp(&scope, ctx);
 }

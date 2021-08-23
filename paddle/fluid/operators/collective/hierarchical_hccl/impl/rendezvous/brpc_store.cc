@@ -13,10 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/hierarchical_hccl/impl/rendezvous/brpc_store.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace operators {
 namespace rendezvous {
+
+DEFINE_int32(hierarchical_hccl_rpc_retry_times, 0,
+             "Specify rpc max try times!");
+DECLARE_int32(hierarchical_hccl_rpc_retry_times);
 
 void BRPCStore::set(const std::string &key, const std::string &data) {
   paddle::operators::rendezvous::proto::PutKVRequest request;
@@ -40,11 +46,11 @@ void BRPCStore::set(const std::string &key, const std::string &data) {
                paddle::operators::rendezvous::proto::Status::OK;
       };
 
-  LOG(INFO) << "try to set key[" << key << "] to rendezvous server...";
+  VLOG(1) << "try to set key[" << key << "] to rendezvous server...";
   perform_rpc<paddle::operators::rendezvous::proto::PutKVRequest,
               paddle::operators::rendezvous::proto::PutKVResponse>(
       &request, &response, method, checker);
-  LOG(INFO) << "successfully set [" << key << "] to rendezvous server.";
+  VLOG(1) << "successfully set [" << key << "] to rendezvous server.";
 }
 
 std::string BRPCStore::get(const std::string &key) {
@@ -71,9 +77,9 @@ std::string BRPCStore::get(const std::string &key) {
                    paddle::operators::rendezvous::proto::Status::OK;
           };
 
-  LOG(INFO) << "requesting key[" << key << "] from rendezvous server...";
+  VLOG(1) << "requesting key [" << key << "] from rendezvous server...";
   perform_rpc(&request, &response, method, checker);
-  LOG(INFO) << "got key[" << key << "]";
+  VLOG(1) << "got key[" << key << "]";
 
   return response.value();
 }
@@ -86,40 +92,38 @@ void BRPCStore::perform_rpc(
         method,
     std::function<bool(S *)> checker) {
   brpc::Controller cntl;
-  auto retry_times_env = getenv("HIERARCHICAL_HCCL_RPC_RETRY_TIMES");
-  int retry_times = MAX_RETRY_TIMES;
-  if (retry_times_env != nullptr) {
-    retry_times = atoi(retry_times_env);
-  }
+  int retry_times = FLAGS_hierarchical_hccl_rpc_retry_times <= 0
+                        ? MAX_RETRY_TIMES
+                        : FLAGS_hierarchical_hccl_rpc_retry_times;
+
   for (auto retry_cnt = 0; retry_cnt < retry_times; ++retry_cnt) {
     try {
-      LOG(INFO) << "before making brpc request...";
+      VLOG(1) << "before making brpc request...";
       cntl.Reset();
       method(&cntl, request, response, nullptr);
       if (!cntl.Failed() && checker(response)) {
-        LOG(INFO) << "rpc call succeeded...";
+        VLOG(1) << "rpc call succeeded...";
         return;
       } else {
         if (cntl.Failed()) {
-          LOG(WARNING) << "rpc server not ready or died, can retry, "
-                       << retry_cnt << "/" << retry_times;
+          VLOG(1) << "rpc server not ready or died, can retry, " << retry_cnt
+                  << "/" << retry_times;
         } else {
-          LOG(WARNING) << "rpc call failed, can retry, " << retry_cnt << "/"
-                       << retry_times;
+          VLOG(1) << "rpc call failed, can retry, " << retry_cnt << "/"
+                  << retry_times;
         }
       }
     } catch (std::exception &e) {
-      LOG(WARNING) << "Exception: " << e.what();
+      VLOG(1) << "Exception: " << e.what();
     }
     // sleep for 500ms before another try.
     std::this_thread::sleep_for(
         std::chrono::milliseconds(RETRY_WAITING_TIME_MILLSEC));
   }
 
-  LOG(ERROR) << "BRPC call failed too many times, aborting."
-             << " Please set env HIERARCHICAL_HCCL_RPC_RETRY_TIMES "
-             << "to increase the try times!";
-  throw std::runtime_error("BRPC call failed.");
+  PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      "BRPC call failed too many times, aborting. "
+      "Please set env FLAGS_hierarchical_hccl_rpc_retry_times"));
 }
 
 }  // namespace rendezvous

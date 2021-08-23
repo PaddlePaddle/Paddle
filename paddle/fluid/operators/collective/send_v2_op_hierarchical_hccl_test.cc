@@ -47,12 +47,12 @@ void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx) {
   std::cout << "BEGIN TEST:" << __FUNCTION__ << std::endl;
   auto x = scope->Var("Data");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
-  int num = atoi(getenv("DATA_SIZE"));
+  int num = FLAGS_data_size;
 
   EXPECT_GT(num, 0);
   EXPECT_LT(num, 1 << 15);
-  std::vector<float> init(num * num, 1.0 * atoi(getenv("DEST_RANK")));
-  int rank_id = atoi(getenv("RANK_ID"));
+  std::vector<float> init(num * num, 1.0 * FLAGS_dest_rank);
+  int rank_id = FLAGS_rank_id;
   VLOG(3) << "rank id:" << rank_id;
   TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num, num});
@@ -62,7 +62,7 @@ void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   f::AttributeMap attrs;
   attrs["tag"] = std::string("srtest");
-  attrs["peer"] = atoi(getenv("DEST_RANK"));
+  attrs["peer"] = FLAGS_dest_rank;
   attrs["ring_id"] = 0;
   attrs["srTag"] = 0;
   attrs["use_calc_stream"] = 1;
@@ -77,6 +77,7 @@ void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx) {
 }
 
 TEST(send_v2, NPU) {
+  check_test_sendrecv_env();
   f::Scope scope;
   HierarchicalHcclCommGroupIdType group_name = "test_group";
 
@@ -84,7 +85,6 @@ TEST(send_v2, NPU) {
   VLOG(3) << "Select npu:" << npu_id;
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
 
-  PrepareUniqueId(&scope, ctx, group_name);
-  Prepare(&scope, ctx, group_name);
+  prepare(&scope, ctx, group_name);
   TestHcomSendOp(&scope, ctx);
 }

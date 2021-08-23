@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/hierarchical_hccl/impl/factory.h"
 #include "paddle/fluid/operators/collective/hierarchical_hccl/impl/rendezvous/brpc_store.h"
 #include "paddle/fluid/operators/collective/hierarchical_hccl/impl/rendezvous/rendezvous_service.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -88,7 +89,10 @@ HierarchicalHcclResult make_rangelist_layer_config(
     HierarchicalHcclLayerConfig *layer, HierarchicalHcclBackend backend,
     const std::vector<HierarchicalHcclRank> &rank_list, int level,
     HierarchicalHcclScope scope) {
-  CHECK(rank_list.size() > 0) << "rank list size should more than 0";
+  PADDLE_ENFORCE_GE(rank_list.size(), 0,
+                    paddle::platform::errors::InvalidArgument(
+                        "rank list size should more than 0"));
+
   layer->member_type = RANK_LIST;
   layer->members.members = new HierarchicalHcclRankList();
   layer->members.members->rank_count = rank_list.size();
@@ -109,8 +113,14 @@ HierarchicalHcclResult make_layer_config(
     const int split_index) {
   std::string comm_group_id = std::string(group_id);
 
-  CHECK(split_index >= 0 && split_index < rank_count - 1)
-      << "split_index parameter error";
+  PADDLE_ENFORCE_GE(split_index, 0,
+                    paddle::platform::errors::InvalidArgument(
+                        "split_index should be great or equal than (%d)!", 0));
+
+  PADDLE_ENFORCE_LE(
+      split_index, rank_count - 1,
+      paddle::platform::errors::InvalidArgument(
+          "split_index should not be great than (%d)!", rank_count - 1));
 
   init_config->scope = comm_group_id;
 
@@ -128,9 +138,10 @@ HierarchicalHcclResult make_layer_config(
     init_config->layers =
         new HierarchicalHcclLayerConfig[init_config->layer_count];
 
-    CHECK_EQ(rank_count % split_index, 0)
-        << " rank_count  = " << rank_count << "%"
-        << " split_index  = " << split_index << " should be 0 !";
+    PADDLE_ENFORCE_EQ(rank_count % split_index, 0,
+                      paddle::platform::errors::InvalidArgument(
+                          "rank count (%d) %% split_index(%d) should be 0!",
+                          rank_count, split_index));
 
     int layer_1_count = rank_count / split_index;
     std::string scope;
@@ -162,8 +173,9 @@ HierarchicalHcclResult make_layer_config(
 std::string get_pure_comm_group_id(std::string comm_group_id) {
   std::string::size_type position = comm_group_id.find_last_of("_");
 
-  CHECK_NE(position, comm_group_id.npos)
-      << "we need ${name}_${rankid}$ mode to name comm group id";
+  PADDLE_ENFORCE_NE(position, comm_group_id.npos,
+                    paddle::platform::errors::InvalidArgument(
+                        "need ${name}_${rankid}$ mode to name comm group id"));
 
   return comm_group_id.substr(0, position);
 }
@@ -195,10 +207,11 @@ std::shared_ptr<paddle::operators::HierarchicalHccl> get_instance(
     }
   }
 
-  CHECK(hierarchical_hccl_instance_map.find(comm_group_id) !=
-        hierarchical_hccl_instance_map.end())
-      << "we can not find HierarchicalHccl instance for group ["
-      << comm_group_id << "]!";
+  PADDLE_ENFORCE_NE(hierarchical_hccl_instance_map.find(comm_group_id),
+                    hierarchical_hccl_instance_map.end(),
+                    paddle::platform::errors::InvalidArgument(
+                        "can not find HierarchicalHccl instance for group [%s]",
+                        comm_group_id.c_str()));
 
   std::shared_ptr<paddle::operators::HierarchicalHccl> instance;
   instance = hierarchical_hccl_instance_map[comm_group_id];
@@ -209,28 +222,41 @@ HierarchicalHcclResult construct_brpc_server(std::string comm_group_id,
                                              std::string endpoint) {
   std::vector<std::string> parts;
   paddle::operators::new_string_split(endpoint, ':', &parts);
-  CHECK_EQ(parts.size(), 2);
+  PADDLE_ENFORCE_EQ(
+      parts.size(), 2,
+      paddle::platform::errors::InvalidArgument(
+          "endpoint should be format as ip:port, but [%s]", endpoint.c_str()));
+
   VLOG(1) << "Try to started a new HierarchicalHccl RPC server...";
 
-  CHECK(hierarchical_hccl_rpc_server_map.find(comm_group_id) ==
-        hierarchical_hccl_rpc_server_map.end())
-      << "we find a repeated rpc server for group [" << comm_group_id << "]!";
+  PADDLE_ENFORCE_EQ(
+      hierarchical_hccl_rpc_server_map.find(comm_group_id),
+      hierarchical_hccl_rpc_server_map.end(),
+      paddle::platform::errors::InvalidArgument(
+          "Find a repeated rpc server for group [%s]", comm_group_id.c_str()));
 
-  CHECK(impl_map.find(comm_group_id) == impl_map.end())
-      << "we find a repeated rpc impl for group [" << comm_group_id << "]!";
+  PADDLE_ENFORCE_EQ(
+      impl_map.find(comm_group_id), impl_map.end(),
+      paddle::platform::errors::InvalidArgument(
+          "Find a repeated rpc impl for group [%s]", comm_group_id.c_str()));
 
   std::shared_ptr<brpc::Server> hierarchical_hccl_rpc_server =
       std::make_shared<brpc::Server>();
   std::shared_ptr<paddle::operators::rendezvous::RendezvousServiceImpl> impl =
       std::make_shared<paddle::operators::rendezvous::RendezvousServiceImpl>();
 
-  CHECK(hierarchical_hccl_rpc_server->AddService(
-            impl.get(), brpc::SERVER_DOESNT_OWN_SERVICE) == 0)
-      << "Add rpc server failed!";
+  PADDLE_ENFORCE_EQ(
+      hierarchical_hccl_rpc_server->AddService(impl.get(),
+                                               brpc::SERVER_DOESNT_OWN_SERVICE),
+      0, paddle::platform::errors::InvalidArgument("Add rpc server failed!"));
+
   VLOG(1) << "Add rpc server successfully!";
+
   brpc::ServerOptions options;
-  CHECK(hierarchical_hccl_rpc_server->Start(std::stoi(parts[1]), &options) == 0)
-      << "Start rpc server failed!";
+  PADDLE_ENFORCE_EQ(
+      hierarchical_hccl_rpc_server->Start(std::stoi(parts[1]), &options), 0,
+      paddle::platform::errors::InvalidArgument("Start rpc server failed!"));
+
   VLOG(1) << "Started HierarchicalHccl RPC server at [" << endpoint << "] for ["
           << comm_group_id << "] successfully!";
 
@@ -256,8 +282,10 @@ HierarchicalHcclResult destroy_brpc_server(std::string comm_group_id) {
   hierarchical_hccl_rpc_server->Stop(0);
   hierarchical_hccl_rpc_server->Join();
   impl->clear_group(comm_group_id);
-  CHECK(hierarchical_hccl_rpc_server->RemoveService(impl.get()) == 0)
-      << "remove rpc server for [" << comm_group_id << "] failed!";
+  PADDLE_ENFORCE_EQ(
+      hierarchical_hccl_rpc_server->RemoveService(impl.get()), 0,
+      paddle::platform::errors::InvalidArgument(
+          "remove rpc server for %s failed ", comm_group_id.c_str()));
 
   hierarchical_hccl_rpc_server_map.erase(comm_group_id);
   impl_map.erase(comm_group_id);
@@ -273,8 +301,10 @@ HierarchicalHcclResult construct_hierarchical_hccl_group(
     const std::string &comm_group_id, int rank_count, int my_rank,
     int split_index, const std::string &endpoint) {
   //  construct brpc_store for each group, if existed, delete it
-  CHECK(brpc_store_map.find(comm_group_id) == brpc_store_map.end())
-      << "repeated group_id " << comm_group_id;
+  PADDLE_ENFORCE_EQ(brpc_store_map.find(comm_group_id), brpc_store_map.end(),
+                    paddle::platform::errors::InvalidArgument(
+                        "repeated group_id %s ", comm_group_id.c_str()));
+
   std::shared_ptr<paddle::operators::rendezvous::BRPCStore> brpc_store =
       std::make_shared<paddle::operators::rendezvous::BRPCStore>(endpoint);
   brpc_store_map[comm_group_id] = brpc_store;
@@ -288,9 +318,11 @@ HierarchicalHcclResult construct_hierarchical_hccl_group(
                     split_index);
   VLOG(1) << "HierarchicalHccl RPC config has been constructed ...";
 
-  CHECK(hierarchical_hccl_instance_map.find(comm_group_id) ==
-        hierarchical_hccl_instance_map.end())
-      << "repeated group_id " << comm_group_id;
+  PADDLE_ENFORCE_EQ(hierarchical_hccl_instance_map.find(comm_group_id),
+                    hierarchical_hccl_instance_map.end(),
+                    paddle::platform::errors::InvalidArgument(
+                        "repeated group_id %s ", comm_group_id.c_str()));
+
   std::shared_ptr<paddle::operators::HierarchicalHccl> instance;
   instance.reset(paddle::operators::HierarchicalHcclFactory::create(
       init_config, brpc_store));
@@ -298,8 +330,10 @@ HierarchicalHcclResult construct_hierarchical_hccl_group(
   VLOG(1) << "HierarchicalHccl instance has been constructed ...";
 
   // create unique id
-  CHECK(unique_id_map.find(comm_group_id) == unique_id_map.end())
-      << "repeated group_id " << comm_group_id;
+  PADDLE_ENFORCE_EQ(unique_id_map.find(comm_group_id), unique_id_map.end(),
+                    paddle::platform::errors::InvalidArgument(
+                        "repeated group_id %s ", comm_group_id.c_str()));
+
   std::shared_ptr<HierarchicalHcclUniqueId> unique_id =
       std::make_shared<HierarchicalHcclUniqueId>();
   unique_id_map[comm_group_id] = unique_id;
@@ -310,8 +344,8 @@ HierarchicalHcclResult construct_hierarchical_hccl_group(
 #else
   std::string pure_comm_group_id = get_pure_comm_group_id(comm_group_id);
 #endif
-  CHECK(instance->gen_unique_id(unique_id.get(), pure_comm_group_id, my_rank,
-                                brpc_store) == SUCCESS);
+  PADDLE_ENFORCE_NPU_SUCCESS(instance->gen_unique_id(
+      unique_id.get(), pure_comm_group_id, my_rank, brpc_store));
 
   VLOG(1) << "Finish gen unique id in group [" << comm_group_id << "]!";
   return SUCCESS;
@@ -320,9 +354,8 @@ HierarchicalHcclResult construct_hierarchical_hccl_group(
 HierarchicalHcclResult destroy_hierarchical_hccl_group(
     std::string comm_group_id) {
   VLOG(1) << "Try to Destroy comm [" << comm_group_id << "] !";
-  CHECK(get_instance(comm_group_id.c_str())->destroy_comm_global(nullptr) ==
-        SUCCESS)
-      << "Destroy comm [" << comm_group_id << "] failed!";
+  PADDLE_ENFORCE_NPU_SUCCESS(
+      get_instance(comm_group_id.c_str())->destroy_comm_global(nullptr));
 
   std::lock_guard<std::mutex> lock(server_thread_mutex);
 
@@ -352,12 +385,15 @@ HierarchicalHcclResult init_hierarchical_hccl_comm(const int rank_count,
   VLOG(1) << "Begin Init global comm in group [" << std::string(comm_group_id)
           << "]!";
 
-  CHECK(unique_id_map.find(comm_group_id) != unique_id_map.end())
-      << "we can not find unique ID for group [" << comm_group_id << "]!";
+  PADDLE_ENFORCE_NE(
+      unique_id_map.find(comm_group_id), unique_id_map.end(),
+      paddle::platform::errors::InvalidArgument(
+          "can not find unique ID for group %s ", comm_group_id.c_str()));
 
-  CHECK(get_instance(comm_group_id.c_str())
-            ->init_comm_global(unique_id_map[comm_group_id].get(), rank_count,
-                               my_rank, my_device_id) == SUCCESS);
+  PADDLE_ENFORCE_NPU_SUCCESS(
+      get_instance(comm_group_id.c_str())
+          ->init_comm_global(unique_id_map[comm_group_id].get(), rank_count,
+                             my_rank, my_device_id));
 
   VLOG(1) << "Successful: Init global comm in group ["
           << std::string(comm_group_id) << "]!";

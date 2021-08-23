@@ -66,6 +66,17 @@ int main(int argc, char** argv) {
 #if defined(PADDLE_WITH_ASCEND_CL)
   envs.push_back("selected_npus");
   envs.push_back("npu_config_path");
+#if defined(PADDLE_WITH_HIERARCHICAL_HCCL)
+  envs.push_back("rank_id");
+  envs.push_back("device_id");
+  envs.push_back("rank_count");
+  envs.push_back("split_index");
+  envs.push_back("root_id");
+  envs.push_back("data_size");
+  envs.push_back("dest_rank");
+  envs.push_back("src_rank");
+  envs.push_back("endpoint");
+#endif
 #endif
 
   char* env_str = nullptr;
