@@ -31,7 +31,7 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   // AddTask
   EXPECT_EQ(finished.load(), false);
   EXPECT_EQ(counter.load(), 0u);
-  work_queue->AddTask([&counter, &finished] () {
+  work_queue->AddTask([&counter, &finished, kLoopNum] () {
     for (unsigned i = 0; i < kLoopNum; ++i) {
       ++counter;
     }
