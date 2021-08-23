@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.data_feeder import convert_dtype
 from ..fluid.core import LoDTensor
 from ..fluid.framework import in_dygraph_mode
 from ..fluid.data_feeder import check_type, check_dtype, convert_dtype
