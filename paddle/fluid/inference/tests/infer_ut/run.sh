@@ -59,7 +59,7 @@ function download() {
     echo "${model_name}.tgz has been downloaded."
   else
       if [ $WIN_DETECT != "" ]; then
-        wget -q ${url_prefix}/${model_name}.tgz
+        wget -q -Y off ${url_prefix}/${model_name}.tgz
         tar xzf *.tgz
       else
         wget -q --no-proxy ${url_prefix}/${model_name}.tgz
@@ -123,7 +123,7 @@ function compile_test() {
              -DWITH_GTEST=ON \
              -DCMAKE_CXX_FLAGS='/std:c++17' \
              -DCMAKE_BUILD_TYPE=Release
-        msbuild /maxcpucount /property:Configuration=Release ALL_BUILD.vcxproj;
+        msbuild /maxcpucount /property:Configuration=Release ALL_BUILD.vcxproj
     else
         cmake .. -DPADDLE_LIB=${inference_install_dir} \
                  -DWITH_MKL=$TURN_ON_MKL \
