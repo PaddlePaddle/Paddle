@@ -15,6 +15,7 @@
 import numpy as np
 import unittest
 import abc
+import os
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import NumpyArrayInitializer
@@ -22,14 +23,13 @@ import paddle.fluid.core as core
 from paddle import compat as cpt
 import paddle.inference as paddle_infer
 from typing import Optional, List, Callable, Dict, Any, Set
-from program_config import TensorConfig, OpConfig, ProgramConfig, create_fake_model
+from program_config import TensorConfig, OpConfig, ProgramConfig, create_fake_model, create_quant_model
 
 
 class AutoScanTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
         paddle.enable_static()
         super(AutoScanTest, self).__init__(methodName)
-        self.threshold = 1e-5
 
     @abc.abstractmethod
     def sample_program_configs(self) -> List[ProgramConfig]:
@@ -56,10 +56,30 @@ class AutoScanTest(unittest.TestCase):
             input_tensor.copy_from_cpu(feed_data[name])
         predictor.run()
         result = {}
-        for out_name in prog_config.outputs:
-            result[out_name] = predictor.get_output_handle(
-                out_name).copy_to_cpu()
+        for out_name, o_name in zip(prog_config.outputs,
+                                    predictor.get_output_names()):
+            result[out_name] = predictor.get_output_handle(o_name).copy_to_cpu()
         return result
+
+    def assert_op_size(self, trt_engine_num, paddle_op_num):
+        cur_path = os.path.dirname(__file__)
+        last_passed_program = os.path.join(
+            cur_path, 'transpose_flatten_concat_fuse_pass.pdmodel')
+        model_bytes = paddle.static.load_from_file(last_passed_program)
+        pg = paddle.static.deserialize_program(model_bytes)
+        main_block = pg.desc.block(0)
+        op_size = main_block.op_size()
+        op_types = [
+            main_block.op(i).type() == 'tensorrt_engine' for i in range(op_size)
+        ]
+        trt_engine_size = sum(op_types)
+        paddle_op_size = op_size - trt_engine_size
+        self.assertTrue(trt_engine_size == trt_engine_num,
+                        'trt_engine_num is {}, but got {}!'.format(
+                            trt_engine_size, trt_engine_num))
+        self.assertTrue(paddle_op_size == paddle_op_num,
+                        'paddle_op_num is {}, but got {}!'.format(
+                            paddle_op_size, paddle_op_num))
 
     def assert_tensors_near(self,
                             threshold: float,
@@ -73,9 +93,15 @@ class AutoScanTest(unittest.TestCase):
                         first[key], arr, atol=threshold),
                     "Output has diff between GPU and TensorRT. ")
 
-    def run_test(self):
+    def run_test(self,
+                 trt_engine_num: int,
+                 paddle_op_num: int,
+                 threshold=1e-5,
+                 quant=False):
         for prog_config in self.sample_program_configs():
             model, params = create_fake_model(prog_config)
+            if quant:
+                model, params = create_quant_model(model, params)
             for batch_size in self.batch_size_set:
                 feed_data = {}
                 for name, tensor_config in prog_config.inputs.items():
@@ -88,5 +114,5 @@ class AutoScanTest(unittest.TestCase):
                     results.append(
                         self.run_test_config(model, params, prog_config,
                                              pred_config, feed_data))
-                self.assert_tensors_near(
-                    threshold=self.threshold, tensors=results)
+                self.assert_tensors_near(threshold=threshold, tensors=results)
+                self.assert_op_size(trt_engine_num, paddle_op_num)
