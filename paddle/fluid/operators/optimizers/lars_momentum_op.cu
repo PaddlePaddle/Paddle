@@ -14,7 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
+
+#define BLOCK_SIZE 256
 
 namespace paddle {
 namespace operators {
@@ -22,19 +25,98 @@ namespace operators {
 template <typename T>
 using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
+/*
+Two stages are set up to deal with grid-level reduction sum:
+    1. Do block-reduce in each block and acquire the partial sum.
+    2. Merge the partial sum to get the final sum.
+while __syncthreads() can only sync all threads within a block,
+it cannot sync all blocks. Once lanuching stage 2, it is necessary
+to sync all blocks before operatiion. Function below is made for this.
+*/
+__device__ bool SyncAllBlock(int* counter) {
+  int last;
+  if (threadIdx.x == 0 && blockIdx.x == 0) {
+    *counter = 0;
+  }
+  __threadfence();  // Ensure that partial result of each block is visible by
+                    // all blocks
+  if (threadIdx.x == 0) {
+    last = atomicAdd(counter, 1);
+  }
+  return __syncthreads_or(last < gridDim.x);
+}
+
+template <typename T, typename MT, typename CastT>
+__device__ MT L2NormCalculation(const T* __restrict__ data, CastT* out,
+                                int* counter, int tid, const int64_t num,
+                                const CastT rescale_grad = 1) {
+  int stride = BLOCK_SIZE * BLOCK_SIZE;
+  int reduce_times = (gridDim.x + BLOCK_SIZE - 1) / BLOCK_SIZE;
+  int rest_block = gridDim.x;
+  int numel = num;
+  int limiTblock;
+  CastT tmp_val = 0.f;
+
+  __shared__ CastT buffer;
+  buffer = 0.f;
+
+  if (reduce_times == 1) {
+    limiTblock = gridDim.x;
+    if (tid < numel) {
+      tmp_val = static_cast<CastT>(data[tid]);
+    }
+    buffer += math::blockReduceSum<CastT>(tmp_val * tmp_val * rescale_grad,
+                                          FINAL_MASK);
+  } else {
+    limiTblock = BLOCK_SIZE;
+    for (int i = 0; i < reduce_times - 1; ++i) {
+      numel -= stride;
+      rest_block -= BLOCK_SIZE;
+      if (tid < stride) {
+        tmp_val = static_cast<CastT>(data[tid + stride * i]);
+        buffer += math::blockReduceSum<CastT>(tmp_val * tmp_val * rescale_grad,
+                                              FINAL_MASK);
+      }
+      __syncthreads();
+    }
+    CastT val;
+    if (tid < numel) {
+      val = static_cast<CastT>(data[tid + stride * (reduce_times - 1)]);
+    }
+    if (blockIdx.x < rest_block) {
+      buffer +=
+          math::blockReduceSum<CastT>(val * val * rescale_grad, FINAL_MASK);
+    }
+  }
+  __syncthreads();
+
+  if (blockIdx.x < limiTblock && threadIdx.x == 0) {
+    out[blockIdx.x] = buffer;
+  }
+  if (SyncAllBlock(counter)) {
+    CastT tmp_value = threadIdx.x < limiTblock ? out[threadIdx.x] : 0;
+    __syncthreads();
+    buffer = math::blockReduceSum<CastT>(tmp_value, FINAL_MASK);
+    return static_cast<MT>(buffer);
+  }
+}
+
 template <typename T, typename MT>
 __global__ void MomentumLarsKernel(
-    const T* p, const T* g, const MT* v,
+    const T* __restrict__ p, const T* __restrict__ g, const MT* __restrict__ v,
     const MultiPrecisionType<T>* learning_rate, const MT mu, const int64_t num,
     const MT lars_coeff, const MT lars_weight_decay,
-    const MultiPrecisionType<T>* p_norm, const MultiPrecisionType<T>* g_norm,
-    T* p_out, MT* v_out, const MT epsilon, const MT* master_p, MT* master_p_out,
+    MultiPrecisionType<T>* l2_tmp_buffer, int* l2_tmp_counter, T* p_out,
+    MT* v_out, const MT epsilon, const MT* master_p, MT* master_p_out,
     const MultiPrecisionType<T> rescale_grad) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  MT p_n = L2NormCalculation<T, MT, MultiPrecisionType<T>>(
+      p, l2_tmp_buffer, l2_tmp_counter, tid, num);
+  MT g_n = L2NormCalculation<T, MT, MultiPrecisionType<T>>(
+      g, l2_tmp_buffer, l2_tmp_counter, tid, num, rescale_grad);
   const MT lr = static_cast<MT>(learning_rate[0]);
-  MT local_lr = lr;
-  const MT p_n = static_cast<MT>(p_norm[0]);
-  const MT g_n = static_cast<MT>(g_norm[0]);
 
+  MT local_lr = lr;
   if (lars_weight_decay > static_cast<MT>(0) && p_n > static_cast<MT>(0) &&
       g_n > static_cast<MT>(0)) {
     local_lr =
@@ -61,7 +143,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
     if (multi_precision) {
-      InnerCompute<MPDType>(ctx, multi_precision);
+      InnerCompute<MultiPrecisionType<T>>(ctx, multi_precision);
     } else {
       InnerCompute<T>(ctx, multi_precision);
     }
@@ -112,34 +194,20 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     auto* g = grad->data<T>();
     auto* v = velocity->data<MT>();
     auto* lr = learning_rate->data<MPDType>();
+    int grid = (param->numel() + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
-    int block = 512;
-    int grid = (param->numel() + block - 1) / block;
-
-    auto eigen_p = framework::EigenVector<T>::Flatten(*param);
-    auto eigen_g = framework::EigenVector<T>::Flatten(*grad);
-    // calculate norms using eigein and launch the kernel.
-    framework::Tensor p_norm_t, g_norm_t;
-    p_norm_t.Resize({1});
-    g_norm_t.Resize({1});
-    auto* p_norm_data = p_norm_t.mutable_data<MPDType>(ctx.GetPlace());
-    auto* g_norm_data = g_norm_t.mutable_data<MPDType>(ctx.GetPlace());
-    auto ep_norm = framework::EigenScalar<MPDType>::From(p_norm_t);
-    auto eg_norm = framework::EigenScalar<MPDType>::From(g_norm_t);
-
-    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
-
-    // eigen unsupport fp16 l2-norm
-    ep_norm.device(*place) =
-        eigen_p.template cast<MPDType>().square().sum().sqrt();
-    eg_norm.device(*place) =
-        (eigen_g.template cast<MPDType>() * rescale_grad).square().sum().sqrt();
+    int l2_tmp_buffer_size = grid < BLOCK_SIZE ? grid : BLOCK_SIZE;
+    framework::Tensor l2_tmp_buffer_t, l2_tmp_counter_t;
+    auto* l2_tmp_buffer_data = l2_tmp_buffer_t.mutable_data<MP0.fDType>(
+        {l2_tmp_buffer_size}, ctx.GetPlace());
+    int* l2_tmp_counter_data =
+        l2_tmp_counter_t.mutable_data<int>({1}, ctx.GetPlace());
 
     MomentumLarsKernel<
-        T, MT><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
+        T, MT><<<grid, BLOCK_SIZE, 0, ctx.cuda_device_context().stream()>>>(
         p, g, v, lr, mu, param->numel(), lars_coeff, lars_weight_decay,
-        p_norm_data, g_norm_data, p_out, v_out, epsilon, master_p, master_p_out,
-        rescale_grad);
+        l2_tmp_buffer_data, l2_tmp_counter_data, p_out, v_out, epsilon,
+        master_p, master_p_out, rescale_grad);
   }
 };
 
