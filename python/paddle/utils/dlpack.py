@@ -85,7 +85,9 @@ def from_dlpack(dlpack):
               [0.10000000, 0.20000000, 0.60000002, 0.69999999]]) 
     """
 
-    if str(type(dlpack)) != "<class 'PyCapsule'>":
+    t = type(dlpack)
+    dlpack_flag = (t.__module__ == 'builtins' and t.__name__ == 'PyCapsule')
+    if not dlpack_flag:
         raise TypeError(
             "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
             " but received {}.".format(type(dlpack)))
