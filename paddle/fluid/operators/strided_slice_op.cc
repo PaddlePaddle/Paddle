@@ -68,7 +68,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
                             "The axis should be greater than or equal to 0."
                             "But received %d of axes[%d]",
                             axes[i], i));
-      PADDLE_ENFORCE_LE(
+      PADDLE_ENFORCE_LT(
           axes[i], in_dims.size(),
           platform::errors::InvalidArgument(
               "The axes should be less than or equal to input tensor's rank."
