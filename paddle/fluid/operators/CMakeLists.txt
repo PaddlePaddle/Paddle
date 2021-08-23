@@ -81,10 +81,10 @@ op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS execu
 
 if (WITH_GPU OR WITH_ROCM)
     if(WITH_ROCM)
-        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
+        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu)
     # warpctc_op needs cudnn 7 above
     elseif(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
-        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
+        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()

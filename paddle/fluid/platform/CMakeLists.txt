@@ -70,7 +70,7 @@ cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 if(WITH_XPU)
 cc_library(xpu_info SRCS xpu/xpu_info.cc DEPS gflags glog enforce xpulib)
-cc_library(xpu_op_list SRCS xpu/xpu_op_list.cc DEPS gflags glog enforce xpulib)
+cc_library(xpu_op_list SRCS xpu/xpu_op_list.cc DEPS gflags glog enforce xpulib device_context)
 endif()
 
 if(WITH_ASCEND)
@@ -151,11 +151,16 @@ endif()
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)
 
+cc_library(device_event SRCS device_event.cc DEPS place enforce device_context op_registry)
+cc_library(device_event_gpu SRCS device_event_gpu.cc DEPS device_event)
+
+
 if(WITH_GPU)
   nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
   nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
   nv_test(cudnn_desc_test SRCS cudnn_desc_test.cc DEPS dynload_cuda)
   nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
+  nv_test(device_event_test SRCS device_event_test.cc DEPS device_event_gpu)
 endif()
 
 if(WITH_ROCM)

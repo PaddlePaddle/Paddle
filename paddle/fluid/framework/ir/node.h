@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
-
+#include "paddle/utils/any.h"
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -104,8 +104,8 @@ class Node {
   template <typename T>
   T& Wrapper() {
     try {
-      return *boost::any_cast<T*>(wrapper_);
-    } catch (boost::bad_any_cast&) {
+      return *paddle::any_cast<T*>(wrapper_);
+    } catch (paddle::bad_any_cast&) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Invalid wrapper type error, expected %s, actual %s.",
           typeid(T).name(), wrapper_type_.name()));
@@ -277,7 +277,7 @@ class Node {
 
   Node() = delete;
 
-  boost::any wrapper_;
+  paddle::any wrapper_;
   std::function<void(void)> wrapper_deleter_;
   std::type_index wrapper_type_ = std::type_index(typeid(void));
 

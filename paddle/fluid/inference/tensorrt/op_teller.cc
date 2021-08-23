@@ -698,14 +698,22 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
     }
+
     if (op_type == "reshape" || op_type == "reshape2") {
       if (!desc.HasAttr("shape")) {
         return false;
       }
       // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
-      if (desc.Input("Shape").size() >= 1 ||
-          desc.Input("ShapeTensor").size() >= 1) {
-        return false;
+      auto reshape_inputs = desc.Inputs();
+      if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
+        if (desc.Input("Shape").size() >= 1) {
+          return false;
+        }
+      }
+      if (reshape_inputs.find("ShapeTensor") != reshape_inputs.end()) {
+        if (desc.Input("ShapeTensor").size() >= 1) {
+          return false;
+        }
       }
       std::vector<int> shape =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));

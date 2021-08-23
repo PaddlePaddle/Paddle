@@ -40,7 +40,7 @@ def _squared_l2_norm(x):
     This OP returns the squared L2 norm of a tensor.
     """
 
-    if core.is_compiled_with_npu() or core.is_compiled_with_xpu():
+    if core.is_compiled_with_xpu():
         square = layers.square(x)
         sum_square = layers.reduce_sum(square)
         return sum_square
@@ -286,18 +286,18 @@ class ClipGradByNorm(ClipGradBase):
 
     .. math::
         Out =
-        \\left \{
-        \\begin{aligned}
-        & X & & if (norm(X) \\leq clip\_norm) \\\\
-        & \\frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\\\
-        \\end{aligned}
-        \\right.
+        \left\{
+            \begin{array}{ccl}
+                X & & if (norm(X) \leq clip\_norm) \\
+                \frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\
+        \end{array}
+        \right.
 
 
     where :math:`norm(X)` represents the L2 norm of :math:`X`.
 
     .. math::
-        norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
+        norm(X) = ( \sum_{i=1}^{n}|x\_i|^2)^{ \frac{1}{2}}
 
     Note:
         ``need_clip`` of ``ClipGradByNorm`` HAS BEEN DEPRECATED since 2.0. 
@@ -389,7 +389,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     .. math::
 
-        t\_list[i] = t\_list[i] * \\frac{clip\_norm}{\max(global\_norm, clip\_norm)}
+        t\_list[i] = t\_list[i] * \frac{clip\_norm}{\max(global\_norm, clip\_norm)}
 
     where:
 
