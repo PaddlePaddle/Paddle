@@ -144,7 +144,7 @@ inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
   try {
     const auto& runner_mean = paddle::operators::NpuOpRunner(
         "ReduceMeanD", {*in}, {mean}, {{"axes", axes}, {"keep_dims", false}});
-    runner_mean.run(stream);
+    runner_mean.Run(stream);
     TensorToVector(mean, dev_ctx, &vec);
   } catch (...) {
     LOG(WARNING) << "ContainsNan catch exception";
