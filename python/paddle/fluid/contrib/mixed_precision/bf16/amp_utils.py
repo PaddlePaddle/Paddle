@@ -128,8 +128,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     continue
                 if out_var.dtype == core.VarDesc.VarType.FP32:
                     out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
-                if op.has_attr('out_dtype'):
-                    op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
+                    if op.has_attr('out_dtype'):
+                        op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
     return num_cast_ops
 
 
