@@ -46,9 +46,12 @@ class RunQueue {
  public:
   RunQueue() : front_(0), back_(0) {
     // require power-of-two for fast masking
-    static_assert((kSize & (kSize - 1)) == 0);
-    static_assert(kSize > 2);            // why would you do this?
-    static_assert(kSize <= (64 << 10));  // leave enough space for counter
+    static_assert((kSize & (kSize - 1)) == 0, 
+        "need to be a power of two for fast masking");
+    static_assert(kSize > 2, 
+        "need to be in [4, 65536] range to leave enough space for counter");
+    static_assert(kSize <= (64 << 10), 
+        "need to be in [4, 65536] range to leave enough space for counter");
     for (unsigned i = 0; i < kSize; i++)
       array_[i].state.store(kEmpty, std::memory_order_relaxed);
   }
