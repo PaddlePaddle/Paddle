@@ -93,7 +93,7 @@ __device__ __forceinline__ void ElementwiseTernary(OutT* out, const T* in1,
                                                    const T* in2, const T* in3,
                                                    OpFunc compute) {
   T args[3];
-#pragma unroll 4
+#pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
     args[0] = in1[idx];
     args[1] = in2[idx];

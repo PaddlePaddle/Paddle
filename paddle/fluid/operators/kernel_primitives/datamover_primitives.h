@@ -122,13 +122,28 @@ template <typename Tx, typename Ty, int NX, int NY, int BlockSize>
 __device__ __forceinline__ void ReadDataStride(Ty* dst,
                                                const Tx* __restrict__ src,
                                                int stride_nx, int stride_ny) {
-  int dx = threadIdx.x * NX;
+  if (NY == 1 && NX == 1) {
+    dst[0] = static_cast<Ty>(src[threadIdx.x]);
+  } else if (NX == 1) {
+    int dx = threadIdx.x;
 #pragma unroll
-  for (int idy = 0; idy < NY; ++idy) {
+    for (int idy = 0; idy < NY; ++idy) {
+      dst[idy] = static_cast<Ty>(src[dx + idy * stride_ny]);
+    }
+  } else if (NY == 1) {
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
-      dst[idy * NX + idx] =
-          static_cast<Ty>(src[idx * stride_nx + dx + idy * stride_ny]);
+      dst[idx] = static_cast<Ty>(src[idx * stride_nx]);
+    }
+  } else {
+    int dx = threadIdx.x * NX;
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+#pragma unroll
+      for (int idy = 0; idy < NY; ++idy) {
+        dst[idy * NX + idx] =
+            static_cast<Ty>(src[idx * stride_nx + dx + idy * stride_ny]);
+      }
     }
   }
 }
@@ -305,6 +320,16 @@ __device__ __forceinline__ void WriteDataBase(T* dst, const T* __restrict__ src,
 }
 
 template <typename T, int NX, int NY, int BlockSize>
+__device__ __forceinline__ void WriteDataBase(T* dst,
+                                              const T* __restrict__ src) {
+  int dx = threadIdx.x * NX;
+#pragma unroll
+  for (int idx = 0; idx < NX; ++idx) {
+    dst[idx + dx] = src[idx];
+  }
+}
+
+template <typename T, int NX, int NY, int BlockSize>
 __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
                                           int size) {
   const int VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
@@ -322,8 +347,8 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
       vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
     }
     VecType* vec_dst = reinterpret_cast<VecType*>(dst);
-    WriteDataBase<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
-        vec_dst, vec_temp, VECTORS_PER_THREAD * blockDim.x);
+    WriteDataBase<VecType, VECTORS_PER_THREAD, NY, BlockSize>(vec_dst,
+                                                              vec_temp);
   }
 }
 
