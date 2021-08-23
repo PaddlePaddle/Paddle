@@ -153,6 +153,74 @@ class TestWhereDygraphAPI(unittest.TestCase):
             out = paddle.where(cond, x, y)
             assert np.array_equal(out.numpy(), np.where(cond_i, x_i, y_i))
 
+    def __test_where_with_broadcast(self, cond_shape, a_shape, b_shape):
+        with fluid.dygraph.guard():
+            cond_tmp = paddle.rand(cond_shape)
+            print('cond_tmp: ', cond_tmp)
+
+            cond = cond_tmp < 0.3
+            print('cond: ', cond)
+
+            a = paddle.rand(a_shape)
+            print('a: ', a)
+
+            b = paddle.rand(b_shape)
+            print('b: ', b)
+
+            result = paddle.where(cond, a, b)
+            result = result.numpy()
+            print('result: ', result)
+
+            expect = np.where(cond, a, b)
+            print('expect: ', expect)
+
+            self.assertTrue(np.allclose(expect, result))
+
+    def test_api_broadcast_1(self):
+        cond_shape = [2, 4]
+        a_shape = [2, 2, 4]
+        b_shape = [2, 2, 4]
+        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+
+    def test_api_broadcast_2(self):
+        cond_shape = [2, 1]
+        a_shape = [2, 2, 4]
+        b_shape = [2, 2, 4]
+        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+
+    def test_api_broadcast_3(self):
+        cond_shape = [2, 2, 1]
+        a_shape = [2, 2, 4]
+        b_shape = [2, 2, 4]
+        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+
+    def test_api_broadcast_4(self):
+        cond_shape = [2, 1, 4]
+        a_shape = [2, 2, 4]
+        b_shape = [2, 2, 4]
+        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+
+    # @TODO Now, maybe not compatibility with old version
+    def test_api_broadcast_5(self):
+        cond_shape = [3, 2, 2, 4]
+        a_shape = [2, 2, 4]
+        b_shape = [2, 2, 4]
+        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+
+    # @TODO Now, maybe not compatibility with old version
+    def test_api_broadcast_6(self):
+        cond_shape = [2, 2, 4]
+        a_shape = [2, 2, 1]
+        b_shape = [2, 2, 1]
+        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+
+    # @TODO Now, maybe not compatibility with old version
+    def test_api_broadcast_6(self):
+        cond_shape = [3, 2, 2, 4]
+        a_shape = [2, 2, 1]
+        b_shape = [2, 2, 1]
+        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+
 
 class TestWhereOpError(unittest.TestCase):
     def test_errors(self):
