@@ -1468,9 +1468,6 @@ class Fleet(object):
         applied_meta_list = self.strategy_compiler._get_applied_meta_list()
         applied_graph_list = self.strategy_compiler._get_applied_graph_list()
 
-        print('meta: {}, graph: {}'.format(applied_meta_list,
-                                           applied_graph_list))
-
         context['applied_meta_list'] = applied_meta_list
         context['applied_graph_list'] = applied_graph_list
 

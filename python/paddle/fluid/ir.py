@@ -44,7 +44,8 @@ def _update_grad_persistable(main_program):
             p_g = op.attr(op_role_var_attr_name)
             for g in p_g[1::2]:
                 g_var = block._find_var_recursive(g)
-                assert g_var is not None
+                if g_var is None:
+                    continue
                 grad_vars.append(g_var)
                 if g_var.persistable:
                     has_persistable_grad_var = True

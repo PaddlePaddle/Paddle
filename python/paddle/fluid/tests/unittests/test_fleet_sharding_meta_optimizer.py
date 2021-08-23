@@ -861,4 +861,5 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
 
 if __name__ == "__main__":
+    core.globals()['FLAGS_apply_pass_to_program'] = 0
     unittest.main()
