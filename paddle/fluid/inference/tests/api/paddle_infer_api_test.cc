@@ -104,15 +104,12 @@ TEST(Tensor, copy_to_cpu_async_stream) {
 
   cudaStream_t stream;
   output_t->CopyToCpuAsync(out_data, static_cast<void *>(&stream));
-  for (int i = 0; i < 10; i++) {
-    EXPECT_NEAR(out_data[i], 0, 1e-3);
-  }
 
   // sync
   cudaStreamSynchronize(stream);
 
   for (int i = 0; i < 10; i++) {
-    EXPECT_NEAR(out_data[i] / correct_out_data[i], 1.0, 1e-5);
+    EXPECT_NEAR(out_data[i] / correct_out_data[i], 1.0, 1e-3);
   }
   contrib::utils::CudaFreePinnedMemory(static_cast<void *>(out_data));
 }
