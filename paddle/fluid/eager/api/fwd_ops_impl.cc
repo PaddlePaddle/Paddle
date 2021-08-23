@@ -22,25 +22,45 @@
  * them with auto code generator later.
  * **/
 
-#pragma once
+#include "glog/logging.h"
 
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/fluid/eager/grad_node_info.h"
+
+#include "paddle/fluid/eager/nodes/scale_node.h"
+
 #include "paddle/top/api/all.h"
+#include "paddle/fluid/eager/function_helper.h"
 
 namespace egr {
-namespace autograd {
-std::vector<pt::Tensor> scale(const pt::Tensor& x, float scale, float bias,
+
+std::vector<pt::Tensor> scale(pt::Tensor& x, float scale, float bias,
                               bool bias_after_scale, bool trace_backward) {
-  Tensor out;
-  auto* p_p_autograd_in = &EagerUtils::autograd_meta(x);
-  auto* p_p_autograd_out = &EagerUtils::autograd_meta(out);
-  if (!EagerUtils::ComputeRequireGrad(p_p_autograd_in, 1, p_p_autograd_out, 1,
+    // Run Forward
+    std::vector<pt::Tensor> outs(1);
+    ScaleAPI(x, scale, bias, bias_after_scale, outs);
+    
+    AutogradMeta* p_autograd_in = EagerUtils::autograd_meta(x);
+    AutogradMeta* p_autograd_out = EagerUtils::autograd_meta(outs[0]);
+    // Add GradNode
+    if (EagerUtils::ComputeRequireGrad(&p_autograd_in, 1, &p_autograd_out, 1,
                                       trace_backward)) {
-    pt::Scale<float>(dev_ctx, x, scale, bias, bias_after_scale, out);
-    return {out};
-  }
+        // Set OutRank
+        p_autograd_out->SetOutRank(0);
+
+        // Init GradNode
+        auto scale_node = std::make_shared<GradNodeScale>();
+
+        // Set Next Edges
+        scale_node->AddEdges({ p_autograd_in });
+        
+        // Set TensorWrappers
+        scale_node->SetTensorWrappers({ x });
+
+        // Set History
+        EagerUtils::SetHistoryForTensor(outs[0], scale_node);
+    }
+
+    return outs;
 }
 
-}  // namespace autograd
 }  // namespace egr

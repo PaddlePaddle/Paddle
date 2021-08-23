@@ -3,5 +3,6 @@ add_subdirectory(tests)
 add_subdirectory(api)
 
 cc_library(autograd_meta SRCS autograd_meta.cc DEPS top)
-cc_library(grad_node_info SRCS grad_node_info.cc ${DYGRAPH_BACKWARD_NODES} DEPS top)
 cc_library(backward SRCS backward.cc DEPS autograd_meta grad_node_info)
+cc_library(function_helper SRCS function_helper.cc DEPS top)
+cc_library(grad_node_info SRCS grad_node_info.cc ${DYGRAPH_BACKWARD_NODES} DEPS function_helper top)

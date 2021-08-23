@@ -19,12 +19,13 @@
 **/
 
 namespace egr {
-
+  
 AutogradMeta* EagerUtils::autograd_meta(pt::Tensor& target) {
   auto* p_autograd_meta = target.get_autograd_meta();
   if (!p_autograd_meta) {
-    target.set_autograd_meta(std::static_pointer_cast<pt::AbstractAutogradMeta>(
-        std::make_shared<AutogradMeta>()));
+    auto p_autograd_meta_ptr = std::make_shared<AutogradMeta>();
+    p_autograd_meta = p_autograd_meta_ptr.get();
+    target.set_autograd_meta(p_autograd_meta_ptr);
   }
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
@@ -59,7 +60,7 @@ bool EagerUtils::IsLeafTensor(pt::Tensor& target) {
     return false;
 }
 
-void PassStopGradient(AutogradMeta** outs, size_t outs_num,
+void EagerUtils::PassStopGradient(AutogradMeta** outs, size_t outs_num,
                       bool generate_grad) {
   for (size_t i = 0; i < outs_num; ++i) {
     if (!outs[i]) {
@@ -71,7 +72,7 @@ void PassStopGradient(AutogradMeta** outs, size_t outs_num,
   }
 }
 
-bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num, AutogradMeta** outs,
+bool EagerUtils::ComputeRequireGrad(AutogradMeta** ins, size_t ins_num, AutogradMeta** outs,
                         size_t outs_num, bool trace_backward) {
   if (!trace_backward) return false;
 
@@ -84,6 +85,11 @@ bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num, AutogradMeta** outs,
     }
   }
   return false;
+}
+
+void EagerUtils::SetHistoryForTensor(pt::Tensor& target, const std::shared_ptr<GradNodeBase>& grad_node) {
+  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(target);
+  autograd_meta->SetGradNode(grad_node);
 }
 
 }  // namespace egr

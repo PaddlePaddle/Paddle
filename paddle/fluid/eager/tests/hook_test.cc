@@ -70,7 +70,7 @@ TEST(RetainGrad, NonLeafTensor) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node1_ptr);
-      node0_ptr->AddEdge({ &meta });
+      node0_ptr->AddEdges({ &meta });
   }
   
   // Retain Grad for tensor1 
@@ -143,7 +143,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node1_ptr);
-      node0_ptr->AddEdge({ &meta });
+      node0_ptr->AddEdges({ &meta });
   }
   
   // Retain Grad for tensor1 
@@ -232,7 +232,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node1_ptr);
-      node0_ptr->AddEdge({ &meta });
+      node0_ptr->AddEdges({ &meta });
   }
   
   // Retain Grad for tensor1 
@@ -370,7 +370,7 @@ TEST(GradientHook, LinearNodes) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node1_ptr);
-      node0_ptr->AddEdge({ &meta });
+      node0_ptr->AddEdges({ &meta });
   }
   
   // Register Hooks
@@ -521,7 +521,7 @@ TEST(GradientHook, WithAccumulation) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node2_ptr);
-      node0_ptr->AddEdge({ &meta });
+      node0_ptr->AddEdges({ &meta });
   }
   
   // Connect Node1 -> Node2 via Edge
@@ -529,7 +529,7 @@ TEST(GradientHook, WithAccumulation) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node2_ptr);
-      node1_ptr->AddEdge({ &meta });
+      node1_ptr->AddEdges({ &meta });
   }
 
   // Register Hooks

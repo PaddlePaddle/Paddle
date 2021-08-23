@@ -34,6 +34,8 @@ class GradNodeScale : public GradNodeBase {
   virtual std::vector<pt::Tensor> operator()(
       const std::vector<pt::Tensor>& grads) override;
   
+  virtual void SetTensorWrappers(const std::vector<pt::Tensor>& tensors) override;
+  
   void SetAttributes(float scale);
 
   // Members: define fwd input tensors

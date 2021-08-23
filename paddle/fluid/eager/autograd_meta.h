@@ -78,7 +78,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   pt::Tensor& MutableGrad() { return grad_; }
   
-  void SetGradNode(std::shared_ptr<GradNodeBase> grad_node) {
+  void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(grad_node.get(),
                             "Should Not set NULL as GradNode pointer!");
     grad_node_ = grad_node;
@@ -161,7 +161,9 @@ class EagerUtils {
   // If and only if the tensor holds an AccumulationNode
   // Then it's treated as a leaf tensor
   static bool IsLeafTensor(pt::Tensor& target);
-    
+
+  static void SetHistoryForTensor(pt::Tensor& target, const std::shared_ptr<GradNodeBase>& grad_node);
+
 };
 
 }  // namespace egr

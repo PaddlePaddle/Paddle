@@ -15,14 +15,9 @@
 #pragma once
 
 #include "paddle/top/api/include/tensor.h"
-#include "paddle/fluid/eager/grad_node_info.h"
 
 namespace egr {
 
-void RegisterGradientHookForTensor(pt::Tensor& tensor, std::function<pt::Tensor(const pt::Tensor&)>& hook);
-void RegisterReduceHookForTensor(pt::Tensor& tensor, std::function<void(void)>& hook);
-void RetainGradForTensor(pt::Tensor& tensor);
-
-std::vector<pt::Tensor> scale(pt::Tensor& x, float scale, float bias, bool bias_after_scale, bool trace_backward);
+void ScaleAPI(const pt::Tensor& x, float scale, float bias, bool bias_after_scale, std::vector<pt::Tensor>& outs);
 
 } // namespace egr

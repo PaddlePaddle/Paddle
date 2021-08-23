@@ -28,7 +28,7 @@
 **/
 namespace egr {
 
-void GradNodeBase::AddEdge(const std::vector<AutogradMeta*>& metas) {
+void GradNodeBase::AddEdges(const std::vector<AutogradMeta*>& metas) {
   VLOG(0) << "Add Edge for tensors";
   for (const auto& meta : metas) {
     adj_edges_.emplace_back(meta->GetMutableGradNode(), meta->OutRank());

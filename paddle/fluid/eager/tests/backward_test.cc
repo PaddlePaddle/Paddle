@@ -146,7 +146,7 @@ TEST(Backward, LinearNodes) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node1_ptr);
-      node0_ptr->AddEdge({ &meta });
+      node0_ptr->AddEdges({ &meta });
   }
 
   // Use Empty Grad Tensor
@@ -258,7 +258,7 @@ TEST(Backward, BranchedNodes) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node1_ptr);
-      node0_ptr->AddEdge({ &meta });
+      node0_ptr->AddEdges({ &meta });
   }
   
   // Connect Node2 -> Node3 via Edge
@@ -266,7 +266,7 @@ TEST(Backward, BranchedNodes) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node3_ptr);
-      node2_ptr->AddEdge({ &meta });
+      node2_ptr->AddEdges({ &meta });
   }
 
   // Use Empty Grad Tensor
@@ -374,7 +374,7 @@ TEST(Backward, WithAccumulation) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node2_ptr);
-      node0_ptr->AddEdge({ &meta });
+      node0_ptr->AddEdges({ &meta });
   }
   
   // Connect Node1 -> Node2 via Edge
@@ -382,7 +382,7 @@ TEST(Backward, WithAccumulation) {
       auto meta = egr::AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(node2_ptr);
-      node1_ptr->AddEdge({ &meta });
+      node1_ptr->AddEdges({ &meta });
   }
 
   // Use Empty Grad Tensor
