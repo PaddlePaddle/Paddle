@@ -37,6 +37,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       }
 
       global_scope_.var_list.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = nullptr;
+      global_scope_.vec_meta_info_.push_back(info);
     }
   }
 
@@ -73,6 +78,11 @@ void StandaloneExecutor::BuildVariableOuterScope(
       auto v = outer_scope->Var(var->Name());
       InitializeVariable(v, var->GetType());
       var_scope->var_list.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = var;
+      var_scope->vec_meta_info_.push_back(info);
     }
   }
 }

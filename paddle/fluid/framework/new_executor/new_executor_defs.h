@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device_event.h"
 
 namespace paddle {
 namespace framework {
@@ -34,11 +35,13 @@ struct OpKernelFunc {
 
 struct VariableMetaInfo {
   int var_ref_count_;
+  paddle::framework::VarDesc* vardesc_;
 };
 
 struct VariableScope {
   std::vector<Variable*> var_list;
   std::map<std::string, int> name2id;
+  std::vector<VariableMetaInfo> vec_meta_info_;
 };
 
 struct NextInstruction {
@@ -57,7 +60,8 @@ struct EventRun {
   std::vector<size_t> synchronized_run;
 };
 
-struct Instruction {
+class Instruction {
+ public:
   OpKernelFunc kernel_func_;
   std::map<std::string, std::vector<int>> input_index_;
   std::map<std::string, std::vector<int>> output_index_;

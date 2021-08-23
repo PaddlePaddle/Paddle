@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_gc_helper.h"
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace framework {
@@ -23,6 +29,11 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const std::vector<std::string>& fetch_names)
     : place_(place), main_program_(main_prog), global_scope_(global_scope) {
   is_build_ = false;
+
+  garbages_.reset(new GarbageQueue());
+  max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
+  cur_memory_size_ = 0;
+
   feed_names_ = feed_names;
   fetch_names_ = fetch_names;
   // add feedop and fetchop to main_program
@@ -99,11 +110,24 @@ void InterpreterCore::Convert() {
     temp_inst.input_index_ = vec_func_list_[i].input_index;
     temp_inst.output_index_ = vec_func_list_[i].output_index;
 
+    OpInOutInfo info;
+
     std::vector<size_t> gc_check_input_list;
     for (auto& item : vec_func_list_[i].input_index) {
       for (auto id : item.second) {
         input_var2op_info_[id].push_back(i);
-        gc_check_input_list.push_back(id);
+        // var can be gc-ed
+        if (!info.IsBuilt()) {
+          info.Build(op_list_[i]);
+        }
+        if (global_scope_->vec_meta_info_[id].vardesc_) {
+          if (info.IsInArgBufferNeeded(
+                  global_scope_->vec_meta_info_[id].vardesc_->Name())) {
+            gc_check_input_list.push_back(id);
+          }
+        } else {
+          gc_check_input_list.push_back(id);
+        }
       }
     }
     std::sort(gc_check_input_list.begin(), gc_check_input_list.end());
@@ -120,6 +144,13 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+#if defined(PADDLE_WITH_CUDA)
+    int device_type = static_cast<int>(paddle::platform::DeviceType::CUDA);
+    paddle::platform::DeviceOption dev_opt(
+        device_type, BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+    gc_event_.emplace_back(dev_opt);
+#endif
+
     std::vector<size_t> vec_temp;
     for (auto& item : vec_instruction_[i].output_index_) {
       for (auto id : item.second) {
@@ -236,6 +267,66 @@ void InterpreterCore::ExecuteInstructionList(
     auto& gc_check_list = instr_node.gc_check_var_list;
     for (auto var_id : gc_check_list) {
       --working_var_ref[var_id].var_ref_count_;
+      if (!var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
+          working_var_ref[var_id].var_ref_count_ == 0) {
+        Variable* var = var_scope.var_list[var_id];
+        if (var->IsType<LoDTensor>()) {
+          garbages_->emplace_back(
+              var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+          if (garbages_->back()) {
+            cur_memory_size_ += garbages_->back()->size();
+          }
+        } else if (var->IsType<SelectedRows>()) {
+          garbages_->emplace_back(var->GetMutable<SelectedRows>()
+                                      ->mutable_value()
+                                      ->MoveMemoryHolder());
+          if (garbages_->back()) {
+            cur_memory_size_ += garbages_->back()->size();
+          }
+        } else if (var->IsType<LoDTensorArray>()) {
+          auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+          for (auto& t : *tensor_arr) {
+            garbages_->emplace_back(t.MoveMemoryHolder());
+            if (garbages_->back()) {
+              cur_memory_size_ += garbages_->back()->size();
+            }
+          }
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "The variable(%s) is not supported in eager deletion.",
+              framework::ToTypeName(var->Type())));
+        }
+      }
+    }
+
+    if (!garbages_->empty()) {
+      if (max_memory_size_ <= 1) {
+#if defined(PADDLE_WITH_CUDA)
+        auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+            platform::DeviceContextPool::Instance().Get(place));
+        gc_event_[instr_id].Record(place, dev_ctx);
+        gc_event_[instr_id].Finish();
+        delete garbages_.release();
+        garbages_.reset(new GarbageQueue());
+#else
+        delete garbages_.release();
+        garbages_.reset(new GarbageQueue());
+#endif
+      } else if (cur_memory_size_ >= max_memory_size_) {
+#if defined(PADDLE_WITH_CUDA)
+        auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+            platform::DeviceContextPool::Instance().Get(place));
+        gc_event_[instr_id].Record(place, dev_ctx);
+        gc_event_[instr_id].Finish();
+        delete garbages_.release();
+        garbages_.reset(new GarbageQueue());
+        cur_memory_size_ = 0;
+#else
+        delete garbages_.release();
+        garbages_.reset(new GarbageQueue());
+        cur_memory_size_ = 0;
+#endif
+      }
     }
   }
 
@@ -274,6 +365,11 @@ void InterpreterCore::BuildVariableScope(const framework::ProgramDesc& pdesc,
       auto v = new Variable();
       InitializeVariable(v, var->GetType());
       var_scope->var_list.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = var;
+      var_scope->vec_meta_info_.push_back(info);
     }
   }
 }
@@ -285,9 +381,9 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
                                       VariableScope* var_scope) {
   auto& global_block = pdesc.Block(0);
 
+  std::vector<OperatorBase*> ops;
   for (auto& op : global_block.AllOps()) {
     VLOG(3) << op->Type();
-    // << op->Type() << endl;
 
     auto& info = OpInfoMap::Instance().Get(op->Type());
 
@@ -300,6 +396,20 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
     }
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
+    ops.push_back(op_base);
+  }
+
+  auto unused_var_map = get_unused_vars(global_block, ops);
+
+  size_t ops_index = 0;
+  for (auto& op : global_block.AllOps()) {
+    VLOG(3) << op->Type();
+    // << op->Type() << endl;
+
+    auto op_base = ops[ops_index++];
+
+    auto inputs_names = op->Inputs();
+    auto outputs_names = op->Outputs();
 
     OpFuncNode op_func_node;
 
@@ -388,6 +498,11 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
           var_scope->name2id[new_var_name] = var_scope->var_list.size();
           var_scope->var_list.push_back(v);
 
+          VariableMetaInfo info;
+          info.var_ref_count_ = 0;
+          info.vardesc_ = nullptr;
+          var_scope->vec_meta_info_.push_back(info);
+
           VariableNameMap copy_in_map;
           auto x_iter = inputs_names.find(var_name_item.first);
           copy_in_map["X"] = {x_iter->second[i]};
@@ -464,6 +579,46 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
     op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
     op_func_node.kernel_func_(exec_ctx);
     vec_func_list->push_back(op_func_node);
+
+    // gc---------------------------------------------------------------------------
+    auto iter = unused_var_map.find(op_base);
+    if (iter == unused_var_map.end()) {
+      continue;
+    }
+
+    auto& delete_vars = iter->second;
+    std::deque<std::shared_ptr<memory::Allocation>>* garbages =
+        new std::deque<std::shared_ptr<memory::Allocation>>();
+
+    for (auto& var_name : delete_vars) {
+      auto it = var_scope->name2id.find(var_name);
+      assert(it != var_scope->name2id.end());
+      auto* var = var_scope->var_list[it->second];
+      if (var == nullptr) {
+        continue;
+      }
+
+      VLOG(2) << "Erase variable " << var_name;
+      if (var->IsType<LoDTensor>()) {
+        garbages->emplace_back(
+            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+      } else if (var->IsType<SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<SelectedRows>()
+                                   ->mutable_value()
+                                   ->MoveMemoryHolder());
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+        for (auto& t : *lod_tensor_arr) {
+          garbages->emplace_back(t.MoveMemoryHolder());
+        }
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Type %s of variable %s is not supported eager deletion.",
+            framework::ToTypeName(var->Type()), var_name));
+      }
+    }
+
+    delete garbages;  // free mem
   }
 }
 

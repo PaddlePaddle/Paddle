@@ -30,6 +30,7 @@ namespace framework {
 
 class InterpreterCore {
  public:
+  using GarbageQueue = std::deque<std::shared_ptr<memory::Allocation>>;
   InterpreterCore(const platform::Place& place, const ProgramDesc& main_prog,
                   VariableScope* global_scope,
                   const std::vector<std::string>& feed_names,
@@ -79,6 +80,11 @@ class InterpreterCore {
 
   std::vector<std::string> feed_names_;
   std::vector<std::string> fetch_names_;
+
+  std::vector<paddle::platform::DeviceEvent> gc_event_;
+  std::unique_ptr<GarbageQueue> garbages_;
+  size_t max_memory_size_;
+  size_t cur_memory_size_;
 };
 }  // namespace framework
 }  // namespace paddle
