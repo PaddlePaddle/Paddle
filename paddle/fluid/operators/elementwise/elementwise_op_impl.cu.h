@@ -72,18 +72,16 @@ template <int VecSize, typename InT, typename OutT, typename Functor>
 __global__ void ElementVectorizedUnary(const InT *__restrict__ in0, OutT *out,
                                        int size, Functor func) {
   int tid = blockIdx.x * blockDim.x;
-  int fix = VecSize * tid;
-  int max_size = blockDim.x * VecSize;
-  int remain = size - fix;
-  int num = remain > max_size ? max_size : remain;
-  num = num > 0 ? num : 0;
+  int data_offset = VecSize * tid;  // data offset of this block
+  int num = size - data_offset;     // remainder data
   InT args[VecSize];
   OutT result[VecSize];
 
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args, in0 + fix, num);
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args, in0 + data_offset, num);
   kernel_primitives::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(
       result, args, func);
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result,
+                                                    num);
 }
 
 template <int VecSize, typename InT, typename OutT, typename Functor>
@@ -91,18 +89,20 @@ __global__ void ElementVectorizedBinary(const InT *__restrict__ in0,
                                         const InT *__restrict__ in1, OutT *out,
                                         int size, Functor func) {
   int tid = blockIdx.x * blockDim.x;
-  int fix = VecSize * tid;
-  int max_size = blockDim.x * VecSize;
-  int num = size - fix;
+  int data_offset = VecSize * tid;  // data offset of this block
+  int num = size - data_offset;
   InT args[2][VecSize];
   OutT result[VecSize];
 
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[0], in0 + fix, num);
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[1], in1 + fix, num);
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[0], in0 + data_offset,
+                                                  num);
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[1], in1 + data_offset,
+                                                  num);
 
   kernel_primitives::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(
       result, args[0], args[1], func);
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result,
+                                                    num);
 }
 
 template <int VecSize, typename InT, typename OutT, typename Functor>
@@ -111,21 +111,23 @@ __global__ void ElementVectorizedTernary(const InT *__restrict__ in0,
                                          const InT *__restrict__ in2, OutT *out,
                                          int size, Functor func) {
   int tid = blockIdx.x * blockDim.x;
-  int fix = VecSize * tid;
-  int max_size = blockDim.x * VecSize;
-  int remain = size - fix;
-  int num = remain > max_size ? max_size : remain;
+  int data_offset = VecSize * tid;  // data offset of this block
+  int num = size - data_offset;
   num = num > 0 ? num : 0;
   InT args[3][VecSize];
   OutT result[VecSize];
 
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[0], in0 + fix, num);
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[1], in1 + fix, num);
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[2], in1 + fix, num);
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[0], in0 + data_offset,
+                                                  num);
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[1], in1 + data_offset,
+                                                  num);
+  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[2], in2 + data_offset,
+                                                  num);
 
   kernel_primitives::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
       result, args[0], args[1], args[2], func);
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result,
+                                                    num);
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>

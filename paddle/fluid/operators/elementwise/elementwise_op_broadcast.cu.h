@@ -175,7 +175,7 @@ __global__ void BroadcastKernelTernary(
     framework::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
         configlists,
     int main_tid, int tail_tid, Functor func) {
-  int fix = blockIdx.x * blockDim.x * VecSize;
+  int fix = blockIdx.x * blockDim.x * VecSize;  // data offset of this block
   int num = tail_tid;
   InT arg0[VecSize * DATA_PER_THREAD];
   InT arg1[VecSize * DATA_PER_THREAD];
@@ -203,9 +203,9 @@ __global__ void BroadcastKernelTernary(
 
   if (use_broadcast[2]) {
     kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
-        arg1, in1, fix, configlists[1], numel, 1, 1);
+        arg1, in2, fix, configlists[1], numel, 1, 1);
   } else {
-    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg1, in1 + fix, num);
+    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg1, in2 + fix, num);
   }
 
   // compute
@@ -224,7 +224,7 @@ __global__ void BroadcastKernelBinary(
     framework::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
         configlists,
     int main_tid, int tail_tid, Functor func) {
-  int fix = blockIdx.x * blockDim.x * VecSize;
+  int fix = blockIdx.x * blockDim.x * VecSize;  // data offset of this block
   int num = tail_tid;
   InT arg0[VecSize * DATA_PER_THREAD];
   InT arg1[VecSize * DATA_PER_THREAD];
