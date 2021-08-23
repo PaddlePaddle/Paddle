@@ -79,9 +79,6 @@ class TestStridedSliceOp(OpTest):
         place = paddle.NPUPlace(0)
         self.check_output_with_place(place)
 
-    #def test_check_grad(self):
-    #    self.check_grad(set(['Input']), 'Out')
-
     def initTestCase(self):
         self.input = np.random.rand(10)
         self.axes = [0]
@@ -324,9 +321,6 @@ class TestStridedSliceOp_starts_ListTensor(OpTest):
         place = paddle.NPUPlace(0)
         self.check_output_with_place(place)
 
-    #def test_check_grad_normal(self):
-    #    self.check_grad(['Input'], 'Out', max_relative_error=0.006)
-
 
 @skip_check_grad_ci(
     reason='''forward only, it doesn't need to call check_grad.''')
@@ -366,9 +360,6 @@ class TestStridedSliceOp_ends_ListTensor(OpTest):
         place = paddle.NPUPlace(0)
         self.check_output_with_place(place)
 
-    #def test_check_grad_normal(self):
-    #    self.check_grad(['Input'], 'Out', max_relative_error=0.006)
-
 
 @skip_check_grad_ci(
     reason='''forward only, it doesn't need to call check_grad.''')
@@ -404,9 +395,6 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
         place = paddle.NPUPlace(0)
         self.check_output_with_place(place)
 
-    #def test_check_grad_normal(self):
-    #    self.check_grad(['Input'], 'Out', max_relative_error=0.006)
-
 
 @skip_check_grad_ci(
     reason='''forward only, it doesn't need to call check_grad.''')
@@ -441,9 +429,6 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
     def test_check_output(self):
         place = paddle.NPUPlace(0)
         self.check_output_with_place(place)
-
-    #def test_check_grad_normal(self):
-    #    self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
 @skip_check_grad_ci(
@@ -486,9 +471,6 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
         place = paddle.NPUPlace(0)
         self.check_output_with_place(place)
 
-    #def test_check_grad_normal(self):
-    #    self.check_grad(['Input'], 'Out', max_relative_error=0.006)
-
 
 @skip_check_grad_ci(
     reason='''forward only, it doesn't need to call check_grad.''')
@@ -523,9 +505,6 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
     def test_check_output(self):
         place = paddle.NPUPlace(0)
         self.check_output_with_place(place)
-
-    #def test_check_grad_normal(self):
-    #    self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
     # Test python API
@@ -598,17 +577,6 @@ class TestStridedSliceAPI(unittest.TestCase):
         sliced_1 = paddle.strided_slice(
             x, axes=axes, starts=starts, ends=ends, strides=strides_1)
         assert sliced_1.shape == (3, 2, 2, 2)
-
-    @unittest.skipIf(not paddle.is_compiled_with_cuda(),
-                     "Cannot use CUDAPinnedPlace in CPU only version")
-    def test_cuda_pinned_place(self):
-        with paddle.fluid.dygraph.guard():
-            x = paddle.to_tensor(
-                np.random.randn(2, 10), place=paddle.CUDAPinnedPlace())
-            self.assertTrue(x.place.is_cuda_pinned_place())
-            y = x[:, ::2]
-            self.assertFalse(x.place.is_cuda_pinned_place())
-            self.assertFalse(y.place.is_cuda_pinned_place())
 
 
 if __name__ == "__main__":

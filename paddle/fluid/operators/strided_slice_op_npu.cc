@@ -23,6 +23,11 @@ template <typename DeviceContext, typename T>
 class StridedSliceNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const Variable* input_var = ctx.InputVar("Input");
+    bool is_tensor_array = input_var->IsType<LoDTensorArray>();
+    PADDLE_ENFORCE_EQ(is_tensor_array, false,
+                      platform::errors::InvalidArgument(
+                          "Tensor array as input is not supported."));
     int rank = ctx.Input<framework::Tensor>("Input")->dims().size();
     switch (rank) {
       case 1:
@@ -42,6 +47,10 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
         break;
       case 6:
         StridedSliceCompute<6>(ctx);
+        break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The rank of input is supported up to 6."));
         break;
     }
   }
