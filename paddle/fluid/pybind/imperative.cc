@@ -869,7 +869,8 @@ void BindImperative(py::module *m_ptr) {
                bool list_select_flag;
                ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
                                   &steps, &decrease_axes, &none_axes,
-                                  &infer_flags);
+                                  &infer_flags, &list_select_idxs,
+                                  &list_select_flag);
                framework::AttributeMap attrs = {
                    {"axes", axes},
                    {"starts", starts},
