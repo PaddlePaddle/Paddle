@@ -724,8 +724,8 @@ def max_unpool2d(x,
             # unpool_out shape: [1, 1, 6, 6]
 
             # specify a different output size than input size 
-            unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0, output_size=[5,5])
-            # unpool_out shape: [1, 1, 5, 5] 
+            unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0, output_size=[7,7])
+            # unpool_out shape: [1, 1, 7, 7] 
 
     """
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
@@ -757,7 +757,7 @@ def max_unpool2d(x,
     helper.append_op(
         type=op_type,
         inputs={"X": x,
-                "Indices": Indices},
+                "Indices": indices},
         outputs={"Out": unpool_out},
         attrs={
             "unpooling_type": "max",

@@ -140,8 +140,8 @@ class TestUnpoolOpOuput(TestUnpoolOp):
 
 class TestUnpoolOpException(unittest.TestCase):
     def test_exception(self):
-        import paddle
         import paddle.nn.functional as F
+        import paddle
 
         def indices_size_error():
             data = paddle.randint(shape=[1, 1, 3, 3])
@@ -153,8 +153,106 @@ class TestUnpoolOpException(unittest.TestCase):
             indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
             MaxPool2D = F.maxunpool2d(data, indices, kernel_size=2, stride=2)
 
+        def data_format_error():
+            data = paddle.randint(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
+            MaxPool2D = F.maxunpool2d(
+                data, indices, kernel_size=2, stride=2, data_format="NHWC")
+
         self.assertRaises(ValueError, indices_size_error)
         self.assertRaises(ValueError, indices_value_error)
+        self.assertRaises(ValueError, data_format_error)
+
+
+class TestUnpoolOpAPI_dy(unittest.TestCase):
+    def test_case(self):
+        import paddle
+        import paddle.nn.functional as F
+        import paddle.fluid.core as core
+        import paddle.fluid as fluid
+        import numpy as np
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.array([[[[1, 2, 3, 4], [5, 6, 7, 8],
+                                     [9, 10, 11, 12],
+                                     [13, 14, 15, 16]]]]).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            output, indices = F.max_pool2d(
+                input_x, kernel_size=2, stride=2, return_mask=True)
+            out_pp = F.max_unpool2d(
+                output, indices, kernel_size=2, stride=2, output_size=(5, 5))
+            output_np = output.numpy()
+            indices_np = indices.numpy()
+            expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
+                [2,2], [0,0], [5,5]).astype("float64")
+            self.assertTrue(np.allclose(out_pp.numpy(), expect_res))
+
+
+class TestUnpoolOpAPI_dy2(unittest.TestCase):
+    def test_case(self):
+        import paddle
+        import paddle.nn.functional as F
+        import paddle.fluid.core as core
+        import paddle.fluid as fluid
+        import numpy as np
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.array([[[[1, 2, 3, 4], [5, 6, 7, 8],
+                                     [9, 10, 11, 12],
+                                     [13, 14, 15, 16]]]]).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            output, indices = F.max_pool2d(
+                input_x, kernel_size=2, stride=2, return_mask=True)
+            out_pp = F.max_unpool2d(
+                output, indices, kernel_size=2, stride=None, output_size=(5, 5))
+            output_np = output.numpy()
+            indices_np = indices.numpy()
+            expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
+                [2,2], [0,0], [5,5]).astype("float64")
+            self.assertTrue(np.allclose(out_pp.numpy(), expect_res))
+
+
+class TestUnpoolOpAPI_st(unittest.TestCase):
+    def test_case(self):
+        import paddle
+        import paddle.nn.functional as F
+        import paddle.fluid.core as core
+        import paddle.fluid as fluid
+        paddle.enable_static()
+
+        input_data = np.array([[[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12],
+                                 [13, 14, 15, 16]]]]).astype("float32")
+
+        x = fluid.data(name="x", shape=[1, 1, 4, 4], dtype="float32")
+        output, indices = F.max_pool2d(
+            x, kernel_size=2, stride=2, return_mask=True)
+        unpool_out = F.max_unpool2d(
+            output, indices, kernel_size=2, stride=None, output_size=(5, 5))
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+
+        results = exe.run(paddle.fluid.default_main_program(),\
+                          feed={"x":input_data},
+                          fetch_list=[unpool_out],
+                          return_numpy=True)
+
+        pool_out_np = np.array([[[[6., 8.], [14., 16.]]]]).astype("float32")
+        indices_np = np.array([[[[5, 7], [13, 15]]]]).astype("int32")
+        expect_res =unpool2dmax_forward_naive(pool_out_np, indices_np, [2,2], \
+            [2,2], [0,0], [5,5]).astype("float64")
+        self.assertTrue(np.allclose(results[0], expect_res))
 
 
 if __name__ == '__main__':
