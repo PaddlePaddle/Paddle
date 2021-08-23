@@ -30,6 +30,7 @@ def to_dlpack(x):
     
     Examples:
         .. code-block:: python
+
             import paddle
             # x is a tensor with shape [2, 4]
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
@@ -72,6 +73,7 @@ def from_dlpack(dlpack):
 
     Examples:
         .. code-block:: python
+
             import paddle
             # x is a tensor with shape [2, 4]
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
