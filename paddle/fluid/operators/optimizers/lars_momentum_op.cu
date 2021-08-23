@@ -98,7 +98,7 @@ __device__ CastT L2NormCalculation(const T* __restrict__ data,
     CastT tmp_value = threadIdx.x < limiTblock ? tmp_buffer[threadIdx.x] : 0;
     __syncthreads();
     buffer = math::blockReduceSum<CastT>(tmp_value, FINAL_MASK);
-    return buffer;
+    return std::sqrt(buffer);
   }
 }
 
@@ -114,23 +114,24 @@ __global__ void MomentumLarsKernel(
   MT g_n = L2NormCalculation<T, MT>(g, l2_tmp_buffer, l2_tmp_counter, tid, num,
                                     rescale_grad);
   const MT lr = learning_rate[0];
-
   MT local_lr = lr;
+
   if (lars_weight_decay > static_cast<MT>(0) && p_n > static_cast<MT>(0) &&
       g_n > static_cast<MT>(0)) {
     local_lr =
         lr * lars_coeff * p_n / (g_n + lars_weight_decay * p_n + epsilon);
   }
-  CUDA_KERNEL_LOOP(i, num) {
-    MT grad = static_cast<MT>(g[i]) * static_cast<MT>(rescale_grad);
-    MT param = master_p ? master_p[i] : static_cast<MT>(p[i]);
 
-    MT v_new = v[i] * mu + local_lr * (grad + lars_weight_decay * param);
+  CUDA_KERNEL_LOOP(i, num) {
+    MT grad = static_cast<MT>(g[tid]) * static_cast<MT>(rescale_grad);
+    MT param = master_p ? master_p[tid] : static_cast<MT>(p[tid]);
+
+    MT v_new = v[tid] * mu + local_lr * (grad + lars_weight_decay * param);
     MT p_new = param - v_new;
 
-    v_out[i] = v_new;
-    p_out[i] = static_cast<T>(p_new);
-    if (master_p_out) master_p_out[i] = p_new;
+    v_out[tid] = v_new;
+    p_out[tid] = static_cast<T>(p_new);
+    if (master_p_out) master_p_out[tid] = p_new;
   }
 }
 
