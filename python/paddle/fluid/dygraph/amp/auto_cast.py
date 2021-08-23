@@ -21,6 +21,7 @@ import warnings
 import copy
 import functools
 import paddle
+import operator
 
 __all__ = ['amp_guard']
 
@@ -104,19 +105,51 @@ def _in_amp_guard():
 
 
 @dygraph_only
-def fp16_initialize(enable_pure_fp16, model, optimizer):
+def fp16_initialize(enable_pure_fp16, models, optimizers):
     if not enable_pure_fp16:
-        return model, optimizer
+        return models, optimizers
 
-    for layer in model.sublayers(include_self=True):
-        if len(layer._sub_layers) is 0:
-            if (layer._dtype is 'float16') or isinstance(layer, (
-                    paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
-                continue
-            layer.to(dtype='float16')
+    if len(models) != len(optimizers):
+        raise RuntimeError(
+            "Current models num should be equal to optimizers num, but receive {} != {}.".
+            format(len(models), len(optimizers)))
 
-    optimizer._parameter_list = model.parameters()
-    return model, optimizer
+    for idx in range(len(models)):
+        if not operator.eq(optimizers[idx]._parameter_list,
+                           models[idx].parameters()):
+            raise RuntimeError(
+                "Current the order of models should be consistent with that of optimizers, but receive models{} not corresponding to optimizers{}.".
+                format(idx, idx))
+
+    for model in models:
+        for layer in model.sublayers(include_self=True):
+            if len(layer._sub_layers) is 0:
+                if (layer._dtype is 'float16') or isinstance(layer, (
+                        paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
+                    continue
+                layer.to(dtype='float16')
+
+    for idx in range(len(optimizers)):
+        optimizers[idx]._parameter_list = models[idx].parameters()
+
+    return models, optimizers
+
+
+def check_models(models):
+    for model in models:
+        if not isinstance(model, paddle.nn.Layer):
+            raise RuntimeError(
+                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".
+                format(type(model)))
+
+
+def check_optimizers(optimizers):
+    for optimizer in optimizers:
+        if not isinstance(optimizer, (paddle.optimizer.Optimizer,
+                                      paddle.fluid.optimizer.Optimizer)):
+            raise RuntimeError(
+                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".
+                format(type(optimizer)))
 
 
 @signature_safe_contextmanager
@@ -125,8 +158,8 @@ def amp_guard(enable=True,
               custom_white_list=None,
               custom_black_list=None,
               enable_pure_fp16=False,
-              model=None,
-              optimizer=None):
+              models=None,
+              optimizers=None):
     """
     :api_attr: imperative
 
@@ -180,15 +213,39 @@ def amp_guard(enable=True,
         enable_pure_fp16 = False
 
     if enable_pure_fp16:
-        if isinstance(model, paddle.nn.Layer) and isinstance(
-                optimizer,
+        if isinstance(models, paddle.nn.Layer):
+            models = [models]
+            check_models(models)
+        elif isinstance(models, list):
+            check_models(models)
+        else:
+            raise TypeError(
+                "models must be either a single model or a list of models.")
+
+        if isinstance(optimizers, (paddle.optimizer.Optimizer,
+                                   paddle.fluid.optimizer.Optimizer)):
+            optimizers = [optimizers]
+            check_optimizers(optimizers)
+        elif isinstance(optimizers, list):
+            check_optimizers(optimizers)
+        else:
+            raise TypeError(
+                "optimizers must be either a single optimizer or a list of optimizers."
+            )
+
+        models, optimizers = fp16_initialize(enable_pure_fp16, models,
+                                             optimizers)
+        '''
+        if isinstance(models, paddle.nn.Layer) and isinstance(
+                optimizers,
             (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
-            model, optimizer = fp16_initialize(enable_pure_fp16, model,
-                                               optimizer)
+            model, optimizer = fp16_initialize(enable_pure_fp16, models,
+                                               optimizers)
         else:
             raise ValueError(
                 "Current train mode is pure fp16, model and optimizer should be paddle.nn.Layer and (paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer), but receive {} and {}.".
                 format(type(model), type(optimizer)))
+        '''
 
     # use default white_list and black_list if no custom lists provided
     _white_list = WHITE_LIST
