@@ -42,6 +42,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
     float* weight_data = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
+    bool qkv_plugin_int8 =
+        BOOST_GET_CONST(bool, op_desc.GetAttr("qkv_plugin_int8"));
     float in_scale = 0.;
 
     if (enable_int8) {
@@ -167,7 +169,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                         ? nvinfer1::DataType::kHALF
                                         : nvinfer1::DataType::kFLOAT);
         if (enable_int8) {
-          type = static_cast<int>(nvinfer1::DataType::kINT8);
+          if (qkv_plugin_int8) {
+            type = static_cast<int>(nvinfer1::DataType::kINT8);
+          } else {
+            type = static_cast<int>(nvinfer1::DataType::kHALF);
+          }
         }
         bool has_mask = true;
         int var_seqlen = 1;
