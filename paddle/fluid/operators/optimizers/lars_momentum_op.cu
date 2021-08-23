@@ -46,10 +46,11 @@ __device__ bool SyncAllBlock(int* counter) {
   return __syncthreads_or(last < gridDim.x);
 }
 
-template <typename T, typename MT, typename CastT>
-__device__ MT L2NormCalculation(const T* __restrict__ data, CastT* out,
-                                int* counter, int tid, const int64_t num,
-                                const CastT rescale_grad = 1) {
+template <typename T, typename CastT>
+__device__ CastT L2NormCalculation(const T* __restrict__ data,
+                                   CastT* tmp_buffer, int* counter, int tid,
+                                   const int64_t num,
+                                   const CastT rescale_grad = 1) {
   int stride = BLOCK_SIZE * BLOCK_SIZE;
   int reduce_times = (gridDim.x + BLOCK_SIZE - 1) / BLOCK_SIZE;
   int rest_block = gridDim.x;
@@ -91,30 +92,28 @@ __device__ MT L2NormCalculation(const T* __restrict__ data, CastT* out,
   __syncthreads();
 
   if (blockIdx.x < limiTblock && threadIdx.x == 0) {
-    out[blockIdx.x] = buffer;
+    tmp_buffer[blockIdx.x] = buffer;
   }
   if (SyncAllBlock(counter)) {
-    CastT tmp_value = threadIdx.x < limiTblock ? out[threadIdx.x] : 0;
+    CastT tmp_value = threadIdx.x < limiTblock ? tmp_buffer[threadIdx.x] : 0;
     __syncthreads();
     buffer = math::blockReduceSum<CastT>(tmp_value, FINAL_MASK);
-    return static_cast<MT>(buffer);
+    return buffer;
   }
 }
 
 template <typename T, typename MT>
 __global__ void MomentumLarsKernel(
     const T* __restrict__ p, const T* __restrict__ g, const MT* __restrict__ v,
-    const MultiPrecisionType<T>* learning_rate, const MT mu, const int64_t num,
-    const MT lars_coeff, const MT lars_weight_decay,
-    MultiPrecisionType<T>* l2_tmp_buffer, int* l2_tmp_counter, T* p_out,
-    MT* v_out, const MT epsilon, const MT* master_p, MT* master_p_out,
-    const MultiPrecisionType<T> rescale_grad) {
+    const MT* learning_rate, const MT mu, const int64_t num,
+    const MT lars_coeff, const MT lars_weight_decay, MT* l2_tmp_buffer,
+    int* l2_tmp_counter, T* p_out, MT* v_out, const MT epsilon,
+    const MT* master_p, MT* master_p_out, const MT rescale_grad) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  MT p_n = L2NormCalculation<T, MT, MultiPrecisionType<T>>(
-      p, l2_tmp_buffer, l2_tmp_counter, tid, num);
-  MT g_n = L2NormCalculation<T, MT, MultiPrecisionType<T>>(
-      g, l2_tmp_buffer, l2_tmp_counter, tid, num, rescale_grad);
-  const MT lr = static_cast<MT>(learning_rate[0]);
+  MT p_n = L2NormCalculation<T, MT>(p, l2_tmp_buffer, l2_tmp_counter, tid, num);
+  MT g_n = L2NormCalculation<T, MT>(g, l2_tmp_buffer, l2_tmp_counter, tid, num,
+                                    rescale_grad);
+  const MT lr = learning_rate[0];
 
   MT local_lr = lr;
   if (lars_weight_decay > static_cast<MT>(0) && p_n > static_cast<MT>(0) &&
@@ -137,20 +136,15 @@ __global__ void MomentumLarsKernel(
 
 template <typename DeviceContext, typename T>
 class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
-  using MPDType = MultiPrecisionType<T>;
+  using MT = MultiPrecisionType<T>;
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
-    if (multi_precision) {
-      InnerCompute<MultiPrecisionType<T>>(ctx, multi_precision);
-    } else {
-      InnerCompute<T>(ctx, multi_precision);
-    }
+    InnerCompute(ctx, multi_precision);
   }
 
  private:
-  template <typename MT>
   void InnerCompute(const framework::ExecutionContext& ctx,
                     const bool multi_precision) const {
     auto param_out = ctx.Output<framework::LoDTensor>("ParamOut");
@@ -187,19 +181,18 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     MT lars_weight_decay =
         static_cast<MT>(ctx.Attr<float>("lars_weight_decay"));
     MT epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
-    MPDType rescale_grad =
-        static_cast<MPDType>(ctx.Attr<float>("rescale_grad"));
+    MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
 
     auto* p = param->data<T>();
     auto* g = grad->data<T>();
     auto* v = velocity->data<MT>();
-    auto* lr = learning_rate->data<MPDType>();
+    auto* lr = learning_rate->data<MT>();
     int grid = (param->numel() + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
     int l2_tmp_buffer_size = grid < BLOCK_SIZE ? grid : BLOCK_SIZE;
     framework::Tensor l2_tmp_buffer_t, l2_tmp_counter_t;
-    auto* l2_tmp_buffer_data = l2_tmp_buffer_t.mutable_data<MPDType>(
-        {l2_tmp_buffer_size}, ctx.GetPlace());
+    auto* l2_tmp_buffer_data =
+        l2_tmp_buffer_t.mutable_data<MT>({l2_tmp_buffer_size}, ctx.GetPlace());
     int* l2_tmp_counter_data =
         l2_tmp_counter_t.mutable_data<int>({1}, ctx.GetPlace());
 
