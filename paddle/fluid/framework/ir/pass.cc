@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
@@ -126,10 +127,43 @@ static void MergePrograms(ProgramDesc *dst, const details::ProgramDescs &srcs,
   VisitAllElements(srcs, create_op_visitor, reverse);
 }
 
+static void FillNotSpecifiedOpRole(const ProgramDesc &main_program) {
+  for (size_t block_idx = 0; block_idx < main_program.Size(); ++block_idx) {
+    auto ops = main_program.Block(block_idx).AllOps();
+    size_t n = ops.size();
+    std::vector<OpRole> roles;
+    roles.reserve(n);
+    auto op_role_attr = OpProtoAndCheckerMaker::OpRoleAttrName();
+    for (auto *op : ops) {
+      OpRole role;
+      if (op->HasAttr(op_role_attr)) {
+        role = static_cast<OpRole>(op->GetAttrIfExists<int>(op_role_attr));
+      } else {
+        role = OpRole::kNotSpecified;
+      }
+      roles.emplace_back(role);
+    }
+
+    // NOTE: The following codes may be wrong in some cases.
+    // But how can we get the right OpRole? The right way
+    // is that all passes should deal with unspecified OpRole.
+    auto prev_role = OpRole::kForward;
+    for (size_t i = 0; i < n; ++i) {
+      if (roles[i] == OpRole::kNotSpecified) {
+        VLOG(10) << "Fill op role of " << ops[i]->Type() << " as "
+                 << static_cast<int>(prev_role);
+        ops[i]->SetAttr(op_role_attr, static_cast<int>(prev_role));
+      } else {
+        prev_role = roles[i];
+      }
+    }
+  }
+}
+
 void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
                                 ProgramDesc *main_program,
                                 ProgramDesc *startup_program) {
-  LOG(INFO) << "ApplyPassesToProgram is called";
+  VLOG(10) << "ApplyPassesToProgram is called";
   PADDLE_ENFORCE_NOT_NULL(
       main_program,
       platform::errors::InvalidArgument("The main program must be provided."));
@@ -141,7 +175,7 @@ void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
   for (auto *p : passes) {
     PADDLE_ENFORCE_NOT_NULL(p, platform::errors::InvalidArgument(
                                    "The provided pass cannot be nullptr."));
-    LOG(INFO) << "Pass " << p->Type();
+    VLOG(10) << "Pass " << p->Type();
     if (passes.size() > 1) {
       PADDLE_ENFORCE_EQ(p->SupportApplyProgramViaGraph(), true,
                         platform::errors::PermissionDenied(
@@ -153,6 +187,7 @@ void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
   if (passes.size() == 1 && !passes[0]->SupportApplyProgramViaGraph()) {
     VLOG(10) << "apply pass " << passes[0]->Type() << " to program";
     passes[0]->ApplyImpl(main_program, startup_program);
+    FillNotSpecifiedOpRole(*main_program);
     VLOG(10) << "finish to apply pass " << passes[0]->Type() << " to program";
     return;
   }
@@ -162,6 +197,7 @@ void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
     p->Apply(&graph);
   }
   ConvertToPrograms(&graph, main_program, startup_program);
+  FillNotSpecifiedOpRole(*main_program);
 }
 
 void Pass::ApplyImpl(ProgramDesc *main_program,

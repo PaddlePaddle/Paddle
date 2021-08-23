@@ -26,7 +26,15 @@ import paddle.distributed.fleet.meta_optimizers.sharding as sharding
 paddle.enable_static()
 
 
+def disable_ir_pass():
+    core.globals()['FLAGS_apply_pass_to_program'] = 0
+
+
 class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
+    def setUp(self):
+        super(TestFleetShardingMetaOptimizer, self).setUp()
+        disable_ir_pass()
+
     def test_sharding_optimizer(self):
         train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
         )
@@ -297,6 +305,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ[
             "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+        disable_ir_pass()
 
         # pre-assigned ring id
         self.mp_ring_id = 0
@@ -1235,5 +1244,4 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
 
 if __name__ == "__main__":
-    core.globals()['FLAGS_apply_pass_to_program'] = 0
     unittest.main()
