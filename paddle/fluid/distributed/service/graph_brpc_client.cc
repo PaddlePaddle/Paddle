@@ -479,6 +479,102 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
                    closure);
   return fut;
 }
+
+std::future<int32_t> GraphBrpcClient::set_node_feat(
+    const uint32_t &table_id, const std::vector<uint64_t> &node_ids,
+    const std::vector<std::string> &feature_names,
+    const std::vector<std::vector<std::string>> &features) {
+  std::vector<int> request2server;
+  std::vector<int> server2request(server_size, -1);
+  for (int query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
+    int server_index = get_server_index_by_id(node_ids[query_idx]);
+    if (server2request[server_index] == -1) {
+      server2request[server_index] = request2server.size();
+      request2server.push_back(server_index);
+    }
+  }
+  size_t request_call_num = request2server.size();
+  std::vector<std::vector<uint64_t>> node_id_buckets(request_call_num);
+  std::vector<std::vector<int>> query_idx_buckets(request_call_num);
+  std::vector<std::vector<std::vector<std::string>>> features_idx_buckets(
+      request_call_num);
+  for (int query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
+    int server_index = get_server_index_by_id(node_ids[query_idx]);
+    int request_idx = server2request[server_index];
+    node_id_buckets[request_idx].push_back(node_ids[query_idx]);
+    query_idx_buckets[request_idx].push_back(query_idx);
+    if (features_idx_buckets[request_idx].size() == 0) {
+      features_idx_buckets[request_idx].resize(feature_names.size());
+    }
+    for (int feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
+      features_idx_buckets[request_idx][feat_idx].push_back(
+          features[feat_idx][query_idx]);
+    }
+  }
+
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+      request_call_num,
+      [&, node_id_buckets, query_idx_buckets, request_call_num](void *done) {
+        int ret = 0;
+        auto *closure = (DownpourBrpcClosure *)done;
+        size_t fail_num = 0;
+        for (int request_idx = 0; request_idx < request_call_num;
+             ++request_idx) {
+          if (closure->check_response(request_idx, PS_GRAPH_SET_NODE_FEAT) !=
+              0) {
+            ++fail_num;
+          }
+          if (fail_num == request_call_num) {
+            ret = -1;
+          }
+        }
+        closure->set_promise_value(ret);
+      });
+
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+
+  for (int request_idx = 0; request_idx < request_call_num; ++request_idx) {
+    int server_index = request2server[request_idx];
+    closure->request(request_idx)->set_cmd_id(PS_GRAPH_SET_NODE_FEAT);
+    closure->request(request_idx)->set_table_id(table_id);
+    closure->request(request_idx)->set_client_id(_client_id);
+    size_t node_num = node_id_buckets[request_idx].size();
+
+    closure->request(request_idx)
+        ->add_params((char *)node_id_buckets[request_idx].data(),
+                     sizeof(uint64_t) * node_num);
+    std::string joint_feature_name =
+        paddle::string::join_strings(feature_names, '\t');
+    closure->request(request_idx)
+        ->add_params(joint_feature_name.c_str(), joint_feature_name.size());
+
+    // set features
+    std::string set_feature = "";
+    for (size_t feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
+      for (size_t node_idx = 0; node_idx < node_num; ++node_idx) {
+        size_t feat_len =
+            features_idx_buckets[request_idx][feat_idx][node_idx].size();
+        set_feature.append((char *)&feat_len, sizeof(size_t));
+        set_feature.append(
+            features_idx_buckets[request_idx][feat_idx][node_idx].data(),
+            feat_len);
+      }
+    }
+    closure->request(request_idx)
+        ->add_params(set_feature.c_str(), set_feature.size());
+
+    GraphPsService_Stub rpc_stub =
+        getServiceStub(get_cmd_channel(server_index));
+    closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
+    rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
+                     closure->response(request_idx), closure);
+  }
+
+  return fut;
+}
+
 int32_t GraphBrpcClient::initialize() {
   // set_shard_num(_config.shard_num());
   BrpcPsClient::initialize();

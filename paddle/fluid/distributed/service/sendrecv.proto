@@ -55,6 +55,7 @@ enum PsCmdID {
   PS_GRAPH_CLEAR = 34;
   PS_GRAPH_ADD_GRAPH_NODE = 35;
   PS_GRAPH_REMOVE_GRAPH_NODE = 36;
+  PS_GRAPH_SET_NODE_FEAT = 37;
 }
 
 message PsRequestMessage {
