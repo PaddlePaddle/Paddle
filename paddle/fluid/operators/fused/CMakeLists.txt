@@ -71,4 +71,9 @@ if (WITH_GPU OR WITH_ROCM)
         op_library(fused_bn_add_activation_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_bn_add_activation);\n")
     endif()
+    # fused_dropout
+    # only support CUDA
+    if(NOT WITH_ROCM)
+        nv_test(test_fused_residual_dropout_bias SRCS test_fused_residual_dropout_bias.cu DEPS tensor op_registry elementwise_add_op dropout_op device_context generator)
+    endif()
 endif()
