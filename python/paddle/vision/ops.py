@@ -901,11 +901,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
     return out
 
 
-def roi_pool(input,
-             boxes,
-             output_size,
-             spatial_scale=1.0,
-             boxes_num=None,
+def roi_pool(input, boxes, boxes_num, output_size, spatial_scale=1.0,
              name=None):
     """
     This operator implements the roi_pooling layer.
@@ -923,9 +919,9 @@ def roi_pool(input,
             2D-Tensor or 2D-LoDTensor with the shape of [num_boxes,4], the lod level is 1. 
             Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, 
             and (x2, y2) is the bottom right coordinates.
+        boxes_num (Tensor): The number of RoIs in each image, data type is int32. Default: None
         output_size (int or tuple[int, int]): The pooled output size(h, w), data type is int32. If int, h and w are both equal to output_size.
         spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
-        boxes_num (Tensor): The number of RoIs in each image. Default: None
         name(str, optional): For detailed information, please refer
             to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
@@ -935,6 +931,7 @@ def roi_pool(input,
     Examples:
         ..  code-block:: python
             import paddle
+            from paddle.vision.ops import roi_pool
             data = paddle.rand([1, 256, 32, 32])
             boxes = paddle.rand([3, 4])
             boxes[:, 2] += boxes[:, 0] + 3
@@ -1000,18 +997,18 @@ class RoIPool(Layer):
     Examples:
         ..  code-block:: python
             import paddle
-            import paddle.nn as nn
+            from paddle.vision.ops import RoIPool
             data = paddle.rand([1, 256, 32, 32])
             boxes = paddle.rand([3, 4])
             boxes[:, 2] += boxes[:, 0] + 3
             boxes[:, 3] += boxes[:, 1] + 4
             boxes_num = paddle.to_tensor([3]).astype('int32')
-            roi_pool_c = nn.RoIPool(output_size=(4, 3))
-            pool_out = roi_pool_c(data, boxes, boxes_num)
+            roi_pool = RoIPool(output_size=(4, 3))
+            pool_out = roi_pool(data, boxes, boxes_num)
             assert pool_out.shape == [3, 256, 4, 3], ''
     """
 
-    def __init__(self, output_size, spatial_scale):
+    def __init__(self, output_size, spatial_scale=1.0):
         super(RoIPool, self).__init__()
         self._output_size = output_size
         self._spatial_scale = spatial_scale
@@ -1020,6 +1017,10 @@ class RoIPool(Layer):
         return roi_pool(
             input=input,
             boxes=boxes,
+            boxes_num=boxes_num,
             output_size=self._output_size,
-            spatial_scale=self._spatial_scale,
-            boxes_num=boxes_num)
+            spatial_scale=self._spatial_scale)
+
+    def extra_repr(self):
+        main_str = 'output_size={_output_size}, spatial_scale={_spatial_scale}'
+        return main_str.format(**self.__dict__)

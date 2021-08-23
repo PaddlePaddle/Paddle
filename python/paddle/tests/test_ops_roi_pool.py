@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import cv2
-import shutil
 import unittest
 import numpy as np
 
@@ -60,7 +57,7 @@ class TestRoIPool(unittest.TestCase):
             pool_out = roi_pool(
                 data, boxes, boxes_num=boxes_num, output_size=output_size)
 
-            place = paddle.CUDAPlace(0)
+            place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
 
             pool_out = exe.run(paddle.static.default_main_program(),
@@ -90,6 +87,22 @@ class TestRoIPool(unittest.TestCase):
 
         pool_out = roi_pool_c(data, boxes, boxes_num)
         np.testing.assert_equal(pool_out.shape, (3, 256, 4, 3))
+
+    def test_value(self, ):
+        data = np.array([i for i in range(1, 17)]).reshape(1, 1, 4,
+                                                           4).astype(np.float32)
+        boxes = np.array(
+            [[1., 1., 2., 2.], [1.5, 1.5, 3., 3.]]).astype(np.float32)
+        boxes_num = np.array([2]).astype(np.int32)
+        output = np.array([[[[11.]]], [[[16.]]]], dtype=np.float32)
+
+        data = paddle.to_tensor(data)
+        boxes = paddle.to_tensor(boxes)
+        boxes_num = paddle.to_tensor(boxes_num)
+
+        roi_pool_c = RoIPool(output_size=1)
+        pool_out = roi_pool_c(data, boxes, boxes_num)
+        np.testing.assert_almost_equal(pool_out.numpy(), output)
 
 
 if __name__ == '__main__':
