@@ -546,7 +546,10 @@ static void ParseIndexingSlice(
           std::string(Py_TYPE(slice_item)->tp_name), i + 1));
     }
   }
-  if (!PyTuple_Check(_index)) Py_DecRef(index);
+
+  if (!PyTuple_Check(_index)) {
+    Py_DecRef(index);
+  }
 
   // valid_index is the number of dimensions exclude None index
   const int valid_indexs = size - none_axes->size();
@@ -817,6 +820,7 @@ void BindImperative(py::module *m_ptr) {
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
              // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
+             // https://github.com/python/cpython/blob/24b63c695ae0a95b06379eaadace66735abac1e2/Objects/tupleobject.c#L251
              PyObject *index_ptr = !PyTuple_Check(_index.ptr())
                                        ? PyTuple_Pack(1, _index.ptr())
                                        : _index.ptr();
@@ -852,7 +856,6 @@ void BindImperative(py::module *m_ptr) {
                  break;
                }
              }
-             if (!PyTuple_Check(_index)) Py_DecRef(index_ptr);
 
              // 2. Call op set_value to speed up if the condition is met,
              // otherwise call TensorToPyArray.
@@ -866,9 +869,7 @@ void BindImperative(py::module *m_ptr) {
                bool list_select_flag;
                ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
                                   &steps, &decrease_axes, &none_axes,
-                                  &infer_flags, &list_select_idxs,
-                                  &list_select_flag);
-
+                                  &infer_flags);
                framework::AttributeMap attrs = {
                    {"axes", axes},
                    {"starts", starts},
@@ -900,9 +901,10 @@ void BindImperative(py::module *m_ptr) {
                }
              } else {
                auto self_numpy = TensorToPyArray(*self_tensor);
-               VLOG(4) << "value is tensor";
+               VLOG(4) << "parse_index is false";
 
                if (value_is_tensor) {
+                 VLOG(4) << "value is tensor";
                  auto value =
                      value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                  auto value_tensor =
@@ -939,6 +941,9 @@ void BindImperative(py::module *m_ptr) {
                  SetTensorFromPyArray(self_tensor, self_numpy,
                                       self_tensor->place(), true);
                }
+             }
+             if (!PyTuple_Check(_index.ptr())) {
+               Py_DECREF(index_ptr);
              }
              // NOTE(liym27):
              // Increase the version of VarBase self because __setitem__ is an
