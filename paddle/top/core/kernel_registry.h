@@ -54,14 +54,6 @@ class OpKernelRegistrar {
     return *this;
   }
 
-  OpKernelRegistrar& SetSameAsKernelKey() {
-    OpKernelFactory::Instance()
-        .kernels()[op_name_][op_kernel_key_]
-        .mutable_param_def()
-        ->SetSameAsKernelKey();
-    return *this;
-  }
-
   void Touch() {}
 
  private:
@@ -102,10 +94,10 @@ class OpKernelRegistrar {
                                   ::pt::CppTypeToDataType<dtype>::Type(), \
                                   PT_KERNEL(meta_kernel_fn<dtype>))
 
-#define PT_TORCH_KERNEL_REGISTRAR(op_name, backend, layout, dtype)          \
+#define PT_TOUCH_KERNEL_REGISTRAR(op_name, backend, layout, dtype)          \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
       __touch_pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__,  \
-      "PT_TORCH_KERNEL_REGISTRAR must be called in global namespace.");     \
+      "PT_TOUCH_KERNEL_REGISTRAR must be called in global namespace.");     \
   int TouchOpKernelRegistrar_##op_name##_##backend##_##dtype##_##layout() { \
     __pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__.Touch();  \
     return 0;                                                               \
@@ -117,11 +109,18 @@ class OpKernelRegistrar {
  * writing, we provide the following simple kernel registration macro.
  * If it is an special case, please use PT_REGISTER_STANDARD_KERNEL
  */
+// TODO(chenweihang): only work for single input and output now.
+// can we use function traits here to parse the input and output type?
 #define PT_REGISTER_KERNEL_1T(op_name, backend, layout, meta_kernel_fn, dtype) \
   PT_REGISTER_KERNEL_AUTO_SPECIALIZE(                                          \
       op_name, backend, layout, meta_kernel_fn, dtype)                         \
-      .SetSameAsKernelKey();                                                   \
-  PT_TORCH_KERNEL_REGISTRAR(op_name, backend, layout, dtype)
+      .Input(BACKEND(backend),                                                 \
+             DATALAYOUT(layout),                                               \
+             ::pt::CppTypeToDataType<dtype>::Type())                           \
+      .Output(BACKEND(backend),                                                \
+              DATALAYOUT(layout),                                              \
+              ::pt::CppTypeToDataType<dtype>::Type());                         \
+  PT_TOUCH_KERNEL_REGISTRAR(op_name, backend, layout, dtype)
 
 #define PT_REGISTER_KERNEL_2T(                                             \
     op_name, backend, layout, meta_kernel_fn, dtype1, dtype2)              \

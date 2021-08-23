@@ -164,16 +164,10 @@ class OpKernelParamDef {
 
   const std::vector<ParamDef>& output_defs() const { return output_defs_; }
 
-  void SetSameAsKernelKey() { same_as_kernel_key_ = true; }
-
  private:
   // TODO(chenweihang): replaced by paddle::small_vector
   std::vector<ParamDef> input_defs_{{}};
   std::vector<ParamDef> output_defs_{{}};
-  // if the same_as_kernel_key_ is true, all this kernel's input and output
-  // hold def that same as kernel key, the input_defs_ and output_defs_ are
-  // empty
-  bool same_as_kernel_key_{false};
 };
 
 class OpKernel {

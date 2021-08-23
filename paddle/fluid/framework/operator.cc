@@ -1126,7 +1126,7 @@ static pt::OpKernelContext BuildOpKernelContext(
     // TODO(chenweihang): deal with diff param in vector
     auto in_def = input_defs.at(i);
     for (auto* var : var_pair.second) {
-      const auto& tensor = var->Get<Tensor>();
+      const auto& tensor = var->Get<LoDTensor>();
       auto pt_in = MakeTensorImpl<pt::DenseTensor>(tensor, in_def.backend,
                                                    in_def.dtype, in_def.layout);
       op_kernel_ctx.EmplaceBackInput(pt_in);
@@ -1138,7 +1138,7 @@ static pt::OpKernelContext BuildOpKernelContext(
   for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); ++it) {
     auto out_def = output_defs.at(i);
     for (auto* var : it.value()) {
-      auto* tensor = var->GetMutable<Tensor>();
+      auto* tensor = var->GetMutable<LoDTensor>();
       // mutable_data before run kernel, to avoid share output form
       // OpKernelContext to original tensor
       tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
