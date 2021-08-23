@@ -60,8 +60,7 @@ struct EventRun {
   std::vector<size_t> synchronized_run;
 };
 
-class Instruction {
- public:
+struct Instruction {
   OpKernelFunc kernel_func_;
   std::map<std::string, std::vector<int>> input_index_;
   std::map<std::string, std::vector<int>> output_index_;
