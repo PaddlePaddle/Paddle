@@ -111,8 +111,8 @@ class AutoScanTest(unittest.TestCase):
                         tensor_config.dtype)
                 results: List[Dict[str, Tensor]] = []
                 for pred_config in self.sample_predictor_configs():
-                    self.assert_op_size(trt_engine_num, paddle_op_num)
                     results.append(
                         self.run_test_config(model, params, prog_config,
                                              pred_config, feed_data))
                 self.assert_tensors_near(threshold=threshold, tensors=results)
+                self.assert_op_size(trt_engine_num, paddle_op_num)
