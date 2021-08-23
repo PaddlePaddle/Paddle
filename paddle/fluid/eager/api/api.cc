@@ -15,6 +15,7 @@
 #include "paddle/fluid/eager/api/api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/top/core/dense_tensor.h"
+#include "paddle/fluid/eager/nodes/accumulation_node.h"
 
 namespace egr {
 
@@ -49,6 +50,11 @@ void RetainGradForTensor(pt::Tensor& tensor) {
 
     if(EagerUtils::IsLeafTensor(tensor)) {
         // Add RetainGrad as PostHook to AccumulationNode
+        std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
+        auto accumulation_grad_node = std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);
+        PADDLE_ENFORCE(accumulation_grad_node != nullptr,
+                    paddle::platform::errors::Fatal("Leaf tensor should have had grad_node with type: GradNodeAccumulation"));
+        accumulation_grad_node->RetainGrad(hook);
         
     } else {
         // Append to GradientHooks

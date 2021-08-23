@@ -24,6 +24,4 @@ void FillConstAPI(double value, const pt::DDim& ddim, const pt::Backend& backend
                   pt::Tensor& target);
 void AccumulateTensorsAPI(pt::Tensor& t0, const pt::Tensor& t1);
 
-
-
 } // namespace egr

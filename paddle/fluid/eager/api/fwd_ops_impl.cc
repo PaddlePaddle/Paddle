@@ -29,7 +29,7 @@
 #include "paddle/fluid/eager/nodes/scale_node.h"
 
 #include "paddle/top/api/all.h"
-#include "paddle/fluid/eager/function_helper.h"
+#include "paddle/fluid/eager/function_api.h"
 
 namespace egr {
 
