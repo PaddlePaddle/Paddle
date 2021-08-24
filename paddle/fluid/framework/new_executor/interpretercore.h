@@ -47,9 +47,11 @@ class InterpreterCore {
  private:
   void Convert();
 
-  void RunInstruction(const Instruction& instr_node,
-                      const VariableScope& var_scope,
-                      const platform::Place& place);
+  void BuildInstructionCtx(Instruction* instr_node,
+                           const VariableScope& var_scope,
+                           const platform::Place& place);
+
+  void RunInstruction(const Instruction& instr_node);
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
                               const VariableScope& var_scope,
