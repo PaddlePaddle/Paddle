@@ -770,7 +770,8 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
                               elementwise_add_pattern);
 
-    if (!AreScalesPresentForNodes({elementwise_add_x, elementwise_add_y})) {
+    if (!AreScalesPresentForNodes(
+            {elementwise_add_x, elementwise_add_y, elementwise_add_out})) {
       LogCannotQuantizeOp(elementwise_add_op);
       return;
     }
@@ -793,16 +794,12 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
     QuantizeInput(g, elementwise_add_op, elementwise_add_y, "Y", input_y_scale,
                   is_y_unsigned, "Scale_y");
 
-    // if quantization scale is missing for output tensor, return fp32 data
-    if (AreScalesPresentForNodes({elementwise_add_out})) {
-      bool is_output_unsigned{false};
-      auto output_scale =
-          GetScaleValueForNode(elementwise_add_out, &is_output_unsigned);
-      DequantizeOutput(g, elementwise_add_op, elementwise_add_out, "Out",
-                       output_scale, is_output_unsigned, "Scale_out");
-    } else {
-      elementwise_add_op->Op()->SetAttr("force_fp32_output", true);
-    }
+    bool is_output_unsigned{false};
+    auto output_scale =
+        GetScaleValueForNode(elementwise_add_out, &is_output_unsigned);
+
+    DequantizeOutput(g, elementwise_add_op, elementwise_add_out, "Out",
+                     output_scale, is_output_unsigned, "Scale_out");
 
     ++quantize_elementwise_add_count;
   };

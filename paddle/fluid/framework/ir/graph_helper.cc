@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include <queue>
 #include <stack>
+#include "paddle/fluid/framework/op_proto_maker.h"
 
+DECLARE_bool(convert_all_blocks);
 DEFINE_string(print_sub_graph_dir, "",
               "FLAGS_print_sub_graph_dir is used "
               "to print the nodes of sub_graphs.");
@@ -24,15 +26,17 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace {
-void SortHelper(const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>,
-                               ir::NodeComp> &adj_list,
+
+template <class NodeComparator = ir::NodeComp>
+void SortHelper(const std::map<ir::Node *, std::set<ir::Node *, NodeComparator>,
+                               NodeComparator> &adj_list,
                 ir::Node *node, std::unordered_set<ir::Node *> *visited,
                 std::vector<ir::Node *> *ret) {
   visited->insert(node);
 
   for (auto adj : adj_list.at(node)) {
     if (visited->find(adj) == visited->end()) {
-      SortHelper(adj_list, adj, visited, ret);
+      SortHelper<NodeComparator>(adj_list, adj, visited, ret);
     }
   }
 
@@ -41,10 +45,11 @@ void SortHelper(const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>,
   ret->push_back(node);
 }
 
+template <class NodeComparator = ir::NodeComp>
 bool HasCircleHelper(
     ir::Node *node,
-    const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
-        &adj_list,
+    const std::map<ir::Node *, std::set<ir::Node *, NodeComparator>,
+                   NodeComparator> &adj_list,
     std::unordered_set<ir::Node *> *visited,
     std::unordered_set<ir::Node *> *in_trace,
     std::vector<std::vector<ir::Node *>> *circles) {
@@ -54,7 +59,8 @@ bool HasCircleHelper(
 
     for (ir::Node *in : adj_list.at(node)) {
       if (visited->find(in) == visited->end() &&
-          HasCircleHelper(in, adj_list, visited, in_trace, circles)) {
+          HasCircleHelper<NodeComparator>(in, adj_list, visited, in_trace,
+                                          circles)) {
         return true;
       } else if (in_trace->find(in) != in_trace->end()) {
         if (circles != nullptr) {
@@ -77,14 +83,16 @@ bool HasCircleHelper(
   return false;
 }
 
+template <class NodeComparator = ir::NodeComp>
 bool HasCircleInternal(
-    const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
-        &adj_list,
+    const std::map<ir::Node *, std::set<ir::Node *, NodeComparator>,
+                   NodeComparator> &adj_list,
     std::vector<std::vector<ir::Node *>> *circles) {
   std::unordered_set<ir::Node *> visited;
   std::unordered_set<ir::Node *> in_trace;
   for (auto &adj : adj_list) {
-    if (HasCircleHelper(adj.first, adj_list, &visited, &in_trace, circles)) {
+    if (HasCircleHelper<NodeComparator>(adj.first, adj_list, &visited,
+                                        &in_trace, circles)) {
       return true;
     }
   }
@@ -136,39 +144,37 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   std::vector<ir::Node *> ret;
   for (auto adj : adj_list) {
     if (visited.find(adj.first) == visited.end()) {
-      SortHelper(adj_list, adj.first, &visited, &ret);
+      SortHelper<ir::NodeComp>(adj_list, adj.first, &visited, &ret);
     }
   }
 
   return ret;
 }
 
-// Build operator inlink edge table.
-std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
-BuildOperationAdjList(const Graph &graph) {
-  std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
-      adj_list;
+bool IsTopologySortOperationsUnique(const Graph &graph) {
+  auto nodes = TopologySortOperations(graph);
+  size_t n = nodes.size();
+  for (size_t i = 1; i < n; ++i) {
+    auto *prev_op = nodes[i - 1];
+    auto *cur_op = nodes[i];
 
-  for (auto &n : graph.Nodes()) {
-    if (!n->IsOp()) continue;
-    if (adj_list.find(n) == adj_list.end()) {
-      adj_list[n] = std::set<ir::Node *, ir::NodeComp>();
+    std::unordered_set<Node *> prev_op_outputs;
+    for (auto *output : prev_op->outputs) {
+      prev_op_outputs.insert(output);
     }
-    for (auto &var : n->inputs) {
-      for (auto &adj_n : var->inputs) {
-        PADDLE_ENFORCE_EQ(
-            adj_n->NodeType(), ir::Node::Type::kOperation,
-            platform::errors::InvalidArgument(
-                "Node(%s)'s type(%d) must be kOperation type.", adj_n->Name(),
-                static_cast<int>(adj_n->NodeType())));
-        VLOG(4) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
-                << " -> " << n->Name() << reinterpret_cast<void *>(n)
-                << "  via " << var->Name() << reinterpret_cast<void *>(var);
-        adj_list[n].insert(adj_n);
+
+    bool found = false;
+    for (auto *input : cur_op->inputs) {
+      if (prev_op_outputs.count(input) > 0) {
+        found = true;
+        break;
       }
     }
+    if (!found) {
+      return false;
+    }
   }
-  return adj_list;
+  return true;
 }
 
 // Build operator outlink edge table.
@@ -398,81 +404,145 @@ std::vector<Node *> TopologyVarientSort(const Graph &graph,
 
 class DescOrderComparator {
  public:
-  bool operator()(const Node *n1, const Node *n2) {
-    return (n1->DescOrder() > n2->DescOrder()) ||
-           ((n1->DescOrder() == n2->DescOrder()) &&
-            (n1->ToString() > n2->ToString()));
+  bool operator()(Node *const &n1, Node *const &n2) const {
+    if (n1->DescOrder() < n2->DescOrder()) {
+      return true;
+    } else if (n1->DescOrder() == n2->DescOrder()) {
+      return n1->id() < n2->id() ||
+             (n1->id() == n2->id() && n1->ToString() < n2->ToString());
+    }
+    return false;
   }
 };
 
 std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
-  std::vector<ir::Node *> sorted_ops;
-  std::priority_queue<Node *, std::vector<Node *>, DescOrderComparator> q;
-  std::unordered_map<Node *, std::unordered_set<Node *>> in_ops;
-  std::unordered_map<Node *, std::unordered_set<Node *>> out_ops;
-
-  // ensure all op node in 'in_ops' and 'out_ops'
-  for (const auto &n : graph.Nodes()) {
-    if (!n->IsOp()) continue;
-
-    in_ops.emplace(n, std::unordered_set<Node *>());
-    out_ops.emplace(n, std::unordered_set<Node *>());
+  std::map<ir::Node *, std::set<ir::Node *, DescOrderComparator>,
+           DescOrderComparator>
+      adj_list = BuildOperationAdjList<DescOrderComparator>(graph);
+  PADDLE_ENFORCE_EQ(HasCircleInternal<DescOrderComparator>(adj_list, nullptr),
+                    false, platform::errors::InvalidArgument(
+                               "Generated graph shouldn't contain cycle."));
+  std::unordered_set<ir::Node *> visited;
+  std::vector<ir::Node *> ret;
+  for (auto adj : adj_list) {
+    if (visited.find(adj.first) == visited.end()) {
+      SortHelper<DescOrderComparator>(adj_list, adj.first, &visited, &ret);
+    }
   }
 
-  // record all op's input op and output op
-  for (const auto &n : graph.Nodes()) {
+  return ret;
+}
+
+static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
+  desc->SetType("fill_constant");
+  desc->SetAttr(
+      OpProtoAndCheckerMaker::OpRoleAttrName(),
+      (static_cast<int>(OpRole::kBackward) | static_cast<int>(OpRole::kLoss)));
+  desc->SetAttr("value", 1.0f);
+  std::vector<std::string> output_names;
+  for (auto out : node.outputs) {
+    output_names.emplace_back(out->Name());
+  }
+  desc->SetOutput("Out", output_names);
+  return desc;
+}
+
+static void GetGraphOpDesc(const std::vector<Node *> &nodes,
+                           std::vector<OpDesc> *ops) {
+  for (Node *n : nodes) {
+    // if node is not Op, skip
     if (!n->IsOp()) continue;
 
-    // traverse all input op
-    for (const auto &var : n->inputs) {
-      for (const auto &in : var->inputs) {
-        // use at instead of [] to prevent no unrecorded op node
-        in_ops.at(n).insert(in);
-        out_ops.at(in).insert(n);
+    // create fill_constant op
+    if (n->Name() == "scale_loss_grad") {
+      ops->emplace_back();
+      auto &desc = ops->back();
+      ReplaceScaleLossGradOp(*n, &desc);
+    } else if (n->Op()) {
+      ops->emplace_back(*n->Op());
+    }
+    // delete no OpDesc op
+  }
+}
+
+static void GraphToBlock(const Graph &graph, proto::BlockDesc *block,
+                         const SortKind *sort_kind) {
+  // Remove the unneeded variables after memory optimization.
+  std::unordered_set<std::string> vars2remove;
+  if (graph.Has(kGraphToProgramVarsToRemove)) {
+    vars2remove =
+        graph.Get<std::unordered_set<std::string>>(kGraphToProgramVarsToRemove);
+    VLOG(2) << "graph (id: " << block->idx() << ") to program remove "
+            << vars2remove.size() << " nodes";
+  }
+
+  block->clear_vars();
+  std::unordered_set<std::string> visited_vars;
+  for (Node *n : graph.Nodes()) {
+    if (n->IsVar()) {
+      if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
+          !vars2remove.count(n->Var()->Name()) &&
+          n->GetVarNodeBlockId() == graph.GetBlockId()) {
+        visited_vars.insert(n->Var()->Name());
+        block->add_vars()->MergeFrom(*n->Var()->Proto());
       }
     }
   }
+  block->clear_ops();
 
-  // find topology entrance
-  for (const auto &n : graph.Nodes()) {
-    if (!n->IsOp()) continue;
-
-    if (in_ops.at(n).empty()) {
-      q.push(n);
+  std::vector<Node *> nodes;
+  if (sort_kind != nullptr) {
+    // Inference Memory Optimize relays on this branch.
+    nodes = TopologyVarientSort(graph, *sort_kind);
+  } else {
+    if (FLAGS_convert_all_blocks) {
+      nodes = TopologySortGraphByDescOrder(graph);
+    } else {
+      nodes = TopologySortOperations(graph);
     }
   }
 
-  // topological sorting
-  while (!q.empty()) {
-    // Do not get by reference!!! The element will pop later.
-    const auto cur_op = q.top();
-    q.pop();
+  std::vector<OpDesc> ops;
+  GetGraphOpDesc(nodes, &ops);
+  for (auto &op : ops) {
+    block->add_ops()->MergeFrom(*op.Proto());
+  }
+}
 
-    sorted_ops.push_back(cur_op);
-    for (const auto &out : out_ops.at(cur_op)) {
-      PADDLE_ENFORCE_GT(in_ops.at(out).count(cur_op), 0,
-                        platform::errors::InvalidArgument(
-                            "We find %s in %s's output list, "
-                            "but cannot find %s in %s's input list. "
-                            "Please ensure graph completely.",
-                            out->Name().c_str(), cur_op->Name().c_str(),
-                            cur_op->Name().c_str(), out->Name().c_str()));
-      in_ops.at(out).erase(cur_op);
+void GraphToProgram(const Graph &graph, ProgramDesc *program,
+                    const SortKind *sort_kind) {
+  PADDLE_ENFORCE_EQ(graph.IsMainGraph(), true,
+                    platform::errors::InvalidArgument(
+                        "This graph is a sub_graph, "
+                        "and can't convert to program individually"));
+  PADDLE_ENFORCE_NOT_NULL(
+      program,
+      platform::errors::InvalidArgument(
+          "program must not be nullptr when converting graph to program"));
 
-      // push if in-degree is 0
-      if (in_ops.at(out).empty()) {
-        q.push(out);
-      }
+  proto::ProgramDesc program_pb(*(program->Proto()));
+  auto block = program_pb.mutable_blocks(kRootBlockIndex);
+  block->set_idx(kRootBlockIndex);
+
+  if (FLAGS_convert_all_blocks) {
+    GraphToBlock(*graph.GetSubGraph(kRootBlockIndex), block, sort_kind);
+
+    VLOG(3) << "Graph to program need convert " << graph.SubGraphsSize()
+            << " sub graph";
+    for (size_t idx = 0; idx < graph.SubGraphsSize(); ++idx) {
+      // avoid kRootBlockIndex not 0
+      if (idx == kRootBlockIndex) continue;
+
+      block = program_pb.add_blocks();
+      block->set_idx(idx);
+      block->set_parent_idx(kRootBlockIndex);
+      GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind);
     }
+  } else {
+    GraphToBlock(graph, block, sort_kind);
   }
 
-  PADDLE_ENFORCE_EQ(
-      sorted_ops.size(), in_ops.size(),
-      platform::errors::InvalidArgument("Topological sorting incompletely, "
-                                        "only sorted %zd op but total %zd.",
-                                        sorted_ops.size(), in_ops.size()));
-
-  return sorted_ops;
+  program->CopyFrom(program_pb);
 }
 
 }  // namespace ir

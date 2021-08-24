@@ -130,7 +130,7 @@ if(WIN32)
         # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling,
         # For Visual Studio generators, /MP should be added. 
         # For other generators like Ninja, it is not need to add /MP.
-        if("${CMAKE_GENERATOR}" STREQUAL "Visual Studio" AND NOT WITH_GPU)
+        if(CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT WITH_GPU)
             math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
             set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
         endif()

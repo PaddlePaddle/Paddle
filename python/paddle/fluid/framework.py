@@ -72,6 +72,7 @@ _dygraph_tracer_ = None
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
+_current_pipeline_stage = None
 _global_flags_ = core.globals()
 
 
@@ -239,6 +240,11 @@ def _static_only_(func):
     return __impl__
 
 
+def _set_pipeline_stage(stage):
+    global _current_pipeline_stage
+    _current_pipeline_stage = stage
+
+
 # NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
 # used to make Variable and VarBase has same interfaces, like numpy. Since VarBase is not exposed in our
 # official docments, logically, we want to keep VarBase and logically consistent. While, actually,
@@ -387,6 +393,31 @@ def is_compiled_with_xpu():
             support_xpu = fluid.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
+
+
+def disable_signal_handler():
+    """
+    Reset signal handler registered by Paddle.
+
+    Paddle installs signal handlers at C++ level to log debug information upon failing.
+    However, conflicts can happen if another python module is making use of such signal.
+    Such being the case, one may disblae paddle signal handler via this interface.
+    
+    Known frameworks that require disabling signal handler includes:
+    1. TVM
+    2. ADLIK
+
+    Make sure you called paddle.disable_signal_handler() before using above mentioned frameworks.
+
+    Returns: None 
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.disable_signal_handler()
+    """
+    core.disable_signal_handler()
 
 
 def is_compiled_with_cuda():
@@ -1193,6 +1224,14 @@ class Variable(object):
         if self.persistable:
             var_str = "persist " + var_str
 
+        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        dist_context = get_default_distributed_context()
+        var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+            self)
+        if var_dist_attr is not None:
+            var_str += ", {name} = {value}".format(
+                name="dist_attr", value=var_dist_attr)
+
         return var_str
 
     def to_string(self, throw_on_error, with_details=False):
@@ -1873,6 +1912,86 @@ class Variable(object):
             type='size', inputs={'Input': [self]}, outputs={'Out': [output]})
         return output
 
+    def _set_attr(self, name, val):
+        """
+        Set the value of attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(int|str|list): the value of the attribute.
+        """
+        self._update_desc_attr(name, val)
+
+    def _has_attr(self, name):
+        """
+        Whether this Variable has the attribute with the name `name` or not.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            bool: True if has this attribute.
+        """
+        return self.desc.has_attr(name)
+
+    def _remove_attr(self, name):
+        self.desc.remove_attr(name)
+
+    def _update_desc_attr(self, name, val):
+        """
+        Update the value of desc's attribute by attribute's name.
+
+        Args:
+            name(str): the attribute name.
+            val(int|str|list): the value of the attribute.
+        """
+        self.desc._set_attr(name, val)
+
+    @property
+    def attr_names(self):
+        """Get the names of all attributes defined."""
+        return self.desc.attr_names()
+
+    def _get_attr(self, name):
+        """
+        Get the attribute by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            int|str|list: The attribute value. The return value
+            can be any valid attribute type.
+        """
+        return self.desc.attr(name)
+
+    @property
+    def process_mesh(self):
+        """
+        Get the process mesh belonging to this Variable.
+        """
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+        from paddle.distributed.auto_parallel.interface import ProcessMesh
+        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
+        mesh_id = self.desc.attr(mesh_attr_name)
+        return _g_process_mesh_map[mesh_id]
+
+    @property
+    def shard_mask(self):
+        """
+        Get shard_mask belonging to this Variable.
+        """
+        mask_attr_name = 'mask' + core.kAutoParallelSuffix()
+        return self.desc.attr(mask_attr_name)
+
+    @property
+    def offload_device(self):
+        """
+        Get the offload device of this Variable.
+        """
+        offload_attr_name = 'offload_device' + core.kAutoParallelSuffix()
+        return self.desc.attr(offload_attr_name)
+
 
 def get_all_op_protos():
     """
@@ -2035,6 +2154,11 @@ class Operator(object):
                 del op_attrs[role_var_name]
 
             if len(self.desc.type()) != 0:
+                # NOTE(Aurelius84): prog.clone() will lead that var.op is always None,
+                # we add this to fix the problem.
+                for arg in self.desc.output_arg_names():
+                    if block.has_var(arg) and block.var(arg).op is None:
+                        block.var(arg).op = self
                 return
             if type is None:
                 raise ValueError(
@@ -2072,6 +2196,11 @@ class Operator(object):
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
                             "used at the same time." % type)
+            if _current_pipeline_stage is not None:
+                pipeline_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix(
+                )
+                self._update_desc_attr(pipeline_attr_name,
+                                       _current_pipeline_stage)
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -2262,6 +2391,13 @@ class Operator(object):
             attrs_str += a
             if i != len(attr_names) - 1:
                 attrs_str += ", "
+
+        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        dist_context = get_default_distributed_context()
+        op_dist_attr = dist_context.get_op_distributed_attr_for_program(self)
+        if op_dist_attr is not None:
+            attrs_str += ", {name} = {value}".format(
+                name="dist_attr", value=op_dist_attr)
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
@@ -2542,6 +2678,31 @@ class Operator(object):
             return True
 
         return False
+
+    @property
+    def process_mesh(self):
+        """
+        Get the process mesh belonging to this Operator.
+        """
+        from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+        mesh_attr_name = 'mesh_id' + core.kAutoParallelSuffix()
+        mesh_id = self.attr(mesh_attr_name)
+        return _g_process_mesh_map[mesh_id]
+
+    def dims_mapping(self, name):
+        """
+        Get the dims_mapping for the op's var named `name`.
+        """
+        dims_mapping_attr_name = name + core.kAutoParallelSuffix()
+        return self.attr(dims_mapping_attr_name)
+
+    @property
+    def pipeline_stage(self):
+        """
+        Get pipeline stage of the Operator.
+        """
+        pipeline_stage_attr_name = 'pipeline_stage' + core.kAutoParallelSuffix()
+        return self.desc.attr(pipeline_stage_attr_name)
 
 
 class Block(object):
@@ -3230,6 +3391,28 @@ class Block(object):
                 is_data=var.is_data,
                 need_check_feed=var.desc.need_check_feed())
         return ret_var
+
+
+# NOTE(zjl): you should be careful that after you call this method,
+# some Python Variable and all Python Operators should not be used
+# again. Because all Python Variables and all Python Operators are
+# re-constructed inside this method. The underlying VarDesc(OpDesc)
+# of some old Python Variables(all old Python Operators) may have 
+# been destructed.
+def _apply_pass(main_program,
+                startup_program,
+                pass_name,
+                pass_attrs={},
+                pass_attr_types={}):
+    assert isinstance(pass_attrs, dict), "pass_attrs must be dict"
+    assert isinstance(pass_attr_types, dict), "pass_attr_types must be dict"
+    tmp_main_program = core.ProgramDesc(main_program.desc)
+    tmp_startup_program = core.ProgramDesc(startup_program.desc)
+    attrs = core.apply_pass(tmp_main_program, tmp_startup_program, pass_name,
+                            pass_attrs, pass_attr_types)
+    main_program._rebuild_from_desc(tmp_main_program)
+    startup_program._rebuild_from_desc(tmp_startup_program)
+    return attrs
 
 
 class IrNode(object):
@@ -4147,6 +4330,117 @@ class Program(object):
 
         # compiled program, i.e. Graph
         self._graph = None
+
+    def _find_var_class_kwargs(self, new_desc):
+        # NOTE: not all variables support shape/dtype/lod_level methods.
+        # For example: RAW, STEP_SCOPES, etc.
+        def get_var_desc_attr_or_none(var_desc, attr_name, allowed_types):
+            if var_desc.type() in allowed_types:
+                return getattr(var_desc, attr_name)()
+            else:
+                return None
+
+        old_desc = self.desc
+        all_new_vars = []
+        block_num = new_desc.num_blocks()
+        for idx in range(block_num):
+            new_block_desc = new_desc.block(idx)
+            all_new_vars.append([])
+            block_new_vars = all_new_vars[-1]
+            for new_var_desc in new_block_desc.all_vars():
+                if self.blocks[idx].has_var(new_var_desc.name()):
+                    old_var = self.blocks[idx].var(new_var_desc.name())
+                else:
+                    old_var = None
+
+                kwargs = {
+                    'type': new_var_desc.type(),
+                    'name': new_var_desc.name(),
+                    'shape': get_var_desc_attr_or_none(new_var_desc, "shape", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.SELECTED_ROWS,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
+                    'dtype': get_var_desc_attr_or_none(new_var_desc, "dtype", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.SELECTED_ROWS,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
+                    'lod_level':
+                    get_var_desc_attr_or_none(new_var_desc, "lod_level", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
+                    'error_clip': old_var.error_clip
+                    if old_var is not None else None,
+                    'stop_gradient': old_var.stop_gradient
+                    if old_var is not None else False,
+                    'is_data': old_var.is_data
+                    if old_var is not None else False,
+                    'need_check_feed': new_var_desc.need_check_feed(),
+                    'belong_to_optimizer': old_var.belong_to_optimizer
+                    if old_var is not None else False,
+                }
+
+                if isinstance(old_var, Parameter):
+                    kwargs.update({
+                        'trainable': old_var.trainable,
+                        'optimize_attr': old_var.optimize_attr,
+                        'regularizer': old_var.regularizer,
+                        'do_model_average': old_var.do_model_average,
+                        'need_clip': old_var.need_clip,
+                        'is_distributed': old_var.is_distributed,
+                        'is_parameter': old_var.is_parameter,
+                    })
+                    block_new_vars.append({
+                        'class': Parameter,
+                        'kwargs': copy.deepcopy(kwargs),
+                    })
+                else:
+                    kwargs['persistable'] = new_var_desc.persistable()
+                    block_new_vars.append({
+                        'class': Variable,
+                        'kwargs': copy.deepcopy(kwargs),
+                    })
+
+        return all_new_vars
+
+    def _rebuild_from_desc(self, desc):
+        all_new_vars = self._find_var_class_kwargs(desc)
+        block_num = desc.num_blocks()
+        assert block_num == len(all_new_vars)
+        assert block_num == self.desc.num_blocks()
+
+        # clear old blocks and desc
+        for idx in range(block_num):
+            block = self.blocks[idx]
+            block.vars.clear()
+            block.ops.clear()
+
+        for idx in range(block_num):
+            block_desc = self.blocks[idx].desc
+            new_block_desc = desc.block(idx)
+            block_desc._move_from(new_block_desc)
+
+        del desc
+
+        # add new vars first
+        for idx in range(block_num):
+            block = self.blocks[idx]
+            for new_var in all_new_vars[idx]:
+                clazz = new_var['class']
+                kwargs = new_var['kwargs']
+                kwargs['block'] = block
+                clazz(**kwargs)
+
+        # then append op
+        for idx in range(block_num):
+            block = self.blocks[idx]
+            block_desc = self.desc.block(idx)
+            for op_idx in range(block_desc.op_size()):
+                op_desc = block_desc.op(op_idx)
+                op = Operator(block=block, desc=op_desc)
+                block.ops.append(op)
 
     def global_seed(self, seed=0):
         """

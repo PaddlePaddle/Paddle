@@ -716,13 +716,15 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         else:
             reduce_all_flag = False
 
-    dtype_flag = False
-    if dtype is not None:
-        if dtype in ['float64', 'int64']:
-            if (convert_dtype(x.dtype) == "float32" and dtype == "float64") or \
-               (convert_dtype(x.dtype) == "int32" and dtype == "int64"):
-                dtype_flag = True
+    def get_dtype(x, dtype):
+        if dtype is not None:
+            return (True, dtype)
+        src_type = convert_dtype(x.dtype)
+        if src_type in ['bool','int32', 'int64']:
+            return (True, 'int64')
+        return (False, src_type)
 
+    dtype_flag, dtype = get_dtype(x, dtype)
     if in_dygraph_mode():
         axis = axis if axis != None and axis != [] else [0]
         if dtype_flag:
@@ -740,27 +742,17 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         'reduce_all': reduce_all_flag
     }
 
-    if dtype is not None:
-        if dtype in ['float64', 'int64']:
-            if (convert_dtype(x.dtype) == "float32" and dtype == "float64") or \
-               (convert_dtype(x.dtype) == "int32" and dtype == "int64"):
-                attrs.update({
-                    'in_dtype': x.dtype,
-                    'out_dtype': convert_np_dtype_to_dtype_(dtype)
-                })
+    if dtype_flag:
+        attrs.update({
+            'in_dtype': x.dtype,
+            'out_dtype': convert_np_dtype_to_dtype_(dtype)
+        })
 
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sum')
-
-    if dtype is not None:
-        check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'sum')
-        x_dtype = convert_dtype(x.dtype)
-
-        if (x_dtype == "float64" and dtype in ["float32", "int32"]) or \
-                (x_dtype == "int64" and dtype == "int32"):
-            raise ValueError("The input(x)'s dtype is {} but the attr(dtype) of sum is {}, "
-                             "which may cause data type overflows. Please reset attr(dtype) of sum."
-                             .format(x_dtype, dtype))
+        x, 'x', ['bool', 'float16', 'float32', 'float64',
+                'int32', 'int64', 'complex64', 'complex128',
+                u'bool', u'float16', u'float32', u'float64',
+                u'int32', u'int64', u'complex64', u'complex128'], 'sum')
 
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'sum')
 
@@ -2499,25 +2491,25 @@ def neg(x, name=None):
 
     return layers.scale(x, scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name)
 
-def atan2(y, x, name=None):
+def atan2(x, y, name=None):
     r"""
-    Element-wise arctangent of y/x with consideration of the quadrant.
+    Element-wise arctangent of x/y with consideration of the quadrant.
 
     Equation:
         .. math::
 
-          atan2(y,x)=\left\{\begin{matrix}
-          & tan^{-1}(\frac{y}{x}) & x > 0 \\
-          & tan^{-1}(\frac{y}{x}) + \pi & y>=0, x < 0 \\
-          & tan^{-1}(\frac{y}{x}) - \pi & y<0, x < 0 \\
-          & +\frac{\pi}{2} & y>0, x = 0 \\
-          & -\frac{\pi}{2} & y<0, x = 0 \\
-          &\text{undefined} & y=0, x = 0
-          \end{matrix}\right.
+            atan2(x,y)=\left\{\begin{matrix}
+            & tan^{-1}(\frac{x}{y}) & y > 0 \\
+            & tan^{-1}(\frac{x}{y}) + \pi & x>=0, y < 0 \\
+            & tan^{-1}(\frac{x}{y}) - \pi & x<0, y < 0 \\
+            & +\frac{\pi}{2} & x>0, y = 0 \\
+            & -\frac{\pi}{2} & x<0, y = 0 \\
+            &\text{undefined} & x=0, y = 0
+            \end{matrix}\right.
 
     Args:
-        y (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
-        x (Tensor): An N-D Tensor, must have the same type as `x`.
+        x (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
+        y (Tensor): An N-D Tensor, must have the same type as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2526,30 +2518,30 @@ def atan2(y, x, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            import paddle
 
-          y = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
-          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-          #       [-1,  1,  1, -1])
+            x = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
+            #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [-1,  1,  1, -1])
 
-          x = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
-          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-          #       [-1,  -1,  1, 1])
+            y = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
+            #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [-1,  -1,  1, 1])
 
-          out = paddle.atan2(y, x)
-          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-          #       [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
+            out = paddle.atan2(x, y)
+            #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
 
     """
 
     if in_dygraph_mode():
-        return _C_ops.atan2(y, x)
+        return _C_ops.atan2(x, y)
     else:
-        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
         check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
+        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
 
         helper = LayerHelper('atan2', **locals())
-        inputs = {'X1' : y, 'X2' : x}
+        inputs = {'X1' : x, 'X2' : y}
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
                 type='atan2', inputs=inputs, outputs={'Out': out})

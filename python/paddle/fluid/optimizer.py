@@ -4397,6 +4397,10 @@ class PipelineOptimizer(object):
         return op_role & int(self._op_role.Backward) and op_role & int(
             self._op_role.Loss)
 
+    def _is_forward_op(self, op):
+        return self._op_role_key in op.attr_names and (
+            int(op.attr(self._op_role_key)) == int(self._op_role.Forward))
+
     def _is_backward_op(self, op):
         return self._op_role_key in op.attr_names and (
             int(op.attr(self._op_role_key)) & int(self._op_role.Backward))
@@ -4528,7 +4532,7 @@ class PipelineOptimizer(object):
         op._rename_input(old_name, new_name)
         op._rename_output(old_name, new_name)
 
-    def _create_var(self, block, ref_var, name):
+    def _create_var(self, block, ref_var, name, dtype=None):
         """
         Create a new var for block, which has the same type,
         shape and dtype as ref_var, then rename it with the
@@ -4537,7 +4541,7 @@ class PipelineOptimizer(object):
         new_var = block.create_var(
             name=name,
             shape=ref_var.shape,
-            dtype=ref_var.dtype,
+            dtype=ref_var.dtype if dtype is None else dtype,
             type=ref_var.type,
             lod_level=ref_var.lod_level,
             persistable=ref_var.persistable,
@@ -4657,12 +4661,8 @@ class PipelineOptimizer(object):
             op._set_attr(self._op_device_key, f"{self._device}:all")
         else:
             other_known_ops = [
-                'update_loss_scaling',
-                'reduce_any',
-                'concat',
-                'sum',
-                'check_finite_and_unscale',
-                'alloc_float_status',
+                'update_loss_scaling', 'reduce_any', 'concat', 'sum',
+                'check_finite_and_unscale', 'alloc_float_status', 'memcpy'
             ]
             assert op.type in other_known_ops, "For other ops without " \
                 "op_device set, they must be one of {}, but it " \
@@ -4705,10 +4705,6 @@ class PipelineOptimizer(object):
             int(self._op_role.Optimize),
             int(self._op_role.Backward) | int(self._op_role.Loss),
         ]
-        pre_stage_id = None
-        decrease_flag = False
-        in_optimize = False
-        in_forward = True
         for op in block.ops:
             if not op._has_kernel(op.type):
                 assert op.type == "conditional_block" and (
@@ -4724,10 +4720,6 @@ class PipelineOptimizer(object):
                     op_role,
                     op.type,
                     valid_op_role_value)
-            if int(op_role) == int(self._op_role.Optimize):
-                in_optimize = True
-            if int(op_role) == int(self._op_role.Backward):
-                in_forward = False
 
             assert op.has_attr(self._op_device_key), (
                 "op ({}) has no {} attribute.".format(op.type,
@@ -4739,33 +4731,12 @@ class PipelineOptimizer(object):
             if device == f"{self._device}:all": continue
 
             dev_type = device.split(':')[0]
-            stage_id = int(device.split(':')[1])
             assert dev_type == "gpu" or dev_type == 'npu', (
                 "Now only gpu and npu devices are supported "
                 "for pipeline parallelism.")
 
             if device not in device_list:
                 device_list.append(device)
-
-            if not in_optimize:
-                if pre_stage_id is not None:
-                    interval = stage_id - pre_stage_id
-                    assert abs(interval) <= 1, \
-                        "The stage interval of two consecutive ops in the pipeline must be < = 1," \
-                        "but the interval of op={} and prev op is {}".format(op, interval)
-                    # stage must be in order, such as Forward(0 1 2 3 4), Backward(4 3 2 1 0)
-                    # if stage is unordered, such as Forward(0 1 2 3 4 3 4), will report error
-                    if in_forward:
-                        assert interval >= 0, \
-                            "Pipeline stage must be sequential increment in Forward, prev_stage={}, " \
-                            "please check the stage of op={}".format(pre_stage_id, op)
-                    else:
-                        # FIXME(wangxi): recompute check failed
-                        pass
-                        #assert interval <=0, \
-                        #    "Pipeline stage must be sequential decrement in Backward, prev_stage={}, " \
-                        #    "please check the stage of op={}".format(pre_stage_id, op)
-                pre_stage_id = stage_id
 
         return device_list
 
@@ -4819,6 +4790,25 @@ class PipelineOptimizer(object):
                     continue
 
                 device_type = cur_device.split(':')[0] + ':'
+
+                def _check_stage(cur_id, prev_id):
+                    # check send/recv stage valid
+                    is_forward = self._is_forward_op(op)
+                    is_backward = self._is_backward_op(op)
+                    assert is_forward or is_backward, \
+                        'send/recv in pipeline should only be inserted in forward or backward,' \
+                        'please check the op_role of op={}'.format(op)
+
+                    if is_forward:
+                        assert prev_id < cur_id, \
+                            "In forward, send/recv can only be passed forward, but now " \
+                            "prev_stage={} great than cur_stage={}, please check op_device of op={}".format(
+                                prev_id, cur_id, op)
+                    elif is_backward:
+                        assert prev_id > cur_id, \
+                            "In backward, send/recv can only be passed backward, but now " \
+                            "prev_stage={} less than cur_stage={}, please check op_device of op={}".format(
+                                prev_id, cur_id, op)
 
                 def _insert_send_recv(cur_id, prev_id):
                     cur_dev = device_type + str(cur_id)
@@ -4890,9 +4880,9 @@ class PipelineOptimizer(object):
                         var_shape[0] = self.micro_batch_size if var_shape[
                             0] < 0 else var_shape[0]
 
-                        numel = np.prod(var.shape)
-                        assert numel % self.mp_degree == 0, \
-                            "The numel={} must be divisible by mp_degree={}".format(numel, self.mp_degree)
+                        numel = np.prod(var_shape)
+                        use_mp = (self.mp_degree > 1) and (
+                            numel % self.mp_degree == 0)
 
                         if 'subprog' in var.name:
                             # For recompute, if the checkpoints var is layer_norm_6.tmp_2
@@ -4919,6 +4909,8 @@ class PipelineOptimizer(object):
                             extra_index_info['index'] += 1
                             return
 
+                        _check_stage(cur_id, prev_id)
+
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='c_sync_calc_stream',
@@ -4931,8 +4923,7 @@ class PipelineOptimizer(object):
                         extra_index_info['index'] += 1
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='send_v2'
-                            if self.mp_degree == 1 else 'partial_send',
+                            type='send_v2' if not use_mp else 'partial_send',
                             inputs={'X': var},
                             attrs={
                                 self._op_device_key: prev_dev,
@@ -4968,8 +4959,7 @@ class PipelineOptimizer(object):
                             extra_index_info['index'] += 1
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='recv_v2'
-                            if self.mp_degree == 1 else 'partial_recv',
+                            type='recv_v2' if not use_mp else 'partial_recv',
                             outputs={'Out': [var]},
                             attrs={
                                 'out_shape': var_shape,
@@ -4984,7 +4974,7 @@ class PipelineOptimizer(object):
                                 'id': self.mp_rank,
                             })
                         extra_index_info['index'] += 1
-                        if self.mp_degree > 1:
+                        if use_mp:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
                                 type='partial_allgather',
@@ -5044,13 +5034,26 @@ class PipelineOptimizer(object):
                 new_grad_name = name + "@MERGED"
                 self._rename_arg(op, name, new_grad_name)
 
-    def _accumulate_gradients(self, block, pp_allreduce_in_optimize=False):
+    def _accumulate_gradients(self,
+                              block,
+                              pp_allreduce_in_optimize=False,
+                              fp16_allreduce=False,
+                              user_defined_strategy=None):
         """
         Create a new merged gradient for each parameter and accumulate the
         corresponding gradient to it.
         """
+        if user_defined_strategy and user_defined_strategy.fuse_grad_merge:
+            fused_gradient_names = self._accumulate_gradients_with_fuse(
+                block, fp16_allreduce,
+                user_defined_strategy.fuse_grad_size_in_MB)
+            return fused_gradient_names
+
         merged_gradient_names = []
         first_opt_op_idx = None
+
+        merged_suffix = '@MERGED@FP16' if fp16_allreduce else '@MERGED'
+        dtype = paddle.float16 if fp16_allreduce else None
 
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             # remove the cast op of fp16 grad to fp32 grad
@@ -5062,12 +5065,10 @@ class PipelineOptimizer(object):
                     block._remove_op(index)
                     continue
 
-            if self._is_backward_op(op) and not first_opt_op_idx:
+            if self._is_backward_op(op) and first_opt_op_idx is None:
                 first_opt_op_idx = index + 1
                 # no optimize phase
                 if first_opt_op_idx == len(block.ops): return
-                if block.ops[first_opt_op_idx].type == "c_sync_comm_stream":
-                    first_opt_op_idx += 1
 
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
@@ -5079,12 +5080,14 @@ class PipelineOptimizer(object):
                     param_name = op_role_var[i]
                     if not block.has_var(param_name): continue
                     if '@BroadCast' in param_name: continue
+
                     param_grad_name = param_name + core.grad_var_suffix()
-                    merged_param_grad_name = param_grad_name + '@MERGED'
+                    merged_param_grad_name = param_grad_name + merged_suffix
                     if not block.has_var(merged_param_grad_name):
                         self._create_var(block, block.vars[param_name],
-                                         merged_param_grad_name)
+                                         merged_param_grad_name, dtype)
                     assert block.has_var(merged_param_grad_name)
+
                     param_grad_var = block.var(param_grad_name)
                     merged_param_grad_var = block.var(merged_param_grad_name)
                     merged_param_grad_var.persistable = True
@@ -5103,22 +5106,18 @@ class PipelineOptimizer(object):
                     offset += 1
                     grad_name = op_role_var[i + 1]
                     grad_var = block.vars[grad_name]
-                    if not 'cast_fp16' in grad_name:
-                        block._insert_op(
-                            index=first_opt_op_idx + offset,
-                            type='sum',
-                            inputs={'X': [grad_var, merged_param_grad_var]},
-                            outputs={'Out': merged_param_grad_var},
-                            attrs={
-                                self._op_role_key: self._op_role.Backward,
-                            })
-                        offset += 1
-                        merged_gradient_names.append(merged_param_grad_name)
-                    else:
-                        # cast gradient to fp32 to accumulate to merged gradient
+
+                    is_fp16_grad = 'cast_fp16' in grad_name
+                    need_cast = (is_fp16_grad is not fp16_allreduce)
+
+                    if need_cast:
+                        # if fp16_allreduce:
+                        #     cast grad to fp16 to accumulate to merged gradient
+                        # else:
+                        #     cast grad to fp32 to accumulate to merged gradient
                         cast_grad_var_name = param_grad_name + '@TMP'
-                        cast_grad_var = self._create_var(block, param_grad_var,
-                                                         cast_grad_var_name)
+                        cast_grad_var = self._create_var(
+                            block, param_grad_var, cast_grad_var_name, dtype)
                         cast_grad_var.persistable = False
                         block._insert_op(
                             index=first_opt_op_idx + offset,
@@ -5131,19 +5130,320 @@ class PipelineOptimizer(object):
                                 self._op_role_key: self._op_role.Backward,
                             })
                         offset += 1
-                        block._insert_op(
-                            index=first_opt_op_idx + offset,
-                            type='sum',
-                            inputs={
-                                'X': [merged_param_grad_var, cast_grad_var]
-                            },
-                            outputs={'Out': merged_param_grad_var},
-                            attrs={
-                                self._op_role_key: self._op_role.Backward,
-                            })
-                        offset += 1
-                        merged_gradient_names.append(merged_param_grad_name)
+                        grad_var = cast_grad_var
+
+                    block._insert_op(
+                        index=first_opt_op_idx + offset,
+                        type='sum',
+                        inputs={'X': [merged_param_grad_var, grad_var]},
+                        outputs={'Out': merged_param_grad_var},
+                        attrs={self._op_role_key: self._op_role.Backward, })
+                    offset += 1
+                    merged_gradient_names.append(merged_param_grad_name)
+
+        if not fp16_allreduce: return merged_gradient_names
+
+        first_opt_op_idx = None
+        for index, op in reversed(tuple(enumerate(list(block.ops)))):
+            if self._is_backward_op(op) and first_opt_op_idx is None:
+                first_opt_op_idx = index + 1
+                break
+        assert first_opt_op_idx is not None
+
+        # insert cast op from fp16->fp32
+        # FIXME(wangxi): maybe put in sharding is better, for some grad
+        #                is not in sharding device.
+        for fp16_grad_name in merged_gradient_names:
+            grad_name = fp16_grad_name.replace('@FP16', '')
+            param_name = fp16_grad_name.replace('@GRAD@MERGED@FP16', '')
+
+            if not block.has_var(grad_name):
+                self._create_var(block, block.vars[param_name], grad_name)
+            assert block.has_var(grad_name)
+
+            fp16_grad_var = block.var(fp16_grad_name)
+            grad_var = block.var(grad_name)
+            grad_var.persistable = False
+
+            block._insert_op(
+                index=first_opt_op_idx,
+                type='cast',
+                inputs={'X': fp16_grad_var},
+                outputs={'Out': grad_var},
+                attrs={
+                    'in_dtype': fp16_grad_var.dtype,
+                    'out_dtype': grad_var.dtype,
+                    self._op_role_key: self._op_role.Optimize,
+                })
+
         return merged_gradient_names
+
+    def _accumulate_gradients_with_fuse(self, main_block, fp16, fused_size):
+        first_opt_op_idx = None
+        grad_param_pairs = []
+        # obtain all param/grad pairs that needed to be fused
+        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
+            # remove the cast op of fp16 grad to fp32 grad
+            if self._is_optimize_op(op) and op.type == 'cast':
+                in_name = op.input_arg_names[0]
+                out_name = op.output_arg_names[0]
+                if out_name.strip('@GRAD') in self._param_device_map:
+                    assert in_name.replace('.cast_fp16', '') == out_name
+                    main_block._remove_op(index)
+                    continue
+
+            if self._is_backward_op(op) and first_opt_op_idx is None:
+                first_opt_op_idx = index + 1
+                # no optimize phase
+                if first_opt_op_idx == len(main_block.ops):
+                    return
+
+            if self._is_backward_op(op) and (
+                    self._op_role_var_key in op.attr_names):
+                op_role_var = op.attr(self._op_role_var_key)
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0
+                for i in range(0, len(op_role_var), 2):
+                    param_name = op_role_var[i]
+                    if not main_block.has_var(param_name):
+                        continue
+                    if '@BroadCast' in param_name:
+                        continue
+                    grad_param_pairs.append(
+                        (op_role_var[i + 1], op_role_var[i]))
+
+        if len(grad_param_pairs) == 0:
+            return
+
+        grad_param_pairs = self._sort_grad_param_by_dtype(main_block,
+                                                          grad_param_pairs)
+
+        grad_param_segments = []
+        merged_suffix = '@MERGED@FP16' if fp16 else '@MERGED'
+        dtype = paddle.float16 if fp16 else paddle.float32
+        cur_size = 0.
+        last_dtype = None
+        # split the grad based on dtype and fused size
+        for grad, param in grad_param_pairs:
+            real_grad = main_block.var(grad)
+            # create the gradient merged var for each grad
+            merged_grad_var = main_block.create_var(
+                name=param + core.grad_var_suffix() + merged_suffix,
+                dtype=dtype,
+                shape=real_grad.shape,
+                persistable=True,
+                stop_gradient=False)
+            real_param = main_block.var(param)
+            tmp_size = self._get_var_size(real_grad)
+            # two strategies for splitting the grad
+            # 1. the current segment's size reach the user defined grad_size_in_MB
+            # 2. the upcoming grad holds different dtype compared with grads in current segment
+            if len(grad_param_segments) == 0 \
+                    or cur_size + tmp_size > fused_size \
+                    or real_grad.dtype != last_dtype:
+                grad_param_segments.append(
+                    ([real_grad], [real_param], [merged_grad_var]))
+                last_dtype = real_grad.dtype
+                cur_size = 0.
+            else:
+                grad_param_segments[-1][0].append(real_grad)
+                grad_param_segments[-1][1].append(real_param)
+                grad_param_segments[-1][2].append(merged_grad_var)
+                cur_size += tmp_size
+
+        fused_gradients = []
+        fused_merged_gradients = []
+        # create fused vars for grad and param
+        for grad_param_segment in grad_param_segments:
+            grad_segment = grad_param_segment[0]
+            merged_grad_segment = grad_param_segment[2]
+            fused_grad = main_block.create_var(
+                name='FusedGrad_{}'.format(grad_segment[0].name),
+                dtype=grad_segment[0].dtype,
+                persistable=False,
+                stop_gradient=False)
+            # keep the '.cast_fp16' info in the fuse var name
+            fused_merged_grad_name_prefix = 'FusedMergedGrad.cast_fp16.' if \
+                merged_grad_segment[0].dtype == paddle.float16 else 'FusedMergedGrad'
+            fused_merged_grad_name = fused_merged_grad_name_prefix + '_{}'.format(
+                merged_grad_segment[0].name)
+            fused_merged_grad = main_block.create_var(
+                name=fused_merged_grad_name,
+                dtype=merged_grad_segment[0].dtype,
+                persistable=True,
+                stop_gradient=False)
+            fused_gradients.append(fused_grad)
+            fused_merged_gradients.append(fused_merged_grad)
+
+        assert len(fused_gradients) == len(grad_param_segments)
+        assert len(fused_merged_gradients) == len(grad_param_segments)
+
+        # insert coalesce op at the start of the backward pass
+        # use param as the coalesce input to make sure the two Fused vars are in same shape
+        first_back_op_idx = None
+        for index, op in enumerate(main_block.ops):
+            if self._is_backward_op(op) and first_back_op_idx is None:
+                first_back_op_idx = index
+                break
+        assert first_back_op_idx is not None
+        offset = 0
+        for i in range(len(grad_param_segments)):
+            fused_grad = fused_gradients[i]
+            fused_merged_grad = fused_merged_gradients[i]
+            grads = grad_param_segments[i][0]
+            params = grad_param_segments[i][1]
+            merged_grads = grad_param_segments[i][2]
+            main_block._insert_op_without_sync(
+                first_back_op_idx + offset,
+                type="coalesce_tensor",
+                inputs={"Input": params},
+                outputs={"Output": grads,
+                         "FusedOutput": fused_grad},
+                attrs={
+                    # Explanation of user_defined_size_of_dtype:
+                    # In coalesce op, the align size is 256 bytes
+                    # the float takes 4 bytes while fp16 takes 2 bytes.
+                    # To meet the requirement, 128 fp16 or 64 float will be aligned
+                    # Think the total shape of the input tensors if [64],
+                    # if the dtype is float, then the shape of the fuse var is [64]
+                    # however if the dytpe if fp16, the shape of the fuse var is [128],
+                    # which will cause the fused vars' shape vary between each other.
+                    # To make sure the shape of the fused vars are identical,
+                    # we set the dtype of float and fp16 both to 2.
+                    # Under this way, the fused vars' shape for float and fp16 are all [128]
+                    "user_defined_size_of_dtype": 2,
+                    "copy_data": False,
+                    "use_align": True,
+                    "dtype": grads[0].dtype,
+                    self._op_role_key: self._op_role.Backward
+                })
+            offset += 1
+            # For the gradient_merged_fused_var, given a init value during the coalesce op
+            # this will remove a problematic fill_constant op. This op role of this coalesce
+            # is set to be LRSched to make this coalesce (with init) only run once
+            main_block._insert_op_without_sync(
+                first_back_op_idx + offset,
+                type="coalesce_tensor",
+                inputs={"Input": params},
+                outputs={
+                    "Output": merged_grads,
+                    "FusedOutput": fused_merged_grad
+                },
+                attrs={
+                    "user_defined_size_of_dtype": 2,
+                    "set_constant": True,
+                    "constant": float(0.0),
+                    "copy_data": False,
+                    "use_align": True,
+                    "dtype": merged_grads[0].dtype,
+                    self._op_role_key: self._op_role.Optimize.LRSched
+                })
+            offset += 1
+
+        # insert gradient merge relating ops
+        first_opt_op_idx += offset
+        offset = 0
+        for i in range(len(fused_gradients)):
+            fused_grad = fused_gradients[i]
+            fused_merged_grad = fused_merged_gradients[i]
+            is_fp16_grad = 'cast_fp16' in fused_grad.name
+            need_cast = (is_fp16_grad is not fp16)
+            if need_cast:
+                # for fp16 allreduce, cast fp32 grad to fp16
+                # for fp32 allreduce, cast fp16 grad to fp32
+                cast_grad_var_name = fused_grad.name + '@TMP'
+                cast_grad_var = main_block.create_var(
+                    name=cast_grad_var_name,
+                    dtype=dtype,
+                    persistable=False,
+                    stop_gradient=False)
+                main_block._insert_op(
+                    index=first_opt_op_idx + offset,
+                    type='cast',
+                    inputs={'X': fused_grad},
+                    outputs={'Out': cast_grad_var},
+                    attrs={
+                        'in_dtype': fused_grad.dtype,
+                        'out_dtype': cast_grad_var.dtype,
+                        self._op_role_key: self._op_role.Backward,
+                    })
+                offset += 1
+                fused_grad = cast_grad_var
+            main_block._insert_op(
+                index=first_opt_op_idx + offset,
+                type='sum',
+                inputs={'X': [fused_merged_grad, fused_grad]},
+                outputs={'Out': fused_merged_grad},
+                attrs={self._op_role_key: self._op_role.Backward})
+            offset += 1
+
+        if fp16:
+            # if using fp16 allreduce, the optimizer needs fp32 grads, cast them back to fp32
+            for grad, param in grad_param_pairs:
+                real_grad = main_block.var(grad)
+                fp16_grad_name = param + core.grad_var_suffix() + '@MERGED@FP16'
+                assert main_block.has_var(fp16_grad_name)
+                fp16_grad = main_block.var(fp16_grad_name)
+                fp32_grad_name = param + core.grad_var_suffix() + '@MERGED'
+                fp32_grad = main_block.create_var(
+                    name=fp32_grad_name,
+                    dtype=paddle.float32,
+                    shape=real_grad.shape,
+                    persistable=False,
+                    stop_gradient=False)
+                main_block._insert_op(
+                    index=first_opt_op_idx + offset,
+                    type='cast',
+                    inputs={'X': fp16_grad},
+                    outputs={'Out': fp32_grad},
+                    attrs={
+                        'in_dtype': paddle.float16,
+                        'out_dtype': paddle.float32,
+                        self._op_role_key: self._op_role.Optimize,
+                    })
+                offset += 1
+
+        # replace the var with it's name, which will be used for inserting allreduce
+        for i in range(len(fused_merged_gradients)):
+            fused_merged_gradients[i] = fused_merged_gradients[i].name
+
+        main_block._sync_with_cpp()
+
+        return fused_merged_gradients
+
+    def _sort_grad_param_by_dtype(self, main_block, grad_param_pairs):
+        # sort the grad param paris by the dtype
+        fp16_pairs = []
+        fp32_pairs = []
+        other_pairs = []
+        for pairs in grad_param_pairs:
+            dtype = main_block.var(pairs[0]).dtype
+            if dtype == paddle.float32:
+                fp32_pairs.append(pairs)
+            elif dtype == paddle.float16:
+                fp16_pairs.append(pairs)
+            else:
+                other_pairs.append(pairs)
+        sorted_pairs = fp16_pairs
+        sorted_pairs.extend(fp32_pairs)
+        sorted_pairs.extend(other_pairs)
+        return sorted_pairs
+
+    def _get_var_size(self, var):
+        dtype_to_size = {
+            core.VarDesc.VarType.FP16: 2,
+            core.VarDesc.VarType.FP32: 4,
+            core.VarDesc.VarType.FP64: 8,
+            core.VarDesc.VarType.INT16: 2,
+            core.VarDesc.VarType.INT32: 4,
+            core.VarDesc.VarType.INT64: 8,
+            core.VarDesc.VarType.BOOL: 1,
+            core.VarDesc.VarType.UINT8: 1,
+        }
+        assert -1 not in var.shape
+        return reduce(lambda x, y: x * y,
+                      var.shape) * dtype_to_size[var.dtype] / 1024.0 / 1024.0
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
@@ -6031,7 +6331,7 @@ class RecomputeOptimizer(Optimizer):
         self._main_program = loss.block.program
         self.block = loss.block
         if startup_program == None:
-            startup_program = fluid.default_startup_program()
+            startup_program = paddle.static.default_startup_program()
 
         with program_guard(self._main_program, startup_program):
             assert len(self.checkpoint_shape) > 0, (

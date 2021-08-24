@@ -1,10 +1,10 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,10 +24,53 @@ __all__ = []
 
 
 def _npairs(x, n):
-    if isinstance(x, (paddle.Tensor, list)):
+    if isinstance(x, (paddle.Tensor, list, tuple)):
         return x
     x = [x] * (n * 2)
     return x
+
+
+class Identity(Layer):
+    r"""
+
+    A placeholder identity operator that is argument-insensitive. For each input :math:`X` ,
+    the output :math:`Out` is:
+
+    .. math::
+
+        Out = X
+
+    Parameters:
+        args: any argument (unused)
+        kwargs: any keyword argument (unused)
+
+    Shape:
+        - input: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
+        - output: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+
+          input_tensor = paddle.randn(shape=[3, 2])
+          layer = paddle.nn.Identity()
+          out = layer(input_tensor)
+          # input_tensor: [[-0.32342386 -1.200079  ]
+          #                [ 0.7979031  -0.90978354]
+          #                [ 0.40597573  1.8095392 ]]
+          # out: [[-0.32342386 -1.200079  ]
+          #      [ 0.7979031  -0.90978354]
+          #      [ 0.40597573  1.8095392 ]]
+
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(Identity, self).__init__()
+
+    def forward(self, input):
+        return input
 
 
 class Linear(Layer):

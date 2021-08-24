@@ -144,39 +144,42 @@ def _getitem_impl_(var, item):
 
             step = 1 if step is None else step
 
-            if start is None and end is None:
-                assert (step == -1)
-                reverse_axes.append(dim)
-                continue
-
-            start = 0 if start is None else start
-            end = MAX_INTEGER if end is None else end
+            if start is None:
+                start = 0 if step > 0 else MAX_INTEGER
+            if end is None:
+                end = MAX_INTEGER if step > 0 else -1
 
         elif isinstance(slice_item, list):
-            is_bool_list = False
+            all_bool = True
             for i in slice_item:
-                if not isinstance(i, (int, bool)):
+                if type(i) is int:
+                    all_bool = False
+                elif not isinstance(i, bool):
                     raise TypeError("Only support int or bool in index list.")
-
-                if isinstance(i, bool):
-                    is_bool_list = True
-                    break
 
             if len(item) != 1:
                 raise IndexError(
-                    "When index contains a list, its length must be 1, but received {}".
+                    "When index contains a list, its length must be 1, but received {}.".
                     format(len(item)))
-
-            if is_bool_list:
-                new_slice_item = []
+            new_slice_item = []
+            if all_bool:
+                if len(slice_item) != var.shape[0]:
+                    raise IndexError(
+                        "The dimension of bool index doesn't match indexed array along "\
+                        "dimension 0, the target dimension is {}, but received {}.".
+                        format(var.shape[0], len(slice_item)))
                 for idx, ele in enumerate(slice_item):
-                    if not isinstance(ele, bool):
-                        raise TypeError(
-                            "Mixed bool index with other types is not supported."
-                        )
-
                     if ele is True:
                         new_slice_item.append(idx)
+                slice_item = new_slice_item
+            else:
+                for idx, ele in enumerate(slice_item):
+                    if type(ele) is int:
+                        new_slice_item.append(ele)
+                    elif ele is True:
+                        new_slice_item.append(1)
+                    else:
+                        new_slice_item.append(0)
                 slice_item = new_slice_item
 
             from .layers import assign
@@ -188,10 +191,27 @@ def _getitem_impl_(var, item):
         elif isinstance(slice_item, Variable):
             if len(item) != 1:
                 raise IndexError(
-                    "When index contains a Tensor, its length must be 1, but received {}".
+                    "When index contains a Tensor, its length must be 1, but received {}.".
                     format(len(item)))
 
-            from ..tensor import index_select
+            from ..tensor import index_select, gather_nd
+            from .layers.nn import where
+
+            if slice_item.dtype == core.VarDesc.VarType.BOOL:
+                if len(slice_item.shape) > len(var.shape):
+                    raise IndexError(
+                        "The dims of bool index doesn't match indexed array, "
+                        "the dims of bool index except to be equal or less "
+                        "than {}, but received {}.".format(
+                            len(var.shape), len(slice_item.shape)))
+                for i, dim_len in enumerate(slice_item.shape):
+                    if dim_len != var.shape[i]:
+                        raise IndexError(
+                            "The dimension of bool index doesn't match indexed array along "\
+                            "dimension {}, the target dimension is {}, but received {}.".
+                            format(i, var.shape[i], dim_len))
+                bool_2_idx = where(slice_item == True)
+                return gather_nd(var, bool_2_idx)
             return index_select(var, index=slice_item, axis=0)
 
         else:
@@ -289,9 +309,11 @@ def _setitem_impl_(var, item, value):
     ends = []
     steps = []
 
+    item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
 
-    for dim, slice_item in enumerate(item):
+    dim = 0
+    for _, slice_item in enumerate(item):
         if is_integer_or_scalar_tensor(slice_item):
             decrease_axes.append(dim)
             start = slice_item
@@ -304,6 +326,7 @@ def _setitem_impl_(var, item, value):
             step = slice_item.step
 
             if start is None and end is None and step is None:
+                dim += 1
                 continue
 
             step = 1 if step is None else step
@@ -326,7 +349,7 @@ def _setitem_impl_(var, item, value):
                 end = MAX_INTEGER if step > 0 else (0 - MAX_INTEGER)
         else:
             raise IndexError(
-                "Valid index accept int or slice or ellipsis, but received {}.".
+                "Valid index accept int, slice, ellipsis or None, but received {}.".
                 format(slice_item))
 
         axes.append(dim)
@@ -334,12 +357,15 @@ def _setitem_impl_(var, item, value):
         ends.append(end)
         steps.append(step)
 
+        dim += 1
+
     attrs = {
         'axes': axes,
         'starts': starts,
         'ends': ends,
         'steps': steps,
-        'decrease_axes': decrease_axes
+        'decrease_axes': decrease_axes,
+        'none_axes': none_axes
     }
 
     from .layers import utils

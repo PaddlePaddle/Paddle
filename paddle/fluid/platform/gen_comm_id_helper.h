@@ -31,16 +31,16 @@ void CloseSocket(int fd);
 
 template <typename CommUniqueId>
 void SendBroadCastCommID(std::vector<std::string> servers,
-                         std::vector<CommUniqueId>* nccl_ids);
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id = 0);
 
 template <typename CommUniqueId>
 void RecvBroadCastCommID(std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids);
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id = 0);
 
 // recv nccl id from socket
 template <typename CommUniqueId>
 void RecvBroadCastCommID(int server_fd, std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids);
+                         std::vector<CommUniqueId>* nccl_ids, int ring_id = 0);
 
 class SocketServer {
  public:
