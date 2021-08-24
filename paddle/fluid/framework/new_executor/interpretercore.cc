@@ -153,15 +153,19 @@ void InterpreterCore::Convert() {
       dependecy_count_[inst_id]++;
     }
   }
+
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    BuildInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
+  }
 }
 
-void InterpreterCore::RunInstruction(const Instruction& instr_node,
-                                     const VariableScope& var_scope,
-                                     const platform::Place& place) {
-  auto op_base = instr_node.kernel_func_.operator_base_;
-  // build runtime cost
+void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
+                                          const VariableScope& var_scope,
+                                          const platform::Place& place) {
+  auto op_base = instr_node->kernel_func_.operator_base_;
+
   VariableValueMap ins_map;
-  for (auto& var_name_item : instr_node.input_index_) {
+  for (auto& var_name_item : instr_node->input_index_) {
     std::vector<Variable*> input_vars;
 
     input_vars.reserve(var_name_item.second.size());
@@ -172,7 +176,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node,
   }
 
   VariableValueMap outs_map;
-  for (auto& var_name_item : instr_node.output_index_) {
+  for (auto& var_name_item : instr_node->output_index_) {
     std::vector<Variable*> out_vars;
 
     out_vars.reserve(var_name_item.second.size());
@@ -182,23 +186,27 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node,
     outs_map.emplace(var_name_item.first, std::move(out_vars));
   }
 
-  RuntimeContext runtime_context({}, {});
-  runtime_context.inputs.swap(ins_map);
-  runtime_context.outputs.swap(outs_map);
+  instr_node->runtime_ctx_.reset(new RuntimeContext({}, {}));
+  instr_node->runtime_ctx_->inputs.swap(ins_map);
+  instr_node->runtime_ctx_->outputs.swap(outs_map);
 
-  RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
-
-  static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
-      &infer_shape_ctx);
+  instr_node->infershape_ctx_.reset(
+      new RuntimeInferShapeContext(*op_base, *instr_node->runtime_ctx_.get()));
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   Scope scope;
 
-  auto exec_context =
-      ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
+  instr_node->execution_ctx_.reset(new ExecutionContext(
+      *op_base, scope, *dev_ctx, *instr_node->runtime_ctx_.get()));
+}
 
-  instr_node.kernel_func_.compute_func_(exec_context);
+void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+  static_cast<const framework::OperatorWithKernel*>(
+      instr_node.kernel_func_.operator_base_)
+      ->InferShape(instr_node.infershape_ctx_.get());
+
+  instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
 
 void InterpreterCore::ExecuteInstructionList(
@@ -219,7 +227,7 @@ void InterpreterCore::ExecuteInstructionList(
     auto instr_id = working_queue.front();
     working_queue.pop();
     auto& instr_node = vec_instr[instr_id];
-    RunInstruction(instr_node, var_scope, place);
+    RunInstruction(instr_node);
 
     auto& next_instr = instr_node.next_instruction_.direct_run_;
     ++run_op_number;
