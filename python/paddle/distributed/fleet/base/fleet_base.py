@@ -48,20 +48,7 @@ def apply_ir_passes(main_program, startup_program, config):
         main_program = pipeline_opt["section_program"]
         startup_program = startup_program._pipeline_opt["startup_program"]
 
-    pass_attrs = {"use_cuda": config._is_collective, }
-
-    settings = {
-        "fuse_relu_depthwise_conv": True,
-        "fuse_bn_act_ops": True,
-        "fuse_bn_add_act_ops": True,
-        "fuse_elewise_add_act_ops": True,
-        "fuse_all_optimizer_ops": True,
-        "enable_addto": True,
-        "enable_inplace": True,
-    }
-    for k, v in settings.items():
-        setattr(build_strategy, k, v)
-
+    pass_attrs = {"use_cuda": config._is_collective}
     fuse_all_reduce = config._user_defined_strategy.fuse_all_reduce_ops
     if fuse_all_reduce and build_strategy.fuse_all_optimizer_ops:
         # FIXME(zjl): currently, fuse_all_optimizer_ops

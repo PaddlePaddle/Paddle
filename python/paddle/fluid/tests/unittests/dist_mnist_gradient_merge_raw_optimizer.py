@@ -29,6 +29,20 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
 
         assert fluid.core.globals()['FLAGS_apply_pass_to_program']
         strategy = fleet.DistributedStrategy()
+        build_strategy = paddle.static.BuildStrategy()
+        settings = {
+            "fuse_relu_depthwise_conv": True,
+            "fuse_bn_act_ops": True,
+            "fuse_bn_add_act_ops": True,
+            "fuse_elewise_add_act_ops": True,
+            "fuse_all_optimizer_ops": True,
+            "enable_addto": True,
+            "enable_inplace": True,
+        }
+        for k, v in settings.items():
+            setattr(build_strategy, k, v)
+        strategy.build_strategy = build_strategy
+
         strategy.gradient_merge = True
         strategy.gradient_merge_configs = {
             "k_steps": 2,
