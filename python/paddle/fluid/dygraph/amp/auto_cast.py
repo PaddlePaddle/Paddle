@@ -132,6 +132,8 @@ def fp16_initialize(enable_pure_fp16, models, optimizers):
 
     for idx in range(len(optimizers)):
         optimizers[idx]._parameter_list = models[idx].parameters()
+        if hasattr(optimizers[idx], '_multi_precision'):
+            optimizers[idx]._multi_precision = True
 
     return models, optimizers
 
