@@ -717,7 +717,7 @@ def max_unpool2d(x,
             import paddle.nn.functional as F
             import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 1, 7, 7]).astype(np.float32))
+            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 1, 6, 6]).astype(np.float32))
             pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             # pool_out shape: [1, 1, 3, 3],  indices shape: [1, 1, 3, 3]
             unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0)
