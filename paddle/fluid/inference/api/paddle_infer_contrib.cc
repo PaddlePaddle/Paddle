@@ -34,7 +34,7 @@ std::unique_ptr<Tensor> CreateInferTensorForTest(const std::string& name,
   std::unique_ptr<Tensor> res(new Tensor(p_scope));
   res->input_or_output_ = true;
   res->SetName(name);
-  res->SetPlace(place);
+  res->SetPlace(place, 0 /*device id*/);
   return res;
 }
 
