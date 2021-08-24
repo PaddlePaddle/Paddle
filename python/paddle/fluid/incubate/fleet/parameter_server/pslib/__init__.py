@@ -1120,14 +1120,14 @@ class DownpourOptimizer(DistributedOptimizer):
         fleet._main_programs = programs
         fleet._scopes = scopes
         if opt_info["use_ps_gpu"]:
-            from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+            from paddle.fluid.transpiler.collective import MultiThread
             # check start program
 
             env = self.get_dist_env()
             if not isinstance(losses, list):
                 startup_programs = [startup_programs]
             for i in range(0, len(startup_programs)):
-                t = SingleProcessMultiThread()
+                t = MultiThread()
                 start_program = startup_programs[i]
                 main_program = programs[i]
                 t.transpile(

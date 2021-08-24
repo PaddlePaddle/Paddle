@@ -65,7 +65,7 @@ class Collective(object):
             self.main_program = default_main_program()
 
         self.nranks = len(endpoints)
-        if self.nranks == 1 and self.mode != "single_process_multi_thread":
+        if self.nranks == 1 and self.mode != "single_process_multi_thread" and self.mode != "box":
             raise ValueError('the number of endpoints must > 1')
 
         if rank < 0:
@@ -419,6 +419,7 @@ class SingleProcessMultiThread(GradAllReduce):
         block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
 
 
+
 class MultiThread(GradAllReduce):
     '''
     '''
@@ -426,6 +427,9 @@ class MultiThread(GradAllReduce):
     def __init__(self, nrings=1):
         GradAllReduce.__init__(self, nrings)
         self.mode = "box"
+        # use fuse_allreduce by default in gpubox
+        self.fuse_all_reduce_ops = True
+        self.fuse_grad_size_in_num = 128
 
     def _transpile_startup_program(self):
         if len(self.endpoints) > 1:
@@ -442,3 +446,115 @@ class MultiThread(GradAllReduce):
             print("begin to _transpile_startup_program for single-node")
             block = self.startup_program.global_block()
             block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+
+    def _transpile_main_program(self):
+        self._insert_scale_loss_grad_ops()
+        if self.fuse_all_reduce_ops:
+            self._insert_fuse_allreduce_ops()
+        else:
+            self._insert_allreduce_ops()
+
+    def _insert_fuse_allreduce_ops(self):
+        """
+        insert coalesce_tensor and all reduce ops
+        """
+        block = self.main_program.global_block()
+        ring_id = 0 % self.nrings
+        grad = None
+        param_grads = []
+        # find all grad params
+        for op in reversed(block.ops):
+            if self._is_backward_op(op) and \
+                    self.op_role_var_key in op.attr_names:
+                op_role_var = op.all_attrs()[self.op_role_var_key]
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0, "vars need to be one param var followed by one grad var, " \
+                                                  "but got odd number of vars"
+                for i in range(0, len(op_role_var), 2):
+                    param_name = op_role_var[i]
+                    param = block.var(param_name)
+                    grad_name = op_role_var[i + 1]
+                    grad = block.var(grad_name)
+                    if param.is_distributed:
+                        continue
+                    param_grads.append(grad)
+        if grad is None:
+            return
+
+        segments = []
+        last_dtype = None
+        # split the grad based on dtype and fused size
+        for var in param_grads:
+            if len(segments) == 0 \
+                    or len(segments[-1]) == self.fuse_grad_size_in_num \
+                    or var.dtype != last_dtype:
+                segments.append([var])
+                last_dtype = var.dtype
+            else:
+                segments[-1].append(var)
+        
+        fused_vars = []
+        for idx, op in enumerate(block.ops):
+            if self._is_optimizer_op(op):
+                for segment in segments:
+                    # insert coalesce tensor
+                    tmp_var = block.create_var(
+                        name=unique_name.generate('FusedOutput_{}'.format(
+                            segment[0].name)),
+                        dtype=segment[0].dtype,
+                        persistable=False,
+                        stop_gradient=True)
+                    fused_vars.append(tmp_var)
+                    block._insert_op(
+                        idx,
+                        type="coalesce_tensor",
+                        inputs={"Input": segment},
+                        outputs={"Output": segment,
+                                 "FusedOutput": tmp_var},
+                        attrs={
+                            "copy_data": True,
+                            "use_align": True,
+                            "dtype": segment[0].dtype,
+                            self.op_role_key: OpRole.Backward
+                        })
+                break
+
+        # insert the allreduce_sum op
+        for idx, op in enumerate(block.ops):
+            if self._is_optimizer_op(op):
+                for fused_var in fused_vars:
+                    block._insert_op(
+                        idx,
+                        type='c_allreduce_sum',
+                        inputs={'X': fused_var},
+                        outputs={'Out': fused_var},
+                        attrs={
+                            'ring_id': ring_id,
+                            'use_calc_stream': False,
+                            self.op_role_key: OpRole.Backward
+                        })
+                    block._insert_op(
+                        idx,
+                        type='c_sync_calc_stream',
+                        inputs={'X': fused_var},
+                        outputs={'Out': fused_var},
+                        attrs={self.op_role_key: OpRole.Backward})
+                break
+
+        if len(fused_vars) == 0:
+            block._sync_with_cpp()
+            return
+
+        # insert the sync comm op
+        for idx, op in enumerate(block.ops):
+            if self._is_optimizer_op(op):
+                block._insert_op(
+                    idx,
+                    type='c_sync_comm_stream',
+                    inputs={'X': fused_vars[0]},
+                    outputs={'Out': fused_vars[0]},
+                    attrs={'ring_id': ring_id,
+                           self.op_role_key: OpRole.Backward})
+                break
+        block._sync_with_cpp()
