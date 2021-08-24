@@ -118,9 +118,8 @@ __global__ void FusedResidualDropoutBiasIsTest(const size_t rows,
 
   using LoadT = AlignedVector<T, VecSize>;
 
-  const int tmp_cols = cols / VecSize * VecSize;
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
-    for (int i = col_id * VecSize; i < tmp_cols;
+    for (int i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
       T src_vec[VecSize];
       T residual_vec[VecSize];
@@ -249,17 +248,6 @@ __global__ void FusedResidualDropoutGradVec(const T *dout, const MaskType *mask,
   }
 }
 
-template <typename U>
-static __forceinline__ __device__ U WarpReduceSum(U val) {
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-  const int warpSize = 32;
-  for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val += paddle::platform::CudaShuffleDownSync(mask, val, offset);
-  }
-  return val;
-}
-
 /**
  * blocks(128 * 8)
  * 1. calculate the dx and reduce total rows to 128 rows
@@ -285,7 +273,6 @@ __global__ void FusedResidualDropoutBiasGradVec(
       T dx_vec[VecSize];
       LoadT *out_value = reinterpret_cast<LoadT *>(&out_vec);
       MaskLoadT *mask_value = reinterpret_cast<MaskLoadT *>(&mask_vec);
-      LoadT *dx_value = reinterpret_cast<LoadT *>(&dx_vec);
       *out_value = *reinterpret_cast<const LoadT *>(&dout[index]);
       *mask_value = *reinterpret_cast<const MaskLoadT *>(&mask[index]);
 
