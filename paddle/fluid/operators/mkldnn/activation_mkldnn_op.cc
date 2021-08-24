@@ -79,15 +79,15 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
                     paddle::platform::errors::PreconditionNotMet(
                         "Operator DNNL eletwise_forward must use CPUPlace"));
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+  const auto &mkldnn_engine = dev_ctx.GetEngine();
 
   const auto *x = ctx.Input<Tensor>("X");
   auto *y = ctx.Output<Tensor>("Out");
 
   bool is_inplaced = x->IsSharedBufferWith(*y);
 
-  platform::ActivationMKLDNNHandler<T> handler(algorithm, ctx, dev_ctx,
-                                               ctx.GetPlace(), x,
-                                               ctx.InputName("X"), is_inplaced);
+  platform::ActivationMKLDNNHandler<T> handler(algorithm, ctx, mkldnn_engine,
+                                               ctx.GetPlace(), x);
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
   auto dst_memory_p = is_inplaced ? src_memory_p : handler.AcquireDstMemory(y);
@@ -106,13 +106,14 @@ template <typename T>
 void eltwise_grad(const framework::ExecutionContext &ctx,
                   mkldnn::algorithm algorithm) {
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+  const auto &mkldnn_engine = dev_ctx.GetEngine();
 
   const auto *x = ctx.Input<Tensor>("X");
   const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *diff_x = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-  platform::ActivationMKLDNNHandler<T> handler(
-      algorithm, ctx, dev_ctx, ctx.GetPlace(), x, diff_y, ctx.InputName("X"));
+  platform::ActivationMKLDNNHandler<T> handler(algorithm, ctx, mkldnn_engine,
+                                               ctx.GetPlace(), x, diff_y);
 
   auto src_memory_p = handler.AcquireBackwardSrcMemory(x);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(diff_y);

@@ -567,6 +567,13 @@ class Pad3dCPUKernel : public framework::OpKernel<T> {
                             in_width, pads[1]));
     }
 
+    if (mode == "circular") {
+      PADDLE_ENFORCE_NE(
+          in_depth * in_height * in_width, 0,
+          platform::errors::InvalidArgument(
+              "The input tensor size can not be 0 for circular padding mode."));
+    }
+
     const int pad_left = pads[0];
     const int pad_top = pads[2];
     const int pad_front = pads[4];
