@@ -50,7 +50,7 @@ function check_whl {
 function compile_install_paddle {
     export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto}
     export PY_VERSION=3.7
-    export WITH_DISTRIBUTE=OFF
+    export WITH_DISTRIBUTE=ON
     export WITH_GPU=ON
     export WITH_TENSORRT=OFF
     export WITH_TESTING=OFF
