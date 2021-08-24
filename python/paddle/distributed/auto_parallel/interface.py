@@ -184,6 +184,13 @@ class ProcessMesh(object):
             "parent with id %d does not exist." % self._parent_id)
         return _g_process_mesh_map[self._parent_id]
 
+    @property
+    def ndim(self):
+        r"""
+        Get the number of dimension of ProcessMesh.
+        """
+        return len(self._topology)
+
     def set_placement(self, order):
         """
         Set the map from logical processes to physical ones using the
@@ -228,6 +235,13 @@ class ProcessMesh(object):
         assert len(logical_order) == len(order)
         for idx, l_id in enumerate(logical_order):
             _user_defined_physical_map[l_id] = order[idx]
+
+    def reset_global_process_mesh_map(self):
+        """
+        Remove all process mesh in _g_process_mesh_map, make it empty.
+        """
+
+        _g_process_mesh_map = dict()
 
     def __eq__(self, other):
         assert other and isinstance(other, ProcessMesh)
