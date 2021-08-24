@@ -34,7 +34,7 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
             }
         }]
         self.batch_size_set = [1, 2, 4]
-    
+
     def set_config(self):
         self.approximate = True
         self.trt_engine_num = 0
@@ -44,32 +44,45 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
         input_data = TensorConfig(shape=[-1, 3, 64, 64])
         weight = np.random.randn(24, 3, 3, 3).astype("float32")
         filter = TensorConfig(shape=[24, 3, 3, 3], data=weight)
-        self.program_weights = {"gelu_weight":filter}
+        self.program_weights = {"gelu_weight": filter}
         self.program_inputs = {"input_data": input_data}
         self.program_outputs = ["gelu_output_data"]
 
     def test_check_fp32_output(self):
         self.trt_param.precision == paddle_infer.PrecisionType.Float32
         # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
-        self.run_test(trt_engine_num=self.trt_engine_num, paddle_op_num=self.paddle_op_num, threshold=1e-5)
+        self.run_test(
+            trt_engine_num=self.trt_engine_num,
+            paddle_op_num=self.paddle_op_num,
+            threshold=1e-5)
 
     def test_check_fp16_output(self):
         self.trt_param.precision == paddle_infer.PrecisionType.Half
-        self.run_test(trt_engine_num=self.trt_engine_num, paddle_op_num=self.paddle_op_num, threshold=1e-2)
+        self.run_test(
+            trt_engine_num=self.trt_engine_num,
+            paddle_op_num=self.paddle_op_num,
+            threshold=1e-2)
 
     def test_dynamic_shape_fp32_check_output(self):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
         self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
         self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(trt_engine_num=self.trt_engine_num, paddle_op_num=self.paddle_op_num, threshold=1e-5)
+        self.run_test(
+            trt_engine_num=self.trt_engine_num,
+            paddle_op_num=self.paddle_op_num,
+            threshold=1e-5)
 
     def test_dynamic_shape_fp16_check_output(self):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
         self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
         self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(trt_engine_num=self.trt_engine_num, paddle_op_num=self.paddle_op_num, threshold=1e-2)
+        self.run_test(
+            trt_engine_num=self.trt_engine_num,
+            paddle_op_num=self.paddle_op_num,
+            threshold=1e-2)
+
 
 class TrtConvertGeluTest1(TrtConvertGeluTest):
     def set_config(self):
