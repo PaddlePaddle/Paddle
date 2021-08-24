@@ -927,7 +927,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
     if(WITH_DISTRIBUTE)
         set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
-        set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_pipeline PROPERTIES TIMEOUT 240)
         set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
         set_tests_properties(test_collective_split_embedding
             test_collective_split_embedding_none_divisible
