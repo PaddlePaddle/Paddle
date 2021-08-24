@@ -104,7 +104,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             if not self.program_weights:
                 self.program_weights = {
                     "place_holder_weight": TensorConfig(
-                        shape=[1], data=np.array(1).astype(np.float32))
+                        shape=[1], data=np.array([1]).astype(np.float32))
                 }
             program_config = ProgramConfig(
                 ops=ops,
