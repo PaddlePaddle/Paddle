@@ -168,7 +168,6 @@ def create_bf16_test_class(parent):
             for i in range(len(self.axes)):
                 begin[self.axes[i]] = self.starts[i]
                 end[self.axes[i]] = self.ends[i]
-            print(self.dout.shape)
             self.dx[begin[0]:end[0], begin[1]:end[1], begin[2]:end[2], begin[3]:
                     end[3]] = self.dout
 
