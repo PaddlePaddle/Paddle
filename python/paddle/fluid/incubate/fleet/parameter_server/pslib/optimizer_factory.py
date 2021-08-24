@@ -418,8 +418,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             prog_id = str(id(loss.block.program))
             # param_grads of program
             params_grads = sorted(
-                fluid.backward.append_backward(loss, parameters,
-                                               no_grad_set),
+                fluid.backward.append_backward(loss, parameters, no_grad_set),
                 key=lambda x: x[0].name)
 
             flag_use_ps_gpu = strategy.get("use_ps_gpu", False)
