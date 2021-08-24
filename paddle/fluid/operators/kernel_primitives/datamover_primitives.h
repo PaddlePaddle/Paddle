@@ -13,8 +13,13 @@
 // limitations under the License.
 
 #pragma once
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_fp16.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#endif
 #include <math.h>
 #include <iostream>
 #include <vector>
