@@ -79,10 +79,20 @@ __global__ void ElementVectorizedUnary(const InT *__restrict__ in0, OutT *out,
   // the num this time have to deal with
   InT args[VecSize];
   OutT result[VecSize];
-
-  kps::ReadData<InT, VecSize, 1, 1>(args, in0 + data_offset, num);
-  kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(result, args, func);
-  kps::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result, num);
+  const bool is_reminder = true;
+  if (VecSize * blockDim.x > num) {  // reminder segment
+    kps::ReadData<InT, VecSize, 1, 1, is_reminder>(args, in0 + data_offset,
+                                                   num);
+    kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(result, args,
+                                                             func);
+    kps::WriteData<OutT, VecSize, 1, 1, is_reminder>(out + data_offset, result,
+                                                     num);
+  } else {  // complete segment
+    kps::ReadData<InT, VecSize, 1, 1>(args, in0 + data_offset, num);
+    kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(result, args,
+                                                             func);
+    kps::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result, num);
+  }
 }
 
 template <int VecSize, typename InT, typename OutT, typename Functor>
@@ -94,15 +104,29 @@ __global__ void ElementVectorizedBinary(const InT *__restrict__ in0,
   int num = size - data_offset;
   num = (VecSize * blockDim.x) > num ? num : VecSize * blockDim.x;
   // the num this time have to deal with
-  InT args[2][VecSize];
+  InT arg0[VecSize];
+  InT arg1[VecSize];
   OutT result[VecSize];
 
-  kps::ReadData<InT, VecSize, 1, 1>(args[0], in0 + data_offset, num);
-  kps::ReadData<InT, VecSize, 1, 1>(args[1], in1 + data_offset, num);
-
-  kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
-                                                            args[1], func);
-  kps::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result, num);
+  const bool is_reminder = true;
+  if (VecSize * blockDim.x > num) {  // reminder segment
+    kps::Init<InT, VecSize>(&arg0[0], static_cast<InT>(1.0f));
+    kps::Init<InT, VecSize>(&arg1[0], static_cast<InT>(1.0f));
+    kps::ReadData<InT, VecSize, 1, 1, is_reminder>(&arg0[0], in0 + data_offset,
+                                                   num);
+    kps::ReadData<InT, VecSize, 1, 1, is_reminder>(&arg1[0], in1 + data_offset,
+                                                   num);
+    kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, &arg0[0],
+                                                              &arg1[0], func);
+    kps::WriteData<OutT, VecSize, 1, 1, is_reminder>(out + data_offset, result,
+                                                     num);
+  } else {  // complete segment
+    kps::ReadData<InT, VecSize, 1, 1>(&arg0[0], in0 + data_offset, num);
+    kps::ReadData<InT, VecSize, 1, 1>(&arg1[0], in1 + data_offset, num);
+    kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, &arg0[0],
+                                                              &arg1[0], func);
+    kps::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result, num);
+  }
 }
 
 template <int VecSize, typename InT, typename OutT, typename Functor>
@@ -118,13 +142,29 @@ __global__ void ElementVectorizedTernary(const InT *__restrict__ in0,
   InT args[3][VecSize];
   OutT result[VecSize];
 
-  kps::ReadData<InT, VecSize, 1, 1>(args[0], in0 + data_offset, num);
-  kps::ReadData<InT, VecSize, 1, 1>(args[1], in1 + data_offset, num);
-  kps::ReadData<InT, VecSize, 1, 1>(args[2], in2 + data_offset, num);
-
-  kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
-      result, args[0], args[1], args[2], func);
-  kps::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result, num);
+  const bool is_reminder = true;
+  if (VecSize * blockDim.x > num) {  // reminder segment
+    kps::Init<InT, VecSize>(args[0], static_cast<InT>(1.0f));
+    kps::Init<InT, VecSize>(args[1], static_cast<InT>(1.0f));
+    kps::Init<InT, VecSize>(args[2], static_cast<InT>(1.0f));
+    kps::ReadData<InT, VecSize, 1, 1, is_reminder>(args[0], in0 + data_offset,
+                                                   num);
+    kps::ReadData<InT, VecSize, 1, 1, is_reminder>(args[1], in1 + data_offset,
+                                                   num);
+    kps::ReadData<InT, VecSize, 1, 1, is_reminder>(args[2], in2 + data_offset,
+                                                   num);
+    kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
+        result, args[0], args[1], args[2], func);
+    kps::WriteData<OutT, VecSize, 1, 1, is_reminder>(out + data_offset, result,
+                                                     num);
+  } else {
+    kps::ReadData<InT, VecSize, 1, 1>(args[0], in0 + data_offset, num);
+    kps::ReadData<InT, VecSize, 1, 1>(args[1], in1 + data_offset, num);
+    kps::ReadData<InT, VecSize, 1, 1>(args[2], in2 + data_offset, num);
+    kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
+        result, args[0], args[1], args[2], func);
+    kps::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result, num);
+  }
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
@@ -140,7 +180,6 @@ void LaunchSameDimsElementwiseCudaKernel(
       ((numel + vec_size - 1) / vec_size + block_size - 1) / block_size;
   const InT *in0 = ins[0]->data<InT>();
   OutT *out = (*outs)[0]->data<OutT>();
-
   // cuda kernel
   auto stream = ctx.stream();
   switch (ET) {

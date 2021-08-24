@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
-
 namespace paddle {
 namespace operators {
 
@@ -166,6 +165,22 @@ struct DimensionsTransform {
   }
 };
 
+template <typename T, int VecSize, int DATA_PER_THREAD, int ShapeSize,
+          bool IsBoundary = false>
+__device__ __forceinline__ void LoadData(
+    T *dst, const T *__restrict__ src, uint32_t fix,
+    kps::details::BroadcastConfig<ShapeSize> config, int numel, int num,
+    bool need_broadcast) {
+  // numel : whole num of input
+  // num: how many data will be deal with in this time
+  if (need_broadcast) {
+    kps::ReadDataBc<T, VecSize, DATA_PER_THREAD, 1, ShapeSize, IsBoundary>(
+        dst, src, fix, config, numel, 1, 1);
+  } else {
+    kps::ReadData<T, VecSize, 1, 1, IsBoundary>(dst, src + fix, num);
+  }
+}
+
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
           int DATA_PER_THREAD, typename Functor>
 __global__ void BroadcastKernelTernary(
@@ -181,39 +196,34 @@ __global__ void BroadcastKernelTernary(
   InT arg1[VecSize * DATA_PER_THREAD];
   InT arg2[VecSize * DATA_PER_THREAD];
   OutT result[VecSize * DATA_PER_THREAD];
+  const bool is_boundary = true;
   if (blockIdx.x < main_tid) {
     num = blockDim.x * VecSize;  // blockIdx.x < main_tid
-  }
-
-  // load in0
-  if (use_broadcast[0]) {
-    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
-        arg0, in0, fix, configlists[0], numel, 1, 1);
+    // load in0, in1, in2
+    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize>(
+        &arg0[0], in0, fix, configlists[0], numel, num, use_broadcast[0]);
+    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize>(
+        &arg1[0], in1, fix, configlists[1], numel, num, use_broadcast[1]);
+    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize>(
+        &arg2[0], in2, fix, configlists[2], numel, num, use_broadcast[2]);
+    kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
+        result, arg0, arg1, arg2, func);
+    kps::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
   } else {
-    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg0, in0 + fix, num);
+    // load in0, in1, in2
+    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg0[0], static_cast<InT>(1.0f));
+    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg1[0], static_cast<InT>(1.0f));
+    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg2[0], static_cast<InT>(1.0f));
+    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize, is_boundary>(
+        &arg0[0], in0, fix, configlists[0], numel, num, use_broadcast[0]);
+    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize, is_boundary>(
+        &arg1[0], in1, fix, configlists[1], numel, num, use_broadcast[1]);
+    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize, is_boundary>(
+        &arg2[0], in2, fix, configlists[2], numel, num, use_broadcast[2]);
+    kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
+        result, arg0, arg1, arg2, func);
+    kps::WriteData<OutT, VecSize, 1, 1, is_boundary>(out + fix, result, num);
   }
-
-  // load in1
-  if (use_broadcast[1]) {
-    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
-        arg1, in1, fix, configlists[1], numel, 1, 1);
-  } else {
-    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg1, in1 + fix, num);
-  }
-
-  if (use_broadcast[2]) {
-    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
-        arg1, in2, fix, configlists[1], numel, 1, 1);
-  } else {
-    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg1, in2 + fix, num);
-  }
-
-  // compute
-  kernel_primitives::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
-      result, arg0, arg1, arg2, func);
-
-  // store
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
 }
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
@@ -229,32 +239,27 @@ __global__ void BroadcastKernelBinary(
   InT arg0[VecSize * DATA_PER_THREAD];
   InT arg1[VecSize * DATA_PER_THREAD];
   OutT result[VecSize * DATA_PER_THREAD];
+  const bool is_boundary = true;
   if (blockIdx.x < main_tid) {
     num = blockDim.x * VecSize;  // blockIdx.x < main_tid
+    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize>(
+        &arg0[0], in0, fix, configlists[0], numel, num, use_broadcast[0]);
+    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize>(
+        &arg1[0], in1, fix, configlists[1], numel, num, use_broadcast[1]);
+    kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, arg0,
+                                                              arg1, func);
+    kps::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
+  } else {  // reminder
+    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg0[0], static_cast<InT>(1.0f));
+    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg1[0], static_cast<InT>(1.0f));
+    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize, is_boundary>(
+        &arg0[0], in0, fix, configlists[0], numel, num, use_broadcast[0]);
+    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize, is_boundary>(
+        &arg1[0], in1, fix, configlists[1], numel, num, use_broadcast[1]);
+    kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, arg0,
+                                                              arg1, func);
+    kps::WriteData<OutT, VecSize, 1, 1, is_boundary>(out + fix, result, num);
   }
-
-  // load in0
-  if (use_broadcast[0]) {
-    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
-        arg0, in0, fix, configlists[0], numel, 1, 1);
-  } else {
-    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg0, in0 + fix, num);
-  }
-
-  // load in1
-  if (use_broadcast[1]) {
-    kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
-        arg1, in1, fix, configlists[1], numel, 1, 1);
-  } else {
-    kernel_primitives::ReadData<InT, VecSize, 1, 1>(arg1, in1 + fix, num);
-  }
-
-  // compute
-  kernel_primitives::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(
-      result, arg0, arg1, func);
-
-  // store
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
 }
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
@@ -267,15 +272,22 @@ __global__ void BroadcastKernelUnary(
   int num = tail_tid;
   InT arg[VecSize * DATA_PER_THREAD];
   OutT result[VecSize * DATA_PER_THREAD];
+  const bool is_boundary = true;
   if (blockIdx.x < main_tid) {
     num = blockDim.x * VecSize;  // blockIdx.x < main_tid
+    kps::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
+        &arg[0], in, fix * VecSize, config, numel, 1, 1);
+    kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(&result[0],
+                                                             &arg[0], func);
+    kps::WriteData<OutT, VecSize, 1, 1>(out + fix * VecSize, &result[0], num);
+  } else {
+    kps::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize, is_boundary>(
+        &arg[0], in, fix * VecSize, config, numel, 1, 1);
+    kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(&result[0],
+                                                             &arg[0], func);
+    kps::WriteData<OutT, VecSize, 1, 1, is_boundary>(out + fix * VecSize,
+                                                     &result[0], num);
   }
-  kernel_primitives::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
-      arg, in, fix * VecSize, config, numel, 1, 1);
-  kernel_primitives::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(
-      &result[0], &arg[0], func);
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + fix * VecSize,
-                                                    &result[0], num);
 }
 
 template <typename InT, typename OutT, ElementwiseType ET, int VecSize,
@@ -324,62 +336,6 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
                            Functor><<<blocks, threads, 0, stream>>>(
         ins[0]->data<InT>(), ins[1]->data<InT>(), ins[2]->data<InT>(), out_data,
         use_broadcast, numel, configlists, main_tid, tail_tid, func);
-  }
-}
-template <typename InT, typename OutT, typename BroadcastArgsWrapper,
-          ElementwiseType ET>
-__device__ inline void ScalarizedBroadcastKernelImpl(
-    BroadcastArgsWrapper broadcast_wrapper, int tid) {
-  InT args[ET];
-  OutT args_out;
-  broadcast_wrapper.LoadScalarizedData(args, tid);
-
-  // Calcualtion of the in_tensor data.
-  args_out = broadcast_wrapper.func(args);
-
-  broadcast_wrapper.StoreScalarizedData(args_out, tid);
-}
-
-template <typename InT, typename OutT, typename BroadcastArgsWrapper,
-          ElementwiseType ET, int VecSize>
-__device__ inline void VectorizedBroadcastKernelImpl(
-    BroadcastArgsWrapper broadcast_wrapper, int tid) {
-  using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
-  OutVecType args_out;
-  InT ins[ET];
-  InT args[ET][VecSize];
-  broadcast_wrapper.LoadVectorizedData(args, tid);
-
-#pragma unroll(VecSize)
-  for (int i = 0; i < VecSize; ++i) {
-#pragma unroll(ET)
-    for (int j = 0; j < ET; ++j) {
-      ins[j] = args[j][i];
-    }
-    args_out.val[i] = broadcast_wrapper.func(ins);
-  }
-  broadcast_wrapper.StoreVectorizedData(args_out, tid);
-}
-
-template <typename InT, typename OutT, typename BroadcastArgsWrapper,
-          ElementwiseType ET, int VecSize>
-__global__ void ElementwiseBroadcastKernel(
-    BroadcastArgsWrapper broadcast_wrapper, int main_tid, int tail_tid) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  // Vectorized calculation of major data whose length is the max multipler of
-  // VecSize,
-  // eg: Calcualting the front 1024-length data in total 1027 data once VecSize
-  // is 4.
-  if (tid < main_tid) {
-    VectorizedBroadcastKernelImpl<InT, OutT, BroadcastArgsWrapper, ET, VecSize>(
-        broadcast_wrapper, tid);
-  }
-  // Scalarzed calculation of rest data whose lenght cannot fulfill VecSize.
-  // eg: Calcualting the rest 3-length data in total 1027 data once VecSize is
-  // 4.
-  if (tid < tail_tid) {
-    ScalarizedBroadcastKernelImpl<InT, OutT, BroadcastArgsWrapper, ET>(
-        broadcast_wrapper, tid);
   }
 }
 
