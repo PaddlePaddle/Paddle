@@ -68,9 +68,16 @@ class GroupNormKernel : public framework::OpKernel<T> {
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
-                                                   : x_dims[1] * x_dims[2]);
-
+    int imsize = 1;
+    if (data_layout == DataLayout::kNCHW) {
+      for (int i = 2; i < x_dims.size(); ++i) {
+        imsize *= x_dims[i];
+      }
+    } else {
+      for (int i = 1; i < x_dims.size() - 1; ++i) {
+        imsize *= x_dims[i];
+      }
+    }
     auto* iter_x_data = x_data;
     auto* iter_y_data = y_data;
     for (int bid = 0; bid < x_dims[0]; bid++) {
@@ -257,8 +264,16 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
-                                                   : x_dims[1] * x_dims[2]);
+    int imsize = 1;
+    if (data_layout == DataLayout::kNCHW) {
+      for (int i = 2; i < x_dims.size(); ++i) {
+        imsize *= x_dims[i];
+      }
+    } else {
+      for (int i = 1; i < x_dims.size() - 1; ++i) {
+        imsize *= x_dims[i];
+      }
+    }
     auto* iter_x_data = x_data;
     auto* iter_d_x_data = d_x_data;
     auto* iter_y_data = y_data;

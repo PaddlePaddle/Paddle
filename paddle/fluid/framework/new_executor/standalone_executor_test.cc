@@ -23,6 +23,43 @@
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
+USE_OP(fill_constant);
+USE_OP(uniform_random);
+USE_OP(lookup_table);
+USE_OP(transpose2);
+USE_OP(reshape2);
+USE_OP(split);
+USE_OP(slice);
+USE_OP(concat);
+USE_OP(matmul);
+USE_OP(elementwise_add);
+USE_OP(sigmoid);
+USE_OP(tanh);
+USE_OP(elementwise_mul);
+USE_OP(softmax_with_cross_entropy);
+USE_OP(reduce_mean);
+USE_OP(reduce_sum);
+USE_OP(reduce_sum_grad);
+USE_OP(reduce_mean_grad);
+USE_OP(reshape2_grad);
+USE_OP(softmax_with_cross_entropy_grad);
+USE_OP(elementwise_add_grad);
+USE_OP(matmul_grad);
+USE_OP(square);
+USE_OP(transpose2_grad);
+USE_OP(concat_grad);
+USE_OP(elementwise_mul_grad);
+USE_OP(sigmoid_grad);
+USE_OP(tanh_grad);
+USE_OP(sum);
+USE_OP(slice_grad);
+USE_OP(lookup_table_grad);
+USE_OP(sqrt);
+USE_OP(elementwise_max);
+USE_OP(elementwise_div);
+USE_OP(sgd);
+USE_OP(squared_l2_norm);
+
 paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
   fin.seekg(0, std::ios::end);

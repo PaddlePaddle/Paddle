@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import numpy
-import paddle.fluid.core as core
+import copy
 import paddle
+import paddle.fluid.core as core
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import in_dygraph_mode
 
@@ -236,6 +237,23 @@ class ProcessMesh(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def __str__(self):
+        str = "shape {} and process group {}".format(self.topology,
+                                                     self.process_group)
+        return str
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            # No need to copy the owner tensor and context
+            if k == "_desc":
+                setattr(result, k, v)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result
 
 
 def _dim_mapping_checker(tensor, mesh, dim_mapping):
