@@ -592,6 +592,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size();
         return false;
       }
+      if (BOOST_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
     }
 
     if (op_type == "layer_norm") {
