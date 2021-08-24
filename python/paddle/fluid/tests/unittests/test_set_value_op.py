@@ -408,6 +408,61 @@ class TestSetValueItemNone9(TestSetValueApi):
         self.data[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
 
 
+# 1.5 item is list or Tensor of bol
+class TestSetValueItemBool1(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[[True, False]] = self.value
+
+    def _get_answer(self):
+        self.data[[True, False]] = self.value
+
+
+class TestSetValueItemBool2(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[[False, False]] = self.value
+
+    def _get_answer(self):
+        self.data[[False, False]] = self.value
+
+
+class TestSetValueItemBool3(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[[False, True]] = np.zeros(self.shape[2])
+
+    def _get_answer(self):
+        self.data[[False, True]] = np.zeros(self.shape[2])
+
+
+class TestSetValueItemBool4(TestSetValueApi):
+    def _call_setitem(self, x):
+        idx = paddle.assign(np.array([False, True]))
+        x[idx] = np.zeros(self.shape[2])
+
+    def _get_answer(self):
+        self.data[np.array([False, True])] = np.zeros(self.shape[2])
+
+
+class TestSetValueItemBool5(TestSetValueApi):
+    def _call_setitem(self, x):
+        idx = paddle.assign(
+            np.array([[False, True, False], [True, True, False]]))
+        x[idx] = self.value
+
+    def _get_answer(self):
+        self.data[np.array([[False, True, False], [True, True, False]
+                            ])] = self.value
+
+
+class TestSetValueItemBool6(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0, ...] = 0
+        x[x > 0] = self.value
+
+    def _get_answer(self):
+        self.data[0, ...] = 0
+        self.data[self.data > 0] = self.value
+
+
 # 2. Test different type of value: int, float, numpy.ndarray, Tensor
 # 2.1 value is int32, int64, float32, float64, bool
 

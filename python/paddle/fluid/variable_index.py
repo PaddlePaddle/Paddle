@@ -347,10 +347,35 @@ def _setitem_impl_(var, item, value):
 
             if end is None:
                 end = MAX_INTEGER if step > 0 else (0 - MAX_INTEGER)
+        elif isinstance(slice_item, list):
+            if len(item) != 1:
+                raise IndexError(
+                    "When index contains a list, its length must be 1, but received {}.".
+                    format(len(item)))
+            for i in slice_item:
+                if not isinstance(i, bool):
+                    raise TypeError("Only support bool in index list.")
+
+            from .layers import assign
+            idx_tensor = assign(slice_item)
+            return set_value_for_bool_tensor(var, idx_tensor, value)
+
+        elif isinstance(slice_item, Variable):
+            if len(item) != 1:
+                raise IndexError(
+                    "When index contains a Tensor, its length must be 1, but received {}.".
+                    format(len(item)))
+
+            if slice_item.dtype == core.VarDesc.VarType.BOOL:
+                return set_value_for_bool_tensor(var, slice_item, value)
+            else:
+                raise IndexError(
+                    "When index is a Tensor, its type must be Bool, but received {}.".
+                    format(slice_item))
         else:
             raise IndexError(
-                "Valid index accept int, slice, ellipsis or None, but received {}.".
-                format(slice_item))
+                "Valid index accept int, slice, ellipsis, None, list of bool, Variable, "
+                "but received {}.".format(slice_item))
 
         axes.append(dim)
         starts.append(start)
@@ -425,5 +450,42 @@ def _setitem_impl_(var, item, value):
     cur_block = default_main_program().current_block()
     cur_block.append_op(
         type="set_value", inputs=inputs, outputs={'Out': var}, attrs=attrs)
+
+    return var
+
+
+# the item is a tensor of bool 
+def set_value_for_bool_tensor(var, item, value):
+
+    if len(item.shape) > len(var.shape):
+        raise IndexError("The dims of bool index doesn't match indexed array, "
+                         "the dims of bool index except to be equal or less "
+                         "than {}, but received {}.".format(
+                             len(var.shape), len(item.shape)))
+    for i, dim_len in enumerate(item.shape):
+        if dim_len != var.shape[i]:
+            raise IndexError(
+                "The dimension of bool index doesn't match indexed array along "
+                "dimension {}, the target dimension is {}, but received {}.".
+                format(i, var.shape[i], dim_len))
+
+    def idx_not_empty(var, item, value):
+        from .framework import Variable
+        from .layers import assign
+        from .layers.nn import where
+        from ..tensor import gather_nd, scatter_nd_add
+
+        if not isinstance(value, Variable):
+            value = assign(value).cast(var.dtype)
+
+        idx = where(item)
+        gather_val = gather_nd(var, idx)
+        gather_val_new = value - gather_val
+        out = scatter_nd_add(var, idx, gather_val_new)
+        var[:] = out
+
+    from .layers.control_flow import cond
+    # If all the bool index is False, just do nothing
+    cond(item.any(), lambda: idx_not_empty(var, item, value))
 
     return var

@@ -22,7 +22,7 @@ import paddle
 from .. import framework
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase, _getitem_impl_
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
@@ -568,6 +568,27 @@ def monkey_patch_varbase():
             # 2. Call c++ func getitem_index_not_tensor to speedup.
             return self._getitem_index_not_tensor(item)
 
+    def __setitem__(self, item, value):
+        def contain_tensor_or_list(item):
+            if not isinstance(item, tuple):
+                item = [item]
+
+            for slice_item in item:
+                if isinstance(slice_item, list):
+                    return True
+                elif isinstance(slice_item, Variable):
+                    return True
+
+            return False
+
+        if contain_tensor_or_list(item):
+            # To reuse code with static graph,
+            # Call _setitem_impl_ when item contains tensor or list.
+            return _setitem_impl_(self, item, value)
+
+        else:
+            return self._setitem_index_not_tensor(item, value)
+
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
@@ -577,7 +598,8 @@ def monkey_patch_varbase():
         ("__str__", __str__), ("__repr__", __str__),
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor"), ("__array__", __array__),
-        ("__getitem__", __getitem__), ("item", item)):
+        ("__getitem__", __getitem__), ("__setitem__", __setitem__),
+        ("item", item)):
         setattr(core.VarBase, method_name, method)
 
     # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
