@@ -16,6 +16,35 @@
 
 namespace paddle {
 namespace operators {
-namespace kernel_primitives {}
-}
-}
+namespace kernel_primitives {
+/*************************** Compute Functor****************************/
+// Post processing function for sum, max, min, prod, any
+template <typename Tx, typename Ty = Tx>
+struct IdentityFunctor {
+  HOSTDEVICE explicit inline IdentityFunctor(int n) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx* x) const {
+    return static_cast<Ty>(x[0]);
+  }
+
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
+    return static_cast<Ty>(x);
+  }
+};
+
+// Post processing function for mean
+template <typename T>
+struct DivideFunctor {
+  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
+
+  HOSTDEVICE inline T operator()(const T* x) const { return x[0] * n_inv; }
+
+  HOSTDEVICE inline T operator()(const T x) const { return x * n_inv; }
+
+ private:
+  T n_inv;
+};
+
+}  // namespace kernel_primitives
+}  // namespace operators
+}  // namespace paddle

@@ -13,8 +13,13 @@
 // limitations under the License.
 
 #pragma once
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_fp16.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#endif
 #include <math.h>
 #include <iostream>
 #include <vector>
@@ -102,6 +107,20 @@ struct BroadcastConfig {
 };
 
 #undef INT_BITS
+
+template <typename T, int NX, int NY, int BlockSize>
+__device__ __forceinline__ void WriteDataBase(T* dst, const T* __restrict__ src,
+                                              int size) {
+  int dx = threadIdx.x * NX;
+#pragma unroll
+  for (int idx = 0; idx < NX; ++idx) {
+    if ((idx + dx) >= size) {
+      break;
+    }
+    dst[idx + dx] = src[idx];
+  }
+}
+
 }  // namespace details
 
 template <typename T, int NX, int NY, int BlockSize>
@@ -119,22 +138,27 @@ __device__ __forceinline__ void ReadDataBase(T* dst, const T* __restrict__ src,
 
 // dst[NY][NX];
 template <typename Tx, typename Ty, int NX, int NY, int BlockSize>
-__device__ void ReadDataStrideBase(Ty* dst, const Tx* __restrict__ src,
-                                   int stride_nx, int stride_ny) {
+__device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
+                                         int stride_nx, int stride_ny) {
   if (NY == 1 && NX == 1) {
-    dst[0] = static_cast<Ty>(src[threadIdx.x * NX]);
+    dst[0] = static_cast<Ty>(src[threadIdx.x]);
   } else if (NX == 1) {
-    int dx = threadIdx.x * NX;
+    int dx = threadIdx.x;
 #pragma unroll
     for (int idy = 0; idy < NY; ++idy) {
-      dst[idy * NX] = static_cast<Ty>(src[dx + idy * stride_ny]);
+      dst[idy] = static_cast<Ty>(src[dx + idy * stride_ny]);
+    }
+  } else if (NY == 1) {
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      dst[idx] = static_cast<Ty>(src[idx * stride_nx]);
     }
   } else {
     int dx = threadIdx.x * NX;
 #pragma unroll
-    for (int idy = 0; idy < NY; ++idy) {
+    for (int idx = 0; idx < NX; ++idx) {
 #pragma unroll
-      for (int idx = 0; idx < NX; ++idx) {
+      for (int idy = 0; idy < NY; ++idy) {
         dst[idy * NX + idx] =
             static_cast<Ty>(src[idx * stride_nx + dx + idy * stride_ny]);
       }
@@ -144,10 +168,9 @@ __device__ void ReadDataStrideBase(Ty* dst, const Tx* __restrict__ src,
 
 // dst[NY][NX];
 template <typename Tx, typename Ty, int NX, int NY, int BlockSize>
-__device__ __forceinline__ void ReadDataStride(Ty* dst,
-                                               const Tx* __restrict__ src,
-                                               int size_nx, int size_ny,
-                                               int stride_nx, int stride_ny) {
+__device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
+                                         int size_nx, int size_ny,
+                                         int stride_nx, int stride_ny) {
   int dx = threadIdx.x * NX;
   int size = size_nx - dx;
 #pragma unroll
@@ -180,14 +203,14 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
 
   // Vector per thread
   if (blockDim.x * NX > size) {
-    ReadDataStrideBase<T, NX, NY, BlockSize>(dst, src, size, NY, 1, 1);
+    ReadData<T, T, NX, NY, BlockSize>(dst, src, size, NY, 1, 1);
   } else {
     // Vector type
     using VecType = details::VectorType<T, VECTOR_SIZE>;
     VecType vec_temp[VECTORS_PER_THREAD];
     const VecType* vec_input = reinterpret_cast<const VecType*>(src);
-    ReadDataStrideBase<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
-        vec_temp, vec_input, VECTORS_PER_THREAD * blockDim.x, 1, 1);
+    ReadData<VecType, VecType, VECTORS_PER_THREAD, NY, BlockSize>(
+        vec_temp, vec_input, 1, 1);
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       dst[idx] = *(reinterpret_cast<T*>(vec_temp) + idx);
@@ -231,7 +254,15 @@ __device__ __forceinline__ void ReadDataBc(
   }
 }
 
-// stride_nx = 1
+/** @brief: ReadDataReduce
+ * read data from global memory for reduce op
+ * @param：
+ * src: the source pointer
+ * dst: the dst pointer
+ * stride_nx: the stride of src
+ * stride_ny: the stride of src
+ * the shape of dst is [NY, NX]
+ */
 template <typename T, int NX, int NY, int BlockSize, int ShapeSize,
           typename IndexCal>
 __device__ __forceinline__ void ReadDataReduce(
@@ -264,7 +295,16 @@ __device__ __forceinline__ void ReadDataReduce(
   }
 }
 
-// stride_nx = 1
+/** @brief: ReadDataReduce
+ * read data from global memory for reduce op, the idx of src should be less
+ * than size_nx and size_ny
+ * @param：
+ * src: the source pointer
+ * dst: the dst pointer
+ * stride_nx: the stride of src
+ * stride_ny: the stride of src
+ * the shape of dst is [NY, NX]
+ */
 template <typename T, int NX, int NY, int BlockSize, int ShapeSize,
           typename IndexCal>
 __device__ __forceinline__ void ReadDataReduce(
@@ -300,15 +340,12 @@ __device__ __forceinline__ void ReadDataReduce(
     }
   }
 }
+
 template <typename T, int NX, int NY, int BlockSize>
-__device__ __forceinline__ void WriteDataBase(T* dst, const T* __restrict__ src,
-                                              int size) {
+__device__ __forceinline__ void WriteData(T* dst, const T* __restrict__ src) {
   int dx = threadIdx.x * NX;
 #pragma unroll
   for (int idx = 0; idx < NX; ++idx) {
-    if ((idx + dx) >= size) {
-      break;
-    }
     dst[idx + dx] = src[idx];
   }
 }
@@ -321,7 +358,7 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
 
   // Vector per thread
   if (blockDim.x * NX > size) {
-    WriteDataBase<T, NX, NY, BlockSize>(dst, src, size);
+    details::WriteDataBase<T, NX, NY, BlockSize>(dst, src, size);
   } else {
     // Vector type
     using VecType = details::VectorType<T, VECTOR_SIZE>;
@@ -331,8 +368,7 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
       vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
     }
     VecType* vec_dst = reinterpret_cast<VecType*>(dst);
-    WriteDataBase<VecType, VECTORS_PER_THREAD, NY, BlockSize>(
-        vec_dst, vec_temp, VECTORS_PER_THREAD * blockDim.x);
+    WriteData<VecType, VECTORS_PER_THREAD, NY, BlockSize>(vec_dst, vec_temp);
   }
 }
 

@@ -38,6 +38,8 @@ constexpr int kMaxThread = 128;
 constexpr int kWarpSize = 32;
 #endif
 
+enum ReduceMode { GlobalMode, LocalMode };
+
 template <typename T>
 class MPTypeTrait {
  public:
@@ -49,114 +51,6 @@ class MPTypeTrait<platform::float16> {
  public:
   using Type = float;
 };
-
-}  // namespace details
-
-enum ReduceMode { GlobalMode, LocalMode };
-
-/*************************** Compute Functor****************************/
-template <typename T, typename Enable = void>
-struct DivFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] / args[1];
-  }
-};
-
-template <typename T>
-struct DivFunctor<T, typename std::enable_if_t<std::is_integral<T>::value>> {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    PADDLE_ENFORCE(args[1] != 0,
-                   "Invalid Argument Error: Integer division by zero "
-                   "encountered in divide. Please check the input value.");
-    return args[0] / args[1];
-  }
-};
-
-/*************************** Compute Function****************************/
-
-/**
- * @brief compute functor for elementwise_two, in1 and in2 has the same shape
- * @param：
- * T : the type of in1 and in2
- * NX: the row of in1 and in2
- * NY: the col of in1 and in2
- * BlockSize: the strid of col
- * OpFunc: compute functor eg: ADD, SUB, XOR, OR, MUL
- */
-template <typename T, typename OutT, int NX, int NY, int BlockSize,
-          class OpFunc>
-__device__ __forceinline__ void ElementwiseBinary(OutT* out, const T* in1,
-                                                  const T* in2,
-                                                  OpFunc compute) {
-  T args[2];
-#pragma unroll
-  for (int idx = 0; idx < NX * NY; ++idx) {
-    args[0] = in1[idx];
-    args[1] = in2[idx];
-    out[idx] = static_cast<OutT>(compute(args));
-  }
-}
-
-/**
- * @brief fma eg: a * b + c, in1 in2, in3 and out has the same shape
- * @param：
- * T : the type of in1 and in2, in3
- * NX: the row of in1, in2 and in3
- * NY: the col of in1, in2 and in3
- * BlockSize: the strid of col
- */
-template <typename T, typename OutT, int NX, int NY, int BlockSize,
-          class OpFunc>
-__device__ __forceinline__ void ElementwiseFma(OutT* out, const T* in1,
-                                               const T* in2, const T* in3,
-                                               OpFunc compute) {
-#pragma unroll
-  for (int idx = 0; idx < NX * NY; ++idx) {
-    out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx], in3[idx]));
-  }
-}
-
-/**
- * @brief compute functor for elementwise_two, in1 is [1, NY], in2 is [NX, NY]
- * @param：
- * T : the type of in1 and in2
- * NX: the row of in1 and in2
- * NY: the col of in2
- * BlockSize: the strid of col
- * OpFunc: compute functor eg: ADD, SUB, XOR, OR, MUL
- */
-template <typename T, typename OutT, int NX, int NY, int BlockSize,
-          class OpFunc>
-__device__ __forceinline__ void CycleBinary(OutT* out, const T* in1,
-                                            const T* in2, OpFunc compute) {
-#pragma unroll
-  for (int idx = 0; idx < NX; idx++) {
-#pragma unroll
-    for (int idy = 0; idy < NY; idy++) {
-      out[idx + idy * NX] =
-          static_cast<OutT>(compute(in1[idx], in2[idx + idy * NX]));
-    }
-  }
-}
-
-/**
- * @brief compute functor for unary, in1 is [NX, NY]
- * @param：
- * T : the type of in
- * NX: the row of in
- * NY: the col of in
- * BlockSize: the strid of col
- * OpFunc: compute functor eg: relu, sigmoid, exp
- */
-template <typename T, typename OutT, int NX, int NY, int BlockSize,
-          class OpFunc>
-__device__ __forceinline__ void ElementwiseUnary(OutT* out, const T* in,
-                                                 OpFunc compute) {
-#pragma unroll
-  for (int idx = 0; idx < NX * NY; idx++) {
-    out[idx] = static_cast<OutT>(compute(in[idx]));
-  }
-}
 
 __device__ __forceinline__ int SharedMemoryIndex(int index) {
   return (threadIdx.y + index) * blockDim.x + threadIdx.x;
@@ -226,11 +120,95 @@ __device__ __forceinline__ T BlockYReduce(T val, ReduceOp reducer) {
   return val;
 }
 
-template <typename Tx, typename Ty, int SIZE>
-__device__ __forceinline__ void Cast(Ty* out, const Tx* in) {
+}  // namespace details
+
+/*************************** Compute Function****************************/
+
+/**
+ * @brief compute functor for elementwise_two, in1 and in2 has the same shape
+ * @param：
+ * T : the type of in1 and in2
+ * NX: the row of in1 and in2
+ * NY: the col of in1 and in2
+ * BlockSize: the strid of col
+ * OpFunc: compute functor eg: ADD, SUB, XOR, OR, MUL
+ */
+template <typename T, typename OutT, int NX, int NY, int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseBinary(OutT* out, const T* in1,
+                                                  const T* in2,
+                                                  OpFunc compute) {
+  T args[2];
 #pragma unroll
-  for (int i = 0; i < SIZE; i++) {
-    out[i] = static_cast<Ty>(in[i]);
+  for (int idx = 0; idx < NX * NY; ++idx) {
+    args[0] = in1[idx];
+    args[1] = in2[idx];
+    out[idx] = static_cast<OutT>(compute(args));
+  }
+}
+
+/**
+ * @brief eg: a * b + c, in1 in2, in3 and out has the same shape
+ * @param：
+ * T : the type of in1 and in2, in3
+ * NX: the row of in1, in2 and in3
+ * NY: the col of in1, in2 and in3
+ * BlockSize: the strid of col
+ */
+template <typename T, typename OutT, int NX, int NY, int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseTernary(OutT* out, const T* in1,
+                                                   const T* in2, const T* in3,
+                                                   OpFunc compute) {
+  T args[3];
+#pragma unroll
+  for (int idx = 0; idx < NX * NY; ++idx) {
+    args[0] = in1[idx];
+    args[1] = in2[idx];
+    args[2] = in3[idx];
+    out[idx] = static_cast<OutT>(compute(args));
+  }
+}
+
+/**
+ * @brief compute functor for elementwise_two, in1 is [1, NY], in2 is [NX, NY]
+ * @param：
+ * T : the type of in1 and in2
+ * NX: the row of in1 and in2
+ * NY: the col of in2
+ * BlockSize: the strid of col
+ * OpFunc: compute functor eg: ADD, SUB, XOR, OR, MUL
+ */
+template <typename T, typename OutT, int NX, int NY, int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void CycleBinary(OutT* out, const T* in1,
+                                            const T* in2, OpFunc compute) {
+#pragma unroll
+  for (int idx = 0; idx < NX; idx++) {
+#pragma unroll
+    for (int idy = 0; idy < NY; idy++) {
+      out[idx + idy * NX] =
+          static_cast<OutT>(compute(in1[idx], in2[idx + idy * NX]));
+    }
+  }
+}
+
+/**
+ * @brief compute functor for unary, in1 is [NX, NY]
+ * @param：
+ * T : the type of in
+ * NX: the row of in
+ * NY: the col of in
+ * BlockSize: the strid of col
+ * OpFunc: compute functor eg: relu, sigmoid, exp
+ */
+template <typename T, typename OutT, int NX, int NY, int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseUnary(OutT* out, const T* in,
+                                                 OpFunc compute) {
+#pragma unroll
+  for (int idx = 0; idx < NX * NY; idx++) {
+    out[idx] = static_cast<OutT>(compute(in + idx));
   }
 }
 
@@ -239,17 +217,13 @@ template <typename T, int NX, int NY, int BlockSize, class OpFunc,
           int ReduceMode>
 __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
                                        bool reduce_lastDim) {
-  // blockReduceY
-
-  // thread Reduce
-
-  if (ReduceMode == ReduceMode::GlobalMode) {
+  if (ReduceMode == details::ReduceMode::GlobalMode) {
     bool block_reduce_y = (!reduce_lastDim) && (blockDim.y > 1);
     // blockYReduce
     if (block_reduce_y) {
 #pragma unroll
       for (int i = 0; i < NY; i++) {
-        out[i] = BlockYReduce<T, OpFunc>(out[i], reducer);
+        out[i] = details::BlockYReduce<T, OpFunc>(out[i], reducer);
       }
     }
 
@@ -257,7 +231,7 @@ __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
     if (reduce_lastDim) {
 #pragma unroll
       for (int i = 0; i < NY; i++) {
-        out[i] = BlockXReduce<T, OpFunc>(out[i], reducer);
+        out[i] = details::BlockXReduce<T, OpFunc>(out[i], reducer);
       }
     }
   } else {  // else  LocalMode
