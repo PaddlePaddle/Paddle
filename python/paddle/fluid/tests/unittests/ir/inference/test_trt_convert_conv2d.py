@@ -15,6 +15,7 @@
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig
 import numpy as np
+import paddle.inference as paddle_infer
 
 
 class TrtConvertConv2dTest(TrtLayerAutoScanTest):
@@ -59,8 +60,33 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         self.program_inputs = {"input_data": input_data}
         self.program_outputs = ["relu_output_data"]
 
-    def test_check_output(self):
-        self.run_test()
+    def test_check_fp32_output(self):
+        self.trt_param.precision == paddle_infer.PrecisionType.Float32
+        # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-5)
+
+    def test_check_fp16_output(self):
+        self.trt_param.precision == paddle_infer.PrecisionType.Half
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-2)
+
+    def test_dynamic_shape_fp32_check_output(self):
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
+        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
+        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-5)
+
+    def test_dynamic_shape_fp16_check_output(self):
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
+        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
+        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-2)
+
+    def test_trt_int8_check_output(self):
+        self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        self.run_test(
+            trt_engine_num=1, paddle_op_num=2, quant=True, threshold=1e-1)
 
 
 if __name__ == "__main__":

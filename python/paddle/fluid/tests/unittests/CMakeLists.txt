@@ -145,6 +145,7 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_cpu_barrier_with_gloo)
 
     # TODO: Fix these unittests failed on Windows
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
@@ -740,6 +741,7 @@ endif()
 
 if (WITH_DISTRIBUTE AND NOT WIN32)
     set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_cpu_barrier_with_gloo PROPERTIES TIMEOUT 40)
 endif()
 
 if (WITH_DISTRIBUTE)
