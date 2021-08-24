@@ -113,6 +113,38 @@ TEST(CopyTensor, float16) {
   }
 }
 
+TEST(CopyTensor, float16_gpu) {
+  paddle::framework::Scope scope;
+  auto tensor_src =
+      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+          "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
+  auto tensor_dst =
+      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+          "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
+
+  using paddle::platform::float16;
+  std::vector<float16> data_src(6, float16(1.0));
+  tensor_src->Reshape({2, 3});
+  tensor_src->CopyFromCpu(data_src.data());
+
+  std::vector<float16> data_dst(4, float16(2.0));
+  tensor_dst->Reshape({2, 2});
+  tensor_dst->CopyFromCpu(data_dst.data());
+
+  paddle_infer::contrib::TensorUtils::CopyTensor(*tensor_dst, *tensor_src);
+
+  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
+  EXPECT_EQ(tensor_dst->shape()[0], 2);
+  EXPECT_EQ(tensor_dst->shape()[1], 3);
+
+  std::vector<float16> data_check(6, float16(1.0));
+  tensor_dst->CopyToCpu<float16>(data_check.data());
+
+  for (int i = 0; i < 6; i++) {
+    EXPECT_TRUE(data_check[i] == float16(1.0));
+  }
+}
+
 TEST(CopyTensor, async_stream) {
   paddle::framework::Scope scope;
   auto tensor_src =
@@ -152,10 +184,10 @@ TEST(CopyTensor, async_callback) {
   paddle::framework::Scope scope;
   auto tensor_src =
       paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
-          "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
+          "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
   auto tensor_dst =
       paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
-          "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
+          "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
 
   std::vector<float> data_src(6, 1.0);
   tensor_src->Reshape({2, 3});
@@ -172,13 +204,6 @@ TEST(CopyTensor, async_callback) {
         EXPECT_EQ(tensor->shape().size(), (size_t)2);
         EXPECT_EQ(tensor->shape()[0], 2);
         EXPECT_EQ(tensor->shape()[1], 3);
-
-        std::vector<float> data_check(6, 3.0);
-        tensor->CopyToCpu<float>(data_check.data());
-
-        for (int i = 0; i < 6; i++) {
-          EXPECT_NEAR(data_check[i], float(1.0), 1e-5);
-        }
       },
       static_cast<void *>(&(*tensor_dst)));
 
