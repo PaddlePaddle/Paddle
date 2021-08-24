@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -10,14 +10,15 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.
+# limitations under the License
 
-from .interface import shard_tensor  # noqa: F401
-from .interface import shard_op  # noqa: F401
-from .interface import set_shard_mask  # noqa: F401
-from .interface import set_offload_device  # noqa: F401
-from .interface import set_pipeline_stage  # noqa: F401
-from .interface import ProcessMesh  # noqa: F401
-from .completion import complete_annotation  # noqa: F401
-
-__all__ = []
+from .common import DistributedOperator
+from .common import DistributedOperatorImpl
+from .common import register_distributed_operator
+from .common import register_distributed_operator_impl
+from .common import find_best_compatible_distributed_operator_impl
+from . import dist_embedding
+from . import dist_matmul
+from . import dist_reshape
+from . import dist_softmax
+from . import dist_transpose
