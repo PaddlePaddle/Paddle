@@ -12,25 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/memory/allocation/spin_lock_c.h"
+#include "paddle/fluid/framework/scope_guard.h"
+#include "gtest/gtest.h"
 
 namespace paddle {
-namespace memory {
+namespace framework {
 
-class SpinLock {
- public:
-  SpinLock() { INITIAL_LOCK(&mlock_); }
+TEST(scope_guard, scope_guard_test) {
+  int n = 10;
+  {
+    DEFINE_PADDLE_SCOPE_GUARD([&n] { ++n; });
+  }
+  EXPECT_EQ(n, 11);
+  try {
+    DEFINE_PADDLE_SCOPE_GUARD([&] { --n; });
+    DEFINE_PADDLE_SCOPE_GUARD([&] { --n; });
+    throw std::runtime_error("any exception");
+  } catch (std::runtime_error &) {
+    EXPECT_EQ(n, 9);
+  }
+}
 
-  void lock() { ACQUIRE_LOCK(&mlock_); }
-
-  void unlock() { RELEASE_LOCK(&mlock_); }
-  DISABLE_COPY_AND_ASSIGN(SpinLock);
-
- private:
-  MLOCK_T mlock_;
-};
-
-}  // namespace memory
+}  // namespace framework
 }  // namespace paddle

@@ -16,6 +16,7 @@ import numpy as np
 import unittest
 import itertools
 import abc
+import logging
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -25,6 +26,9 @@ from paddle import compat as cpt
 from typing import *
 from program_config import TensorConfig, OpConfig, ProgramConfig
 from auto_scan_test import AutoScanTest
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(filename)s - %(message)s")
 
 
 class TrtLayerAutoScanTest(AutoScanTest):
@@ -42,6 +46,18 @@ class TrtLayerAutoScanTest(AutoScanTest):
             self.use_static = use_static
             self.use_calib_mode = use_calib_mode
 
+    class DynamicShapeParam:
+        '''
+         Prepare TensorRT subgraph engine dynamic shape parameters. 
+         '''
+
+        def __init__(self, min_input_shape, max_input_shape, optim_input_shape,
+                     disable_trt_plugin_fp16):
+            self.min_input_shape = min_input_shape
+            self.max_input_shape = max_input_shape
+            self.optim_input_shape = optim_input_shape
+            self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
+
     def __init__(self, methodName='runTest'):
         super(TrtLayerAutoScanTest, self).__init__(methodName)
         self.trt_param = self.TensorRTParam(
@@ -51,6 +67,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             precision=paddle_infer.PrecisionType.Float32,
             use_static=False,
             use_calib_mode=False)
+        self.dynamic_shape = self.DynamicShapeParam({}, {}, {}, False)
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         raise NotImplementedError
@@ -83,6 +100,12 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         attrs=op_attr))
 
             self.update_program_input_and_weight_with_attr(op_attr_list)
+            # if no weight need to save, we create a place_holder to help seriazlie params.
+            if not self.program_weights:
+                self.program_weights = {
+                    "place_holder_weight": TensorConfig(
+                        shape=[1], data=np.array([1]).astype(np.float32))
+                }
             program_config = ProgramConfig(
                 ops=ops,
                 weights=self.program_weights,
@@ -96,6 +119,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
         config = paddle_infer.Config()
         config.enable_use_gpu(100, 0)
         if use_trt:
+            config.switch_ir_debug()
             config.enable_tensorrt_engine(
                 max_batch_size=self.trt_param.max_batch_size,
                 workspace_size=self.trt_param.workspace_size,
@@ -103,13 +127,22 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 precision_mode=precision_mode,
                 use_static=self.trt_param.use_static,
                 use_calib_mode=self.trt_param.use_calib_mode)
+            if len(self.dynamic_shape.min_input_shape
+                   ) != 0 and self.dynamic_shape.min_input_shape.keys(
+                   ) == self.dynamic_shape.max_input_shape.keys(
+                   ) and self.dynamic_shape.min_input_shape.keys(
+                   ) == self.dynamic_shape.opt_input_shape.keys():
+                config.set_trt_dynamic_shape_info(
+                    self.dynamic_shape.min_input_shape,
+                    self.dynamic_shape.max_input_shape,
+                    self.dynamic_shape.opt_input_shape,
+                    self.dynamic_shape.disable_trt_plugin_fp16)
         return config
 
     @abc.abstractmethod
     def sample_predictor_configs(self):
+        logging.info('--------- gpu inference ---------')
         yield self.create_program_config(use_trt=False)
+        logging.info('--------- trt inference ---------')
         yield self.create_program_config(
             use_trt=True, precision_mode=self.trt_param.precision)
-        if self.trt_param.precision == paddle_infer.PrecisionType.Float32:
-            yield self.create_program_config(
-                use_trt=True, precision_mode=paddle_infer.PrecisionType.Half)
