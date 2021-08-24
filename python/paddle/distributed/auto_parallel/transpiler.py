@@ -505,3 +505,269 @@ class AutoParallelTranspiler(object):
         append the broadcast to sync parameters 
         """
         raise RuntimeError("sharding transpile is NOT implemented !")
+
+    def _gradient_sync_transpile(self, main_program, startup_program):
+        """
+        append the gradient allreduce ops for all parameters' grad in case of Data Parallel
+        """
+
+        # scale loss by dp degree
+        main_global_block = main_program.global_block()
+        for idx, op in reversed(list(enumerate(main_global_block.ops))):
+            if is_loss_grad_op(op):
+                loss_grad_var = main_global_block.vars[op.output_arg_names[0]]
+                main_global_block._insert_op_without_sync(
+                    idx + 1,
+                    type='scale',
+                    inputs={'X': loss_grad_var},
+                    outputs={'Out': loss_grad_var},
+                    attrs={
+                        'scale': 1.0 / self._dp_degree,
+                        OP_ROLE_KEY: OpRole.Backward
+                    })
+                break
+        main_global_block._sync_with_cpp()
+
+        # gradient synchronization
+        # NOTE naive gradient sync without overlapping
+        # so there is not need to sync between calc and comm
+        # collecting grad var
+        grad_to_sync = []
+        for idx, op in reversed(list(enumerate(main_global_block.ops))):
+            if is_backward_op(op) and \
+                    OP_ROLE_VAR_KEY in op.attr_names:
+                op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
+                if len(op_role_var) != 0:
+                    assert len(op_role_var) % 2 == 0
+                    for i in range(0, len(op_role_var), 2):
+                        param, reduced_grad = op_role_var[i], op_role_var[i + 1]
+                        assert (reduced_grad not in grad_to_sync)
+                        grad_to_sync.append(reduced_grad)
+            if is_optimizer_op(op):
+                first_optimize_op_idx = idx
+
+        # insert allreduce
+        for grad in grad_to_sync:
+            # FIXME the ring id should be set by autoparallel.mapping module
+            # it should be determined by dp groups butfixed it here for hacking
+            main_global_block.append_op(
+                type='c_allreduce_sum',
+                inputs={'X': grad},
+                outputs={'Out': grad},
+                attrs={
+                    'ring_id': self._dp_group.id,
+                    'root': 0,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Backward
+                })
+        main_global_block.append_op(
+            type='c_sync_comm_stream',
+            inputs={'X': grad_to_sync},
+            outputs={'Out': grad_to_sync},
+            attrs={'ring_id': self._dp_group.id,
+                   OP_ROLE_KEY: OpRole.Backward})
+        main_global_block._sync_with_cpp()
+
+
+def _get_no_grad_set_name(no_grad_set):
+    no_grad_set_name = set()
+    if no_grad_set is not None:
+        if isinstance(no_grad_set, (set, list, tuple)):
+            for i, no_grad_var in enumerate(no_grad_set):
+                if isinstance(no_grad_var, framework.Variable):
+                    no_grad_set_name.add(no_grad_var.name)
+                elif isinstance(no_grad_var, six.string_types):
+                    no_grad_set_name.add(no_grad_var)
+                else:
+                    raise TypeError(
+                        "The type of no_grad_set's member must be paddle.fluid.Variable or str, but received %s."
+                        % (type(no_grad_var)))
+        else:
+            raise TypeError(
+                "The type of no_grad_set should be set or list or tuple, but received {}".
+                format(type(no_grad_set)))
+    return no_grad_set_name
+
+
+def _get_no_grad_set(loss, no_grad_set=None):
+    no_grad_set = _get_no_grad_set_name(no_grad_set)
+    parameters = loss.block.program.global_block().all_parameters()
+    param_no_trainable = set(
+        [param.name for param in parameters if param.trainable is False])
+    # If the parameter is no trainable, it should not have a gradient.
+    no_grad_set.update(param_no_trainable)
+
+    return no_grad_set
+
+
+def _found_match_dist_op(auto_paralle_context, op):
+    dist_attr = auto_paralle_context.get_op_distributed_attr_for_program(op)
+    dist_ops = get_distributed_operator(op.type)
+
+    return dist_ops and dist_attr.get_impl_idx() >= 0 and dist_ops.get_impl( \
+        dist_attr.get_impl_idx())._forward_implemented
+
+
+def _is_distributed(dist_attr):
+
+    mapping = dist_attr.get_dims_mapping()
+    mesh = dist_attr.get_process_mesh().topology
+    for idx in range(len(mapping)):
+        if mapping[idx] >= 0 and mesh[mapping[idx]] > 1:
+            return True
+
+    return False
+
+
+def _get_dist_shape(var, dist_attr):
+
+    var_shape = var.shape
+    mapping = dist_attr.get_dims_mapping()
+    mesh = dist_attr.get_process_mesh().topology
+    assert len(var_shape) == len(
+        mapping
+    ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
+        var_shape, mapping)
+    new_shape = []
+    for idx in range(len(var_shape)):
+        if var_shape[idx] == -1 or mapping[idx] == -1:
+            new_shape.append(var_shape[idx])
+        else:
+            assert var_shape[idx] % mesh[mapping[
+                idx]] == 0, "un-event partition: var_shape[idx]=[{}], mesh[{}]".format(
+                    var_shape[idx], mesh[mapping[idx]])
+            new_shape.append(var_shape[idx] // mesh[mapping[idx]])
+
+    return new_shape
+
+
+def _partition_parameter(auto_paralle_context, src_var, dst_block, dst_varname,
+                         dst_shape):
+    # NOTE hack to copied Parameter
+    # not initialized parameter, need to initialize it 
+    copied_kwargs = {}
+    copied_kwargs['trainable'] = src_var.trainable
+    copied_kwargs['optimize_attr'] = src_var.optimize_attr
+    copied_kwargs['regularizer'] = src_var.regularizer
+    copied_kwargs['do_model_average'] = src_var.do_model_average
+    copied_kwargs['need_clip'] = src_var.need_clip
+
+    param = Parameter(
+        block=dst_block,
+        type=src_var.type,
+        name=dst_varname,
+        shape=dst_shape,
+        dtype=src_var.dtype,
+        lod_level=src_var.lod_level,
+        error_clip=src_var.error_clip,
+        stop_gradient=src_var.stop_gradient,
+        is_data=src_var.is_data,
+        belong_to_optimizer=src_var.belong_to_optimizer,
+        **copied_kwargs)
+
+    # set dist attr uid
+    # distributed_attr_uid = src_var.desc.get_distributed_attr_uid()
+    # param.desc.set_distributed_attr_uid(distributed_attr_uid)
+    dist_attr = copy.deepcopy(
+        auto_paralle_context.get_tensor_distributed_attr_for_program(src_var))
+    dist_attr._owner_tensor = param
+    dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
+        src_var)._owner_context
+    auto_paralle_context.set_tensor_distributed_attr_for_program(param,
+                                                                 dist_attr)
+
+
+def _partition_intermediate_var(auto_paralle_context, src_var, dst_block,
+                                dst_varname, dst_shape):
+    var = dst_block.create_var(
+        type=src_var.type,
+        name=dst_varname,
+        shape=dst_shape,
+        dtype=src_var.dtype,
+        lod_level=src_var.lod_level,
+        persistable=src_var.persistable,
+        error_clip=src_var.error_clip,
+        stop_gradient=src_var.stop_gradient,
+        is_data=src_var.is_data,
+        belong_to_optimizer=src_var.belong_to_optimizer)
+
+    # set dist attr uid
+    # distributed_attr_uid = src_var.desc.get_distributed_attr_uid()
+    # var.desc.set_distributed_attr_uid(distributed_attr_uid)
+    dist_attr = copy.deepcopy(
+        auto_paralle_context.get_tensor_distributed_attr_for_program(src_var))
+    dist_attr._owner_tensor = var
+    dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
+        src_var)._owner_context
+    auto_paralle_context.set_tensor_distributed_attr_for_program(var, dist_attr)
+
+
+def _partition_var(auto_paralle_context, src_block, dst_block, src_varname,
+                   dst_varname):
+    """
+    partition include: split + replicate
+    """
+    src_var = src_block.var(src_varname)
+
+    if src_var.type == core.VarDesc.VarType.READER:
+        dst_block.create_var(
+            type=src_var.type,
+            name=dst_varname,
+            persistable=True,
+            stop_gradient=True)
+    else:
+        dist_attr = auto_paralle_context.get_tensor_distributed_attr_for_program(
+            src_var)
+        target_shape = _get_dist_shape(src_var, dist_attr)
+
+        if isinstance(src_var, Parameter):
+            _partition_parameter(auto_paralle_context, src_var, dst_block,
+                                 dst_varname, target_shape)
+        else:
+            _partition_intermediate_var(auto_paralle_context, src_var,
+                                        dst_block, dst_varname, target_shape)
+
+
+def _insert_src_op(src_op, dst_block, varname_mapping):
+
+    new_op_desc = dst_block.desc.append_op()
+    new_op_desc.copy_from(src_op.desc)
+    for local_varname in src_op.desc.input_arg_names():
+        new_op_desc._rename_input(local_varname, varname_mapping[local_varname])
+    for local_varname in src_op.desc.output_arg_names():
+        new_op_desc._rename_output(local_varname,
+                                   varname_mapping[local_varname])
+    dst_block._sync_with_cpp()
+
+
+def _insert_dist_op(src_op, dst_block, varname_mapping, auto_paralle_context,
+                    rank_id):
+
+    # build input varname mapping
+    input_mapping = {}
+    for input_name in src_op.desc.input_names():
+        varnames = []
+        for varname in src_op.desc.input(input_name):
+            varnames.append(varname_mapping[varname])
+        input_mapping[input_name] = varnames
+
+    # build output varname mapping
+    output_mapping = {}
+    for output_name in src_op.desc.output_names():
+        varnames = []
+        for varname in src_op.desc.output(output_name):
+            varnames.append(varname_mapping[varname])
+        output_mapping[output_name] = varnames
+
+    # append dist op 
+    dist_attr = auto_paralle_context.get_op_distributed_attr_for_program(src_op)
+    dist_ops = get_distributed_operator(src_op.type)
+    append_op_handle = dist_ops.get_impl(dist_attr.get_impl_idx()).forward(
+        src_op)
+    append_op_handle(
+        dst_block,
+        src_op,
+        dist_attr,
+        input_mapping,
+        output_mapping,
+        rank_id=rank_id)
