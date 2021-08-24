@@ -29,6 +29,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
@@ -427,7 +428,12 @@ static void ParseIndexingSlice(
 
   // NOTE(zhiqiu): PyTuple_Pack increases refcount.
   PyObject *index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
-
+  DEFINE_PADDLE_SCOPE_GUARD([&index, &_index]() {
+    if (!PyTuple_Check(_index)) {
+      Py_DECREF(index);
+      VLOG(4) << "Call Py_DECREF";
+    }
+  });
   PADDLE_ENFORCE_EQ(
       tensor->IsInitialized(), true,
       platform::errors::InvalidArgument("tensor has not been initialized"));
@@ -545,10 +551,6 @@ static void ParseIndexingSlice(
           "%s in %dth slice item",
           std::string(Py_TYPE(slice_item)->tp_name), i + 1));
     }
-  }
-
-  if (!PyTuple_Check(_index)) {
-    Py_DecRef(index);
   }
 
   // valid_index is the number of dimensions exclude None index
@@ -817,6 +819,7 @@ void BindImperative(py::module *m_ptr) {
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
               py::object &value_obj) {
              VLOG(4) << "Call __setitem__";
+
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
              // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
@@ -824,6 +827,12 @@ void BindImperative(py::module *m_ptr) {
              PyObject *index_ptr = !PyTuple_Check(_index.ptr())
                                        ? PyTuple_Pack(1, _index.ptr())
                                        : _index.ptr();
+             DEFINE_PADDLE_SCOPE_GUARD([&index_ptr, &_index]() {
+               if (!PyTuple_Check(_index.ptr())) {
+                 Py_DECREF(index_ptr);
+                 VLOG(4) << "Call Py_DECREF";
+               }
+             });
              // 1. Check argumnets
              // 1.1 Check whether value obj is a tensor.
              bool value_is_tensor = true;
@@ -943,9 +952,6 @@ void BindImperative(py::module *m_ptr) {
                                       self_tensor->place(), true);
                }
              }
-             if (!PyTuple_Check(_index.ptr())) {
-               Py_DECREF(index_ptr);
-             }
              // NOTE(liym27):
              // Increase the version of VarBase self because __setitem__ is an
              // inplace operator for the VarBase self.
@@ -953,6 +959,7 @@ void BindImperative(py::module *m_ptr) {
            })
       .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
+             VLOG(4) << "Call _getitem_index_not_tensor";
              std::vector<int> slice_axes, slice_starts, slice_ends,
                  slice_strides, decrease_axis, none_axes, infer_flags,
                  list_select_idxs;
