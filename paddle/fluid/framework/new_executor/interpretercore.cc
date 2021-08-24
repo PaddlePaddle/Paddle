@@ -37,7 +37,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   for (auto& fetch_name : fetch_names) {
     // append fetch op
     auto* op = main_program_.MutableBlock(0)->AppendOp();
-    op->SetType("fetch2");
+    op->SetType("fetch_v2");
     op->SetInput("X", {fetch_name});
     op->SetOutput("Out", {"fetch_vars"});
     op->SetAttr("col", {static_cast<int>(i)});
@@ -187,7 +187,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node,
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
-  if (instr_node.kernel_func_.operator_base_->Type() == "fetch2") {
+  if (instr_node.kernel_func_.operator_base_->Type() == "fetch_v2") {
     dev_ctx->Wait();  // TODO(wanghuancoder)
     dev_ctx = fetch_context_pool_.Get(place);
   }

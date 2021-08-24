@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -81,7 +81,7 @@ static void DataCopy(const framework::LoDTensor &src_item,
   dst_item->set_lod(src_item.lod());
 }
 
-class Fetch2Op : public framework::OperatorWithKernel {
+class FetchV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -104,14 +104,14 @@ class Fetch2Op : public framework::OperatorWithKernel {
   }
 };
 
-class Fetch2InferVarType : public framework::VarTypeInference {
+class FetchV2InferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 
-class Fetch2Kernel {
+class FetchV2Kernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
     auto fetch_var_name = ctx.InputName("X");
@@ -157,7 +157,7 @@ class Fetch2Kernel {
   }
 };
 
-class Fetch2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
+class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
@@ -167,12 +167,6 @@ class Fetch2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
               "(vector<LoDTensor>) A fetching list of LoDTensor which may have "
               "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
-    AddComment(R"DOC(
-Fetch2 Operator.
-
-It should not be configured by users directly.
-
-)DOC");
   }
 };
 
@@ -182,28 +176,29 @@ It should not be configured by users directly.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OPERATOR(
-    fetch2, ops::Fetch2Op, ops::Fetch2OpProtoMaker, ops::Fetch2InferVarType,
+    fetch_v2, ops::FetchV2Op, ops::FetchV2OpProtoMaker,
+    ops::FetchV2InferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(fetch2, float, ops::Fetch2Kernel, double,
-                               ops::Fetch2Kernel, int, ops::Fetch2Kernel,
-                               int64_t, ops::Fetch2Kernel, bool,
-                               ops::Fetch2Kernel, plat::float16,
-                               ops::Fetch2Kernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
+                               ops::FetchV2Kernel, int, ops::FetchV2Kernel,
+                               int64_t, ops::FetchV2Kernel, bool,
+                               ops::FetchV2Kernel, plat::float16,
+                               ops::FetchV2Kernel);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(fetch2, float, ops::Fetch2Kernel, double,
-                                ops::Fetch2Kernel, int, ops::Fetch2Kernel,
-                                int64_t, ops::Fetch2Kernel, bool,
-                                ops::Fetch2Kernel, plat::float16,
-                                ops::Fetch2Kernel);
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
+                                ops::FetchV2Kernel, int, ops::FetchV2Kernel,
+                                int64_t, ops::FetchV2Kernel, bool,
+                                ops::FetchV2Kernel, plat::float16,
+                                ops::FetchV2Kernel);
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL_FUNCTOR(fetch2, float, ops::Fetch2Kernel, double,
-                               ops::Fetch2Kernel, int, ops::Fetch2Kernel,
-                               int64_t, ops::Fetch2Kernel, bool,
-                               ops::Fetch2Kernel, plat::float16,
-                               ops::Fetch2Kernel);
+REGISTER_OP_NPU_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
+                               ops::FetchV2Kernel, int, ops::FetchV2Kernel,
+                               int64_t, ops::FetchV2Kernel, bool,
+                               ops::FetchV2Kernel, plat::float16,
+                               ops::FetchV2Kernel);
 #endif

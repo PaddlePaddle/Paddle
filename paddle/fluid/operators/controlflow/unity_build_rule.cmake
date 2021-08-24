@@ -10,7 +10,7 @@ register_unity_group(cc
     conditional_block_infer_op.cc
     feed_op.cc
     fetch_op.cc
-    fetch2_op.cc
+    fetch_v2_op.cc
     get_places_op.cc
     logical_op.cc
     bitwise_op.cc
