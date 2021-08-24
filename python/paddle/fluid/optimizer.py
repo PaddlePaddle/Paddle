@@ -5316,7 +5316,9 @@ class PipelineOptimizer(object):
                     "copy_data": False,
                     "use_align": True,
                     "dtype": grads[0].dtype,
-                    self._op_role_key: self._op_role.Backward
+                    self._op_role_key: self._op_role.Backward,
+                    "set_constant": True,
+                    "constant": float(0.0)
                 })
             offset += 1
             # For the gradient_merged_fused_var, given a init value during the coalesce op
