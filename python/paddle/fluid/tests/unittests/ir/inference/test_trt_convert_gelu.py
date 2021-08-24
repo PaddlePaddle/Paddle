@@ -48,14 +48,14 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
         self.program_inputs = {"input_data": input_data}
         self.program_outputs = ["gelu_output_data"]
 
-   # def test_check_fp32_output(self):
-   #     self.trt_param.precision == paddle_infer.PrecisionType.Float32
-   #     # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
-   #     self.run_test(trt_engine_num=self.trt_engine_num, paddle_op_num=self.paddle_op_num, threshold=1e-5)
+    def test_check_fp32_output(self):
+        self.trt_param.precision == paddle_infer.PrecisionType.Float32
+        # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
+        self.run_test(trt_engine_num=self.trt_engine_num, paddle_op_num=self.paddle_op_num, threshold=1e-5)
 
-   # def test_check_fp16_output(self):
-   #     self.trt_param.precision == paddle_infer.PrecisionType.Half
-   #     self.run_test(trt_engine_num=self.trt_engine_num, paddle_op_num=self.paddle_op_num, threshold=1e-2)
+    def test_check_fp16_output(self):
+        self.trt_param.precision == paddle_infer.PrecisionType.Half
+        self.run_test(trt_engine_num=self.trt_engine_num, paddle_op_num=self.paddle_op_num, threshold=1e-2)
 
     def test_dynamic_shape_fp32_check_output(self):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
