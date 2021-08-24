@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 import paddle
 from paddle.fluid import core
@@ -66,9 +67,10 @@ class LinearTestCase(unittest.TestCase):
     def check_cost_info(self, cost_info):
         if core.is_compiled_with_cuda():
             self.assertEqual(cost_info.host_memory_bytes(), 16)
-            self.assertEqual(cost_info.device_memory_bytes(), 2560)  # 256 * 10
+            gt = 152 if sys.platform.startswith('win') else 2560
+            self.assertEqual(cost_info.device_memory_bytes(), gt)
         else:
-            self.assertEqual(cost_info.host_memory_bytes(), 120)  # 16*7 + 8
+            self.assertEqual(cost_info.host_memory_bytes(), 120)
             self.assertEqual(cost_info.device_memory_bytes(), 0)
 
 
