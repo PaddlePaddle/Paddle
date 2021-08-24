@@ -1024,3 +1024,7 @@ class RoIPool(Layer):
             output_size=self._output_size,
             spatial_scale=self._spatial_scale,
             boxes_num=boxes_num)
+
+    def extra_repr(self):
+        main_str = 'output_size={_output_size}, spatial_scale={_spatial_scale}'
+        return main_str.format(**self.__dict__)
