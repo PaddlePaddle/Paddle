@@ -35,8 +35,8 @@ class InterpreterCore {
                   const std::vector<std::string>& feed_names,
                   const std::vector<std::string>& fetch_names);
 
-  void Run(const std::vector<framework::Tensor>& feed_tensors,
-           std::vector<framework::Tensor>* fetch_tensors);
+  paddle::framework::FetchList Run(
+      const std::vector<framework::Tensor>& feed_tensors);
 
   static void BuildOpFuncList(const platform::Place& place,
                               const framework::ProgramDesc& pdesc,
@@ -64,7 +64,7 @@ class InterpreterCore {
                           VariableScope* var_scope);
 
   const platform::Place& place_;
-  const ProgramDesc& main_program_;
+  ProgramDesc main_program_;
   VariableScope* global_scope_;
   std::vector<VariableMetaInfo> vec_meta_info_;
 
@@ -80,7 +80,8 @@ class InterpreterCore {
   bool is_build_;
 
   std::vector<std::string> feed_names_;
-  std::vector<std::string> fetch_names_;
+
+  platform::DeviceContextPool fetch_context_pool_;
 };
 }  // namespace framework
 }  // namespace paddle
