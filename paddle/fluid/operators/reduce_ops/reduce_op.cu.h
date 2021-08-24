@@ -670,7 +670,7 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   auto x_dim = framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();  // get the parameters of LaunchReduceKernel
-
+  int numel = x.numel();
   // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,
   // temp_output should be stored temp_data in output_data space or stored in
@@ -687,7 +687,7 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   }
 
   config.SetOutputData(y_data, x.place(), &tmp);
-  bool use_cub_reduce = (config.left_num == 1) &&
+  bool use_cub_reduce = (config.reduce_num == numel) &&
                         (!std::is_same<Tx, paddle::platform::float16>::value);
   if (use_cub_reduce) {
     // launch CUB::Reduce

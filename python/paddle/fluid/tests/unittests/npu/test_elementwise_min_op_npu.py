@@ -18,35 +18,43 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+import paddle.fluid.core as core
 
 paddle.enable_static()
 SEED = 2021
 
 
-class TestElementwiseMin(OpTest):
+class TestElementwiseMinOp(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_min"
         self.place = paddle.NPUPlace(0)
-
         self.init_dtype()
-        np.random.seed(SEED)
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = np.minimum(x, y)
-
+        self.init_input_output()
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {}
-        self.outputs = {'Out': out}
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis}
 
     def set_npu(self):
         self.__class__.use_npu = True
+
+    def init_input_output(self):
+        # If x and y have the same value, the min() is not differentiable.
+        # So we generate test data by the following method
+        # to avoid them being too close to each other.
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.sgn = np.random.choice([-1, 1], [13, 17]).astype(self.dtype)
+        self.y = self.x + self.sgn * np.random.uniform(
+            0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.minimum(self.x, self.y)
+        self.axis = -1
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -54,45 +62,89 @@ class TestElementwiseMin(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
-    # TODO(ascendrc): Min grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
+    def test_check_grad_normal(self):
+        if self.dtype == np.float16:
+            return
+
+        self.check_grad_with_place(
+            self.place,
+            ['X', 'Y'],
+            'Out', )
+
+    def test_check_grad_ingore_x(self):
+        if self.dtype == np.float16:
+            return
+
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"), )
+
+    def test_check_grad_ingore_y(self):
+        if self.dtype == np.float16:
+            return
+
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            no_grad_set=set("Y"), )
 
 
-class TestElementwiseMinFp16(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "elementwise_min"
-        self.place = paddle.NPUPlace(0)
-
-        self.init_dtype()
-        np.random.seed(SEED)
-        x = np.random.uniform(1, 2, [3, 4]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [3, 4]).astype(self.dtype)
-        out = np.minimum(x, y)
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
-        self.attrs = {}
-        self.outputs = {'Out': out}
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.__class__.no_need_check_grad = True
-
+class TestElementwiseMinOpFp16(TestElementwiseMinOp):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5)
+
+class TestElementwiseMinOp_Vector(TestElementwiseMinOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, (100, )).astype(self.dtype)
+        self.sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
+        self.y = self.x + self.sgn * np.random.uniform(0.1, 1, (
+            100, )).astype(self.dtype)
+        self.out = np.minimum(self.x, self.y)
+        self.axis = -1
 
 
-class TestElementwiseMinNet(unittest.TestCase):
+class TestElementwiseMinOpFp16_Vector(TestElementwiseMinOp_Vector):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestElementwiseMinOp_scalar(TestElementwiseMinOp):
+    def init_input_output(self):
+        self.x = np.random.random_integers(-5, 5, [10, 3, 4]).astype(self.dtype)
+        self.y = np.array([0.5]).astype(self.dtype)
+        self.out = np.minimum(self.x, self.y)
+        self.axis = -1
+
+
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+class TestElementwiseMinOpFp16_scalar(TestElementwiseMinOp_scalar):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseMinOp_broadcast(TestElementwiseMinOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(self.dtype)
+        self.sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
+        self.y = self.x[0, 0, :] + self.sgn * \
+            np.random.uniform(1, 2, (100, )).astype(self.dtype)
+        self.out = np.minimum(self.x, self.y.reshape(1, 1, 100))
+        self.axis = -1
+
+
+class TestElementwiseMinOpFp16_broadcast(TestElementwiseMinOp_broadcast):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseMinOpNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()

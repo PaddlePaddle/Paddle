@@ -36,6 +36,12 @@ inline std::vector<int> get_expand_shape(
       TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
+#ifdef PADDLE_WITH_ASCEND_CL
+    if (platform::is_npu_place(shape_tensor->place())) {
+      TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
+      shape_data = cpu_shape_tensor.data<int>();
+    }
+#endif
     auto vec_shape =
         std::vector<int>(shape_data, shape_data + shape_tensor->numel());
     return vec_shape;
@@ -52,7 +58,15 @@ inline std::vector<int> get_expand_shape(
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_shape.push_back(*temp.data<int32_t>());
-      } else {
+      }
+#ifdef PADDLE_WITH_ASCEND_CL
+      else if (platform::is_npu_place(tensor->place())) {  // NOLINT
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_epxand_shape.push_back(*temp.data<int32_t>());
+      }
+#endif
+      else {  // NOLINT
         vec_epxand_shape.push_back(*tensor->data<int32_t>());
       }
     }

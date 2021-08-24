@@ -212,6 +212,7 @@ class DeviceWorker {
   FetchConfig fetch_config_;
   bool use_cvm_;
   bool no_cvm_;
+  bool scale_sparse_gradient_with_batch_size_;
   TrainerDesc trainer_desc_;
 
   // dump params or grads for debug

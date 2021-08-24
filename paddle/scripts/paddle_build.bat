@@ -161,13 +161,23 @@ if "%WITH_SCCACHE%"=="ON" (
     del D:\sccache\sccache_log.txt
     cmd /C sccache -V || call :install_sccache
     sccache --stop-server 2> NUL
+
+    :: Localy storage on windows
     if not exist D:\sccache mkdir D:\sccache
     set SCCACHE_DIR=D:\sccache\.cache
-    :: sccache will shut down if a source file takes more than 10 mins to compile
+    
+    :: Sccache will shut down if a source file takes more than 10 mins to compile
     set SCCACHE_IDLE_TIMEOUT=0
-    set SCCACHE_CACHE_SIZE=30G
+    set SCCACHE_CACHE_SIZE=100G
     set SCCACHE_ERROR_LOG=D:\sccache\sccache_log.txt
     set SCCACHE_LOG=quiet
+
+    :: Distributed storage on windows
+    set SCCACHE_ENDPOINT=s3.bj.bcebos.com
+    set SCCACHE_BUCKET=paddle-windows
+    set SCCACHE_S3_KEY_PREFIX=sccache/
+    set SCCACHE_S3_USE_SSL=true
+
     sccache --start-server
     sccache -z
     goto :CASE_%1
