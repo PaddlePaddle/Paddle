@@ -1000,13 +1000,13 @@ class RoIPool(Layer):
     Examples:
         ..  code-block:: python
             import paddle
-            import paddle.nn as nn
+            import paddle.vision.ops as ops
             data = paddle.rand([1, 256, 32, 32])
             boxes = paddle.rand([3, 4])
             boxes[:, 2] += boxes[:, 0] + 3
             boxes[:, 3] += boxes[:, 1] + 4
             boxes_num = paddle.to_tensor([3]).astype('int32')
-            roi_pool_c = nn.RoIPool(output_size=(4, 3))
+            roi_pool_c = ops.RoIPool(output_size=(4, 3))
             pool_out = roi_pool_c(data, boxes, boxes_num)
             assert pool_out.shape == [3, 256, 4, 3], ''
     """
