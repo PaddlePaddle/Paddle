@@ -140,6 +140,92 @@ class TestWhereAPI(unittest.TestCase):
                               fetch_list=[result])
                 assert np.array_equal(out[0], np.where(x_i > 1, x_i, y_i))
 
+    def __test_where_with_broadcast_static(self, cond_shape, x_shape, y_shape):
+        paddle.enable_static()
+
+        main_program = Program()
+        with fluid.program_guard(main_program):
+            cond = fluid.layers.data(
+                name='cond', shape=cond_shape, dtype='bool')
+            x = fluid.layers.data(name='x', shape=x_shape, dtype='float32')
+            y = fluid.layers.data(name='y', shape=y_shape, dtype='float32')
+
+            cond_data_tmp = np.random.random(size=cond_shape).astype("float32")
+            cond_data = cond_data_tmp < 0.3
+            x_data = np.random.random(size=x_shape).astype("float32")
+            y_data = np.random.random(size=y_shape).astype("float32")
+
+            result = paddle.where(condition=cond, x=x, y=y)
+
+            for use_cuda in [False, True]:
+                if use_cuda and not fluid.core.is_compiled_with_cuda():
+                    return
+                place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+                exe = fluid.Executor(place)
+                out = exe.run(
+                    fluid.default_main_program(),
+                    feed={'cond': cond_data,
+                          'x': x_data,
+                          'y': y_data},
+                    fetch_list=[result])
+
+                expect = np.where(cond_data, x_data, y_data)
+
+                assert np.array_equal(out[0], expect)
+
+    def test_static_api_broadcast_1(self):
+        cond_shape = [2, 4]
+        a_shape = [2, 2, 4]
+        b_shape = [2, 2, 4]
+        self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
+
+    def test_static_api_broadcast_2(self):
+        cond_shape = [2, 1]
+        a_shape = [2, 2, 4]
+        b_shape = [2, 2, 4]
+        self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
+
+    def test_static_api_broadcast_3(self):
+        cond_shape = [2, 2, 1]
+        a_shape = [2, 2, 4]
+        b_shape = [2, 2, 4]
+        self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
+
+    def test_static_api_broadcast_4(self):
+        cond_shape = [2, 1, 4]
+        a_shape = [2, 2, 4]
+        b_shape = [2, 2, 4]
+        self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
+
+    # @Note Now, maybe not compatibility with old version
+    def test_static_api_broadcast_5(self):
+        cond_shape = [3, 2, 2, 4]
+        a_shape = [2, 2, 4]
+        b_shape = [2, 2, 4]
+        self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
+
+    # @Note Now, maybe not compatibility with old version
+    def test_static_api_broadcast_6(self):
+        cond_shape = [2, 2, 4]
+        a_shape = [2, 2, 1]
+        b_shape = [2, 2, 1]
+        self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
+
+    # @Note Now, maybe not compatibility with old version
+    def test_static_api_broadcast_7(self):
+        cond_shape = [2, 2, 4]
+        a_shape = [2, 1, 4]
+        b_shape = [2, 1, 4]
+        self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
+
+    # @Note Now, maybe not compatibility with old version
+    def test_static_api_broadcast_8(self):
+        cond_shape = [3, 2, 2, 4]
+        a_shape = [2, 2, 1]
+        b_shape = [2, 2, 1]
+        self.__test_where_with_broadcast_static(cond_shape, a_shape, b_shape)
+
 
 class TestWhereDygraphAPI(unittest.TestCase):
     def test_api(self):
@@ -153,73 +239,71 @@ class TestWhereDygraphAPI(unittest.TestCase):
             out = paddle.where(cond, x, y)
             assert np.array_equal(out.numpy(), np.where(cond_i, x_i, y_i))
 
-    def __test_where_with_broadcast(self, cond_shape, a_shape, b_shape):
+    def __test_where_with_broadcast_dygraph(self, cond_shape, a_shape, b_shape):
         with fluid.dygraph.guard():
             cond_tmp = paddle.rand(cond_shape)
-            print('cond_tmp: ', cond_tmp)
-
             cond = cond_tmp < 0.3
-            print('cond: ', cond)
-
             a = paddle.rand(a_shape)
-            print('a: ', a)
-
             b = paddle.rand(b_shape)
-            print('b: ', b)
 
             result = paddle.where(cond, a, b)
             result = result.numpy()
-            print('result: ', result)
 
             expect = np.where(cond, a, b)
-            print('expect: ', expect)
 
-            self.assertTrue(np.allclose(expect, result))
+            self.assertTrue(np.array_equal(expect, result))
 
-    def test_api_broadcast_1(self):
+    def test_dygraph_api_broadcast_1(self):
         cond_shape = [2, 4]
         a_shape = [2, 2, 4]
         b_shape = [2, 2, 4]
-        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+        self.__test_where_with_broadcast_dygraph(cond_shape, a_shape, b_shape)
 
-    def test_api_broadcast_2(self):
+    def test_dygraph_api_broadcast_2(self):
         cond_shape = [2, 1]
         a_shape = [2, 2, 4]
         b_shape = [2, 2, 4]
-        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+        self.__test_where_with_broadcast_dygraph(cond_shape, a_shape, b_shape)
 
-    def test_api_broadcast_3(self):
+    def test_dygraph_api_broadcast_3(self):
         cond_shape = [2, 2, 1]
         a_shape = [2, 2, 4]
         b_shape = [2, 2, 4]
-        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+        self.__test_where_with_broadcast_dygraph(cond_shape, a_shape, b_shape)
 
-    def test_api_broadcast_4(self):
+    def test_dygraph_api_broadcast_4(self):
         cond_shape = [2, 1, 4]
         a_shape = [2, 2, 4]
         b_shape = [2, 2, 4]
-        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+        self.__test_where_with_broadcast_dygraph(cond_shape, a_shape, b_shape)
 
-    # @TODO Now, maybe not compatibility with old version
-    def test_api_broadcast_5(self):
+    # @Note Now, maybe not compatibility with old version
+    def test_dygraph_api_broadcast_5(self):
         cond_shape = [3, 2, 2, 4]
         a_shape = [2, 2, 4]
         b_shape = [2, 2, 4]
-        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+        self.__test_where_with_broadcast_dygraph(cond_shape, a_shape, b_shape)
 
-    # @TODO Now, maybe not compatibility with old version
-    def test_api_broadcast_6(self):
+    # @Note Now, maybe not compatibility with old version
+    def test_dygraph_api_broadcast_6(self):
         cond_shape = [2, 2, 4]
         a_shape = [2, 2, 1]
         b_shape = [2, 2, 1]
-        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+        self.__test_where_with_broadcast_dygraph(cond_shape, a_shape, b_shape)
 
-    # @TODO Now, maybe not compatibility with old version
-    def test_api_broadcast_6(self):
+    # @Note Now, maybe not compatibility with old version
+    def test_dygraph_api_broadcast_7(self):
+        cond_shape = [2, 2, 4]
+        a_shape = [2, 1, 4]
+        b_shape = [2, 1, 4]
+        self.__test_where_with_broadcast_dygraph(cond_shape, a_shape, b_shape)
+
+    # @Note Now, maybe not compatibility with old version
+    def test_dygraph_api_broadcast_8(self):
         cond_shape = [3, 2, 2, 4]
         a_shape = [2, 2, 1]
         b_shape = [2, 2, 1]
-        self.__test_where_with_broadcast(cond_shape, a_shape, b_shape)
+        self.__test_where_with_broadcast_dygraph(cond_shape, a_shape, b_shape)
 
 
 class TestWhereOpError(unittest.TestCase):
