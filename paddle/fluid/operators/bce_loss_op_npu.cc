@@ -34,8 +34,9 @@ class BCELossNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    const auto& runner = NpuOpRunner("BinaryCrossEntropy", {*x, *labels},
-                                     {*out}, {{"reduction", "none"}});
+    const auto& runner =
+        NpuOpRunner("BinaryCrossEntropy", {*x, *labels}, {*out},
+                    {{"reduction", static_cast<std::string>("none")}});
     runner.Run(stream);
   }
 };
@@ -57,7 +58,7 @@ class BCELossGradNPUKernel : public framework::OpKernel<T> {
 
     const auto& runner =
         NpuOpRunner("BinaryCrossEntropyGrad", {*x, *labels, *dout}, {*dx},
-                    {{"reduction", "none"}});
+                    {{"reduction", static_cast<std::string>("none")}});
     runner.Run(stream);
   }
 };
