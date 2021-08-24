@@ -93,33 +93,6 @@ class TestAdamWOp(unittest.TestCase):
             adam = paddle.optimizer.AdamW(
                 0.1, epsilon=-1, parameters=linear.parameters())
 
-    def test_adamw_lr_decay(self):
-        paddle.disable_static()
-        value = np.arange(26).reshape(2, 13).astype("float32")
-        a = paddle.to_tensor(value)
-        linear = paddle.nn.Linear(13, 5)
-
-        lr = paddle.optimizer.lr.NoamDecay(d_model=0.01, warmup_steps=10)
-        wd = 0.1
-        adam = paddle.optimizer.AdamW(
-            learning_rate=lr,
-            parameters=linear.parameters(),
-            apply_decay_param_fun=lambda name: True,
-            weight_decay=wd)
-
-        for _ in range(2):
-            out = linear(a)
-            out.backward()
-            lr_to_coeff = adam._lr_to_coeff
-            adam.step()
-
-            for i, value in enumerate(lr_to_coeff.values()):
-                self.assertAlmostEqual(value.numpy()[0], 1.0 - lr() * wd)
-            self.assertEqual(len(adam._lr_to_coeff), 0)
-
-            lr.step()
-            adam.clear_gradients()
-
 
 class TestAdamWOpGroup(TestAdamWOp):
     def test_adamw_op_dygraph(self):
