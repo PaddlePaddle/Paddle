@@ -682,10 +682,11 @@ if(WITH_GPU)
     inference_analysis_test(paddle_infer_api_test SRCS paddle_infer_api_test.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${RESNET50_MODEL_DIR})
-    set_tests_properties(paddle_infer_api_test PROPERTIES TIMEOUT 30)
 
     inference_analysis_test(paddle_infer_api_copytensor SRCS paddle_infer_api_copytensor.cc
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR})
+    set_tests_properties(paddle_infer_api_copytensor PROPERTIES TIMEOUT 30)
 endif()
 
 if("$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
