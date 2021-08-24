@@ -14,6 +14,7 @@
 
 import threading
 import paddle.fluid.core as core
+import numpy as np
 
 
 def is_valid_list_index(list, index):
@@ -155,3 +156,125 @@ def print_program_with_distributed_attr(program, dist_context=None):
         print(program)
         set_default_distributed_context(original_default_context)
     lock.release()
+
+
+def _get_comm_group(processes, shape, axis, rank):
+    """
+    Given a rank and the processes mesh the rank belongs to,  
+    compute the communication peers of the rank based on the give axis in the mesh.
+
+    Example: 16 processes managed in a 4-Dimensinal mesh with shape of [2, 2, 2, 2].
+    the rank communication peers of rank 0 (included) are following:
+    in axis 0: [0, 1]
+    in axis 1: [0, 2]
+    in axis 2: [0, 4]
+    in axis 3: [0, 8]
+    """
+
+    # NOTE _linear_idx2coordinate assume processes mesh start with 0 and continuous
+    #  tricks to support processes mesh when it is not start with 0 or continuous
+    rank_relatvie = processes.index(rank)
+    coordinate = _linear_idx2coordinate(shape, rank_relatvie)
+    coordinates_in_group = [coordinate[:] for i in range(shape[axis])]
+
+    # select comm group
+    for i in range(shape[axis]):
+        coordinates_in_group[i][axis] = i
+
+    ranks_in_group_relative = [
+        _coordinate2linear_idx(shape, coordinate)
+        for coordinate in coordinates_in_group
+    ]
+    ranks_in_group = [processes[idx] for idx in ranks_in_group_relative]
+
+    return sorted(ranks_in_group)
+
+
+def _coordinate2linear_idx(mesh_shape, coordinate):
+    """
+    convert a coordinate in multidimensional mesh space into a scala idx in linear space.
+
+    it use Row-major order for dimension conversion. 
+    so it has:  [most_significant_dim, ..., least_significant_dim]
+    assume: 
+
+        the size of i-th dimension to be:  S[i]
+        the index of j-th dimension is: I[j]
+
+    linear_idx of a n dimensional coordinate is: 
+
+        I[n-1] * (S[n-2] * S[n-3] * S[n-4] *     ....    S[0]) +
+        I[n-2] * (         S[n-3] * S[n-4] *     ....    S[0]) +       
+        I[n-3] * (                  S[n-4] *     ....    S[0]) +  
+        ...
+        I[1]   * (                                       S[0]) + 
+        I[0]
+
+    """
+    # NOTE the following function work based on a strong an assumption
+    # that the processes in mesh are 
+    #    1. starts from 0
+    #    2. continuous  
+    # it will be wrong if ths above condition doesnot meet, 
+    # e.g. process_mesh = { process_groups = [7, 8, 9,10, 12, 13, 14, 15], mesh = [2, 4]}
+    # if you want a more general mapping, you should use cartesian product 
+
+    assert len(mesh_shape) == len(
+        coordinate
+    ), "coordinate should have the same size as mesh shape, but got shape: {}, coordinate: {}".format(
+        mesh_shape, coordinate)
+    for i in range(len(mesh_shape)):
+        assert coordinate[
+            i] >= 0, "index in dimension [{}] is least than zero. coordinate: {}".format(
+                i, coordinate)
+        assert coordinate[i] < mesh_shape[
+            i], "index beyond extent in dimension [{}]. shape: {}, coordinate: {}".format(
+                i, mesh_shape, coordinate)
+
+    base = mesh_shape[-1]
+    linear_idx = coordinate[-1]
+
+    # row major order
+    for i in range(len(mesh_shape) - 2, -1, -1):
+        linear_idx += base * coordinate[i]
+        base *= mesh_shape[i]
+
+    return linear_idx
+
+
+def _linear_idx2coordinate(mesh_shape, linear_idx):
+    """
+    mapping a linear scala into multidimensional mesh space, return it coordinate in that space.
+
+    it is the inverse function of _coordinate2linear_idx.
+    assume: 
+
+        the size of i-th dimension to be:  S[i]
+        the index of j-th dimension is: I[j]
+
+    the coordinate given linear_idx is:
+
+        I[0] = linear_idx                                  % S[0]
+        I[0] = (linear_idx / S[0])                         % S[1]
+        I[0] = (linear_idx / (S[0] * S[1]))                % S[2]
+        ....
+
+    """
+
+    assert linear_idx >= 0, "linear index [{}] is least than zero".format(
+        linear_idx)
+    assert linear_idx < np.prod(
+        mesh_shape
+    ), "linear index beyond the extent of mesh shape. shape: {}, coordinate: {}".format(
+        mesh_shape, coordinate)
+
+    base = 1
+    coordinate = [-1] * len(mesh_shape)
+
+    for i in reversed(range(len(mesh_shape))):
+        offset = linear_idx / base
+        coordinate[i] = int(offset % mesh_shape[i])
+        base *= mesh_shape[i]
+
+    # row major order
+    return coordinate
