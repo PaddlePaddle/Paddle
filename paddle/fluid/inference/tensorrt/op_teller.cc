@@ -539,7 +539,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "sections and num cannot be equal to 0 at the same time";
         return false;
       }
-
       if (with_dynamic_shape) {
 #if IS_TRT_VERSION_GE(6000)
 #else

@@ -49,7 +49,6 @@ class SplitOpConverter : public OpConverter {
     } else {
       axis += (axis < 0) ? input_dims.nbDims : -1;
     }
-
     if (num > 0) {
       int64_t in_axis_dim = input_dims.d[axis];
       size_t out_axis_dim = in_axis_dim / num;
