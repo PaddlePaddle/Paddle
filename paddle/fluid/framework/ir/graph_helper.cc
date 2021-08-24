@@ -535,6 +535,7 @@ void GraphToProgram(const Graph &graph, ProgramDesc *program,
 
       block = program_pb.add_blocks();
       block->set_idx(idx);
+      block->set_parent_idx(kRootBlockIndex);
       GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind);
     }
   } else {

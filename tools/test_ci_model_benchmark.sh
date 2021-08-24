@@ -29,8 +29,14 @@ function check_whl {
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
-    cd build
-    make -j `nproc`
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
+
+    bash -x paddle/scripts/paddle_build.sh build
+    [ $? -ne 0 ] && echo "build paddle failed." && exit 1
     unzip -q python/dist/*.whl -d /tmp/develop
 
     sed -i '/version.py/d' /tmp/pr/*/RECORD
