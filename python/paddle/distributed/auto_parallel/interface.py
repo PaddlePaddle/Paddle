@@ -338,6 +338,15 @@ def set_shard_mask(x, mask):
     """
     _static_mode_check()
     assert isinstance(mask, list)
+    np_mask = numpy.array(mask)
+    min_ele = numpy.min(np_mask)
+    max_ele = numpy.max(np_mask)
+    assert min_ele >= 0 and max_ele <= 1, "Elements in mask must be 0 or 1."
+    x_mesh = x.process_mesh
+    assert x_mesh, "Please set process mesh for the variable firstly."
+    assert x_mesh.topology == list(np_mask.shape), (
+        "The shape of mask "
+        "must be the same as the shape of its Process Mesh.")
     attr_name = _append_attr_suffix('mask')
     x._set_attr(attr_name, _flatten_nested_list(mask))
     return x
@@ -425,6 +434,7 @@ def set_offload_device(x, device):
 
     """
     _static_mode_check()
+    assert device == "cpu", "Only 'cpu' is supported for destination device."
     attr_name = _append_attr_suffix("offload_device")
     x._set_attr(attr_name, device)
     return x
