@@ -100,6 +100,12 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         attrs=op_attr))
 
             self.update_program_input_and_weight_with_attr(op_attr_list)
+            # if no weight need to save, we create a place_holder to help seriazlie params.
+            if not self.program_weights:
+                self.program_weights = {
+                    "place_holder_weight": TensorConfig(
+                        shape=[1], data=np.array(1).astype(np.float32))
+                }
             program_config = ProgramConfig(
                 ops=ops,
                 weights=self.program_weights,
