@@ -16,6 +16,7 @@
 #include "paddle/fluid/eager/function_api.h"
 
 #include "paddle/top/api/all.h"
+#include "paddle/top/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
 
@@ -56,7 +57,6 @@ std::vector<pt::Tensor> GradNodeAccumulation::operator()(const std::vector<pt::T
         CopyOrAddTensor(accumulated_grad, grads[0]);
     }
     
-    // Apply Retain Grad Hook
     if(retain_grad_hook != nullptr) {
         retain_grad_hook(accumulated_grad);
     }

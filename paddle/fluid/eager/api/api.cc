@@ -43,7 +43,7 @@ void RetainGradForTensor(pt::Tensor& tensor) {
     // Define Hook
     std::function<pt::Tensor(const pt::Tensor&)> hook = [&grad_tensor](const pt::Tensor& t) { 
         // Simply Copy impl() to grad_tensor
-        grad_tensor = t;
+        grad_tensor.SetImpl(t.impl());
         
         return grad_tensor;
     };

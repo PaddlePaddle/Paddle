@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/nodes/accumulation_node.h"
 
 /**
  * Implementation of AutogradMeta and AbstractAutogradMeta.
@@ -52,11 +53,10 @@ std::shared_ptr<GradNodeBase> EagerUtils::grad_node(pt::Tensor& target) {
 
 bool EagerUtils::IsLeafTensor(pt::Tensor& target) {
     std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
-/*
-    if(auto k = std::dynamic_pointer_cast<AccumulationNode>(grad_node)) {
+    if(std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
         return true;
     }
-*/
+
     return false;
 }
 

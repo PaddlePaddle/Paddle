@@ -54,7 +54,7 @@ TEST(Forward, SingleNode) {
       float* ptr = dense_out->mutable_data<float>();
       for(int i = 0; i < 20; i++) {
           PADDLE_ENFORCE(ptr[i] == 13.0, 
-            paddle::platform::errors::Fatal("Numerical Error"));
+            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 13.0, ptr[i]));
       }
   }
 
@@ -117,7 +117,7 @@ TEST(Forward, LinearNodes) {
       float* ptr = dense_out->mutable_data<float>();
       for(int i = 0; i < 20; i++) {
           PADDLE_ENFORCE(ptr[i] == 13.0, 
-            paddle::platform::errors::Fatal("Numerical Error"));
+            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 13.0, ptr[i]));
       }
   }
   
@@ -219,7 +219,7 @@ TEST(Forward, BranchedNodes) {
       float* ptr = dense_out->mutable_data<float>();
       for(int i = 0; i < 20; i++) {
           PADDLE_ENFORCE(ptr[i] == 13.0, 
-            paddle::platform::errors::Fatal("Numerical Error"));
+            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 13.0, ptr[i]));
       }
   }
   
@@ -229,7 +229,7 @@ TEST(Forward, BranchedNodes) {
       float* ptr = dense_out->mutable_data<float>();
       for(int i = 0; i < 20; i++) {
           PADDLE_ENFORCE(ptr[i] == 75.0, 
-            paddle::platform::errors::Fatal("Numerical Error"));
+            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 75.0, ptr[i]));
       }
   }
   
@@ -239,7 +239,7 @@ TEST(Forward, BranchedNodes) {
       float* ptr = dense_out->mutable_data<float>();
       for(int i = 0; i < 20; i++) {
           PADDLE_ENFORCE(ptr[i] == 150.0, 
-            paddle::platform::errors::Fatal("Numerical Error"));
+            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 150.0, ptr[i]));
       }
   }
 

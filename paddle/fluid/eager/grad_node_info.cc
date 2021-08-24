@@ -62,8 +62,12 @@ std::vector<pt::Tensor> GradNodeBase::ApplyGradientHooks(const std::vector<pt::T
         PADDLE_ENFORCE(output_rank < tensors.size(), 
             paddle::platform::errors::Fatal("OutputRank from registered hook should be smaller than size of grad_tensors"));
 
-        const pt::Tensor& tensor = tensors[output_rank];
-        outs[output_rank] = hook(tensor);
+        pt::Tensor& out = outs[output_rank];
+        if(!out.defined() || !out.initialized()) {
+            out = hook(tensors[output_rank]);
+        } else {
+            out = hook(out);
+        }
     }
 
     for(size_t i = 0; i < outs.size(); i++) {
