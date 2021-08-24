@@ -21,7 +21,15 @@
 #include <unordered_map>
 #include <vector>
 
+#include "gperftools/profiler.h"
+
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
+
+using ::paddle::platform::kCUDA;
+using ::paddle::platform::kCPU;
+USE_EVENT(kCUDA);
+// USE_EVENT_WAIT(kCUDA, kCUDA);
+// USE_EVENT_WAIT(kCPU, kCUDA);
 
 USE_OP(fill_constant);
 USE_OP(uniform_random);
@@ -59,12 +67,6 @@ USE_OP(elementwise_max);
 USE_OP(elementwise_div);
 USE_OP(sgd);
 USE_OP(squared_l2_norm);
-
-using ::paddle::platform::kCUDA;
-using ::paddle::platform::kCPU;
-USE_EVENT(kCUDA);
-// USE_EVENT_WAIT(kCUDA, kCUDA);
-// USE_EVENT_WAIT(kCPU, kCUDA);
 
 paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
@@ -109,6 +111,7 @@ int main(int argc, char* argv[]) {
                                              &scope);
 
   auto start = std::chrono::steady_clock::now();
+  ProfilerStart("new_executor.prof");
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
       std::cout << i << std::endl;
@@ -117,6 +120,7 @@ int main(int argc, char* argv[]) {
     std::vector<paddle::framework::Tensor> vec_out;
     exec.Run({}, {}, {}, &vec_out);
   }
+  ProfilerStop();
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 

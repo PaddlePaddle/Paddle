@@ -24,6 +24,11 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/device_event.h"
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace framework {
@@ -81,7 +86,8 @@ class InterpreterCore {
   std::vector<std::string> feed_names_;
   std::vector<std::string> fetch_names_;
 
-  std::vector<paddle::platform::DeviceEvent> gc_event_;
+  // std::vector<paddle::platform::DeviceEvent> gc_event_;
+  std::vector<gpuEvent_t> gc_event_;
   std::unique_ptr<GarbageQueue> garbages_;
   size_t max_memory_size_;
   size_t cur_memory_size_;

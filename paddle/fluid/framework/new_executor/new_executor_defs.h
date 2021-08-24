@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device_event.h"
 
 namespace paddle {
 namespace framework {
