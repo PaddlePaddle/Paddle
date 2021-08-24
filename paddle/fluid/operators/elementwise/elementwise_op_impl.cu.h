@@ -74,7 +74,7 @@ __global__ void ElementVectorizedUnary(const InT *__restrict__ in0, OutT *out,
   int data_offset =
       VecSize * blockIdx.x * blockDim.x;  // data offset of this block
   int num = size - data_offset;
-  num = (VecSize * blockDim.x) > num ? VecSize * blockDim.x : num;
+  num = (VecSize * blockDim.x) > num ? num : VecSize * blockDim.x;
   // this time have to deal with
   InT args[VecSize];
   OutT result[VecSize];
@@ -93,7 +93,7 @@ __global__ void ElementVectorizedBinary(const InT *__restrict__ in0,
   int data_offset =
       VecSize * blockIdx.x * blockDim.x;  // data offset of this block
   int num = size - data_offset;
-  num = (VecSize * blockDim.x) > num ? VecSize * blockDim.x : num;
+  num = (VecSize * blockDim.x) > num ? num : VecSize * blockDim.x;
   // this time have to deal with
   InT args[2][VecSize];
   OutT result[VecSize];
@@ -117,7 +117,7 @@ __global__ void ElementVectorizedTernary(const InT *__restrict__ in0,
   int data_offset =
       VecSize * blockIdx.x * blockDim.x;  // data offset of this block
   int num = size - data_offset;
-  num = (VecSize * blockDim.x) > num ? VecSize * blockDim.x : num;
+  num = (VecSize * blockDim.x) > num ? num : VecSize * blockDim.x;
   // this time have to deal with
   InT args[3][VecSize];
   OutT result[VecSize];
