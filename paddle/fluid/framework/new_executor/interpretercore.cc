@@ -322,7 +322,7 @@ void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
   instr_node->infershape_ctx_.reset(
       new RuntimeInferShapeContext(*op_base, *instr_node->runtime_ctx_.get()));
 
-  auto* dev_ctx = instr_node.dev_ctx_;
+  auto* dev_ctx = instr_node->dev_ctx_;
   Scope scope;
 
   instr_node->execution_ctx_.reset(new ExecutionContext(
