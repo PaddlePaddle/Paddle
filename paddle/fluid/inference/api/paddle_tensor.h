@@ -18,6 +18,12 @@
 
 namespace paddle_infer {
 
+typedef void (*CallbackFunc)(void*);
+
+namespace contrib {
+class TensorUtils;
+}
+
 /// \brief Paddle data type.
 enum DataType {
   FLOAT32,
@@ -30,20 +36,6 @@ enum DataType {
 };
 
 enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU };
-
-class Tensor;
-typedef void (*CallbackFunc)(void*);
-
-namespace contrib {
-namespace utils {
-void CopyTensorImp(paddle_infer::Tensor& dst, const paddle_infer::Tensor& src,
-                   void* exec_stream, paddle_infer::CallbackFunc cb,
-                   void* cb_params);
-std::unique_ptr<Tensor> CreateInferTensorForTest(const std::string& name,
-                                                 paddle_infer::PlaceType place,
-                                                 void* p_scope);
-}
-}
 
 /// \brief Represents an n-dimensional array of values.
 /// The Tensor is used to store the input or output of the network.
@@ -144,14 +136,7 @@ class PD_INFER_DECL Tensor {
   PlaceType place_;
   int device_;
 
-  friend void paddle_infer::contrib::utils::CopyTensorImp(Tensor& dst,
-                                                          const Tensor& src,
-                                                          void* exec_stream,
-                                                          CallbackFunc cb,
-                                                          void* cb_params);
-  friend std::unique_ptr<Tensor>
-  paddle_infer::contrib::utils::CreateInferTensorForTest(
-      const std::string& name, PlaceType place, void* p_scope);
+  friend class paddle_infer::contrib::TensorUtils;
 };
 
 }  // namespace paddle_infer

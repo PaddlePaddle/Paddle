@@ -21,13 +21,11 @@
 
 namespace paddle_infer {
 namespace contrib {
-namespace utils {
 
 using paddle::PaddleDType;
 
-std::unique_ptr<Tensor> CreateInferTensorForTest(const std::string& name,
-                                                 PlaceType place,
-                                                 void* p_scope) {
+std::unique_ptr<Tensor> TensorUtils::CreateInferTensorForTest(
+    const std::string& name, PlaceType place, void* p_scope) {
   auto var = static_cast<paddle::framework::Scope*>(p_scope)->Var(name);
   auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
   (void)tensor;
@@ -38,7 +36,7 @@ std::unique_ptr<Tensor> CreateInferTensorForTest(const std::string& name,
   return res;
 }
 
-void* CudaMallocPinnedMemory(size_t size) {
+void* TensorUtils::CudaMallocPinnedMemory(size_t size) {
 #if defined(PADDLE_WITH_CUDA)
   void* ptr = nullptr;
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaMallocHost(&ptr, size));
@@ -48,14 +46,15 @@ void* CudaMallocPinnedMemory(size_t size) {
 #endif
 }
 
-void CudaFreePinnedMemory(void* ptr) {
+void TensorUtils::CudaFreePinnedMemory(void* ptr) {
 #if defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaFreeHost(ptr));
 #endif
 }
 
-void CopyTensorImp(Tensor& dst, const Tensor& src, void* exec_stream,
-                   CallbackFunc cb, void* cb_params) {
+void TensorUtils::CopyTensorImp(Tensor& dst, const Tensor& src,
+                                void* exec_stream, CallbackFunc cb,
+                                void* cb_params) {
   dst.Reshape(src.shape());
   PADDLE_ENFORCE(
       src.place() == PlaceType::kCPU || src.place() == PlaceType::kGPU,
@@ -184,19 +183,19 @@ void CopyTensorImp(Tensor& dst, const Tensor& src, void* exec_stream,
   return;
 }
 
-void CopyTensor(Tensor& dst, const Tensor& src) {
+void TensorUtils::CopyTensor(Tensor& dst, const Tensor& src) {
   CopyTensorImp(dst, src, nullptr, nullptr, nullptr);
 }
 
-void CopyTensorAsync(Tensor& dst, const Tensor& src, void* exec_stream) {
+void TensorUtils::CopyTensorAsync(Tensor& dst, const Tensor& src,
+                                  void* exec_stream) {
   CopyTensorImp(dst, src, exec_stream, nullptr, nullptr);
 }
 
-void CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
-                     void* cb_params) {
+void TensorUtils::CopyTensorAsync(Tensor& dst, const Tensor& src,
+                                  CallbackFunc cb, void* cb_params) {
   CopyTensorImp(dst, src, nullptr, cb, cb_params);
 }
 
-}  // namespace utils
 }  // namespace contrib
 }  // namespace paddle_infer

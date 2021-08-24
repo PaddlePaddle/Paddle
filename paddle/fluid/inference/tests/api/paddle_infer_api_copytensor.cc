@@ -24,327 +24,165 @@ limitations under the License. */
 
 namespace paddle_infer {
 
-TEST(CopyTensor, float32) {
-  typedef float DTYPE;
+template <class DTYPE>
+static void test_copy_tensor(PlaceType src_place, PlaceType dst_place) {
   paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1.0);
+  auto tensor_src =
+      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+          "tensor_src", src_place, static_cast<void *>(&scope));
+  auto tensor_dst =
+      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+          "tensor_dst", dst_place, static_cast<void *>(&scope));
+  std::vector<DTYPE> data_src(6, 1);
   tensor_src->Reshape({2, 3});
   tensor_src->CopyFromCpu(data_src.data());
 
-  std::vector<DTYPE> data_dst(4, 2.0);
+  std::vector<DTYPE> data_dst(4, 2);
   tensor_dst->Reshape({2, 2});
   tensor_dst->CopyFromCpu(data_dst.data());
 
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
+  paddle_infer::contrib::TensorUtils::CopyTensor(*tensor_dst, *tensor_src);
 
   EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
   EXPECT_EQ(tensor_dst->shape()[0], 2);
   EXPECT_EQ(tensor_dst->shape()[1], 3);
 
-  std::vector<DTYPE> data_check(6, 3.0);
+  std::vector<DTYPE> data_check(6, 3);
   tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
 
   for (int i = 0; i < 6; i++) {
-    EXPECT_NEAR(data_check[i], 1.0, 1e-5);
+    EXPECT_NEAR(data_check[i], 1, 1e-5);
   }
 }
 
-TEST(CopyTensor, float32gpu) {
-  typedef float DTYPE;
-  paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1.0);
-  tensor_src->Reshape({2, 3});
-  tensor_src->CopyFromCpu(data_src.data());
-
-  std::vector<DTYPE> data_dst(4, 2.0);
-  tensor_dst->Reshape({2, 2});
-  tensor_dst->CopyFromCpu(data_dst.data());
-
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
-
-  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
-  EXPECT_EQ(tensor_dst->shape()[0], 2);
-  EXPECT_EQ(tensor_dst->shape()[1], 3);
-
-  std::vector<DTYPE> data_check(6, 3.0);
-  tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
-
-  for (int i = 0; i < 6; i++) {
-    EXPECT_NEAR(data_check[i], 1.0, 1e-5);
-  }
+TEST(CopyTensor, float32) {
+  test_copy_tensor<float>(PlaceType::kCPU, PlaceType::kCPU);
+  test_copy_tensor<float>(PlaceType::kCPU, PlaceType::kGPU);
+  test_copy_tensor<float>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, int32) {
-  typedef int32_t DTYPE;
-  paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1);
-  tensor_src->Reshape({2, 3});
-  tensor_src->CopyFromCpu(data_src.data());
-
-  std::vector<DTYPE> data_dst(4, 2);
-  tensor_dst->Reshape({2, 2});
-  tensor_dst->CopyFromCpu(data_dst.data());
-
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
-
-  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
-  EXPECT_EQ(tensor_dst->shape()[0], 2);
-  EXPECT_EQ(tensor_dst->shape()[1], 3);
-
-  std::vector<DTYPE> data_check(6, 3);
-  tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
-
-  for (int i = 0; i < 6; i++) {
-    EXPECT_NEAR(data_check[i], 1, 1e-5);
-  }
-}
-
-TEST(CopyTensor, int32GPU) {
-  typedef int32_t DTYPE;
-  paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1);
-  tensor_src->Reshape({2, 3});
-  tensor_src->CopyFromCpu(data_src.data());
-
-  std::vector<DTYPE> data_dst(4, 2);
-  tensor_dst->Reshape({2, 2});
-  tensor_dst->CopyFromCpu(data_dst.data());
-
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
-
-  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
-  EXPECT_EQ(tensor_dst->shape()[0], 2);
-  EXPECT_EQ(tensor_dst->shape()[1], 3);
-
-  std::vector<DTYPE> data_check(6, 3);
-  tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
-
-  for (int i = 0; i < 6; i++) {
-    EXPECT_NEAR(data_check[i], 1, 1e-5);
-  }
+  test_copy_tensor<int32_t>(PlaceType::kCPU, PlaceType::kCPU);
+  test_copy_tensor<int32_t>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, int64) {
-  typedef int64_t DTYPE;
-  paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1);
-  tensor_src->Reshape({2, 3});
-  tensor_src->CopyFromCpu(data_src.data());
-
-  std::vector<DTYPE> data_dst(4, 2);
-  tensor_dst->Reshape({2, 2});
-  tensor_dst->CopyFromCpu(data_dst.data());
-
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
-
-  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
-  EXPECT_EQ(tensor_dst->shape()[0], 2);
-  EXPECT_EQ(tensor_dst->shape()[1], 3);
-
-  std::vector<DTYPE> data_check(6, 3);
-  tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
-
-  for (int i = 0; i < 6; i++) {
-    EXPECT_NEAR(data_check[i], 1, 1e-5);
-  }
-}
-
-TEST(CopyTensor, int64GPU) {
-  typedef int64_t DTYPE;
-  paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1);
-  tensor_src->Reshape({2, 3});
-  tensor_src->CopyFromCpu(data_src.data());
-
-  std::vector<DTYPE> data_dst(4, 2);
-  tensor_dst->Reshape({2, 2});
-  tensor_dst->CopyFromCpu(data_dst.data());
-
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
-
-  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
-  EXPECT_EQ(tensor_dst->shape()[0], 2);
-  EXPECT_EQ(tensor_dst->shape()[1], 3);
-
-  std::vector<DTYPE> data_check(6, 3);
-  tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
-
-  for (int i = 0; i < 6; i++) {
-    EXPECT_NEAR(data_check[i], 1, 1e-5);
-  }
+  test_copy_tensor<int64_t>(PlaceType::kCPU, PlaceType::kCPU);
+  test_copy_tensor<int64_t>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, int8) {
-  typedef int8_t DTYPE;
-  paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1);
-  tensor_src->Reshape({2, 3});
-  tensor_src->CopyFromCpu(data_src.data());
-
-  std::vector<DTYPE> data_dst(4, 2);
-  tensor_dst->Reshape({2, 2});
-  tensor_dst->CopyFromCpu(data_dst.data());
-
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
-
-  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
-  EXPECT_EQ(tensor_dst->shape()[0], 2);
-  EXPECT_EQ(tensor_dst->shape()[1], 3);
-
-  std::vector<DTYPE> data_check(6, 3);
-  tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
-
-  for (int i = 0; i < 6; i++) {
-    EXPECT_NEAR(data_check[i], 1, 1e-5);
-  }
-}
-
-TEST(CopyTensor, int8GPU) {
-  typedef int8_t DTYPE;
-  paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1);
-  tensor_src->Reshape({2, 3});
-  tensor_src->CopyFromCpu(data_src.data());
-
-  std::vector<DTYPE> data_dst(4, 2);
-  tensor_dst->Reshape({2, 2});
-  tensor_dst->CopyFromCpu(data_dst.data());
-
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
-
-  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
-  EXPECT_EQ(tensor_dst->shape()[0], 2);
-  EXPECT_EQ(tensor_dst->shape()[1], 3);
-
-  std::vector<DTYPE> data_check(6, 3);
-  tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
-
-  for (int i = 0; i < 6; i++) {
-    EXPECT_NEAR(data_check[i], 1, 1e-5);
-  }
+  test_copy_tensor<int8_t>(PlaceType::kCPU, PlaceType::kCPU);
+  test_copy_tensor<int8_t>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, uint8) {
-  typedef uint8_t DTYPE;
-  paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1);
-  tensor_src->Reshape({2, 3});
-  tensor_src->CopyFromCpu(data_src.data());
-
-  std::vector<DTYPE> data_dst(4, 2);
-  tensor_dst->Reshape({2, 2});
-  tensor_dst->CopyFromCpu(data_dst.data());
-
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
-
-  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
-  EXPECT_EQ(tensor_dst->shape()[0], 2);
-  EXPECT_EQ(tensor_dst->shape()[1], 3);
-
-  std::vector<DTYPE> data_check(6, 3);
-  tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
-
-  for (int i = 0; i < 6; i++) {
-    EXPECT_NEAR(data_check[i], 1, 1e-5);
-  }
+  test_copy_tensor<uint8_t>(PlaceType::kCPU, PlaceType::kCPU);
+  test_copy_tensor<uint8_t>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
-TEST(CopyTensor, uint8GPU) {
-  typedef uint8_t DTYPE;
-  paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-      "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1);
-  tensor_src->Reshape({2, 3});
-  tensor_src->CopyFromCpu(data_src.data());
-
-  std::vector<DTYPE> data_dst(4, 2);
-  tensor_dst->Reshape({2, 2});
-  tensor_dst->CopyFromCpu(data_dst.data());
-
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
-
-  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
-  EXPECT_EQ(tensor_dst->shape()[0], 2);
-  EXPECT_EQ(tensor_dst->shape()[1], 3);
-
-  std::vector<DTYPE> data_check(6, 3);
-  tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
-
-  for (int i = 0; i < 6; i++) {
-    EXPECT_NEAR(data_check[i], 1, 1e-5);
-  }
-}
-
-/*
 TEST(CopyTensor, float16) {
-  typedef paddle::platform::float16 DTYPE;
   paddle::framework::Scope scope;
-  auto tensor_src = paddle_infer::contrib::utils::CreateInferTensorForTest(
-                        "tensor_src", PlaceType::kCPU,
-                        static_cast<void *>(&scope));
-  auto tensor_dst = paddle_infer::contrib::utils::CreateInferTensorForTest(
-                        "tensor_dst", PlaceType::kCPU,
-                        static_cast<void *>(&scope));
-  std::vector<DTYPE> data_src(6, 1);
+  auto tensor_src =
+      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+          "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
+  auto tensor_dst =
+      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+          "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
+
+  using paddle::platform::float16;
+  std::vector<float16> data_src(6, float16(1.0));
   tensor_src->Reshape({2, 3});
   tensor_src->CopyFromCpu(data_src.data());
 
-  std::vector<DTYPE> data_dst(4, 2);
+  std::vector<float16> data_dst(4, float16(2.0));
   tensor_dst->Reshape({2, 2});
   tensor_dst->CopyFromCpu(data_dst.data());
 
-  paddle_infer::contrib::utils::CopyTensor(*tensor_dst, *tensor_src);
+  paddle_infer::contrib::TensorUtils::CopyTensor(*tensor_dst, *tensor_src);
 
   EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
   EXPECT_EQ(tensor_dst->shape()[0], 2);
   EXPECT_EQ(tensor_dst->shape()[1], 3);
 
-  std::vector<DTYPE> data_check(6, 3);
-  tensor_dst->CopyToCpu<DTYPE>(static_cast<DTYPE *>(data_check.data()));
+  std::vector<float16> data_check(6, float16(1.0));
+  tensor_dst->CopyToCpu<float16>(data_check.data());
 
   for (int i = 0; i < 6; i++) {
-      EXPECT_NEAR(data_check[i], 1, 1e-5);
+    EXPECT_TRUE(data_check[i] == float16(1.0));
   }
 }
-*/
+
+TEST(CopyTensor, async_stream) {
+  paddle::framework::Scope scope;
+  auto tensor_src =
+      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+          "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
+  auto tensor_dst =
+      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+          "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
+
+  std::vector<float> data_src(6, 1.0);
+  tensor_src->Reshape({2, 3});
+  tensor_src->CopyFromCpu(data_src.data());
+
+  std::vector<float> data_dst(4, 2.0);
+  tensor_dst->Reshape({2, 2});
+  tensor_dst->CopyFromCpu(data_dst.data());
+
+  cudaStream_t stream;
+  paddle_infer::contrib::TensorUtils::CopyTensorAsync(
+      *tensor_dst, *tensor_src, static_cast<void *>(&stream));
+
+  EXPECT_EQ(tensor_dst->shape().size(), (size_t)2);
+  EXPECT_EQ(tensor_dst->shape()[0], 2);
+  EXPECT_EQ(tensor_dst->shape()[1], 3);
+
+  cudaStreamSynchronize(stream);
+
+  std::vector<float> data_check(6, 1.0);
+  tensor_dst->CopyToCpu<float>(data_check.data());
+
+  for (int i = 0; i < 6; i++) {
+    EXPECT_NEAR(data_check[i], float(1.0), 1e-5);
+  }
+}
+
+TEST(CopyTensor, async_callback) {
+  paddle::framework::Scope scope;
+  auto tensor_src =
+      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+          "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
+  auto tensor_dst =
+      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+          "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
+
+  std::vector<float> data_src(6, 1.0);
+  tensor_src->Reshape({2, 3});
+  tensor_src->CopyFromCpu(data_src.data());
+
+  std::vector<float> data_dst(4, 2.0);
+  tensor_dst->Reshape({2, 2});
+  tensor_dst->CopyFromCpu(data_dst.data());
+
+  paddle_infer::contrib::TensorUtils::CopyTensorAsync(
+      *tensor_dst, *tensor_src,
+      [](void *cb_params) {
+        Tensor *tensor = static_cast<Tensor *>(cb_params);
+        EXPECT_EQ(tensor->shape().size(), (size_t)2);
+        EXPECT_EQ(tensor->shape()[0], 2);
+        EXPECT_EQ(tensor->shape()[1], 3);
+
+        std::vector<float> data_check(6, 3.0);
+        tensor->CopyToCpu<float>(data_check.data());
+
+        for (int i = 0; i < 6; i++) {
+          EXPECT_NEAR(data_check[i], float(1.0), 1e-5);
+        }
+      },
+      static_cast<void *>(&(*tensor_dst)));
+
+  cudaDeviceSynchronize();
+}
 
 }  // namespace paddle_infer

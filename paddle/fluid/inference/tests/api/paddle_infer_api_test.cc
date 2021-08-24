@@ -90,8 +90,8 @@ TEST(Tensor, copy_to_cpu_async_stream) {
   int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                                 std::multiplies<int>());
 
-  float *out_data =
-      (float *)contrib::utils::CudaMallocPinnedMemory(sizeof(float) * out_num);
+  float *out_data = (float *)contrib::TensorUtils::CudaMallocPinnedMemory(
+      sizeof(float) * out_num);
   memset(out_data, 0, sizeof(float) * out_num);
   std::vector<float> correct_out_data = {
       127.78,   1.07353,  -229.42, 1127.28, -177.365,
@@ -111,7 +111,7 @@ TEST(Tensor, copy_to_cpu_async_stream) {
   for (int i = 0; i < 10; i++) {
     EXPECT_NEAR(out_data[i] / correct_out_data[i], 1.0, 1e-3);
   }
-  contrib::utils::CudaFreePinnedMemory(static_cast<void *>(out_data));
+  contrib::TensorUtils::CudaFreePinnedMemory(static_cast<void *>(out_data));
 }
 
 TEST(Tensor, copy_to_cpu_async_callback) {
@@ -145,8 +145,8 @@ TEST(Tensor, copy_to_cpu_async_callback) {
   int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                                 std::multiplies<int>());
 
-  float *out_data =
-      (float *)contrib::utils::CudaMallocPinnedMemory(sizeof(float) * out_num);
+  float *out_data = (float *)contrib::TensorUtils::CudaMallocPinnedMemory(
+      sizeof(float) * out_num);
   memset(out_data, 0, sizeof(float) * out_num);
 
   for (int i = 0; i < 100; i++) {
@@ -168,7 +168,7 @@ TEST(Tensor, copy_to_cpu_async_callback) {
                            (void *)out_data);
 
   cudaDeviceSynchronize();
-  contrib::utils::CudaFreePinnedMemory((void *)out_data);
+  contrib::TensorUtils::CudaFreePinnedMemory((void *)out_data);
 }
 
 TEST(PredictorPool, basic) {

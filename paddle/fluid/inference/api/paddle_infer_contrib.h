@@ -18,16 +18,25 @@
 
 namespace paddle_infer {
 namespace contrib {
-namespace utils {
 
-void* CudaMallocPinnedMemory(size_t size);
-void CudaFreePinnedMemory(void* mem);
+class TensorUtils {
+ public:
+  static void* CudaMallocPinnedMemory(size_t size);
+  static void CudaFreePinnedMemory(void* mem);
 
-void CopyTensor(Tensor& dst, const Tensor& src);
-void CopyTensorAsync(Tensor& dst, const Tensor& src, void* exec_stream);
-void CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
-                     void* cb_params);
+  static void CopyTensor(Tensor& dst, const Tensor& src);
+  static void CopyTensorAsync(Tensor& dst, const Tensor& src,
+                              void* exec_stream);
+  static void CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
+                              void* cb_params);
 
-}  // namespace utils
+  static std::unique_ptr<Tensor> CreateInferTensorForTest(
+      const std::string& name, PlaceType place, void* p_scope);
+
+ private:
+  static void CopyTensorImp(Tensor& dst, const Tensor& src, void* exec_stream,
+                            CallbackFunc cb, void* cb_params);
+};
+
 }  // namespace contrib
 }  // namespace paddle_infer
