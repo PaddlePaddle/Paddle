@@ -935,12 +935,13 @@ def roi_pool(input,
     Examples:
         ..  code-block:: python
             import paddle
+            import paddle.vision.ops as ops
             data = paddle.rand([1, 256, 32, 32])
             boxes = paddle.rand([3, 4])
             boxes[:, 2] += boxes[:, 0] + 3
             boxes[:, 3] += boxes[:, 1] + 4
             boxes_num = paddle.to_tensor([3]).astype('int32')
-            pool_out = roi_pool(data, boxes, boxes_num=boxes_num, output_size=3)
+            pool_out = ops.roi_pool(data, boxes, boxes_num=boxes_num, output_size=3)
             assert pool_out.shape == [3, 256, 3, 3], ''
     """
     check_type(output_size, 'output_size', (int, tuple), 'roi_pool')
