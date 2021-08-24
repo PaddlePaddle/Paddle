@@ -25,6 +25,9 @@ namespace operators {
 template <typename T>
 using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
+__device__ __forceinline__ float square_root(float x) { return sqrtf(x); }
+__device__ __forceinline__ double square_root(double x) { return sqrt(x); }
+
 /*
 Two stages are set up to deal with grid-level reduction sum:
     1. Do block-reduce in each block and acquire the partial sum.
@@ -50,13 +53,14 @@ template <typename T, typename CastT>
 __device__ CastT L2NormCalculation(const T* __restrict__ data,
                                    CastT* tmp_buffer, int* counter, int tid,
                                    const int64_t num,
-                                   const CastT rescale_grad = 1) {
+                                   const CastT rescale_grad = 1.f) {
   int stride = BLOCK_SIZE * BLOCK_SIZE;
   int reduce_times = (gridDim.x + BLOCK_SIZE - 1) / BLOCK_SIZE;
   int rest_block = gridDim.x;
   int numel = num;
   int limiTblock;
   CastT tmp_val = 0.f;
+  CastT rescale_grad_pow = rescale_grad * rescale_grad;
 
   __shared__ CastT buffer;
   buffer = 0.f;
@@ -66,8 +70,7 @@ __device__ CastT L2NormCalculation(const T* __restrict__ data,
     if (tid < numel) {
       tmp_val = static_cast<CastT>(data[tid]);
     }
-    buffer += math::blockReduceSum<CastT>(tmp_val * tmp_val * rescale_grad,
-                                          FINAL_MASK);
+    buffer += math::blockReduceSum<CastT>(tmp_val * tmp_val, FINAL_MASK);
   } else {
     limiTblock = BLOCK_SIZE;
     for (int i = 0; i < reduce_times - 1; ++i) {
@@ -75,18 +78,16 @@ __device__ CastT L2NormCalculation(const T* __restrict__ data,
       rest_block -= BLOCK_SIZE;
       if (tid < stride) {
         tmp_val = static_cast<CastT>(data[tid + stride * i]);
-        buffer += math::blockReduceSum<CastT>(tmp_val * tmp_val * rescale_grad,
-                                              FINAL_MASK);
+        buffer += math::blockReduceSum<CastT>(tmp_val * tmp_val, FINAL_MASK);
       }
       __syncthreads();
     }
-    CastT val;
+    CastT val = 0.f;
     if (tid < numel) {
       val = static_cast<CastT>(data[tid + stride * (reduce_times - 1)]);
     }
     if (blockIdx.x < rest_block) {
-      buffer +=
-          math::blockReduceSum<CastT>(val * val * rescale_grad, FINAL_MASK);
+      buffer += math::blockReduceSum<CastT>(val * val, FINAL_MASK);
     }
   }
   __syncthreads();
@@ -98,7 +99,7 @@ __device__ CastT L2NormCalculation(const T* __restrict__ data,
     CastT tmp_value = threadIdx.x < limiTblock ? tmp_buffer[threadIdx.x] : 0;
     __syncthreads();
     buffer = math::blockReduceSum<CastT>(tmp_value, FINAL_MASK);
-    return std::sqrt(buffer);
+    return square_root(rescale_grad_pow * buffer);
   }
 }
 
@@ -110,11 +111,11 @@ __global__ void MomentumLarsKernel(
     int* l2_tmp_counter, T* p_out, MT* v_out, const MT epsilon,
     const MT* master_p, MT* master_p_out, const MT rescale_grad) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const MT lr = learning_rate[0];
+  MT local_lr = lr;
   MT p_n = L2NormCalculation<T, MT>(p, l2_tmp_buffer, l2_tmp_counter, tid, num);
   MT g_n = L2NormCalculation<T, MT>(g, l2_tmp_buffer, l2_tmp_counter, tid, num,
                                     rescale_grad);
-  const MT lr = learning_rate[0];
-  MT local_lr = lr;
 
   if (lars_weight_decay > static_cast<MT>(0) && p_n > static_cast<MT>(0) &&
       g_n > static_cast<MT>(0)) {
