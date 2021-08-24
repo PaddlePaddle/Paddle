@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -150,6 +151,17 @@ class VarDesc {
 
   Attribute GetAttr(const std::string &name) const;
 
+  // This thread-safe implementation seems to be redudent since the neural
+  // networks are usually constructed in a single thread.
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    return ++uid;
+  }
+
+  // Note: the identity only used as a key for referring to its
+  // distributed attribute now.
+  uint64_t Id() { return id_; }
+
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;
@@ -158,6 +170,7 @@ class VarDesc {
 
   proto::VarDesc desc_;
   AttributeMap attrs_;
+  uint64_t id_ = GenerateId();
 };
 
 bool operator==(const VarDesc &left, const VarDesc &right);
