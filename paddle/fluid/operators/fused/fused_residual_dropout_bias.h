@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,18 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <cooperative_groups.h>
-#include <cuda.h>
-#include <curand_kernel.h>
-
-#include <iostream>
-#include <memory>
-
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/float16.h"
-
-const int VecSize = 4;
+#include "paddle/fluid/operators/fused/fused_dropout.h"
 
 namespace paddle {
 namespace operators {
@@ -33,47 +22,11 @@ namespace operators {
 namespace platform = paddle::platform;
 namespace cg = cooperative_groups;
 
-inline std::pair<uint32_t, uint32_t> GetResidualDropoutThreads(
-    const platform::CUDADeviceContext &ctx, const uint64_t n) {
-  const uint64_t tmp_n = n / VecSize;
-  int threads = std::max(
-      (uint64_t)32, std::min(tmp_n, (uint64_t)ctx.GetMaxThreadsPerBlock()));
-  int blocks = std::max((uint64_t)1, (tmp_n + threads - 1) / threads);
-  return std::pair<uint32_t, uint32_t>{threads, blocks};
-}
-
-inline std::pair<dim3, dim3> GetResidualDropoutBiasThreads(
-    const platform::CUDADeviceContext &ctx, const uint32_t rows,
-    const uint32_t cols) {
-  const uint32_t tmp_cols = cols / VecSize;
-  int threads = std::max(
-      (uint32_t)32, std::min(tmp_cols, (uint32_t)ctx.GetMaxThreadsPerBlock()));
-  int blocks_x = std::max((uint32_t)1, (tmp_cols + threads - 1) / threads);
-  int blocks_y = std::max((uint32_t)1, rows);
-  dim3 block_dim(threads, 1, 1);
-  dim3 grid_dim(blocks_x, blocks_y, 1);
-  return std::pair<dim3, dim3>{block_dim, grid_dim};
-}
-
 /********Forward**************/
-// aligned vector generates vectorized load/store on CUDA
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) AlignedVector {
-  T val[Size];
-};
-
-template <typename T>
-inline int VectorizedSize(const T *pointer) {
-  uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
-  if (address % vec4 == 0) {
-    return 4;
-  }
-  return 1;
-}
-
 /**
- * dst = residual + dropout(src + bias);
+ * @brief dst = residual + dropout(src + bias);
+ * the src, residual, mask and dst shape is (rows, cols)
+ * the bias shape is (1, cols)
  */
 template <typename T, typename MaskType, int VecSize>
 __global__ void FusedResidualDropoutBiasVec(const size_t rows,
@@ -81,7 +34,7 @@ __global__ void FusedResidualDropoutBiasVec(const size_t rows,
                                             const float dropout_prob,
                                             const bool is_upscale_in_train,
                                             const T *src, const T *residual,
-                                            const T *bias, MaskType *mask_data,
+                                            const T *bias, MaskType *mask,
                                             T *dst, uint64_t increment) {
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
   int row_id = blockIdx.y;
@@ -89,11 +42,9 @@ __global__ void FusedResidualDropoutBiasVec(const size_t rows,
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
 
-  T dest;
-  MaskType mask;
   T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
   if (!is_upscale_in_train) {
-    factor = static_cast<T>(1.0);
+    factor = static_cast<T>(1.0f);
   }
   using LoadT = AlignedVector<T, VecSize>;
   using MaskLoadT = AlignedVector<MaskType, VecSize>;
@@ -107,6 +58,7 @@ __global__ void FusedResidualDropoutBiasVec(const size_t rows,
       for (int ii = 0; ii < VecSize; ii++) {
         bias_vec[ii] = static_cast<T>(0);
       }
+      // vectorize load data from global
       LoadT *value = reinterpret_cast<LoadT *>(&src_vec);
       LoadT *residual_value = reinterpret_cast<LoadT *>(&residual_vec);
       *value = *reinterpret_cast<const LoadT *>(&src[r * cols + i]);
@@ -133,58 +85,77 @@ __global__ void FusedResidualDropoutBiasVec(const size_t rows,
                            static_cast<T>(mask_vec[ii]) * factor +
                        residual_vec[ii];
       }
+
+      // store result to global
       *(reinterpret_cast<LoadT *>(&dst[r * cols + i])) =
           *reinterpret_cast<LoadT *>(&dest_vec[0]);
-      *(reinterpret_cast<MaskLoadT *>(&mask_data[r * cols + i])) =
+      *(reinterpret_cast<MaskLoadT *>(&mask[r * cols + i])) =
           *reinterpret_cast<MaskLoadT *>(&mask_vec[0]);
     }
   }
 }
 
+/**
+ * @brief for dropout's param is_test = true
+ * the src, residual and dst shape is (rows, cols)
+ * the bias shape is (1, cols)
+ */
 template <typename T, int VecSize>
-__global__ void FusedResidualDropoutBiasTest(const size_t rows,
-                                             const size_t cols,
-                                             const float dropout_prob,
-                                             const bool is_upscale_in_train,
-                                             const T *src, const T *residual,
-                                             const T *bias, T *dst) {
+__global__ void FusedResidualDropoutBiasIsTest(const size_t rows,
+                                               const size_t cols,
+                                               const float dropout_prob,
+                                               const bool is_upscale_in_train,
+                                               const T *src, const T *residual,
+                                               const T *bias, T *dst) {
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
   int row_id = blockIdx.y;
   int idx = row_id * cols + col_id;
 
   T factor = static_cast<T>(1.0f - dropout_prob);
   if (is_upscale_in_train) {
-    factor = static_cast<T>(1.0);
+    factor = static_cast<T>(1.0f);
   }
+
+  using LoadT = AlignedVector<T, VecSize>;
+
   const int tmp_cols = cols / VecSize * VecSize;
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
     for (int i = col_id * VecSize; i < tmp_cols;
          i += blockDim.x * gridDim.x * VecSize) {
+      T src_vec[VecSize];
+      T residual_vec[VecSize];
+      T bias_vec[VecSize];
 #pragma unroll
-      for (int j = 0; j < VecSize; j++) {
-        dst[r * cols + i + j] =
-            (src[r * cols + i + j] +
-             (bias != nullptr ? bias[i + j] : static_cast<T>(0.0))) *
-                factor +
-            residual[r * cols + i + j];
+      for (int ii = 0; ii < VecSize; ii++) {
+        bias_vec[ii] = static_cast<T>(0);
       }
-    }
+      // vectorize load data from global
+      LoadT *value = reinterpret_cast<LoadT *>(&src_vec);
+      LoadT *residual_value = reinterpret_cast<LoadT *>(&residual_vec);
+      *value = *reinterpret_cast<const LoadT *>(&src[r * cols + i]);
+      *residual_value =
+          *reinterpret_cast<const LoadT *>(&residual[r * cols + i]);
 
-    int high_index = tmp_cols + col_id;
-    if (high_index < cols) {
-      for (int i = high_index; i < cols; i++) {
-        dst[r * cols + i] =
-            (src[r * cols + i] +
-             (bias != nullptr ? bias[i] : static_cast<T>(0.0))) *
-                factor +
-            residual[r * cols + i];
+      LoadT *bias_value =
+          bias != nullptr ? reinterpret_cast<LoadT *>(&bias_vec) : nullptr;
+      if (bias != nullptr)
+        *bias_value = *reinterpret_cast<const LoadT *>(&bias[i]);
+
+      T dest_vec[VecSize];
+#pragma unroll
+      for (int ii = 0; ii < VecSize; ii++) {
+        dest_vec[ii] = (src_vec[ii] + bias_vec[ii]) * factor + residual_vec[ii];
       }
+
+      // store result to global
+      *(reinterpret_cast<LoadT *>(&dst[r * cols + i])) =
+          *reinterpret_cast<LoadT *>(&dest_vec[0]);
     }
   }
 }
 
 /**
- * dst = residual + dropout(src + bias);
+ * @brief dst = residual + dropout(src + bias);
  */
 template <typename T, typename MaskType>
 void LaunchResidualDropoutBias(const uint32_t rows, const uint32_t cols,
@@ -194,7 +165,8 @@ void LaunchResidualDropoutBias(const uint32_t rows, const uint32_t cols,
                                const T *residual, const T *bias,
                                MaskType *mask_data, T *dst,
                                const platform::CUDADeviceContext &ctx) {
-  if (std::abs(dropout_prob - 1.0) < 1e-5) {
+  // dropout_prob == 1.0f
+  if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaMemcpyAsync(dst, residual, rows * cols * sizeof(T),
                         cudaMemcpyDeviceToDevice, ctx.stream()));
@@ -203,7 +175,8 @@ void LaunchResidualDropoutBias(const uint32_t rows, const uint32_t cols,
     return;
   }
 
-  auto threads = GetResidualDropoutBiasThreads(ctx, rows, cols);
+  const int VecSize = 4;
+  auto threads = Get1DBlocksAnd2DGrids(ctx, rows, cols);
   if (cols % VecSize != 0)
     FusedResidualDropoutBiasVec<
         T, uint8_t, 1><<<threads.second, threads.first, 0, ctx.stream()>>>(
@@ -217,25 +190,39 @@ void LaunchResidualDropoutBias(const uint32_t rows, const uint32_t cols,
         bias, mask_data, dst, increment);
 }
 
+/**
+ *@brief to launch kernel FusedResidualDropoutBiasIsTest
+ */
 template <typename T>
-void LaunchResidualDropoutBiasTest(const uint32_t rows, const uint32_t cols,
-                                   const float dropout_prob,
-                                   bool is_upscale_in_train, const T *src,
-                                   const T *residual, const T *bias, T *dst,
-                                   const platform::CUDADeviceContext &ctx) {
-  if (std::abs(dropout_prob - 1.0) < 1e-5) {
+void LaunchResidualDropoutBiasIsTest(const uint32_t rows, const uint32_t cols,
+                                     const float dropout_prob,
+                                     bool is_upscale_in_train, const T *src,
+                                     const T *residual, const T *bias, T *dst,
+                                     const platform::CUDADeviceContext &ctx) {
+  if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaMemcpyAsync(dst, residual, rows * cols * sizeof(T),
                         cudaMemcpyDeviceToDevice, ctx.stream()));
     return;
   }
-  auto threads = GetResidualDropoutBiasThreads(ctx, rows, cols);
-  FusedResidualDropoutBiasTest<
-      T, VecSize><<<threads.second, threads.first, 0, ctx.stream()>>>(
-      rows, cols, dropout_prob, is_upscale_in_train, src, residual, bias, dst);
+  const int VecSize = 4;
+  auto threads = Get1DBlocksAnd2DGrids(ctx, rows, cols);
+  if (cols % VecSize != 0)
+    FusedResidualDropoutBiasIsTest<
+        T, 1><<<threads.second, threads.first, 0, ctx.stream()>>>(
+        rows, cols, dropout_prob, is_upscale_in_train, src, residual, bias,
+        dst);
+  else
+    FusedResidualDropoutBiasIsTest<
+        T, VecSize><<<threads.second, threads.first, 0, ctx.stream()>>>(
+        rows, cols, dropout_prob, is_upscale_in_train, src, residual, bias,
+        dst);
 }
 
 /********Backward**************/
+/*
+ * @brief calculate the grad of no bias
+ */
 template <typename T, typename MaskType, int VecSize>
 __global__ void FusedResidualDropoutGradVec(const T *dout, const MaskType *mask,
                                             const T factor, const int64_t size,
@@ -262,9 +249,6 @@ __global__ void FusedResidualDropoutGradVec(const T *dout, const MaskType *mask,
   }
 }
 
-template <typename T, int BSX, int BSY, int VecSize>
-__device__ void reduce_sum(T cache[BSX * VecSize][BSY]) {}
-
 template <typename U>
 static __forceinline__ __device__ U WarpReduceSum(U val) {
   unsigned mask = 0u;
@@ -276,6 +260,12 @@ static __forceinline__ __device__ U WarpReduceSum(U val) {
   return val;
 }
 
+/**
+ * blocks(128 * 8)
+ * 1. calculate the dx and reduce total rows to 128 rows
+ * 2. save 128*8 temporary sum in 8*128 shared memory
+ * 3. reduce the sum of 128 rows data by 8*VecSize warps
+ */
 template <typename T, typename MaskType, int BSX, int BSY, int VecSize>
 __global__ void FusedResidualDropoutBiasGradVec(
     const T *dout, const MaskType *mask, const T factor, const int64_t rows,
@@ -286,6 +276,7 @@ __global__ void FusedResidualDropoutBiasGradVec(
   using MaskLoadT = AlignedVector<MaskType, VecSize>;
 
   T tmp_sum[VecSize] = {static_cast<T>(0)};
+  // calculate the dx and temporary sum
   if (col_id * VecSize < cols) {
     for (int row_id = threadIdx.y; row_id < rows; row_id += blockDim.y) {
       int index = row_id * cols + col_id * VecSize;
@@ -309,6 +300,7 @@ __global__ void FusedResidualDropoutBiasGradVec(
     }
   }
 
+  // save temporary sum to cache and do transpose
   __shared__ T cache[BSX * VecSize][BSY];
   for (int i = 0; i < VecSize; i++)
     cache[threadIdx.x * VecSize + i][threadIdx.y] = tmp_sum[i];
@@ -317,24 +309,31 @@ __global__ void FusedResidualDropoutBiasGradVec(
   // reduce sum
   T sum = static_cast<T>(0);
   int tid = threadIdx.y * blockDim.x + threadIdx.x;
-  int x = tid >> 5;
-  int y = tid & 31;
+  int x = tid >> 5;  // warp id
+  int y = tid & 31;  // thread id on warp 0~31
 
+  // need BSX * VecSize warps
   if (x < BSX * VecSize) {
+// reduce 128 to 32
 #pragma unroll
     for (int i = 0; i < (BSY >> 5); i++) {
       sum += cache[x][y + i * 32];
     }
   }
 
+  // reduce 32 to 1
   sum = WarpReduceSum(sum);
 
+  // save sum to dbias
   int bias_id = blockIdx.x * blockDim.x * VecSize + x;
   if (y == 0 && x < VecSize * BSX && bias_id < cols) {
     dbias[bias_id] = sum;
   }
 }
 
+/**
+ * @brief to launch kernel FusedResidualDropoutBiasGradVec
+ */
 template <typename T, typename MaskType>
 void LaunchResidualDropoutBiasGrad(const T *dout, const MaskType *mask,
                                    const float dropout_prob,
@@ -342,14 +341,15 @@ void LaunchResidualDropoutBiasGrad(const T *dout, const MaskType *mask,
                                    const uint32_t rows, const uint32_t cols,
                                    T *dx, T *dbias,
                                    const platform::CUDADeviceContext &ctx) {
-  const T zero = static_cast<T>(0.0);
-  auto factor = dropout_prob == static_cast<float>(1.0)
+  const T zero = static_cast<T>(0.0f);
+  auto factor = dropout_prob == static_cast<float>(1.0f)
                     ? zero
-                    : static_cast<T>(1.0 / (1.0 - dropout_prob));
+                    : static_cast<T>(1.0f / (1.0f - dropout_prob));
   if (!is_upscale_in_train) {
-    factor = static_cast<T>(1.0);
+    factor = static_cast<T>(1.0f);
   }
 
+  const int VecSize = 4;
   if (dbias != nullptr) {
     int real_vec_size = VecSize;
     if (cols % VecSize != 0) real_vec_size = 1;
@@ -372,7 +372,7 @@ void LaunchResidualDropoutBiasGrad(const T *dout, const MaskType *mask,
     }
   } else {
     const uint64_t n = rows * cols;
-    auto threads = GetResidualDropoutThreads(ctx, n);
+    auto threads = Get1DThreadsAndBlocks(ctx, n);
     if (n % VecSize == 0) {
       FusedResidualDropoutGradVec<
           T, MaskType,

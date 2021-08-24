@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,9 +29,19 @@ limitations under the License. */
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
-USE_OP(elementwise_add);
 USE_OP(dropout);
 
+/**
+ * @brief the unittest of fused_residual_dropout_bias
+ * 1. random input data
+ * 2. add bias, call paddle dropout op, add residual, and get the base result
+ * 3. call FusedResidualDropoutBias function get fused result
+ * 4. compare ther base result and fused result
+ */
+
+/**
+ * @brief call paddle dropout op
+ */
 template <typename T>
 void Dropout(const T *x, const framework::DDim &x_dim, T *out,
              std::vector<uint8_t> *mask, const platform::CUDADeviceContext &ctx,
@@ -74,6 +84,9 @@ void Dropout(const T *x, const framework::DDim &x_dim, T *out,
   ctx.Wait();
 }
 
+/**
+ * @brief call paddle dropout_grad op
+ */
 template <typename T>
 void DropoutGrad(T *dx, const framework::DDim &x_dim, const T *dout,
                  const uint8_t *mask, const platform::CUDADeviceContext &ctx,
@@ -247,8 +260,9 @@ struct TestFusedResidualDropoutBias {
   }
 
   void FusedForward() {
-    auto threads = paddle::operators::GetResidualDropoutBiasThreads(
+    auto threads = paddle::operators::Get1DBlocksAnd2DGrids(
         *_ctx, (uint64_t)_rows, (uint64_t)_cols);
+    const int VecSize = 4;
     const int increment =
         ((_cols - 1) / (threads.first.x * threads.second.x * VecSize) + 1) *
         VecSize;
@@ -258,7 +272,7 @@ struct TestFusedResidualDropoutBias {
       bias_ptr = _bias.data<T>();
     }
     if (_is_test) {
-      paddle::operators::LaunchResidualDropoutBiasTest<T>(
+      paddle::operators::LaunchResidualDropoutBiasIsTest<T>(
           _rows, _cols, _dropout_prob, _is_upscale_in_train, _src.data<T>(),
           _residual.data<T>(), bias_ptr, _out.data<T>(), *_ctx);
     } else {
@@ -351,14 +365,13 @@ TEST(FusedDropout, GPUFusedRedisualDorpoutBiasDouble) {
   test.CheckGrad(static_cast<double>(1e-5));
 }
 
+// test fp16, For inference, check_grad is not required. ref: test_dropout_op.py
 TEST(FusedDropout, GPUFusedRedisualDorpoutBiasFp16) {
   const int rows = 16;
   const int cols = 16;
   TestFusedResidualDropoutBias<platform::float16> test(rows, cols);
   test.Run();
   test.CheckOut(static_cast<platform::float16>(1e-2));
-  // For inference, check_grad is not required. ref: test_dropout_op.py
-  // test.CheckGrad((platform::float16)1e-2);
 }
 
 // test no bias and cols % 4 == 0
