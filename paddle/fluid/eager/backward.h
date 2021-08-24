@@ -21,9 +21,9 @@ namespace egr {
 // run_backward(): 
 // tensors corresponds to those lived in the backward graph
 // each grad_tensors[i] keeps the value for its corresponding tensors[i]
-void RunBackward(const std::vector<std::shared_ptr<pt::Tensor>> &tensors,
-                  const std::vector<std::shared_ptr<pt::Tensor>> &grad_tensors,
-                  bool retain_graph = false);
+void RunBackward(std::vector<pt::Tensor> &tensors,
+                 const std::vector<pt::Tensor> &grad_tensors,
+                 bool retain_graph = false);
 
 // Reserved for gradient()
 

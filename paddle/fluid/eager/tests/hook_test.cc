@@ -63,7 +63,7 @@ ScaleNode
 TEST(RetainGrad, HookBeforeRetainGrad) {
   // Create Target Tensor
   // Use Empty Grad Tensor
-  std::vector<std::shared_ptr<pt::Tensor>> target_tensors;
+  std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   {
       auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
@@ -71,10 +71,10 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
       auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
       auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
       
-      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      auto tensor = pt::Tensor(tensor_impl);
       target_tensors.emplace_back(std::move(tensor)); 
   }
-  pt::Tensor& target_tensor = *target_tensors[0].get();
+  pt::Tensor& target_tensor = target_tensors[0];
   
   // Create ScaleNode
   auto scale_node_ptr = std::make_shared<egr::GradNodeScale>();
@@ -163,7 +163,7 @@ ScaleNode
 TEST(RetainGrad, HookAfterRetainGrad) {
   // Create Target Tensor
   // Use Empty Grad Tensor
-  std::vector<std::shared_ptr<pt::Tensor>> target_tensors;
+  std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   {
       auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
@@ -171,10 +171,10 @@ TEST(RetainGrad, HookAfterRetainGrad) {
       auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
       auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
       
-      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      auto tensor = pt::Tensor(tensor_impl);
       target_tensors.emplace_back(std::move(tensor)); 
   }
-  pt::Tensor& target_tensor = *target_tensors[0].get();
+  pt::Tensor& target_tensor = target_tensors[0];
   
   // Create ScaleNode
   auto scale_node_ptr = std::make_shared<egr::GradNodeScale>();
@@ -250,7 +250,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
 TEST(GradientHook, SingleNode) {
   // Create Target Tensor
   // Use Empty Grad Tensor
-  std::vector<std::shared_ptr<pt::Tensor>> target_tensors;
+  std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   {
       auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
@@ -258,8 +258,8 @@ TEST(GradientHook, SingleNode) {
       auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
       auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
       
-      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
-      target_tensors.emplace_back(std::move(tensor));
+      auto tensor = pt::Tensor(tensor_impl);
+      target_tensors.emplace_back(std::move(tensor)); 
   }
   
   // Create Scale Node
@@ -271,7 +271,7 @@ TEST(GradientHook, SingleNode) {
       auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
       auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(node0_ptr));
       auto_grad_meta->SetOutRank(0);
-      target_tensors[0]->SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+      target_tensors[0].SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
   }
 
   // Register GradientHook
@@ -289,7 +289,7 @@ TEST(GradientHook, SingleNode) {
 
     return ret;
   };
-  egr::RegisterGradientHookForTensor(*target_tensors[0].get(), hook);
+  egr::RegisterGradientHookForTensor(target_tensors[0], hook);
 
   // Use Empty Grad Tensor
   egr::RunBackward(target_tensors, {});
@@ -307,7 +307,7 @@ Node0
 TEST(GradientHook, LinearNodes) {
   // Create Target Tensor
   // Use Empty Grad Tensor
-  std::vector<std::shared_ptr<pt::Tensor>> target_tensors;
+  std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   {
       auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
@@ -315,7 +315,7 @@ TEST(GradientHook, LinearNodes) {
       auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
       auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
       
-      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      auto tensor = pt::Tensor(tensor_impl);
       target_tensors.emplace_back(std::move(tensor)); 
   }
   
@@ -332,7 +332,7 @@ TEST(GradientHook, LinearNodes) {
       auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
       auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(node0_ptr));
       auto_grad_meta->SetOutRank(0);
-      target_tensors[0]->SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+      target_tensors[0].SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
   }
 
   // Connect Node0 -> Node1 via Edge
@@ -359,7 +359,7 @@ TEST(GradientHook, LinearNodes) {
         }
         return ret;
       };
-      egr::RegisterGradientHookForTensor(*target_tensors[0].get(), hook0);
+      egr::RegisterGradientHookForTensor(target_tensors[0], hook0);
       
       // Node1 Hook
       std::function<pt::Tensor(const pt::Tensor&)> hook1 = [](const pt::Tensor& t) { 
@@ -399,7 +399,7 @@ Node0   Node1
 */
 TEST(GradientHook, WithAccumulation) {
   // Create Target Tensor
-  std::vector<std::shared_ptr<pt::Tensor>> target_tensors;
+  std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   // inp0
   {
@@ -408,7 +408,7 @@ TEST(GradientHook, WithAccumulation) {
       auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
       auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
       
-      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      auto tensor = pt::Tensor(tensor_impl);
       target_tensors.emplace_back(std::move(tensor)); 
   }
 
@@ -419,12 +419,12 @@ TEST(GradientHook, WithAccumulation) {
       auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
       auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
       
-      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      auto tensor = pt::Tensor(tensor_impl);
       target_tensors.emplace_back(std::move(tensor)); 
   }
   
   // Create Grad Tensor
-  std::vector<std::shared_ptr<pt::Tensor>> grad_tensors;
+  std::vector<pt::Tensor> grad_tensors;
   
   // inp0
   {
@@ -438,7 +438,7 @@ TEST(GradientHook, WithAccumulation) {
       }
       
       auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
-      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      auto tensor = pt::Tensor(tensor_impl);
       grad_tensors.emplace_back(std::move(tensor)); 
   }
 
@@ -454,7 +454,7 @@ TEST(GradientHook, WithAccumulation) {
       }
       
       auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
-      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      auto tensor = pt::Tensor(tensor_impl);
       grad_tensors.emplace_back(std::move(tensor)); 
   }
   
@@ -475,7 +475,7 @@ TEST(GradientHook, WithAccumulation) {
       auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
       auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(node0_ptr));
       auto_grad_meta->SetOutRank(0);
-      target_tensors[0]->SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+      target_tensors[0].SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
   }
   
   // Connect Inp1 and Node1 via AutoGradMeta
@@ -483,7 +483,7 @@ TEST(GradientHook, WithAccumulation) {
       auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
       auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(node1_ptr));
       auto_grad_meta->SetOutRank(0);
-      target_tensors[1]->SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
+      target_tensors[1].SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
   }
 
   // Connect Node0 -> Node2 via Edge
@@ -516,7 +516,7 @@ TEST(GradientHook, WithAccumulation) {
         }
         return ret;
       };
-      egr::RegisterGradientHookForTensor(*target_tensors[0].get(), hook0);
+      egr::RegisterGradientHookForTensor(target_tensors[0], hook0);
       
       // Node1 Hook
       std::function<pt::Tensor(const pt::Tensor&)> hook1 = [](const pt::Tensor& t) { 
@@ -530,7 +530,7 @@ TEST(GradientHook, WithAccumulation) {
         }
         return ret;
       };
-      egr::RegisterGradientHookForTensor(*target_tensors[1].get(), hook1);
+      egr::RegisterGradientHookForTensor(target_tensors[1], hook1);
       
       // Node2 Hook
       std::function<pt::Tensor(const pt::Tensor&)> hook2 = [](const pt::Tensor& t) { 

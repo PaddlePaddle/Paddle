@@ -28,25 +28,6 @@
 #include "paddle/top/core/tensor_meta.h"
 #include "paddle/top/core/dense_tensor.h"
 
-pt::Tensor hook_function(const pt::Tensor& t) { 
-    auto t_dense = std::dynamic_pointer_cast<pt::DenseTensor>(t.impl());
-    
-    auto ret_meta = std::make_unique<pt::TensorMeta>(t_dense->dims(), t_dense->backend(), t_dense->type(), t_dense->layout());
-    auto ret_dense = std::make_shared<pt::DenseTensor>(std::move(ret_meta));
-    
-    float* t_ptr = t_dense->mutable_data<float>();
-    float* ret_ptr = ret_dense->mutable_data<float>();
-    for(int i = 0; i < ret_dense->numel(); i++) {
-        ret_ptr[i] = t_ptr[i] + 3.0;
-    }
-    
-    auto ret_impl = std::dynamic_pointer_cast<pt::TensorInterface>(ret_dense);
-    pt::Tensor ret = pt::Tensor();
-    ret.SetImpl(ret_impl);
-    
-    return ret;
-};
-
 /*
 AccumulationNode
   |
@@ -57,7 +38,7 @@ ScaleNode
 TEST(CrossBatchAccumulation, SingleScaleNode) {
   // Create Target Tensor
   // Use Empty Grad Tensor
-  std::vector<std::shared_ptr<pt::Tensor>> target_tensors;
+  std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   {
       auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
@@ -65,10 +46,10 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
       auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
       auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
       
-      auto tensor = std::make_shared<pt::Tensor>(tensor_impl);
+      auto tensor = pt::Tensor(tensor_impl);
       target_tensors.emplace_back(std::move(tensor)); 
   }
-  pt::Tensor& target_tensor = *target_tensors[0].get();
+  pt::Tensor& target_tensor = target_tensors[0];
   
   // Create ScaleNode
   auto scale_node_ptr = std::make_shared<egr::GradNodeScale>();

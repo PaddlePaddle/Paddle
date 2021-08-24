@@ -61,9 +61,9 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(const std::queue<GradNodeB
     return node_in_degree_map;
 }
 
-void RunBackward(const std::vector<std::shared_ptr<pt::Tensor>>& tensors,
-                  const std::vector<std::shared_ptr<pt::Tensor>>& grad_tensors,
-                  bool retain_graph) {
+void RunBackward(std::vector<pt::Tensor>& tensors,
+                 const std::vector<pt::Tensor>& grad_tensors,
+                 bool retain_graph) {
     
     // *Gradient Hook should happen at node-level
     // *Inplace version check should perform at node-level
@@ -75,9 +75,9 @@ void RunBackward(const std::vector<std::shared_ptr<pt::Tensor>>& tensors,
     std::queue<GradNodeBase*> queue;
     std::unordered_map<GradNodeBase*, std::unique_ptr<InputBuffer>> node_input_buffers_dict;
     for(size_t i = 0; i < tensors.size(); i++) {
-        const std::shared_ptr<pt::Tensor>& tensor = tensors[i];
+        pt::Tensor& tensor = tensors[i];
         
-        AutogradMeta* auto_grad_meta = EagerUtils::autograd_meta(*tensor.get());
+        AutogradMeta* auto_grad_meta = EagerUtils::autograd_meta(tensor);
 
         PADDLE_ENFORCE(auto_grad_meta, 
                 paddle::platform::errors::Fatal("Detected NULL auto_grad_meta during backward execution"));
@@ -93,13 +93,13 @@ void RunBackward(const std::vector<std::shared_ptr<pt::Tensor>>& tensors,
             PADDLE_ENFORCE(grad_tensors.size() == tensors.size(), 
                 paddle::platform::errors::Fatal("grad_tensors should either have size = 0 or same size as tensors"));
             
-            node_input_buffers_dict[grad_node]->add(auto_grad_meta->OutRank(), *grad_tensors[i].get());
+            node_input_buffers_dict[grad_node]->add(auto_grad_meta->OutRank(), grad_tensors[i]);
 
         } else {
             // Initialize tensor with 1.0
             // Forward Tensor "tensor" is passed to indicate tensortype, datatype and dims
             // InputBuffer will initialize another tensor with same tensortype, datatype and dims but filled with 1.0
-            node_input_buffers_dict[grad_node]->add(auto_grad_meta->OutRank(), *tensor.get(), true /*fill_one=true*/);
+            node_input_buffers_dict[grad_node]->add(auto_grad_meta->OutRank(), tensor, true /*fill_one=true*/);
         }
 
         // Prepare queue
@@ -120,23 +120,12 @@ void RunBackward(const std::vector<std::shared_ptr<pt::Tensor>>& tensors,
         queue.pop();
 
         // Run node: This is where Hook happens
-
         PADDLE_ENFORCE(node_input_buffers_dict.count(node), 
             paddle::platform::errors::Fatal("Trying to run Node without configuring its InputBuffer"));
 
         std::unique_ptr<InputBuffer> node_input_buffer = std::move(node_input_buffers_dict[node]);
         std::vector<pt::Tensor> grad_output_tensors = (*node)(node_input_buffer->Buffers());
         
-        /*---------- Debug & Test Only ------------*/
-        for(const auto& t : grad_output_tensors) {
-            auto dense_t = std::dynamic_pointer_cast<pt::DenseTensor>(t.impl());
-            float* ptr = dense_t->mutable_data<float>();
-            for(int i = 0; i < 10; i++) {
-                VLOG(2) << ptr[i];
-            }
-        }
-        /*---------- Debug & Test Only ------------*/
-
         node_input_buffers_dict.erase(node);
 
         // Prepare InputBuffer for next node

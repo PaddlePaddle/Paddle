@@ -49,6 +49,7 @@ std::vector<pt::Tensor> scale(pt::Tensor& x, float scale, float bias,
 
         // Init GradNode
         auto scale_node = std::make_shared<GradNodeScale>();
+        scale_node->SetAttributes(scale);
 
         // Set Next Edges
         scale_node->AddEdges({ p_autograd_in });
