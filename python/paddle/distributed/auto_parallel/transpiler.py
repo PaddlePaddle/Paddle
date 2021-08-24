@@ -271,6 +271,62 @@ class AutoParallelTranspiler(object):
 
         return new_main_prog, new_startup_program
 
+    def apply_backward_impl(self,
+                            serial_loss,
+                            serial_main_program,
+                            serial_startup_program,
+                            dist_main_program,
+                            dist_startup_program,
+                            parameter_list=None,
+                            no_grad_set=None,
+                            callbacks=None):
+        """
+        """
+
+        # AMP
+        if self._dist_strategy.amp:
+            self._amp_backward_transpile(serial_loss, new_main_prog,
+                                         new_startup_program)
+
+        params_grads = self._dist_var_op_backward_transpile(
+            serial_loss, serial_main_program, serial_startup_program,
+            dist_main_program, dist_startup_program)
+        # Sharding
+        if self._dist_strategy.sharding:
+            self._sharding_backward_transpile(serial_loss, new_main_prog,
+                                              new_startup_program)
+
+        # Data Parallel pass
+        if self._enable_data_parallel:
+            self._gradient_sync_transpile(dist_main_program,
+                                          dist_startup_program)
+
+        return params_grads
+
+    def apply_optimize_impl(self, user_define_optimizer, params_grads,
+                            dist_main_program, dist_startup_program):
+        """
+        append update related ops to the program: clip, weight decay, ops
+        filter optimize op if sharding is enable
+        naive gradient synchronization before update
+
+        Args:
+            user_define_optimizer (paddle.fluid.optimizer): 
+            params_grads (list) list of tuple that contain param and its grad variable
+            dist_main_program (paddle.fluid.framework.program): dist main program with forward & backward network 
+            dist_startup_program (paddle.fluid.framework.program): dist startup program with forward & backward  network 
+        """
+
+        if self._dist_strategy.sharding:
+            params_grads = sharding_optimize_transpile(
+                params_grads, dist_main_program, dist_startup_program)
+
+        optimize_ops = self._optimize_transpile(user_define_optimizer,
+                                                params_grads, dist_main_program,
+                                                dist_startup_program)
+
+        return optimize_ops
+
     def _dist_var_op_forward_transpile(self,
                                        serial_main_program,
                                        serial_startup_program=None):
@@ -421,6 +477,139 @@ class AutoParallelTranspiler(object):
                 partitioned_startup_global_block._sync_with_cpp()
 
         return partitioned_main_prog, partitioned_startup_prog
+
+    def _dist_var_op_backward_transpile(self,
+                                        serial_loss,
+                                        serial_main_program,
+                                        serial_startup_program,
+                                        dist_main_program,
+                                        dist_startup_program,
+                                        parameter_list=None,
+                                        no_grad_set=None,
+                                        callbacks=None):
+        """
+        so far, the auto_backward case only guarantee the correcotness of backward ops for curtain Dist ops:
+            1. NV-Megatron-like parallel embedding
+            2. NV-Megatron-like row parallel linear
+            3. NV-Megatron-like col parallel linear
+        """
+
+        if self._compatible_with_auto_backward:
+            assert isinstance(
+                serial_loss, Variable), "The target loss should be an Variable."
+            dist_loss = self._serial_varname2dist_var(serial_loss.name,
+                                                      dist_main_program)
+
+            assert len(dist_loss.shape) == 1 and dist_loss.shape[0] == 1, \
+                "The dist loss.shape should be (1L,), but the current dist loss.shape is {}. " \
+                "Maybe that you should call fluid.layers.mean to process the current loss.".format(
+                    dist_loss.shape)
+
+            # update parameter list
+            if parameter_list:
+                parameter_list = [
+                    self._serial_varname2dist_var(param.name, dist_main_program)
+                    for param in parameter_list
+                ]
+
+            # update parameter no_grad_set
+            if no_grad_set:
+                no_grad_set = [
+                    self._serial_varname2dist_var(param.name, dist_main_program)
+                    for param in no_grad_set
+                ]
+
+            return _auto_backward(
+                dist_loss,
+                dist_startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set,
+                callbacks=callbacks)
+        # replace dist grad ops
+        else:
+            raise RuntimeError("transpile NOT implemented !")
+
+    def _optimize_transpile(self, user_define_optimizer, params_grads,
+                            main_program, startup_program):
+
+        with program_guard(main_program, startup_program):
+            optimize_ops = user_define_optimizer.apply_gradients(params_grads)
+
+        return optimize_ops
+
+    def _is_valid_annotated_program(self, program):
+
+        # TODO (ZJ-LIANG) should check all block
+        ops = program.global_block().ops
+        vars_ = program.list_vars()
+        op_dist_attrs = [
+            self._auto_parallel_context.get_op_distributed_attr_for_program(op)
+            for op in ops
+        ]
+        var_dist_attrs = [
+            self._auto_parallel_context.get_tensor_distributed_attr_for_program(
+                var) for var in vars_
+        ]
+
+        all_ops_annotated = all(dist_attr is not None
+                                for dist_attr in op_dist_attrs)
+        all_vars_annotated = all(dist_attr is not None
+                                 for dist_attr in var_dist_attrs)
+
+        return all_ops_annotated and all_vars_annotated
+
+    def _serial_varname2dist_var(self, serial_varname, dist_program):
+        assert serial_varname in self._serial2dist_varname_mapping, "The serial var [{}] is not found in var name mapping".format(
+            serial_varname)
+        dist_varname = self._serial2dist_varname_mapping[serial_varname]
+
+        assert dist_program.global_block().has_var(
+            dist_varname
+        ), "The dist var [{}] is not found in dist program".format(dist_varname)
+        dist_var = dist_program.global_block().var(dist_varname)
+
+        return dist_var
+
+    def _determine_parallel_mode(self, program):
+        """
+        determine the parallelism that is enabled
+        NOTE a hard rule and should be updated in future
+        """
+
+        for param in program.all_parameters():
+            if self._is_var_distributed(param):
+                self._enable_tensor_parallel = True
+                break
+
+        # tensor parallelism
+        if self._enable_tensor_parallel:
+            model_parallel_axis, process_mesh = self._auto_parallel_context._get_model_parallel_info(
+            )
+            group_ranks = _get_comm_group(process_mesh.process_group,
+                                          process_mesh.topology,
+                                          model_parallel_axis, self._rank_id)
+            self._tp_degree = len(group_ranks)
+            self._tp_group = new_process_group(group_ranks)
+
+        # data parallelism
+        data_parallel_axis, process_mesh = self._auto_parallel_context._get_data_parallel_info(
+        )
+        if process_mesh.ndim == 2 or (process_mesh.ndim == 1 and
+                                      not self._enable_tensor_parallel):
+            self._enable_data_parallel = True
+            group_ranks = _get_comm_group(process_mesh.process_group,
+                                          process_mesh.topology,
+                                          data_parallel_axis, self._rank_id)
+            self._dp_degree = len(group_ranks)
+            self._dp_group = new_process_group(group_ranks)
+
+    def _is_var_distributed(self, var):
+
+        dist_attr = self._auto_parallel_context.get_tensor_distributed_attr_for_program(
+            var)
+        assert dist_attr is not None, "dist_attr of var [] is None".format(
+            var.name)
+        return _is_distributed(dist_attr)
 
     def _amp_forward_transpile(self, main_prog, startup_program):
         """
@@ -606,6 +795,35 @@ def _found_match_dist_op(auto_paralle_context, op):
 
     return dist_ops and dist_attr.get_impl_idx() >= 0 and dist_ops.get_impl( \
         dist_attr.get_impl_idx())._forward_implemented
+
+
+def _auto_backward(loss,
+                   startup_program=None,
+                   parameter_list=None,
+                   no_grad_set=None,
+                   callbacks=None):
+    """
+    modification is inplaced
+    """
+    act_no_grad_set = _get_no_grad_set(loss, no_grad_set)
+    assert isinstance(loss, Variable), "The target loss should be an Variable."
+
+    if callbacks is None:
+        callbacks = [error_clip_callback]
+    else:
+        assert (isinstance(callbacks, list))
+
+    assert len(loss.shape) == 1 and loss.shape[0] == 1, \
+        "The loss.shape should be (1L,), but the current loss.shape is {}. " \
+        "Maybe that you should call fluid.layers.mean to process the current loss.".format(
+            loss.shape)
+
+    program = loss.block.program
+    with program_guard(program, startup_program):
+        params_grads = append_backward(loss, parameter_list, act_no_grad_set,
+                                       callbacks)
+
+    return params_grads
 
 
 def _is_distributed(dist_attr):
