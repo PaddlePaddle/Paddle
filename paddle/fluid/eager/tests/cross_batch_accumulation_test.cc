@@ -28,6 +28,10 @@
 #include "paddle/top/core/tensor_meta.h"
 #include "paddle/top/core/dense_tensor.h"
 
+#include "paddle/fluid/eager/tests/test_utils.h"
+
+using namespace egr;
+
 /*
 AccumulationNode
   |
@@ -36,105 +40,66 @@ ScaleNode
  inp0
 */
 TEST(CrossBatchAccumulation, SingleScaleNode) {
-  // Create Target Tensor
-  // Use Empty Grad Tensor
+  // Prepare Inputs
   std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  {
-      auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
-              pt::DataType::kFLOAT32, pt::DataLayout::kNCHW);
-      auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
-      auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
-      
-      auto tensor = pt::Tensor(tensor_impl);
-      target_tensors.emplace_back(std::move(tensor)); 
-  }
+  
+  // Create Target Tensor
+  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
+                                                        pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+                                                        1.0 /*value*/, false /*is_leaf*/);
+  target_tensors.emplace_back(std::move(tensor)); 
   pt::Tensor& target_tensor = target_tensors[0];
   
-  // Create ScaleNode
-  auto scale_node_ptr = std::make_shared<egr::GradNodeScale>();
-  scale_node_ptr->SetAttributes(5.0/*scale*/);
-  
-  // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();
-
-  // Connect Input Tensor and ScaleNode via AutoGradMeta
-  // Apply RetainGrad
+  pt::Tensor leaf_tensor = pt::Tensor();
   {
-      auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
-      auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(scale_node_ptr));
+      // Create ScaleNode
+      auto scale_node_ptr = std::make_shared<GradNodeScale>();
+      scale_node_ptr->SetAttributes(5.0/*scale*/);
+      
+      // Create AccumulationNode
+      auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();
+
+      // Connect Input Tensor and ScaleNode via AutoGradMeta
+      // Apply RetainGrad
+      AutogradMeta* auto_grad_meta = EagerUtils::autograd_meta(target_tensor);
+      auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
       auto_grad_meta->SetOutRank(0);
-      target_tensor.SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
-      egr::RetainGradForTensor(target_tensor); // result: 1.0
-  }
+      RetainGradForTensor(target_tensor); // result: 1.0
 
-  // Connect ScaleNode -> AccumulationNode via Edge
-  {
-      auto meta = egr::AutogradMeta();
+      // Connect ScaleNode -> AccumulationNode via Edge
+      auto meta = AutogradMeta();
       meta.SetOutRank(0);
       meta.SetGradNode(acc_node_ptr);
       scale_node_ptr->AddEdges({ &meta });
-  }
-  
-  // Retain Grad for leaf tensor1
-  pt::Tensor leaf_tensor = pt::Tensor();
-  {
-      auto auto_grad_meta = std::make_shared<egr::AutogradMeta>();
-      auto_grad_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(acc_node_ptr));
-      auto_grad_meta->SetOutRank(0);
-      leaf_tensor.SetAutoGradMeta(std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
       
-      egr::RetainGradForTensor(leaf_tensor);
+      AutogradMeta* auto_grad_meta1 = EagerUtils::autograd_meta(leaf_tensor);
+      auto_grad_meta1->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
+      auto_grad_meta1->SetOutRank(0);
+      RetainGradForTensor(leaf_tensor);
   }
 
   // Use Empty Grad Tensor
-  egr::RunBackward(target_tensors, {});
+  RunBackward(target_tensors, {});
 
-  // Print target tensor grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(target_tensor);
-      auto target_grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = target_grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 1.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 1.0, ptr[i]));
-      }
-  }
-
-  // Print leaf tensor grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(leaf_tensor);
-      auto leaf_grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = leaf_grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 5.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 5.0, ptr[i]));
-      }
-  }
+  // target tensor's grad should remain the same
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(target_tensor, 1.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1.0));
+  
+  // Leaf tensor should keep accumulated grad
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(leaf_tensor, 5.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 5.0));
   
   // Cross-Batch Accumulation
-  egr::RunBackward(target_tensors, {});
+  RunBackward(target_tensors, {});
   
-  // target tensor grad should remain the same
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(target_tensor);
-      auto target_grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = target_grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 1.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 1.0, ptr[i]));
-      }
-  }
-
+  // target tensor's grad should remain the same
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(target_tensor, 1.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1.0));
+  
   // Leaf tensor should keep accumulated grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(leaf_tensor);
-      auto leaf_grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = leaf_grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 10.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 10.0, ptr[i]));
-      }
-  }
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(leaf_tensor, 10.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 10.0));
+  
 }
 

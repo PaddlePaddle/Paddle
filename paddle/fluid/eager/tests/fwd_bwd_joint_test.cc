@@ -27,6 +27,10 @@
 #include "paddle/top/core/tensor_meta.h"
 #include "paddle/top/core/dense_tensor.h"
 
+#include "paddle/fluid/eager/tests/test_utils.h"
+
+using namespace egr;
+
 pt::Tensor hook_function(const pt::Tensor& t) { 
     auto t_dense = std::dynamic_pointer_cast<pt::DenseTensor>(t.impl());
     
@@ -49,26 +53,18 @@ pt::Tensor hook_function(const pt::Tensor& t) {
 TEST(FwdBwdJoint, SingleNode) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
-          pt::DataType::kFLOAT32, pt::DataLayout::kNCHW);
-  auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
-  {
-      float* ptr = tensor_dense->mutable_data<float>();
-      for(int i = 0; i < tensor_dense->numel(); i++) {
-        ptr[i] = 5.0;
-      }
-  }
-  auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
-  auto tensor = pt::Tensor(tensor_impl);
+  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
+                                                        pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+                                                        5.0 /*value*/, false /*is_leaf*/);
   
   // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();    
+  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();    
   
-  egr::AutogradMeta* autograd_meta = egr::EagerUtils::autograd_meta(tensor);
+  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(tensor);
   autograd_meta->SetNumericStopGradient(false);
-  autograd_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(acc_node_ptr));
+  autograd_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
   autograd_meta->SetOutRank(0);
-  egr::RetainGradForTensor(tensor);
+  RetainGradForTensor(tensor);
 
   // 3. Run Forward
   float scale = 2.0;
@@ -77,28 +73,14 @@ TEST(FwdBwdJoint, SingleNode) {
   pt::Tensor& out = outs[0];
   
   // Examine Forward Output
-  {
-      auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out.impl());
-      float* ptr = dense_out->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 13.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 13.0, ptr[i]));
-      }
-  }
+  CompareTensorWithValue<float>(out, 13.0);
 
   // 4. Run Backward
-  egr::RunBackward(outs, {});
+  RunBackward(outs, {});
   
   // Examine Backward Grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(tensor);
-      auto grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 2.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 2.0, ptr[i]));
-      }
-  }
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(tensor, 2.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 2.0));
 }
 
 
@@ -114,26 +96,18 @@ Node1
 TEST(FwdBwdJoint, LinearNodes) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
-          pt::DataType::kFLOAT32, pt::DataLayout::kNCHW);
-  auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
-  {
-      float* ptr = tensor_dense->mutable_data<float>();
-      for(int i = 0; i < tensor_dense->numel(); i++) {
-        ptr[i] = 5.0;
-      }
-  }
-  auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
-  auto tensor = pt::Tensor(tensor_impl);
+  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
+                                                        pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+                                                        5.0 /*value*/, false /*is_leaf*/);
   
   // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();    
+  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();    
   
-  egr::AutogradMeta* autograd_meta = egr::EagerUtils::autograd_meta(tensor);
+  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(tensor);
   autograd_meta->SetNumericStopGradient(false);
-  autograd_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(acc_node_ptr));
+  autograd_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
   autograd_meta->SetOutRank(0);
-  egr::RetainGradForTensor(tensor);
+  RetainGradForTensor(tensor);
 
   // 3. Run Forward
   // Run Forward Node 0
@@ -149,38 +123,17 @@ TEST(FwdBwdJoint, LinearNodes) {
   pt::Tensor& out1 = outs1[0];
   
   // Examine Forward Output 0
-  {
-      auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out0.impl());
-      float* ptr = dense_out->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 13.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 13.0, ptr[i]));
-      }
-  }
+  CompareTensorWithValue<float>(out0, 13.0);
   
   // Examine Forward Output 1
-  {
-      auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out1.impl());
-      float* ptr = dense_out->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 75.0, 
-            paddle::platform::errors::Fatal("Numerical Error"));
-      }
-  }
+  CompareTensorWithValue<float>(out1, 75.0);
 
   // 4. Run Backward
-  egr::RunBackward(outs1, {});
+  RunBackward(outs1, {});
   
   // Examine Backward Grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(tensor);
-      auto grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 10.0,
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 10.0, ptr[i]));
-      }
-  }
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(tensor, 10.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 10.0));
 }
 
 /*
@@ -196,26 +149,18 @@ TEST(FwdBwdJoint, LinearNodes) {
 TEST(FwdBwdJoint, BranchedNodes) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
-          pt::DataType::kFLOAT32, pt::DataLayout::kNCHW);
-  auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
-  {
-      float* ptr = tensor_dense->mutable_data<float>();
-      for(int i = 0; i < tensor_dense->numel(); i++) {
-        ptr[i] = 5.0;
-      }
-  }
-  auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
-  auto tensor = pt::Tensor(tensor_impl);
+  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
+                                                        pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+                                                        5.0 /*value*/, false /*is_leaf*/);
   
   // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();    
+  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();    
   
-  egr::AutogradMeta* autograd_meta = egr::EagerUtils::autograd_meta(tensor);
+  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(tensor);
   autograd_meta->SetNumericStopGradient(false);
-  autograd_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(acc_node_ptr));
+  autograd_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
   autograd_meta->SetOutRank(0);
-  egr::RetainGradForTensor(tensor);
+  RetainGradForTensor(tensor);
 
   // 3. Run Forward
   // Run Forward Node 0
@@ -237,24 +182,10 @@ TEST(FwdBwdJoint, BranchedNodes) {
   pt::Tensor& out2 = outs2[0];
   
   // Examine Forward Output 0
-  {
-      auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out0.impl());
-      float* ptr = dense_out->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 13.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 13.0, ptr[i]));
-      }
-  }
+  CompareTensorWithValue<float>(out0, 13.0);
   
   // Examine Forward Output 1
-  {
-      auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out1.impl());
-      float* ptr = dense_out->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 75.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 75.0, ptr[i]));
-      }
-  }
+  CompareTensorWithValue<float>(out1, 75.0);
   
   // Examine Forward Output 2
   {
@@ -268,18 +199,11 @@ TEST(FwdBwdJoint, BranchedNodes) {
 
   // 4. Run Backward
   std::vector<pt::Tensor> outs = {out1, out2};
-  egr::RunBackward(outs, {});
+  RunBackward(outs, {});
   
   // Examine Backward Grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(tensor);
-      auto grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 30.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 30.0, ptr[i]));
-      }
-  }
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(tensor, 30.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 30.0));
 }
 
 /*
@@ -295,26 +219,18 @@ TEST(FwdBwdJoint, BranchedNodes) {
 TEST(FwdBwdJoint, GradientHook) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
-          pt::DataType::kFLOAT32, pt::DataLayout::kNCHW);
-  auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
-  {
-      float* ptr = tensor_dense->mutable_data<float>();
-      for(int i = 0; i < tensor_dense->numel(); i++) {
-        ptr[i] = 5.0;
-      }
-  }
-  auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
-  auto tensor = pt::Tensor(tensor_impl);
+  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
+                                                        pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+                                                        5.0 /*value*/, false /*is_leaf*/);
   
   // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();    
+  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();    
   
-  egr::AutogradMeta* autograd_meta = egr::EagerUtils::autograd_meta(tensor);
+  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(tensor);
   autograd_meta->SetNumericStopGradient(false);
-  autograd_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(acc_node_ptr));
+  autograd_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
   autograd_meta->SetOutRank(0);
-  egr::RetainGradForTensor(tensor);
+  RetainGradForTensor(tensor);
   
   std::function<pt::Tensor(const pt::Tensor&)> hook = &hook_function;
 
@@ -324,73 +240,46 @@ TEST(FwdBwdJoint, GradientHook) {
   float bias0 = 3.0;
   std::vector<pt::Tensor> outs0 = egr::scale(tensor, scale0, bias0, true /*bias_after_scale*/, true /*trace_backward*/);
   pt::Tensor& out0 = outs0[0];
-  egr::RetainGradForTensor(out0); // hook: +5
-  egr::RegisterGradientHookForTensor(out0, hook); // hook: +5
+  RetainGradForTensor(out0); // hook: +5
+  RegisterGradientHookForTensor(out0, hook); // hook: +5
   
   // Run Forward Node 1
   float scale1 = 5.0;
   float bias1 = 10.0;
   std::vector<pt::Tensor> outs1 = egr::scale(out0, scale1, bias1, true /*bias_after_scale*/, true /*trace_backward*/);
   pt::Tensor& out1 = outs1[0];
-  egr::RetainGradForTensor(out1); // hook: +5
-  egr::RegisterGradientHookForTensor(out1, hook); // hook: +5
+  RetainGradForTensor(out1); // hook: +5
+  RegisterGradientHookForTensor(out1, hook); // hook: +5
   
   // Run Forward Node 2
   float scale2 = 10.0;
   float bias2 = 20.0;
   std::vector<pt::Tensor> outs2 = egr::scale(out0, scale2, bias2, true /*bias_after_scale*/, true /*trace_backward*/);
   pt::Tensor& out2 = outs2[0];
-  egr::RetainGradForTensor(out2); // hook: +5
-  egr::RegisterGradientHookForTensor(out2, hook); // hook: +5
+  RetainGradForTensor(out2); // hook: +5
+  RegisterGradientHookForTensor(out2, hook); // hook: +5
   
   // 4. Run Backward
   std::vector<pt::Tensor> outs = {out1, out2};
-  egr::RunBackward(outs, {});
+  RunBackward(outs, {});
   
   // Examine Backward Grad
   // leaf grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(tensor);
-      auto grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 190.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 190.0, ptr[i]));
-      }
-  }
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(tensor, 190.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 190.0));
 
   // out0 grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(out0);
-      auto grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 90.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 90.0, ptr[i]));
-      }
-  }
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(out0, 90.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 90.0));
   
   // out1 grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(out1);
-      auto grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 1.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 1.0, ptr[i]));
-      }
-  }
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(out1, 1.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1.0));
 
   // out2 grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(out2);
-      auto grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 1.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 1.0, ptr[i]));
-      }
-  }
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(out2, 1.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1.0));
+
 }
 
 /*
@@ -406,26 +295,18 @@ TEST(FwdBwdJoint, GradientHook) {
 TEST(FwdBwdJoint, CrossBatchAccumulation) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
-  auto tensor_meta = std::make_unique<pt::TensorMeta>(ddim, pt::Backend::kCPU, 
-          pt::DataType::kFLOAT32, pt::DataLayout::kNCHW);
-  auto tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
-  {
-      float* ptr = tensor_dense->mutable_data<float>();
-      for(int i = 0; i < tensor_dense->numel(); i++) {
-        ptr[i] = 5.0;
-      }
-  }
-  auto tensor_impl = std::dynamic_pointer_cast<pt::TensorInterface>(tensor_dense);
-  auto tensor = pt::Tensor(tensor_impl);
+  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
+                                                        pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+                                                        5.0 /*value*/, false /*is_leaf*/);
   
   // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<egr::GradNodeAccumulation>();    
+  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();    
   
-  egr::AutogradMeta* autograd_meta = egr::EagerUtils::autograd_meta(tensor);
+  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(tensor);
   autograd_meta->SetNumericStopGradient(false);
-  autograd_meta->SetGradNode(std::dynamic_pointer_cast<egr::GradNodeBase>(acc_node_ptr));
+  autograd_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
   autograd_meta->SetOutRank(0);
-  egr::RetainGradForTensor(tensor);
+  RetainGradForTensor(tensor);
 
   // 3. Run Forward
   // Run Forward Node 0
@@ -448,31 +329,16 @@ TEST(FwdBwdJoint, CrossBatchAccumulation) {
 
   // 4. Run Backward
   std::vector<pt::Tensor> outs = {out1, out2};
-  egr::RunBackward(outs, {});
+  RunBackward(outs, {});
   
   // Examine Backward Grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(tensor);
-      auto grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 30.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 30.0, ptr[i]));
-      }
-  }
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(tensor, 30.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 30.0));
 
   // Cross Batch Accumulation
-  egr::RunBackward(outs, {});
+  RunBackward(outs, {});
   
   // Examine Backward Grad
-  {
-      egr::AutogradMeta* meta = egr::EagerUtils::autograd_meta(tensor);
-      auto grad_dense = std::dynamic_pointer_cast<pt::DenseTensor>(meta->Grad().impl());
-      float* ptr = grad_dense->mutable_data<float>();
-      for(int i = 0; i < 20; i++) {
-          PADDLE_ENFORCE(ptr[i] == 60.0, 
-            paddle::platform::errors::Fatal("Numerical Error, Expected %f but got %f", 60.0, ptr[i]));
-      }
-  }
-  
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(tensor, 60.0) == true, 
+    paddle::platform::errors::Fatal("Numerical Error, Expected %f", 60.0));
 }

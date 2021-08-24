@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/eager/nodes/accumulation_node.h"
 
 /**
@@ -90,6 +91,21 @@ bool EagerUtils::ComputeRequireGrad(AutogradMeta** ins, size_t ins_num, Autograd
 void EagerUtils::SetHistoryForTensor(pt::Tensor& target, const std::shared_ptr<GradNodeBase>& grad_node) {
   AutogradMeta* autograd_meta = EagerUtils::autograd_meta(target);
   autograd_meta->SetGradNode(grad_node);
+}
+  
+pt::Tensor EagerUtils::CreateTensorWithValue(const pt::DDim& ddim, const pt::Backend& backend,
+                                             const pt::DataType& dtype, const pt::DataLayout& layout,
+                                             double value, bool is_leaf) {
+    pt::Tensor out = pt::Tensor();
+    FillConstAPI(value, ddim, backend, dtype, layout, out);
+    
+    if(is_leaf) {
+        AutogradMeta* meta = autograd_meta(out);
+        auto accumulation_node = std::make_shared<GradNodeAccumulation>();
+        meta->SetGradNode(accumulation_node);
+    }
+
+    return out;
 }
 
 }  // namespace egr

@@ -163,7 +163,10 @@ class EagerUtils {
   static bool IsLeafTensor(pt::Tensor& target);
 
   static void SetHistoryForTensor(pt::Tensor& target, const std::shared_ptr<GradNodeBase>& grad_node);
-
+  
+  static pt::Tensor CreateTensorWithValue(const pt::DDim& ddim, const pt::Backend& backend,
+                                          const pt::DataType& dtype, const pt::DataLayout& layout,
+                                          double value, bool is_leaf = true);
 };
 
 }  // namespace egr
