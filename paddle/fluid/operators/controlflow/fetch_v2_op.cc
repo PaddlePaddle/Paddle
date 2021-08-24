@@ -167,6 +167,12 @@ class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
               "(vector<LoDTensor>) A fetching list of LoDTensor which may have "
               "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
+    AddComment(R"DOC(
+FetchV2 Operator.
+
+It should not be configured by users directly.
+
+)DOC");
   }
 };
 

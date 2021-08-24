@@ -189,8 +189,7 @@ void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
-  if (instr_node.kernel_func_.operator_base_->Type() == "fetch_v2") {
-    dev_ctx->Wait();  // TODO(wanghuancoder)
+  if (instr_node->kernel_func_.operator_base_->Type() == "fetch_v2") {
     dev_ctx = fetch_context_pool_.Get(place);
   }
   Scope scope;
@@ -203,6 +202,12 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   static_cast<const framework::OperatorWithKernel*>(
       instr_node.kernel_func_.operator_base_)
       ->InferShape(instr_node.infershape_ctx_.get());
+
+  if (instr_node.kernel_func_.operator_base_->Type() == "fetch_v2") {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.Get(place_);
+    dev_ctx->Wait();  // TODO(wanghuancoder)
+  }
 
   instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
