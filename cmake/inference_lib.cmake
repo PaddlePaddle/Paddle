@@ -72,6 +72,12 @@ function(copy_part_of_thrid_party TARGET DST)
             copy(${TARGET}
                     SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
                     DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+            if(WITH_STRIP)
+                    add_custom_command(TARGET ${TARGET} POST_BUILD
+                            COMMAND strip -s ${dst_dir}/lib/libiomp5.so
+                            COMMAND strip -s ${dst_dir}/lib/libmklml_intel.so
+                            COMMENT "striping libiomp5.so\nstriping libmklml_intel.so")
+            endif()
         endif()
     elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
         set(dst_dir "${DST}/third_party/install/openblas")
@@ -96,9 +102,14 @@ function(copy_part_of_thrid_party TARGET DST)
             copy(${TARGET}
                     SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
                     DSTS ${dst_dir} ${dst_dir}/lib)
+            if(WITH_STRIP)
+                    add_custom_command(TARGET ${TARGET} POST_BUILD
+                            COMMAND strip -s ${dst_dir}/lib/libmkldnn.so.0
+                            COMMENT "striping libmkldnn.so.0")
+            endif()
             add_custom_command(TARGET ${TARGET} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E create_symlink ${dst_dir}/lib/libmkldnn.so.0 ${dst_dir}/lib/libdnnl.so.1
-                    COMMAND ${CMAKE_COMMAND} -E create_symlink ${dst_dir}/lib/libmkldnn.so.0 ${dst_dir}/lib/libdnnl.so.2
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0 ${dst_dir}/lib/libdnnl.so.1
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0 ${dst_dir}/lib/libdnnl.so.2
                     COMMENT "Make a symbol link of libmkldnn.so.0")
         endif()
     endif()
