@@ -1957,6 +1957,7 @@ class LarsMomentumOptimizer(Optimizer):
                  grad_clip=None,
                  name=None,
                  exclude_from_weight_decay=None,
+                 flatten_param_grads=False,
                  epsilon=0,
                  multi_precision=False,
                  rescale_grad=1.0):
@@ -1967,6 +1968,7 @@ class LarsMomentumOptimizer(Optimizer):
             parameter_list=parameter_list,
             regularization=regularization,
             grad_clip=grad_clip,
+            flatten_param_grads=flatten_param_grads,
             name=name)
         self.type = "lars_momentum"
         self._momentum = momentum
