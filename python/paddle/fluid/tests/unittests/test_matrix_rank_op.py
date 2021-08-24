@@ -32,25 +32,25 @@ np.random.seed(SEED)
 
 class TestMatrixRankOP(OpTest):
     def setUp(self):
-
-        self.place = paddle.CPUPlace()
         self.op_type = "matrix_rank"
         self.init_data()
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
-        # if (self.tol):
-        self.attrs = {'tol': self.tol, 'hermitian': self.hermitian}
-        # else:
-        #     self.attrs = {'hermitian': self.hermitian}
+        self.inputs = {'X': self.x}
+        self.attrs = {'hermitian': self.hermitian}
+        if self.tolTensor is not None:
+            self.inputs["TolTensor"] = self.tolTensor
+        if self.tol is not None:
+            self.attrs["tol"] = self.tol
+        self.attrs["use_default_tol"] = self.use_default_tol
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        # self.check_output_with_place(self.place)
         self.check_output()
 
     def init_data(self):
         self.x = np.eye(3, dtype=np.float32)
+        self.tolTensor = None
         self.tol = 0.1
+        self.use_default_tol = False
         self.hermitian = True
         self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
 
@@ -58,17 +58,31 @@ class TestMatrixRankOP(OpTest):
 class TestMatrixRankOP1(TestMatrixRankOP):
     def init_data(self):
         self.x = np.eye(3, k=1, dtype=np.float64)
+        self.tolTensor = None
         self.tol = None
+        self.use_default_tol = True
         self.hermitian = False
-        self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
+        self.out = np.linalg.matrix_rank(self.x, self.tolTensor, self.hermitian)
 
 
 class TestMatrixRankOP2(TestMatrixRankOP):
     def init_data(self):
-        self.x = np.random.rand(3, 4, 5, 6)
-        self.tol = 0.1
+        self.x = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        self.tolTensor = np.random.random([3, 4]).astype(self.x.dtype)
+        self.tol = None
+        self.use_default_tol = False
         self.hermitian = False
-        self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
+        self.out = np.linalg.matrix_rank(self.x, self.tolTensor, self.hermitian)
+
+
+class TestMatrixRankOP3(TestMatrixRankOP):
+    def init_data(self):
+        self.x = np.eye(200, dtype=np.float64)
+        self.tolTensor = None
+        self.tol = None
+        self.use_default_tol = True
+        self.hermitian = True
+        self.out = np.linalg.matrix_rank(self.x, self.tolTensor, self.hermitian)
 
 
 if __name__ == '__main__':

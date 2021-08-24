@@ -17,7 +17,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
 from ..fluid.framework import in_dygraph_mode, _varbase_creator, Variable
 
-from ..fluid.layers import transpose  # noqa: F401
+from ..fluid.layers import transpose, cast  # noqa: F401
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
@@ -798,35 +798,65 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     Returns:
         Tensor. A Tensor.
     """
+
+    # tolTensor = None
+    # hasTol = False
+    # if tol is None:
+    #     tolTensor = paddle.to_tensor(0.0, dtype=x.dtype)
+    # elif isinstance(tol, Variable):
+    #     tolTensor = tol.astype(x.dtype)
+    #     hasTol = True
+    # else:
+    #     tolTensor = paddle.to_tensor(tol, dtype=x.dtype)
+    #     hasTol = True
     if in_dygraph_mode():
         if tol is None:
-            return _C_ops.matrix_rank(x, 'hermitian', hermitian)
+            return _C_ops.matrix_rank(x, None, 'hermitian', hermitian,
+                                      'use_default_tol', True)
         elif isinstance(tol, Variable):
-            # op = getattr(_C_ops, 'matrix_rank')
-            # return op(x, tol, 'hermitian', hermitian)
-            return _C_ops.matrix_rank_tol_tensor(x, tol, 'hermitian', hermitian)
+            if tol.dtype != x.dtype:
+                return _C_ops.matrix_rank(x,
+                                          cast(tol, x.dtype), 'hermitian',
+                                          hermitian, 'use_default_tol', False)
+            return _C_ops.matrix_rank(x, tol, 'hermitian', hermitian,
+                                      'use_default_tol', False)
         else:
-            return _C_ops.matrix_rank(x,"tol", tol, 'hermitian', hermitian)
+            return _C_ops.matrix_rank(x, None, "tol", tol, 'hermitian',
+                                      hermitian, 'use_default_tol', False)
 
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_rank')
-    check_type(hermitian, 'hermitian', bool, 'matrix_rank')
-    inputs = {'X': x}
-    attrs = {'hermitian': hermitian}
+        # if tol is None:
+        #     return _C_ops.matrix_rank(x, 'hermitian', hermitian)
+        # elif isinstance(tol, Variable):
+        #     # op = getattr(_C_ops, 'matrix_rank')
+        #     # return op(x, tol, 'hermitian', hermitian)
+        #     return _C_ops.matrix_rank(x, tol, 'hermitian', hermitian)
+        # else:
+        #     return _C_ops.matrix_rank(x,"tol", tol, 'hermitian', hermitian)
 
-    if isinstance(tol, Variable):
+    inputs = {}
+    attrs = {}
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'matrix_rank')
+    inputs['X'] = x
+    if tol is None:
+        attrs['use_default_tol'] = True
+    elif isinstance(tol, Variable):
         check_variable_and_dtype(tol, 'tol', ['float32'], 'matrix_rank')
-        inputs['TolTensor'] = tol
+        attrs['use_default_tol'] = False
+        if tol.dtype != x.dtype:
+            inputs['TolTensor'] = cast(tol, x.dtype)
+        else:
+            inputs['TolTensor'] = tol
     else:
         check_type(tol, 'tol', float, 'matrix_rank')
+        attrs['use_default_tol'] = False
         attrs['tol'] = tol
+    check_type(hermitian, 'hermitian', bool, 'matrix_rank')
+    attrs['hermitian'] = hermitian
 
     helper = LayerHelper('matrix_rank', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
-        type='matrix_rank',
-        inputs=inputs,
-        outputs={'Out': out},
-        attrs=attrs)
+        type='matrix_rank', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 

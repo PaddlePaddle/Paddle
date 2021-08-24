@@ -13,116 +13,50 @@
 // limitations under the License.
 
 #pragma once
+#include <vector>
 
-#include <Eigen/Dense>
-#include <Eigen/SVD>
-#include <Eigen/Eigenvalues> 
-
-#include <cstdarg>
 #include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
-template <typename T>
-void BatchRankUseSVD(const T* x_data, int32_t* out_data, float tol, int batches,
-                     int rows, int cols) {
-  T* input = const_cast<T*>(x_data);
-  int stride = rows * cols;
-  // int k = std::min(rows, cols);
+DDim InputBatchDim(const DDim& dim_x);
 
-  Eigen::BDCSVD<
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-      svd;
-  for (int i = 0; i < batches; ++i) {
-    // compute SVD
-    auto m = Eigen::Map<
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        input + i * stride, rows, cols);
-    svd.compute(m);
-    auto res_s = svd.singularValues();
-    // compute tol
-    float tol_val = std::numeric_limits<float>::epsilon() *
-                    std::max(rows, cols) * res_s.maxCoeff();
-    tol_val = std::max(tol, tol_val);
-    // compute rank
-    int rank = 0;
-    for (int j = 0; j < res_s.size(); j++) {
-      if (res_s[j] > tol_val) {
-        rank = rank + 1;
-      }
-    }
-    *(out_data + i) = rank;
-    VLOG(3) << "tol_val: " << tol_val << std::endl;
-  }
-}
+DDim EigenvalueDim(const DDim& dim, int k);
+
+DDim NewAxisDim(const DDim& dim, int k);
+
+DDim RemoveLastAndNewAxisDim(const DDim& dim, int k);
+
+DDim RemoveLastDim(const DDim& dim);
+
+DDim UDDim(const DDim& x_dim, int k);
+
+DDim VHDDim(const DDim& x_dim, int k);
 
 template <typename T>
-void BatchRankUseEigenvalues(const T* x_data, int32_t* out_data, float tol,
-                             int batches, int rows, int cols) {
-  T* input = const_cast<T*>(x_data);
-  int stride = rows * cols;
-  for (int i = 0; i < batches; i++) {
-    // compute eigenvalues
-    auto m = Eigen::Map<
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        input + i * stride, rows, cols);
-    // eigenvalues type is complex<float>, check real part
-    auto eigenvalues = m.eigenvalues().real().cwiseAbs();
-    float tol_val = std::numeric_limits<float>::epsilon() *
-                    std::max(rows, cols) * eigenvalues.maxCoeff();
-    tol_val = std::max(tol, tol_val);
-    // compute rank
-    int rank = 0;
-    for (int j = 0; j < eigenvalues.size(); j++) {
-      if (eigenvalues[j] > tol_val) {
-        rank = rank + 1;
-      }
-    }
-    *(out_data + i) = rank;
-    VLOG(3) << "tol_val: " << tol_val << std::endl;
-  }
-}
-
+struct CompareFunctor {
+  HOSTDEVICE int operator()(const T& a, const T& b) const { return a > b; }
+};
 
 template <typename T>
-class MatrixRankCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    // get input/output
-    const Tensor* x = context.Input<Tensor>("X");
-    auto* x_data = x->data<T>();
-    Tensor* out = context.Output<Tensor>("Out");
-    auto* out_data = out->mutable_data<int32_t>(context.GetPlace());
-    float tol = context.Attr<float>("tol");
-    bool hermitian = context.Attr<bool>("hermitian");
+struct InverseCompareFunctor {
+  HOSTDEVICE int operator()(const T& a, const T& b) const { return a < b; }
+};
 
-    // get shape
-    auto x_dims = x->dims();
-    int rows = x_dims[x_dims.size() - 2];
-    int cols = x_dims[x_dims.size() - 1];
-    auto numel = x->numel();
-    // int k = std::min(rows, cols);
-    int batches = numel / (rows * cols);
-
-    // compute
-    if (hermitian) {
-      PADDLE_ENFORCE_EQ(rows, cols,
-                        platform::errors::InvalidArgument(
-                            "if hermitian == true, rows == cols for matrix"));
-      BatchRankUseEigenvalues<T>(x_data, out_data, tol, batches, rows, cols);
+template <typename T>
+struct GreaterElementFunctor {
+  HOSTDEVICE T operator()(const T& a, const T& b) const {
+    if (a > b) {
+      return a;
     } else {
-      BatchRankUseSVD<T>(x_data, out_data, tol, batches, rows, cols);
+      return b;
     }
   }
 };
-
 
 }  // namespace operators
 }  // namespace paddle

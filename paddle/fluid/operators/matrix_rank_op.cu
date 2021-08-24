@@ -14,74 +14,24 @@ limitations under the License. */
 
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
-
 #include <thrust/device_vector.h>
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/cholesky_op.h"
+#include "paddle/fluid/operators/elementwise/svd_helper.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/matrix_rank_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
 #include "paddle/fluid/platform/for_range.h"
 
-// #ifdef __NVCC__
-// #include "cub/cub.cuh"
-// #endif
-// #ifdef __HIPCC__
-// #include <hipcub/hipcub.hpp>
-// namespace cub = hipcub;
-// #endif
-
 namespace paddle {
 namespace operators {
-
-// DDim A dynamically sized dimension.
-// The number of dimensions must be between [1, 9].
-using DDim = framework::DDim;
-DDim UDDim(const DDim& x_dim, int k) {
-  // get x_dim and return the ddim of U
-  // vectorize向量化
-  auto x_vec = vectorize(x_dim);
-  x_vec[x_vec.size() - 1] = k;
-  return framework::make_ddim(x_vec);
-}
-DDim VHDDim(const DDim& x_dim, int k) {
-  // get x_dim and return the ddim of U
-  auto x_vec = vectorize(x_dim);
-  x_vec[x_vec.size() - 2] = k;
-  return framework::make_ddim(x_vec);
-}
-DDim SDDim(const DDim& x_dim, int k) {
-  // get x_dim and return the ddim of U
-  auto x_vec = vectorize(x_dim);
-  x_vec[x_vec.size() - 2] = k;
-  x_vec.erase(x_vec.end() - 1);  // rank - 1
-  return framework::make_ddim(x_vec);
-}
-
-#if CUDA_VERSION >= 9020 && !defined(_WIN32)
-template <typename T>
-__global__ void RankCount(T* data, int32_t* rank, float tol, int k) {
-  int index = blockIdx.x * gridDim.x + threadIdx.x;
-  if (index < k && data[index] > tol) {
-    platform::CudaAtomicAdd(rank, 1);
-  }
-}
-
-template <typename T>
-__global__ void ComputeMax(T* data, T* max_data, int k) {
-  int index = blockIdx.x * gridDim.x + threadIdx.x;
-  if (index < k) {
-    platform::CudaAtomicMax(max_data, data[index]);
-  }
-}
-
-#endif
 
 template <typename T>
 class MatrixRankGPUKernel : public framework::OpKernel<T> {
@@ -89,154 +39,147 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
-    // get in/output
+    // get input/output
     const Tensor* x = context.Input<Tensor>("X");
-    Tensor* out = context.Output<Tensor>("Out");
-    auto* out_data = out->mutable_data<int32_t>(context.GetPlace());
-    math::SetConstant<platform::CUDADeviceContext, int32_t> set_zero;
-    set_zero(dev_ctx, out, static_cast<int32_t>(0));
-    float tol = context.Attr<float>("tol");
+    auto* x_data = x->data<T>();
+    auto* out = context.Output<Tensor>("Out");
+    out->mutable_data<int64_t>(context.GetPlace());
     bool hermitian = context.Attr<bool>("hermitian");
     // get shape
-    auto& dims = x->dims();
-    int batch_count = 1;
-    for (int i = 0; i < dims.size() - 2; i++) {
-      batch_count *= dims[i];
+    auto dim_x = x->dims();
+    auto dim_out = out->dims();
+    // auto dim_atol_tensor = atol_tensor->dims();
+    int rows = dim_x[dim_x.size() - 2];
+    int cols = dim_x[dim_x.size() - 1];
+    int k = std::min(rows, cols);
+    auto numel = x->numel();
+    int batches = numel / (rows * cols);
+    // get tol
+    bool use_default_tol = context.Attr<bool>("use_default_tol");
+    const Tensor* atol_tensor = nullptr;
+    Tensor temp_tensor;
+    T rtol_T = 0;
+    if (use_default_tol) {
+      VLOG(3) << "not has tol";
+      framework::TensorFromVector<T>(std::vector<T>{0},
+                                     context.device_context(), &temp_tensor);
+      atol_tensor = &temp_tensor;
+      rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
+    } else if (context.HasInput("TolTensor")) {
+      VLOG(3) << "has toltensor";
+      atol_tensor = context.Input<Tensor>("TolTensor");
+    } else {
+      VLOG(3) << "has tol";
+      VLOG(3) << context.Attr<float>("tol");
+      framework::TensorFromVector<T>(std::vector<T>{context.Attr<float>("tol")},
+                                     context.device_context(), &temp_tensor);
+      atol_tensor = &temp_tensor;
     }
-    int dims_rank = dims.size();
-    int m = dims[dims_rank - 2];
-    int n = dims[dims_rank - 1];
-    int k = std::min(m, n);
 
     // Must Copy X once, because the gesvdj will destory the content when exit.
     Tensor x_tmp;
     TensorCopy(*x, context.GetPlace(), &x_tmp);
     // cusolver API use
-    auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_count);
+    auto info = memory::Alloc(dev_ctx, sizeof(int) * batches);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
 #if CUDA_VERSION >= 9020 && !defined(_WIN32)
-
-    auto ComputeBlockSize = [](int col) {
-      if (col > 512)
-        return 1024;
-      else if (col > 256 && col <= 512)
-        return 512;
-      else if (col > 128 && col <= 256)
-        return 256;
-      else if (col > 64 && col <= 128)
-        return 128;
-      else
-        return 64;
-    };
-
+    // compute eigenvalue/svd
+    Tensor eigenvalue_tensor;
+    auto* eigenvalue_data = eigenvalue_tensor.mutable_data<T>(
+        EigenvalueDim(dim_x, k), context.GetPlace());
     if (hermitian) {
       // m == n
-      VLOG(3) << "hermitian" << std::endl;
-      Tensor W;
-      auto* w_data = W.mutable_data<T>(framework::make_ddim({batch_count, m}),
-                                       context.GetPlace());
-      SyevjBatched(dev_ctx, batch_count, m, x_tmp.data<T>(), w_data, info_ptr);
+      VLOG(3) << "hermitian";
+      SyevjBatched(dev_ctx, batches, rows, x_tmp.data<T>(), eigenvalue_data,
+                   info_ptr);
       // compute abs(eigenvalues)
-      Tensor W_ABS;
-      auto* w_abs_data = W_ABS.mutable_data<T>(
-          framework::make_ddim({batch_count, m}), context.GetPlace());
-      platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
-                                                                W_ABS.numel());
-      math::AbsFunctor<T> functor(w_data, w_abs_data, W_ABS.numel());
+      platform::ForRange<platform::CUDADeviceContext> for_range(
+          dev_ctx, eigenvalue_tensor.numel());
+      math::AbsFunctor<T> functor(eigenvalue_data, eigenvalue_data,
+                                  eigenvalue_tensor.numel());
       for_range(functor);
-
-      // std::vector<T> w_vec(W.numel());
-      // TensorToVector(W, context.device_context(), &w_vec);
-      // for (int i = 0; i < w_vec.size(); i++) {
-      //   VLOG(3) << "w_vec: " << w_vec[i] << std::endl;
-      // }
-      // std::vector<T> w_abs_vec(W.numel());
-      // TensorToVector(W_ABS, context.device_context(), &w_abs_vec);
-      // for (int i = 0; i < w_abs_vec.size(); i++) {
-      //   VLOG(3) << "w_abs_vec: " << w_abs_vec[i] << std::endl;
-      // }
-
-      int maxGridDimX = dev_ctx.GetCUDAMaxGridDimSize().x;
-      // actually, int num_rows < max_grid_size
-      int grid_size = m < maxGridDimX ? m : maxGridDimX;
-      int block_size = ComputeBlockSize(n);
-
-      // VLOG(3) << "grid_size: " << grid_size << std::endl;
-      // VLOG(3) << "block_size: " << block_size << std::endl;
-
-      auto cu_stream = dev_ctx.stream();
-      for (int i = 0; i < batch_count; i++) {
-        // compute tol
-        Tensor max_tensor_gpu;
-        auto* max_data_gpu = max_tensor_gpu.mutable_data<T>(
-            framework::make_ddim({1}), context.GetPlace());
-        ComputeMax<<<grid_size, block_size, 0, cu_stream>>>(w_abs_data + i * m,
-                                                            max_data_gpu, m);
-        Tensor max_tensor_cpu;
-        TensorCopy(max_tensor_gpu, platform::CPUPlace(), &max_tensor_cpu);
-        dev_ctx.Wait();
-        VLOG(3) << "max_tensor: " << max_tensor_cpu.data<T>()[0] << std::endl;
-        float tol_val = std::numeric_limits<float>::epsilon() * m *
-                        max_tensor_cpu.data<T>()[0];
-        tol_val = std::max(tol, tol_val);
-        VLOG(3) << "tol_val: " << tol_val << std::endl;
-
-        // std::vector<T> temp(max_tensor.numel());
-        // TensorToVector(max_tensor, context.device_context(), &temp);
-        // VLOG(3) << "max_tensor: " << temp[0] << std::endl;
-        RankCount<<<grid_size, block_size, 0, cu_stream>>>(
-            w_abs_data + i * m, out_data + i, tol_val, m);
-      }
-      // dev_ctx.Wait();
-
     } else {
-      VLOG(3) << "not hermitian" << std::endl;
-
-      Tensor U, VH, S;
-      auto* vh_data = VH.mutable_data<T>(VHDDim(dims, k), context.GetPlace());
-      auto* s_data = S.mutable_data<T>(SDDim(dims, k), context.GetPlace());
-      auto* u_data = U.mutable_data<T>(UDDim(dims, k), context.GetPlace());
-      GesvdjBatched(dev_ctx, batch_count, n, m, k, x_tmp.data<T>(), vh_data,
-                    u_data, s_data, info_ptr, 1);
-
-      // VLOG(3) << "tol: " << tol << std::endl;
-      std::vector<T> s_vec(S.numel());
-      TensorToVector(S, context.device_context(), &s_vec);
-      for (int i = 0; i < s_vec.size(); i++) {
-        VLOG(3) << "out vec: " << s_vec[i] << std::endl;
-      }
-
-      int maxGridDimX = dev_ctx.GetCUDAMaxGridDimSize().x;
-      // actually, int num_rows < max_grid_size
-      int grid_size = m < maxGridDimX ? m : maxGridDimX;
-      int block_size = ComputeBlockSize(n);
-
-      // VLOG(3) << "grid_size: " << grid_size << std::endl;
-      // VLOG(3) << "block_size: " << block_size << std::endl;
-
-      auto cu_stream = dev_ctx.stream();
-      for (int i = 0; i < batch_count; i++) {
-        // compute tol
-        Tensor max_tensor_gpu;
-        auto* max_data_gpu = max_tensor_gpu.mutable_data<T>(
-            framework::make_ddim({1}), context.GetPlace());
-        ComputeMax<<<grid_size, block_size, 0, cu_stream>>>(s_data + i * k,
-                                                            max_data_gpu, k);
-        Tensor max_tensor_cpu;
-        TensorCopy(max_tensor_gpu, platform::CPUPlace(), &max_tensor_cpu);
-        dev_ctx.Wait();
-        VLOG(3) << "max_tensor: " << max_tensor_cpu.data<T>()[0] << std::endl;
-        float tol_val = std::numeric_limits<float>::epsilon() * m *
-                        max_tensor_cpu.data<T>()[0];
-        tol_val = std::max(tol, tol_val);
-        VLOG(3) << "tol_val: " << tol_val << std::endl;
-
-        RankCount<<<grid_size, block_size, 0, cu_stream>>>(
-            s_data + i * k, out_data + i, tol_val, k);
-      }
-      // dev_ctx.Wait();
+      VLOG(3) << "not hermitian";
+      Tensor U, VH;
+      auto* u_data = U.mutable_data<T>(UDDim(dim_x, k), context.GetPlace());
+      auto* vh_data = VH.mutable_data<T>(VHDDim(dim_x, k), context.GetPlace());
+      GesvdjBatched(dev_ctx, batches, cols, rows, k, x_tmp.data<T>(), vh_data,
+                    u_data, eigenvalue_data, info_ptr, 1);
     }
+
+    VLOG(3) << "eigenvalue_tensor shape: " << eigenvalue_tensor.dims();
+    std::vector<T> eigenvalue_vec(eigenvalue_tensor.numel());
+    TensorToVector(eigenvalue_tensor, context.device_context(),
+                   &eigenvalue_vec);
+    for (int i = 0; i < eigenvalue_vec.size(); i++) {
+      VLOG(3) << "eigenvalue_vec: " << eigenvalue_vec[i];
+    }
+
+    // compare atol(absolute tol) with rtol(relative tol)
+    // T rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
+    // if (hasTol) {
+    //   rtol_T = 0;
+    // }
+    auto dito_T =
+        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
+                                                 T>(context);
+    std::vector<int> max_eigenvalue_shape =
+        framework::vectorize<int>(RemoveLastDim(eigenvalue_tensor.dims()));
+    Tensor max_eigenvalue_tensor =
+        dito_T.reduce_max(eigenvalue_tensor, max_eigenvalue_shape);
+
+    VLOG(3) << "max_eigenvalue_tensor shape: " << max_eigenvalue_tensor.dims();
+    std::vector<T> max_eigenvalue_vec(max_eigenvalue_tensor.numel());
+    TensorToVector(max_eigenvalue_tensor, context.device_context(),
+                   &max_eigenvalue_vec);
+    for (int i = 0; i < max_eigenvalue_vec.size(); i++) {
+      VLOG(3) << "max_eigenvalue_vec: " << max_eigenvalue_vec[i];
+    }
+
+    Tensor temp_rtol_tensor;
+    framework::TensorFromVector<T>(std::vector<T>{rtol_T},
+                                   context.device_context(), &temp_rtol_tensor);
+    // rtol_tensor.mutable_data<T>(max_eigenvalue_tensor.dims(),
+    // context.GetPlace());
+    Tensor rtol_tensor = dito_T.mul(temp_rtol_tensor, max_eigenvalue_tensor);
+
+    Tensor tol_tensor;
+    tol_tensor.mutable_data<T>(dim_out, context.GetPlace());
+    ElementwiseComputeEx<GreaterElementFunctor<T>, platform::CUDADeviceContext,
+                         T, T>(context, atol_tensor, &rtol_tensor, -1,
+                               GreaterElementFunctor<T>(), &tol_tensor);
+    tol_tensor.Resize(NewAxisDim(tol_tensor.dims(), 1));
+
+    VLOG(3) << "tol_tensor shape: " << tol_tensor.dims();
+    std::vector<T> tol_vec(tol_tensor.numel());
+    TensorToVector(tol_tensor, context.device_context(), &tol_vec);
+    for (int i = 0; i < tol_vec.size(); i++) {
+      VLOG(3) << "tol_vec: " << tol_vec[i];
+    }
+
+    Tensor compare_result;
+    compare_result.mutable_data<int64_t>(NewAxisDim(dim_out, k),
+                                         context.GetPlace());
+    int axis = -1;
+    if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
+      VLOG(3) << "eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()";
+      ElementwiseComputeEx<CompareFunctor<T>, platform::CUDADeviceContext, T,
+                           int64_t>(context, &eigenvalue_tensor, &tol_tensor,
+                                    axis, CompareFunctor<T>(), &compare_result);
+    } else {
+      VLOG(3) << "eigenvalue_tensor.dims().size() < tol_tensor.dims().size()";
+      ElementwiseComputeEx<InverseCompareFunctor<T>,
+                           platform::CUDADeviceContext, T, int64_t>(
+          context, &eigenvalue_tensor, &tol_tensor, axis,
+          InverseCompareFunctor<T>(), &compare_result);
+    }
+    auto dito_int =
+        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
+                                                 int64_t>(context);
+    std::vector<int> res_shape = framework::vectorize<int>(dim_out);
+    Tensor res = dito_int.reduce_sum(compare_result, res_shape);
+    out->ShareDataWith(res);
 
 #endif
   }
