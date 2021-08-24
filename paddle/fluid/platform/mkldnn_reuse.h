@@ -945,20 +945,14 @@ class BroadcastDataMKLDNNHandler
 
 template <typename T>
 class ReductionMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::reduction> {
+    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction> {
  public:
   ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
-                         const float eps, const MKLDNNDeviceContext& dev_ctx,
-                         const mkldnn::engine engine, platform::Place cpu_place,
+                         const float eps, const mkldnn::engine engine,
+                         platform::Place cpu_place,
                          const Tensor* x, const Tensor* y,
-                         const std::string& uniq_name,
                          std::vector<int64_t> y_tz)
-      : platform::MKLDNNHandlerT<T, dnnl::reduction>(
-            dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
-                                uniq_name,
-                                (std::to_string(static_cast<int>(algo))))) {
-    if (!this->isCached()) {
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction>(engine, cpu_place) {
       PADDLE_ENFORCE_EQ(
           x->layout(), DataLayout::kMKLDNN,
           platform::errors::InvalidArgument("Wrong layout set for X tensor."));
@@ -974,7 +968,6 @@ class ReductionMKLDNNHandler
           memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
 
       this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
-    }
   }
 };
 

@@ -97,8 +97,8 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
               paddle::framework::vectorize<int64_t>(output->dims()))));
     } else {
       platform::ReductionMKLDNNHandler<T> handler(
-          reduction_type, 0.0f, 0.0f, dev_ctx, onednn_engine, ctx.GetPlace(),
-          input, output, ctx.InputName("X"), output_dims);
+          reduction_type, 0.0f, 0.0f, onednn_engine, ctx.GetPlace(),
+          input, output, output_dims);
 
       auto src_memory_p = handler.AcquireSrcMemory(input);
       auto dst_memory_p = handler.AcquireDstMemory(output);

@@ -131,8 +131,8 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
           paddle::platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc()));
     } else {
       paddle::platform::ReductionMKLDNNHandler<T> handler(
-          dnnl::algorithm::reduction_sum, 0.0f, 0.0f, dev_ctx, onednn_engine,
-          ctx.GetPlace(), dout, dx, ctx.InputName("X"), dx_vec_dims);
+          dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
+          ctx.GetPlace(), dout, dx, dx_vec_dims);
 
       auto src_memory_p = handler.AcquireSrcMemory(dout);
       auto dst_memory_p = handler.AcquireDstMemory(dx);

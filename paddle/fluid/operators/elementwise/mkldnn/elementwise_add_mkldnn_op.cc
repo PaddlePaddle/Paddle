@@ -84,9 +84,7 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       } else {
         // Broadcasting
         platform::ReductionMKLDNNHandler<T> handler_sum(
-            dnnl::algorithm::reduction_sum, 0.0f, 0.0f, dev_ctx, onednn_engine,
-            ctx.GetPlace(), dout, dy,
-            ctx.InputName(framework::GradVarName("Out")),
+            dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine, ctx.GetPlace(), dout, dy,
             CalculateBroadcastedDims(dout, dy));
         auto dy_memory_p = handler_sum.AcquireDstMemory(dy);
         auto reduction_p = handler_sum.AcquireForwardPrimitive();

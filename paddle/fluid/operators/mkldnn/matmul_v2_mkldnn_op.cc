@@ -251,8 +251,8 @@ class MatMulV2GradMKLDNNKernel : public MatMulV2MKLDNNKernel<T> {
                                     const Tensor* dx_tmp, Tensor* dx,
                                     std::vector<int64_t> dx_dims) const {
     paddle::platform::ReductionMKLDNNHandler<T> handler(
-        dnnl::algorithm::reduction_sum, 0.0f, 0.0f, dev_ctx, onednn_engine,
-        ctx.GetPlace(), dx_tmp, dx, ctx.InputName("X"), dx_dims);
+        dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
+        ctx.GetPlace(), dx_tmp, dx, dx_dims);
 
     auto src_memory_p = handler.AcquireSrcMemory(dx_tmp);
     auto dst_memory_p = handler.AcquireDstMemory(dx);
