@@ -137,8 +137,10 @@ def create_fake_model(program_config):
             op_desc._set_attr(name, values)
         for name, values in op_config.outputs.items():
             op_desc.set_output(name, values)
-            var_desc = main_block_desc.var(cpt.to_bytes(name))
-            var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+            for v in values:
+                var_desc = main_block_desc.var(cpt.to_bytes(v))
+                var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+                var_desc.set_dtype(core.VarDesc.VarType.FP32)
         op_desc.infer_var_type(main_block_desc)
         op_desc.infer_shape(main_block_desc)
 

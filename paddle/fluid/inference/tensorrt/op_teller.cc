@@ -498,15 +498,80 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Input("X").size() << ".";
         return false;
       }
+      auto split_inputs = desc.Inputs();
+      if (split_inputs.find("AxisTensor") != split_inputs.end()) {
+        if (desc.Input("AxisTensor").size() >= 1) {
+          return false;
+        }
+      }
+      if (split_inputs.find("SectionsTensorList") != split_inputs.end()) {
+        if (desc.Input("SectionsTensorList").size() >= 1) {
+          return false;
+        }
+      }
       if (!desc.HasAttr("axis")) {
         return false;
-      } else {
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (axis == 0) {
-          VLOG(3) << "Invalid split axis. Split on batch is not supported in "
+      }
+      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      if (axis == 0) {
+        if (!with_dynamic_shape) {
+          VLOG(3) << "Invalid split axis. Split of static shape mode on batch "
+                     "is not supported in "
                      "TensorRT";
           return false;
         }
+      }
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      size_t output_num = desc.Output("Out").size();
+      std::vector<int> output_lengths;
+      int num = 0;
+      if (desc.HasAttr("num")) {
+        num = BOOST_GET_CONST(int, desc.GetAttr("num"));
+      }
+      if (desc.HasAttr("sections")) {
+        output_lengths =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("sections"));
+      }
+      if (output_lengths.size() == 0 && num == 0) {
+        VLOG(3) << "sections and num cannot be equal to 0 at the same time";
+        return false;
+      }
+
+      if (with_dynamic_shape) {
+#if IS_TRT_VERSION_GE(6000)
+#else
+        VLOG(3) << "You are running the TRT Dynamic Shape mode, need to "
+                   "confirm that "
+                   "your TRT version is no less than 6.0";
+        return false;
+#endif
+      }
+      axis += (axis < 0) ? x_shape.size() : 0;
+      if (x_shape[axis] == -1) {
+        VLOG(3) << "The (" << axis << ") dim of input should not be -1";
+        return false;
+      }
+      if (output_lengths.size() == 0) {
+        if (num > 0) {
+          int64_t in_axis_dim = x_shape[axis];
+          if (in_axis_dim % num != 0) {
+            VLOG(3) << "Invalid number to split. Tensor split does not result"
+                       " in an equal division of dimensions. Axis dim = "
+                    << in_axis_dim << " num = " << num << "!= 0";
+            return false;
+          }
+          size_t out_axis_dim = in_axis_dim / num;
+          for (int i = 0; i < num; ++i) {
+            output_lengths.push_back(out_axis_dim);
+          }
+        }
+      }
+      if (output_lengths.size() != output_num) {
+        VLOG(3) << "The output_length should be equal to the output size.";
+        return false;
       }
     }
 
