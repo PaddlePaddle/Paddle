@@ -428,7 +428,7 @@ static void ParseIndexingSlice(
 
   // NOTE(zhiqiu): PyTuple_Pack increases refcount.
   PyObject *index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
-  DEFINE_PADDLE_SCOPE_GUARD([&index, &_index]() {
+  DEFINE_PADDLE_SCOPE_GUARD([index, _index]() {
     if (!PyTuple_Check(_index)) {
       Py_DECREF(index);
       VLOG(4) << "Call Py_DECREF";
@@ -827,7 +827,7 @@ void BindImperative(py::module *m_ptr) {
              PyObject *index_ptr = !PyTuple_Check(_index.ptr())
                                        ? PyTuple_Pack(1, _index.ptr())
                                        : _index.ptr();
-             DEFINE_PADDLE_SCOPE_GUARD([&index_ptr, &_index]() {
+             DEFINE_PADDLE_SCOPE_GUARD([index_ptr, &_index]() {
                if (!PyTuple_Check(_index.ptr())) {
                  Py_DECREF(index_ptr);
                  VLOG(4) << "Call Py_DECREF";
