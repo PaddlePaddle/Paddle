@@ -652,6 +652,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size() << ".";
         return false;
       }
+
+      auto* block = desc.Block();
+      auto* var_desc = block->FindVar(desc.Input("Alpha")[0]);
+      if (!var_desc) {
+        VLOG(3) << "Variable Alpha of prelu TRT converter is not found.";
+        return false;
+      }
     }
 
     if (op_type == "roi_align") {
