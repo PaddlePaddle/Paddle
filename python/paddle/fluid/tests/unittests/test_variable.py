@@ -15,6 +15,8 @@
 from __future__ import print_function
 
 import unittest
+from functools import reduce
+
 import paddle
 from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
 import paddle
@@ -228,11 +230,16 @@ class TestVariable(unittest.TestCase):
             out2 = x[0:, ...]
             out3 = x[..., 1:]
             out4 = x[...]
+            out5 = x[[1, 0], [0, 0]]
+            out6 = x[([1, 0], [0, 0])]
 
         exe = paddle.static.Executor(place)
-        result = exe.run(prog, fetch_list=[out1, out2, out3, out4])
+        result = exe.run(prog, fetch_list=[out1, out2, out3, out4, out5, out6])
 
-        expected = [data[0:, ..., 1:], data[0:, ...], data[..., 1:], data[...]]
+        expected = [
+            data[0:, ..., 1:], data[0:, ...], data[..., 1:], data[...],
+            data[[1, 0], [0, 0]], data[([1, 0], [0, 0])]
+        ]
 
         self.assertTrue((result[0] == expected[0]).all())
         self.assertTrue((result[1] == expected[1]).all())
@@ -240,9 +247,6 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[3] == expected[3]).all())
 
         with self.assertRaises(IndexError):
-            res = x[[1, 0], [0, 0]]
-
-        with self.assertRaises(TypeError):
             res = x[[1.2, 0]]
 
     def _test_slice_index_list_bool(self, place):
@@ -470,6 +474,458 @@ class TestVariableSlice(unittest.TestCase):
         for place in places:
             self._test_item_none(place)
             self._test_item_none_and_decrease(place)
+
+
+class TestListIndex(unittest.TestCase):
+    def numel(self, shape):
+        return reduce(lambda x, y: x * y, shape)
+
+    def test_static_graph_list_index(self):
+        paddle.enable_static()
+
+        inps_shape = [3, 4, 5, 2]
+        array = np.arange(
+            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+
+        index_shape = [3, 3, 2, 1]
+        index = np.arange(self.numel(index_shape)).reshape(index_shape)
+
+        for i in range(3):
+            program = paddle.static.Program()
+
+            index_mod = (index % (array.shape[0])).tolist()
+
+            with paddle.static.program_guard(program):
+                x = paddle.static.data(
+                    name='x', shape=array.shape, dtype='float32')
+
+                y = x[index_mod]
+
+                place = paddle.fluid.CPUPlace(
+                ) if not paddle.fluid.core.is_compiled_with_cuda(
+                ) else paddle.fluid.CUDAPlace(0)
+
+                prog = paddle.static.default_main_program()
+                exe = paddle.static.Executor(place)
+
+                exe.run(paddle.static.default_startup_program())
+                fetch_list = [y.name]
+
+                getitem_np = array[index_mod]
+                getitem_pp = exe.run(prog,
+                                     feed={x.name: array},
+                                     fetch_list=fetch_list)
+                self.assertTrue(np.array_equal(getitem_np, getitem_pp[0]))
+
+            array = array[0]
+            index = index[0]
+
+    def test_dygraph_list_index(self):
+        paddle.disable_static()
+
+        inps_shape = [3, 4, 5, 3]
+        array = np.arange(self.numel(inps_shape)).reshape(inps_shape)
+
+        index_shape = [2, 3, 4, 5, 6]
+        index = np.arange(self.numel(index_shape)).reshape(index_shape)
+        for i in range(len(inps_shape) - 1):
+
+            pt = paddle.to_tensor(array)
+            index_mod = (index % (array.shape[-1])).tolist()
+            try:
+                getitem_np = array[index_mod]
+
+            except:
+                with self.assertRaises(ValueError):
+                    getitem_pp = pt[index_mod]
+                array = array[0]
+                index = index[0]
+                continue
+            getitem_pp = pt[index_mod]
+            self.assertTrue(np.array_equal(getitem_np, getitem_pp.numpy()))
+
+            array = array[0]
+            index = index[0]
+
+    def test_static_graph_list_index_muti_dim(self):
+        paddle.enable_static()
+        inps_shape = [3, 4, 5]
+        array = np.arange(
+            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+
+        index_shape = [2, 2]
+        index1 = np.arange(self.numel(index_shape)).reshape(index_shape)
+        index2 = np.arange(self.numel(index_shape)).reshape(index_shape) + 2
+
+        value_shape = [3, 2, 2, 3]
+        value_np = np.arange(
+            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+
+        index_mod1 = (index1 % (min(array.shape))).tolist()
+        index_mod2 = (index2 % (min(array.shape))).tolist()
+
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+
+            x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
+
+            value = paddle.static.data(
+                name='value', shape=value_np.shape, dtype='float32')
+            index1 = paddle.static.data(
+                name='index1', shape=index1.shape, dtype='int32')
+            index2 = paddle.static.data(
+                name='index2', shape=index2.shape, dtype='int32')
+
+            y = x[index1, index2]
+
+            place = paddle.fluid.CPUPlace(
+            ) if not paddle.fluid.core.is_compiled_with_cuda(
+            ) else paddle.fluid.CUDAPlace(0)
+
+            prog = paddle.static.default_main_program()
+            exe = paddle.static.Executor(place)
+
+            exe.run(paddle.static.default_startup_program())
+            fetch_list = [y.name]
+            array2 = array.copy()
+
+            y2 = array2[index_mod1, index_mod2]
+
+            getitem_pp = exe.run(prog,
+                                 feed={
+                                     x.name: array,
+                                     index1.name: index_mod1,
+                                     index2.name: index_mod2
+                                 },
+                                 fetch_list=fetch_list)
+
+            self.assertTrue(
+                np.array_equal(y2, getitem_pp[0]),
+                msg='\n numpy:{},\n paddle:{}'.format(y2, getitem_pp[0]))
+
+    def test_dygraph_list_index_muti_dim(self):
+        paddle.disable_static()
+        inps_shape = [3, 4, 5]
+        array = np.arange(
+            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+
+        index_shape = [2, 2]
+        index1 = np.arange(self.numel(index_shape)).reshape(index_shape)
+        index2 = np.arange(self.numel(index_shape)).reshape(index_shape) + 2
+
+        value_shape = [3, 2, 2, 3]
+        value_np = np.arange(
+            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+
+        index_mod1 = (index1 % (min(array.shape))).tolist()
+        index_mod2 = (index2 % (min(array.shape))).tolist()
+
+        x = paddle.to_tensor(array)
+        index_t1 = paddle.to_tensor(index_mod1)
+        index_t2 = paddle.to_tensor(index_mod2)
+
+        y_np = array[index_t1, index_t2]
+        y = x[index_t1, index_t2]
+        self.assertTrue(np.array_equal(y.numpy(), y_np))
+
+    def run_setitem_list_index(self, array, index, value_np):
+        x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
+
+        value = paddle.static.data(
+            name='value', shape=value_np.shape, dtype='float32')
+
+        x[index] = value
+        y = x
+        place = paddle.fluid.CPUPlace(
+        ) if not paddle.fluid.core.is_compiled_with_cuda(
+        ) else paddle.fluid.CUDAPlace(0)
+
+        prog = paddle.static.default_main_program()
+        exe = paddle.static.Executor(place)
+
+        exe.run(paddle.static.default_startup_program())
+        fetch_list = [y.name]
+        array2 = array.copy()
+
+        try:
+            array2[index] = value_np
+        except:
+            with self.assertRaises(ValueError):
+                setitem_pp = exe.run(
+                    prog,
+                    feed={x.name: array,
+                          value.name: value_np},
+                    fetch_list=fetch_list)
+            return
+        setitem_pp = exe.run(prog,
+                             feed={x.name: array,
+                                   value.name: value_np},
+                             fetch_list=fetch_list)
+
+        self.assertTrue(
+            np.array_equal(array2, setitem_pp[0]),
+            msg='\n numpy:{},\n paddle:{}'.format(array2, setitem_pp[0]))
+
+    def test_static_graph_setitem_list_index(self):
+        paddle.enable_static()
+        # case 1:
+        inps_shape = [3, 4, 5, 2, 3]
+        array = np.arange(
+            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+
+        index_shape = [3, 3, 1, 2]
+        index = np.arange(self.numel(index_shape)).reshape(index_shape)
+
+        value_shape = inps_shape[3:]
+        value_np = np.arange(
+            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+
+        for i in range(3):
+            program = paddle.static.Program()
+
+            index_mod = (index % (min(array.shape))).tolist()
+
+            with paddle.static.program_guard(program):
+                self.run_setitem_list_index(array, index_mod, value_np)
+
+            array = array[0]
+            index = index[0]
+
+        # case 2:
+        inps_shape = [3, 4, 5, 4, 3]
+        array = np.arange(
+            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+
+        index_shape = [4, 3, 2, 2]
+        index = np.arange(self.numel(index_shape)).reshape(index_shape)
+
+        value_shape = [3]
+        value_np = np.arange(
+            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+
+        for i in range(4):
+            program = paddle.static.Program()
+            index_mod = (index % (min(array.shape))).tolist()
+
+            with paddle.static.program_guard(program):
+                self.run_setitem_list_index(array, index_mod, value_np)
+
+            array = array[0]
+            index = index[0]
+
+        # case 3:
+        inps_shape = [3, 4, 5, 3, 3]
+        array = np.arange(
+            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+
+        index_shape = [4, 3, 2, 2]
+        index = np.arange(self.numel(index_shape)).reshape(index_shape)
+
+        value_shape = [3, 2, 2, 3]
+        value_np = np.arange(
+            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+        index_mod = (index % (min(array.shape))).tolist()
+        self.run_setitem_list_index(array, index_mod, value_np)
+
+    def test_static_graph_tensor_index_setitem_muti_dim(self):
+        paddle.enable_static()
+        inps_shape = [3, 4, 5, 4]
+        array = np.arange(
+            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+
+        index_shape = [2, 3, 4]
+        index1 = np.arange(
+            self.numel(index_shape), dtype='int32').reshape(index_shape)
+        index2 = np.arange(
+            self.numel(index_shape), dtype='int32').reshape(index_shape) + 2
+
+        value_shape = [4]
+        value_np = np.arange(
+            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+        for zz_ in range(3):
+
+            index_mod1 = index1 % (min(array.shape))
+            index_mod2 = index2 % (min(array.shape))
+
+            array2 = array.copy()
+            array2[index_mod1, index_mod2] = value_np
+            array3 = array.copy()
+            array3[index_mod1] = value_np
+
+            program = paddle.static.Program()
+            with paddle.static.program_guard(program):
+
+                x1 = paddle.static.data(
+                    name='x1', shape=array.shape, dtype='float32')
+                x2 = paddle.static.data(
+                    name='x2', shape=array.shape, dtype='float32')
+
+                value = paddle.static.data(
+                    name='value', shape=value_np.shape, dtype='float32')
+                index_1 = paddle.static.data(
+                    name='index_1', shape=index1.shape, dtype='int32')
+                index_2 = paddle.static.data(
+                    name='index_2', shape=index2.shape, dtype='int32')
+
+                x1[index_1, index_2] = value
+                x2[index_1] = value
+
+                place = paddle.fluid.CPUPlace(
+                ) if not paddle.fluid.core.is_compiled_with_cuda(
+                ) else paddle.fluid.CUDAPlace(0)
+
+                prog = paddle.static.default_main_program()
+                exe = paddle.static.Executor(place)
+
+                exe.run(paddle.static.default_startup_program())
+                fetch_list = [x1.name, x2.name]
+
+                setitem_pp = exe.run(prog,
+                                     feed={
+                                         x1.name: array,
+                                         x2.name: array,
+                                         value.name: value_np,
+                                         index_1.name: index_mod1,
+                                         index_2.name: index_mod2
+                                     },
+                                     fetch_list=fetch_list)
+                self.assertTrue(
+                    np.array_equal(array2, setitem_pp[0]),
+                    msg='\n numpy:{},\n paddle:{}'.format(array2,
+                                                          setitem_pp[0]))
+                self.assertTrue(
+                    np.array_equal(array3, setitem_pp[1]),
+                    msg='\n numpy:{},\n paddle:{}'.format(array3,
+                                                          setitem_pp[1]))
+            array = array[0]
+            index1 = index1[0]
+            index2 = index2[0]
+
+    def test_static_graph_array_index_muti_dim(self):
+        paddle.enable_static()
+        inps_shape = [3, 4, 5, 4]
+        array = np.arange(
+            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+
+        index_shape = [2, 3, 4]
+        index1 = np.arange(
+            self.numel(index_shape), dtype='int32').reshape(index_shape)
+        index2 = np.arange(
+            self.numel(index_shape), dtype='int32').reshape(index_shape) + 2
+
+        for zz_ in range(3):
+            index_mod1 = index1 % (min(array.shape))
+            index_mod2 = index2 % (min(array.shape))
+
+            array2 = array.copy()
+            array2[index_mod1, index_mod2] = 1
+            y_np1 = array2[index_mod2, index_mod1]
+            array3 = array.copy()
+            array3[index_mod1] = 2.5
+            y_np2 = array3[index_mod2]
+
+            program = paddle.static.Program()
+            with paddle.static.program_guard(program):
+
+                x1 = paddle.static.data(
+                    name='x1', shape=array.shape, dtype='float32')
+                x2 = paddle.static.data(
+                    name='x2', shape=array.shape, dtype='float32')
+
+                x1[index_mod1, index_mod2] = 1
+                x2[index_mod1] = 2.5
+                y1 = x1[index_mod2, index_mod1]
+                y2 = x2[index_mod2]
+                place = paddle.fluid.CPUPlace(
+                ) if not paddle.fluid.core.is_compiled_with_cuda(
+                ) else paddle.fluid.CUDAPlace(0)
+
+                prog = paddle.static.default_main_program()
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                fetch_list = [x1.name, x2.name, y1.name, y2.name]
+
+                setitem_pp = exe.run(prog,
+                                     feed={x1.name: array,
+                                           x2.name: array},
+                                     fetch_list=fetch_list)
+                self.assertTrue(
+                    np.array_equal(array2, setitem_pp[0]),
+                    msg='\n numpy:{},\n paddle:{}'.format(array2,
+                                                          setitem_pp[0]))
+                self.assertTrue(
+                    np.array_equal(array3, setitem_pp[1]),
+                    msg='\n numpy:{},\n paddle:{}'.format(array3,
+                                                          setitem_pp[1]))
+
+                self.assertTrue(
+                    np.array_equal(y_np1, setitem_pp[2]),
+                    msg='\n numpy:{},\n paddle:{}'.format(y_np1, setitem_pp[2]))
+                self.assertTrue(
+                    np.array_equal(y_np2, setitem_pp[3]),
+                    msg='\n numpy:{},\n paddle:{}'.format(y_np2, setitem_pp[3]))
+            array = array[0]
+            index1 = index1[0]
+            index2 = index2[0]
+
+    def test_dygraph_array_index_muti_dim(self):
+        paddle.disable_static()
+        inps_shape = [3, 4, 5, 4]
+        array = np.arange(
+            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+        index_shape = [2, 3, 4]
+        index1 = np.arange(
+            self.numel(index_shape), dtype='int32').reshape(index_shape)
+        index2 = np.arange(
+            self.numel(index_shape), dtype='int32').reshape(index_shape) + 2
+
+        for zz_ in range(3):
+
+            index_mod1 = index1 % (min(array.shape))
+            index_mod2 = index2 % (min(array.shape))
+            index_mod_t1 = paddle.to_tensor(index_mod1)
+            index_mod_t2 = paddle.to_tensor(index_mod2)
+            # 2 dim getitem
+            array1 = array.copy()
+            y_np1 = array1[index_mod2, index_mod1]
+            tensor1 = paddle.to_tensor(array)
+
+            y_t1 = tensor1[index_mod_t2, index_mod_t1]
+
+            self.assertTrue(
+                np.array_equal(y_t1.numpy(), y_np1),
+                msg='\n numpy:{},\n paddle:{}'.format(y_np1, y_t1.numpy()))
+            # 1 dim getitem
+            array2 = array.copy()
+            y_np2 = array2[index_mod2]
+            tensor2 = paddle.to_tensor(array)
+
+            y_t2 = tensor2[index_mod_t2]
+            self.assertTrue(
+                np.array_equal(y_t2.numpy(), y_np2),
+                msg='\n numpy:{},\n paddle:{}'.format(y_np2, y_t2.numpy()))
+
+            # 2 dim setitem
+            array1 = array.copy()
+            array1[index_mod1, index_mod2] = 1
+            tensor1[index_mod_t1, index_mod_t2] = 1
+            self.assertTrue(
+                np.array_equal(tensor1.numpy(), array1),
+                msg='\n numpy:{},\n paddle:{}'.format(array1, tensor1.numpy()))
+            # 1 dim setitem
+            array2 = array.copy()
+
+            array2[index_mod1] = 2.5
+
+            tensor2[index_mod_t1] = 2.5
+
+            self.assertTrue(
+                np.array_equal(tensor2.numpy(), array2),
+                msg='\n numpy:{},\n paddle:{}'.format(array2, tensor2.numpy()))
+
+            array = array[0]
+            index1 = index1[0]
+            index2 = index2[0]
 
 
 if __name__ == '__main__':
