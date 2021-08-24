@@ -418,6 +418,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
         auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
         auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+        auto align_corners =
+            BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+        if (align_corners != false) {
+          VLOG(3) << "The TRT only supports align_corners with false.";
+          return false;
+        }
         if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
           if (out_h <= 0) {
             VLOG(3) << "out_h must be greater than 0 if scale is not set.";

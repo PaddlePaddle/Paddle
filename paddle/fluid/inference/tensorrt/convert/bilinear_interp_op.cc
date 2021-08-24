@@ -42,20 +42,16 @@ class BilinearInterpolateOpConverter : public OpConverter {
         BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
         BOOST_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
-    bool align_corners =
-        BOOST_GET_CONST(bool, op_desc.GetAttr("align_corners"));
 
     auto input_names = op_desc.Input("X");
     auto scale = BOOST_GET_CONST(float, op_desc.GetAttr("scale"));
     auto out_h = BOOST_GET_CONST(int, op_desc.GetAttr("out_h"));
     auto out_w = BOOST_GET_CONST(int, op_desc.GetAttr("out_w"));
-
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Resize, *input);
-    layer->setAlignCorners(align_corners);
+    layer->setAlignCorners(true);
     layer->setResizeMode(nvinfer1::ResizeMode::kLINEAR);
 
     auto in_dim = input->getDimensions();
-
     float scale_h = 1.f;
     float scale_w = 1.f;
 
@@ -71,7 +67,6 @@ class BilinearInterpolateOpConverter : public OpConverter {
       int h_axis = (data_layout == framework::DataLayout::kNCHW) + with_dynamic;
       int w_axis =
           (data_layout == framework::DataLayout::kNCHW) + 1 + with_dynamic;
-
       scale_h =
           static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
       scale_w =
@@ -97,7 +92,8 @@ class BilinearInterpolateOpConverter : public OpConverter {
     }
     layer->setScales(scales.data(), scales.size());
 
-    RreplenishLayerAndOutput(layer, "bilinear_interp", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "bilinear_interp", {output_name},
+                             test_mode);
   }
 };
 

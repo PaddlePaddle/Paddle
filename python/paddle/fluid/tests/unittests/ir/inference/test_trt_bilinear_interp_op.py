@@ -69,6 +69,9 @@ class TRTBilinearInterpTest(InferencePassTest):
         self.data_layout = 'NCHW'
 
     def append_bilinear_interp(self, data):
+        print("Here")
+        print(data.shape)
+        print(data)
         if self.scale > 0.:
             return fluid.layers.resize_bilinear(
                 data,
@@ -82,8 +85,10 @@ class TRTBilinearInterpTest(InferencePassTest):
             data_format=self.data_layout)
 
     def test_check_output(self):
+        print("OK")
         if core.is_compiled_with_cuda():
             use_gpu = True
+            self.enable_mkldnn = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
@@ -91,12 +96,13 @@ class TRTBilinearInterpTest(InferencePassTest):
 
 class TRTBilinearInterpTest1(TRTBilinearInterpTest):
     def set_params(self):
-        self.bs = 4
+        self.bs = 1
         self.scale = -1
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
+        self.channels = 2
+        self.origin_shape = (6, 4)  # HW
+        self.resize_shape = (13, 12)  # HW
         self.align_corners = True
+        self.align_mode = 0
         self.data_layout = 'NCHW'
 
 
@@ -140,7 +146,7 @@ class TRTBilinearInterpTest5(TRTBilinearInterpTest):
         self.channels = 3
         self.origin_shape = (32, 32)  # HW
         self.resize_shape = (64, 64)  # HW
-        self.align_corners = True
+        self.align_corners = False
         self.data_layout = 'NHWC'
 
 
@@ -185,6 +191,42 @@ class TRTBilinearInterpTest9(TRTBilinearInterpTest):
         self.origin_shape = (32, 32)  # HW
         self.resize_shape = (47, 48)  # HW
         self.align_corners = False
+        self.data_layout = 'NHWC'
+
+
+class TRTBilinearInterpTest10(TRTBilinearInterpTest):
+    def set_params(self):
+        self.bs = 4
+        self.scale = -1
+        self.channels = 3
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (64, 64)  # HW
+        self.align_corners = False
+        self.align_mode = 0
+        self.data_layout = 'NHWC'
+
+
+class TRTBilinearInterpTest11(TRTBilinearInterpTest):
+    def set_params(self):
+        self.bs = 4
+        self.scale = -3
+        self.channels = 3
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (47, 48)  # HW
+        self.align_corners = False
+        self.align_mode = 0
+        self.data_layout = 'NHWC'
+
+
+class TRTBilinearInterpTest12(TRTBilinearInterpTest):
+    def set_params(self):
+        self.bs = 4
+        self.scale = 2
+        self.channels = 3
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (47, 48)  # HW
+        self.align_corners = False
+        self.align_mode = 0
         self.data_layout = 'NHWC'
 
 
