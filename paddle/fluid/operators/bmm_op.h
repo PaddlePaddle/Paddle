@@ -64,7 +64,7 @@ class BmmKernel : public framework::OpKernel<T> {
     Tensor *out = context.Output<Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    if (x.dims()[0] == 0 || y.dims()[0] == 0) {
+    if (x.numel() == 0 || y.numel() == 0) {
       return;
     }
 
