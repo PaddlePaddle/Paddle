@@ -24,7 +24,7 @@ import paddle
 import operator
 import types
 
-__all__ = ['amp_guard']
+__all__ = ['amp_guard', 'amp_decorator']
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
@@ -285,12 +285,19 @@ def amp_guard(enable=True,
             tracer._enable_pure_fp16 = original_pure_fp16_enable
 
 
+@dygraph_only
 def amp_decorator(mode='pure_fp16',
                   models=None,
                   optimizers=None,
-                  enable_loss_scaling=True,
                   custom_black_list=None,
-                  custom_white_list=None):
+                  custom_white_list=None,
+                  enable_loss_scaling=True,
+                  init_loss_scaling=2.**15,
+                  incr_ratio=2.0,
+                  decr_ratio=0.5,
+                  incr_every_n_steps=1000,
+                  decr_every_n_nan_or_inf=2,
+                  use_dynamic_loss_scaling=True):
     if mode == 'fp32':
         return models, optimizers
 
@@ -360,17 +367,64 @@ def amp_decorator(mode='pure_fp16',
     if enable_loss_scaling:
         for i, optimizer in enumerate(optimizers):
             scalers[i] = paddle.amp.GradScaler(
-                enable=enable_loss_scaling, init_loss_scaling=1024)
+                enable=enable_loss_scaling,
+                init_loss_scaling=init_loss_scaling,
+                incr_ratio=incr_ratio,
+                decr_ratio=decr_ratio,
+                incr_every_n_steps=incr_every_n_steps,
+                decr_every_n_nan_or_inf=decr_every_n_nan_or_inf,
+                use_dynamic_loss_scaling=use_dynamic_loss_scaling)
             scalers[i].user_defined_optimizer = optimizer
 
-            def scaler_minimize(self, optimizer, *args, **kwargs):
-                return scalers[i].minimize(self.user_defined_optimizer, *args,
-                                           **kwargs)
+            @dygraph_only
+            def scaler_minimize(self, *args, **kwargs):
+                tracer = _dygraph_tracer()
+                if not tracer:
+                    raise ValueError(
+                        "current_tracer is None, maybe it is not in imperative mode."
+                    )
+                origin_enable_autocast = tracer._enable_autocast
+                origin_enable_pure_fp16 = tracer._enable_pure_fp16
+                tracer._enable_autocast = False
+                tracer._enable_pure_fp16 = False
+
+                if not self._enable:
+                    return self.user_defined_optimizer.minimize(*args, **kwargs)
+                self._unscale(self.user_defined_optimizer)
+
+                optimize_ops, params_grads = (None, None)
+                if self._found_inf:
+                    self._cache_founf_inf = True
+                else:
+                    optimize_ops, params_grads = self.user_defined_optimizer.minimize(
+                        *args, **kwargs)
+                    self._cache_founf_inf = False
+                if self._use_dynamic_loss_scaling:
+                    self._update()
+
+                tracer._enable_autocast = origin_enable_autocast
+                tracer._enable_pure_fp16 = origin_enable_pure_fp16
+
+                return optimize_ops, params_grads
 
             scalers[i].minimize = types.MethodType(scaler_minimize, scalers[i])
 
+            @dygraph_only
             def scaler_clear_grad(self):
-                return self.user_defined_optimizer.clear_grad()
+                tracer = _dygraph_tracer()
+                if not tracer:
+                    raise ValueError(
+                        "current_tracer is None, maybe it is not in imperative mode."
+                    )
+                origin_enable_autocast = tracer._enable_autocast
+                origin_enable_pure_fp16 = tracer._enable_pure_fp16
+                tracer._enable_autocast = False
+                tracer._enable_pure_fp16 = False
+
+                self.user_defined_optimizer.clear_grad()
+
+                tracer._enable_autocast = origin_enable_autocast
+                tracer._enable_pure_fp16 = origin_enable_pure_fp16
 
             scalers[i].clear_grad = types.MethodType(scaler_clear_grad,
                                                      scalers[i])
