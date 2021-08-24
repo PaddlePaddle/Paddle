@@ -27,6 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+namespace kps = paddle::operators::kernel_primitives;
 enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3 };
 
 /*
@@ -71,42 +72,37 @@ int GetVectorizedSizeForIO(const std::vector<const framework::Tensor *> &ins,
 template <int VecSize, typename InT, typename OutT, typename Functor>
 __global__ void ElementVectorizedUnary(const InT *__restrict__ in0, OutT *out,
                                        int size, Functor func) {
-  int data_offset =
-      VecSize * blockIdx.x * blockDim.x;  // data offset of this block
+  int data_offset = VecSize * blockIdx.x * blockDim.x;
+  // data offset of this block
   int num = size - data_offset;
   num = (VecSize * blockDim.x) > num ? num : VecSize * blockDim.x;
-  // this time have to deal with
+  // the num this time have to deal with
   InT args[VecSize];
   OutT result[VecSize];
 
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args, in0 + data_offset, num);
-  kernel_primitives::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(
-      result, args, func);
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result,
-                                                    num);
+  kps::ReadData<InT, VecSize, 1, 1>(args, in0 + data_offset, num);
+  kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(result, args, func);
+  kps::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result, num);
 }
 
 template <int VecSize, typename InT, typename OutT, typename Functor>
 __global__ void ElementVectorizedBinary(const InT *__restrict__ in0,
                                         const InT *__restrict__ in1, OutT *out,
                                         int size, Functor func) {
-  int data_offset =
-      VecSize * blockIdx.x * blockDim.x;  // data offset of this block
+  int data_offset = VecSize * blockIdx.x * blockDim.x;
+  // data offset of this block
   int num = size - data_offset;
   num = (VecSize * blockDim.x) > num ? num : VecSize * blockDim.x;
-  // this time have to deal with
+  // the num this time have to deal with
   InT args[2][VecSize];
   OutT result[VecSize];
 
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[0], in0 + data_offset,
-                                                  num);
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[1], in1 + data_offset,
-                                                  num);
+  kps::ReadData<InT, VecSize, 1, 1>(args[0], in0 + data_offset, num);
+  kps::ReadData<InT, VecSize, 1, 1>(args[1], in1 + data_offset, num);
 
-  kernel_primitives::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(
-      result, args[0], args[1], func);
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result,
-                                                    num);
+  kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
+                                                            args[1], func);
+  kps::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result, num);
 }
 
 template <int VecSize, typename InT, typename OutT, typename Functor>
@@ -114,25 +110,21 @@ __global__ void ElementVectorizedTernary(const InT *__restrict__ in0,
                                          const InT *__restrict__ in1,
                                          const InT *__restrict__ in2, OutT *out,
                                          int size, Functor func) {
-  int data_offset =
-      VecSize * blockIdx.x * blockDim.x;  // data offset of this block
+  int data_offset = VecSize * blockIdx.x * blockDim.x;
+  // data offset of this block
   int num = size - data_offset;
   num = (VecSize * blockDim.x) > num ? num : VecSize * blockDim.x;
-  // this time have to deal with
+  // the num this time have to deal with
   InT args[3][VecSize];
   OutT result[VecSize];
 
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[0], in0 + data_offset,
-                                                  num);
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[1], in1 + data_offset,
-                                                  num);
-  kernel_primitives::ReadData<InT, VecSize, 1, 1>(args[2], in2 + data_offset,
-                                                  num);
+  kps::ReadData<InT, VecSize, 1, 1>(args[0], in0 + data_offset, num);
+  kps::ReadData<InT, VecSize, 1, 1>(args[1], in1 + data_offset, num);
+  kps::ReadData<InT, VecSize, 1, 1>(args[2], in2 + data_offset, num);
 
-  kernel_primitives::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
+  kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
       result, args[0], args[1], args[2], func);
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result,
-                                                    num);
+  kps::WriteData<OutT, VecSize, 1, 1>(out + data_offset, result, num);
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
@@ -169,7 +161,7 @@ void LaunchSameDimsElementwiseCudaKernel(
       break;
     default: {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported input num is : %d !", ET));
+          "Unsupported this ElementwiseType : %d !", ET));
       break;
     }
   }
