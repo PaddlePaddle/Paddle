@@ -22,6 +22,7 @@ import copy
 import functools
 import paddle
 import operator
+import types
 
 __all__ = ['amp_guard']
 
@@ -282,3 +283,105 @@ def amp_guard(enable=True,
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
             tracer._enable_pure_fp16 = original_pure_fp16_enable
+
+
+def amp_decorator(mode='pure_fp16',
+                  models=None,
+                  optimizers=None,
+                  enable_loss_scaling=True,
+                  custom_black_list=None,
+                  custom_white_list=None):
+    if mode == 'fp32':
+        return models, optimizers
+
+    if not (mode in ['amp', 'pure_fp16']):
+        raise ValueError(
+            "the input parameter mode should be fp32 or amp or pure_fp16.")
+
+    tracer = _dygraph_tracer()
+    if not tracer:
+        raise ValueError(
+            "current_tracer is None, maybe it is not in imperative mode.")
+
+    if not (tracer._expected_place.is_gpu_place() or
+            tracer._expected_place.is_xpu_place()):
+        warnings.warn(
+            'amp or pure_fp16 mode can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
+            % tracer._expected_place)
+        return models, optimizers
+
+    models_is_list = False
+    if isinstance(models, paddle.nn.Layer):
+        models_is_list = False
+        models = [models]
+        check_models(models)
+    elif isinstance(models, list):
+        check_models(models)
+        models_is_list = True
+    else:
+        raise TypeError(
+            "models must be either a single model or a list of models.")
+
+    optimizers_is_list = False
+    if isinstance(optimizers, (paddle.optimizer.Optimizer,
+                               paddle.fluid.optimizer.Optimizer)):
+        optimizers_is_list = False
+        optimizers = [optimizers]
+        check_optimizers(optimizers)
+    elif isinstance(optimizers, list):
+        check_optimizers(optimizers)
+        optimizers_is_list = True
+    else:
+        raise TypeError(
+            "optimizers must be either a single optimizer or a list of optimizers."
+        )
+
+    _white_list = WHITE_LIST
+    _black_list = BLACK_LIST
+    if custom_white_list or custom_black_list:
+        _white_list, _black_list = _update_list(custom_white_list,
+                                                custom_black_list)
+
+    if tracer:
+        if mode == 'pure_fp16':
+            tracer._enable_autocast = True
+            tracer._enable_pure_fp16 = True
+            tracer._set_amp_op_list(_white_list, _black_list)
+            # 改写model、optimizer、加入scaler策略
+            models, optimizers = fp16_initialize(
+                enable_pure_fp16=True, models=models, optimizers=optimizers)
+
+        elif mode == 'amp':
+            tracer._enable_autocast = True
+            tracer._enable_pure_fp16 = False
+            tracer._set_amp_op_list(_white_list, _black_list)
+
+    scalers = optimizers
+    if enable_loss_scaling:
+        for i, optimizer in enumerate(optimizers):
+            scalers[i] = paddle.amp.GradScaler(
+                enable=enable_loss_scaling, init_loss_scaling=1024)
+            scalers[i].user_defined_optimizer = optimizer
+
+            def scaler_minimize(self, optimizer, *args, **kwargs):
+                return scalers[i].minimize(self.user_defined_optimizer, *args,
+                                           **kwargs)
+
+            scalers[i].minimize = types.MethodType(scaler_minimize, scalers[i])
+
+            def scaler_clear_grad(self):
+                return self.user_defined_optimizer.clear_grad()
+
+            scalers[i].clear_grad = types.MethodType(scaler_clear_grad,
+                                                     scalers[i])
+
+    if models_is_list:
+        if optimizers_is_list:
+            return models, scalers
+        else:
+            return models, scalers[0]
+    else:
+        if optimizers_is_list:
+            return models[0], scalers
+        else:
+            return models[0], scalers[0]
