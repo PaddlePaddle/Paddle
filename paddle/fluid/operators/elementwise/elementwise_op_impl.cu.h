@@ -81,6 +81,7 @@ __global__ void ElementVectorizedUnary(const InT *__restrict__ in0, OutT *out,
   OutT result[VecSize];
   const bool is_reminder = true;
   if (VecSize * blockDim.x > num) {  // reminder segment
+    kps::Init<InT, VecSize>(&args[0], static_cast<InT>(1.0f));
     kps::ReadData<InT, VecSize, 1, 1, is_reminder>(args, in0 + data_offset,
                                                    num);
     kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(result, args,

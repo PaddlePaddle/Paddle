@@ -281,6 +281,7 @@ __global__ void BroadcastKernelUnary(
                                                              &arg[0], func);
     kps::WriteData<OutT, VecSize, 1, 1>(out + fix * VecSize, &result[0], num);
   } else {
+    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg[0], static_cast<InT>(1.0f));
     kps::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize, is_boundary>(
         &arg[0], in, fix * VecSize, config, numel, 1, 1);
     kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(&result[0],
