@@ -581,7 +581,7 @@ AsyncCommunicator::~AsyncCommunicator() {
   running_ = false;
   if (main_thread_) main_thread_->join();
   if (recv_thread_) recv_thread_->join();
-  std::cout << "zcb debug async comm deconstructor";
+  VLOG(3) << "zcb debug async comm deconstructor";
 }
 
 void AsyncCommunicator::Start() {
@@ -607,7 +607,7 @@ void AsyncCommunicator::Start() {
 void AsyncCommunicator::Stop() {
   VLOG(0) << "Communicator stop begin";
   _worker_ptr->finalize_worker();
-  VLOG(0) << "client finalize_worker done"; 
+  VLOG(0) << "client finalize_worker done";
   running_ = false;
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";

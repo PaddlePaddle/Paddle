@@ -297,16 +297,15 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
     sleep(sleep_seconds_before_fail_exit_);
   }
 
-  //check zcb
-  std::cout << "pull sparse check zcb\n";
-  for (int i = 0; i < fea_keys.size(); ++ i) {
-    std::cout << "key " << fea_keys[i] << ": ";
-    for (int j = 0; j < fea_dim; ++ j) {
-        std::cout << pull_result_ptr[i][j] << " ";
+  // check zcb
+  VLOG(3) << "pull sparse check zcb\n";
+  for (int i = 0; i < fea_keys.size(); ++i) {
+    VLOG(3) << "key " << fea_keys[i] << ": ";
+    for (int j = 0; j < fea_dim; ++j) {
+      VLOG(3) << pull_result_ptr[i][j] << " ";
     }
-    std::cout << "\n";
+    VLOG(3) << "\n";
   }
-
 }
 
 void FleetWrapper::PullDenseVarsAsync(
@@ -429,14 +428,10 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
 }
 
 void FleetWrapper::PushSparseFromTensorAsync(
-    const uint64_t table_id, int fea_dim,
-    uint64_t padding_id,
-    platform::Place place,
-    std::vector<const LoDTensor*>* inputs,
-    const LoDTensor* shows,
-    const LoDTensor* clks,
+    const uint64_t table_id, int fea_dim, uint64_t padding_id,
+    platform::Place place, std::vector<const LoDTensor*>* inputs,
+    const LoDTensor* shows, const LoDTensor* clks,
     std::vector<LoDTensor*>* outputs) {
-  
   int batch_size = -1;
   for (auto* input : *inputs) {
     int cur_batch_size =
@@ -448,11 +443,13 @@ void FleetWrapper::PushSparseFromTensorAsync(
     }
   }
   CHECK(batch_size > 0);  // NOLINT
-  
-  //TODO: check batch_size of show clks
-  int show_size = shows->lod().size() ? shows->lod()[0].size() - 1 : shows->dims()[0];
+
+  // TODO: check batch_size of show clks
+  int show_size =
+      shows->lod().size() ? shows->lod()[0].size() - 1 : shows->dims()[0];
   CHECK(show_size == batch_size || show_size == 1);
-  int clk_size = clks->lod().size() ? clks->lod()[0].size() - 1 : clks->dims()[0];
+  int clk_size =
+      clks->lod().size() ? clks->lod()[0].size() - 1 : clks->dims()[0];
   CHECK(clk_size == batch_size || clk_size == 1);
 
   std::vector<float> g;
@@ -472,7 +469,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
 
   VLOG(0) << "yxf::fleet.cc::emb_dim: " << fea_dim;
 
-  //TODO: type of show/clk is int? float? uint64?
+  // TODO: type of show/clk is int? float? uint64?
   const long int* show_tensor = shows->data<int64_t>();
   const long int* clk_tensor = clks->data<int64_t>();
 
@@ -481,25 +478,25 @@ void FleetWrapper::PushSparseFromTensorAsync(
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
 
-    if (tensor->lod().size() > 0 ) {
+    if (tensor->lod().size() > 0) {
       for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
-        for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1]; ++ j, output_len += fea_dim) {
+        for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
+             ++j, output_len += fea_dim) {
           if (static_cast<uint64_t>(ids[j]) == padding_id) {
             continue;
           }
           push_keys.emplace_back(ids[j]);
-          ///fake by zcb
+          /// fake by zcb
           push_values.emplace_back(fea_dim + 3);
-          push_values.back()[0] = 2; //TODO: slot
-          push_values.back()[1] = (i >= show_size? 1: (float)show_tensor[i]);
-          push_values.back()[2] = (i >= clk_size? 0: (float)clk_tensor[i]);
+          push_values.back()[0] = 2;  // TODO: slot
+          push_values.back()[1] = (i >= show_size ? 1 : (float)show_tensor[i]);
+          push_values.back()[2] = (i >= clk_size ? 0 : (float)clk_tensor[i]);
 
           float* data = push_values.back().data() + 3;
-      
-          memcpy(data, g.data() + output_len,
-                   sizeof(float) * fea_dim);
 
-          ++ input_idx;
+          memcpy(data, g.data() + output_len, sizeof(float) * fea_dim);
+
+          ++input_idx;
         }
       }
     } else {
@@ -508,17 +505,16 @@ void FleetWrapper::PushSparseFromTensorAsync(
           continue;
         }
         push_keys.emplace_back(ids[i]);
-        ///fake by zcb
+        /// fake by zcb
         push_values.emplace_back(fea_dim + 3);
-        push_values.back()[0] = 2; //TODO: slot
-        push_values.back()[1] = (i >= show_size? 1: (float)show_tensor[i]);
-        push_values.back()[2] = (i >= clk_size? 0: (float)clk_tensor[i]);
+        push_values.back()[0] = 2;  // TODO: slot
+        push_values.back()[1] = (i >= show_size ? 1 : (float)show_tensor[i]);
+        push_values.back()[2] = (i >= clk_size ? 0 : (float)clk_tensor[i]);
 
         float* data = push_values.back().data() + 3;
-      
-        memcpy(data, g.data() + output_len,
-                 sizeof(float) * fea_dim);
-      
+
+        memcpy(data, g.data() + output_len, sizeof(float) * fea_dim);
+
         ++input_idx;
       }
     }
@@ -527,14 +523,13 @@ void FleetWrapper::PushSparseFromTensorAsync(
   CHECK(output_len == g.size());
 
   std::vector<float*> push_g_vec(input_idx, nullptr);
-  std::cout << "zcb debug push sparse\n";
+  VLOG(3) << "zcb debug push sparse\n";
   for (auto i = 0u; i < push_keys.size(); ++i) {
     push_g_vec[i] = push_values.at(i).data();
 
-    std::cout << "key: " << push_keys[i] << " ";
-    for (int j = 0; j < fea_dim + 3; ++ j)
-        std::cout << push_g_vec[i][j] << " ";
-    std::cout << "\n";
+    VLOG(3) << "key: " << push_keys[i] << " ";
+    for (int j = 0; j < fea_dim + 3; ++j) VLOG(3) << push_g_vec[i][j] << " ";
+    VLOG(3) << "\n";
   }
   auto* communicator = Communicator::GetInstance();
   PADDLE_ENFORCE_EQ(
@@ -544,7 +539,6 @@ void FleetWrapper::PushSparseFromTensorAsync(
   auto status = communicator->_worker_ptr->push_sparse(
       table_id, push_keys.data(), (const float**)push_g_vec.data(),
       push_keys.size());
-
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const std::string& mode) {

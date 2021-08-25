@@ -36,7 +36,7 @@ TEST(CommonSparseTable, SGD) {
   table_config.set_table_class("CtrSparseTable");
   FsClientParameter fs_config;
   Table *table = new CtrSparseTable();
-  //Table* table = CREATE_PSCORE_CLASS(Table, table_config.table_class());
+  // Table* table = CREATE_PSCORE_CLASS(Table, table_config.table_class());
 
   TableAccessorParameter *accessor_config = table_config.mutable_accessor();
   accessor_config->set_accessor_class("CtrCommonAccessor");
@@ -48,16 +48,19 @@ TEST(CommonSparseTable, SGD) {
   accessor_config->mutable_downpour_accessor_param()->set_base_threshold(0.5);
   accessor_config->mutable_downpour_accessor_param()->set_delta_threshold(0.2);
   accessor_config->mutable_downpour_accessor_param()->set_delta_keep_days(16);
-  accessor_config->mutable_downpour_accessor_param()->set_show_click_decay_rate(0.99);
+  accessor_config->mutable_downpour_accessor_param()->set_show_click_decay_rate(
+      0.99);
 
   accessor_config->mutable_embed_sgd_param()->set_name("CtrSparseNaiveSGDRule");
-  auto* naive_param = accessor_config->mutable_embed_sgd_param()->mutable_naive();
+  auto *naive_param =
+      accessor_config->mutable_embed_sgd_param()->mutable_naive();
   naive_param->set_learning_rate(0.1);
   naive_param->set_initial_range(0.3);
   naive_param->add_weight_bounds(-10.0);
   naive_param->add_weight_bounds(10.0);
 
-  accessor_config->mutable_embedx_sgd_param()->set_name("CtrSparseNaiveSGDRule");
+  accessor_config->mutable_embedx_sgd_param()->set_name(
+      "CtrSparseNaiveSGDRule");
   naive_param = accessor_config->mutable_embedx_sgd_param()->mutable_naive();
   naive_param->set_learning_rate(0.1);
   naive_param->set_initial_range(0.3);
@@ -78,7 +81,7 @@ TEST(CommonSparseTable, SGD) {
 
   // for check
   std::vector<float> total_gradients;
-  total_gradients.resize(init_keys.size() * (4+emb_dim));
+  total_gradients.resize(init_keys.size() * (4 + emb_dim));
   memset(total_gradients.data(), 0, sizeof(float) * total_gradients.size());
 
   // push gradient
@@ -91,7 +94,7 @@ TEST(CommonSparseTable, SGD) {
     start = 0.0;
     trainer_keys[i] = init_keys;
     for (size_t j = 0; j < trainer_keys[i].size(); j++) {
-      auto id = trainer_keys[i][j];      
+      auto id = trainer_keys[i][j];
       for (int k = 0; k < emb_dim + 4; k++) {
         trainer_gradient_values[i].push_back(start);
         total_gradients[id * (emb_dim + 4) + k] += start;
@@ -120,16 +123,19 @@ TEST(CommonSparseTable, SGD) {
   pull_values.resize(init_keys.size() * (emb_dim + 1));
   table->pull_sparse(pull_values.data(), value);
 
-  for (size_t i = 0; i < init_keys.size(); ++ i) {
-    for (size_t j = 0; j < emb_dim + 1; ++ j) {
-      auto update_val = init_values[i*(emb_dim+1) + j] - 0.1 * total_gradients[3+i*(emb_dim+4)+j];
-      std::cout << total_gradients[i*(emb_dim+4)+j+3] << ":" << init_values[i*(emb_dim+1)+j] << "\n";
-      std::cout << update_val << ": " << pull_values[i*(emb_dim+1) + j] << "\n";
+  for (size_t i = 0; i < init_keys.size(); ++i) {
+    for (size_t j = 0; j < emb_dim + 1; ++j) {
+      auto update_val = init_values[i * (emb_dim + 1) + j] -
+                        0.1 * total_gradients[3 + i * (emb_dim + 4) + j];
+      VLOG(3) << total_gradients[i * (emb_dim + 4) + j + 3] << ":"
+              << init_values[i * (emb_dim + 1) + j] << "\n";
+      VLOG(3) << update_val << ": " << pull_values[i * (emb_dim + 1) + j]
+              << "\n";
     }
   }
-  
-  //TODO: save/load/shrink
-  CtrSparseTable* ctr_table = dynamic_cast<CtrSparseTable*>(table);
+
+  // TODO: save/load/shrink
+  CtrSparseTable *ctr_table = dynamic_cast<CtrSparseTable *>(table);
   ctr_table->save_local_fs("/work/table.save", "0", "test");
 }
 
