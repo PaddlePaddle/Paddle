@@ -1952,26 +1952,24 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict,
               std::vector<std::string> fetch_names) {
-             std::vector<framework::Tensor> fetch_tensors;
+             std::vector<framework::Tensor> feed_tensors;
+             std::vector<std::string> feed_names;
+
+             for (auto &item : input_dict) {
+               framework::LoDTensor t;
+               SetTensorFromPyArray<platform::CPUPlace>(
+                   &t, item.second, platform::CPUPlace(), false);
+               feed_names.push_back(item.first);
+               feed_tensors.push_back(t);
+             }
+
+             paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               std::vector<framework::Tensor> feed_tensors;
-               std::vector<std::string> feed_names;
+               ret = self.Run(feed_names, feed_tensors, fetch_names);
+             }
 
-               for (auto &item : input_dict) {
-                 framework::LoDTensor t;
-                 SetTensorFromPyArray<platform::CPUPlace>(
-                     &t, item.second, platform::CPUPlace(), false);
-                 feed_names.push_back(item.first);
-                 feed_tensors.push_back(t);
-               }
-               self.Run(feed_names, feed_tensors, fetch_names, &fetch_tensors);
-             }
-             std::vector<py::array> vec_ret;
-             for (size_t i = 0; i < fetch_tensors.size(); ++i) {
-               vec_ret.push_back(TensorToPyArray(fetch_tensors[i], true));
-             }
-             return vec_ret;
+             return py::cast(std::move(ret));
            });
 
   m.def("init_gflags", framework::InitGflags);

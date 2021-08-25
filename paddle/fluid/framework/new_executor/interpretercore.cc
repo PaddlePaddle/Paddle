@@ -144,10 +144,26 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       global_scope_(global_scope),
       d2h_ctx_pool_({place}),
       h2d_ctx_pool_({place}) {
+      fetch_context_pool_({place}) {
   is_build_ = false;
   feed_names_ = feed_names;
-  fetch_names_ = fetch_names;
-  // add feedop and fetchop to main_program
+
+  // Step1: add feedop and fetchop to main_program
+  auto* fetch_holder = main_program_.MutableBlock(0)->Var("fetch_vars");
+  fetch_holder->SetType(proto::VarType::FETCH_LIST);
+  fetch_holder->SetPersistable(true);
+
+  int i = 0;
+  for (auto& fetch_name : fetch_names) {
+    // append fetch op
+    auto* op = main_program_.MutableBlock(0)->AppendOp();
+    op->SetType("fetch_v2");
+    op->SetInput("X", {fetch_name});
+    op->SetOutput("Out", {"fetch_vars"});
+    op->SetAttr("col", {static_cast<int>(i)});
+    op->CheckAttrs();
+    i++;
+  }
 
   // prune
 
@@ -156,8 +172,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   // convert to run graph
 }
 
-void InterpreterCore::Run(const std::vector<framework::Tensor>& feed_tensors,
-                          std::vector<framework::Tensor>* fetch_tensors) {
+paddle::framework::FetchList InterpreterCore::Run(
+    const std::vector<framework::Tensor>& feed_tensors) {
   if (is_build_ == false) {
     BuildVariableScope(main_program_, global_scope_);
   }
@@ -180,32 +196,8 @@ void InterpreterCore::Run(const std::vector<framework::Tensor>& feed_tensors,
     ExecuteInstructionList(vec_instruction_, *global_scope_, place_);
   }
 
-  for (size_t i = 0; i < fetch_names_.size(); ++i) {
-    auto it = global_scope_->name2id.find(fetch_names_[i]);
-    assert(it != global_scope_->name2id.end());
-    PADDLE_ENFORCE_NE(
-        it, global_scope_->name2id.end(),
-        platform::errors::NotFound(
-            "Can't find (%d) the fetch var (%s) in scope", i, fetch_names_[i]));
-
-    auto fetch_tensor =
-        global_scope_->var_list[it->second]->GetMutable<framework::LoDTensor>();
-
-    if (platform::is_gpu_place(fetch_tensor->place())) {
-      Tensor out;
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      auto* dev_ctx = pool.Get(place_);
-      dev_ctx->Wait();
-      TensorCopySync(*fetch_tensor, platform::CPUPlace(), &out);
-      dev_ctx->Wait();
-      fetch_tensors->push_back(out);
-    } else {
-      Tensor out;
-      TensorCopySync(*fetch_tensor, platform::CPUPlace(), &out);
-      fetch_tensors->push_back(out);
-    }
-  }
+  return *(global_scope_->var_list[global_scope_->name2id["fetch_vars"]]
+               ->GetMutable<framework::FetchList>());
 }
 
 void InterpreterCore::Convert() {
@@ -323,6 +315,9 @@ void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
       new RuntimeInferShapeContext(*op_base, *instr_node->runtime_ctx_.get()));
 
   auto* dev_ctx = instr_node->dev_ctx_;
+  if (instr_node->kernel_func_.operator_base_->Type() == "fetch_v2") {
+    dev_ctx = fetch_context_pool_.Get(place);
+  }
   Scope scope;
 
   instr_node->execution_ctx_.reset(new ExecutionContext(
@@ -333,6 +328,12 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   static_cast<const framework::OperatorWithKernel*>(
       instr_node.kernel_func_.operator_base_)
       ->InferShape(instr_node.infershape_ctx_.get());
+
+  if (instr_node.kernel_func_.operator_base_->Type() == "fetch_v2") {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.Get(place_);
+    dev_ctx->Wait();  // TODO(wanghuancoder)
+  }
 
   instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
@@ -380,6 +381,8 @@ void InterpreterCore::ExecuteInstructionList(
       --working_var_ref[var_id].var_ref_count_;
     }
   }
+
+  fetch_context_pool_.Get(place)->Wait();
 
   for (size_t i = 0; i < working_var_ref.size(); ++i) {
     if (working_var_ref[i].var_ref_count_ != 0) {

@@ -251,7 +251,10 @@ class TestRMSPropV2(XPUOpTest):
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
             avg_cost = fluid.layers.mean(cost)
 
-            rms_optimizer = paddle.optimizer.RMSProp(learning_rate=0.1)
+            print(avg_cost.shape)
+            linear = paddle.nn.Linear(13, 5)
+            rms_optimizer = paddle.optimizer.RMSProp(
+                learning_rate=0.1, parameters=linear.parameters())
             rms_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
