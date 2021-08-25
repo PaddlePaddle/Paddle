@@ -43,7 +43,6 @@ def _update_dims_mapping_for_matmul(op_dist_attr):
     y_dims_mapping_len = len(y_dims_mapping)
     out_dims_mapping_len = len(out_dims_mapping)
 
-    # print("before", x_dims_mapping, y_dims_mapping, out_dims_mapping)
     # Add dim mapping to Make sure the length dims_mapping be at least 2
     if x_dims_mapping_len == 1:
         x_dims_mapping.insert(0, -1)
@@ -115,7 +114,6 @@ def _update_dims_mapping_for_matmul(op_dist_attr):
     if y_dims_mapping_len == 1:
         y_dims_mapping.pop(1)
 
-    # print("after", x_dims_mapping, y_dims_mapping, out_dims_mapping)
     assert len(x_dims_mapping) == x_dims_mapping_len
     assert len(y_dims_mapping) == y_dims_mapping_len
     assert len(out_dims_mapping) == out_dims_mapping_len
@@ -216,7 +214,6 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                                           process_mesh.topology,
                                           model_parallel_axis, rank_id)
             group = new_process_group(group_ranks)
-            # print("@@@@@@@@@@@@@@@@@@@@@ 5", group)
 
             intermediate_var_0 = dst_block.create_var(
                 name=unique_name.generate_with_ignorable_key(".".join(
@@ -353,7 +350,6 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                                           process_mesh.topology,
                                           model_parallel_axis, rank_id)
             group = new_process_group(group_ranks)
-            # print("@@@@@@@@@@@@@@@@@@@@@ 4", group)
 
             check_variable_and_dtype(
                 X_var, 'x', ['float16', 'float32', 'float64'], 'linear')

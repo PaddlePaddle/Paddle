@@ -147,8 +147,6 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
             # got dist attribute info
             dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
             process_mesh_shape = op_dist_attr.get_process_mesh().topology
-            # print("######" * 60)
-            # print("process_mesh_shape: ", process_mesh_shape)
 
             # modify target shape
             for idx, axis in enumerate(dim_mapping):
