@@ -35,6 +35,7 @@ class Record {
   std::vector<float> data;
   std::vector<int32_t> shape;
   paddle::PaddleDType type;
+  int label;
 };
 
 std::string read_file(std::string filename) {

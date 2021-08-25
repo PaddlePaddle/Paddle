@@ -395,6 +395,31 @@ def is_compiled_with_xpu():
     return core.is_compiled_with_xpu()
 
 
+def disable_signal_handler():
+    """
+    Reset signal handler registered by Paddle.
+
+    Paddle installs signal handlers at C++ level to log debug information upon failing.
+    However, conflicts can happen if another python module is making use of such signal.
+    Such being the case, one may disblae paddle signal handler via this interface.
+    
+    Known frameworks that require disabling signal handler includes:
+    1. TVM
+    2. ADLIK
+
+    Make sure you called paddle.disable_signal_handler() before using above mentioned frameworks.
+
+    Returns: None 
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.disable_signal_handler()
+    """
+    core.disable_signal_handler()
+
+
 def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
@@ -1198,6 +1223,14 @@ class Variable(object):
 
         if self.persistable:
             var_str = "persist " + var_str
+
+        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        dist_context = get_default_distributed_context()
+        var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+            self)
+        if var_dist_attr is not None:
+            var_str += ", {name} = {value}".format(
+                name="dist_attr", value=var_dist_attr)
 
         return var_str
 
@@ -2358,6 +2391,13 @@ class Operator(object):
             attrs_str += a
             if i != len(attr_names) - 1:
                 attrs_str += ", "
+
+        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        dist_context = get_default_distributed_context()
+        op_dist_attr = dist_context.get_op_distributed_attr_for_program(self)
+        if op_dist_attr is not None:
+            attrs_str += ", {name} = {value}".format(
+                name="dist_attr", value=op_dist_attr)
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\

@@ -32,13 +32,12 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     auto force_cpu = ctx.Attr<bool>("force_cpu");
 
     auto *out = ctx.Output<Tensor>("Out");
-    auto *input = ctx.Input<Tensor>("Input");
-    if (&ctx.Attr<int>("input_dim_idx") == 0) {
-      // set the correct batch size.
+    auto *in = ctx.Input<framework::LoDTensor>("Input");
+    if (in->lod().size() && ctx.Attr<int>("input_dim_idx") == 0) {
+      // set the correct batch size for the LoDTensor.
       auto odims = out->dims();
-      int input_dim_idx = ctx.Attr<int>("input_dim_idx");
       int output_dim_idx = ctx.Attr<int>("output_dim_idx");
-      odims[output_dim_idx] = input->dims()[input_dim_idx];
+      odims[output_dim_idx] = static_cast<int>(in->lod().back().size()) - 1;
       out->mutable_data<T>(odims, ctx.GetPlace());
     }
 
@@ -46,15 +45,24 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     if (str_value.empty()) {
       value = static_cast<T>(float_value);
     } else {
-      std::stringstream convert_stream(str_value);
-      if (std::is_same<int64_t, T>::value) {
-        int64_t tmp_value;
-        convert_stream >> tmp_value;
-        value = static_cast<T>(tmp_value);
+      // handle NaN/Inf first, which cannot be read from stream.
+      if (str_value == "inf") {
+        value = static_cast<T>(std::numeric_limits<double>::infinity());
+      } else if (str_value == "-inf") {
+        value = static_cast<T>(-std::numeric_limits<double>::infinity());
+      } else if (str_value == "nan") {
+        value = static_cast<T>(std::numeric_limits<double>::quiet_NaN());
       } else {
-        double tmp_value;
-        convert_stream >> tmp_value;
-        value = static_cast<T>(tmp_value);
+        std::stringstream convert_stream(str_value);
+        if (std::is_same<int64_t, T>::value) {
+          int64_t tmp_value;
+          convert_stream >> tmp_value;
+          value = static_cast<T>(tmp_value);
+        } else {
+          double tmp_value;
+          convert_stream >> tmp_value;
+          value = static_cast<T>(tmp_value);
+        }
       }
     }
 

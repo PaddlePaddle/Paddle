@@ -35,6 +35,14 @@ class MatMulV2Op : public framework::OperatorWithKernel {
         paddle::framework::vectorize(ctx->GetInputDim("Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
+    PADDLE_ENFORCE_GT(ndims_x, 0,
+                      platform::errors::InvalidArgument(
+                          "The Input(X) dims size must be greater than 0,"
+                          " but reviced dims size is 0. "));
+    PADDLE_ENFORCE_GT(ndims_y, 0,
+                      platform::errors::InvalidArgument(
+                          "The Input(Y) dims size must be greater than 0,"
+                          " but reviced dims size is 0. "));
 
     bool x_broadcasted = false, y_broadcasted = false;
     if (ndims_x == 1) {
