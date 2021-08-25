@@ -132,7 +132,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
     VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
             << platform::is_gpu_place(tensor->place());
 
-    //TODO: zcb del this later
+    // TODO: zcb del this later
     float *temp_recv_data = tensor->mutable_data<float>(platform::CPUPlace());
     VLOG(1) << "AsyncCommunicator::RpcRecvDense Var " << t << " table_id "
             << table_id << " Temp_data[0] " << temp_recv_data[0]
@@ -594,7 +594,7 @@ AsyncCommunicator::~AsyncCommunicator() {
   running_ = false;
   if (main_thread_) main_thread_->join();
   if (recv_thread_) recv_thread_->join();
-  std::cout << "zcb debug async comm deconstructor";
+  VLOG(3) << "zcb debug async comm deconstructor";
 }
 
 void AsyncCommunicator::Start() {
@@ -620,7 +620,7 @@ void AsyncCommunicator::Start() {
 void AsyncCommunicator::Stop() {
   VLOG(0) << "Communicator stop begin";
   _worker_ptr->finalize_worker();
-  VLOG(0) << "client finalize_worker done"; 
+  VLOG(0) << "client finalize_worker done";
   running_ = false;
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";

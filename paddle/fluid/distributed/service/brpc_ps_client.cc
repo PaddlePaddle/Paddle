@@ -16,9 +16,9 @@
 #include <sstream>
 #include <string>
 
+#include "paddle/fluid/distributed/common/thread_pool.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/distributed/common/thread_pool.h"
 
 const static int max_port = 65535;
 
@@ -53,10 +53,14 @@ DEFINE_int32(pserver_connect_timeout_ms, 10000,
 
 DEFINE_int32(pserver_sparse_merge_thread, 1, "pserver sparse merge thread num");
 DEFINE_int32(pslib_max_async_call_num, 13, "max task num in async_call_server");
-DEFINE_int32(pslib_sparse_table_shard_num, 1000, "sparse table shard for save & load");
-DEFINE_int32(pslib_push_dense_merge_limit, 12, "limit max push_dense local merge requests");
-DEFINE_bool(pslib_scale_gradient_by_merge, false, "scale dense gradient when merged");
-DEFINE_int32(pslib_async_push_dense_interval_ms, 10, "async push_dense to server interval");
+DEFINE_int32(pslib_sparse_table_shard_num, 1000,
+             "sparse table shard for save & load");
+DEFINE_int32(pslib_push_dense_merge_limit, 12,
+             "limit max push_dense local merge requests");
+DEFINE_bool(pslib_scale_gradient_by_merge, false,
+            "scale dense gradient when merged");
+DEFINE_int32(pslib_async_push_dense_interval_ms, 10,
+             "async push_dense to server interval");
 
 namespace paddle {
 namespace framework {
@@ -196,22 +200,24 @@ int32_t BrpcPsClient::initialize() {
     auto type = worker_param.downpour_table_param(i).type();
     auto table_id = worker_param.downpour_table_param(i).table_id();
     if (type == PS_DENSE_TABLE) {
-        _push_dense_task_queue_map[table_id] = std::make_shared<DenseAsyncTaskQueue>();
+      _push_dense_task_queue_map[table_id] =
+          std::make_shared<DenseAsyncTaskQueue>();
     }
     if (type == PS_SPARSE_TABLE) {
-        _push_sparse_task_queue_map[table_id] = std::make_shared<SparseAsyncTaskQueue>();
-        _push_sparse_merge_count_map[table_id] = 0;
+      _push_sparse_task_queue_map[table_id] =
+          std::make_shared<SparseAsyncTaskQueue>();
+      _push_sparse_merge_count_map[table_id] = 0;
     }
   }
 
   _running = true;
   _flushing = false;
   //启动异步push线程
-  _async_push_sparse_thread = std::thread(
-          std::bind(&BrpcPsClient::push_sparse_task_consume, this));
+  _async_push_sparse_thread =
+      std::thread(std::bind(&BrpcPsClient::push_sparse_task_consume, this));
   //_async_push_sparse_thread.detach();
-  _async_push_dense_thread = std::thread(
-          std::bind(&BrpcPsClient::push_dense_task_consume, this));
+  _async_push_dense_thread =
+      std::thread(std::bind(&BrpcPsClient::push_dense_task_consume, this));
   return 0;
 }
 
@@ -300,6 +306,7 @@ std::future<int32_t> BrpcPsClient::print_table_stat(uint32_t table_id) {
 std::future<int32_t> BrpcPsClient::send_cmd(
     uint32_t table_id, int cmd_id, const std::vector<std::string> &params) {
   size_t request_call_num = _server_channels.size();
+  std::cout << "begin to send cmd_id = " << cmd_id << std::endl;
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [request_call_num, cmd_id](void *done) {
         int ret = 0;
@@ -368,6 +375,7 @@ std::future<int32_t> BrpcPsClient::send_save_cmd(
     rpc_stub.service(closure->cntl(i), closure->request(i),
                      closure->response(i), closure);
   }
+  std::cout << "cmd_id = " << cmd_id << "is sent" << std::endl;
   return fut;
 }
 
@@ -1034,51 +1042,56 @@ int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
   return 0;
 }
 
-std::future<int32_t> BrpcPsClient::push_sparse(
-  size_t table_id, const uint64_t* keys, const float** update_values, size_t num) {
-  
-  auto push_timer = std::make_shared<CostTimer>("pslib_downpour_client_push_sparse_parse");
+std::future<int32_t> BrpcPsClient::push_sparse(size_t table_id,
+                                               const uint64_t *keys,
+                                               const float **update_values,
+                                               size_t num) {
+  auto push_timer =
+      std::make_shared<CostTimer>("pslib_downpour_client_push_sparse_parse");
   int push_sparse_async_num = _push_sparse_task_queue_map[table_id]->size();
   while (push_sparse_async_num > FLAGS_pslib_max_async_call_num) {
-    //LOG(INFO) << "push_sparse Waiting for async_call_num comsume, task_num:"
-    //    << push_sparse_async_num << ", max_task_limit:" << FLAGS_pslib_max_async_call_num;
-    usleep(5000);//5ms
+    // LOG(INFO) << "push_sparse Waiting for async_call_num comsume, task_num:"
+    //    << push_sparse_async_num << ", max_task_limit:" <<
+    //    FLAGS_pslib_max_async_call_num;
+    usleep(5000);  // 5ms
     push_sparse_async_num = _push_sparse_task_queue_map[table_id]->size();
   }
-  thread_local std::vector<std::vector<std::pair<uint64_t, const float*>>> shard_sorted_kv_list;
-  auto* accessor = table_accessor(table_id);
+  thread_local std::vector<std::vector<std::pair<uint64_t, const float *>>>
+      shard_sorted_kv_list;
+  auto *accessor = table_accessor(table_id);
   size_t request_call_num = _server_channels.size();
   shard_sorted_kv_list.resize(request_call_num);
-  for (auto& x : shard_sorted_kv_list) {
+  for (auto &x : shard_sorted_kv_list) {
     x.clear();
   }
-  const auto& server_param = _config.server_param().downpour_server_param();
+  const auto &server_param = _config.server_param().downpour_server_param();
   uint64_t shard_num = FLAGS_pslib_sparse_table_shard_num;
   for (int i = 0; i < server_param.downpour_table_param_size(); ++i) {
-    const auto& table_param = server_param.downpour_table_param(i);
+    const auto &table_param = server_param.downpour_table_param(i);
     if (table_param.table_id() == table_id) {
       shard_num = table_param.shard_num();
       break;
     }
   }
   for (size_t i = 0; i < num; ++i) {
-    //size_t shard_id = get_sparse_shard(
+    // size_t shard_id = get_sparse_shard(
     //    shard_num, request_call_num, keys[i]);
     size_t shard_id = keys[i] % request_call_num;
     shard_sorted_kv_list[shard_id].push_back({keys[i], update_values[i]});
-    //std::cout << "zcb client push_sparse(): " << keys[i] << " -> " << shard_id << "\n";
+    // std::cout << "zcb client push_sparse(): " << keys[i] << " -> " <<
+    // shard_id << "\n";
   }
   auto sparse_task_data = _sparse_task_pool.get();
   sparse_task_data->shared_data.resize(request_call_num);
   auto async_task = new SparseAsyncTask(sparse_task_data, table_id, push_timer);
 
   for (size_t i = 0; i < request_call_num; ++i) {
-    auto& sorted_kv_list = shard_sorted_kv_list[i];
+    auto &sorted_kv_list = shard_sorted_kv_list[i];
     size_t sorted_kv_size = sorted_kv_list.size();
-    auto& shard_kv_data = async_task->data()->shared_data[i];
+    auto &shard_kv_data = async_task->data()->shared_data[i];
     shard_kv_data.key_list.resize(sorted_kv_size);
     shard_kv_data.value_list.resize(sorted_kv_size);
-    
+
     if (sorted_kv_size == 0) {
       shard_kv_data.kv_num = 0;
       continue;
@@ -1088,7 +1101,7 @@ std::future<int32_t> BrpcPsClient::push_sparse(
     for (size_t kv_idx = 0; kv_idx < sorted_kv_size; ++kv_idx) {
       shard_kv_data.key_list[kv_idx] = sorted_kv_list[kv_idx].first;
       shard_kv_data.value_list[kv_idx].assign(
-          (const char*)sorted_kv_list[kv_idx].second, value_size);
+          (const char *)sorted_kv_list[kv_idx].second, value_size);
     }
     shard_kv_data.kv_num = sorted_kv_size;
   }
@@ -1100,18 +1113,19 @@ std::future<int32_t> BrpcPsClient::push_sparse(
 
 void BrpcPsClient::push_sparse_task_consume() {
   uint64_t merge_size = FLAGS_pserver_push_sparse_merge_limit;
-  //std::cout << "zcb merge_size: " << merge_size << "\n";
+  // std::cout << "zcb merge_size: " << merge_size << "\n";
   std::vector<std::shared_ptr<SparseAsyncTask>> task_list;
   size_t request_call_num = _server_channels.size();
-  ThreadPool<int> async_push_sparse_shard_threads(FLAGS_pserver_sparse_merge_thread);
+  ThreadPool<int> async_push_sparse_shard_threads(
+      FLAGS_pserver_sparse_merge_thread);
   while (_running) {
     platform::Timer timeline;
     timeline.Start();
     //所有sparseTable的pushTask 进行处理
-    for (auto& push_sparse_task_itr : _push_sparse_task_queue_map) {
+    for (auto &push_sparse_task_itr : _push_sparse_task_queue_map) {
       auto table_id = push_sparse_task_itr.first;
-      auto* accessor = table_accessor(table_id);
-      auto& task_queue = push_sparse_task_itr.second;
+      auto *accessor = table_accessor(table_id);
+      auto &task_queue = push_sparse_task_itr.second;
       auto queue_size = task_queue->size();
       if (queue_size == 0) {
         continue;
@@ -1120,7 +1134,7 @@ void BrpcPsClient::push_sparse_task_consume() {
         continue;
       }
       ++_async_call_num;
-      
+
       int merge_count = 0;
       for (size_t i = 0; i < task_list.size(); ++i) {
         if (task_list[i]->data()) {
@@ -1128,62 +1142,70 @@ void BrpcPsClient::push_sparse_task_consume() {
         }
       }
       auto sparse_task_data = _sparse_task_pool.get();
-      
+
       task_list.clear();
       int cur_meger_size = task_queue->size();
 
-      //task_list[0] 为一个空SparseAsyncTask, 分shard异步merge结果存入此结构。
-      //auto sparse_task_data = _sparse_push_obj_pool.get();
-      //auto sparse_task_data = std::make_shared<SparsePushTaskData>();
+      // task_list[0] 为一个空SparseAsyncTask, 分shard异步merge结果存入此结构。
+      // auto sparse_task_data = _sparse_push_obj_pool.get();
+      // auto sparse_task_data = std::make_shared<SparsePushTaskData>();
       sparse_task_data->shared_data.resize(request_call_num);
-      auto push_timer = std::make_shared<CostTimer>("pslib_downpour_client_push_sparse");
+      auto push_timer =
+          std::make_shared<CostTimer>("pslib_downpour_client_push_sparse");
 
-      auto async_task = new SparseAsyncTask(sparse_task_data, table_id, push_timer);
+      auto async_task =
+          new SparseAsyncTask(sparse_task_data, table_id, push_timer);
 
       task_list.reserve(cur_meger_size + 1);
 
-      task_list.push_back(std::move(std::shared_ptr<SparseAsyncTask>(async_task)));
+      task_list.push_back(
+          std::move(std::shared_ptr<SparseAsyncTask>(async_task)));
 
       while (!task_queue->empty() && merge_count < cur_meger_size) {
         ++merge_count;
-        task_list.push_back(std::shared_ptr<SparseAsyncTask>(task_queue->pop()));
+        task_list.push_back(
+            std::shared_ptr<SparseAsyncTask>(task_queue->pop()));
       }
-      
+
       _push_sparse_merge_count_map[table_id] += merge_count;
 
       //达到或大于 merge_size发送, 发送过程中
       std::vector<int> request_kv_num(request_call_num, 0);
 
-      if (_push_sparse_merge_count_map[table_id] >= merge_size || _flushing == true) {
-        DownpourBrpcClosure* closure = new DownpourBrpcClosure(request_call_num,
-            [this, request_call_num](void* done) {
-            int ret = 0;
-            auto* closure = (DownpourBrpcClosure*)done;
-            for (size_t i = 0; i < request_call_num; ++i) {
-              if (closure->check_response(i, PS_PUSH_SPARSE_TABLE) != 0) {
-                ret = -1;
-                break;
+      if (_push_sparse_merge_count_map[table_id] >= merge_size ||
+          _flushing == true) {
+        DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+            request_call_num, [this, request_call_num](void *done) {
+              int ret = 0;
+              auto *closure = (DownpourBrpcClosure *)done;
+              for (size_t i = 0; i < request_call_num; ++i) {
+                if (closure->check_response(i, PS_PUSH_SPARSE_TABLE) != 0) {
+                  ret = -1;
+                  break;
+                }
               }
-            }
-            closure->set_promise_value(ret);
-            --_async_call_num;
-        });
-        
-        for_each(task_list.begin() + 1, task_list.end(), 
-            [&request_kv_num, request_call_num, closure] (std::shared_ptr<SparseAsyncTask>& task) {
-            //closure->add_timer(task->timer());
-            closure->add_promise(task->promise());
-        });
+              closure->set_promise_value(ret);
+              --_async_call_num;
+            });
 
-        //CostTimer merge_timer("pslib_downpour_client_push_sparse_merge");
-        //auto rpc_timer = std::make_shared<CostTimer>("pslib_downpour_client_push_sparse_rpc");
-        //closure->add_timer(rpc_timer);
-        
+        for_each(task_list.begin() + 1, task_list.end(),
+                 [&request_kv_num, request_call_num,
+                  closure](std::shared_ptr<SparseAsyncTask> &task) {
+                   // closure->add_timer(task->timer());
+                   closure->add_promise(task->promise());
+                 });
+
+        // CostTimer merge_timer("pslib_downpour_client_push_sparse_merge");
+        // auto rpc_timer =
+        // std::make_shared<CostTimer>("pslib_downpour_client_push_sparse_rpc");
+        // closure->add_timer(rpc_timer);
+
         std::vector<std::future<int>> merge_status(request_call_num);
         for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
-          merge_status[shard_idx] = async_push_sparse_shard_threads.AddTask(
-                std::bind(&BrpcPsClient::push_sparse_async_shard_push, this,
-                task_list, request_kv_num, table_id, shard_idx, closure, accessor));
+          merge_status[shard_idx] =
+              async_push_sparse_shard_threads.AddTask(std::bind(
+                  &BrpcPsClient::push_sparse_async_shard_push, this, task_list,
+                  request_kv_num, table_id, shard_idx, closure, accessor));
         }
         for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
           merge_status[shard_idx].wait();
@@ -1199,15 +1221,16 @@ void BrpcPsClient::push_sparse_task_consume() {
       else {
         std::vector<std::future<int>> merge_status(request_call_num);
         for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
-          merge_status[shard_idx] = async_push_sparse_shard_threads.AddTask(
-                std::bind(&BrpcPsClient::push_sparse_async_shard_merge, this,
-                task_list, request_kv_num, table_id, shard_idx, accessor));
+          merge_status[shard_idx] =
+              async_push_sparse_shard_threads.AddTask(std::bind(
+                  &BrpcPsClient::push_sparse_async_shard_merge, this, task_list,
+                  request_kv_num, table_id, shard_idx, accessor));
         }
         for (int shard_idx = 0; shard_idx < request_call_num; ++shard_idx) {
           merge_status[shard_idx].wait();
         }
-        //meger到task_list[0]
-        
+        // meger到task_list[0]
+
         auto async_task = new SparseAsyncTask(*(task_list[0].get()));
 
         task_queue->push(std::move(async_task));
@@ -1216,337 +1239,381 @@ void BrpcPsClient::push_sparse_task_consume() {
         std::vector<std::future<int>>().swap(merge_status);
       }
     }
-    auto wait_ms = FLAGS_pserver_async_push_sparse_interval_ms - 
-        (timeline.ElapsedMS());
+    auto wait_ms =
+        FLAGS_pserver_async_push_sparse_interval_ms - (timeline.ElapsedMS());
     if (wait_ms > 0) {
-      usleep(wait_ms * 1000); 
+      usleep(wait_ms * 1000);
     }
   }
 }
 
-void sparse_local_merge(ValueAccessor* accessor, float* merge_data, const float* another_data) {
-    size_t col_num = accessor->update_size() / sizeof(float);
-    float* merge_data_shell[col_num];
-    const float* another_data_shell[col_num];
-    for (int i = 0; i < col_num; ++i) {
-        merge_data_shell[i] = merge_data + i;
-        another_data_shell[i] = another_data + i;
-    }
-    accessor->merge(merge_data_shell, another_data_shell, 1);
+void sparse_local_merge(ValueAccessor *accessor, float *merge_data,
+                        const float *another_data) {
+  size_t col_num = accessor->update_size() / sizeof(float);
+  float *merge_data_shell[col_num];
+  const float *another_data_shell[col_num];
+  for (int i = 0; i < col_num; ++i) {
+    merge_data_shell[i] = merge_data + i;
+    another_data_shell[i] = another_data + i;
+  }
+  accessor->merge(merge_data_shell, another_data_shell, 1);
 }
 
 int BrpcPsClient::push_sparse_async_shard_merge(
-        std::vector<std::shared_ptr<SparseAsyncTask>>& task_list, 
-        std::vector<int>& request_kv_num, int table_id, int shard_idx, ValueAccessor* accessor) {
-    size_t merged_kv_count = 0;
-    uint64_t min_key = UINT64_MAX;
-    uint32_t value_size = accessor->update_size();
+    std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,
+    std::vector<int> &request_kv_num, int table_id, int shard_idx,
+    ValueAccessor *accessor) {
+  size_t merged_kv_count = 0;
+  uint64_t min_key = UINT64_MAX;
+  uint32_t value_size = accessor->update_size();
 
-    thread_local std::vector<std::pair<uint64_t, const float*>> sorted_kv_list;
-    sorted_kv_list.clear();
-    for (int i = 1; i < task_list.size(); ++i) {
-        size_t kv_num = task_list[i]->data()->shared_data[shard_idx].kv_num;
-        auto& key_list = task_list[i]->data()->shared_data[shard_idx].key_list;
-        auto& value_list = task_list[i]->data()->shared_data[shard_idx].value_list;
+  thread_local std::vector<std::pair<uint64_t, const float *>> sorted_kv_list;
+  sorted_kv_list.clear();
+  for (int i = 1; i < task_list.size(); ++i) {
+    size_t kv_num = task_list[i]->data()->shared_data[shard_idx].kv_num;
+    auto &key_list = task_list[i]->data()->shared_data[shard_idx].key_list;
+    auto &value_list = task_list[i]->data()->shared_data[shard_idx].value_list;
 
-        for (int j = 0; j < kv_num; ++j) {
-            if (value_list[j].size() < value_size) {
-                LOG(WARNING) << "value_list[" << j << "]: " << value_list[j].c_str() << "is invalid.";
-                continue;
-            }
-            char* task_data_ptr = const_cast<char*>(value_list[j].data());
-            sorted_kv_list.push_back({key_list[j], (float*)task_data_ptr});
-        }
+    for (int j = 0; j < kv_num; ++j) {
+      if (value_list[j].size() < value_size) {
+        LOG(WARNING) << "value_list[" << j << "]: " << value_list[j].c_str()
+                     << "is invalid.";
+        continue;
+      }
+      char *task_data_ptr = const_cast<char *>(value_list[j].data());
+      sorted_kv_list.push_back({key_list[j], (float *)task_data_ptr});
     }
-  
-    //按key排序&去重
-    std::sort(sorted_kv_list.begin(), sorted_kv_list.end(), 
-            [](const std::pair<uint64_t, const float*>& k1, 
-            const std::pair<uint64_t, const float*>& k2) {
-            return k1.first < k2.first;
-    });
+  }
 
-    auto& async_task = task_list[0];
-    size_t sorted_kv_size = sorted_kv_list.size();
-    auto& shard_kv_data = async_task->data()->shared_data[shard_idx];
-    shard_kv_data.key_list.resize(sorted_kv_size);
-    shard_kv_data.value_list.resize(sorted_kv_size);
-    
-    //将去重后数据写入分shard包
-    if (sorted_kv_size == 0) {
-        shard_kv_data.kv_num = 0;
-        return 0;
-    } else if (sorted_kv_size == 1) {
-        shard_kv_data.kv_num = 1;
-        shard_kv_data.key_list[0] = sorted_kv_list[0].first;
-        shard_kv_data.value_list[0].assign((const char*)(sorted_kv_list[0].second), value_size);
-        return 0;
-    }
+  //按key排序&去重
+  std::sort(sorted_kv_list.begin(), sorted_kv_list.end(),
+            [](const std::pair<uint64_t, const float *> &k1,
+               const std::pair<uint64_t, const float *> &k2) {
+              return k1.first < k2.first;
+            });
 
-    //去重 本地merge
-    uint64_t last_key = sorted_kv_list[0].first;
-    const float* last_value_data = sorted_kv_list[0].second;
-    float* last_merge_data = NULL;
-    std::shared_ptr<char> merger_buffer(
-        new char[value_size], array_deleter<char>());
-    for (size_t kv_idx = 1; kv_idx < sorted_kv_size; ++kv_idx) {
-        while (kv_idx < sorted_kv_size && last_key == sorted_kv_list[kv_idx].first) {
-            if (last_merge_data == NULL) {
-                last_merge_data = (float*)merger_buffer.get();
-                memcpy(last_merge_data, last_value_data, value_size);
-            }
-            sparse_local_merge(accessor, last_merge_data, sorted_kv_list[kv_idx].second);
-            ++kv_idx;
-        }
-        if (last_merge_data != NULL) {
-            shard_kv_data.value_list[merged_kv_count].assign(
-                (const char*)last_merge_data, value_size);
-            last_merge_data = NULL; 
-        } else {
-            shard_kv_data.value_list[merged_kv_count].assign(
-                (const char*)sorted_kv_list[kv_idx - 1].second, value_size);
-        }
-        shard_kv_data.key_list[merged_kv_count++] = last_key;
-        if (kv_idx < sorted_kv_size) {
-            last_key = sorted_kv_list[kv_idx].first;
-            last_value_data = sorted_kv_list[kv_idx].second;
-        }
-        if (kv_idx == sorted_kv_size - 1) {
-            shard_kv_data.value_list[merged_kv_count].assign(
-                (const char*)last_value_data, value_size);
-            shard_kv_data.key_list[merged_kv_count++] = last_key;
-        }
-    }
-    shard_kv_data.kv_num = merged_kv_count;
+  auto &async_task = task_list[0];
+  size_t sorted_kv_size = sorted_kv_list.size();
+  auto &shard_kv_data = async_task->data()->shared_data[shard_idx];
+  shard_kv_data.key_list.resize(sorted_kv_size);
+  shard_kv_data.value_list.resize(sorted_kv_size);
+
+  //将去重后数据写入分shard包
+  if (sorted_kv_size == 0) {
+    shard_kv_data.kv_num = 0;
     return 0;
-}
+  } else if (sorted_kv_size == 1) {
+    shard_kv_data.kv_num = 1;
+    shard_kv_data.key_list[0] = sorted_kv_list[0].first;
+    shard_kv_data.value_list[0].assign((const char *)(sorted_kv_list[0].second),
+                                       value_size);
+    return 0;
+  }
 
+  //去重 本地merge
+  uint64_t last_key = sorted_kv_list[0].first;
+  const float *last_value_data = sorted_kv_list[0].second;
+  float *last_merge_data = NULL;
+  std::shared_ptr<char> merger_buffer(new char[value_size],
+                                      array_deleter<char>());
+  for (size_t kv_idx = 1; kv_idx < sorted_kv_size; ++kv_idx) {
+    while (kv_idx < sorted_kv_size &&
+           last_key == sorted_kv_list[kv_idx].first) {
+      if (last_merge_data == NULL) {
+        last_merge_data = (float *)merger_buffer.get();
+        memcpy(last_merge_data, last_value_data, value_size);
+      }
+      sparse_local_merge(accessor, last_merge_data,
+                         sorted_kv_list[kv_idx].second);
+      ++kv_idx;
+    }
+    if (last_merge_data != NULL) {
+      shard_kv_data.value_list[merged_kv_count].assign(
+          (const char *)last_merge_data, value_size);
+      last_merge_data = NULL;
+    } else {
+      shard_kv_data.value_list[merged_kv_count].assign(
+          (const char *)sorted_kv_list[kv_idx - 1].second, value_size);
+    }
+    shard_kv_data.key_list[merged_kv_count++] = last_key;
+    if (kv_idx < sorted_kv_size) {
+      last_key = sorted_kv_list[kv_idx].first;
+      last_value_data = sorted_kv_list[kv_idx].second;
+    }
+    if (kv_idx == sorted_kv_size - 1) {
+      shard_kv_data.value_list[merged_kv_count].assign(
+          (const char *)last_value_data, value_size);
+      shard_kv_data.key_list[merged_kv_count++] = last_key;
+    }
+  }
+  shard_kv_data.kv_num = merged_kv_count;
+  return 0;
+}
 
 int BrpcPsClient::push_sparse_async_shard_push(
-        std::vector<std::shared_ptr<SparseAsyncTask>>& task_list, 
-        std::vector<int>& request_kv_num, int table_id, int shard_idx,
-        DownpourBrpcClosure* closure, ValueAccessor* accessor) {
+    std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,
+    std::vector<int> &request_kv_num, int table_id, int shard_idx,
+    DownpourBrpcClosure *closure, ValueAccessor *accessor) {
+  push_sparse_async_shard_merge(task_list, request_kv_num, table_id, shard_idx,
+                                accessor);
+  size_t merged_kv_count = task_list[0]->data()->shared_data[shard_idx].kv_num;
 
-    push_sparse_async_shard_merge(task_list, request_kv_num, table_id, shard_idx, accessor);
-    size_t merged_kv_count = task_list[0]->data()->shared_data[shard_idx].kv_num;
+  // thread_local std::vector<uint64_t> merged_key_list;
+  // thread_local std::vector<float*> merged_value_list;
+  // thread_local std::vector<std::string> merged_value_list;
+  auto &merged_key_list = task_list[0]->data()->shared_data[shard_idx].key_list;
+  auto &merged_value_list =
+      task_list[0]->data()->shared_data[shard_idx].value_list;
 
-    //thread_local std::vector<uint64_t> merged_key_list;
-    //thread_local std::vector<float*> merged_value_list;
-    //thread_local std::vector<std::string> merged_value_list;
-    auto& merged_key_list = task_list[0]->data()->shared_data[shard_idx].key_list;
-    auto& merged_value_list = task_list[0]->data()->shared_data[shard_idx].value_list;
-      
-    //merged_key_list.resize(request_kv_num[shard_idx]);
-    //merged_value_list.resize(request_kv_num[shard_idx]);
-    
-    //for debug zcb
+  // merged_key_list.resize(request_kv_num[shard_idx]);
+  // merged_value_list.resize(request_kv_num[shard_idx]);
+
+  // for debug zcb
+  /*
+  for (int i = 0; i < task_list.size(); ++ i) {
+      size_t kv_n = task_list[i]->data()->shared_data[shard_idx].kv_num;
+      auto& kv_k = task_list[i]->data()->shared_data[shard_idx].key_list;
+      auto& kv_v = task_list[i]->data()->shared_data[shard_idx].value_list;
+
+      if (kv_n > 0) {
+          for (int k = 0; k < kv_n; ++ k) {
+              float* task_v_ptr = (float*)kv_v[k].data();
+              std::cout << "key: " << k << "\n";
+              for (int j = 0; j < (accessor->update_size() / 4); ++ j) {
+                  std::cout << task_v_ptr[j] << " ";
+              }
+              std::cout << "\n";
+          }
+      }
+  }*/
+
+  //发送RPC请求
+  auto *push_request = closure->request(shard_idx);
+  push_request->set_cmd_id(PS_PUSH_SPARSE_TABLE);
+  push_request->set_table_id(table_id);
+  push_request->set_client_id(_client_id);
+  push_request->add_params((char *)&merged_kv_count, sizeof(uint32_t));
+  auto *push_data = push_request->mutable_data();
+  push_data->resize(merged_kv_count *
+                    (sizeof(uint64_t) + accessor->update_size()));
+  char *push_data_ptr = const_cast<char *>(push_data->data());
+  memcpy(push_data_ptr, merged_key_list.data(),
+         merged_kv_count * sizeof(uint64_t));
+  push_data_ptr += merged_kv_count * sizeof(uint64_t);
+  for (int i = 0; i < merged_kv_count; ++i) {
+    const char *task_data_ptr = merged_value_list[i].data();
+
+    memcpy(push_data_ptr, (float *)task_data_ptr, accessor->update_size());
+    // zcb
     /*
-    for (int i = 0; i < task_list.size(); ++ i) {
-        size_t kv_n = task_list[i]->data()->shared_data[shard_idx].kv_num;
-        auto& kv_k = task_list[i]->data()->shared_data[shard_idx].key_list;
-        auto& kv_v = task_list[i]->data()->shared_data[shard_idx].value_list;
-        
-        if (kv_n > 0) {
-            for (int k = 0; k < kv_n; ++ k) {
-                float* task_v_ptr = (float*)kv_v[k].data();
-                std::cout << "key: " << k << "\n";
-                for (int j = 0; j < (accessor->update_size() / 4); ++ j) {
-                    std::cout << task_v_ptr[j] << " ";
-                }
-                std::cout << "\n";
-            }
-        }
-    }*/
+    std::cout << "zcb task data: ";
+    float* test_task = (float*)task_data_ptr;
+    for (int j = 0; j < accessor->update_size() / 4; ++ j)
+        std::cout << test_task[j] << " ";
+    std::cout << "\n";*/
 
-    //发送RPC请求
-    auto* push_request = closure->request(shard_idx);
-    push_request->set_cmd_id(PS_PUSH_SPARSE_TABLE);
-    push_request->set_table_id(table_id);
-    push_request->set_client_id(_client_id);
-    push_request->add_params((char*)&merged_kv_count, sizeof(uint32_t));
-    auto* push_data = push_request->mutable_data();
-    push_data->resize(merged_kv_count * (sizeof(uint64_t) + accessor->update_size()));
-    char* push_data_ptr = const_cast<char*>(push_data->data());
-    memcpy(push_data_ptr, merged_key_list.data(), merged_kv_count * sizeof(uint64_t));
-    push_data_ptr += merged_kv_count * sizeof(uint64_t);
-    for (int i = 0; i < merged_kv_count; ++i) {
-        const char* task_data_ptr = merged_value_list[i].data();
-
-        memcpy(push_data_ptr, (float*)task_data_ptr, accessor->update_size());
-        //zcb
-        /*
-        std::cout << "zcb task data: ";
-        float* test_task = (float*)task_data_ptr;
-        for (int j = 0; j < accessor->update_size() / 4; ++ j)
-            std::cout << test_task[j] << " ";
-        std::cout << "\n";*/
-
-        push_data_ptr += accessor->update_size();
-    }
-    PsService_Stub rpc_stub(get_sparse_channel(shard_idx));
-    closure->cntl(shard_idx)->set_request_compress_type(
-          (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
-    rpc_stub.service(closure->cntl(shard_idx), 
-    closure->request(shard_idx), closure->response(shard_idx), closure);
-    _push_sparse_merge_count_map[table_id] = 0;
-    return 0;
+    push_data_ptr += accessor->update_size();
+  }
+  PsService_Stub rpc_stub(get_sparse_channel(shard_idx));
+  closure->cntl(shard_idx)->set_request_compress_type(
+      (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
+  rpc_stub.service(closure->cntl(shard_idx), closure->request(shard_idx),
+                   closure->response(shard_idx), closure);
+  _push_sparse_merge_count_map[table_id] = 0;
+  return 0;
 }
 
-std::future<int32_t> BrpcPsClient::push_dense(
-    const Region* regions, size_t region_num, size_t table_id) {
-    auto* accessor = table_accessor(table_id);
-    auto push_timer = std::make_shared<CostTimer>("pslib_downpour_client_push_dense");
-    auto parse_timer = std::make_shared<CostTimer>("pslib_downpour_client_push_dense_parse");
-    int push_dense_async_num = _push_dense_task_queue_map[table_id]->size();
-    while (push_dense_async_num > FLAGS_pslib_max_async_call_num) {
-        LOG(INFO) << "push_dense Waiting for async_call_num comsume, task_num:"
-            << push_dense_async_num << ", max_task_limit:" << FLAGS_pslib_max_async_call_num;
-        usleep(5000);//5ms
-        push_dense_async_num = _push_dense_task_queue_map[table_id]->size();
-    }
-    //auto dense_data = _dense_matrix_obj_pool.get();
-    auto dense_data = std::make_shared<std::vector<float>>();
-    auto async_task = new DenseAsyncTask(dense_data, table_id, push_timer);
-    size_t request_call_num = _server_channels.size();
-    uint32_t num_per_shard = dense_dim_per_shard(accessor->fea_dim(), request_call_num);
-    
-    //将region数据拷贝到转置矩阵中
-    async_task->data()->resize(
-        num_per_shard * request_call_num * accessor->update_dim());
-    float* data = async_task->data()->data();
-    size_t data_size = async_task->data()->size();
-    uint32_t pos = 0;
-    for (size_t i = 0; i < region_num; ++i) {
-        uint32_t data_num = regions[i].size / sizeof(float);
-        CHECK(pos + data_num <= data_size) << "invalid dense size, cur pos[" << pos << "]"
-            << " data_num[" << data_num << "] size[" << data_size << "]";
-        const float* region_data = (const float*)(regions[i].data); 
-        memcpy(data + pos, region_data, regions[i].size);
-        pos += data_num;
-    }
-    std::future<int> fut = async_task->get_future();
-    _push_dense_task_queue_map[table_id]->push(std::move(async_task));
-    return fut;
+std::future<int32_t> BrpcPsClient::push_dense(const Region *regions,
+                                              size_t region_num,
+                                              size_t table_id) {
+  auto *accessor = table_accessor(table_id);
+  auto push_timer =
+      std::make_shared<CostTimer>("pslib_downpour_client_push_dense");
+  auto parse_timer =
+      std::make_shared<CostTimer>("pslib_downpour_client_push_dense_parse");
+  int push_dense_async_num = _push_dense_task_queue_map[table_id]->size();
+  while (push_dense_async_num > FLAGS_pslib_max_async_call_num) {
+    LOG(INFO) << "push_dense Waiting for async_call_num comsume, task_num:"
+              << push_dense_async_num
+              << ", max_task_limit:" << FLAGS_pslib_max_async_call_num;
+    usleep(5000);  // 5ms
+    push_dense_async_num = _push_dense_task_queue_map[table_id]->size();
+  }
+  // auto dense_data = _dense_matrix_obj_pool.get();
+  auto dense_data = std::make_shared<std::vector<float>>();
+  auto async_task = new DenseAsyncTask(dense_data, table_id, push_timer);
+  size_t request_call_num = _server_channels.size();
+  uint32_t num_per_shard =
+      dense_dim_per_shard(accessor->fea_dim(), request_call_num);
+
+  //将region数据拷贝到转置矩阵中
+  async_task->data()->resize(num_per_shard * request_call_num *
+                             accessor->update_dim());
+  float *data = async_task->data()->data();
+  size_t data_size = async_task->data()->size();
+  uint32_t pos = 0;
+  for (size_t i = 0; i < region_num; ++i) {
+    uint32_t data_num = regions[i].size / sizeof(float);
+    CHECK(pos + data_num <= data_size)
+        << "invalid dense size, cur pos[" << pos << "]"
+        << " data_num[" << data_num << "] size[" << data_size << "]";
+    const float *region_data = (const float *)(regions[i].data);
+    memcpy(data + pos, region_data, regions[i].size);
+    pos += data_num;
+  }
+  std::future<int> fut = async_task->get_future();
+  _push_dense_task_queue_map[table_id]->push(std::move(async_task));
+  return fut;
 }
 
 void BrpcPsClient::push_dense_task_consume() {
-    uint64_t merge_size = FLAGS_pslib_push_dense_merge_limit;
-    static bool scale_gradient = FLAGS_pslib_scale_gradient_by_merge;
-    ThreadPool<int> async_merge_dense_threads(10);
-    while (_running) {
-        platform::Timer timeline;
-        timeline.Start();
-        for (auto& task_queue_itr : _push_dense_task_queue_map) {
-            auto& task_queue = task_queue_itr.second;
-            auto queue_size = task_queue->size();
-            if (queue_size == 0) {
-                continue;
+  uint64_t merge_size = FLAGS_pslib_push_dense_merge_limit;
+  static bool scale_gradient = FLAGS_pslib_scale_gradient_by_merge;
+  ThreadPool<int> async_merge_dense_threads(10);
+  while (_running) {
+    platform::Timer timeline;
+    timeline.Start();
+    for (auto &task_queue_itr : _push_dense_task_queue_map) {
+      auto &task_queue = task_queue_itr.second;
+      auto queue_size = task_queue->size();
+      if (queue_size == 0) {
+        continue;
+      }
+      if (queue_size <= merge_size && _flushing == false) {
+        continue;
+      }
+      ++_async_call_num;
+      std::shared_ptr<DenseAsyncTask> task(task_queue->pop());
+      auto *accessor = table_accessor(task->table_id());
+      //设置请求回调
+      size_t request_call_num = _server_channels.size();
+
+      DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+          request_call_num, [this, request_call_num](void *done) {
+            int ret = 0;
+            auto *closure = (DownpourBrpcClosure *)done;
+            for (size_t i = 0; i < request_call_num; ++i) {
+              if (closure->check_response(i, PS_PUSH_DENSE_TABLE) != 0) {
+                ret = -1;
+                break;
+              }
             }
-            if (queue_size <= merge_size && _flushing == false) {
-                continue;
-            }
-            ++_async_call_num;
-            std::shared_ptr<DenseAsyncTask> task(task_queue->pop());
-            auto* accessor = table_accessor(task->table_id());
-            //设置请求回调
-            size_t request_call_num = _server_channels.size();
+            closure->set_promise_value(ret);
+            --_async_call_num;
+          });
 
-            DownpourBrpcClosure* closure = new DownpourBrpcClosure(request_call_num,
-                    [this, request_call_num](void* done) {
-                int ret = 0;
-                auto* closure = (DownpourBrpcClosure*)done;
-                for (size_t i = 0; i < request_call_num; ++i) {
-                    if (closure->check_response(i, PS_PUSH_DENSE_TABLE) != 0) {
-                        ret = -1;
-                        break;
-                    }
-                }
-                closure->set_promise_value(ret);
-                --_async_call_num;
-            });
-
-            auto& total_send_data_vec = *(task->data());
-            float* total_send_data = const_cast<float*>(total_send_data_vec.data());
-            size_t total_send_data_size = total_send_data_vec.size();
-            {
-                CostTimer merge_timer("pslib_downpour_client_push_dense_merge");
-                uint32_t merge_count = 0;
-                std::vector<std::future<int>> merge_status(merge_size);
-                while (!task_queue->empty() && merge_count < merge_size) {
-                    auto* async_task = task_queue->pop();
-                    closure->add_timer(async_task->timer());
-                    closure->add_promise(async_task->promise());
-                    merge_status[merge_count] = async_merge_dense_threads.AddTask(
-                        [closure, accessor, &total_send_data, total_send_data_size, async_task]() -> int {
-                        auto& tmp_task_vec = *(async_task->data());
-                        const float* merge_data = tmp_task_vec.data();
-                        accessor->merge(&total_send_data, &merge_data, total_send_data_size);
-                        #pragma optimize("", off)
-                        auto* debug_closure = closure;
-                        auto* debug_task = async_task;
-                        delete async_task;
-                        #pragma optimize("", on)
-                        return 0;
-                    });
-                    ++merge_count;
-                }
-                for (int i = 0; i < merge_count; ++i) {
-                    merge_status[i].wait();
-                }
-
-                VLOG(1) << "BrpcPsClient::push_dense_task_consume before merge total_send_data[0]"
-                        << total_send_data[0] << " total_send_data[-2]" << total_send_data[total_send_data_size-2]
-                        << total_send_data[0] << " total_send_data[-1]" << total_send_data[total_send_data_size-1];
-                if (scale_gradient && merge_count > 1) {
-                    Eigen::Map<Eigen::MatrixXf> mat(total_send_data, 1, total_send_data_size);
-                    mat *= (1.0 / (merge_count + 1));
-                }
-
-                VLOG(1) << "BrpcPsClient::push_dense_task_consume after merge total_send_data[0]"
-                        << total_send_data[0] << " total_send_data[-2]" << total_send_data[total_send_data_size-2]
-                        << " total_send_data[-1]" << total_send_data[total_send_data_size-1]
-                        << " merge_count " << merge_count;
-
-            }
-
-            push_dense_raw_gradient(task, total_send_data, total_send_data_size, closure);
+      auto &total_send_data_vec = *(task->data());
+      float *total_send_data = const_cast<float *>(total_send_data_vec.data());
+      size_t total_send_data_size = total_send_data_vec.size();
+      {
+        CostTimer merge_timer("pslib_downpour_client_push_dense_merge");
+        uint32_t merge_count = 0;
+        std::vector<std::future<int>> merge_status(merge_size);
+        while (!task_queue->empty() && merge_count < merge_size) {
+          auto *async_task = task_queue->pop();
+          closure->add_timer(async_task->timer());
+          closure->add_promise(async_task->promise());
+          merge_status[merge_count] = async_merge_dense_threads.AddTask(
+              [closure, accessor, &total_send_data, total_send_data_size,
+               async_task]() -> int {
+                auto &tmp_task_vec = *(async_task->data());
+                const float *merge_data = tmp_task_vec.data();
+                accessor->merge(&total_send_data, &merge_data,
+                                total_send_data_size);
+#pragma optimize("", off)
+                auto *debug_closure = closure;
+                auto *debug_task = async_task;
+                delete async_task;
+#pragma optimize("", on)
+                return 0;
+              });
+          ++merge_count;
         }
-        auto wait_ms = FLAGS_pslib_async_push_dense_interval_ms - 
-            (timeline.ElapsedMS());
-        if (wait_ms > 0) {
-            usleep(wait_ms * 1000); 
+        for (int i = 0; i < merge_count; ++i) {
+          merge_status[i].wait();
         }
+
+        VLOG(1) << "BrpcPsClient::push_dense_task_consume before merge "
+                   "total_send_data[0]"
+                << total_send_data[0] << " total_send_data[-2]"
+                << total_send_data[total_send_data_size - 2]
+                << total_send_data[0] << " total_send_data[-1]"
+                << total_send_data[total_send_data_size - 1];
+        if (scale_gradient && merge_count > 1) {
+          Eigen::Map<Eigen::MatrixXf> mat(total_send_data, 1,
+                                          total_send_data_size);
+          mat *= (1.0 / (merge_count + 1));
+        }
+
+        VLOG(1) << "BrpcPsClient::push_dense_task_consume after merge "
+                   "total_send_data[0]"
+                << total_send_data[0] << " total_send_data[-2]"
+                << total_send_data[total_send_data_size - 2]
+                << " total_send_data[-1]"
+                << total_send_data[total_send_data_size - 1] << " merge_count "
+                << merge_count;
+
+        DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+            request_call_num, [this, request_call_num](void *done) {
+              int ret = 0;
+              auto *closure = (DownpourBrpcClosure *)done;
+              for (size_t i = 0; i < request_call_num; ++i) {
+                if (closure->check_response(i, PS_PUSH_DENSE_TABLE) != 0) {
+                  ret = -1;
+                  break;
+                }
+              }
+          push_dense_raw_gradient(task, total_send_data, total_send_data_size,
+                                  closure);
+          }
+          if (scale_gradient && merge_count > 1) {
+            Eigen::Map<Eigen::MatrixXf> mat(total_send_data, 1,
+                                            total_send_data_size);
+            mat *= (1.0 / merge_count);
+          }
+        }
+
+        push_dense_raw_gradient(task, total_send_data, total_send_data_size,
+                                closure);
+      }
+      auto wait_ms =
+          FLAGS_pslib_async_push_dense_interval_ms - (timeline.ElapsedMS());
+      if (wait_ms > 0) {
+        usleep(wait_ms * 1000);
+      }
     }
-}
+  }
 
-void BrpcPsClient::push_dense_raw_gradient(
-        std::shared_ptr<DenseAsyncTask>& task, 
-        float* total_send_data,
-        size_t total_send_data_size,
-        DownpourBrpcClosure* closure) {
-    auto* accessor = table_accessor(task->table_id());
+  void BrpcPsClient::push_dense_raw_gradient(
+      std::shared_ptr<DenseAsyncTask> & task, float *total_send_data,
+      size_t total_send_data_size, DownpourBrpcClosure *closure) {
+    auto *accessor = table_accessor(task->table_id());
     size_t request_call_num = _server_channels.size();
     //将数据拷贝到请求buffer区
-    auto timer = std::make_shared<CostTimer>("pslib_downpour_client_push_dense_rpc");
+    auto timer =
+        std::make_shared<CostTimer>("pslib_downpour_client_push_dense_rpc");
     closure->add_timer(timer);
-    uint32_t num_per_shard = dense_dim_per_shard(accessor->fea_dim(), request_call_num);
+    uint32_t num_per_shard =
+        dense_dim_per_shard(accessor->fea_dim(), request_call_num);
     for (size_t i = 0; i < request_call_num; ++i) {
-        closure->request(i)->set_cmd_id(PS_PUSH_DENSE_TABLE);
-        closure->request(i)->set_table_id(task->table_id());
-        closure->request(i)->set_client_id(_client_id);
-        auto* push_data = closure->request(i)->mutable_data();
-        push_data->clear();
-        push_data->resize(sizeof(uint32_t) + num_per_shard * sizeof(float));
-        char* push_data_ptr = const_cast<char*>(push_data->data());
-        memcpy(push_data_ptr, &num_per_shard, sizeof(uint32_t));
-        memcpy(push_data_ptr + sizeof(uint32_t), 
-            total_send_data + i * num_per_shard, num_per_shard * sizeof(float));
-        closure->cntl(i)->set_request_compress_type(
-            (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
-        PsService_Stub rpc_stub(get_dense_channel(i));
-        rpc_stub.service(closure->cntl(i), closure->request(i), closure->response(i), closure);
+      closure->request(i)->set_cmd_id(PS_PUSH_DENSE_TABLE);
+      closure->request(i)->set_table_id(task->table_id());
+      closure->request(i)->set_client_id(_client_id);
+      auto *push_data = closure->request(i)->mutable_data();
+      push_data->clear();
+      push_data->resize(sizeof(uint32_t) + num_per_shard * sizeof(float));
+      char *push_data_ptr = const_cast<char *>(push_data->data());
+      memcpy(push_data_ptr, &num_per_shard, sizeof(uint32_t));
+      memcpy(push_data_ptr + sizeof(uint32_t),
+             total_send_data + i * num_per_shard,
+             num_per_shard * sizeof(float));
+      closure->cntl(i)->set_request_compress_type(
+          (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
+      PsService_Stub rpc_stub(get_dense_channel(i));
+      rpc_stub.service(closure->cntl(i), closure->request(i),
+                       closure->response(i), closure);
     }
-}
+  }
 
 }  // namespace distributed
 }  // namespace paddle

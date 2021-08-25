@@ -69,7 +69,8 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
   int num_threads = std::thread::hardware_concurrency();
   auto trainers = _environment->get_trainers();
   options.num_threads = trainers > num_threads ? trainers : num_threads;
-
+  std::cout << "options.num_threads = " << options.num_threads
+            << " ip_port.c_str() = " << ip_port.c_str() << std::endl;
   if (_server.Start(ip_port.c_str(), &options) != 0) {
     VLOG(0) << "BrpcPsServer start failed, ip_port= " << ip_port
             << " , Try Again.";
@@ -81,10 +82,11 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
       return 0;
     }
   }
-
+  std::cout << "start server over" << std::endl;
   _environment->registe_ps_server(ip, port, _rank);
+  std::cout << "_environment registe_ps_server" << std::endl;
   cv_.wait(lock, [&] { return stoped_; });
-
+  std::cout << "about to return" << std::endl;
   PSHost host;
   host.ip = ip;
   host.port = port;
@@ -159,7 +161,7 @@ void BrpcPsService::service(google::protobuf::RpcController *cntl_base,
     return;
   }
 
-  //std::cout << "zcb debug service cmd_id: " << request->cmd_id() << "\n";
+  // std::cout << "zcb debug service cmd_id: " << request->cmd_id() << "\n";
   response->set_err_code(0);
   response->set_err_msg("");
   auto *table = _server->table(request->table_id());
@@ -234,8 +236,8 @@ int32_t BrpcPsService::push_dense_param(Table *table,
 
   const float *values = (const float *)(data + sizeof(uint32_t));
   VLOG(1) << "BrpcPsService::push_dense_param num " << num << " data[0] "
-          << values[0] << " data[-2] " << values[num - 2]
-          << " data[-1] " << values[num - 1];
+          << values[0] << " data[-2] " << values[num - 2] << " data[-1] "
+          << values[num - 1];
   if (table->push_dense_param(values, num) != 0) {
     set_response_code(response, -1, "push_dense_param failed");
   }
@@ -261,9 +263,8 @@ int32_t BrpcPsService::push_dense(Table *table, const PsRequestMessage &request,
   uint32_t num = *(const uint32_t *)(request.data().data());
   const float *values =
       (const float *)(request.data().data() + sizeof(uint32_t));
-  VLOG(1) << "BrpcPsService::push_dense num " << num << " data[0] "
-          << values[0] << " data[-2] " << values[num - 2]
-          << " data[-1] " << values[num - 1];
+  VLOG(1) << "BrpcPsService::push_dense num " << num << " data[0] " << values[0]
+          << " data[-2] " << values[num - 2] << " data[-1] " << values[num - 1];
   if (table->push_dense(values, num) != 0) {
     set_response_code(response, -1, "push_dense failed");
   }
