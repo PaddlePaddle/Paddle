@@ -450,8 +450,9 @@ class _ProgramHolder(object):
         with framework.program_guard(program):
             for i, out in enumerate(self._output_descs):
                 var = program.global_block().var(out.name())
-                var = nn.scale(
-                    var, 1., name="translated_layer/scale_{}".format(i))
+                if var.dtype != paddle.bool:
+                    var = nn.scale(
+                        var, 1., name="translated_layer/scale_{}".format(i))
                 scale_output_vars.append(var)
         # 2. update output names & descs
         for i, var in enumerate(scale_output_vars):
