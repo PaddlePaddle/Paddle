@@ -1040,6 +1040,10 @@ def eigh(x, UPLO='L', name=None):
 
     def __check_input(x):
         x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(input.shape))
         if x_shape[-1] != x_shape[-2]:
             raise ValueError(
                 "The input matrix must be batches of square matrices. But received x's dimention: {}".

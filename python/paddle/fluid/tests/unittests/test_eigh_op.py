@@ -17,12 +17,20 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 import paddle.fluid.core as core
 
 
+@skip_check_grad_ci(
+    reason="The input of ceigh_op should always be symmetric positive-definite. "
+    "However, OpTest calculates the numeric gradient of each element in input "
+    "via small finite difference, which makes the input no longer symmetric "
+    "positive-definite thus can not compute the Cholesky decomposition. "
+    "While we can use the gradient_checker.grad_check to perform gradient "
+    "check of eigh_op, since it supports check gradient with a program "
+    "and we can construct symmetric positive-definite matrices in the program")
 class TestEighOp(OpTest):
     def setUp(self):
         self.op_type = "eigh"
@@ -127,6 +135,21 @@ class TestEighAPI(unittest.TestCase):
                 actual_w, actual_v = paddle.linalg.eigh(input_complex_data)
                 self.compare_result(actual_w,
                                     actual_v.numpy(), expected_w, expected_v)
+
+    def test_eigh_grad(self):
+        def run_test(uplo):
+            for place in self.places:
+                x = paddle.to_tensor(self.real_data, stop_gradient=False)
+                w, v = paddle.linalg.eigh(x)
+                (w.sum() + paddle.abs(v).sum()).backward()
+                np.testing.assert_allclose(
+                    x.grad.numpy(),
+                    x.grad.numpy().conj().transpose(-1, -2),
+                    rtol=self.rtol,
+                    atol=self.atol)
+
+        for uplo in ["L", "U"]:
+            run_test(uplo)
 
 
 # class TestEighAPIError(unittest.TestCase):

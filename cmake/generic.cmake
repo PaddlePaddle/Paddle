@@ -327,7 +327,7 @@ function(cc_library TARGET_NAME)
         if(WIN32)
           target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
         else(WIN32)
-          target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -L/usr/local/cuda/lib64/stubs -liomp5 -llapack -lcusolver -Wl,--as-needed")
+          target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -L/usr/local/cuda/lib64/stubs -liomp5 -llapack -Wl,--as-needed")
         endif(WIN32)
       endif()
       # remove link to python, see notes at:
