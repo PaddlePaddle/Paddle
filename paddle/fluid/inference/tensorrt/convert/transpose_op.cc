@@ -50,20 +50,6 @@ class TransposeOpConverter : public OpConverter {
       perm.order[i] = axis[j];
     }
 
-    // Permutation is valid if it has nbDims unique values from range [0,
-    // nbDims-1]
-    auto is_valid_permutation = [&](int dims,
-                                    const nvinfer1::Permutation& permutation) {
-      std::bitset<nvinfer1::Dims::MAX_DIMS> found;
-      for (int i = 0; i < dims; ++i) {
-        const int x = permutation.order[i];
-        if ((x < 0) || (x >= dims) || found[x])
-          return false;  // Out of bounds or duplicate
-        found.set(x);
-      }
-      return true;
-    };
-
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     layer->setFirstTranspose(perm);
 
