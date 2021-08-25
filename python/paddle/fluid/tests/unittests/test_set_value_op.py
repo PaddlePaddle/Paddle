@@ -885,6 +885,26 @@ class TestError(TestSetValueBase):
             one = paddle.ones([1])
             x[::one] = self.value
 
+    def _bool_list_error(self):
+        with self.assertRaises(TypeError):
+            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            x[[True, False, 0]] = 0
+
+        with self.assertRaises(IndexError):
+            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            x[[True, False], [True, False]] = 0
+
+    def _bool_tensor_error(self):
+        with self.assertRaises(IndexError):
+            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            idx = paddle.assign([True, False, True])
+            x[idx] = 0
+
+        with self.assertRaises(IndexError):
+            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            idx = paddle.assign([0, 1])
+            x[idx] = 0
+
     def _broadcast_mismatch(self):
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
@@ -901,6 +921,8 @@ class TestError(TestSetValueBase):
             self._value_type_error()
             self._dtype_error()
             self._step_error()
+            self._bool_list_error()
+            self._bool_tensor_error()
         self._broadcast_mismatch()
 
 
