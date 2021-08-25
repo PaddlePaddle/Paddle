@@ -77,7 +77,7 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
             trt_engine_num=self.trt, paddle_op_num=self.paddle, threshold=1e-2)
 
 
-class TrtConvertTransposeTest(TrtConvertTransposeTest):
+class TrtConvertTransposeAxisTest(TrtConvertTransposeTest):
     def set_params(self):
         self.axis = [[0, 3, 2, 1]]
         self.trt = 1
