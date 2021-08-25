@@ -2384,7 +2384,6 @@ function main() {
         ;;
       build_inference_lib)
         python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
-        cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_lib ${parallel_number}
         ;;
       check_style)
