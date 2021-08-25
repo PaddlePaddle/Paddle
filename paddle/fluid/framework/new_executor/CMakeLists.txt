@@ -1,4 +1,7 @@
-cc_library(interpretercore SRCS interpretercore.cc DEPS error_codes_proto external_error_proto)
+cc_library(interpretercore SRCS interpretercore.cc DEPS op_registry
+            device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
+            lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
+            graph_to_program_pass variable_helper timer monitor)
 cc_library(standalone_executor SRCS standalone_executor.cc DEPS interpretercore)
 cc_library(workqueue SRCS workqueue.cc)
 
