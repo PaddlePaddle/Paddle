@@ -128,39 +128,9 @@ __global__ void AddMarginToPositiveLogitsKernel(
   }
 }
 
-static __device__ __forceinline__ platform::float16 exp_on_device(
-    platform::float16 x) {
-  return ::Eigen::numext::exp(x);
-}
-static __device__ __forceinline__ float exp_on_device(float x) {
-  return expf(x);
-}
-static __device__ __forceinline__ double exp_on_device(double x) {
-  return exp(x);
-}
-static __device__ __forceinline__ platform::float16 log_on_device(
-    platform::float16 x) {
-  return ::Eigen::numext::log(x);
-}
-static __device__ __forceinline__ float log_on_device(float x) {
-  return logf(x);
-}
-static __device__ __forceinline__ double log_on_device(double x) {
-  return log(x);
-}
-
-template <typename Tx, typename Ty = Tx>
-struct ExpLogitTransformer {
-  HOSTDEVICE explicit inline ExpLogitTransformer(int n) {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(exp_on_device(x));
-  }
-};
-
 template <typename Tx, typename Ty = Tx>
 struct ExpAndSum {
-  using Transformer = ExpLogitTransformer<Tx>;
+  using Transformer = kpds::ExpLogitTransformer<Tx>;
 
   inline Ty initial() { return static_cast<Ty>(0.0f); }
 
@@ -189,7 +159,7 @@ __global__ void LogitsMinusLogSumKernel(T* logits, const T* logits_sum_per_row,
                                         const int64_t N, const int64_t D) {
   CUDA_KERNEL_LOOP(i, N * D) {
     auto row = i / D;
-    logits[i] -= log_on_device(logits_sum_per_row[row]);
+    logits[i] -= kpds::details::log_on_device(logits_sum_per_row[row]);
   }
 }
 
@@ -204,9 +174,9 @@ __global__ void HardLabelSoftmaxWithCrossEntropyKernel(
     if ((col + start_index) == labels[row]) {
       auto softmax = log_softmax[i];
       loss[row] = -softmax;
-      log_softmax[i] = exp_on_device(softmax);
+      log_softmax[i] = kpds::details::exp_on_device(softmax);
     } else {
-      log_softmax[i] = exp_on_device(log_softmax[i]);
+      log_softmax[i] = kpds::details::exp_on_device(log_softmax[i]);
     }
   }
 }
