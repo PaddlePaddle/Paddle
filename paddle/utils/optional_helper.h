@@ -15,7 +15,7 @@ typedef unsigned long long ulong_long_type;
 
 namespace detail {
 
-#ifdef BOOST_MSVC
+#ifdef PADDLE_MSVC
 #pragma warning(push)
 #pragma warning( \
     disable : 4324)  // structure was padded due to __declspec(align())
@@ -26,7 +26,7 @@ struct alignment_of_hack {
   T t;
   alignment_of_hack();
 };
-#ifdef BOOST_MSVC
+#ifdef PADDLE_MSVC
 #pragma warning(pop)
 #endif
 
@@ -37,7 +37,7 @@ struct alignment_logic {
 
 template <typename T>
 struct alignment_of_impl {
-#if defined(BOOST_MSVC) && (BOOST_MSVC >= 1400)
+#if defined(PADDLE_MSVC) && (PADDLE_MSVC >= 1400)
   //
   // With MSVC both the native __alignof operator
   // and our own logic gets things wrong from time to time :-(
@@ -47,7 +47,7 @@ struct alignment_of_impl {
       (::paddle::detail::alignment_logic<
           sizeof(::paddle::detail::alignment_of_hack<T>) - sizeof(T),
           __alignof(T)>::value);
-#elif !defined(BOOST_ALIGNMENT_OF)
+#elif !defined(PADDLE_ALIGNMENT_OF)
   static const std::size_t value =
       (::paddle::detail::alignment_logic<
           sizeof(::paddle::detail::alignment_of_hack<T>) - sizeof(T),
@@ -59,7 +59,7 @@ struct alignment_of_impl {
   // always work in that context for some unexplained reason.
   // (See type_with_alignment tests for test cases).
   //
-  static const std::size_t value = BOOST_ALIGNMENT_OF(T);
+  static const std::size_t value = PADDLE_ALIGNMENT_OF(T);
 #endif
 };
 
@@ -127,14 +127,14 @@ struct na {
   enum { value = 0 };
 };
 
-#define BOOST_MPL_AUX_NA_PARAM(param) param = na
+#define PADDLE_MPL_AUX_NA_PARAM(param) param = na
 
 // agurt, 05/sep/04: nondescriptive parameter names for the sake of DigitalMars
 // (and possibly MWCW < 8.0); see
 // http://article.gmane.org/gmane.comp.lib.boost.devel/108959
-template <typename BOOST_MPL_AUX_NA_PARAM(T1),
-          typename BOOST_MPL_AUX_NA_PARAM(T2),
-          typename BOOST_MPL_AUX_NA_PARAM(T3)>
+template <typename PADDLE_MPL_AUX_NA_PARAM(T1),
+          typename PADDLE_MPL_AUX_NA_PARAM(T2),
+          typename PADDLE_MPL_AUX_NA_PARAM(T3)>
 struct if_ {
  private:
   // agurt, 02/jan/03: two-step 'type' definition for the sake of aCC
@@ -143,31 +143,31 @@ struct if_ {
  public:
   typedef typename almost_type_::type type;
 
-  // BOOST_MPL_AUX_LAMBDA_SUPPORT(3,if_,(T1,T2,T3))
+  // PADDLE_MPL_AUX_LAMBDA_SUPPORT(3,if_,(T1,T2,T3))
 };
 
 }  // namespace mpl
 
 namespace detail {
 
-#define BOOST_PP_CAT_I(a, b) a##b
-#define BOOST_PP_CAT(a, b) BOOST_PP_CAT_I(a, b)
+#define PADDLE_PP_CAT_I(a, b) a##b
+#define PADDLE_PP_CAT(a, b) PADDLE_PP_CAT_I(a, b)
 
-#define BOOST_PP_INC_0 1
-#define BOOST_PP_INC_1 2
-#define BOOST_PP_INC_2 3
-#define BOOST_PP_INC_3 4
-#define BOOST_PP_INC_4 5
-#define BOOST_PP_INC_5 6
-#define BOOST_PP_INC_6 7
-#define BOOST_PP_INC_7 8
-#define BOOST_PP_INC_8 9
-#define BOOST_PP_INC_9 10
-#define BOOST_PP_INC_10 11
-#define BOOST_PP_INC_11 12
+#define PADDLE_PP_INC_0 1
+#define PADDLE_PP_INC_1 2
+#define PADDLE_PP_INC_2 3
+#define PADDLE_PP_INC_3 4
+#define PADDLE_PP_INC_4 5
+#define PADDLE_PP_INC_5 6
+#define PADDLE_PP_INC_6 7
+#define PADDLE_PP_INC_7 8
+#define PADDLE_PP_INC_8 9
+#define PADDLE_PP_INC_9 10
+#define PADDLE_PP_INC_10 11
+#define PADDLE_PP_INC_11 12
 
-#define BOOST_PP_INC_I(x) BOOST_PP_INC_##x
-#define BOOST_PP_INC(x) BOOST_PP_INC_I(x)
+#define PADDLE_PP_INC_I(x) PADDLE_PP_INC_##x
+#define PADDLE_PP_INC(x) PADDLE_PP_INC_I(x)
 
 template <bool found, std::size_t target, class TestType>
 struct lower_alignment_helper {
@@ -181,15 +181,15 @@ struct lower_alignment_helper<false, target, TestType> {
   typedef typename mpl::if_c<value, TestType, char>::type type;
 };
 
-#define BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, I, T)                          \
-  typename lower_alignment_helper<BOOST_PP_CAT(found, I), target, T>::type \
-      BOOST_PP_CAT(t, I);                                                  \
-  enum {                                                                   \
-    BOOST_PP_CAT(found, BOOST_PP_INC(I)) =                                 \
-        lower_alignment_helper<BOOST_PP_CAT(found, I), target, T>::value   \
+#define PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, I, T)                          \
+  typename lower_alignment_helper<PADDLE_PP_CAT(found, I), target, T>::type \
+      PADDLE_PP_CAT(t, I);                                                  \
+  enum {                                                                    \
+    PADDLE_PP_CAT(found, PADDLE_PP_INC(I)) =                                \
+        lower_alignment_helper<PADDLE_PP_CAT(found, I), target, T>::value   \
   };
 
-#define BOOST_TT_CHOOSE_T(R, P, I, T) T BOOST_PP_CAT(t, I);
+#define PADDLE_TT_CHOOSE_T(R, P, I, T) T PADDLE_PP_CAT(t, I);
 
 class alignment_dummy;
 typedef void (*function_ptr)();
@@ -200,33 +200,33 @@ template <std::size_t target>
 union lower_alignment {
   enum { found0 = false };
 
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 0, char);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 1, short);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 2, int);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 3, long);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 4, ::paddle::long_long_type);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 5, float);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 6, double);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 7, long double);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 8, void*);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 9, function_ptr);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 10, member_ptr);
-  BOOST_TT_CHOOSE_MIN_ALIGNMENT(R, P, 11, member_function_ptr);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 0, char);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 1, short);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 2, int);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 3, long);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 4, ::paddle::long_long_type);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 5, float);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 6, double);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 7, long double);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 8, void*);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 9, function_ptr);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 10, member_ptr);
+  PADDLE_TT_CHOOSE_MIN_ALIGNMENT(R, P, 11, member_function_ptr);
 };
 
 union max_align {
-  BOOST_TT_CHOOSE_T(R, P, 0, char);
-  BOOST_TT_CHOOSE_T(R, P, 1, short);
-  BOOST_TT_CHOOSE_T(R, P, 2, int);
-  BOOST_TT_CHOOSE_T(R, P, 3, long);
-  BOOST_TT_CHOOSE_T(R, P, 4, ::paddle::long_long_type);
-  BOOST_TT_CHOOSE_T(R, P, 5, float);
-  BOOST_TT_CHOOSE_T(R, P, 6, double);
-  BOOST_TT_CHOOSE_T(R, P, 7, long double);
-  BOOST_TT_CHOOSE_T(R, P, 8, void*);
-  BOOST_TT_CHOOSE_T(R, P, 9, function_ptr);
-  BOOST_TT_CHOOSE_T(R, P, 10, member_ptr);
-  BOOST_TT_CHOOSE_T(R, P, 11, member_function_ptr);
+  PADDLE_TT_CHOOSE_T(R, P, 0, char);
+  PADDLE_TT_CHOOSE_T(R, P, 1, short);
+  PADDLE_TT_CHOOSE_T(R, P, 2, int);
+  PADDLE_TT_CHOOSE_T(R, P, 3, long);
+  PADDLE_TT_CHOOSE_T(R, P, 4, ::paddle::long_long_type);
+  PADDLE_TT_CHOOSE_T(R, P, 5, float);
+  PADDLE_TT_CHOOSE_T(R, P, 6, double);
+  PADDLE_TT_CHOOSE_T(R, P, 7, long double);
+  PADDLE_TT_CHOOSE_T(R, P, 8, void*);
+  PADDLE_TT_CHOOSE_T(R, P, 9, function_ptr);
+  PADDLE_TT_CHOOSE_T(R, P, 10, member_ptr);
+  PADDLE_TT_CHOOSE_T(R, P, 11, member_function_ptr);
 };
 
 // This alignment method originally due to Brian Parker, implemented by David
@@ -300,7 +300,7 @@ class type_with_alignment<32> {
 
 #endif
 
-#if (defined(BOOST_MSVC) || (defined(BOOST_INTEL) && defined(_MSC_VER))) && \
+#if (defined(PADDLE_MSVC) || (defined(PADDLE_INTEL) && defined(_MSC_VER))) && \
     _MSC_VER >= 1300
 //
 // MSVC supports types which have alignments greater than the normal
@@ -466,14 +466,14 @@ typedef integral_constant<bool, true> true_type;
 typedef integral_constant<bool, false> false_type;
 
 #ifdef _MSC_VER
-#define BOOST_MSVC _MSC_VER
+#define PADDLE_MSVC _MSC_VER
 #endif
 
 #if !defined(unix) || defined(__LP64__)
 // GCC sometimes lies about alignment requirements
 // of type double on 32-bit unix platforms, use the
 // old implementation instead in that case:
-#define BOOST_ALIGNMENT_OF(T) __alignof__(T)
+#define PADDLE_ALIGNMENT_OF(T) __alignof__(T)
 #endif
 
 template <typename T>
