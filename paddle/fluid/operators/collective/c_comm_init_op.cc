@@ -114,6 +114,9 @@ Initialize collective communicatoin context within this trainer
         .SetDefault(-1);
     AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
+    AddAttr<bool>("destroy_hccl",
+                  "(bool default false) user choose whether destroy HcclComm")
+        .SetDefault(false);
   }
 };
 

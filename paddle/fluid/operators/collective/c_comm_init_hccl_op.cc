@@ -59,6 +59,13 @@ class CCommInitOpAscend : public framework::OperatorBase {
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");
     }
+    bool destroy_hccl = Attr<bool>("destroy_hccl");
+    if (destroy_hccl) {
+      auto comm = paddle::platform::HCCLCommContext::Instance().Get(rid, place);
+      PADDLE_ENFORCE_NPU_SUCCESS(
+          platform::dynload::HcclCommDestroy(comm->comm()))
+      return
+    }
     platform::HCCLCommContext::Instance().CreateHCCLComm(
         hccl_id, rank_ids, rank_id, device_id, rid);
 

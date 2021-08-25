@@ -53,7 +53,8 @@ extern void* hccl_dso_handle;
   __macro(HcclGetRootInfo);             \
   __macro(HcclBroadcast);               \
   __macro(HcclCommInitClusterInfo);     \
-  __macro(HcclAllGather);
+  __macro(HcclAllGather);               \
+  __macro(HcclCommDestroy);
 
 HCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_HCCL_WRAP)
 
