@@ -84,6 +84,7 @@ class PSLib(Fleet):
             # barrier_all for init_server, wait for server starts
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
+            comm_ptr = int(id(self._role_maker._node_type_comm))
             # worker_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
