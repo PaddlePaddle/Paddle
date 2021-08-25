@@ -96,6 +96,5 @@ class TestCondAPIError(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.device.set_device("cpu")
     paddle.enable_static()
     unittest.main()

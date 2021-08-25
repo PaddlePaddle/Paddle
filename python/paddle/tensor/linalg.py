@@ -544,7 +544,7 @@ def dist(x, y, p=2):
 
 
 def cond(x, p=None, name=None):
-    def cond_matrix_norm(input, porder=1., axis=None):
+    def matrix_norm(input, porder=1., axis=None):
         """
         NOTE:
             Calculate the matrix norm of a square matrix or batches of square matrices,
@@ -580,8 +580,7 @@ def cond(x, p=None, name=None):
             outputs={'Out': sum_out},
             attrs={'dim': axis,
                    'keep_dim': keepdim,
-                   'reduce_all': reduce_all
-            })
+                   'reduce_all': reduce_all})
         if porder == 1 or porder == np.inf:
             block.append_op(
                 type='reduce_max',
@@ -604,7 +603,7 @@ def cond(x, p=None, name=None):
                 })
         return out
 
-    def cond_frobenius_norm(input, porder=2, axis=[-1, -2]):
+    def frobenius_norm(input, porder=2, axis=[-1, -2]):
         """
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
@@ -624,12 +623,12 @@ def cond(x, p=None, name=None):
         sum_out = block.create_variable_for_type_inference(
             dtype=block.input_dtype())
         out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype()) 
+            dtype=block.input_dtype())
         block.append_op(
             type='pow',
             inputs={'X': input},
             outputs={'Out': pow_out},
-            attrs={'factor': porder})     
+            attrs={'factor': porder})
         block.append_op(
             type='reduce_sum',
             inputs={'X': pow_out},
@@ -637,8 +636,7 @@ def cond(x, p=None, name=None):
             attrs={
                 'dim': axis,
                 'keep_dim': keepdim,
-                'reduce_all': reduce_all
-            })
+                'reduce_all': reduce_all})
         block.append_op(
             type='pow',
             inputs={'X': sum_out},
@@ -666,7 +664,7 @@ def cond(x, p=None, name=None):
         #                 outputs={'U': u, 'VH': vh, 'S': s}, attr={'full_matrices':full_matrices})
         # return s
 
-    def cond_svd_norm(input, porder, axis=[-1]):
+    def svd_norm(input, porder, axis=[-1]):
         """
         NOTE:
             Calculate the matrix norm, which is related to singular values, of a matrix
@@ -692,11 +690,11 @@ def cond(x, p=None, name=None):
                                               'use_mkldnn', False)
             if porder == -2:
                 return _C_ops.elementwise_div(min_out, max_out, 'aixs', axis,
-                                              'use_mkldnn', False)           
+                                              'use_mkldnn', False)
 
         block = LayerHelper('norm', **locals())
         out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype()) 
+            dtype=block.input_dtype())
         if porder == "nuc":
             block.append_op(
                 type='reduce_sum',
@@ -709,9 +707,9 @@ def cond(x, p=None, name=None):
                 })
             return out
         max_out = block.create_variable_for_type_inference(
-                dtype=block.input_dtype())
+            dtype=block.input_dtype())
         min_out = block.create_variable_for_type_inference(
-                dtype=block.input_dtype())
+            dtype=block.input_dtype())
         block.append_op(
             type='reduce_max',
             inputs={'X': s},
@@ -719,8 +717,7 @@ def cond(x, p=None, name=None):
             attrs={
                 'dim': axis,
                 'keep_dim': keepdim,
-                'reduce_all': reduce_all
-            })
+                'reduce_all': reduce_all})
         block.append_op(
             type='reduce_min',
             inputs={'X': s},
@@ -728,13 +725,12 @@ def cond(x, p=None, name=None):
             attrs={
                 'dim': axis,
                 'keep_dim': keepdim,
-                'reduce_all': reduce_all
-            })
+                'reduce_all': reduce_all})
         if porder == 2:
             block.append_op(
                 type='elementwise_div',
                 inputs={'X': max_out,
-                        'Y': min_out}, 
+                        'Y': min_out},
                 outputs={'Out': out},
                 attrs={'aixs': axis,
                        'use_mkldnn': False})
@@ -743,7 +739,7 @@ def cond(x, p=None, name=None):
             block.append_op(
                 type='elementwise_div',
                 inputs={'X': min_out,
-                        'Y': max_out}, 
+                        'Y': max_out},
                 outputs={'Out': out},
                 attrs={'aixs': axis,
                        'use_mkldnn': False})
@@ -760,27 +756,23 @@ def cond(x, p=None, name=None):
         if x_shape[len(x_shape) - 1] == x_shape[len(x_shape) - 2]:
             x_inv = x.inverse()
             if p == "fro":
-                return cond_frobenius_norm(x) * cond_frobenius_norm(x_inv)
+                return frobenius_norm(x) * frobenius_norm(x_inv)
             if p == "nuc":
-                return cond_svd_norm(
-                    x, porder=p) * cond_svd_norm(
-                        x_inv, porder=p)
+                return svd_norm(x, p) * svd_norm(x_inv, p)
             if p in (1, -1):
-                return cond_matrix_norm(
-                    x, porder=p, axis=[-2]) * cond_matrix_norm(
+                return matrix_norm(x, porder=p, axis=[-2]) * matrix_norm(
                         x_inv, porder=p, axis=[-2])
             if p in (np.inf, -np.inf):
-                return cond_matrix_norm(
-                    x, porder=p, axis=[-1]) * cond_matrix_norm(
+                return matrix_norm(x, porder=p, axis=[-1]) * matrix_norm(
                         x_inv, porder=p, axis=[-1])
         else:
-            raise ValueError("only support p is {}".format(
-                p) + " when input is a square matrix or batches of " +
-                "square matrices")
+            raise ValueError("only support p is {} when input is a ".format(
+                p) + "square matrix or batches of square matrices")
     elif p in (2, -2):
-        return cond_svd_norm(x, porder=p)
+        return svd_norm(x, porder=p)
     else:
-        raise ValueError("unsupported {} for p, only supporting ('fro', 'nuc', ".format(
+        raise ValueError(
+            "unsupported {} for p, only supporting ('fro', 'nuc', ".format(
                 p) + "1, -1, 2, -2, inf, -inf) or none")
 
 
