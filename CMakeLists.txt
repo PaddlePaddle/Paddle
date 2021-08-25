@@ -38,6 +38,8 @@ project(paddle CXX C)
 # enable language CUDA
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
+find_package(MKL QUIET)
+option(WITH_ONEMKL      "Compile PaddlePaddle with oneMKL"              ${MKL_FOUND})
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
@@ -369,6 +371,10 @@ endif()
 if (WITH_MIPS)
     set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_MIPS=ON" FORCE)
     add_definitions(-DPADDLE_WITH_MIPS)
+endif()
+
+if (WITH_ONEMKL)
+    add_definitions(-DPADDLE_WITH_ONEMKL)
 endif()
 
 if (WITH_HETERPS)
