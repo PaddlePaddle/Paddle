@@ -319,13 +319,14 @@ void InterpreterCore::ExecuteInstructionList(
         auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
             platform::DeviceContextPool::Instance().Get(place));
         gc_event_[instr_id].Record(place, dev_ctx);
-        gc_queue_->AddTask([event = &gc_event_[instr_id]]() {
+        gc_queue_->AddTask([
+          container = garbages_.release(), event = &gc_event_[instr_id]
+        ]() {
           while (!event->Query()) {
             continue;
           }
+          delete container;
         });
-
-        delete garbages_.release();
         garbages_.reset(new GarbageQueue());
 #else
         delete garbages_.release();
@@ -336,12 +337,14 @@ void InterpreterCore::ExecuteInstructionList(
         auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
             platform::DeviceContextPool::Instance().Get(place));
         gc_event_[instr_id].Record(place, dev_ctx);
-        gc_queue_->AddTask([event = &gc_event_[instr_id]]() {
+        gc_queue_->AddTask([
+          container = garbages_.release(), event = &gc_event_[instr_id]
+        ]() {
           while (!event->Query()) {
             continue;
           }
+          delete container;
         });
-        delete garbages_.release();
         garbages_.reset(new GarbageQueue());
         cur_memory_size_ = 0;
 #else
