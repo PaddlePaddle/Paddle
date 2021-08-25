@@ -33,7 +33,7 @@ class SpinLock {
     uint64_t spin_cnt = 0;
     while (!mlock_.compare_exchange_weak(expect, true)) {
       expect = false;
-      if ((++spin_cnt & 0xFFFFF) == 0) {
+      if ((++spin_cnt & 0xFF) == 0) {
 #if defined(_WIN32)
         SleepEx(50, FALSE);
 #else
