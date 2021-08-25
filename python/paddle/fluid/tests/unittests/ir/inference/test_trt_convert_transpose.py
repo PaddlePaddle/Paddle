@@ -28,7 +28,7 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
                 "X": ["transpose_input"]
             },
             "op_outputs": {
-                "Out": ["output_var0"]
+                "Out": ["transpose_output"]
             },
             "op_attrs": {
                 "axis": self.axis
@@ -47,7 +47,7 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
         transpose_input = TensorConfig(shape=[-1, 3, 64, 64])
         self.program_weights = {"conv2d_weight": filter}
         self.program_inputs = {"transpose_input": transpose_input}
-        self.program_outputs = ["output_var0"]
+        self.program_outputs = ["transpose_output"]
 
     def test_check_fp32_output(self):
         self.trt_param.precision == paddle_infer.PrecisionType.Float32
@@ -93,7 +93,7 @@ class DynamicShapeTrtConvertTransposeTest(TrtLayerAutoScanTest):
                 "X": ["transpose_input"]
             },
             "op_outputs": {
-                "Out": ["output_var0"]
+                "Out": ["transpose_output"]
             },
             "op_attrs": {
                 "axis": self.axis
@@ -112,7 +112,7 @@ class DynamicShapeTrtConvertTransposeTest(TrtLayerAutoScanTest):
         transpose_input = TensorConfig(shape=[-1, 3, 64, 64])
         self.program_weights = {"conv2d_weight": filter}
         self.program_inputs = {"transpose_input": transpose_input}
-        self.program_outputs = ["output_var0"]
+        self.program_outputs = ["transpose_output"]
 
     def test_check_fp32_output(self):
         self.trt_param.precision == paddle_infer.PrecisionType.Float32
