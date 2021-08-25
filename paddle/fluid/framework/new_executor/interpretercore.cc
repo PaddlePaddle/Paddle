@@ -15,8 +15,10 @@
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_gc_helper.h"
 
+#if defined(PADDLE_WITH_CUDA)
 using ::paddle::platform::kCUDA;
 USE_EVENT(kCUDA);
+#endif
 
 namespace paddle {
 namespace framework {
