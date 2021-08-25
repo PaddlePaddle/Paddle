@@ -34,7 +34,7 @@ import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
 from paddle.distributed.auto_parallel.utils import print_program_with_distributed_attr
 from paddle.distributed.auto_parallel.context import DistributedContext
-from paddle.distributed.auto_parallel.transpiler import AutoParallelTranspiler
+from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import _get_comm_group
 from paddle.distributed.auto_parallel.process import new_process_group
 
@@ -762,7 +762,7 @@ def gpt_pretrain_forward(train_program, start_program):
     return train_program, start_program, loss
 
 
-class TestGPTAutoCompletion(unittest.TestCase):
+class TestGPTPartitioner(unittest.TestCase):
     def test_gpt_dp_mp(self):
         global _global_parallel_stratergy
         _global_parallel_stratergy = "dp_mp"
@@ -781,11 +781,10 @@ class TestGPTAutoCompletion(unittest.TestCase):
                                                           dist_context)
         rank_id = 3
         dist_strategy = fleet.DistributedStrategy()
-        APTranspiler = AutoParallelTranspiler(dist_strategy, dist_context,
-                                              rank_id)
-        auto_parallel_main_prog, auto_parallel_startup_prog = APTranspiler.transpile_forward(
+        partitioner = Partitioner(dist_strategy, dist_context, rank_id)
+        auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
             complete_train_program, start_program)
-        dist_params_grads = APTranspiler.apply_backward(
+        dist_params_grads = partitioner.apply_backward(
             loss, complete_train_program, start_program,
             auto_parallel_main_prog, auto_parallel_startup_prog)
         optimizer = paddle.fluid.optimizer.AdamOptimizer(
@@ -794,9 +793,9 @@ class TestGPTAutoCompletion(unittest.TestCase):
             beta2=0.999,
             epsilon=1e-08,
             grad_clip=None)
-        opt_ops = APTranspiler.apply_optimize(optimizer, dist_params_grads,
-                                              auto_parallel_main_prog,
-                                              auto_parallel_startup_prog)
+        opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
+                                             auto_parallel_main_prog,
+                                             auto_parallel_startup_prog)
 
         nrank = 4
         # col parallel

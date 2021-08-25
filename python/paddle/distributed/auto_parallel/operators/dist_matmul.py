@@ -27,7 +27,7 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ..process import new_process_group
-from ..transpiler import _get_comm_group
+from ..utils import _get_comm_group
 
 
 def _update_dims_mapping_for_matmul(op_dist_attr):

@@ -34,7 +34,7 @@ from paddle.distributed.auto_parallel.utils import append_distributed_attr_suffi
 from paddle.distributed.auto_parallel.context import DistributedContext
 from paddle.distributed.auto_parallel.context import set_default_distributed_context
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.transpiler import AutoParallelTranspiler
+from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import _get_comm_group
 from paddle.distributed.auto_parallel.process import new_process_group
 
@@ -56,8 +56,8 @@ def get_programs(annotated_func):
 
     rank_id = 3
     dist_strategy = fleet.DistributedStrategy()
-    APTranspiler = AutoParallelTranspiler(dist_strategy, dist_context, rank_id)
-    test_auto_parallel_dist_main_prog, test_auto_parallel_dist_startup_prog = APTranspiler.transpile_forward(
+    partitioner = Partitioner(dist_strategy, dist_context, rank_id)
+    test_auto_parallel_dist_main_prog, test_auto_parallel_dist_startup_prog = partitioner.transpile_forward(
         complete_train_program, start_program)
 
     return complete_train_program, start_program, test_auto_parallel_dist_main_prog, test_auto_parallel_dist_startup_prog, dist_context
@@ -203,7 +203,7 @@ def mlp_pretrain_forward(train_program, start_program):
     return train_program, start_program
 
 
-class TestMLPAutoTranspiler(unittest.TestCase):
+class TestMLPAutoPartitioner(unittest.TestCase):
     def test_mlp_dp(self):
         global _global_parallel_stratergy
         _global_parallel_stratergy = "dp"
@@ -458,7 +458,7 @@ def attn_pretrain_forward(train_program, start_program):
     return train_program, start_program
 
 
-class TestAttentionAutoTranspiler(unittest.TestCase):
+class TestAttentionAutoPartitioner(unittest.TestCase):
     def test_attn_dp(self):
         global _global_parallel_stratergy
         _global_parallel_stratergy = "dp"
@@ -804,7 +804,7 @@ def decoder_pretrain_forward(train_program, start_program):
     return train_program, start_program
 
 
-class TestDecoderLayerAutoCompletion(unittest.TestCase):
+class TestDecoderLayerPartitioner(unittest.TestCase):
     def test_decoder_dp_mp(self):
         global _global_parallel_stratergy
         _global_parallel_stratergy = "dp_mp"
