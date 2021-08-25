@@ -88,7 +88,7 @@ void testFeatureNodeSerializeFloat32() {
   std::vector<float> out2 =
       distributed::FeatureNode::parse_bytes_to_array<float>(out);
   float eps;
-  std::cout << "Float " << out2[0] << " " << 123.123 << std::endl;
+  VLOG(3) << "Float " << out2[0] << " " << 123.123 << std::endl;
   eps = out2[0] - 123.123;
   ASSERT_LE(eps * eps, 1e-5);
   eps = out2[1] - 345.123;
@@ -102,7 +102,7 @@ void testFeatureNodeSerializeFloat64() {
       distributed::FeatureNode::parse_bytes_to_array<double>(out);
   float eps;
   eps = out2[0] - 123.123;
-  std::cout << "Float64 " << out2[0] << " " << 123.123 << std::endl;
+  VLOG(3) << "Float64 " << out2[0] << " " << 123.123 << std::endl;
   ASSERT_LE(eps * eps, 1e-5);
   eps = out2[1] - 345.123;
   ASSERT_LE(eps * eps, 1e-5);
@@ -443,7 +443,7 @@ void RunBrpcPushSparse() {
   ASSERT_EQ(nodes.size(), 1);
   ASSERT_EQ(nodes[0].get_id(), 59);
   for (auto g : nodes) {
-    std::cout << g.get_id() << std::endl;
+    VLOG(3) << g.get_id() << std::endl;
   }
   distributed::GraphPyServer server1, server2;
   distributed::GraphPyClient client1, client2;
@@ -484,14 +484,14 @@ void RunBrpcPushSparse() {
   client2.add_table_feat_conf("item", "a", "float32", 1);
 
   server1.start_server(false);
-  std::cout << "first server done" << std::endl;
+  VLOG(3) << "first server done" << std::endl;
   server2.start_server(false);
-  std::cout << "second server done" << std::endl;
+  VLOG(3) << "second server done" << std::endl;
   client1.start_client();
-  std::cout << "first client done" << std::endl;
+  VLOG(3) << "first client done" << std::endl;
   client2.start_client();
-  std::cout << "first client done" << std::endl;
-  std::cout << "started" << std::endl;
+  VLOG(3) << "first client done" << std::endl;
+  VLOG(3) << "started" << std::endl;
   VLOG(0) << "come to set local server";
   client1.bind_local_server(0, server1);
   VLOG(0) << "first bound";
@@ -514,7 +514,7 @@ void RunBrpcPushSparse() {
   // pull by step 2
   for (int test_step = 1; test_step < 4; test_step++) {
     count_item_nodes.clear();
-    std::cout << "check pull graph list by step " << test_step << std::endl;
+    VLOG(3) << "check pull graph list by step " << test_step << std::endl;
     for (int server_id = 0; server_id < 2; server_id++) {
       for (int start_step = 0; start_step < test_step; start_step++) {
         nodes = client1.pull_graph_list(std::string("item"), server_id,
