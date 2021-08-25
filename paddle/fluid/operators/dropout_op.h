@@ -174,7 +174,11 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     auto& dropout_implementation =
         context.Attr<std::string>("dropout_implementation");
     if (context.Attr<bool>("is_test") == true) {
-      dX.device(place) = static_cast<T>(0) * dY;
+      if (dropout_implementation == "upscale_in_train") {
+        dX.device(place) = static_cast<T>(1) * dY;
+      } else {
+        dX.device(place) = dY / static_cast<T>(1.0f - dropout_prob);
+      }
     } else {
       auto M = EigenVector<uint8_t>::Flatten(*mask);
       if (dropout_implementation == "upscale_in_train") {
