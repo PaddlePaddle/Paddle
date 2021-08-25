@@ -166,28 +166,64 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
   }
 }
 
-// dst[NY][NX];
-template <typename Tx, typename Ty, int NX, int NY, int BlockSize>
+template <typename Tx, typename Ty, int NX, int NY, int BlockSize,
+          bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
                                          int size_nx, int size_ny,
                                          int stride_nx, int stride_ny) {
   int dx = threadIdx.x * NX;
   int size = size_nx - dx;
-#pragma unroll
-  for (int idx = 0; idx < NX; ++idx) {
-    if (idx >= size) {
-      break;
+
+  if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
+    if (IsBoundary) {
+      if (dx < size_nx) {
+        dst[0] = static_cast<Ty>(src[dx]);
+      }
+    } else {
+      dst[0] = static_cast<Ty>(src[dx]);
     }
+  } else if (NX == 1) {  // for NX == 1 and NY != 1
 #pragma unroll
     for (int idy = 0; idy < NY; ++idy) {
-      if (idy >= size_ny) {
-        break;
+      if (IsBoundary) {
+        if (idy >= size_ny) {
+          break;
+        }
       }
-      dst[idy * NX + idx] =
-          static_cast<Ty>(src[idx * stride_nx + dx + idy * stride_ny]);
+      dst[idy] = static_cast<Ty>(src[dx + idy * stride_ny]);
+    }
+  } else if (NY == 1) {  // for NY == 1 and NX != 1
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if (IsBoundary) {
+        if (idx >= size) {
+          break;
+        }
+      }
+      dst[idx] = static_cast<Ty>(src[idx * stride_nx + dx]);
+    }
+  } else {  // for NX != 1 and NY != 1
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if (IsBoundary) {
+        if (idx >= size) {
+          break;
+        }
+      }
+#pragma unroll
+      for (int idy = 0; idy < NY; ++idy) {
+        if (IsBoundary) {
+          if (idy >= size_ny) {
+            break;
+          }
+        }
+        dst[idy * NX + idx] =
+            static_cast<Ty>(src[idx * stride_nx + dx + idy * stride_ny]);
+      }
     }
   }
 }
+
 template <typename T, int NX>
 __device__ __forceinline__ void Init(T* dst, T init_data) {
 #pragma unroll
