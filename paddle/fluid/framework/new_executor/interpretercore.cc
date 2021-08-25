@@ -143,7 +143,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       main_program_(main_prog),
       global_scope_(global_scope),
       d2h_ctx_pool_({place}),
-      h2d_ctx_pool_({place}) {
+      h2d_ctx_pool_({place}),
       fetch_context_pool_({place}) {
   is_build_ = false;
   feed_names_ = feed_names;
@@ -720,6 +720,5 @@ void InterpreterCore::StreamWaitEventOrSync(const Instruction& instruction) {
 
   WaitOrSync(instruction.intput_events_, dev_ctx);
 }
-
 }  // namespace framework
 }  // namespace paddle
