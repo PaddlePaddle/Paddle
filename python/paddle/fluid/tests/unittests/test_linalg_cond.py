@@ -33,8 +33,10 @@ class API_TestStaticCond(unittest.TestCase):
 
             for p in ("fro", 1, -1, np.inf, -np.inf):
                 for input in (input1, input2, input3):
-                    with static.program_guard(static.Program(), static.Program()):
-                        input_data = static.data("X", shape=input.shape, dtype=input.dtype)
+                    with static.program_guard(static.Program(),
+                                              static.Program()):
+                        input_data = static.data(
+                            "X", shape=input.shape, dtype=input.dtype)
                         output = paddle.linalg.cond(input_data, p)
                         exe = static.Executor()
                         result = exe.run(feed={"X": input}, fetch_list=[output])
@@ -94,5 +96,6 @@ class TestCondAPIError(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.device.set_device("cpu")
     paddle.enable_static()
     unittest.main()
