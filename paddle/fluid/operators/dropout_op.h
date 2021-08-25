@@ -177,6 +177,7 @@ class DropoutGradKernel : public framework::OpKernel<T> {
       if (dropout_implementation == "upscale_in_train") {
         dX.device(place) = static_cast<T>(1) * dY;
       } else {
+        float dropout_prob = context.Attr<float>("dropout_prob");
         dX.device(place) = dY / static_cast<T>(1.0f - dropout_prob);
       }
     } else {
