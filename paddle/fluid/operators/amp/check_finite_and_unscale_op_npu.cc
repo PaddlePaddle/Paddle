@@ -36,7 +36,6 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     const auto xs = ctx.MultiInput<framework::Tensor>("X");
     const auto* scale = ctx.Input<framework::Tensor>("Scale");
-    const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
     auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
 
@@ -46,10 +45,27 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+    // step0: clear float status
+    Tensor float_status;
+    {
+      float_status.mutable_data<float>({8}, ctx.GetPlace());
+
+      const auto& alloc_float_status_runner =
+          NpuOpRunner("NPUAllocFloatStatus", {}, {float_status});
+      alloc_float_status_runner.Run(stream);
+
+      Tensor tmp;
+      tmp.mutable_data<float>({8}, ctx.GetPlace());
+      // NOTE(zhiqiu): NPUClearFloatStatus modifies the input.
+      const auto& clear_float_status_runner =
+          NpuOpRunner("NPUClearFloatStatus", {float_status}, {tmp});
+      clear_float_status_runner.Run(stream);
+    }
+
     // step1: inverse scale
-    Tensor const_tensor;
-    const_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<T>(&const_tensor, static_cast<T>(1.0));
+    Tensor const_one_tensor;
+    const_one_tensor.mutable_data<T>({1}, ctx.GetPlace());
+    FillNpuTensorWithConstant<T>(&const_one_tensor, static_cast<T>(1.0));
 
     // Inverse(1.0/scale)
     Tensor* tmp_inverse_out = const_cast<Tensor*>(scale);
@@ -57,30 +73,9 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     inverse_out.Resize(scale->dims());
     inverse_out.mutable_data<T>(ctx.GetPlace());
     const auto& runner_inverse =
-        NpuOpRunner("Div", {const_tensor, *scale}, {inverse_out}, {});
+        NpuOpRunner("Div", {const_one_tensor, *scale}, {inverse_out}, {});
     runner_inverse.Run(stream);
     tmp_inverse_out = &inverse_out;
-
-    // NOTE(zhiqiu):
-    Tensor tmp;
-    tmp.mutable_data<float>({8}, ctx.GetPlace());
-    // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
-    // tmp is only placeholder.
-    const auto& runner_float_status =
-        NpuOpRunner("NPUGetFloatStatus", {*float_status}, {tmp},
-                    {{"message", std::string("check_nan_and_inf")}});
-    runner_float_status.Run(stream);
-
-    Tensor sum;
-    sum.mutable_data<float>({1}, ctx.GetPlace());
-    const auto& runner_reduce_sum =
-        NpuOpRunner("ReduceSumD", {*float_status}, {sum},
-                    {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
-    runner_reduce_sum.Run(stream);
-
-    const auto& runner_greater =
-        NpuOpRunner("GreaterEqual", {sum, const_tensor}, {*found_inf}, {});
-    runner_greater.Run(stream);
 
     // NOTE(zhiqiu): The normal logic is :
     // out = in, if found_inf = true
@@ -97,6 +92,33 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
       runner_mul.Run(stream);
     }
+
+    // step2: get float status
+    // NOTE(wangxi): Because each grad needs to be unscaled, when nan/inf
+    // exists in the grad, the floating point will change to overflow state
+    // after unscale. We can check whether nan/inf exists in the grad according
+    // to this principle.
+    {
+      Tensor tmp;
+      tmp.mutable_data<float>({8}, ctx.GetPlace());
+      // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
+      // tmp is only placeholder.
+      const auto& runner_float_status =
+          NpuOpRunner("NPUGetFloatStatus", {float_status}, {tmp},
+                      {{"message", std::string("check_nan_and_inf")}});
+      runner_float_status.Run(stream);
+    }
+
+    Tensor sum;
+    sum.mutable_data<float>({1}, ctx.GetPlace());
+    const auto& runner_reduce_sum =
+        NpuOpRunner("ReduceSumD", {float_status}, {sum},
+                    {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
+    runner_reduce_sum.Run(stream);
+
+    const auto& runner_greater =
+        NpuOpRunner("GreaterEqual", {sum, const_one_tensor}, {*found_inf}, {});
+    runner_greater.Run(stream);
   }
 };
 
