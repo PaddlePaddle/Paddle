@@ -29,6 +29,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
@@ -424,7 +425,15 @@ static void ParseIndexingSlice(
   // We allow indexing by Integers, Slices, Ellipsis, None, tuples of those
   // types, and list of Bool and Integers.
   // wrap to tuple
+
+  // NOTE(zhiqiu): PyTuple_Pack increases refcount.
   PyObject *index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
+  DEFINE_PADDLE_SCOPE_GUARD([index, _index]() {
+    if (!PyTuple_Check(_index)) {
+      Py_DECREF(index);
+      VLOG(4) << "Call Py_DECREF";
+    }
+  });
   PADDLE_ENFORCE_EQ(
       tensor->IsInitialized(), true,
       platform::errors::InvalidArgument("tensor has not been initialized"));
@@ -551,8 +560,6 @@ static void ParseIndexingSlice(
                     platform::errors::InvalidArgument(
                         "Too many indices (%d) for tensor of dimension %d.",
                         valid_indexs, rank));
-
-  if (!PyTuple_Check(_index)) Py_DecRef(index);
 }
 
 template <typename P>
@@ -809,111 +816,151 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
-      .def(
-          "_setitem_index_not_tensor",
-          [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
-             py::object &value_obj) {
-            auto self_tensor =
-                self->MutableVar()->GetMutable<framework::LoDTensor>();
-            PyObject *index_ptr = !PyTuple_Check(_index.ptr())
-                                      ? PyTuple_Pack(1, _index.ptr())
-                                      : _index.ptr();
-            // 1. Check argumnets
-            // 1.1 Check whether value obj is a tensor.
-            bool value_is_tensor = true;
-            bool parse_index = true;
-            if (py::isinstance<py::array>(value_obj) ||
-                py::isinstance<py::int_>(value_obj) ||
-                py::isinstance<py::float_>(value_obj)) {
-              value_is_tensor = false;
-            }
+      .def("_setitem_index_not_tensor",
+           [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
+              py::object &value_obj) {
+             VLOG(4) << "Call _setitem_index_not_tensor";
 
-            // 1.2 Check whether _index can be parsed.
-            const int size = PyTuple_GET_SIZE(index_ptr);
-            for (int dim = 0; dim < size; ++dim) {
-              PyObject *slice_item = PyTuple_GetItem(index_ptr, dim);
-              if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item) ||
-                    slice_item == Py_Ellipsis || slice_item == Py_None ||
-                    PyList_Check(slice_item))) {
-                parse_index = false;
-                break;
-              }
-            }
+             auto self_tensor =
+                 self->MutableVar()->GetMutable<framework::LoDTensor>();
+             // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
+             // https://github.com/python/cpython/blob/24b63c695ae0a95b06379eaadace66735abac1e2/Objects/tupleobject.c#L251
+             PyObject *index_ptr = !PyTuple_Check(_index.ptr())
+                                       ? PyTuple_Pack(1, _index.ptr())
+                                       : _index.ptr();
+             DEFINE_PADDLE_SCOPE_GUARD([index_ptr, &_index]() {
+               if (!PyTuple_Check(_index.ptr())) {
+                 Py_DECREF(index_ptr);
+                 VLOG(4) << "Call Py_DECREF";
+               }
+             });
+             // 1. Check argumnets
+             // 1.1 Check whether value obj is a tensor.
+             bool value_is_tensor = true;
+             bool parse_index = true;
+             if (py::isinstance<py::array>(value_obj) ||
+                 py::isinstance<py::int_>(value_obj) ||
+                 py::isinstance<py::float_>(value_obj)) {
+               value_is_tensor = false;
+             }
 
-            // 2. Call op set_value to speed up if the condition is met,
-            // otherwise call TensorToPyArray.
-            // TODO(liym27): Try not to call TensorToPyArray because it always
-            // copys data to cpu place, which reduces performance.
-            if (parse_index && value_is_tensor) {
-              std::vector<int> axes, starts, ends, steps, decrease_axes,
-                  none_axes, infer_flags, list_select_idxs;
-              // if index is a list, list_select_flag will be true
-              bool list_select_flag;
-              ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
-                                 &steps, &decrease_axes, &none_axes,
-                                 &infer_flags, &list_select_idxs,
-                                 &list_select_flag);
+             auto is_tensor = [](py::handle var) {
+               if (!var.ptr() || var.ptr() == Py_None) {
+                 return false;
+               }
+               try {
+                 py::cast<std::shared_ptr<imperative::VarBase>>(var);
+                 return true;
+               } catch (py::cast_error &) {
+                 return false;
+               }
+             };
 
-              if (!list_select_flag) {
-                framework::AttributeMap attrs = {
-                    {"axes", axes},
-                    {"starts", starts},
-                    {"ends", ends},
-                    {"steps", steps},
-                    {"decrease_axes", decrease_axes},
-                    {"none_axes", none_axes}};
+             // 1.2 Check whether _index can be parsed.
+             const int size = PyTuple_GET_SIZE(index_ptr);
+             for (int dim = 0; dim < size; ++dim) {
+               PyObject *slice_item = PyTuple_GetItem(index_ptr, dim);
+               if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item) ||
+                     slice_item == Py_Ellipsis || slice_item == Py_None)) {
+                 parse_index = false;
+                 break;
+               }
+             }
 
-                imperative::NameVarBaseMap ins = {{"Input", {self}}};
-                imperative::NameVarBaseMap outs = {{"Out", {self}}};
+             // 2. Call op set_value to speed up if the condition is met,
+             // otherwise call TensorToPyArray.
+             // TODO(liym27): Try not to call TensorToPyArray because it always
+             // copys data to cpu place, which reduces performance.
+             if (parse_index && value_is_tensor) {
+               std::vector<int> axes, starts, ends, steps, decrease_axes,
+                   none_axes, infer_flags, list_select_idxs;
+               // if index is a list, list_select_flag will be true
+               bool list_select_flag;
+               ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
+                                  &steps, &decrease_axes, &none_axes,
+                                  &infer_flags, &list_select_idxs,
+                                  &list_select_flag);
 
-                PADDLE_ENFORCE_EQ(
-                    self->IsLeaf() && !self->OverridedStopGradient(), false,
-                    platform::errors::InvalidArgument(
-                        "Leaf Tensor (%s) that doesn't stop gradient can't use "
-                        "inplace strategy.",
-                        self->Name()));
+               framework::AttributeMap attrs = {
+                   {"axes", axes},
+                   {"starts", starts},
+                   {"ends", ends},
+                   {"steps", steps},
+                   {"decrease_axes", decrease_axes},
+                   {"none_axes", none_axes}};
 
-                auto value_tensor =
-                    value_obj.cast<std::shared_ptr<imperative::VarBase>>();
-                ins.insert({"ValueTensor", {value_tensor}});
+               imperative::NameVarBaseMap ins = {{"Input", {self}}};
+               imperative::NameVarBaseMap outs = {{"Out", {self}}};
 
-                const auto &tracer = imperative::GetCurrentTracer();
-                {
-                  // Release gil and do tracing
-                  py::gil_scoped_release release;
-                  tracer->TraceOp("set_value", ins, outs, std::move(attrs),
-                                  {{"Input", "Out"}});
-                }
-              } else {
-              }
+               PADDLE_ENFORCE_EQ(
+                   self->IsLeaf() && !self->OverridedStopGradient(), false,
+                   platform::errors::InvalidArgument(
+                       "Leaf Tensor (%s) that doesn't stop gradient can't use "
+                       "inplace strategy.",
+                       self->Name()));
 
-            } else {
-              auto self_numpy = TensorToPyArray(*self_tensor);
+               auto value_tensor =
+                   value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+               ins.insert({"ValueTensor", {value_tensor}});
 
-              if (value_is_tensor) {
-                auto value =
-                    value_obj.cast<std::shared_ptr<imperative::VarBase>>();
-                auto value_tensor =
-                    value->MutableVar()->GetMutable<framework::LoDTensor>();
-                auto value_numpy = TensorToPyArray(*value_tensor);
+               const auto &tracer = imperative::GetCurrentTracer();
+               {
+                 // Release gil and do tracing
+                 py::gil_scoped_release release;
+                 tracer->TraceOp("set_value", ins, outs, std::move(attrs),
+                                 {{"Input", "Out"}});
+               }
+             } else {
+               auto self_numpy = TensorToPyArray(*self_tensor);
+               VLOG(4) << "parse_index is false";
 
-                self_numpy[_index] = value_numpy;
-                SetTensorFromPyArray(self_tensor, self_numpy,
-                                     self_tensor->place(), true);
-              } else {
-                auto value_numpy = value_obj;
-                self_numpy[_index] = value_numpy;
-                SetTensorFromPyArray(self_tensor, self_numpy,
-                                     self_tensor->place(), true);
-              }
-            }
-            // NOTE(liym27):
-            // Increase the version of VarBase self because __setitem__ is an
-            // inplace operator for the VarBase self.
-            self->BumpInplaceVersion();
-          })
+               if (value_is_tensor) {
+                 VLOG(4) << "value is tensor";
+                 auto value =
+                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+                 auto value_tensor =
+                     value->MutableVar()->GetMutable<framework::LoDTensor>();
+                 auto value_numpy = TensorToPyArray(*value_tensor);
+                 if (is_tensor(_index)) {
+                   VLOG(4) << "index is tensor";
+                   auto index_var =
+                       py::cast<std::shared_ptr<imperative::VarBase>>(_index);
+                   auto index_tensor = index_var->MutableVar()
+                                           ->GetMutable<framework::LoDTensor>();
+                   auto index_numpy = TensorToPyArray(*index_tensor);
+                   self_numpy[index_numpy] = value_numpy;
+                 } else {
+                   VLOG(4) << "index is not tensor";
+                   self_numpy[_index] = value_numpy;
+                 }
+                 SetTensorFromPyArray(self_tensor, self_numpy,
+                                      self_tensor->place(), true);
+               } else {
+                 VLOG(4) << "value is not tensor";
+                 if (is_tensor(_index)) {
+                   VLOG(4) << "index is tensor";
+                   auto index_var =
+                       py::cast<std::shared_ptr<imperative::VarBase>>(_index);
+                   auto index_tensor = index_var->MutableVar()
+                                           ->GetMutable<framework::LoDTensor>();
+                   auto index_numpy = TensorToPyArray(*index_tensor);
+                   self_numpy[index_numpy] = value_obj;
+                 } else {
+                   VLOG(4) << "index is not tensor";
+                   self_numpy[_index] = value_obj;
+                 }
+                 SetTensorFromPyArray(self_tensor, self_numpy,
+                                      self_tensor->place(), true);
+               }
+             }
+             // NOTE(liym27):
+             // Increase the version of VarBase self because __setitem__ is an
+             // inplace operator for the VarBase self.
+             self->BumpInplaceVersion();
+           })
       .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
+             VLOG(4) << "Call _getitem_index_not_tensor";
              std::vector<int> slice_axes, slice_starts, slice_ends,
                  slice_strides, decrease_axis, none_axes, infer_flags,
                  list_select_idxs;
