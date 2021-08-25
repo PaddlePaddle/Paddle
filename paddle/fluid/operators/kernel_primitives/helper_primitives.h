@@ -16,6 +16,73 @@
 
 namespace paddle {
 namespace operators {
-namespace kernel_primitives {}
+namespace kernel_primitives {
+namespace details {
+
+static __device__ __forceinline__ platform::float16 exp_on_device(
+    platform::float16 x) {
+  return ::Eigen::numext::exp(x);
 }
+static __device__ __forceinline__ float exp_on_device(float x) {
+  return expf(x);
 }
+static __device__ __forceinline__ double exp_on_device(double x) {
+  return exp(x);
+}
+static __device__ __forceinline__ platform::float16 log_on_device(
+    platform::float16 x) {
+  return ::Eigen::numext::log(x);
+}
+static __device__ __forceinline__ float log_on_device(float x) {
+  return logf(x);
+}
+static __device__ __forceinline__ double log_on_device(double x) {
+  return log(x);
+}
+
+}  // namespace details
+/*************************** Compute Functor****************************/
+// for margin_cross_entropy
+template <typename Tx, typename Ty = Tx>
+struct ExpLogitTransformer {
+  HOSTDEVICE explicit inline ExpLogitTransformer(int n) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx* x) const {
+    return static_cast<Ty>(details::exp_on_device(x[0]));
+  }
+
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(details::exp_on_device(x));
+  }
+};
+
+// Post processing function for sum, max, min, prod, any
+template <typename Tx, typename Ty = Tx>
+struct IdentityFunctor {
+  HOSTDEVICE explicit inline IdentityFunctor(int n) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx* x) const {
+    return static_cast<Ty>(x[0]);
+  }
+
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(x);
+  }
+};
+
+// Post processing function for mean
+template <typename T>
+struct DivideFunctor {
+  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
+
+  HOSTDEVICE inline T operator()(const T* x) const { return x[0] * n_inv; }
+
+  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
+
+ private:
+  T n_inv;
+};
+
+}  // namespace kernel_primitives
+}  // namespace operators
+}  // namespace paddle
