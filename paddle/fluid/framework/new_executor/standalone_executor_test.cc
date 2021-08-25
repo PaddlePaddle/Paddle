@@ -25,8 +25,6 @@
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
-USE_EVENT(paddle::platform::kCUDA);
-
 USE_OP(fill_constant);
 USE_OP(uniform_random);
 USE_OP(lookup_table);
@@ -107,16 +105,15 @@ int main(int argc, char* argv[]) {
                                              &scope);
 
   auto start = std::chrono::steady_clock::now();
-  ProfilerStart("new_executor.prof");
+  // ProfilerStart("new_executor.prof");
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
       std::cout << i << std::endl;
     }
 
-    std::vector<paddle::framework::Tensor> vec_out;
-    exec.Run({}, {}, {}, &vec_out);
+    exec.Run({}, {}, {});
   }
-  ProfilerStop();
+  // ProfilerStop();
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 

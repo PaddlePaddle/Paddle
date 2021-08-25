@@ -28,6 +28,7 @@
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
@@ -87,11 +88,11 @@ class InterpreterCore {
 
   std::vector<std::string> feed_names_;
 
-  // std::vector<paddle::platform::DeviceEvent> gc_event_;
-  std::vector<gpuEvent_t> gc_event_;
+  std::vector<paddle::platform::DeviceEvent> gc_event_;
   std::unique_ptr<GarbageQueue> garbages_;
   size_t max_memory_size_;
   size_t cur_memory_size_;
+  std::unique_ptr<WorkQueue> gc_queue_;
 
   platform::DeviceContextPool fetch_context_pool_;
 };

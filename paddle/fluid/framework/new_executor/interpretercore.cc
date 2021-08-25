@@ -15,6 +15,9 @@
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_gc_helper.h"
 
+using ::paddle::platform::kCUDA;
+USE_EVENT(kCUDA);
+
 namespace paddle {
 namespace framework {
 
@@ -30,8 +33,10 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   is_build_ = false;
 
   garbages_.reset(new GarbageQueue());
-  max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
+  max_memory_size_ =
+      9999999;  // static_cast<size_t>(GetEagerDeletionThreshold());
   cur_memory_size_ = 0;
+  gc_queue_ = CreateSingleThreadedWorkQueue();
 
   feed_names_ = feed_names;
 
@@ -135,15 +140,10 @@ void InterpreterCore::Convert() {
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
 #if defined(PADDLE_WITH_CUDA)
-    // int device_type = static_cast<int>(paddle::platform::DeviceType::CUDA);
-    // paddle::platform::DeviceOption dev_opt(
-    //     device_type, BOOST_GET_CONST(platform::CUDAPlace, place_).device);
-    // gc_event_.emplace_back(dev_opt);
-    platform::CUDADeviceGuard guard(
-        BOOST_GET_CONST(platform::CUDAPlace, place_).device);
-    gc_event_.emplace_back();
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaEventCreateWithFlags(&gc_event_[i], cudaEventDisableTiming));
+    int device_type = static_cast<int>(paddle::platform::DeviceType::CUDA);
+    paddle::platform::DeviceOption dev_opt(
+        device_type, BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+    gc_event_.emplace_back(dev_opt);
 #endif
 
     std::vector<size_t> vec_temp;
@@ -314,16 +314,14 @@ void InterpreterCore::ExecuteInstructionList(
     if (!garbages_->empty()) {
       if (max_memory_size_ <= 1) {
 #if defined(PADDLE_WITH_CUDA)
-        // auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
-        //     platform::DeviceContextPool::Instance().Get(place));
-        // gc_event_[instr_id].Record(place, dev_ctx);
-        // gc_event_[instr_id].Finish();
         auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
             platform::DeviceContextPool::Instance().Get(place));
-        auto compute_stream = dev_ctx->stream();
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            cudaEventRecord(gc_event_[instr_id], compute_stream));
-        PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventSynchronize(gc_event_[instr_id]));
+        gc_event_[instr_id].Record(place, dev_ctx);
+        gc_queue_->AddTask([event = &gc_event_[instr_id]]() {
+          while (!event->Query()) {
+            continue;
+          }
+        });
 
         delete garbages_.release();
         garbages_.reset(new GarbageQueue());
@@ -333,16 +331,14 @@ void InterpreterCore::ExecuteInstructionList(
 #endif
       } else if (cur_memory_size_ >= max_memory_size_) {
 #if defined(PADDLE_WITH_CUDA)
-        // auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
-        //     platform::DeviceContextPool::Instance().Get(place));
-        // gc_event_[instr_id].Record(place, dev_ctx);
-        // gc_event_[instr_id].Finish();
         auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
             platform::DeviceContextPool::Instance().Get(place));
-        auto compute_stream = dev_ctx->stream();
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            cudaEventRecord(gc_event_[instr_id], compute_stream));
-        PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventSynchronize(gc_event_[instr_id]));
+        gc_event_[instr_id].Record(place, dev_ctx);
+        gc_queue_->AddTask([event = &gc_event_[instr_id]]() {
+          while (!event->Query()) {
+            continue;
+          }
+        });
         delete garbages_.release();
         garbages_.reset(new GarbageQueue());
         cur_memory_size_ = 0;
