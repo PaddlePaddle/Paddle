@@ -277,15 +277,14 @@ class Partitioner(object):
 
         # AMP
         if self._dist_strategy.amp:
-            self._amp_backward_transpile(serial_loss, new_main_prog,
-                                         new_startup_program)
+            self._amp_backward_transpile(new_main_prog, new_startup_program)
 
         params_grads = self._dist_var_op_backward_transpile(
             serial_loss, serial_main_program, serial_startup_program,
             dist_main_program, dist_startup_program)
         # Sharding
         if self._dist_strategy.sharding:
-            self._sharding_backward_transpile(serial_loss, new_main_prog,
+            self._sharding_backward_transpile(new_main_prog,
                                               new_startup_program)
 
         # Data Parallel pass

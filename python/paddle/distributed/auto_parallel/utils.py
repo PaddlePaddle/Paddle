@@ -265,8 +265,8 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
         linear_idx)
     assert linear_idx < np.prod(
         mesh_shape
-    ), "linear index beyond the extent of mesh shape. shape: {}, coordinate: {}".format(
-        mesh_shape, coordinate)
+    ), "linear index beyond the extent of mesh shape. shape: {}, linear index: {}".format(
+        mesh_shape, linear_idx)
 
     base = 1
     coordinate = [-1] * len(mesh_shape)
