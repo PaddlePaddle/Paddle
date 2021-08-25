@@ -22,6 +22,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/top/core/convert_utils.h"
 #include "paddle/top/core/kernel_registry.h"
 
@@ -87,6 +88,6 @@ template void Mean<paddle::platform::float16>(const CUDAContext& dev_ctx,
 
 }  // namespace pt
 
-// PT_REGISTER_KERNEL_3T(sign, CUDA, NCHW, pt::Sign, float, double,
-// pt::float16);
-PT_REGISTER_KERNEL_2T(sign, CUDA, NCHW, pt::Sign, float, double);
+using float16 = paddle::platform::float16;
+PT_REGISTER_KERNEL_3T(sign, CUDA, NCHW, pt::Sign, float, double, float16);
+// PT_REGISTER_KERNEL_2T(sign, CUDA, NCHW, pt::Sign, float, double);

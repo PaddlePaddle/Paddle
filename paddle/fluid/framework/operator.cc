@@ -1074,7 +1074,7 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
-static OpKernelType TransPtOpKernelKeyToOpKernelType(
+OpKernelType TransPtOpKernelKeyToOpKernelType(
     const pt::OpKernelKey& kernel_key) {
   proto::VarType::Type data_type = pt::TransToProtoVarType(kernel_key.dtype());
   platform::Place place = pt::TransToFluidPlace(kernel_key.backend());
@@ -1303,8 +1303,8 @@ void OperatorWithKernel::ChoosePtKernel(
   pt::OperationName op_name(Type().c_str());
 
   // 2. construct op kernel key
-  pt_kernel_key_.reset(
-      new pt::OpKernelKey(ConstructPtOpKernelKey(ctx, dev_ctx.GetPlace())));
+  pt_kernel_key_.reset(new pt::OpKernelKey(
+      ConstructPtOpKernelKey(ctx.inputs, dev_ctx.GetPlace())));
 
   // 3. selecte op kernel
   pt_kernel_.reset(new pt::OpKernel(
@@ -1814,7 +1814,7 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 }
 
 pt::OpKernelKey OperatorWithKernel::ConstructPtOpKernelKey(
-    const RuntimeContext& ctx, const platform::Place& ctx_place) const {
+    const VariableValueMap& inputs, const platform::Place& ctx_place) const {
   // 1. get backend based place and attrs
   pt::Backend backend = pt::TransToPtBackend(ctx_place);
   if (HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn") == true) {
@@ -1838,7 +1838,7 @@ pt::OpKernelKey OperatorWithKernel::ConstructPtOpKernelKey(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& var_pair : ctx.inputs) {
+  for (auto& var_pair : inputs) {
     ParseInputDataType(var_pair.second, var_pair.first, &data_type);
   }
   PADDLE_ENFORCE_NE(

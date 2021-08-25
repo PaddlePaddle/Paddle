@@ -115,6 +115,9 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
+OpKernelType TransPtOpKernelKeyToOpKernelType(
+    const pt::OpKernelKey& kernel_key);
+
 class ExecutionContext;
 class OperatorBase;
 
@@ -533,7 +536,7 @@ class OperatorWithKernel : public OperatorBase {
   /* member functions for adapting to top lib */
   // TODO(chenweihang): Temporarily as a class method
   virtual pt::OpKernelKey ConstructPtOpKernelKey(
-      const RuntimeContext& ctx, const platform::Place& ctx_place) const;
+      const VariableValueMap& inputs, const platform::Place& ctx_place) const;
 
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;

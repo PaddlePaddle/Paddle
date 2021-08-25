@@ -85,6 +85,8 @@ struct OperationName final {
 
 class OpKernelKey {
  public:
+  OpKernelKey() = default;
+
   OpKernelKey(Backend backend, DataLayout layout, DataType dtype)
       : backend_(backend), layout_(layout), dtype_(dtype) {
     // |----31-20------|---19-12---|---11-8----|---7-0---|
@@ -127,9 +129,9 @@ class OpKernelKey {
   constexpr static int kDataLayoutBitLength = 4;
   constexpr static int kDataTypeBitLength = 8;
 
-  Backend backend_;
-  DataLayout layout_;
-  DataType dtype_;
+  Backend backend_{Backend::kUndef};
+  DataLayout layout_{DataLayout::kUndef};
+  DataType dtype_{DataType::kUndef};
 
   // Avoid calculating Hash value at runtime.
   // Note: Now the number of bits we need does not exceed 32 bits, so there is
