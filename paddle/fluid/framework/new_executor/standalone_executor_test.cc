@@ -25,11 +25,7 @@
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
-using ::paddle::platform::kCUDA;
-using ::paddle::platform::kCPU;
-USE_EVENT(kCUDA);
-// USE_EVENT_WAIT(kCUDA, kCUDA);
-// USE_EVENT_WAIT(kCPU, kCUDA);
+USE_EVENT(paddle::platform::kCUDA);
 
 USE_OP(fill_constant);
 USE_OP(uniform_random);

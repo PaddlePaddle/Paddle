@@ -14,23 +14,32 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/allocation/spin_lock_c.h"
+#include <functional>
+#include <memory>
 
 namespace paddle {
-namespace memory {
+namespace framework {
 
-class SpinLock {
+class WorkQueue {
  public:
-  SpinLock() { INITIAL_LOCK(&mlock_); }
+  WorkQueue() = default;
 
-  void lock() { ACQUIRE_LOCK(&mlock_); }
+  WorkQueue(const WorkQueue&) = delete;
 
-  void unlock() { RELEASE_LOCK(&mlock_); }
-  DISABLE_COPY_AND_ASSIGN(SpinLock);
+  WorkQueue& operator=(const WorkQueue&) = delete;
 
- private:
-  MLOCK_T mlock_;
+  virtual ~WorkQueue() = default;
+
+  virtual void AddTask(std::function<void()> fn) = 0;
+
+  virtual void WaitQueueEmpty() = 0;
+
+  virtual size_t NumThreads() = 0;
 };
 
-}  // namespace memory
+std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue();
+
+std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(int num_threads);
+
+}  // namespace framework
 }  // namespace paddle

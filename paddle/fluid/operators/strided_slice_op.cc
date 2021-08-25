@@ -62,6 +62,20 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     auto ends_size = ends.size();
     auto strides_size = strides.size();
 
+    for (size_t i = 0; i < axes.size(); ++i) {
+      PADDLE_ENFORCE_GE(axes[i], 0,
+                        platform::errors::InvalidArgument(
+                            "The axis should be greater than or equal to 0."
+                            "But received %d of axes[%d]",
+                            axes[i], i));
+      PADDLE_ENFORCE_LT(
+          axes[i], in_dims.size(),
+          platform::errors::InvalidArgument(
+              "The axes should be less than or equal to input tensor's rank."
+              "But received %d of axes[%d], input tensor shape [%d]",
+              axes[i], i, in_dims.size()));
+    }
+
     if (ctx->HasInputs("StartsTensorList")) {
       auto StartsTensorList = ctx->Inputs("StartsTensorList");
       PADDLE_ENFORCE_GT(

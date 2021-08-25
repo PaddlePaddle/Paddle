@@ -61,6 +61,9 @@ struct EventRun {
 
 struct Instruction {
   OpKernelFunc kernel_func_;
+  std::shared_ptr<RuntimeContext> runtime_ctx_;
+  std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
+  std::shared_ptr<ExecutionContext> execution_ctx_;
   std::map<std::string, std::vector<int>> input_index_;
   std::map<std::string, std::vector<int>> output_index_;
 
