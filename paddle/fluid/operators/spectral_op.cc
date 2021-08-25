@@ -15,14 +15,17 @@
 #include "paddle/fluid/operators/spectral_op.h"
 
 #include <algorithm>
+#include <memory>
+#include <numeric>
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/complex.h"
 
 #if defined(PADDLE_WITH_ONEMKL)
-// #include "mkl_dfti.h"
+#include <mkl_dfti.h>
 // #include "mkl_service.h"
 #elif defined(PADDLE_WITH_POCKETFFT)
 #include "extern_pocketfft/pocketfft_hdronly.h"
@@ -349,34 +352,266 @@ T compute_factor(int64_t size, FFTNormMode normalization) {
 
 ////////////////// Functors
 #if defined(PADDLE_WITH_ONEMKL)
-template <typename T>
-struct FFTC2CFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
-                  Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {}
+
+static inline void MKL_DFTI_CHECK(MKL_INT status) {
+  if (status && !DftiErrorClass(status, DFTI_NO_ERROR)) {
+    PADDLE_THROW(DftiErrorMessage(status));
+  }
+}
+
+struct DftiDescriptorDeleter {
+  void operator()(DFTI_DESCRIPTOR_HANDLE handle) {
+    if (handle != nullptr) {
+      MKL_DFTI_CHECK(DftiFreeDescriptor(&handle));
+    }
+  }
 };
 
-template <typename T>
-struct FFTR2CFunctor<platform::CPUDeviceContext, T> {
+class DftiDescriptor {
+ public:
+  void init(DFTI_CONFIG_VALUE precision, DFTI_CONFIG_VALUE signal_type,
+            MKL_LONG signal_ndim, MKL_LONG* sizes) {
+    if (desc_ != nullptr) {
+      PADDLE_THROW("DFT DESCRIPTOR can only be initialized once.");
+    }
+    DFTI_DESCRIPTOR* raw_desc;
+    if (signal_ndim == 1) {
+      MKL_DFTI_CHECK(
+          DftiCreateDescriptor(&raw_desc, precision, signal_type, 1, sizes[0]));
+    } else {
+      MKL_DFTI_CHECK(
+          DftiCreateDescriptor(&raw_desc, precision, signal_type, 1, sizes[0]));
+    }
+    desc_.reset(raw_desc);
+  }
+
+  DFTI_DESCRIPTOR* get() const {
+    if (desc_ == nullptr) {
+      PADDLE_THROW("DFTI DESCRIPTOR has not been initialized.");
+    }
+    return desc_.get();
+  }
+
+ private:
+  std::unique_ptr<DFTI_DESCRIPTOR, DftiDescriptorDeleter> desc_;
+};
+
+DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
+                             const framework::proto::VarType::Type& out_dtype,
+                             const framework::DDim& in_strides,
+                             const framework::DDim& out_strides,
+                             const std::vector<int>& signal_sizes,
+                             FFTNormMode normalization, bool forward) {
+  const DFTI_CONFIG_VALUE precision = [&] {
+    switch (in_dtype) {
+      case framework::proto::VarType::FP32:
+        return DFTI_SINGLE;
+      case framework::proto::VarType::COMPLEX64:
+        return DFTI_SINGLE;
+      case framework::proto::VarType::FP64:
+        return DFTI_DOUBLE;
+      case framework::proto::VarType::COMPLEX128:
+        return DFTI_SINGLE;
+      default:
+        PADDLE_THROW("MKL DFT does not support.");
+    }
+  }();
+
+  const bool complex_input = framework::IsComplexType(in_dtype);
+  const bool complex_output = framework::IsComplexType(out_dtype);
+  const DFTI_CONFIG_VALUE domain = [&] {
+    if (forward) {
+      return complex_input ? DFTI_COMPLEX : DFTI_REAL;
+    } else {
+      return complex_output ? DFTI_COMPLEX : DFTI_REAL;
+    }
+  }();
+
+  DftiDescriptor descriptor;  /////
+  std::vector<MKL_LONG> fft_sizes(signal_sizes.cbegin(), signal_sizes.cend());
+  const MKL_LONG signal_ndim = fft_sizes.size() - 1;
+  descriptor.init(precision, domain, signal_ndim, fft_sizes.data() + 1);
+
+  // placement inplace?
+  MKL_DFTI_CHECK(
+      DftiSetValue(descriptor.get(), DFTI_PLACEMENT, DFTI_NOT_INPLACE));
+
+  // number of transformation
+  const MKL_LONG batch_size = fft_sizes[0];
+  MKL_DFTI_CHECK(
+      DftiSetValue(descriptor.get(), DFTI_NUMBER_OF_TRANSFORMS, batch_size));
+
+  // input & output distance
+  const MKL_LONG idist = in_strides[0];
+  const MKL_LONG odist = out_strides[0];
+  MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_INPUT_DISTANCE, idist));
+  MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_OUTPUT_DISTANCE, odist));
+
+  // input & output stride
+  std::vector<MKL_LONG> mkl_in_stride(1 + signal_ndim, 0);
+  std::vector<MKL_LONG> mkl_out_stride(1 + signal_ndim, 0);
+  for (MKL_LONG i = 1; i <= signal_ndim; i++) {
+    mkl_in_stride[i] = in_strides[i];
+    mkl_out_stride[i] = out_strides[i];
+  }
+  MKL_DFTI_CHECK(
+      DftiSetValue(descriptor.get(), DFTI_INPUT_STRIDES, mkl_in_stride));
+  MKL_DFTI_CHECK(
+      DftiSetValue(descriptor.get(), DFTI_OUTPUT_STRIDES, mkl_out_stride));
+
+  // conjugate even storage
+  if (!complex_input || !complex_output) {
+    MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_CONJUGATE_EVEN_STORAGE,
+                                DFTI_COMPLEX_COMPLEX));
+  }
+
+  MKL_LONG signal_numel =
+      std::accumulate(fft_sizes.cbegin() + 1, fft_sizes.cend(), 1UL,
+                      std::multiplies<MKL_LONG>());
+  if (normalization != FFTNormMode::none) {
+    const double scale =
+        ((normalization == FFTNormMode::by_sqrt_n)
+             ? 1.0 / std::sqrt(static_cast<double>(signal_numel))
+             : 1.0 / static_cast<double>(signal_numel));
+    const auto scale_direction =
+        forward ? DFTI_FORWARD_SCALE : DFTI_BACKWARD_SCALE;
+    MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), scale_direction, scale));
+  }
+
+  // commit the descriptor
+  MKL_DFTI_CHECK(DftiCommitDescriptor(descriptor.get()));
+  return descriptor;
+}
+
+// Execute a general fft operation (can be c2c, onesided r2c or onesided c2r)
+template <typename DeviceContext, typename Ti, typename To>
+void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
+              const std::vector<int64_t>& axes, FFTNormMode normalization,
+              bool forward) {
+  const framework::DDim& in_sizes = x->dims();
+  const int ndim = in_sizes.size();
+  const int signal_ndim = axes.size();
+  const int batch_ndim = ndim - signal_ndim;
+  const framework::DDim& out_sizes = out->dims();
+
+  // make a dim permutation
+  std::vector<int> dim_permute(ndim);
+  std::iota(dim_permute.begin(), dim_permute.end(), 0);
+  std::vector<bool> is_transformed_dim(ndim, false);
+  for (const auto& d : axes) {
+    is_transformed_dim[d] = true;
+  }
+  const auto batch_end =
+      std::partition(dim_permute.begin(), dim_permute.end(),
+                     [&](size_t axis) { return !is_transformed_dim[axis]; });
+  std::copy(axes.cbegin(), axes.cend(), batch_end);
+
+  // transpose input according to that permutation
+  framework::DDim transposed_input_shape = in_sizes.transpose(dim_permute);
+  std::vector<int64_t> transposed_input_shape_ =
+      framework::vectorize(transposed_input_shape);
+  framework::Tensor transposed_input;
+  transposed_input.Resize(transposed_input_shape);
+  const auto place = ctx.GetPlace();
+  transposed_input.mutable_data<Ti>(place);
+  TransCompute<platform::CPUDeviceContext, Ti>(ndim, ctx, *x, &transposed_input,
+                                               dim_permute);
+
+  // make an collapsed input: collapse batch axes for input
+  const int batch_size = std::accumulate(
+      transposed_input_shape.Get(), transposed_input_shape.Get() + batch_ndim,
+      1L, std::multiplies<int64_t>());
+  std::vector<int> collapsed_input_shape_(1 + signal_ndim);
+  collapsed_input_shape_[0] = batch_size;
+  std::copy(transposed_input_shape_.begin() + batch_ndim,
+            transposed_input_shape_.end(), collapsed_input_shape_.begin() + 1);
+  const framework::DDim collapsed_input_shape =
+      framework::make_ddim(collapsed_input_shape_);
+  transposed_input.Resize(collapsed_input_shape);
+  framework::Tensor& collapsed_input = transposed_input;
+
+  // make a collapsed output
+  std::vector<int> collapsed_output_shape_(1 + signal_ndim);
+  collapsed_output_shape_[0] = batch_size;
+  for (int i = 0; i < signal_ndim; i++) {
+    collapsed_output_shape_[1 + i] = out_sizes[axes[i]];
+  }
+  const framework::DDim collapsed_output_shape =
+      framework::make_ddim(collapsed_output_shape_);
+  framework::Tensor collapsed_output;
+  collapsed_output.Resize(collapsed_output_shape);
+  collapsed_output.mutable_data(place, out->type());
+
+  // signal sizes
+  std::vector<int> signal_sizes(1 + signal_ndim);
+  signal_sizes[0] = batch_size;
+  for (int i = 0; i < signal_ndim; i++) {
+    signal_sizes[1 + i] =
+        std::max(collapsed_input_shape[1 + i], collapsed_output_shape[1 + i]);
+  }
+
+  // input & output stride
+  const framework::DDim input_stride = framework::stride(collapsed_input_shape);
+  const framework::DDim output_stride =
+      framework::stride(collapsed_output_shape);
+
+  // make a DFTI_DESCRIPTOR
+  DftiDescriptor desc =
+      _plan_mkl_fft(x->type(), out->type(), input_stride, output_stride,
+                    signal_sizes, normalization, forward);
+  if (forward) {
+    MKL_DFTI_CHECK(DftiComputeForward(desc.get(), collapsed_input.data<void>(),
+                                      collapsed_output.data<void>()));
+  } else {
+    MKL_DFTI_CHECK(DftiComputeBackward(desc.get(), collapsed_input.data<void>(),
+                                       collapsed_output.data<void>()));
+  }
+
+  // resize for the collapsed output
+  framework::DDim transposed_output_shape = out_sizes.transpose(dim_permute);
+  collapsed_output.Resize(transposed_output_shape);
+  framework::Tensor& transposed_output = collapsed_output;
+
+  // reverse the transposition
+  std::vector<int> reverse_dim_permute(ndim);
+  for (int i = 0; i < ndim; i++) {
+    reverse_dim_permute[dim_permute[i]] = i;
+  }
+  TransCompute<platform::CPUDeviceContext, To>(ndim, ctx, transposed_output,
+                                               out, reverse_dim_permute);
+}
+
+template <typename Ti, typename To>
+struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
+  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
+                  Tensor* out, const std::vector<int64_t>& axes,
+                  FFTNormMode normalization, bool forward) {
+    exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, x, out, axes,
+                                                 normalization, forward);
+  }
+};
+
+template <typename Ti, typename To>
+struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward, bool onesided) {}
 };
 
-template <typename T>
-struct FFTC2RFunctor<platform::CPUDeviceContext, T> {
+template <typename Ti, typename To>
+struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward) {}
 };
 
 #elif defined(PADDLE_WITH_POCKETFFT)
-template <typename T>
-struct FFTC2CFunctor<platform::CPUDeviceContext, T> {
+template <typename Ti, typename To>
+struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward) {
-    using R = typename T::value_type;
+    using R = typename Ti::value_type;
     using C = std::complex<R>;
 
     const auto& input_dim = x->dims();
@@ -388,12 +623,12 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, T> {
     std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
                    [](int64_t s) { return s * data_size; });
 
-    const auto* in_data = reinterpret_cast<const C*>(x->data<T>());
-    auto* out_data = reinterpret_cast<C*>(out->data<T>());
+    const auto* in_data = reinterpret_cast<const C*>(x->data<Ti>());
+    auto* out_data = reinterpret_cast<C*>(out->data<To>());
     // well, we have to use std::vector<size_t> here
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
-    // compuet facet
+    // compuet factor
     int64_t signal_numel = 1;
     for (auto i : axes) {
       signal_numel *= in_sizes[i];
@@ -404,12 +639,12 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template <typename T>
-struct FFTR2CFunctor<platform::CPUDeviceContext, T> {
+template <typename Ti, typename To>
+struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward, bool onesided) {
-    using R = typename T::value_type;
+    using R = Ti;
     using C = std::complex<R>;
 
     const auto& input_dim = x->dims();
@@ -436,7 +671,7 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, T> {
     }
 
     const auto* in_data = x->data<R>();
-    auto* out_data = reinterpret_cast<C*>(out->data<T>());
+    auto* out_data = reinterpret_cast<C*>(out->data<To>());
     // well, we have to use std::vector<size_t> here
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
@@ -451,12 +686,12 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template <typename T>
-struct FFTC2RFunctor<platform::CPUDeviceContext, T> {
+template <typename Ti, typename To>
+struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward) {
-    using R = typename T::value_type;
+    using R = To;
     using C = std::complex<R>;
 
     const auto& input_dim = x->dims();
@@ -482,7 +717,7 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, T> {
                      [](int64_t s) { return s * data_size; });
     }
 
-    const auto* in_data = reinterpret_cast<const C*>(x->data<T>());
+    const auto* in_data = reinterpret_cast<const C*>(x->data<To>());
     auto* out_data = out->data<R>();
     // well, we have to use std::vector<size_t> here
     std::vector<size_t> axes_(axes.size());
@@ -499,13 +734,6 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, T> {
 };
 
 #endif
-// mkl fft for all cases
-void exec_fft(const Tensor* x, Tensor* out, const std::vector<int64_t>& out_dim,
-              int64_t normalization, bool forward) {
-  // construct the descriptor
-
-  // compute
-}  // namespace anonymous
 
 }  // namespace operators
 }  // namespace paddle
