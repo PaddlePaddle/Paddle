@@ -512,7 +512,7 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
          (op_base->Attr<std::string>("op_device").length() > 0));
     if (need_change_place) {
       auto& op_device = op_base->Attr<std::string>("op_device");
-      if (op_device == "cpu") {
+      if (op_device == "cpu" || platform::is_cpu_place(place)) {
         VLOG(3) << "Switch into CPUPlace by device_guard.";
         expected_kernel_key.place_ = platform::CPUPlace();
       } else if (op_device.find("gpu") != std::string::npos &&
