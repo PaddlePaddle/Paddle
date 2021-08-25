@@ -607,7 +607,7 @@ class AutoParallelTranspiler(object):
 
         dist_attr = self._auto_parallel_context.get_tensor_distributed_attr_for_program(
             var)
-        assert dist_attr is not None, "dist_attr of var [] is None".format(
+        assert dist_attr is not None, "dist_attr of var [{}] is None".format(
             var.name)
         return _is_distributed(dist_attr)
 

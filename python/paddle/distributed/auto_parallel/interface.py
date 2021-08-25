@@ -236,7 +236,7 @@ class ProcessMesh(object):
         for idx, l_id in enumerate(logical_order):
             _user_defined_physical_map[l_id] = order[idx]
 
-    def reset_global_process_mesh_map(self):
+    def _reset_global_process_mesh_map(self):
         """
         Remove all process mesh in _g_process_mesh_map, make it empty.
         """
