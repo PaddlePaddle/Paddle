@@ -280,7 +280,8 @@ void InterpreterCore::ExecuteInstructionList(
     auto& gc_check_list = instr_node.gc_check_var_list;
     for (auto var_id : gc_check_list) {
       --working_var_ref[var_id].var_ref_count_;
-      if (!var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
+      if (var_scope.vec_meta_info_[var_id].vardesc_ &&
+          !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
           working_var_ref[var_id].var_ref_count_ == 0) {
         Variable* var = var_scope.var_list[var_id];
         if (var->IsType<LoDTensor>()) {
