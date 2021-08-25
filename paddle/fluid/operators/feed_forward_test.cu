@@ -405,7 +405,7 @@ class TestFeedForward {
     FusedBackward();
   }
 
-  // checkout forward correctness between baseline and results of feedforward.
+  // check forward correctness between baseline and results of feedforward.
   void CheckOut(const T diff, bool is_relative_atol = false) {
     std::vector<T> out(size_output_);
     std::vector<T> bias_out(size_output_);
@@ -434,7 +434,7 @@ class TestFeedForward {
     }
   }
 
-  // checkout backward correctness between baseline and results of feedforward.
+  // check backward correctness between baseline and results of feedforward.
   void CheckGrad(const T diff, bool is_relative_atol = false) {
     std::vector<T> h_dinput(size_src_);
     TensorToVector(dinput_, *ctx_, &h_dinput);
