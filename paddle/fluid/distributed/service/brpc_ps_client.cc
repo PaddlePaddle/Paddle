@@ -1066,7 +1066,6 @@ std::future<int32_t> BrpcPsClient::push_sparse(
     //    shard_num, request_call_num, keys[i]);
     size_t shard_id = keys[i] % request_call_num;
     shard_sorted_kv_list[shard_id].push_back({keys[i], update_values[i]});
-    //std::cout << "zcb client push_sparse(): " << keys[i] << " -> " << shard_id << "\n";
   }
   auto sparse_task_data = _sparse_task_pool.get();
   sparse_task_data->shared_data.resize(request_call_num);

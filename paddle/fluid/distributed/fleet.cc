@@ -546,16 +546,18 @@ void FleetWrapper::PushSparseFromTensorAsync(
   CHECK(output_len == g.size());
 
   std::vector<float*> push_g_vec(input_idx, nullptr);
-  /*
-  std::cout << "zcb debug push sparse\n";
+  
+  //std::cout << "zcb debug push sparse\n";
   for (auto i = 0u; i < push_keys.size(); ++i) {
     push_g_vec[i] = push_values.at(i).data();
 
+    /*
     std::cout << "key: " << push_keys[i] << " ";
     for (int j = 0; j < fea_dim + 3; ++ j)
         std::cout << push_g_vec[i][j] << " ";
     std::cout << "\n";
-  }*/
+    */
+  }
   auto* communicator = Communicator::GetInstance();
   PADDLE_ENFORCE_EQ(
       communicator->Check(table_id), true,

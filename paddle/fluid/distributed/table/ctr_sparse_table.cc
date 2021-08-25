@@ -432,7 +432,7 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys,
               memcpy(const_cast<float*>(feature_value->data()), data_buffer_ptr, value_size * sizeof(float));
               itr = local_shard->Find(key);
             } else {
-              VLOG(0) << "zcb debug table push_sparse: " << key << " found!" ;
+              VLOG(1) << "zcb debug table push_sparse: " << key << " found!" ;
             }
 
             auto* feature_value = itr->second;
