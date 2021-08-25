@@ -34,8 +34,6 @@ class BufferSharedInplaceOpPass : public MemoryReusePass {
 
   void ApplyImpl(ProgramDesc *main_program,
                  ProgramDesc *startup_program) const override;
-
-  bool SupportApplyProgramViaGraph() const override { return false; }
 };
 
 void BufferSharedInplaceOpPass::Run(Graph *graph) const {

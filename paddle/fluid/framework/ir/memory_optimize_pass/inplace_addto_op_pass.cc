@@ -44,8 +44,6 @@ class InplaceAddToOpPass : public MemoryReusePass {
   void ApplyImpl(ProgramDesc *main_program,
                  ProgramDesc *startup_program) const override;
 
-  bool SupportApplyProgramViaGraph() const override { return false; }
-
  private:
   // 1. Add last living op of in_var, add any last living op of out_var
   // 2. Set reference count of in_var to be 2
