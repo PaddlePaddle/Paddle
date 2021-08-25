@@ -631,11 +631,10 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
   CUFFT_CHECK(cufftSetWorkArea(plan, workspace_tensor.data<T>()));
 
   // execute transform plan
-  exec_cufft_plan(*config, input.data<T>(), output.data<T>(), forward);
+  exec_cufft_plan(*config, input.data<void>(), output.data<void>(), forward);
 
   // Inverting output by reshape and transpose to original batch and dimension
   output.Resize(framework::make_ddim(reshape_out_sizes));
-  // Todo: transpose out
   out->Resize(framework::make_ddim(out_sizes));
   /*
   auto out_ret =
@@ -648,6 +647,8 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
   TransCompute<DeviceContext, T>(ndim, ctx, output, out, reverse_dim_permute);
 }
 
+}  // anonymous namespace
+
 // Calculates the normalization constant and applies it in-place to out
 // sizes is the sizes of a twosided tensor and dims are all transformed dims
 double fft_normalization_scale(FFTNormMode normalization,
@@ -655,7 +656,7 @@ double fft_normalization_scale(FFTNormMode normalization,
                                const std::vector<int64_t>& dims) {
   // auto norm = static_cast<fft_norm_mode>(normalization);
   if (normalization == FFTNormMode::none) {
-    return 1.0;
+    return static_cast<double>(1.0);
   }
 
   int64_t signal_numel = 1;
@@ -665,20 +666,28 @@ double fft_normalization_scale(FFTNormMode normalization,
   const double scale_denom = (normalization == FFTNormMode::by_sqrt_n)
                                  ? std::sqrt(signal_numel)
                                  : static_cast<double>(signal_numel);
-  return 1.0 / scale_denom;
+  return static_cast<double>(1.0 / scale_denom);
 }
 
-void exec_normalization(Tensor* out, FFTNormMode normalization,
+template <typename DeviceContext, typename T>
+void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
+                        FFTNormMode normalization,
                         const std::vector<int64_t>& sizes,
                         const std::vector<int64_t>& axes) {
-  auto scale = fft_normalization_scale(normalization, sizes, axes);
+  double scale = fft_normalization_scale(normalization, sizes, axes);
   if (scale != 1.0) {
-    // Todo inplace multiply scalar
-    // out->mul(scale);
+    // out = in * scale;
+    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
+    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
+    auto dev = ctx.eigen_device();
+    // EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
+    EigenScale<Eigen::GpuDevice, T>::Eval(*dev, eigen_out, eigen_in,
+                                          static_cast<T>(scale),
+                                          static_cast<T>(0), false);
+  } else {
+    framework::TensorCopy(*in, ctx.GetPlace(), out);
   }
 }
-
-}  // anonymous namespace
 
 template <typename T>
 struct FFTC2CFunctor<platform::CUDADeviceContext, T> {
@@ -690,6 +699,7 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, T> {
       return;
     }
 
+    framework::Tensor* p_out = out;
     std::vector<int64_t> out_dims = framework::vectorize(X->dims());
     std::vector<int64_t> working_axes(axes.begin(), axes.end());
     std::vector<int64_t> first_dims;
@@ -704,7 +714,7 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, T> {
           std::min(static_cast<size_t>(kMaxCUFFTNdim), working_axes.size());
       first_dims.assign(working_axes.end() - max_dims, working_axes.end());
 
-      exec_fft<platform::CUDADeviceContext, T>(ctx, out, p_working_tensor,
+      exec_fft<platform::CUDADeviceContext, T>(ctx, p_out, p_working_tensor,
                                                out_dims, first_dims, forward);
       working_axes.resize(working_axes.size() - max_dims);
       first_dims.clear();
@@ -713,9 +723,10 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, T> {
         break;
       }
 
-      std::swap(out, p_working_tensor);
+      std::swap(p_out, p_working_tensor);
     }
-    exec_normalization(out, normalization, out_dims, axes);
+    exec_normalization<platform::CUDADeviceContext, T>(
+        ctx, p_out, out, normalization, out_dims, axes);
   }
 };
 
