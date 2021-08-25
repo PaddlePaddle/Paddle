@@ -57,6 +57,11 @@ class CCommDestroyOpAscend : public framework::OperatorBase {
 class CCommDestroyOpAscendMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddComment(R"DOC(
+CCommDestroy operator
+
+Destroy collective communicatoin context within this trainer
+)DOC");
     AddAttr<int>(
         "device_id",
         "(int) The deivce_id on which to destroy the communicator."
