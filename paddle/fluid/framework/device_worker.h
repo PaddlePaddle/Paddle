@@ -27,11 +27,11 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/fleet/context/trainer_context.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/trainer_context.h"
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
