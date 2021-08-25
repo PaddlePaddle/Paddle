@@ -1545,37 +1545,18 @@ void BrpcPsClient::push_dense_task_consume() {
           mat *= (1.0 / (merge_count + 1));
         }
 
-        VLOG(1) << "BrpcPsClient::push_dense_task_consume after merge "
-                   "total_send_data[0]"
-                << total_send_data[0] << " total_send_data[-2]"
-                << total_send_data[total_send_data_size - 2]
-                << " total_send_data[-1]"
-                << total_send_data[total_send_data_size - 1] << " merge_count "
-                << merge_count;
+      VLOG(1) << "BrpcPsClient::push_dense_task_consume after merge "
+                 "total_send_data[0]"
+              << total_send_data[0] << " total_send_data[-2]"
+              << total_send_data[total_send_data_size - 2]
+              << " total_send_data[-1]"
+              << total_send_data[total_send_data_size - 1] << " merge_count "
+              << merge_count;
 
-        DownpourBrpcClosure *closure = new DownpourBrpcClosure(
-            request_call_num, [this, request_call_num](void *done) {
-              int ret = 0;
-              auto *closure = (DownpourBrpcClosure *)done;
-              for (size_t i = 0; i < request_call_num; ++i) {
-                if (closure->check_response(i, PS_PUSH_DENSE_TABLE) != 0) {
-                  ret = -1;
-                  break;
-                }
-              }
-          push_dense_raw_gradient(task, total_send_data, total_send_data_size,
-                                  closure);
-          }
-          if (scale_gradient && merge_count > 1) {
-            Eigen::Map<Eigen::MatrixXf> mat(total_send_data, 1,
-                                            total_send_data_size);
-            mat *= (1.0 / merge_count);
-          }
-        }
-
-        push_dense_raw_gradient(task, total_send_data, total_send_data_size,
-                                closure);
       }
+      push_dense_raw_gradient(task, total_send_data, total_send_data_size,
+                                closure);
+    }
       auto wait_ms =
           FLAGS_pslib_async_push_dense_interval_ms - (timeline.ElapsedMS());
       if (wait_ms > 0) {
