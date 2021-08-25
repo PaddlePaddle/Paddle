@@ -64,8 +64,6 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_count);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
-#if CUDA_VERSION >= 9020 && !defined(_WIN32)
-
     GesvdjBatched(dev_ctx, batch_count, n, m, std::min(m, n), x_tmp.data<T>(),
                   vh_data, u_data, s_data, info_ptr, full_matrices);
 
@@ -77,14 +75,12 @@ class SvdGPUKernel : public framework::OpKernel<T> {
                                                  T>(context);
     auto tmp_U = dito.transpose(*U);
     U->ShareDataWith(tmp_U);  // U becomse UT, aka VT
-#endif
   }
   void GesvdjBatched(const platform::CUDADeviceContext& dev_ctx, int batchSize,
                      int m, int n, int k, const T* A, T* U, T* V, T* S,
                      int* info, int thin_UV = 1) const;
 };
 
-#if CUDA_VERSION >= 9020 && !defined(_WIN32)
 template <>
 void SvdGPUKernel<float>::GesvdjBatched(
     const platform::CUDADeviceContext& dev_ctx, int batchSize, int m, int n,
@@ -128,9 +124,7 @@ void SvdGPUKernel<float>::GesvdjBatched(
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
 }
-#endif
 
-#if CUDA_VERSION >= 9020 && !defined(_WIN32)
 template <>
 void SvdGPUKernel<double>::GesvdjBatched(
     const platform::CUDADeviceContext& dev_ctx, int batchSize, int m, int n,
@@ -174,7 +168,6 @@ void SvdGPUKernel<double>::GesvdjBatched(
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
 }
-#endif
 
 }  // namespace operators
 }  // namespace paddle
