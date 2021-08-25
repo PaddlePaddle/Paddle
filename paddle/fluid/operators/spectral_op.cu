@@ -508,7 +508,7 @@ static inline PlanLRUCache& cufft_get_plan_cache(int64_t device_index) {
 }
 
 // Execute a general fft operation (can be c2c, onesided r2c or onesided c2r)
-template <typename DeviceContext, typename T>
+template <typename DeviceContext, typename Ti, typename To>
 void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
               const std::vector<int64_t> out_sizes,
               const std::vector<int64_t> dim, bool forward) {
@@ -540,14 +540,14 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
   }
   framework::Tensor input;
   input.Resize(framework::make_ddim(trans_dims));
-  input.mutable_data<T>(tensor_place);
+  input.mutable_data<Ti>(tensor_place);
   /*
-  auto in_ret = TransposeSimple<T>::run(ctx, *X, dim_permute, input);
+  auto in_ret = TransposeSimple<Ti>::run(ctx, *X, dim_permute, input);
   if (!in_ret) {
-    TransCompute<DeviceContext, T>(ndim, ctx, *X, input, dim_permute);
+    TransCompute<DeviceContext, Ti>(ndim, ctx, *X, input, dim_permute);
   }
   */
-  TransCompute<DeviceContext, T>(ndim, ctx, *X, &input, dim_permute);
+  TransCompute<DeviceContext, Ti>(ndim, ctx, *X, &input, dim_permute);
 
   // Reshape batch dimensions into a single dimension
   std::vector<int64_t> batched_sizes(signal_ndim + 1);
@@ -597,7 +597,7 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
   // output
   framework::Tensor output;
   output.Resize(framework::make_ddim(batched_out_sizes));
-  output.mutable_data<T>(tensor_place);
+  output.mutable_data<To>(tensor_place);
 
   // Create the transform plan (either from cache or locally)
   const auto value_type = framework::ToRealType(input.type());
@@ -627,8 +627,8 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
   // prepare cufft for execution
   CUFFT_CHECK(cufftSetStream(plan, ctx.stream()));
   framework::Tensor workspace_tensor;
-  workspace_tensor.mutable_data<T>(tensor_place, config->workspace_size());
-  CUFFT_CHECK(cufftSetWorkArea(plan, workspace_tensor.data<T>()));
+  workspace_tensor.mutable_data<To>(tensor_place, config->workspace_size());
+  CUFFT_CHECK(cufftSetWorkArea(plan, workspace_tensor.data<To>()));
 
   // execute transform plan
   exec_cufft_plan(*config, input.data<void>(), output.data<void>(), forward);
@@ -638,16 +638,14 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
   out->Resize(framework::make_ddim(out_sizes));
   /*
   auto out_ret =
-      TransposeSimple<T>::run(ctx, *output, reverse_dim_permute, out);
+      TransposeSimple<To>::run(ctx, *output, reverse_dim_permute, out);
   if (!out_ret) {
-    TransCompute<DeviceContext, T>(ndim, ctx, *output, out,
+    TransCompute<DeviceContext, To>(ndim, ctx, *output, out,
                                    reverse_dim_permute);
   }
   */
-  TransCompute<DeviceContext, T>(ndim, ctx, output, out, reverse_dim_permute);
+  TransCompute<DeviceContext, To>(ndim, ctx, output, out, reverse_dim_permute);
 }
-
-}  // anonymous namespace
 
 // Calculates the normalization constant and applies it in-place to out
 // sizes is the sizes of a twosided tensor and dims are all transformed dims
@@ -689,8 +687,10 @@ void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
   }
 }
 
-template <typename T>
-struct FFTC2CFunctor<platform::CUDADeviceContext, T> {
+}  // anonymous namespace
+
+template <typename Ti, typename To>
+struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
   void operator()(const platform::CUDADeviceContext& ctx, const Tensor* X,
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward) {
@@ -705,7 +705,7 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, T> {
     std::vector<int64_t> first_dims;
     size_t max_dims;
     framework::Tensor working_tensor;
-    working_tensor.mutable_data<T>(X->dims(), ctx.GetPlace());
+    working_tensor.mutable_data<Ti>(X->dims(), ctx.GetPlace());
     framework::Tensor* p_working_tensor = &working_tensor;
     framework::TensorCopy(*X, ctx.GetPlace(), &working_tensor);
 
@@ -714,8 +714,8 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, T> {
           std::min(static_cast<size_t>(kMaxCUFFTNdim), working_axes.size());
       first_dims.assign(working_axes.end() - max_dims, working_axes.end());
 
-      exec_fft<platform::CUDADeviceContext, T>(ctx, p_out, p_working_tensor,
-                                               out_dims, first_dims, forward);
+      exec_fft<platform::CUDADeviceContext, Ti, To>(
+          ctx, p_out, p_working_tensor, out_dims, first_dims, forward);
       working_axes.resize(working_axes.size() - max_dims);
       first_dims.clear();
 
@@ -725,7 +725,7 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, T> {
 
       std::swap(p_out, p_working_tensor);
     }
-    exec_normalization<platform::CUDADeviceContext, T>(
+    exec_normalization<platform::CUDADeviceContext, To>(
         ctx, p_out, out, normalization, out_dims, axes);
   }
 };
