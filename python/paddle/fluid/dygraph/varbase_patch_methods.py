@@ -561,7 +561,8 @@ def monkey_patch_varbase():
 
         def is_list_tuple(index, contain_type):
             def _is_list_tuple(item):
-                if not isinstance(item, (list, tuple, contain_type)):
+                if not (isinstance(item, (list, tuple)) or
+                        type(item) == contain_type):
                     return False
                 if isinstance(item, (tuple, list)):
                     for s in item:

@@ -245,6 +245,8 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[1] == expected[1]).all())
         self.assertTrue((result[2] == expected[2]).all())
         self.assertTrue((result[3] == expected[3]).all())
+        self.assertTrue((result[4] == expected[4]).all())
+        self.assertTrue((result[5] == expected[5]).all())
 
         with self.assertRaises(IndexError):
             res = x[[1.2, 0]]
