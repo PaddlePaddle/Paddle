@@ -120,13 +120,15 @@ def init_parallel_env():
             "Currently not a parallel execution environment, `paddle.distributed.init_parallel_env` will not do anything."
         )
         return
-
-    # 1. gpu xpu check, must be gpu or xpu
-    if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
+    # NOTE(xiongkun): support cpu gloo only, add this environment variable to 
+    #                 enable cpu only gloo prarllel training)
+    is_cpu_only = os.environ.get('PADDLE_PARALLEL_CPU', False)
+    # 1. gpu xpu check, must be gpu or xpu, 
+    if not (is_cpu_only or core.is_compiled_with_cuda() or
+            core.is_compiled_with_xpu()):
         raise NotImplementedError(
-            "Cannot initialize parallel environment in CPU-only version, now only "
-            "supports initializing the GPU and XPU parallel environment. Please recompile "
-            "or reinstall paddle with GPU or XPU support.")
+            "If you want to use CPU-only version, please add PADDLE_PARALLEL_CPU in you environ vairable"
+        )
 
     # 2. check env
     def _check_var_exists(var_name):
@@ -136,9 +138,9 @@ def init_parallel_env():
                              "environment variable %s is needed, but not set." %
                              var_name)
 
-    if core.is_compiled_with_cuda():
+    if not is_cpu_only and core.is_compiled_with_cuda():
         _check_var_exists("FLAGS_selected_gpus")
-    elif core.is_compiled_with_xpu():
+    elif not is_cpu_only and core.is_compiled_with_xpu():
         _check_var_exists('FLAGS_selected_xpus')
 
     _check_var_exists("PADDLE_TRAINER_ID")
@@ -148,7 +150,7 @@ def init_parallel_env():
 
     # 3: init gloo context (step 1: httpsever start)
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
-    if init_gloo:
+    if is_cpu_only or init_gloo:
         ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
         manager = Manager()
         # glboal dict to store status
@@ -184,6 +186,8 @@ def init_parallel_env():
         place = core.CUDAPlace(parallel_env.device_id)
     elif core.is_compiled_with_xpu():
         place = core.XPUPlace(parallel_env.device_id)
+    else:
+        place = core.CPUPlace()
     _set_expected_place(place)
 
     # init nccl or bkcl context
@@ -193,21 +197,28 @@ def init_parallel_env():
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place))
+    else:
+        parallel_helper._set_parallel_ctx(
+            core.GLOOParallelContext(strategy, place))
 
     other_endpoints = strategy.trainer_endpoints[:]
     other_endpoints.remove(strategy.current_endpoint)
-    if strategy.local_rank == 0:
+    if not is_cpu_only and strategy.local_rank == 0:
         wait_server_ready(other_endpoints)
 
     parallel_helper._init_parallel_ctx()
-
     # 5: init gloo context (step 2: gloo init)
     # dividing init_gloo into two part beacause nccl and gloo
     # are separately looking for free ports which sometimes
     # leads to port-conflict.
-    if init_gloo:
-        wait_server_ready([parallel_env.trainer_endpoints[0]])
+    if is_cpu_only and parallel_env.rank == 0:
+        # compare to init_gloo, we don't need to 
+        # init gloo, because we do this in _init_parallel_ctx;
+        http_server_d["running"] = False
+        http_server.join()
 
+    elif init_gloo:
+        wait_server_ready([parallel_env.trainer_endpoints[0]])
         gloo_strategy = core.GlooParallelStrategy()
         gloo_strategy.rank = parallel_env.rank
         gloo_strategy.rank_num = parallel_env.world_size

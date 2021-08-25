@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
+#include "paddle/fluid/imperative/gloo_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -1887,7 +1888,7 @@ void BindImperative(py::module *m_ptr) {
       py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
@@ -1932,6 +1933,17 @@ void BindImperative(py::module *m_ptr) {
            &imperative::BKCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
+  // xiongkun
+  py::class_<imperative::GLOOParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::GLOOParallelContext>>(
+      m, "GLOOParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::CPUPlace &>())
+      .def("init", [](imperative::GLOOParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::GLOOParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+
   m.def("pylayer_apply",
         [](const platform::CPUPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
