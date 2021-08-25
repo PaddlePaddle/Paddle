@@ -123,7 +123,8 @@ class MultiStreamModelTestCase(unittest.TestCase):
                                         main_program.desc, core.Scope())
         outs = []
         for i in range(self.iter_n):
-            outs.append(inter_core.run({}, fetch_list))
+            outs.append(
+                np.array(inter_core.run({}, fetch_list)._move_to_list()))
         return outs
 
 
