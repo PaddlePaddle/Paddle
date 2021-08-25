@@ -959,16 +959,16 @@ def det(x):
             x.dtype, 'Input',
             ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'], 'det')
 
-        # input_shape = list(x.shape)
-        # assert len(input_shape) >= 2,                     \
-        #         "The x must be at least 2-dimensional, "   \
-        #         "but received Input x's dimensional: %s.\n" %  \
-        #         len(input_shape)
+        input_shape = list(x.shape)
+        assert len(input_shape) >= 2,                     \
+                "The x must be at least 2-dimensional, "   \
+                "but received Input x's dimensional: %s.\n" %  \
+                len(input_shape)
 
-        # assert (input_shape[-1] == input_shape[-2]),    \
-        #         "Expect squared input," \
-        #         "but received %s by %s matrix.\n" \ 
-        #         (%input_shape[-2], input_shape[-1])
+        assert (input_shape[-1] == input_shape[-2]),    \
+                "Expect squared input," \
+                "but received %s by %s matrix.\n" \
+                %(input_shape[-2], input_shape[-1]) \
 
     __check_input(input)
     helper = LayerHelper('determinant', **locals())
@@ -976,4 +976,41 @@ def det(x):
 
     helper.append_op(
         type='determinant', inputs={'Input': [x]}, outputs={'Out': [out]})
+    return out
+
+
+def slogdet(x):
+    """
+    Calculates sin value and log value of determinant of a square matrix or batches of square matrices.
+    Args:
+        x (Tensor)
+
+    Returns:
+    
+    """
+    if in_dygraph_mode():
+        return core.ops.slogdeterminant(x)
+
+    def __check_input(input):
+        check_dtype(
+            x.dtype, 'Input',
+            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'], 'det')
+
+        input_shape = list(x.shape)
+        assert len(input_shape) >= 2,                     \
+                "The x must be at least 2-dimensional, "   \
+                "but received Input x's dimensional: %s.\n" %  \
+                len(input_shape)
+
+        assert (input_shape[-1] == input_shape[-2]),    \
+                "Expect squared input," \
+                "but received %s by %s matrix.\n" \
+                %(input_shape[-2], input_shape[-1]) \
+
+    __check_input(input)
+    helper = LayerHelper('slogdeterminant', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='slogdeterminant', inputs={'Input': [x]}, outputs={'Out': [out]})
     return out
