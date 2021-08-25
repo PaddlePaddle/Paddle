@@ -30,11 +30,8 @@ class TensorUtils {
   static void CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
                               void* cb_params);
 
-  static std::unique_ptr<Tensor> CreateInferTensorForTest(
-      const std::string& name, PlaceType place, void* p_scope);
-
  private:
-  static void CopyTensorImp(Tensor& dst, const Tensor& src, void* exec_stream,
+  static void CopyTensorImpl(Tensor& dst, const Tensor& src, void* exec_stream,
                             CallbackFunc cb, void* cb_params);
 };
 

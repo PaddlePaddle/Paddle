@@ -24,6 +24,21 @@ limitations under the License. */
 
 namespace paddle_infer {
 
+class InferApiTesterUtils {
+public:
+  static std::unique_ptr<Tensor> CreateInferTensorForTest(
+      const std::string& name, PlaceType place, void* p_scope) {
+    auto var = static_cast<paddle::framework::Scope*>(p_scope)->Var(name);
+    auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+    (void)tensor;
+    std::unique_ptr<Tensor> res(new Tensor(p_scope));
+    res->input_or_output_ = true;
+    res->SetName(name);
+    res->SetPlace(place, 0 /*device id*/);
+    return res;
+  }
+};
+
 TEST(Tensor, copy_to_cpu_async_stream) {
   LOG(INFO) << GetVersion();
   UpdateDllFlag("conv_workspace_size_limit", "4000");
@@ -42,16 +57,16 @@ TEST(Tensor, copy_to_cpu_async_stream) {
   std::vector<float> input(in_num, 1.0);
 
   auto input_names = predictor->GetInputNames();
-  auto input_t = predictor->GetInputHandle(input_names[0]);
+  auto input_tensor = predictor->GetInputHandle(input_names[0]);
 
-  input_t->Reshape(in_shape);
-  input_t->CopyFromCpu(input.data());
+  input_tensor->Reshape(in_shape);
+  input_tensor->CopyFromCpu(input.data());
 
   predictor->Run();
 
   auto output_names = predictor->GetOutputNames();
-  auto output_t = predictor->GetOutputHandle(output_names[0]);
-  std::vector<int> output_shape = output_t->shape();
+  auto output_tensor = predictor->GetOutputHandle(output_names[0]);
+  std::vector<int> output_shape = output_tensor->shape();
   int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                                 std::multiplies<int>());
 
@@ -68,7 +83,7 @@ TEST(Tensor, copy_to_cpu_async_stream) {
   }
 
   cudaStream_t stream;
-  output_t->CopyToCpuAsync(out_data, static_cast<void *>(&stream));
+  output_tensor->CopyToCpuAsync(out_data, static_cast<void *>(&stream));
 
   // sync
   cudaStreamSynchronize(stream);
@@ -97,16 +112,16 @@ TEST(Tensor, copy_to_cpu_async_callback) {
   std::vector<float> input(in_num, 1.0);
 
   auto input_names = predictor->GetInputNames();
-  auto input_t = predictor->GetInputHandle(input_names[0]);
+  auto input_tensor = predictor->GetInputHandle(input_names[0]);
 
-  input_t->Reshape(in_shape);
-  input_t->CopyFromCpu(input.data());
+  input_tensor->Reshape(in_shape);
+  input_tensor->CopyFromCpu(input.data());
 
   predictor->Run();
 
   auto output_names = predictor->GetOutputNames();
-  auto output_t = predictor->GetOutputHandle(output_names[0]);
-  std::vector<int> output_shape = output_t->shape();
+  auto output_tensor = predictor->GetOutputHandle(output_names[0]);
+  std::vector<int> output_shape = output_tensor->shape();
   int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                                 std::multiplies<int>());
 
@@ -118,7 +133,7 @@ TEST(Tensor, copy_to_cpu_async_callback) {
     predictor->Run();
   }
 
-  output_t->CopyToCpuAsync(out_data,
+  output_tensor->CopyToCpuAsync(out_data,
                            [](void *cb_params) {
                              float *data = (float *)cb_params;
                              std::vector<float> correct_out_data = {
@@ -140,10 +155,10 @@ template <class DTYPE>
 static void test_copy_tensor(PlaceType src_place, PlaceType dst_place) {
   paddle::framework::Scope scope;
   auto tensor_src =
-      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+      paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
           "tensor_src", src_place, static_cast<void *>(&scope));
   auto tensor_dst =
-      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+      paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
           "tensor_dst", dst_place, static_cast<void *>(&scope));
   std::vector<DTYPE> data_src(6, 1);
   tensor_src->Reshape({2, 3});
@@ -196,10 +211,10 @@ TEST(CopyTensor, uint8) {
 TEST(CopyTensor, float16) {
   paddle::framework::Scope scope;
   auto tensor_src =
-      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+      paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
           "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
   auto tensor_dst =
-      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+      paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
           "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
 
   using paddle::platform::float16;
@@ -228,10 +243,10 @@ TEST(CopyTensor, float16) {
 TEST(CopyTensor, float16_gpu) {
   paddle::framework::Scope scope;
   auto tensor_src =
-      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+      paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
           "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
   auto tensor_dst =
-      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+      paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
           "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
 
   using paddle::platform::float16;
@@ -260,10 +275,10 @@ TEST(CopyTensor, float16_gpu) {
 TEST(CopyTensor, async_stream) {
   paddle::framework::Scope scope;
   auto tensor_src =
-      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+      paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
           "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
   auto tensor_dst =
-      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+      paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
           "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
 
   std::vector<float> data_src(6, 1.0);
@@ -295,10 +310,10 @@ TEST(CopyTensor, async_stream) {
 TEST(CopyTensor, async_callback) {
   paddle::framework::Scope scope;
   auto tensor_src =
-      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+      paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
           "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
   auto tensor_dst =
-      paddle_infer::contrib::TensorUtils::CreateInferTensorForTest(
+      paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
           "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
 
   std::vector<float> data_src(6, 1.0);

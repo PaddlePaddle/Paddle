@@ -187,7 +187,7 @@ void Tensor::CopyFromCpu(const T *data) {
 }
 
 template <typename T>
-void Tensor::CopyToCpuImp(T *data, void *exec_stream, CallbackFunc cb,
+void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
                           void *cb_params) const {
   EAGER_GET_TENSOR;
   auto ele_num = tensor->numel();
@@ -276,17 +276,17 @@ void Tensor::CopyToCpuImp(T *data, void *exec_stream, CallbackFunc cb,
 
 template <typename T>
 void Tensor::CopyToCpu(T *data) const {
-  CopyToCpuImp<T>(data, nullptr, nullptr, nullptr);
+  CopyToCpuImpl<T>(data, nullptr, nullptr, nullptr);
 }
 
 template <typename T>
 void Tensor::CopyToCpuAsync(T *data, void *exec_stream) const {
-  CopyToCpuImp<T>(data, exec_stream, nullptr, nullptr);
+  CopyToCpuImpl<T>(data, exec_stream, nullptr, nullptr);
 }
 
 template <typename T>
 void Tensor::CopyToCpuAsync(T *data, CallbackFunc cb, void *cb_params) const {
-  CopyToCpuImp<T>(data, nullptr, cb, cb_params);
+  CopyToCpuImpl<T>(data, nullptr, cb, cb_params);
 }
 
 template PD_INFER_DECL void Tensor::CopyFromCpu<float>(const float *data);

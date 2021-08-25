@@ -24,18 +24,6 @@ namespace contrib {
 
 using paddle::PaddleDType;
 
-std::unique_ptr<Tensor> TensorUtils::CreateInferTensorForTest(
-    const std::string& name, PlaceType place, void* p_scope) {
-  auto var = static_cast<paddle::framework::Scope*>(p_scope)->Var(name);
-  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
-  (void)tensor;
-  std::unique_ptr<Tensor> res(new Tensor(p_scope));
-  res->input_or_output_ = true;
-  res->SetName(name);
-  res->SetPlace(place, 0 /*device id*/);
-  return res;
-}
-
 void* TensorUtils::CudaMallocPinnedMemory(size_t size) {
 #if defined(PADDLE_WITH_CUDA)
   void* ptr = nullptr;
@@ -52,7 +40,7 @@ void TensorUtils::CudaFreePinnedMemory(void* ptr) {
 #endif
 }
 
-void TensorUtils::CopyTensorImp(Tensor& dst, const Tensor& src,
+void TensorUtils::CopyTensorImpl(Tensor& dst, const Tensor& src,
                                 void* exec_stream, CallbackFunc cb,
                                 void* cb_params) {
   dst.Reshape(src.shape());
@@ -68,27 +56,27 @@ void TensorUtils::CopyTensorImp(Tensor& dst, const Tensor& src,
   if (dst.place() == PlaceType::kCPU) {
     switch (src.type()) {
       case PaddleDType::INT32:
-        src.CopyToCpuImp(dst.mutable_data<int32_t>(PlaceType::kCPU),
+        src.CopyToCpuImpl(dst.mutable_data<int32_t>(PlaceType::kCPU),
                          exec_stream, cb, cb_params);
         break;
       case PaddleDType::INT64:
-        src.CopyToCpuImp(dst.mutable_data<int64_t>(PlaceType::kCPU),
+        src.CopyToCpuImpl(dst.mutable_data<int64_t>(PlaceType::kCPU),
                          exec_stream, cb, cb_params);
         break;
       case PaddleDType::FLOAT32:
-        src.CopyToCpuImp(dst.mutable_data<float>(PlaceType::kCPU), exec_stream,
+        src.CopyToCpuImpl(dst.mutable_data<float>(PlaceType::kCPU), exec_stream,
                          cb, cb_params);
         break;
       case PaddleDType::UINT8:
-        src.CopyToCpuImp(dst.mutable_data<uint8_t>(PlaceType::kCPU),
+        src.CopyToCpuImpl(dst.mutable_data<uint8_t>(PlaceType::kCPU),
                          exec_stream, cb, cb_params);
         break;
       case PaddleDType::INT8:
-        src.CopyToCpuImp(dst.mutable_data<int8_t>(PlaceType::kCPU), exec_stream,
+        src.CopyToCpuImpl(dst.mutable_data<int8_t>(PlaceType::kCPU), exec_stream,
                          cb, cb_params);
         break;
       case PaddleDType::FLOAT16:
-        src.CopyToCpuImp(
+        src.CopyToCpuImpl(
             dst.mutable_data<paddle::platform::float16>(PlaceType::kCPU),
             exec_stream, cb, cb_params);
         break;
@@ -184,17 +172,17 @@ void TensorUtils::CopyTensorImp(Tensor& dst, const Tensor& src,
 }
 
 void TensorUtils::CopyTensor(Tensor& dst, const Tensor& src) {
-  CopyTensorImp(dst, src, nullptr, nullptr, nullptr);
+  CopyTensorImpl(dst, src, nullptr, nullptr, nullptr);
 }
 
 void TensorUtils::CopyTensorAsync(Tensor& dst, const Tensor& src,
                                   void* exec_stream) {
-  CopyTensorImp(dst, src, exec_stream, nullptr, nullptr);
+  CopyTensorImpl(dst, src, exec_stream, nullptr, nullptr);
 }
 
 void TensorUtils::CopyTensorAsync(Tensor& dst, const Tensor& src,
                                   CallbackFunc cb, void* cb_params) {
-  CopyTensorImp(dst, src, nullptr, cb, cb_params);
+  CopyTensorImpl(dst, src, nullptr, cb, cb_params);
 }
 
 }  // namespace contrib
