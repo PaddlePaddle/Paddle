@@ -1,0 +1,1 @@
+cc_library(trainer_context SRCS trainer_context.cc DEPS variable_helper message_passing_interface lod_tensor)
