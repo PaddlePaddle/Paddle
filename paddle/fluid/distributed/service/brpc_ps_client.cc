@@ -1399,8 +1399,8 @@ std::future<int32_t> BrpcPsClient::push_dense(
     auto parse_timer = std::make_shared<CostTimer>("pslib_downpour_client_push_dense_parse");
     int push_dense_async_num = _push_dense_task_queue_map[table_id]->size();
     while (push_dense_async_num > FLAGS_pslib_max_async_call_num) {
-        //LOG(INFO) << "push_dense Waiting for async_call_num comsume, task_num:"
-        //    << push_dense_async_num << ", max_task_limit:" << FLAGS_pslib_max_async_call_num;
+        LOG(INFO) << "push_dense Waiting for async_call_num comsume, task_num:"
+            << push_dense_async_num << ", max_task_limit:" << FLAGS_pslib_max_async_call_num;
         usleep(5000);//5ms
         push_dense_async_num = _push_dense_task_queue_map[table_id]->size();
     }
@@ -1493,17 +1493,23 @@ void BrpcPsClient::push_dense_task_consume() {
                 for (int i = 0; i < merge_count; ++i) {
                     merge_status[i].wait();
                 }
+
+                VLOG(1) << "BrpcPsClient::push_dense_task_consume before merge total_send_data[0]"
+                        << total_send_data[0] << " total_send_data[-2]" << total_send_data[total_send_data_size-2]
+                        << total_send_data[0] << " total_send_data[-1]" << total_send_data[total_send_data_size-1];
                 if (scale_gradient && merge_count > 1) {
                     Eigen::Map<Eigen::MatrixXf> mat(total_send_data, 1, total_send_data_size);
-                    mat *= (1.0 / merge_count);
+                    mat *= (1.0 / (merge_count + 1));
                 }
 
+                VLOG(1) << "BrpcPsClient::push_dense_task_consume after merge total_send_data[0]"
+                        << total_send_data[0] << " total_send_data[-2]" << total_send_data[total_send_data_size-2]
+                        << " total_send_data[-1]" << total_send_data[total_send_data_size-1]
+                        << " merge_count " << merge_count;
 
             }
 
             push_dense_raw_gradient(task, total_send_data, total_send_data_size, closure);
-            
-
         }
         auto wait_ms = FLAGS_pslib_async_push_dense_interval_ms - 
             (timeline.ElapsedMS());

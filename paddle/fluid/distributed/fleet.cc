@@ -298,6 +298,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
   }
 
   //check zcb
+  /*
   std::cout << "pull sparse check zcb\n";
   for (int i = 0; i < fea_keys.size(); ++ i) {
     std::cout << "key " << fea_keys[i] << ": ";
@@ -305,7 +306,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
         std::cout << pull_result_ptr[i][j] << " ";
     }
     std::cout << "\n";
-  }
+  }*/
 
 }
 
@@ -381,12 +382,30 @@ void FleetWrapper::PushDenseVarsAsync(
     const std::vector<std::string>& var_names,
     std::vector<std::future<int32_t>>* push_sparse_status, float scale_datanorm,
     int batch_size) {
-  auto* communicator = Communicator::GetInstance();
-  PADDLE_ENFORCE_EQ(
-      communicator->Check(table_id), true,
-      platform::errors::InvalidArgument(
-          "can not find table: %s, please check your config", table_id));
-  communicator->Send(var_names, scope);
+  auto place = platform::CPUPlace();
+  std::vector<paddle::distributed::Region> regions;
+  for (auto& t : var_names) {
+    Variable* var = scope.FindVar(t);
+    CHECK(var != nullptr) << "var[" << t << "] not found";
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    float* g = tensor->mutable_data<float>(place);
+    paddle::distributed::Region reg(g, tensor->numel());
+    regions.emplace_back(std::move(reg));
+    VLOG(1) << "FleetWrapper::PushDenseVarsAsync Var " << t
+            << " talbe_id " << table_id << " Temp_data[0] " << g[0]
+            << " Temp_data[-1] " << g[tensor->numel() - 1];
+  }
+
+  auto* communicator = dynamic_cast<AsyncCommunicator*>(Communicator::GetInstance());
+  //PADDLE_ENFORCE_EQ(
+  //    communicator->Check(table_id), true,
+  //    platform::errors::InvalidArgument(
+  //        "can not find table: %s, please check your config", table_id));
+  //communicator->Send(var_names, scope);
+  auto push_status = communicator->_worker_ptr->push_dense(
+      regions.data(), regions.size(), table_id);
+
+  communicator->PushDensePostProcessing();
 }
 
 void FleetWrapper::PushSparseVarsAsync(
@@ -523,10 +542,11 @@ void FleetWrapper::PushSparseFromTensorAsync(
       }
     }
   }
-  VLOG(0) << "output_len: " << output_len << " g.size(): " << g.size();
+  VLOG(1) << "output_len: " << output_len << " g.size(): " << g.size();
   CHECK(output_len == g.size());
 
   std::vector<float*> push_g_vec(input_idx, nullptr);
+  /*
   std::cout << "zcb debug push sparse\n";
   for (auto i = 0u; i < push_keys.size(); ++i) {
     push_g_vec[i] = push_values.at(i).data();
@@ -535,7 +555,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
     for (int j = 0; j < fea_dim + 3; ++ j)
         std::cout << push_g_vec[i][j] << " ";
     std::cout << "\n";
-  }
+  }*/
   auto* communicator = Communicator::GetInstance();
   PADDLE_ENFORCE_EQ(
       communicator->Check(table_id), true,

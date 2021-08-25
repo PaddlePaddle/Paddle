@@ -143,8 +143,8 @@ class BrpcPsClient : public PSClient {
      //finalize_worker();
      _running = false;
      try {
-     _async_push_dense_thread.join();
-     _async_push_sparse_thread.join();
+     //_async_push_dense_thread.join();
+     //_async_push_sparse_thread.join();
      std::cout << "debug zcb: client deconstructor done\n";
     } catch (...) {
     }

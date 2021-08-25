@@ -373,7 +373,7 @@ int32_t CtrSparseTable::pull_sparse(float* pull_values,
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
-  
+  /*
   std::cout << "zcb debug table::pull_sparse";
   for (int i = 0; i < pull_value.numel_; ++ i) {
       std::cout << "key: " << i << ": " << pull_value.feasigns_[i];
@@ -382,7 +382,7 @@ int32_t CtrSparseTable::pull_sparse(float* pull_values,
       std::cout << "\n";
   }
   std::cout << "zcb debug table::pull_sparse end";
-
+  */
   return 0;
 }
 
@@ -439,6 +439,7 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys,
             float* value_data = const_cast<float*>(feature_value->data());
             size_t value_size = feature_value->size();
 
+            /*
             std::cout << "push sparse, key: " << key << " value: ";
             for (int i = 0; i < value_size; ++ i)
                 std::cout << value_data[i] << " ";
@@ -447,7 +448,7 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys,
             for (int i = 0; i < update_value_col; ++ i)
                 std::cout << update_data[i] << " ";
             std::cout << "\n";
-
+            */
             if (value_size == value_col) { //已拓展到最大size, 则就地update
               _value_accesor->update(&value_data, &update_data, 1);
             } else {//拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
@@ -461,11 +462,12 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys,
               }
               memcpy(value_data, data_buffer_ptr, value_size * sizeof(float));
             }
+            /*
             std::cout << "after update key:" << key << "\n";
             for(int i = 0; i < feature_value->size(); ++ i)
                 std::cout << value_data[i] << " ";
             std::cout << "\n";
-
+            */
           }
           return 0;
         });

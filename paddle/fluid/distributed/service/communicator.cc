@@ -131,6 +131,12 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
     LoDTensor *tensor = var->GetMutable<LoDTensor>();
     VLOG(1) << "AsyncCommunicator::RecvNoBarrier Var " << t << " On gpu? "
             << platform::is_gpu_place(tensor->place());
+
+    //TODO: zcb del this later
+    float *temp_recv_data = tensor->mutable_data<float>(platform::CPUPlace());
+    VLOG(1) << "AsyncCommunicator::RpcRecvDense Var " << t << " table_id "
+            << table_id << " Temp_data[0] " << temp_recv_data[0]
+            << " Temp_data[-1] " << temp_recv_data[tensor->numel() - 1];
     if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
       LoDTensor *temp_tensor =
@@ -520,6 +526,13 @@ void AsyncCommunicator::SendByCommunicator() {
   }
   for (auto &task : tasks) {
     task.wait();
+  }
+  return;
+}
+
+void AsyncCommunicator::PushDensePostProcessing() {
+  if (independent_recv_) {
+    grad_num_.fetch_add(1, std::memory_order_relaxed);
   }
   return;
 }

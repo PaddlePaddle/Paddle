@@ -357,6 +357,7 @@ class AsyncCommunicator : public Communicator {
   void InitEnvs() {
     independent_recv_ = static_cast<bool>(
         std::stoi(envs.at("communicator_independent_recv_thread")));
+    std::cout << "debug zcb: communicator_independent_recv_thread " << independent_recv_ << "\n";
     min_send_grad_num_before_recv_ =
         std::stoi(envs.at("communicator_min_send_grad_num_before_recv"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
@@ -397,6 +398,8 @@ class AsyncCommunicator : public Communicator {
   virtual void BarrierRecv() {}
 
   virtual void BarrierWeakUp() {}
+
+  void PushDensePostProcessing();
 
  protected:
   std::unordered_map<std::string,
