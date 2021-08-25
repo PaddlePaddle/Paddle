@@ -91,21 +91,35 @@ if (WITH_GPU OR WITH_ROCM)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
-        find_library(CUFFT_LIB libcufft.so
-          PATHS
-          ${CUDA_TOOLKIT_ROOT_DIR}/lib64/
-          NO_DEFAULT_PATH
-        )
-        op_library(spectral_op SRCS spectral_op.cc spectral_op.cu DEPS ${OP_HEADER_DEPS})
-        target_link_libraries(spectral_op ${CUFFT_LIB})
     endif()
     op_library(sync_batch_norm_op)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
-    if(WITH_ONEMKL)
-      target_link_libraries(spectral_op MKL::MKL)
-    endif()
+endif()
+
+op_library(spectral_op SRCS spectral_op.cc spectral_op.cu DEPS ${OP_HEADER_DEPS})
+if (WITH_GPU)
+    find_library(CUFFT_LIB libcufft.so
+        PATHS
+        ${CUDA_TOOLKIT_ROOT_DIR}/lib64/
+        NO_DEFAULT_PATH
+    )
+    target_link_libraries(spectral_op ${CUFFT_LIB})
+endif()
+if(WITH_ONEMKL)
+    find_library(ONEMKL_CORE libmkl_core.so
+        PATHS
+        ${MKL_ROOT}/lib/${MKL_ARCH}
+        NO_DEFAULT_PATH
+    )
+    find_library(ONEMKL_THREAD libmkl_intel_thread.so
+        PATHS
+        ${MKL_ROOT}/lib/${MKL_ARCH}
+        NO_DEFAULT_PATH
+    )
+    target_include_directories(spectral_op PRIVATE ${MKL_INCLUDE})
+    target_link_libraries(spectral_op MKL::mkl_core MKL::mkl_intel_thread)
 endif()
 
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
