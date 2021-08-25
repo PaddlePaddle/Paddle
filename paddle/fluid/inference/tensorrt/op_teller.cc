@@ -129,6 +129,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "affine_channel",
       "nearest_interp",
       "bilinear_interp",
+      "bilinear_interp_v2",
       "anchor_generator",
       "reduce_sum",
   };
@@ -431,6 +432,48 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           }
           if (out_w <= 0) {
             VLOG(3) << "out_w must be greater than 0 if scale is not set.";
+            return false;
+          }
+        }
+      }
+    }
+
+    if (op_type == "bilinear_interp_v2") {
+      std::vector<std::string> attrs{"data_layout",   "interp_method",
+                                     "align_corners", "Scale",
+                                     "out_h",         "out_w"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) return false;
+      }
+      auto data_layout = framework::StringToDataLayout(
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW &&
+          data_layout != framework::DataLayout::kNHWC)
+        return false;
+      auto interp_method =
+          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+      if (interp_method != "bilinear") return false;
+
+      if (!desc.HasAttr("Scale") || !desc.HasAttr("out_h") ||
+          !desc.HasAttr("out_w")) {
+        return false;
+      } else {
+        const std::vector<float> scale = BOOST_GET_CONST(std::vector<float>, desc.GetAttr("Scale"));
+        auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+        auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+        auto align_corners =
+            BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+        if (align_corners != false) {
+          VLOG(3) << "The TRT only supports align_corners with false.";
+          return false;
+        }
+        if (!(scale.size() > 0 && (out_h <= 0 && out_w <= 0))) {
+          if (out_h <= 0) {
+            VLOG(3) << "out_h must be greater than 0 if Scale is not set.";
+            return false;
+          }
+          if (out_w <= 0) {
+            VLOG(3) << "out_w must be greater than 0 if Scale is not set.";
             return false;
           }
         }

@@ -13,6 +13,7 @@ nv_library(tensorrt_converter
                 multiclass_nms_op.cc
                 nearest_interp_op.cc
                 bilinear_interp_op.cc
+                bilinear_interp_v2_op.cc
                 reshape_op.cc
                 reduce_op.cc
                 gather_nd_op.cc

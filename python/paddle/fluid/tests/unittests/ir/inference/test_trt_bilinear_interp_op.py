@@ -69,9 +69,6 @@ class TRTBilinearInterpTest(InferencePassTest):
         self.data_layout = 'NCHW'
 
     def append_bilinear_interp(self, data):
-        print("Here")
-        print(data.shape)
-        print(data)
         if self.scale > 0.:
             return fluid.layers.resize_bilinear(
                 data,
@@ -85,7 +82,6 @@ class TRTBilinearInterpTest(InferencePassTest):
             data_format=self.data_layout)
 
     def test_check_output(self):
-        print("OK")
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.enable_mkldnn = True
