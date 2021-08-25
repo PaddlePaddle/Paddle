@@ -188,7 +188,7 @@ void Tensor::CopyFromCpu(const T *data) {
 
 template <typename T>
 void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
-                          void *cb_params) const {
+                           void *cb_params) const {
   EAGER_GET_TENSOR;
   auto ele_num = tensor->numel();
   auto *t_data = tensor->data<T>();

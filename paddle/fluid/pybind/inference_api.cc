@@ -290,7 +290,7 @@ py::bytes SerializePDTensorToBytes(PaddleTensor &tensor) {  // NOLINT
 
 void CopyPaddleInferTensor(paddle_infer::Tensor &dst,
                            const paddle_infer::Tensor &src) {
-  return paddle_infer::contrib::TensorUtils::CopyTensor(dst, src);
+  return paddle_infer::contrib::TensorUtils::CopyTensor(&dst, src);
 }
 
 }  // namespace

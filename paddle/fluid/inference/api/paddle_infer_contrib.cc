@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle_infer_contrib.h"
+#include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -40,9 +40,10 @@ void TensorUtils::CudaFreePinnedMemory(void* ptr) {
 #endif
 }
 
-void TensorUtils::CopyTensorImpl(Tensor& dst, const Tensor& src,
-                                void* exec_stream, CallbackFunc cb,
-                                void* cb_params) {
+void TensorUtils::CopyTensorImpl(Tensor* p_dst, const Tensor& src,
+                                 void* exec_stream, CallbackFunc cb,
+                                 void* cb_params) {
+  Tensor& dst = *p_dst;
   dst.Reshape(src.shape());
   PADDLE_ENFORCE(
       src.place() == PlaceType::kCPU || src.place() == PlaceType::kGPU,
@@ -57,23 +58,23 @@ void TensorUtils::CopyTensorImpl(Tensor& dst, const Tensor& src,
     switch (src.type()) {
       case PaddleDType::INT32:
         src.CopyToCpuImpl(dst.mutable_data<int32_t>(PlaceType::kCPU),
-                         exec_stream, cb, cb_params);
+                          exec_stream, cb, cb_params);
         break;
       case PaddleDType::INT64:
         src.CopyToCpuImpl(dst.mutable_data<int64_t>(PlaceType::kCPU),
-                         exec_stream, cb, cb_params);
+                          exec_stream, cb, cb_params);
         break;
       case PaddleDType::FLOAT32:
         src.CopyToCpuImpl(dst.mutable_data<float>(PlaceType::kCPU), exec_stream,
-                         cb, cb_params);
+                          cb, cb_params);
         break;
       case PaddleDType::UINT8:
         src.CopyToCpuImpl(dst.mutable_data<uint8_t>(PlaceType::kCPU),
-                         exec_stream, cb, cb_params);
+                          exec_stream, cb, cb_params);
         break;
       case PaddleDType::INT8:
-        src.CopyToCpuImpl(dst.mutable_data<int8_t>(PlaceType::kCPU), exec_stream,
-                         cb, cb_params);
+        src.CopyToCpuImpl(dst.mutable_data<int8_t>(PlaceType::kCPU),
+                          exec_stream, cb, cb_params);
         break;
       case PaddleDType::FLOAT16:
         src.CopyToCpuImpl(
@@ -171,18 +172,18 @@ void TensorUtils::CopyTensorImpl(Tensor& dst, const Tensor& src,
   return;
 }
 
-void TensorUtils::CopyTensor(Tensor& dst, const Tensor& src) {
-  CopyTensorImpl(dst, src, nullptr, nullptr, nullptr);
+void TensorUtils::CopyTensor(Tensor* p_dst, const Tensor& src) {
+  CopyTensorImpl(p_dst, src, nullptr, nullptr, nullptr);
 }
 
-void TensorUtils::CopyTensorAsync(Tensor& dst, const Tensor& src,
+void TensorUtils::CopyTensorAsync(Tensor* p_dst, const Tensor& src,
                                   void* exec_stream) {
-  CopyTensorImpl(dst, src, exec_stream, nullptr, nullptr);
+  CopyTensorImpl(p_dst, src, exec_stream, nullptr, nullptr);
 }
 
-void TensorUtils::CopyTensorAsync(Tensor& dst, const Tensor& src,
+void TensorUtils::CopyTensorAsync(Tensor* p_dst, const Tensor& src,
                                   CallbackFunc cb, void* cb_params) {
-  CopyTensorImpl(dst, src, nullptr, cb, cb_params);
+  CopyTensorImpl(p_dst, src, nullptr, cb, cb_params);
 }
 
 }  // namespace contrib

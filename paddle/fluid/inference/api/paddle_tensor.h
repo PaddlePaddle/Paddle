@@ -20,7 +20,7 @@ namespace paddle_infer {
 
 typedef void (*CallbackFunc)(void*);
 
-#if defined(PADDLE_WITH_TESTING) && defined(PADDLE_WITH_INFERENCE_API_TEST) 
+#if defined(PADDLE_WITH_TESTING) && defined(PADDLE_WITH_INFERENCE_API_TEST)
 class InferApiTesterUtils;
 #endif
 
@@ -128,7 +128,7 @@ class PD_INFER_DECL Tensor {
 
   template <typename T>
   void CopyToCpuImpl(T* data, void* stream = nullptr, CallbackFunc cb = nullptr,
-                    void* cb_params = nullptr) const;
+                     void* cb_params = nullptr) const;
 
   std::string name_;
   // The corresponding tensor pointer inside Paddle workspace is cached for
@@ -141,7 +141,7 @@ class PD_INFER_DECL Tensor {
   int device_;
 
   friend class paddle_infer::contrib::TensorUtils;
-#if defined(PADDLE_WITH_TESTING) && defined(PADDLE_WITH_INFERENCE_API_TEST) 
+#if defined(PADDLE_WITH_TESTING) && defined(PADDLE_WITH_INFERENCE_API_TEST)
   friend class paddle_infer::InferApiTesterUtils;
 #endif
 };

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 namespace paddle_infer {
 namespace contrib {
@@ -24,15 +24,16 @@ class TensorUtils {
   static void* CudaMallocPinnedMemory(size_t size);
   static void CudaFreePinnedMemory(void* mem);
 
-  static void CopyTensor(Tensor& dst, const Tensor& src);
-  static void CopyTensorAsync(Tensor& dst, const Tensor& src,
+  static void CopyTensor(Tensor* p_dst, const Tensor& src);
+  static void CopyTensorAsync(Tensor* p_dst, const Tensor& src,
                               void* exec_stream);
-  static void CopyTensorAsync(Tensor& dst, const Tensor& src, CallbackFunc cb,
+  static void CopyTensorAsync(Tensor* p_dst, const Tensor& src, CallbackFunc cb,
                               void* cb_params);
 
  private:
-  static void CopyTensorImpl(Tensor& dst, const Tensor& src, void* exec_stream,
-                            CallbackFunc cb, void* cb_params);
+  static void CopyTensorImpl(Tensor* p_dst, const Tensor& src,
+                             void* exec_stream, CallbackFunc cb,
+                             void* cb_params);
 };
 
 }  // namespace contrib
