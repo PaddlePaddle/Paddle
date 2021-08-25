@@ -92,12 +92,12 @@ void ParseDirectAndEventRunOps(
   auto& op_func_type = op_func_nodes[op_index].type_;
   auto& cur_instr = instructions->at(op_index);
   auto& next_instruction = cur_instr.next_instruction_;
-  std::vector<size_t> event_var_ids;
 
   if (op_func_type == OpFuncType::kQueueSync) {
-    // all downstream ops of kQueueSync can directly run.
+    // all downstream ops of kQueueSync can directly run, such as CPU -> Any
     next_instruction.direct_run_ = downstream_ops;
   } else {  // kQueueAsync
+    std::vector<size_t> event_var_ids;
     for (auto next_op_id : downstream_ops) {
       auto& next_instr = instructions->at(next_op_id);
       // case 1: GPU -> GPU(same stream)
@@ -121,16 +121,16 @@ void ParseDirectAndEventRunOps(
         next_instruction.event_wait_run_.emplace_back(next_op_id);
       }
     }
-  }
 #ifdef PADDLE_WITH_CUDA
-  // Create events for these cross-stream vars
-  VLOG(3) << cur_instr.kernel_func_.operator_base_->Type()
-          << " event_var_ids.size: " << event_var_ids.size();
-  for (auto var_id : event_var_ids) {
-    cur_instr.output_events_.emplace_back(var_id, var_id2event->at(var_id),
-                                          false /*not used*/);
-  }
+    // Create events for these cross-stream vars
+    VLOG(3) << cur_instr.kernel_func_.operator_base_->Type()
+            << " event_var_ids.size: " << event_var_ids.size();
+    for (auto var_id : event_var_ids) {
+      cur_instr.output_events_.emplace_back(var_id, var_id2event->at(var_id),
+                                            false /*not used*/);
+    }
 #endif
+  }
 }
 }  // namespace
 
@@ -512,7 +512,7 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
          (op_base->Attr<std::string>("op_device").length() > 0));
     if (need_change_place) {
       auto& op_device = op_base->Attr<std::string>("op_device");
-      if (op_device == "cpu" || platform::is_cpu_place(place)) {
+      if (op_device == "cpu") {
         VLOG(3) << "Switch into CPUPlace by device_guard.";
         expected_kernel_key.place_ = platform::CPUPlace();
       } else if (op_device.find("gpu") != std::string::npos &&

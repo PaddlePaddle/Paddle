@@ -94,7 +94,6 @@ class InterpreterCore {
   bool is_build_;
 
   std::vector<std::string> feed_names_;
-  std::vector<std::string> fetch_names_;
   std::map<size_t, std::shared_ptr<platform::CudaEvent>> var_id2event_;
 
   platform::DeviceContextPool fetch_context_pool_;
