@@ -296,7 +296,7 @@ class Table:
     def to_string(self, indent):
         if self.id == 1:
             proto_txt = ''
-            with open('/work/git/PaddleRec/models/rank/slot_dnn_test/sparse_table.prototxt') as f:
+            with open('./sparse_table.prototxt') as f:
                 proto_txt = f.read()
             return proto_txt
 
@@ -516,7 +516,7 @@ class TheOnePSRuntime(RuntimeBase):
             return kwargs
 
         proto_txt = str(worker) + "\n" + str(server)
-        with open('./test.prototxt') as f:
+        with open('./sparse_table.prototxt') as f:
             proto_txt = f.read()
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
@@ -779,7 +779,7 @@ class TheOnePSRuntime(RuntimeBase):
                     common.sync = "false"
 
                 table.common = common
-                
+
                 print('debug zcb build_merge_accessor:')
                 print(str(ctx))
                 accessor = _build_merge_accessor(ctx)
@@ -833,7 +833,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
-        with open('./test.prototxt') as f:
+        with open('./sparse_table.prototxt') as f:
             proto_txt = f.read()
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
