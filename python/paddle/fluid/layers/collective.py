@@ -109,7 +109,6 @@ def _c_destroy_hccl_comm():
     op_type = 'c_comm_destroy_hccl'
     helper = LayerHelper(op_type, **locals())
     helper.append_op(type=op_type)
-    return x
 
 
 def _c_allgather(x, nranks, ring_id=0, use_calc_stream=False):
