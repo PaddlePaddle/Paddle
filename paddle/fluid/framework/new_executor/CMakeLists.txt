@@ -1,4 +1,4 @@
-cc_library(interpretercore SRCS interpretercore.cc)
+cc_library(interpretercore SRCS interpretercore.cc DEPS error_codes_proto external_error_proto)
 cc_library(standalone_executor SRCS standalone_executor.cc DEPS interpretercore)
 cc_library(workqueue SRCS workqueue.cc)
 
