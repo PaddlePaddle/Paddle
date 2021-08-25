@@ -514,12 +514,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
       int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
       if (axis == 0) {
-        if (!with_dynamic_shape) {
-          VLOG(3) << "Invalid split axis. Split of static shape mode on batch "
-                     "is not supported in "
-                     "TensorRT";
-          return false;
-        }
+        VLOG(3) << "Invalid split axis. Split on batch is not supported in "
+                   "TensorRT";
+        return false;
       }
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
