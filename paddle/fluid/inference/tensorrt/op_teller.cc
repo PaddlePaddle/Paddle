@@ -297,11 +297,37 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "transpose2" || op_type == "transpose") {
       if (!desc.HasAttr("axis")) {
         return false;
-      } else {
-        std::vector<int> axis =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
-        if (!with_dynamic_shape && axis[0] != 0) return false;
-        if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      }
+      std::vector<int> axis =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
+      if (!with_dynamic_shape && axis[0] != 0) return false;
+      if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      int dims = x_shape.size();
+      std::vector<int> perm(nvinfer1::Dims::MAX_DIMS);
+      for (int i = 0; i < dims; i++) {
+        perm[i] = axis[i];
+      }
+      auto is_valid_permutation = [&](int dims,
+                                      const std::vector<int>& permutation) {
+        std::bitset<nvinfer1::Dims::MAX_DIMS> found;
+        for (int i = 0; i < dims; ++i) {
+          const int x = permutation[i];
+          if ((x < 0) || (x >= dims) || found[x]) {
+            std::cout << "x: " << x << std::endl;
+            return false;  // Out of bounds or duplicate
+          }
+          found.set(x);
+        }
+        return true;
+      };
+      if (!is_valid_permutation(dims, perm)) {
+        VLOG(3) << "Invalid permutation dimensions for trt transpose op "
+                   "converter: duplicate or out of bound.";
       }
     }
     if (op_type == "flatten2" || op_type == "flatten") {
