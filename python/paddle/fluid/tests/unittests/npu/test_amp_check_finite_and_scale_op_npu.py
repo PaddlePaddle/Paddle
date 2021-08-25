@@ -33,32 +33,20 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             scale = paddle.static.data(name="scale", shape=[1], dtype='float32')
-            float_status = paddle.static.data(
-                name="status", shape=[8], dtype='float32')
-            main_program.global_block().append_op(
-                type="alloc_float_status",
-                outputs={"FloatStatus": float_status})
-            main_program.global_block().append_op(
-                type="clear_float_status",
-                inputs={"FloatStatus": float_status},
-                outputs={"FloatStatusOut": float_status})
             c = paddle.fluid.layers.elementwise_div(a, b)
-            out, found_inf = check_finite_and_unscale(
-                [c], scale, float_status=float_status)
+            out, found_inf = check_finite_and_unscale([c], scale)
 
-        return main_program, out, found_inf, float_status
+        return main_program, out, found_inf
 
     def run_prog(self, a, b, scale):
-        main_program, out, found_inf, float_status = self.get_prog()
+        main_program, out, found_inf = self.get_prog()
         place = fluid.NPUPlace(0)
         exe = fluid.Executor(place)
-        out_, founf_inf_, float_status_ = exe.run(
-            main_program,
-            feed={"a": a,
-                  "b": b,
-                  "scale": scale},
-            fetch_list=[out, found_inf, float_status])
-        print(float_status_)
+        out_, founf_inf_ = exe.run(main_program,
+                                   feed={"a": a,
+                                         "b": b,
+                                         "scale": scale},
+                                   fetch_list=[out, found_inf])
         return out_, founf_inf_
 
     def test_contains_nan(self):
@@ -101,42 +89,22 @@ class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             scale = paddle.static.data(name="scale", shape=[1], dtype='float32')
-            float_status = paddle.static.data(
-                name="status", shape=[8], dtype='float32')
-            main_program.global_block().append_op(
-                type="alloc_float_status",
-                outputs={"FloatStatus": float_status})
-            main_program.global_block().append_op(
-                type="clear_float_status",
-                inputs={"FloatStatus": float_status},
-                outputs={"FloatStatusOut": float_status})
             c = paddle.fluid.layers.elementwise_div(a, b)
-            out, found_inf = check_finite_and_unscale(
-                [c], scale, float_status=float_status)
-            main_program.global_block().append_op(
-                type="alloc_float_status",
-                outputs={"FloatStatus": float_status})
-            main_program.global_block().append_op(
-                type="clear_float_status",
-                inputs={"FloatStatus": float_status},
-                outputs={"FloatStatusOut": float_status})
+            out, found_inf = check_finite_and_unscale([c], scale)
             d = paddle.fluid.layers.elementwise_add(a, b)
-            out, found_inf = check_finite_and_unscale(
-                [d], scale, float_status=float_status)
+            out, found_inf = check_finite_and_unscale([d], scale)
 
-        return main_program, out, found_inf, float_status
+        return main_program, out, found_inf
 
     def run_prog(self, a, b, scale):
-        main_program, out, found_inf, float_status = self.get_prog()
+        main_program, out, found_inf = self.get_prog()
         place = fluid.NPUPlace(0)
         exe = fluid.Executor(place)
-        out_, founf_inf_, float_status_ = exe.run(
-            main_program,
-            feed={"a": a,
-                  "b": b,
-                  "scale": scale},
-            fetch_list=[out, found_inf, float_status])
-        print(float_status_)
+        out_, founf_inf_ = exe.run(main_program,
+                                   feed={"a": a,
+                                         "b": b,
+                                         "scale": scale},
+                                   fetch_list=[out, found_inf])
         return out_, founf_inf_
 
     def test_not_contains_nan_inf(self):
