@@ -52,7 +52,7 @@ paddle::test::Record PrepareInput(int batch_size) {
   return image_Record;
 }
 
-TEST(DISABLED_test_resnet50_quant, multi_thread4_trt_int8_bz1) {
+TEST(test_resnet50_quant, multi_thread4_trt_int8_bz1) {
   int thread_num = 4;
   // init input data
   std::map<std::string, paddle::test::Record> input_data_map;
@@ -64,7 +64,7 @@ TEST(DISABLED_test_resnet50_quant, multi_thread4_trt_int8_bz1) {
   config.SetModel(FLAGS_int8dir);
   config.EnableUseGpu(1000, 0);
   config.EnableTensorRtEngine(1 << 20, 10, 3,
-                              paddle_infer::PrecisionType::kInt8, true, false);
+                              paddle_infer::PrecisionType::kInt8, false, false);
   // get infer results from multi threads
   std::vector<std::thread> threads;
   services::PredictorPool pred_pool(config, thread_num);
@@ -94,7 +94,7 @@ TEST(DISABLED_test_resnet50_quant, multi_thread4_trt_int8_bz1) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(DISABLED_test_resnet50_quant, multi_thread_multi_instance) {
+TEST(test_resnet50_quant, multi_thread_multi_instance) {
   int thread_num = 4;
   // init input data
   std::map<std::string, paddle::test::Record> input_data_fp32, input_data_quant;
@@ -109,12 +109,12 @@ TEST(DISABLED_test_resnet50_quant, multi_thread_multi_instance) {
                        FLAGS_modeldir + "/inference.pdiparams");
   config_fp32.EnableUseGpu(1000, 0);
   config_fp32.EnableTensorRtEngine(
-      1 << 20, 10, 3, paddle_infer::PrecisionType::kFloat32, true, false);
+      1 << 20, 10, 3, paddle_infer::PrecisionType::kFloat32, false, false);
 
   config_quant.SetModel(FLAGS_int8dir);
   config_quant.EnableUseGpu(1000, 0);
   config_quant.EnableTensorRtEngine(
-      1 << 20, 10, 3, paddle_infer::PrecisionType::kInt8, true, false);
+      1 << 20, 10, 3, paddle_infer::PrecisionType::kInt8, false, false);
 
   // get infer results from multi threads
   std::vector<std::thread> threads;
