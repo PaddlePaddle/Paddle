@@ -36,7 +36,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                 "axis": self.axis
             }
         }]
-        self.batch_size_set = [4, 4, 4]
+        self.batch_size_set = [1, 2, 4]
 
     def set_params(self):
         self.sections = [[2, 1]]
