@@ -55,15 +55,7 @@ TEST(FwdBwdJoint, SingleNode) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
                                                         pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-                                                        5.0 /*value*/, false /*is_leaf*/);
-  
-  // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();    
-  
-  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(tensor);
-  autograd_meta->SetNumericStopGradient(false);
-  autograd_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
-  autograd_meta->SetOutRank(0);
+                                                        5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 
   // 3. Run Forward
@@ -98,15 +90,7 @@ TEST(FwdBwdJoint, LinearNodes) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
                                                         pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-                                                        5.0 /*value*/, false /*is_leaf*/);
-  
-  // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();    
-  
-  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(tensor);
-  autograd_meta->SetNumericStopGradient(false);
-  autograd_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
-  autograd_meta->SetOutRank(0);
+                                                        5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 
   // 3. Run Forward
@@ -151,15 +135,7 @@ TEST(FwdBwdJoint, BranchedNodes) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
                                                         pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-                                                        5.0 /*value*/, false /*is_leaf*/);
-  
-  // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();    
-  
-  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(tensor);
-  autograd_meta->SetNumericStopGradient(false);
-  autograd_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
-  autograd_meta->SetOutRank(0);
+                                                        5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 
   // 3. Run Forward
@@ -221,15 +197,7 @@ TEST(FwdBwdJoint, GradientHook) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
                                                         pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-                                                        5.0 /*value*/, false /*is_leaf*/);
-  
-  // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();    
-  
-  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(tensor);
-  autograd_meta->SetNumericStopGradient(false);
-  autograd_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
-  autograd_meta->SetOutRank(0);
+                                                        5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
   
   std::function<pt::Tensor(const pt::Tensor&)> hook = &hook_function;
@@ -297,15 +265,7 @@ TEST(FwdBwdJoint, CrossBatchAccumulation) {
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
                                                         pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-                                                        5.0 /*value*/, false /*is_leaf*/);
-  
-  // Create AccumulationNode
-  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();    
-  
-  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(tensor);
-  autograd_meta->SetNumericStopGradient(false);
-  autograd_meta->SetGradNode(std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
-  autograd_meta->SetOutRank(0);
+                                                        5.0 /*value*/, true /*is_leaf*/);
   RetainGradForTensor(tensor);
 
   // 3. Run Forward

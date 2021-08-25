@@ -103,6 +103,8 @@ pt::Tensor EagerUtils::CreateTensorWithValue(const pt::DDim& ddim, const pt::Bac
         AutogradMeta* meta = autograd_meta(out);
         auto accumulation_node = std::make_shared<GradNodeAccumulation>();
         meta->SetGradNode(accumulation_node);
+        meta->SetOutRank(0);
+        meta->SetNumericStopGradient(false);
     }
 
     return out;
