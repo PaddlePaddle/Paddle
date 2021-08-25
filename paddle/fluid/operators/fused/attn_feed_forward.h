@@ -39,21 +39,18 @@ class FeedForward {
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
     // To convert to col-major expression, transa<->transb, A<->B，m<->n.
 
-    // deepspeed: call gemm-tn: weight * input.
-    // here: (transa, transb): nt
+    // column-major: gemm-tn.
     CBLAS_TRANSPOSE transA = CblasNoTrans;
     CBLAS_TRANSPOSE transB = CblasTrans;
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
 
-    // deepspeed: (m, n, k) = output_size, bsz_seq, input_size, (weight, input,
-    // out)
-    // here: (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
+    // column-major: (m,n,k) = output_size,bsz_seq,input_size (weight*input=out)
+    // here: (m,n,k) = bsz_seq,output_size,input_size (input*weight=out)
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     blas.GEMM(transA, transB, bsz_seq_, output_size_, input_size_, alpha,
               input_data, weight_data, beta, output_data);
     if (compute_bias_) {
-      // compute output + bias
       LaunchBiasAddFwKernel(dev_ctx_, bsz_seq_, output_size_, output_data,
                             bias_data, bias_out_data);
     }
@@ -63,28 +60,22 @@ class FeedForward {
                        T* d_weight, T* d_bias) {
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
-
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
 
-    // gemm-nt: get d_weight.
-    // here: (transa, transb): tn
+    // column-major: gemm-nt, get d_weight.
     CBLAS_TRANSPOSE transA = CblasTrans;
     CBLAS_TRANSPOSE transB = CblasNoTrans;
-
-    // deepspeed:  (m, n, k): input_size, output_size, bsz, (input,
-    // dout,dweight)
-    // here: (m, n, k): output_size, input_size, bsz, (dout, input, dweight)
+    // column-major: (m,n,k): input_size,output_size,bsz (input*dout=dweight)
+    // here: (m,n,k): output_size,input_size,bsz (dout*input=dweight)
     blas.GEMM(transA, transB, output_size_, input_size_, bsz_seq_, alpha,
               d_output, input, beta, d_weight);
 
-    // gemm-nn: get d_input.
+    // column-major: gemm-nn: get d_input.
     transA = CblasNoTrans;
-    // deepspeed: (m, n, k): input_size, bsz, output_size, (weight, dout,
-    // dinput)
-    // here: (m, n, k): bsz, input_size, output_size, (dout, weight, dinput)
+    // column-major: (m,n,k): input_size,bsz,output_size (weight*dout=dinput)
+    // here: (m, n, k): bsz, input_size, output_size, (dout*weight=dinput)
     blas.GEMM(transA, transB, bsz_seq_, input_size_, output_size_, alpha,
               d_output, weight, beta, d_input);
-
     if (compute_bias_) {
       LaunchBiasAddBwKernel(dev_ctx_, bsz_seq_, output_size_, d_output, d_bias);
     }
@@ -92,12 +83,8 @@ class FeedForward {
 
  private:
   const platform::CUDADeviceContext& dev_ctx_;
-
-  int bsz_seq_;
-  int output_size_;
-  int input_size_;
-
-  int compute_bias_;
+  int bsz_seq_, output_size_, input_size_;
+  bool compute_bias_;
 };
 
 }  // namespace operators
