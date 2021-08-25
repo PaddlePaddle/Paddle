@@ -638,9 +638,7 @@ class TestListIndex(unittest.TestCase):
 
         x[index] = value
         y = x
-        place = paddle.fluid.CPUPlace(
-        ) if not paddle.fluid.core.is_compiled_with_cuda(
-        ) else paddle.fluid.CUDAPlace(0)
+        place = paddle.fluid.CPUPlace()
 
         prog = paddle.static.default_main_program()
         exe = paddle.static.Executor(place)
