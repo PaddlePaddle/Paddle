@@ -11,8 +11,10 @@
 
 #pragma once
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/complex.h"
 
 namespace paddle {

@@ -298,15 +298,15 @@ def fftn_c2c(x, s, axes, norm, forward):
             fft_ndims = len(s)
             axes = list(range(rank - fft_ndims, rank))
     else:
-        axes_ = axes.copy()
-        for i in len(axes_):
-            if axes_[i] < -rank or axes_[i] >= rank:
+        axes = list(axes)
+        for i in range(len(axes)):
+            if axes[i] < -rank or axes[i] >= rank:
                 raise ValueError(
                     "Invalid axis. Input's ndim is {}, axis should be [-{}, {})".
                     format(rank, rank, rank))
-            if axes_[i] < 0:
-                axes_[i] += rank
-        axes = axes_
+            if axes[i] < 0:
+                axes[i] += rank
+        axes = axes
         axes.sort()
         if s is None:
             shape = paddle.shape(x)
