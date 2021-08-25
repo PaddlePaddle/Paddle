@@ -21,15 +21,11 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_event.h"
-#if defined(PADDLE_WITH_CUDA)
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#endif
-#include "paddle/fluid/framework/new_executor/workqueue.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace framework {
