@@ -66,17 +66,5 @@ struct alignas(sizeof(T) * VecSize) AlignedVector {
   T val[VecSize];
 };
 
-// reduce sum by a warp
-template <typename U>
-static __forceinline__ __device__ U WarpReduceSum(U val) {
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-  const int warpSize = 32;
-  for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val += paddle::platform::CudaShuffleDownSync(mask, val, offset);
-  }
-  return val;
-}
-
 }  // namespace operators
 }  // namespace paddle
