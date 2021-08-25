@@ -26,8 +26,10 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/fleet/context/trainer_context.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -70,6 +72,7 @@ class FleetWrapper {
     // pslib request max retry
     client2client_max_retry_ = 3;
     pull_local_thread_num_ = 25;
+    trainer_context_ = std::make_shared<FeedTrainerContext>();
   }
 
   // set client to client communication config
@@ -190,11 +193,11 @@ class FleetWrapper {
   */
 
   // init server
-  void InitServer(const std::string& dist_desc, int index);
+  void InitServer(const std::string& dist_desc, int index, size_t role_comm);
   // init trainer
   void InitWorker(const std::string& dist_desc,
                   const std::vector<uint64_t>& host_sign_list, int node_num,
-                  int index);
+                  int index, size_t role_comm);
   // stop server
   void StopServer();
   // finalize worker to make worker can be stop
@@ -289,6 +292,7 @@ class FleetWrapper {
   }
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
+  void InitTrainerScope(Scope* scope);
 
 #ifdef PADDLE_WITH_PSLIB
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;
@@ -314,8 +318,92 @@ class FleetWrapper {
   int pull_local_thread_num_;
   std::unique_ptr<::ThreadPool> pull_to_local_pool_{nullptr};
   int local_table_shard_num_;
+  std::shared_ptr<FeedTrainerContext> trainer_context_;
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };
+
+template <typename T>
+paddle::framework::Channel<T> GlobalShuffle(
+    TrainerContextInterface* context, paddle::framework::Channel<T> in_chan,
+    decltype(std::function<size_t(const T&)>()) func, int thread_num = 12) {
+  platform::Timer timeline;
+  timeline.Start();
+
+  auto* trainer_context = (FeedTrainerContext*)context;  // NOLINT
+  auto comm = trainer_context->comm_;
+  trainer_context->MPI()->Barrier(comm);
+  size_t worker_num = trainer_context->MPI()->Size(comm);
+  paddle::framework::Channel<T> out_chan = paddle::framework::MakeChannel<T>();
+  auto fleet_ptr = paddle::framework::FleetWrapper::GetInstance();
+  fleet_ptr->RegisterClientToClientMsgHandler(
+      0,
+      [out_chan](int msg_type, int client_id, const std::string& msg) -> int {
+        VLOG(3) << "Receive msg_type=" << msg_type
+                << ", client_id=" << client_id
+                << ", msg length=" << msg.length();
+        if (msg.length() == 0) {
+          return 0;
+        }
+        paddle::framework::BinaryArchive ar;
+        ar.SetReadBuffer(const_cast<char*>(msg.c_str()), msg.length(), nullptr);
+        if (ar.Cursor() == ar.Finish()) {
+          return 0;
+        }
+        std::vector<T> data;
+        while (ar.Cursor() < ar.Finish()) {
+          data.push_back(ar.Get<T>());
+        }
+        CHECK(ar.Cursor() == ar.Finish());
+        out_chan->Write(std::move(data));
+        data.clear();
+        return 0;
+      });
+  in_chan->SetBlockSize(512);
+  VLOG(3) << "Shuffle() data_chan size " << in_chan->Size();
+  auto get_client_id = [worker_num, func](const T& data) -> size_t {
+    return func(data) % worker_num;
+  };
+  auto global_shuffle_func = [in_chan, worker_num, get_client_id]() {
+    auto fleet_ptr = paddle::framework::FleetWrapper::GetInstance();
+    std::vector<T> data;
+    while (in_chan->Read(data)) {
+      std::vector<paddle::framework::BinaryArchive> ars(worker_num);
+      for (auto& d : data) {
+        auto client_id = get_client_id(d);
+        ars[client_id] << d;
+      }
+      std::vector<std::future<int32_t>> total_status;
+      for (size_t i = 0; i < worker_num; ++i) {
+        if (ars[i].Length() == 0) {
+          continue;
+        }
+        std::string msg(ars[i].Buffer(), ars[i].Length());
+        auto ret = fleet_ptr->SendClientToClientMsg(0, i, msg);
+        total_status.push_back(std::move(ret));
+      }
+      for (auto& t : total_status) {
+        t.wait();
+      }
+      ars.clear();
+      data.clear();
+    }
+  };
+  trainer_context->MPI()->Barrier(comm);
+  std::vector<std::thread> global_shuffle_threads;
+  for (int i = 0; i < thread_num; ++i) {
+    global_shuffle_threads.push_back(std::thread(global_shuffle_func));
+  }
+  for (std::thread& t : global_shuffle_threads) {
+    t.join();
+  }
+  global_shuffle_threads.clear();
+  in_chan->Clear();
+  trainer_context->MPI()->Barrier(comm);
+  out_chan->Close();
+  timeline.Pause();
+  VLOG(0) << "Shuffle() end, cost time=" << timeline.ElapsedSec() << " seconds";
+  return out_chan;
+}
 
 }  // end namespace framework
 }  // end namespace paddle

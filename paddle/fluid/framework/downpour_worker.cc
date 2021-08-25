@@ -503,6 +503,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
   int batch_cnt = 0;
   uint64_t total_inst = 0;
   timeline.Start();
+  if (trainer_context_ != nullptr) {
+    trainer_context_->on_thread_train_begin(this);
+  }
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
     read_time += timeline.ElapsedSec();
@@ -561,6 +564,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
       adjust_ins_weight_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
     }
+    if (trainer_context_ != nullptr) {
+      trainer_context_->on_thread_pull_done(this);
+    }
     VLOG(3) << "Fill sparse value for all sparse table done.";
 
     int run_op_idx = 0;
@@ -581,6 +587,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
         op_total_time[run_op_idx++] += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
       }
+    }
+    if (trainer_context_ != nullptr) {
+      trainer_context_->on_thread_op_done(this);
     }
 
     // check inf and nan
@@ -753,6 +762,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
     }
     timeline.Start();
   }
+  if (trainer_context_ != nullptr) {
+    trainer_context_->on_thread_train_end(this);
+  }
   if (copy_table_config_.need_copy()) {
     CopySparseTable();
     CopyDenseTable();
@@ -766,6 +778,9 @@ void DownpourWorker::TrainFiles() {
   device_reader_->Start();
   int batch_cnt = 0;
   int cur_batch;
+  if (trainer_context_ != nullptr) {
+    trainer_context_->on_thread_train_begin(this);
+  }
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
@@ -799,6 +814,9 @@ void DownpourWorker::TrainFiles() {
       }
     }
     VLOG(3) << "fill sparse value for all sparse table done.";
+    if (trainer_context_ != nullptr) {
+      trainer_context_->on_thread_pull_done(this);
+    }
 
     // do computation here
     for (auto& op : ops_) {
@@ -810,51 +828,55 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
-#ifdef PADDLE_WITH_PSLIB
-        try {
-          op->Run(*thread_scope_, place_);
-        } catch (std::exception& e) {
-          fprintf(stderr, "error message: %s\n", e.what());
-          auto& ins_id_vec = device_reader_->GetInsIdVec();
-          size_t batch_size = device_reader_->GetCurBatchSize();
-          std::string s = "";
-          for (auto& ins_id : ins_id_vec) {
-            if (s != "") s += ",";
-            s += ins_id;
-          }
-          fprintf(stderr, "batch_size: %zu, ins_ids_vec: %s\n", batch_size,
-                  s.c_str());
-          s = "";
-          for (auto& param : all_param_) {
-            Variable* var = thread_scope_->FindVar(param);
-            if (var == nullptr) {
-              continue;
-            }
-            Tensor* tensor = nullptr;
-            int64_t len = 0;
-            if (var->IsType<framework::LoDTensor>()) {
-              tensor = var->GetMutable<LoDTensor>();
-              len = tensor->numel();
-            } else if (var->IsType<SelectedRows>()) {
-              auto selected_rows = var->GetMutable<SelectedRows>();
-              tensor = selected_rows->mutable_value();
-              len = tensor->numel();
-            }
-            if (!tensor->IsInitialized()) {
-              continue;
-            }
-            s += param + ":" + std::to_string(len) + ":";
-            s += PrintLodTensor(tensor, 0, len);
-            fprintf(stderr, "%s\n", s.c_str());
-            fflush(stderr);
-            s = "";
-          }
-          throw e;
-        }
-#else
+        // #ifdef PADDLE_WITH_PSLIB
+        //         try {
+        //           op->Run(*thread_scope_, place_);
+        //         } catch (std::exception& e) {
+        //           fprintf(stderr, "error message: %s\n", e.what());
+        //           auto& ins_id_vec = device_reader_->GetInsIdVec();
+        //           size_t batch_size = device_reader_->GetCurBatchSize();
+        //           std::string s = "";
+        //           for (auto& ins_id : ins_id_vec) {
+        //             if (s != "") s += ",";
+        //             s += ins_id;
+        //           }
+        //           fprintf(stderr, "batch_size: %zu, ins_ids_vec: %s\n",
+        //           batch_size,
+        //                   s.c_str());
+        //           s = "";
+        //           for (auto& param : all_param_) {
+        //             Variable* var = thread_scope_->FindVar(param);
+        //             if (var == nullptr) {
+        //               continue;
+        //             }
+        //             Tensor* tensor = nullptr;
+        //             int64_t len = 0;
+        //             if (var->IsType<framework::LoDTensor>()) {
+        //               tensor = var->GetMutable<LoDTensor>();
+        //               len = tensor->numel();
+        //             } else if (var->IsType<SelectedRows>()) {
+        //               auto selected_rows = var->GetMutable<SelectedRows>();
+        //               tensor = selected_rows->mutable_value();
+        //               len = tensor->numel();
+        //             }
+        //             if (!tensor->IsInitialized()) {
+        //               continue;
+        //             }
+        //             s += param + ":" + std::to_string(len) + ":";
+        //             s += PrintLodTensor(tensor, 0, len);
+        //             fprintf(stderr, "%s\n", s.c_str());
+        //             fflush(stderr);
+        //             s = "";
+        //           }
+        //           throw e;
+        //         }
+        // #else
         op->Run(*thread_scope_, place_);
-#endif
+        // #endif
       }
+    }
+    if (trainer_context_ != nullptr) {
+      trainer_context_->on_thread_op_done(this);
     }
 
     // check inf and nan
@@ -1006,6 +1028,9 @@ void DownpourWorker::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;
+  }
+  if (trainer_context_ != nullptr) {
+    trainer_context_->on_thread_train_end(this);
   }
   if (need_dump_field_) {
     writer_.Flush();

@@ -271,6 +271,7 @@ if '${WITH_PSLIB}' == 'ON':
     if os.path.exists('${PSLIB_VERSION_PY}'):
         shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/')
     package_data['paddle.libs'] += ['libps' + ext_name]
+    package_data['paddle.libs'] += ['libmpi' + ext_name]
 
 if '${WITH_MKLDNN}' == 'ON':
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':

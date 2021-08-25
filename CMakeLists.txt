@@ -171,6 +171,8 @@ if(WITH_DISTRIBUTE)
     endif()
 endif()
 
+include(external/mpi)
+
 # there is no official support of nccl, cupti in windows
 if(NOT WIN32)
     include(cupti)

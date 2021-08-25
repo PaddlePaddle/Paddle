@@ -221,6 +221,23 @@ class DatasetBase(object):
         self.dataset.set_filelist(filelist)
         self.filelist = filelist
 
+    def set_uid_slot(self, uid_slot):
+        """
+        Set user slot name.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_uid_slot('6048')
+
+        Args:
+            set_uid_slot(string): user slot name
+        """
+        multi_slot = self.proto_desc.multi_slot_desc
+        multi_slot.uid_slot = uid_slot
+
     def set_use_var(self, var_list):
         """
         Set Variables which you will use.

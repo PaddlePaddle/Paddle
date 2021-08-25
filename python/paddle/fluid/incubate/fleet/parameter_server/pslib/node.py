@@ -81,8 +81,8 @@ class DownpourServer(Server):
                     'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold', \
                     'sparse_converter', 'sparse_deconverter', 'sparse_enable_cache', 'sparse_cache_rate', \
                     'sparse_cache_file_num', 'sparse_beta1_decay_rate', 'sparse_beta2_decay_rate', \
-                    'sparse_ada_epsilon', 'sparse_optimizer', 'sparse_ssd_unseenday_threshold', \
-                    'embed_sparse_optimizer', 'embed_sparse_learning_rate', 'embed_sparse_weight_bounds', \
+                    'sparse_ada_epsilon', 'sparse_optimizer', 'sparse_ssd_unseenday_threshold', 'sparse_enable_revert', \
+                    'sparse_shard_merge_rate', 'embed_sparse_optimizer', 'embed_sparse_learning_rate', 'embed_sparse_weight_bounds', \
                     'embed_sparse_initial_range', 'embed_sparse_initial_g2sum', 'embed_sparse_beta1_decay_rate', \
                     'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
                     'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
@@ -114,6 +114,9 @@ class DownpourServer(Server):
             table.compress_in_save = strategy.get('sparse_compress_in_save',
                                                   True)
             table.shard_num = strategy.get('sparse_shard_num', 1000)
+            table.enable_revert = strategy.get('sparse_enable_revert', False)
+            table.shard_merge_rate = strategy.get('sparse_shard_merge_rate',
+                                                  0.2)
             # DownpourFeatureValueAccessor: for ctr task, has cvm, embedding and sgd info
             # DownpourCtrAccessor         : for ctr task, has cvm, slot, embedding and sgd info
             # DownpourSparseValueAccessor : for general task, has embedding and sgd info
@@ -297,7 +300,7 @@ class DownpourServer(Server):
         table.table_id = table_id
         support_dense_key_list = ['dense_table_class', 'dense_compress_in_save', 'dense_accessor_class', \
                 'dense_optimizer', 'dense_learning_rate', 'dense_avg_decay', 'dense_ada_decay', \
-                'dense_ada_epsilon', 'dense_mom_decay', 'dense_naive_lr']
+                'dense_ada_epsilon', 'dense_mom_decay', 'dense_naive_lr', 'dense_enable_revert']
 
         for key in strategy:
             if key not in support_dense_key_list:
@@ -307,6 +310,7 @@ class DownpourServer(Server):
                                          "DownpourDenseTable")
         table.type = pslib.PS_DENSE_TABLE
         table.compress_in_save = strategy.get('dense_compress_in_save', True)
+        table.enable_revert = strategy.get('dense_enable_revert', False)
         table.accessor.accessor_class = strategy.get(
             'dense_accessor_class', "DownpourDenseValueAccessor")
         table.accessor.dense_sgd_param.name = strategy.get('dense_optimizer',
@@ -359,7 +363,7 @@ class DownpourServer(Server):
             strategy = dict()
 
         support_datanorm_key_list = ['datanorm_table_class', 'datanorm_compress_in_save',\
-                'datanorm_accessor_class', 'datanorm_operation', 'datanorm_decay_rate']
+                'datanorm_accessor_class', 'datanorm_operation', 'datanorm_decay_rate', 'datanorm_enable_revert']
 
         for key in strategy:
             if key not in support_datanorm_key_list:
@@ -371,6 +375,7 @@ class DownpourServer(Server):
                                          'DownpourDenseTable')
         table.type = pslib.PS_DENSE_TABLE
         table.compress_in_save = strategy.get('datanorm_compress_in_save', True)
+        table.enable_revert = strategy.get('datanorm_enable_revert', False)
         table.accessor.accessor_class = strategy.get(
             'datanorm_accessor_class', 'DownpourDenseValueAccessor')
         table.accessor.dense_sgd_param.name = strategy.get('datanorm_operation',

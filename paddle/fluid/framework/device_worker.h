@@ -27,6 +27,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/fleet/context/trainer_context.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -50,6 +51,7 @@ std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
 bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
+class TrainerContextInterface;
 
 #define SEC_LOG                                                              \
   VLOG(3) << "[s" << section_id_ << "p" << pipeline_id_ << "t" << thread_id_ \
@@ -130,6 +132,9 @@ class DeviceWorker {
   virtual void SetRootScope(Scope* root_scope);
   virtual void SetDataFeed(DataFeed* data_feed);
   virtual void SetNeedDump(bool need_dump_field) {}
+  virtual void SetTrainerContext(TrainerContextInterface* context) {
+    trainer_context_ = context;
+  }
   virtual void SetChannelWriter(ChannelObject<std::string>* queue) {}
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
@@ -139,7 +144,7 @@ class DeviceWorker {
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
 
- protected:
+ public:
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;
   paddle::platform::Place place_;
@@ -148,6 +153,7 @@ class DeviceWorker {
   FetchConfig fetch_config_;
   bool use_cvm_;
   bool no_cvm_;
+  TrainerContextInterface* trainer_context_ = nullptr;
   bool scale_sparse_gradient_with_batch_size_;
   std::vector<std::string> all_param_;
 };
@@ -162,7 +168,7 @@ class CPUWorkerBase : public DeviceWorker {
   virtual void PrintFetchVars() {}
   virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
 
- protected:
+ public:
   int thread_id_;
 };
 
@@ -186,7 +192,7 @@ class HogwildWorker : public CPUWorkerBase {
   template <typename T>
   void SetZero(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim);
 
- protected:
+ public:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
   virtual void DumpParam(const int batch_id);

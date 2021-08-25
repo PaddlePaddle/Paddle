@@ -56,6 +56,35 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
         trainer_desc.downpour_param().stat_var_names(i));
   }
 
+  for (const auto &tag : trainer_desc.auc_tags()) {
+    auc_tags_.emplace_back(tag);
+  }
+  for (const auto &target : trainer_desc.targets()) {
+    targets_.emplace(target.name(), target.var_name());
+  }
+  for (const auto &target : trainer_desc.pn_targets()) {
+    pn_targets_.emplace(target.name(), target.var_name());
+  }
+  for (const auto &label : trainer_desc.pn_labels()) {
+    pn_labels_.emplace(label.name(), label.var_name());
+  }
+  for (const auto &label_bound : trainer_desc.label_bounds()) {
+    label_bounds_.emplace_back(label_bound);
+  }
+  for (const auto &tag_name : trainer_desc.tag_names()) {
+    tag_names_.emplace_back(tag_name);
+  }
+  for (const auto &resctype : trainer_desc.resctypes()) {
+    resc_types_.emplace_back(resctype);
+  }
+  resctype_name_ = trainer_desc.resctype_name();
+
+  if (trainer_desc.trainer_context_name() == "FeedTrainerContext") {
+    trainer_context_ =
+        TrainerContext<FeedTrainerContext>::get_context(root_scope_);
+    trainer_context_->SetTrainer(this, trainer_desc);
+  }
+
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
@@ -63,6 +92,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
     workers_[i]->SetDataFeed(readers[i]);
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetNeedDump(need_dump_field_);
+    workers_[i]->SetTrainerContext(trainer_context_);
   }
 
   VLOG(3) << "going to initialize pull dense worker";
@@ -151,6 +181,9 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
 }
 
 void DistMultiTrainer::Run() {
+  if (trainer_context_ != nullptr) {
+    trainer_context_->on_trainer_run_begin();
+  }
   for (int thidx = 0; thidx < thread_num_; ++thidx) {
     if (!debug_) {
       threads_.push_back(
@@ -170,35 +203,10 @@ void DistMultiTrainer::Finalize() {
   for (auto &th : threads_) {
     th.join();
   }
-  for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
-    Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
-    if (root_var == nullptr) {
-      continue;
-    }
-    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
-    for (int j = 1; j < thread_num_; j++) {
-      Scope *cur_thread_scope = workers_[j]->GetThreadScope();
-      Variable *thread_var =
-          cur_thread_scope->FindVar(need_merge_var_names_[i]);
-      LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
-      if (root_tensor->numel() != thread_tensor->numel()) {
-        continue;
-      }
-#define MergeCallback(cpp_type, proto_type)                                    \
-  do {                                                                         \
-    if (root_tensor->type() == proto_type) {                                   \
-      if (thread_tensor->type() != proto_type) {                               \
-        VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
-                << "] " << need_merge_var_names_[i]                            \
-                << ", root tensor type=" << root_tensor->type()                \
-                << ", thread tensor type=" << thread_tensor->type();           \
-        exit(-1);                                                              \
-      }                                                                        \
-      MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
-    }                                                                          \
-  } while (0)
-      _ForEachDataType_(MergeCallback);
-    }
+
+  if (trainer_context_ != nullptr) {
+    trainer_context_->on_trainer_run_end();
+    trainer_context_->Finalize();
   }
 
   if (need_dump_field_) {
@@ -212,14 +220,5 @@ void DistMultiTrainer::Finalize() {
   fleet_ptr_->ClientFlush();
 }
 
-template <typename T>
-void DistMultiTrainer::MergeToRootScope(LoDTensor *root_tensor,
-                                        LoDTensor *tensor) {
-  T *root_data = root_tensor->data<T>();
-  T *data = tensor->data<T>();
-  for (int i = 0; i < tensor->numel(); i++) {
-    root_data[i] += data[i];
-  }
-}
 }  // namespace framework
 }  // namespace paddle

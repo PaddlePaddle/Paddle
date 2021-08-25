@@ -1,7 +1,7 @@
 if(WITH_PSLIB)
-    cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS framework_proto variable_helper scope pslib_brpc pslib)
+    cc_library(fleet_wrapper SRCS fleet_wrapper.cc message_passing_interface.cc DEPS framework_proto variable_helper scope pslib_brpc pslib)
 else()
-    cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS framework_proto variable_helper scope)
+    cc_library(fleet_wrapper SRCS fleet_wrapper.cc message_passing_interface.cc DEPS framework_proto variable_helper scope)
 endif(WITH_PSLIB)
 
 if(WITH_NCCL)

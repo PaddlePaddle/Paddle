@@ -35,7 +35,7 @@ class PSLib(Fleet):
         self._fleet_ptr = None
         self._main_programs = []
         self._scopes = []
-        self._client2client_request_timeout_ms = 500000
+        self._client2client_request_timeout_ms = 90000
         self._client2client_connect_timeout_ms = 10000
         self._client2client_max_retry = 3
 
@@ -53,6 +53,10 @@ class PSLib(Fleet):
 
     def set_pull_local_thread_num(self, thread_num):
         self._fleet_ptr.set_pull_local_thread_num(thread_num)
+
+    def init_scopes(self, scopes):
+        for scope in scopes:
+            self._fleet_ptr.init_trainer_scope(scope)
 
     def init_worker(self):
         """
@@ -83,7 +87,8 @@ class PSLib(Fleet):
             # worker_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
-                                        self._role_maker.worker_index() * 2)
+                                        self._role_maker.worker_index() * 2,
+                                        comm_ptr)
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
@@ -166,9 +171,11 @@ class PSLib(Fleet):
             else:
                 raise Exception(
                     "You should run DistributedOptimizer.minimize() first")
+            comm_ptr = int(id(self._role_maker._node_type_comm))
             # server_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_server(self._dist_desc_str,
-                                        self._role_maker.server_index() * 2)
+                                        self._role_maker.server_index() * 2,
+                                        comm_ptr)
             if isinstance(self._role_maker, MPISymetricRoleMaker):
                 self._local_ip = self._fleet_ptr.run_server()
             else:

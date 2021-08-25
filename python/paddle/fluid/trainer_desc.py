@@ -131,6 +131,46 @@ class TrainerDesc(object):
         for loss in loss_names:
             self.proto_desc.loss_names.append(loss)
 
+    def _set_auc_tags(self, auc_tags):
+        for tag in auc_tags:
+            self.proto_desc.auc_tags.append(tag)
+
+    def _set_targets(self, targets):
+        for key in targets:
+            target = self.proto_desc.targets.add()
+            target.name = key
+            target.var_name = targets[key]
+
+    def _set_dump_interval(self, dump_interval):
+        self.proto_desc.dump_interval = dump_interval
+
+    def _set_pn_targets(self, targets):
+        for key in targets:
+            target = self.proto_desc.pn_targets.add()
+            target.name = key
+            target.var_name = targets[key]
+
+    def _set_pn_labels(self, labels):
+        for key in labels:
+            label = self.proto_desc.pn_labels.add()
+            label.name = key
+            label.var_name = labels[key]
+
+    def _set_label_bounds(self, label_bounds):
+        for label_bound in label_bounds:
+            self.proto_desc.label_bounds.append(label_bound)
+
+    def _set_tag_names(self, tag_names):
+        for tag_name in tag_names:
+            self.proto_desc.tag_names.append(tag_name)
+
+    def _set_resctypes(self, resctypes):
+        for resctype in resctypes:
+            self.proto_desc.resctypes.append(resctype)
+
+    def _set_resctype_name(self, resctype_name):
+        self.proto_desc.resctype_name = resctype_name
+
     def _set_adjust_ins_weight(self, config_dict):
         self.proto_desc.adjust_ins_weight_config.need_adjust = \
                 config_dict.get("need_adjust", False)

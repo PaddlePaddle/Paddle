@@ -92,6 +92,8 @@ struct Record {
   uint64_t search_id;
   uint32_t rank;
   uint32_t cmatch;
+  uint64_t uid_;
+  std::vector<std::string> auc_tags_;
 };
 
 struct PvInstanceObject {
@@ -104,6 +106,12 @@ using PvInstance = PvInstanceObject*;
 inline PvInstance make_pv_instance() { return new PvInstanceObject(); }
 
 class DataFeed {
+ public:
+  struct InsData {
+    uint64_t uid_;
+    std::vector<std::string> auc_tags_;
+  };
+
  public:
   DataFeed() {
     mutex_for_pick_file_ = nullptr;
@@ -171,6 +179,9 @@ class DataFeed {
   virtual const std::vector<std::string>& GetInsContentVec() const {
     return ins_content_vec_;
   }
+  virtual const std::vector<InsData>& GetInsDataVec() const {
+    return ins_data_vec_;
+  }
   virtual int GetCurBatchSize() { return batch_size_; }
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
@@ -231,7 +242,9 @@ class DataFeed {
   std::string pipe_command_;
   std::vector<std::string> ins_id_vec_;
   std::vector<std::string> ins_content_vec_;
+  std::vector<InsData> ins_data_vec_;
   platform::Place place_;
+  std::string uid_slot_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
@@ -471,7 +484,7 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   for (size_t& x : offset) {
     uint64_t t;
     ar >> t;
-    x = (size_t)t;
+    x = (static_cast<size_t>)t;
   }
 #endif
   ar >> ins.MutableFloatData();
@@ -552,6 +565,9 @@ paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
   ar << r.uint64_feasigns_;
   ar << r.float_feasigns_;
   ar << r.ins_id_;
+  ar << r.content_;
+  ar << r.uid_;
+  ar << r.auc_tags_;
   return ar;
 }
 
@@ -561,6 +577,9 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   ar >> r.uint64_feasigns_;
   ar >> r.float_feasigns_;
   ar >> r.ins_id_;
+  ar >> r.content_;
+  ar >> r.uid_;
+  ar >> r.auc_tags_;
   return ar;
 }
 

@@ -53,6 +53,18 @@ message TrainerDesc {
   optional string user_define_dump_filename = 24;
   optional bool scale_sparse_gradient_with_batch_size = 25 [ default = true ];
 
+  // class name for creating trainer context
+  optional string trainer_context_name = 26 [ default = 'FeedTrainerContext' ];
+  repeated string auc_tags = 27;
+  repeated Target targets = 28;
+  optional uint64 dump_interval = 29 [ default = 0 ];
+  repeated PnTarget pn_targets = 30;
+  repeated PnLabel pn_labels = 31;
+  repeated float label_bounds = 32;
+  repeated string tag_names = 33;
+  optional string resctype_name = 34;
+  repeated int64 resctypes = 35;
+
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;
@@ -176,4 +188,19 @@ message TableParameter {
   // if table will pull sparse asynchronously in worker
   optional bool is_async = 14 [ default = false ];
   optional string async_wait_op_name = 15;
+}
+
+message Target {
+  optional string name = 1;
+  optional string var_name = 2;
+}
+
+message PnTarget {
+  optional string name = 1;
+  optional string var_name = 2;
+}
+
+message PnLabel {
+  optional string name = 1;
+  optional string var_name = 2;
 }

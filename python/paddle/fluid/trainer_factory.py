@@ -72,6 +72,24 @@ class TrainerFactory(object):
                     trainer._set_dump_converter(opt_info["dump_converter"])
                 if opt_info.get("dump_param") is not None:
                     trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("auc_tags") is not None:
+                    trainer._set_auc_tags(opt_info["auc_tags"])
+                if opt_info.get("targets") is not None:
+                    trainer._set_targets(opt_info["targets"])
+                if opt_info.get("dump_interval") is not None:
+                    trainer._set_dump_interval(opt_info["dump_interval"])
+                if opt_info.get("pn_targets") is not None:
+                    trainer._set_pn_targets(opt_info["pn_targets"])
+                if opt_info.get("pn_labels") is not None:
+                    trainer._set_pn_labels(opt_info["pn_labels"])
+                if opt_info.get("label_bounds") is not None:
+                    trainer._set_label_bounds(opt_info["label_bounds"])
+                if opt_info.get("tag_names") is not None:
+                    trainer._set_tag_names(opt_info["tag_names"])
+                if opt_info.get("resctype_name") is not None:
+                    trainer._set_resctype_name(opt_info["resctype_name"])
+                if opt_info.get("resctypes") is not None:
+                    trainer._set_resctypes(opt_info["resctypes"])
 
             if "fleet_desc" in opt_info:
                 device_worker._set_fleet_desc(opt_info["fleet_desc"])

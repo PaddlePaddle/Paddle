@@ -55,13 +55,15 @@ void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
   client2client_max_retry_ = max_retry;
 }
 
-void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
+void FleetWrapper::InitServer(const std::string& dist_desc, int index,
+                              size_t role_comm) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
     VLOG(3) << "Going to init server";
     pslib_ptr_ = std::shared_ptr<paddle::distributed::PSlib>(
         new paddle::distributed::PSlib());
     pslib_ptr_->init_server(dist_desc, index);
+    trainer_context_->Initialize(((MPI4pyComm*)role_comm)->ob_mpi);  // NOLINT
     is_initialized_ = true;
   } else {
     VLOG(3) << "Server can be initialized only once";
@@ -71,7 +73,7 @@ void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
 
 void FleetWrapper::InitWorker(const std::string& dist_desc,
                               const std::vector<uint64_t>& host_sign_list,
-                              int node_num, int index) {
+                              int node_num, int index, size_t role_comm) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
     VLOG(3) << "Going to init worker";
@@ -80,6 +82,7 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
     pslib_ptr_->init_worker(dist_desc,
                             const_cast<uint64_t*>(host_sign_list.data()),
                             node_num, index);
+    trainer_context_->Initialize(((MPI4pyComm*)role_comm)->ob_mpi);  // NOLINT
     is_initialized_ = true;
   } else {
     VLOG(3) << "Worker can be initialized only once";
@@ -343,16 +346,37 @@ void FleetWrapper::PullSparseVarsSync(
   for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
-  auto status = pslib_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
-  pull_sparse_status.push_back(std::move(status));
-  for (auto& t : pull_sparse_status) {
-    t.wait();
-    auto status = t.get();
-    if (status != 0) {
-      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
-      sleep(sleep_seconds_before_fail_exit_);
-      exit(-1);
+
+  int32_t cnt = 0;
+  while (true) {
+    pull_sparse_status.clear();
+    auto status = pslib_ptr_->_worker_ptr->pull_sparse(
+        pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+    pull_sparse_status.push_back(std::move(status));
+    bool flag = true;
+    for (auto& t : pull_sparse_status) {
+      t.wait();
+      int32_t status = -1;
+      try {
+        status = t.get();
+      } catch (const std::future_error& e) {
+        LOG(ERROR) << "Caught a future_error with code" << e.code()
+                   << ", Message:" << e.what();
+      }
+      if (status != 0) {
+        LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(10);
+        flag = false;
+        cnt++;
+      }
+      if (cnt > 3) {
+        LOG(ERROR) << "fleet pull sparse failed, retry 3 times";
+        sleep(sleep_seconds_before_fail_exit_);
+        exit(-1);
+      }
+    }
+    if (flag) {
+      break;
     }
   }
 #endif
@@ -1230,8 +1254,8 @@ int32_t FleetWrapper::CopyTable(const uint64_t src_table_id,
 void FleetWrapper::Confirm() {
 #ifdef PADDLE_WITH_PSLIB
   // FIXME(xujiaqi01): will later support confirm
-  // auto ret = pslib_ptr_->_worker_ptr->confirm();
-  // ret.wait();
+  auto ret = pslib_ptr_->_worker_ptr->confirm();
+  ret.wait();
   VLOG(0) << "disable FleetWrapper::Confirm temporarily";
 #else
   VLOG(0) << "FleetWrapper::Confirm does nothing when no pslib";
@@ -1241,12 +1265,19 @@ void FleetWrapper::Confirm() {
 void FleetWrapper::Revert() {
 #ifdef PADDLE_WITH_PSLIB
   // FIXME(xujiaqi01): will later support revert
-  // auto ret = pslib_ptr_->_worker_ptr->revert();
-  // ret.wait();
+  auto ret = pslib_ptr_->_worker_ptr->revert();
+  ret.wait();
   VLOG(0) << "disable FleetWrapper::Revert temporarily";
 #else
   VLOG(0) << "FleetWrapper::Revert does nothing when no pslib";
 #endif
+}
+
+void FleetWrapper::InitTrainerScope(Scope* scope) {
+  auto ptr = (int64_t)trainer_context_.get();
+  auto* var = scope->Var(TrainerContextInterface::ContextVarName());
+  auto* data = var->GetMutable<int64_t>();
+  *data = ptr;
 }
 
 int32_t FleetWrapper::CopyTableByFeasign(

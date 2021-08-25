@@ -91,7 +91,8 @@ void BindFleetWrapper(py::module* m) {
            &framework::FleetWrapper::SaveModelOneTablePrefix)
       .def("copy_table", &framework::FleetWrapper::CopyTable)
       .def("copy_table_by_feasign",
-           &framework::FleetWrapper::CopyTableByFeasign);
+           &framework::FleetWrapper::CopyTableByFeasign)
+      .def("init_trainer_scope", &framework::FleetWrapper::InitTrainerScope);
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle

@@ -834,6 +834,7 @@ void MultiSlotInMemoryDataFeed::Init(
       use_slots_shape_.push_back(local_shape);
     }
   }
+  uid_slot_ = multi_slot_desc.uid_slot();
   feed_vec_.resize(use_slots_.size());
   pipe_command_ = data_feed_desc.pipe_command();
   finish_init_ = true;
@@ -925,6 +926,18 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
+
+      if (all_slots_[i] == uid_slot_) {
+        PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
+                       "The uid has to be uint64 and single.\n"
+                       "please check this error line: %s",
+                       str);
+
+        char* uidptr = endptr;
+        uint64_t feasign = (uint64_t)strtoull(uidptr, &uidptr, 10);
+        instance->uid_ = feasign;
+      }
+
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
@@ -961,6 +974,26 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
         }
       }
     }
+
+    while (*(endptr += string::count_spaces(endptr)) != 0) {
+      switch (*endptr) {
+        case '@': {
+          endptr++;
+          size_t len = string::count_nonspaces(endptr);
+          std::string all_str(endptr, endptr + len);
+          endptr += len;
+          std::vector<std::string> all_tag_vec =
+              string::split_string(all_str, "|");
+          instance->auc_tags_ = std::move(all_tag_vec);
+          break;
+        }
+        default: {
+          endptr++;
+          break;
+        }
+      }
+    }
+
     instance->float_feasigns_.shrink_to_fit();
     instance->uint64_feasigns_.shrink_to_fit();
     return true;
@@ -1049,10 +1082,14 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   ins_content_vec_.reserve(ins_vec.size());
   ins_id_vec_.clear();
   ins_id_vec_.reserve(ins_vec.size());
+  ins_data_vec_.clear();
+  ins_data_vec_.reserve(ins_vec.size());
   for (size_t i = 0; i < ins_vec.size(); ++i) {
     auto& r = ins_vec[i];
     ins_id_vec_.push_back(r.ins_id_);
     ins_content_vec_.push_back(r.content_);
+    InsData ins_data{.uid_ = r.uid_, .auc_tags_ = r.auc_tags_};
+    ins_data_vec_.emplace_back(std::move(ins_data));
     for (auto& item : r.float_feasigns_) {
       batch_float_feasigns[item.slot()].push_back(item.sign().float_feasign_);
       visit[item.slot()] = true;

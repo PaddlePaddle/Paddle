@@ -95,7 +95,7 @@ void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
   std::string cmd = std::string("$HADOOP_HOME/bin/hadoop fs");
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
-  cmd += " -Ddfs.client.block.write.retries=15 -Ddfs.rpc.timeout=500000";
+  cmd += " -Ddfs.client.block.write.retries=15 -Ddfs.rpc.timeout=60000";
   paddle::framework::hdfs_set_command(cmd);
 }
 
@@ -984,6 +984,7 @@ void MultiSlotDataset::MergeByInsId() {
   std::unordered_set<uint16_t> all_float;
   std::unordered_set<uint16_t> local_uint64;
   std::unordered_set<uint16_t> local_float;
+  std::unordered_set<std::string> auc_tags;
   std::unordered_map<uint16_t, std::vector<FeatureItem>> all_dense_uint64;
   std::unordered_map<uint16_t, std::vector<FeatureItem>> all_dense_float;
   std::unordered_map<uint16_t, std::vector<FeatureItem>> local_dense_uint64;
@@ -1016,6 +1017,9 @@ void MultiSlotDataset::MergeByInsId() {
     rec.content_ = recs[i].content_;
 
     for (size_t k = i; k < j; k++) {
+      if (recs[k].uid_ > 0) {
+        rec.uid_ = recs[k].uid_;
+      }
       dense_empty.clear();
       local_dense_uint64.clear();
       local_dense_float.clear();
@@ -1052,6 +1056,9 @@ void MultiSlotDataset::MergeByInsId() {
           all_dense_float[p.first] = std::move(local_dense_float[p.first]);
         }
       }
+      for (auto& t : recs[k].auc_tags_) {
+        auc_tags.emplace(t);
+      }
     }
     for (auto& f : all_dense_uint64) {
       rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(), f.second.begin(),
@@ -1060,6 +1067,9 @@ void MultiSlotDataset::MergeByInsId() {
     for (auto& f : all_dense_float) {
       rec.float_feasigns_.insert(rec.float_feasigns_.end(), f.second.begin(),
                                  f.second.end());
+    }
+    for (auto& t : auc_tags) {
+      rec.auc_tags_.emplace_back(t);
     }
 
     for (size_t k = i; k < j; k++) {

@@ -154,11 +154,11 @@ std::shared_ptr<TrainerBase> Executor::InitForDataset(
           << trainer_desc.class_name();
   std::shared_ptr<TrainerBase> trainer;
   trainer = TrainerFactory::CreateTrainer(trainer_desc.class_name());
+  VLOG(3) << "Set root scope here";
+  trainer->SetScope(scope);
   // initialize trainer
   VLOG(3) << "Going to initialize trainer";
   trainer->Initialize(trainer_desc, dataset);
-  VLOG(3) << "Set root scope here";
-  trainer->SetScope(scope);
   // prepare training environment and helper environment
   VLOG(3) << "Try to init train environment";
   trainer->InitTrainerEnv(main_program, place_);

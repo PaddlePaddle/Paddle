@@ -392,6 +392,9 @@ void DownpourWorkerOpt::TrainFiles() {
       }
     }
     VLOG(3) << "fill sparse value for all sparse table done.";
+    if (trainer_context_ != nullptr) {
+      trainer_context_->on_thread_pull_done(this);
+    }
 
     // do computation here
     for (size_t loss_idx = 0; loss_idx < loss_ops_.size(); loss_idx++) {
@@ -428,6 +431,9 @@ void DownpourWorkerOpt::TrainFiles() {
         }
       }
       op_idx++;
+    }
+    if (trainer_context_ != nullptr) {
+      trainer_context_->on_thread_op_done(this);
     }
     // check inf and nan
     for (std::string& var_name : check_nan_var_names_) {
@@ -573,6 +579,9 @@ void DownpourWorkerOpt::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;
+  }
+  if (trainer_context_ != nullptr) {
+    trainer_context_->on_thread_train_end(this);
   }
   if (need_dump_field_) {
     writer_.Flush();

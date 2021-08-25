@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <fstream>
+#include <map>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -52,10 +53,12 @@ class TrainerBase {
   virtual void Finalize() = 0;
   virtual Scope* GetWorkerScope(int thread_id) = 0;
 
- protected:
-  Scope* root_scope_;
-  bool debug_;
-  Dataset* dataset_ptr_;
+ public:
+  int thread_num_ = 0;
+  Scope* root_scope_ = nullptr;
+  bool debug_ = false;
+  Dataset* dataset_ptr_ = nullptr;
+  TrainerContextInterface* trainer_context_ = nullptr;
   TrainerDesc trainer_desc_;
 
   // For dump param or field
@@ -89,8 +92,7 @@ class MultiTrainer : public TrainerBase {
   virtual Scope* GetWorkerScope(int thread_id);
   virtual void DumpWork(int tid);
 
- protected:
-  int thread_num_;
+ public:
   std::vector<std::thread> threads_;
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
@@ -118,8 +120,6 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Run();
   virtual void Finalize();
-  template <typename T>
-  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
   virtual void FinalizeDumpEnv();
   virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
@@ -127,6 +127,16 @@ class DistMultiTrainer : public MultiTrainer {
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+
+ public:
+  std::map<std::string, std::string> targets_;
+  std::vector<std::string> auc_tags_;
+  std::map<std::string, std::string> pn_targets_;
+  std::map<std::string, std::string> pn_labels_;
+  std::vector<float> label_bounds_;
+  std::vector<std::string> tag_names_;
+  std::string resctype_name_;
+  std::vector<int64_t> resc_types_;
 };
 
 #if defined(PADDLE_WITH_NCCL)
