@@ -723,7 +723,7 @@ class CompileTimeStrategy(object):
                                      [grad_name], trainer_id, True, True,
                                      is_distributed, idx, False)
             print('debug zcb: send_ctx:')
-            print('k: {}, v: {}'.format(str(sparse_ctx.var_name()), str([grad_name, splited_varname, ep_list, shape, trainer_id, idx])))
+            print('k: {}, v: {}'.format(str(sparse_ctx.var_name()), str([grad_name, splited_varname, ep_list, shape, trainer_id, idx, param_name])))
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx

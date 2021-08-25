@@ -294,6 +294,12 @@ class Table:
         self.tensor = None
 
     def to_string(self, indent):
+        if self.id == 1:
+            proto_txt = ''
+            with open('/work/git/PaddleRec/models/rank/slot_dnn_test/sparse_table.prototxt') as f:
+                proto_txt = f.read()
+            return proto_txt
+
         table_str = "{}downpour_table_param {{{}\n{}}}"
 
         attrs = ""
@@ -773,7 +779,9 @@ class TheOnePSRuntime(RuntimeBase):
                     common.sync = "false"
 
                 table.common = common
-
+                
+                print('debug zcb build_merge_accessor:')
+                print(str(ctx))
                 accessor = _build_merge_accessor(ctx)
                 table.accessor = accessor
                 tables.append(table)

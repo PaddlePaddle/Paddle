@@ -464,14 +464,14 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys, const float* values,
             float* value_data = const_cast<float*>(feature_value->data());
             size_t value_size = feature_value->size();
 
-            VLOG(3) << "push sparse, key: " << key << " value: ";
-            for (int i = 0; i < value_size; ++i)
-              VLOG(3) << value_data[i] << " ";
-            VLOG(3) << "\n";
-            VLOG(3) << "update_data: ";
-            for (int i = 0; i < update_value_col; ++i)
-              VLOG(3) << update_data[i] << " ";
-            VLOG(3) << "\n";
+            // VLOG(3) << "push sparse, key: " << key << " value: ";
+            // for (int i = 0; i < value_size; ++i)
+            //   VLOG(3) << value_data[i] << " ";
+            // VLOG(3) << "\n";
+            // VLOG(3) << "update_data: ";
+            // for (int i = 0; i < update_value_col; ++i)
+            //   VLOG(3) << update_data[i] << " ";
+            // VLOG(3) << "\n";
 
             if (value_size == value_col) {  //已拓展到最大size, 则就地update
               _value_accesor->update(&value_data, &update_data, 1);
@@ -486,10 +486,12 @@ int32_t CtrSparseTable::push_sparse(const uint64_t* keys, const float* values,
               }
               memcpy(value_data, data_buffer_ptr, value_size * sizeof(float));
             }
-            VLOG(3) << "after update key:" << key << "\n";
-            for (int i = 0; i < feature_value->size(); ++i)
-              VLOG(3) << value_data[i] << " ";
-            VLOG(3) << "\n";
+            /*
+            std::cout << "after update key:" << key << "\n";
+            for(int i = 0; i < feature_value->size(); ++ i)
+                std::cout << value_data[i] << " ";
+            std::cout << "\n";
+            */
           }
           return 0;
         });

@@ -1433,9 +1433,9 @@ std::future<int32_t> BrpcPsClient::push_dense(const Region *regions,
       std::make_shared<CostTimer>("pslib_downpour_client_push_dense_parse");
   int push_dense_async_num = _push_dense_task_queue_map[table_id]->size();
   while (push_dense_async_num > FLAGS_pslib_max_async_call_num) {
-    // LOG(INFO) << "push_dense Waiting for async_call_num comsume, task_num:"
-    //    << push_dense_async_num << ", max_task_limit:" <<
-    //    FLAGS_pslib_max_async_call_num;
+    LOG(INFO) << "push_dense Waiting for async_call_num comsume, task_num:"
+              << push_dense_async_num
+              << ", max_task_limit:" << FLAGS_pslib_max_async_call_num;
     usleep(5000);  // 5ms
     push_dense_async_num = _push_dense_task_queue_map[table_id]->size();
   }
@@ -1532,53 +1532,88 @@ void BrpcPsClient::push_dense_task_consume() {
         for (int i = 0; i < merge_count; ++i) {
           merge_status[i].wait();
         }
+
+        VLOG(1) << "BrpcPsClient::push_dense_task_consume before merge "
+                   "total_send_data[0]"
+                << total_send_data[0] << " total_send_data[-2]"
+                << total_send_data[total_send_data_size - 2]
+                << total_send_data[0] << " total_send_data[-1]"
+                << total_send_data[total_send_data_size - 1];
         if (scale_gradient && merge_count > 1) {
           Eigen::Map<Eigen::MatrixXf> mat(total_send_data, 1,
                                           total_send_data_size);
-          mat *= (1.0 / merge_count);
+          mat *= (1.0 / (merge_count + 1));
         }
+
+        VLOG(1) << "BrpcPsClient::push_dense_task_consume after merge "
+                   "total_send_data[0]"
+                << total_send_data[0] << " total_send_data[-2]"
+                << total_send_data[total_send_data_size - 2]
+                << " total_send_data[-1]"
+                << total_send_data[total_send_data_size - 1] << " merge_count "
+                << merge_count;
+
+        DownpourBrpcClosure *closure = new DownpourBrpcClosure(
+            request_call_num, [this, request_call_num](void *done) {
+              int ret = 0;
+              auto *closure = (DownpourBrpcClosure *)done;
+              for (size_t i = 0; i < request_call_num; ++i) {
+                if (closure->check_response(i, PS_PUSH_DENSE_TABLE) != 0) {
+                  ret = -1;
+                  break;
+                }
+              }
+          push_dense_raw_gradient(task, total_send_data, total_send_data_size,
+                                  closure);
+          }
+          if (scale_gradient && merge_count > 1) {
+            Eigen::Map<Eigen::MatrixXf> mat(total_send_data, 1,
+                                            total_send_data_size);
+            mat *= (1.0 / merge_count);
+          }
+        }
+
+        push_dense_raw_gradient(task, total_send_data, total_send_data_size,
+                                closure);
       }
-
-      push_dense_raw_gradient(task, total_send_data, total_send_data_size,
-                              closure);
-    }
-    auto wait_ms =
-        FLAGS_pslib_async_push_dense_interval_ms - (timeline.ElapsedMS());
-    if (wait_ms > 0) {
-      usleep(wait_ms * 1000);
+      auto wait_ms =
+          FLAGS_pslib_async_push_dense_interval_ms - (timeline.ElapsedMS());
+      if (wait_ms > 0) {
+        usleep(wait_ms * 1000);
+      }
     }
   }
-}
 
-void BrpcPsClient::push_dense_raw_gradient(
-    std::shared_ptr<DenseAsyncTask> &task, float *total_send_data,
-    size_t total_send_data_size, DownpourBrpcClosure *closure) {
-  auto *accessor = table_accessor(task->table_id());
-  size_t request_call_num = _server_channels.size();
-  //将数据拷贝到请求buffer区
-  auto timer =
-      std::make_shared<CostTimer>("pslib_downpour_client_push_dense_rpc");
-  closure->add_timer(timer);
-  uint32_t num_per_shard =
-      dense_dim_per_shard(accessor->fea_dim(), request_call_num);
-  for (size_t i = 0; i < request_call_num; ++i) {
-    closure->request(i)->set_cmd_id(PS_PUSH_DENSE_TABLE);
-    closure->request(i)->set_table_id(task->table_id());
-    closure->request(i)->set_client_id(_client_id);
-    auto *push_data = closure->request(i)->mutable_data();
-    push_data->clear();
-    push_data->resize(sizeof(uint32_t) + num_per_shard * sizeof(float));
-    char *push_data_ptr = const_cast<char *>(push_data->data());
-    memcpy(push_data_ptr, &num_per_shard, sizeof(uint32_t));
-    memcpy(push_data_ptr + sizeof(uint32_t),
-           total_send_data + i * num_per_shard, num_per_shard * sizeof(float));
-    closure->cntl(i)->set_request_compress_type(
-        (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
-    PsService_Stub rpc_stub(get_dense_channel(i));
-    rpc_stub.service(closure->cntl(i), closure->request(i),
-                     closure->response(i), closure);
+  void BrpcPsClient::push_dense_raw_gradient(
+      std::shared_ptr<DenseAsyncTask> & task, float *total_send_data,
+      size_t total_send_data_size, DownpourBrpcClosure *closure) {
+    auto *accessor = table_accessor(task->table_id());
+    size_t request_call_num = _server_channels.size();
+    //将数据拷贝到请求buffer区
+    auto timer =
+        std::make_shared<CostTimer>("pslib_downpour_client_push_dense_rpc");
+    closure->add_timer(timer);
+    uint32_t num_per_shard =
+        dense_dim_per_shard(accessor->fea_dim(), request_call_num);
+    for (size_t i = 0; i < request_call_num; ++i) {
+      closure->request(i)->set_cmd_id(PS_PUSH_DENSE_TABLE);
+      closure->request(i)->set_table_id(task->table_id());
+      closure->request(i)->set_client_id(_client_id);
+      auto *push_data = closure->request(i)->mutable_data();
+      push_data->clear();
+      push_data->resize(sizeof(uint32_t) + num_per_shard * sizeof(float));
+      char *push_data_ptr = const_cast<char *>(push_data->data());
+      memcpy(push_data_ptr, &num_per_shard, sizeof(uint32_t));
+      memcpy(push_data_ptr + sizeof(uint32_t),
+             total_send_data + i * num_per_shard,
+             num_per_shard * sizeof(float));
+      closure->cntl(i)->set_request_compress_type(
+          (brpc::CompressType)FLAGS_pserver_communicate_compress_type);
+      PsService_Stub rpc_stub(get_dense_channel(i));
+      rpc_stub.service(closure->cntl(i), closure->request(i),
+                       closure->response(i), closure);
+    }
   }
-}
 
 }  // namespace distributed
 }  // namespace paddle

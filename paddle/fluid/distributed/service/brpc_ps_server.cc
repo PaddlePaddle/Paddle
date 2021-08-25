@@ -161,7 +161,7 @@ void BrpcPsService::service(google::protobuf::RpcController *cntl_base,
     return;
   }
 
-  std::cout << "zcb debug service cmd_id--: " << request->cmd_id() << "\n";
+  // std::cout << "zcb debug service cmd_id: " << request->cmd_id() << "\n";
   response->set_err_code(0);
   response->set_err_msg("");
   auto *table = _server->table(request->table_id());
@@ -203,6 +203,9 @@ int32_t BrpcPsService::pull_dense(Table *table, const PsRequestMessage &request,
   auto res_data = butil::get_object<std::vector<float>>();
   res_data->resize(num * table->value_accesor()->select_size() / sizeof(float));
   table->pull_dense(res_data->data(), num);
+  VLOG(1) << "BrpcPsService::pull_dense num " << num << " data[0] "
+          << res_data->data()[0] << " data[-2] " << res_data->data()[num - 2]
+          << " data[-1] " << res_data->data()[num - 1];
 
   cntl->response_attachment().append((char *)(res_data->data()),
                                      res_data->size() * sizeof(float));
@@ -232,6 +235,9 @@ int32_t BrpcPsService::push_dense_param(Table *table,
   uint32_t num = *(const uint32_t *)data;
 
   const float *values = (const float *)(data + sizeof(uint32_t));
+  VLOG(1) << "BrpcPsService::push_dense_param num " << num << " data[0] "
+          << values[0] << " data[-2] " << values[num - 2] << " data[-1] "
+          << values[num - 1];
   if (table->push_dense_param(values, num) != 0) {
     set_response_code(response, -1, "push_dense_param failed");
   }
@@ -257,6 +263,8 @@ int32_t BrpcPsService::push_dense(Table *table, const PsRequestMessage &request,
   uint32_t num = *(const uint32_t *)(request.data().data());
   const float *values =
       (const float *)(request.data().data() + sizeof(uint32_t));
+  VLOG(1) << "BrpcPsService::push_dense num " << num << " data[0] " << values[0]
+          << " data[-2] " << values[num - 2] << " data[-1] " << values[num - 1];
   if (table->push_dense(values, num) != 0) {
     set_response_code(response, -1, "push_dense failed");
   }
@@ -405,7 +413,6 @@ int32_t BrpcPsService::push_sparse(Table *table,
   |---keysData---|---valuesData---|
   |---8*{num}B---|----------------|
   */
-  std::cout << "debug zcb, server::push_sparse\n";
   const uint64_t *keys = (const uint64_t *)push_data.data();
   const float *values =
       (const float *)(push_data.data() + sizeof(uint64_t) * num);
