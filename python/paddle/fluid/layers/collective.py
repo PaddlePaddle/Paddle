@@ -108,7 +108,7 @@ def _c_broadcast(x, root=0, ring_id=0, use_calc_stream=False):
 def _c_destroy_hccl_comm():
     op_type = 'c_comm_destroy_hccl'
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type)
+    helper.append_op(type=op_type, inputs={}, outputs={}, attrs={})
 
 
 def _c_allgather(x, nranks, ring_id=0, use_calc_stream=False):
