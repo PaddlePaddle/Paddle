@@ -36,8 +36,8 @@ class InterpreterCore {
                   const std::vector<std::string>& feed_names,
                   const std::vector<std::string>& fetch_names);
 
-  void Run(const std::vector<framework::Tensor>& feed_tensors,
-           std::vector<framework::Tensor>* fetch_tensors);
+  paddle::framework::FetchList Run(
+      const std::vector<framework::Tensor>& feed_tensors);
 
   const CostInfo& DryRun(const std::vector<std::string>& vec_name,
                          const std::vector<framework::Tensor>& vec_tensor);
@@ -51,9 +51,11 @@ class InterpreterCore {
  private:
   void Convert();
 
-  void RunInstruction(const Instruction& instr_node,
-                      const VariableScope& var_scope,
-                      const platform::Place& place);
+  void BuildInstructionCtx(Instruction* instr_node,
+                           const VariableScope& var_scope,
+                           const platform::Place& place);
+
+  void RunInstruction(const Instruction& instr_node);
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
                               const VariableScope& var_scope,
@@ -70,7 +72,7 @@ class InterpreterCore {
                const std::vector<framework::Tensor>& vec_tensor);
 
   const platform::Place& place_;
-  const ProgramDesc& main_program_;
+  ProgramDesc main_program_;
   VariableScope* global_scope_;
   std::vector<VariableMetaInfo> vec_meta_info_;
 
@@ -88,6 +90,8 @@ class InterpreterCore {
   std::vector<std::string> feed_names_;
   std::vector<std::string> fetch_names_;
   InterpreterProfiler profiler_;
+
+  platform::DeviceContextPool fetch_context_pool_;
 };
 }  // namespace framework
 }  // namespace paddle

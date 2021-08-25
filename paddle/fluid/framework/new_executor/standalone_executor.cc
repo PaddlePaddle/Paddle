@@ -47,15 +47,13 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                    &vec_func_list, &global_scope_);
 }
 
-int StandaloneExecutor::Run(const std::vector<std::string>& feed_names,
-                            const std::vector<framework::Tensor>& feed_tensors,
-                            const std::vector<std::string>& fetch_names,
-                            std::vector<framework::Tensor>* fetch_tensors) {
+paddle::framework::FetchList StandaloneExecutor::Run(
+    const std::vector<std::string>& feed_names,
+    const std::vector<framework::Tensor>& feed_tensors,
+    const std::vector<std::string>& fetch_names) {
   auto core = GetInterpreterCore(feed_names, fetch_names);
 
-  core->Run(feed_tensors, fetch_tensors);
-
-  return 0;
+  return core->Run(feed_tensors);
 }
 
 const CostInfo& StandaloneExecutor::DryRun(
