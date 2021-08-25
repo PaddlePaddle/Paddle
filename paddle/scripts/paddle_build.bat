@@ -271,6 +271,7 @@ if %errorlevel% NEQ 0 exit /b 1
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_inference || goto test_inference_error
+call :test_inference_ut || goto test_inference_ut_error
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
 goto:success
@@ -736,6 +737,23 @@ echo git checkout -f origin_pr >>  check_change_of_unittest.sh
 goto:eof
 
 :check_change_of_unittest_error
+exit /b 1
+
+rem ---------------------------------------------------------------------------------------------
+:test_inference_ut
+@ECHO OFF
+echo    ========================================
+echo    Step 7. Testing fluid library with infer_ut for inference ...
+echo    ========================================
+
+cd %work_dir%\paddle\fluid\inference\tests\infer_ut
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %MSVC_STATIC_CRT%
+goto:eof
+
+:test_inference_ut_error
+::echo 1 > %cache_dir%\error_code.txt
+::type %cache_dir%\error_code.txt
+echo Testing fluid library with infer_ut for inference failed!
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
