@@ -293,7 +293,7 @@ def fftn_c2c(x, s, axes, norm, forward):
     if axes is None:
         if s is None:
             axes = list(range(rank))
-            s = paddle.shape(x)
+            s = x.shape
         else:
             fft_ndims = len(s)
             axes = list(range(rank - fft_ndims, rank))
