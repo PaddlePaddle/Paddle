@@ -37,7 +37,7 @@ function check_whl {
 
     bash -x paddle/scripts/paddle_build.sh build_only
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
-    unzip -q python/dist/*.whl -d /tmp/develop
+    unzip -q build/python/dist/*.whl -d /tmp/develop
 
     sed -i '/version.py/d' /tmp/pr/*/RECORD
     sed -i '/version.py/d' /tmp/develop/*/RECORD
