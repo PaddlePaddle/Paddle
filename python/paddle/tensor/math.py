@@ -656,7 +656,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     Computes the sum of tensor elements over the given dimension.
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
         axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
             :attr:`None`, sum all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
@@ -673,11 +673,10 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     Returns:
         Tensor: Results of summation operation on the specified axis of input Tensor `x`,
-        it's data type is the same as `x`.
+        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, 
+        otherwise it's data type is the same as `x`.
 
     Raises:
-        ValueError: If the data type of `x` is float64, :attr:`dtype` can not be float32 or int32.
-        ValueError: If the data type of `x` is int64, :attr:`dtype` can not be int32.
         TypeError: The type of :attr:`axis` must be int, list or tuple.
 
     Examples:
@@ -704,6 +703,16 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                                   [[5, 6], [7, 8]]])
             out5 = paddle.sum(y, axis=[1, 2]) # [10, 26]
             out6 = paddle.sum(y, axis=[0, 1]) # [16, 20]
+            
+            # x is a Tensor with following elements:
+            #    [[True, True, True, True]
+            #     [False, False, False, False]]
+            # Each example is followed by the corresponding output tensor.
+            x = paddle.to_tensor([[True, True, True, True],
+                                  [False, False, False, False]])
+            out7 = paddle.sum(x)  # [4]
+            out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
+            out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
     if axis is not None and not isinstance(axis, (list, tuple)):
         axis = [axis]

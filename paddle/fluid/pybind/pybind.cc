@@ -1950,7 +1950,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict,
               std::vector<std::string> fetch_names) {
-             pybind11::gil_scoped_release release;
              std::vector<framework::Tensor> feed_tensors;
              std::vector<std::string> feed_names;
 
@@ -1962,13 +1961,13 @@ All parameter, weight, gradient are variables in Paddle.
                feed_tensors.push_back(t);
              }
 
-             std::vector<framework::Tensor> fetch_tensors;
-             self.Run(feed_names, feed_tensors, fetch_names, &fetch_tensors);
-             std::vector<py::array> vec_ret;
-             for (size_t i = 0; i < fetch_tensors.size(); ++i) {
-               vec_ret.push_back(TensorToPyArray(fetch_tensors[i], true));
+             paddle::framework::FetchList ret;
+             {
+               pybind11::gil_scoped_release release;
+               ret = self.Run(feed_names, feed_tensors, fetch_names);
              }
-             return vec_ret;
+
+             return py::cast(std::move(ret));
            });
 
   m.def("init_gflags", framework::InitGflags);
