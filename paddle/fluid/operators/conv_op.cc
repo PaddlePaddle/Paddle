@@ -194,11 +194,14 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
             paddle::framework::DataTypeToString(input_data_type),
             paddle::framework::DataTypeToString(filter_data_type)));
   }
+#ifndef PADDLE_WITH_ASCEND_CL
   if (input_data_type == framework::proto::VarType::FP16) {
-    PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
-                      platform::errors::InvalidArgument(
-                          "float16 can only be used when CUDNN is used"));
+    PADDLE_ENFORCE_EQ(
+        library, framework::LibraryType::kCUDNN,
+        platform::errors::InvalidArgument(
+            "float16 can only be used when CUDNN or NPU is used"));
   }
+#endif
 #if PADDLE_WITH_CUDA
   if (input_data_type == framework::proto::VarType::BF16 &&
       library == framework::LibraryType::kCUDNN) {
@@ -243,7 +246,8 @@ void Conv2DOpMaker::Make() {
   AddAttr<bool>("is_test",
                 "(bool, default false) Set to true for inference only, false "
                 "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddInput("Input",
            "(Tensor) The input tensor of convolution operator. "
            "The format of input tensor is NCHW or NHWC, where N is batch size, "
@@ -261,12 +265,14 @@ void Conv2DOpMaker::Make() {
            "(Tensor) Bias to be added to each output of filter application."
            "The format of output tensor is X (one-dimensional) of size equal"
            "to the number of output channels. Only used with MKL-DNN.")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddInput("ResidualData",
            "(Tensor) Tensor with residual data "
            "to which convolution output will be added."
            "Used with fuse_residual_connection fusion.")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
             "It has same data fromat and data type as the Input.");
@@ -303,69 +309,87 @@ void Conv2DOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("fuse_relu_before_depthwise_conv",
                 "(bool, default false) Only used in cuda depthwise kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>(
       "use_quantizer",
       "(bool, default false) "
       "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "mkldnn_data_type",
       "(string, default \"float32\"). Data type of mkldnn kernel")
       .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"});
+      .InEnum({"float32", "int8", "bfloat16"})
+      .AsExtra();
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("fuse_brelu",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<float>("fuse_brelu_threshold",
                  "(float, default false 6.0) Only used in mkldnn kernel")
-      .SetDefault(6.0f);
+      .SetDefault(6.0f)
+      .AsExtra();
   AddAttr<std::string>("fuse_activation",
                        "(string, default \"\") Only used in mkldnn kernel")
-      .SetDefault("");
+      .SetDefault("")
+      .AsExtra();
   AddAttr<float>("fuse_alpha",
                  "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f);
+      .SetDefault(0.0f)
+      .AsExtra();
   AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f);
+      .SetDefault(0.0f)
+      .AsExtra();
   AddAttr<bool>(
       "use_addto",
       "(bool, default false) If use addto strategy or not, only used in "
       "cudnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "
                 "connection.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<float>("Scale_in",
                  "Scale_in to be used for int8 input data."
                  "Only used with MKL-DNN INT8.")
-      .SetDefault(1.0f);
+      .SetDefault(1.0f)
+      .AsExtra();
   AddAttr<float>("Scale_out",
                  "Scale_out to be used for int8 output data."
                  "Only used with MKL-DNN INT8.")
-      .SetDefault(1.0f);
+      .SetDefault(1.0f)
+      .AsExtra();
   AddAttr<float>("Scale_in_eltwise",
                  "Scale_in_eltwise to be used for int8 eltwise input data."
                  "Only used with MKL-DNN INT8.")
-      .SetDefault(1.0f);
+      .SetDefault(1.0f)
+      .AsExtra();
   AddAttr<std::vector<float>>("Scale_weights",
                               "Scale_weights to be used for int8 weights data."
                               "Only used with MKL-DNN INT8.")
-      .SetDefault({1.0f});
+      .SetDefault({1.0f})
+      .AsExtra();
   AddAttr<bool>("force_fp32_output",
                 "(bool, default false) Force INT8 kernel output FP32, only "
                 "used in MKL-DNN INT8")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -381,12 +405,14 @@ void Conv2DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
+      .AsExtra();
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
                 "for cuDNN convolution or not, default is False.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
 
   AddComment(R"DOC(
 Convolution Operator.
@@ -423,7 +449,8 @@ void Conv3DOpMaker::Make() {
   AddAttr<bool>("is_test",
                 "(bool, default false) Set to true for inference only, false "
                 "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
@@ -444,7 +471,8 @@ void Conv3DOpMaker::Make() {
            "(Tensor) Tensor with residual data "
            "to which convolution output will be added."
            "Used with fuse_residual_connection fusion.")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
             "It has same data fromat and data type as the Input.");
@@ -482,35 +510,44 @@ void Conv3DOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "mkldnn_data_type",
       "(string, default \"float32\"). Data type of mkldnn kernel")
       .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"});
+      .InEnum({"float32", "int8", "bfloat16"})
+      .AsExtra();
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>("fuse_activation",
                        "(string, default \"\") Only used in mkldnn kernel")
-      .SetDefault("");
+      .SetDefault("")
+      .AsExtra();
   AddAttr<float>("fuse_alpha",
                  "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f);
+      .SetDefault(0.0f)
+      .AsExtra();
   AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f);
+      .SetDefault(0.0f)
+      .AsExtra();
   AddAttr<bool>(
       "use_addto",
       "(bool, default false) If use addto strategy or not, only used in "
       "cudnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "
                 "connection.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCDHW) Only used in "
@@ -520,7 +557,8 @@ void Conv3DOpMaker::Make() {
       .SetDefault("NCDHW");
   AddAttr<bool>("force_fp32_output",
                 "(bool, default false) Only used in mkldnn INT8 kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   // TODO(dzhwinter): need to registered layout transform function
   AddAttr<int>("workspace_size_MB",
                "Only used in cudnn kernel. workspace size for cudnn, in MB, "
@@ -528,12 +566,14 @@ void Conv3DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
+      .AsExtra();
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
                 "for cuDNN convolution or not, default is False.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddComment(R"DOC(
 Convolution3D Operator.
 
