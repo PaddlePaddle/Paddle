@@ -475,8 +475,8 @@ class TestResnet2(unittest.TestCase):
             with paddle.amp.auto_cast(
                     enable=enable_amp,
                     enable_pure_fp16=enable_pure_fp16,
-                    model=resnet,
-                    optimizer=optimizer):
+                    models=resnet,
+                    optimizers=optimizer):
                 out = resnet(img)
 
             loss = paddle.nn.functional.cross_entropy(input=out, label=label)
@@ -596,8 +596,8 @@ class TestResnet(unittest.TestCase):
                 with paddle.fluid.dygraph.amp_guard(
                         enable=enable_amp,
                         enable_pure_fp16=enable_pure_fp16,
-                        model=resnet,
-                        optimizer=optimizer):
+                        models=resnet,
+                        optimizers=optimizer):
                     out = resnet(img)
 
                 loss = fluid.layers.cross_entropy(input=out, label=label)

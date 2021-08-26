@@ -116,24 +116,71 @@ def fp16_initialize(enable_pure_fp16, models, optimizers):
             format(len(models), len(optimizers)))
 
     for idx in range(len(models)):
-        if not operator.eq(optimizers[idx]._parameter_list,
-                           models[idx].parameters()):
-            raise RuntimeError(
-                "Current the order of models should be consistent with that of optimizers, but receive models{} not corresponding to optimizers{}.".
-                format(idx, idx))
+        if getattr(optimizers[idx], '_param_groups', None) and isinstance(
+                optimizers[idx]._param_groups[0], dict):
+            for p in models[idx].parameters():
+                contains = False
+                for param_group in optimizers[idx]._param_groups:
+                    for q in param_group['params']:
+                        if p is q:
+                            contains = True
+                if not contains:
+                    raise RuntimeError(
+                        "Current the order of models should be consistent with that of optimizers, but receive models_{} not corresponding to optimizers_{}.".
+                        format(idx, idx))
+        else:
+            for p in models[idx].parameters():
+                contains = False
+                for q in optimizers[idx]._parameter_list:
+                    if p is q:
+                        contains = True
+                if not contains:
+                    raise RuntimeError(
+                        "Current the order of models should be consistent with that of optimizers, but receive models_{} not corresponding to optimizers_{}.".
+                        format(idx, idx))
 
-    for model in models:
-        for layer in model.sublayers(include_self=True):
+    for idx in range(len(models)):
+        for layer in models[idx].sublayers(include_self=True):
             if len(layer._sub_layers) is 0:
                 if (layer._dtype is 'float16') or isinstance(layer, (
                         paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
                     continue
                 layer.to(dtype='float16')
 
+                #以group的dict形式输入的参数
+                if getattr(optimizers[idx], '_param_groups',
+                           None) and isinstance(
+                               optimizers[idx]._param_groups[0], dict):
+                    #更新group
+                    for param_group in optimizers[idx]._param_groups:
+                        for i, param in enumerate(param_group['params']):
+                            if id(param) in layer._parameters_transform_map:
+                                param_group['params'][
+                                    i] = layer._parameters_transform_map[id(
+                                        param)][0]
+                    #更新list
+                    for param_group in optimizers[idx]._parameter_list:
+                        params = param_group['params']
+                        for i, param in enumerate(params):
+                            if id(param) in layer._parameters_transform_map:
+                                params[i] = layer._parameters_transform_map[id(
+                                    param)][0]
+                #以list的形式输入的参数
+                else:
+                    for i, param in enumerate(optimizers[idx]._parameter_list):
+                        if id(param) in layer._parameters_transform_map:
+                            optimizers[idx]._parameter_list[
+                                i] = layer._parameters_transform_map[id(param)][
+                                    0]
+                            if hasattr(optimizers[idx], '_param_groups'):
+                                optimizers[idx]._param_groups[
+                                    i] = layer._parameters_transform_map[id(
+                                        param)][0]
+    '''
     for idx in range(len(optimizers)):
-        optimizers[idx]._parameter_list = models[idx].parameters()
         if hasattr(optimizers[idx], '_multi_precision'):
             optimizers[idx]._multi_precision = True
+    '''
 
     return models, optimizers
 

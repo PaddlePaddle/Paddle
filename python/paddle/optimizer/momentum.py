@@ -239,10 +239,16 @@ class Momentum(Optimizer):
         return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
+        '''
         if framework.in_dygraph_mode():
             return
-
+        '''
         assert isinstance(block, framework.Block)
+
+        # new
+        if isinstance(parameters, dict):
+            parameters = self._update_param_group(parameters)
+
         for p in parameters:
             if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
                 master_p = self._create_master_weight(p)

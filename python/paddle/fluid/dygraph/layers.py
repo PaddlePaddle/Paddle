@@ -121,6 +121,9 @@ class Layer(core.Layer):
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
 
+        self._parameters_transform_map = {}
+        self._buffers_transform_map = {}
+
     def train(self):
         """
         Sets this Layer and all its sublayers to training mode.
@@ -1404,8 +1407,11 @@ class Layer(core.Layer):
                         ).stop_gradient
                         self._parameters[key]._set_grad_ivar(grad_applied)
 
+            self._parameters_transform_map[id(param)] = [param_applied, key]
+
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, device, dtype, blocking)
+            self._buffers_transform_map[id(buf)] = [self._buffers[key], key]
 
     def to(self, device=None, dtype=None, blocking=None):
         '''
