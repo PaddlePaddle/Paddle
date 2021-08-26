@@ -49,10 +49,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         split_input = TensorConfig(shape=[4, 3, 64, 64])
         self.program_inputs = {"split_input": split_input}
         self.program_outputs = ["output_var0", "output_var1"]
-
-        weight = np.random.randn(24, 3, 3, 3).astype("float32")
-        filter = TensorConfig(shape=[24, 3, 3, 3], data=weight)
-        self.program_weights = {"conv2d_weight": filter}
+        self.program_weights = {}
 
     def test_check_fp32_output(self):
         self.trt_param.precision == paddle_infer.PrecisionType.Float32
