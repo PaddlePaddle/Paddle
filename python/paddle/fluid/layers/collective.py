@@ -108,7 +108,15 @@ def _c_broadcast(x, root=0, ring_id=0, use_calc_stream=False):
 def _c_destroy_hccl_comm():
     op_type = 'c_comm_destroy_hccl'
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type, inputs={'X': [0]}, outputs={'Out': []})
+    prog = paddle.static.default_main_program()
+    toutdata = prog.current_block().create_var(
+        name="destroy_hccl_comm",
+        dtype='float32',
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        persistable=False,
+        stop_gradient=True)
+    helper.append_op(
+        type=op_type, inputs={'X': [toutdata]}, outputs={'Out': [toutdata]})
 
 
 def _c_allgather(x, nranks, ring_id=0, use_calc_stream=False):
