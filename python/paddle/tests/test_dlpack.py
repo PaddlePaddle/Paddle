@@ -58,5 +58,14 @@ class TestDLPack(unittest.TestCase):
                     np.array([[1], [2], [3], [4]]).astype('int')))
 
 
+class TestRaiseError(unittest.TestCase):
+    def test_from_dlpack_raise_type_error(self):
+        self.assertRaises(TypeError, paddle.utils.dlpack.from_dlpack,
+                          np.zeros(5))
+
+    def test_to_dlpack_raise_type_error(self):
+        self.assertRaises(TypeError, paddle.utils.dlpack.to_dlpack, np.zeros(5))
+
+
 if __name__ == '__main__':
     unittest.main()
