@@ -16,7 +16,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using STRINGS = std::vector<std::wstring>;
+using WSTRING = std::wstring;
+using STRINGS = std::vector<WSTRING>;
 
 }  // namespace framework
 }  // namespace paddle
