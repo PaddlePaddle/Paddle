@@ -583,8 +583,8 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
       if (input_idx >= reduce_num) {
         break;
       }
-      input_compute[i] =
-          static_cast<MPType>(transformer(input_reg[i])) input_idx += stride;
+      input_compute[i] = static_cast<MPType>(transformer(input_reg[i]));
+      input_idx += stride;
     }
     kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
                 kps::details::ReduceMode::LocalMode>(
