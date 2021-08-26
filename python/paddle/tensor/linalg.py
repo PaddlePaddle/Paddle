@@ -986,6 +986,7 @@ def svd(x, full_matrices=False, name=None):
             #                  U * UH = I ; 
             #                  V * VH = I
     """
+
     if in_dygraph_mode():
         return _C_ops.svd(x, 'full_matrices', full_matrices)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
@@ -1003,6 +1004,7 @@ def svd(x, full_matrices=False, name=None):
                  'S': s},
         attr=attrs, )
     return u, s, vh
+
 
 def matrix_power(x, n, name=None):
     r"""

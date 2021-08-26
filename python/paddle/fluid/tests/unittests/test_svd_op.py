@@ -244,7 +244,6 @@ class TestSvdNormalMatrixFullMatrices(unittest.TestCase):
             raise RuntimeError("mat can't be recovered\n")
 
 
-# FIXME bugs here
 class TestSvdFullMatriceGrad(TestSvdNormalMatrix6x3):
     def get_full_matrices_option(self):
         return True
@@ -263,16 +262,32 @@ class TestSvdFullMatriceGrad(TestSvdNormalMatrix6x3):
         self.check_V_grad()
 
 
-# TODO add float 32
-class TestDygraph(unittest.TestCase):
+class TestSvdAPI(unittest.TestCase):
     def test_dygraph(self):
-        if core.is_compiled_with_rocm():
-            paddle.disable_static()
-        else:
-            paddle.disable_static()
+        paddle.disable_static()
         a = np.random.rand(5, 5)
         x = paddle.to_tensor(a)
         u, s, vh = paddle.linalg.svd(x)
+        gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
+        self.assertTrue(np.allclose(s, gt_s))
+
+    def test_static(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                a = np.random.rand(5, 5)
+                x = paddle.fluid.data(
+                    name="input", shape=[5, 5], dtype='float64')
+                u, s, vh = paddle.linalg.svd(x)
+                exe = fluid.Executor(place)
+                gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
+                fetches = exe.run(fluid.default_main_program(),
+                                  feed={"input": a},
+                                  fetch_list=[s])
+                self.assertTrue(np.allclose(fetches[0], gt_s))
 
 
 if __name__ == "__main__":
