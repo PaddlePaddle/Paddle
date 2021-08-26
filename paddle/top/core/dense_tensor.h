@@ -54,8 +54,8 @@ class DenseTensor : public TensorInterface {
   // Not allowed to initialize a tensor without descriptive metadata
   DenseTensor() = delete;
 
-  DenseTensor(const DenseTensor&) = delete;
-  DenseTensor& operator=(const DenseTensor&) = delete;
+  // DenseTensor(const DenseTensor&) = delete;
+  // DenseTensor& operator=(const DenseTensor&) = delete;
   DenseTensor(DenseTensor&&) = delete;
   DenseTensor& operator=(DenseTensor&&) = delete;
 
