@@ -65,6 +65,7 @@ NEED_TO_FIX_OP_LIST = [
     'rank_loss',
     'sequence_conv',
     'smooth_l1_loss',
-    'spectral_norm'
+    'spectral_norm',
+    'solve'
 ]
 # yapf: enable

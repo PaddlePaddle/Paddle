@@ -1010,4 +1010,80 @@ def matrix_power(x, n, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'n': n})
+
+        
+def solve(x, y, name=None):
+    """
+    To computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
+    `solve` follows the complete broadcast rules,
+    and its behavior is consistent with `torch.linalg.solve`.
+    
+    The equation is:
+    $$Out = X^-1 * Y$$
+    
+    This system of linear equations has one solution if and only if input 'X' is invertible. 
+    This function assumes that 'X' is invertible.
+
+    The input tensor X's dimensions should be larger than 1 and the inner-most 2 dimensions all should be square matrices.
+
+    Also see comments of `matmul_v2` for more details about * operation.
+
+    Args:
+        x (Tensor): The input tensor which is a Tensor.
+        y (Tensor): The input tensor which is a Tensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Tensor: The output Tensor.
+
+    Examples:
+
+    .. code-block:: python
+
+        # a square system of linear equations:
+        # 2*X0 + X1 = 9
+        # X0 + 2*X1 = 8
+        
+        import paddle
+        import numpy as np
+       
+        np_x = np.array([[3, 1],[1, 2]])
+        np_y = np.array([9, 8])
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        out = paddle.linalg.solve(x, y)
+        
+        # out
+        # Tensor(shape=[2], dtype=float64, place=CUDAPlace(0), stop_gradient=False,
+        # [2.00000000, 3.        ])
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.solve(x, y)
+
+    def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for X, Y in var_names.items():
+            check_variable_and_dtype(X, Y, ['float32', 'float64'], 'solve')
+        x_shape = list(x.shape)
+        y_shape = list(y.shape)
+        if len(x_shape) < 2:
+            raise ValueError(
+                "x should be 2-dimensional or bigger. But received x's dimention: {}".
+                format(x_shape))
+        if len(y_shape) < 1:
+            raise ValueError(
+                "y should be 1-dimensional or bigger. But received y's dimention: {}".
+                format(y_shape))
+
+    inputs = {"X": [x], "Y": [y]}
+    helper = LayerHelper("solve", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'solve')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'solve')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="solve", inputs={"X": x,
+                              "Y": y}, outputs={"Out": out})
     return out
