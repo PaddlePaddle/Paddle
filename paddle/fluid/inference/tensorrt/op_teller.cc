@@ -405,30 +405,45 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                                      "align_corners", "scale",
                                      "out_h",         "out_w"};
       for (auto const attr : attrs) {
-        if (!desc.HasAttr(attr)) return false;
+        if (!desc.HasAttr(attr)) {
+          VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
+                  << attr << " and return false";
+          return false;
+        }
       }
+
       auto data_layout = framework::StringToDataLayout(
           BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC)
+          data_layout != framework::DataLayout::kNHWC) {
+        VLOG(3) << "The op_type " << op_type
+                << " is not NCHW or NHWC return false";
         return false;
+      }
+
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
-      if (interp_method != "bilinear") return false;
+      if (interp_method != "bilinear") {
+        VLOG(3) << "The interp_method of op_type " << op_type << " is bilinear";
+        return false;
+      }
+
+      auto align_corners =
+          BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      if (align_corners != false) {
+        VLOG(3) << "The TRT only supports align_corners with false.";
+        return false;
+      }
 
       if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
           !desc.HasAttr("out_w")) {
+        VLOG(3) << "The op_type " << op_type
+                << " doesn't have scale or out_h / out_w and return false";
         return false;
       } else {
         auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
         auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
         auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
-        auto align_corners =
-            BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
-        if (align_corners != false) {
-          VLOG(3) << "The TRT only supports align_corners with false.";
-          return false;
-        }
         if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
           if (out_h <= 0) {
             VLOG(3) << "out_h must be greater than 0 if scale is not set.";
@@ -444,41 +459,62 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "bilinear_interp_v2") {
       std::vector<std::string> attrs{"data_layout",   "interp_method",
-                                     "align_corners", "Scale",
+                                     "align_corners", "scale",
                                      "out_h",         "out_w"};
       for (auto const attr : attrs) {
-        if (!desc.HasAttr(attr)) return false;
+        if (!desc.HasAttr(attr)) {
+          VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
+                  << attr << " and return false";
+          return false;
+        }
       }
+
       auto data_layout = framework::StringToDataLayout(
           BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC)
+          data_layout != framework::DataLayout::kNHWC) {
+        VLOG(3) << "The op_type " << op_type
+                << " is not NCHW or NHWC return false";
         return false;
+      }
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
-      if (interp_method != "bilinear") return false;
-
-      if (!desc.HasAttr("Scale") || !desc.HasAttr("out_h") ||
-          !desc.HasAttr("out_w")) {
+      if (interp_method != "bilinear") {
+        VLOG(3) << "The interp_method of op_type " << op_type << " is bilinear";
         return false;
-      } else {
-        const std::vector<float> scale = BOOST_GET_CONST(std::vector<float>, desc.GetAttr("Scale"));
-        auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
-        auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
-        auto align_corners =
-            BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
-        if (align_corners != false) {
-          VLOG(3) << "The TRT only supports align_corners with false.";
-          return false;
-        }
-        if (!(scale.size() > 0 && (out_h <= 0 && out_w <= 0))) {
-          if (out_h <= 0) {
-            VLOG(3) << "out_h must be greater than 0 if Scale is not set.";
+      }
+
+      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      if (align_corners != false) {
+        VLOG(3) << "The TRT only supports align_corners with false.";
+        return false;
+      }
+
+      if (desc.Input("Scale").size() != 1) {
+        VLOG(3) << "The Scale of bilinear_interp_v2 is "
+                << desc.Input("Scale").size();
+        const std::vector<float> scale =
+            BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
+        if (scale.size() <= 1) {
+          if (!desc.HasAttr("out_h") || !desc.HasAttr("out_w")) {
+            VLOG(3) << "The op_type " << op_type
+                    << " doesn't have Scale and the scale size <=1 and without "
+                       "out_h / out_w, it will return false";
             return false;
           }
-          if (out_w <= 0) {
-            VLOG(3) << "out_w must be greater than 0 if Scale is not set.";
-            return false;
+          auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+          auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+          if (!(out_h <= 0 && out_w <= 0)) {
+            if (out_h <= 0) {
+              VLOG(3) << "The op_type " << op_type
+                      << "'s out_h must be greater than 0 if scale is not set.";
+              return false;
+            }
+            if (out_w <= 0) {
+              VLOG(3) << "The op_type " << op_type
+                      << "'s out_w must be greater than 0 if scale is not set.";
+              return false;
+            }
           }
         }
       }

@@ -73,6 +73,20 @@ class BilinearInterpolateOpConverter : public OpConverter {
           static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
     }
 
+    PADDLE_ENFORCE_EQ(
+        scale_w > 0, true,
+        platform::errors::InvalidArgument(
+            "The scale_w in Attr(scale) of Operator(bilinear_interp) "
+            "should be greater than 0, but received value is %d.",
+            scale_w));
+
+    PADDLE_ENFORCE_EQ(
+        scale_h > 0, true,
+        platform::errors::InvalidArgument(
+            "The scale_w in Attr(scale) of Operator(bilinear_interp) "
+            "should be greater than 0, but received value is %d.",
+            scale_h));
+
     if (engine_->with_dynamic_shape()) {
       scales.push_back(1.f);
     }
