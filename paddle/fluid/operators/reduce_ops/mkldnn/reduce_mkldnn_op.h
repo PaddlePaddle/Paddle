@@ -140,14 +140,9 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto output_dims = framework::vectorize(output_dx->dims());
 
     if (input_dims != output_dims) {
-      auto rankdiff = input_dy->dims().size() - output_dx->dims().size();
-      std::vector<int64_t> dims_dy(rankdiff, 1);
-      dims_dy.insert(next(dims_dy.begin(), rankdiff), output_dims.begin(),
-                     output_dims.end());
-      auto output_dy_md = dnnl::memory::desc(
-          output_dims, platform::MKLDNNGetDataType<T>(), output_dx->format());
-
-      output_dy_md = output_dy_md.reshape(dims_dy);
+      auto input_dy_md = dnnl::memory::desc(
+          input_dims, platform::MKLDNNGetDataType<T>(), input_dy->format());
+      output_dy_md = input_dy_md.reshape(output_dims);
       // TODO(jczaja): once MD is stored in Tensor we no longer need to guess
       // formats
       x_format_tag = platform::GetMKLDNNFormat(output_dy_md);
