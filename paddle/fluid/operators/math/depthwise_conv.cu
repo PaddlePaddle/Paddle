@@ -29,34 +29,6 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 namespace math {
-/*
-int static inline log2_ceil(int value) {
-  int log2_value = 0;
-  while ((1 << log2_value) < value) ++log2_value;
-  return log2_value;
-}*/
-
-template <typename T>
-__device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
-  typedef cub::WarpReduce<T> WarpReduce;
-  typename WarpReduce::TempStorage temp_storage;
-  if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0) {
-    printf("value before WarpReduceSum: %lf, thread x: %d, y: %d, z: %d\n",
-           value, threadIdx.x, threadIdx.y, threadIdx.z);
-  }
-
-#ifdef __HIPCC__
-  int block_size = min(blockDim.x * blockDim.y * blockDim.z, warpSize);
-  value = WarpReduce(temp_storage).Sum(value, block_size);
-#else
-  value = WarpReduce(temp_storage).Sum(value);
-#endif
-  if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0) {
-    printf("value in WarpReduceSum: %lf, thread x: %d, y: %d, z: %d\n", value,
-           threadIdx.x, threadIdx.y, threadIdx.z);
-  }
-  if (cub::LaneId() == 0) platform::CudaAtomicAdd(sum, value);
-}
 
 template <typename T>
 static __forceinline__ __device__ T WarpReduceSum(T val, int warp_size) {
@@ -64,14 +36,6 @@ static __forceinline__ __device__ T WarpReduceSum(T val, int warp_size) {
   typename WarpReduce::TempStorage temp_storage;
   val = WarpReduce(temp_storage).Sum(val, warp_size);
   return val;
-  /*
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-  for (int offset = warp_size / 2; offset > 0; offset /= 2) {
-    val += paddle::platform::CudaShuffleSync(mask, val, offset);
-  }
-  return val;
-  */
 }
 
 template <typename T>
@@ -80,59 +44,29 @@ __forceinline__ __device__ T BlockReduceSum(T val) {
   int thread_id = threadIdx.x + threadIdx.y * blockDim.x +
                   threadIdx.z * blockDim.x * blockDim.y;
   int warp_size = min(blockDim.x * blockDim.y * blockDim.z, warpSize);
-  if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0) {
-    printf("warp_size: %d", warp_size);
-  }
   int lane = thread_id % warp_size;
   int wid = thread_id / warp_size;
-  if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0) {
-    printf("value before WarpReduceSum: %lf, thread x: %d, y: %d, z: %d\n", val,
-           threadIdx.x, threadIdx.y, threadIdx.z);
-  }
 
   val = WarpReduceSum(val, warp_size);  // Each warp performs partial reduction
 
   if (lane == 0) shared[wid] = val;  // Write reduced value to shared memory
   __syncthreads();                   // Wait for all partial reductions
 
-  if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0) {
-    printf(
-        "value in WarpReduceSum: %lf, shared %lf, thread x: %d, y: %d, z: %d, "
-        "wid: %d\n",
-        val, shared[wid], threadIdx.x, threadIdx.y, threadIdx.z, wid);
-  }
-
   // read from shared memory only if that warp existed
   int block_size = blockDim.x * blockDim.y * blockDim.z;
   if (thread_id < (block_size - 1) / warp_size + 1) {
     val = shared[lane];
-    if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0) {
-      printf("value in iflelse: %lf, lane %lf, thread x: %d, y: %d, z: %d\n",
-             val, lane, threadIdx.x, threadIdx.y, threadIdx.z);
-    }
   } else {
     val = static_cast<T>(0);
   }
-  // val =
-  //    (thread_id < block_size / warp_size ) ? shared[lane] :
-  //    static_cast<T>(0);
 
   if (wid == 0) {
-    if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0) {
-      printf("value before blockreduce: %lf, thread x: %d, y: %d, z: %d\n", val,
-             threadIdx.x, threadIdx.y, threadIdx.z);
-    }
     val = WarpReduceSum(val, warp_size);  // Final reduce within first warp
-    if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0) {
-      printf("value in blockreduce: %lf, thread x: %d, y: %d, z: %d\n", val,
-             threadIdx.x, threadIdx.y, threadIdx.z);
-    }
   }
   __syncthreads();
   if (thread_id != 0) {
     val = static_cast<T>(0);
   }
-  __syncthreads();
   return val;
 }
 
@@ -723,16 +657,6 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
     const int dilate_width, T* filter_grad_data) {
   T s = 0;
   int gbid = ((blockIdx.z * gridDim.y) + blockIdx.y) * gridDim.x + blockIdx.x;
-  // LOG(ERROR)<<"gridDim.x: "<<gridDim.x<<" gridDim.y: "<<gridDim.y;
-  if (threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0 &&
-      blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0) {
-    printf("blockDim.x: %d, blockDim.y: %d, blockDim.z: %d\n", blockDim.x,
-           blockDim.y, blockDim.z);
-    printf("gridDim.x: %d, gridDim.y: %d, gridDim.z: %d\n", gridDim.x,
-           gridDim.y, gridDim.z);
-    printf("output_width: %d, num: %d, output_height: %d\n", output_width, num,
-           output_height);
-  }
 
   for (int image_w = threadIdx.x; image_w < output_width;
        image_w += blockDim.x) {
@@ -769,7 +693,6 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
 
   T val = BlockReduceSum(s);
   platform::CudaAtomicAdd(&filter_grad_data[gbid], val);
-  // CudaAtomicAddWithWarp(&filter_grad_data[gbid], s);
 }
 
 template <typename T, bool fuse_relu_before_conv>
@@ -1267,39 +1190,6 @@ class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T,
                   dilate_height, batch_size);
       threads = dim3(std::min(output_channels, block_size), blocks, 1);
     }
-    /*
-        int thread = 512;
-        int blocks;
-        dim3 threads;
-        dim3 grid;
-        if (data_layout != DataLayout::kNHWC) {
-          if (output_width > 1024 && output_width <= 2048)
-            thread = 1024;
-    #ifdef __HIPCC__
-          thread = std::min(thread, 256);
-    #endif
-          const int kDimCeil = log2_ceil(output_width);
-          int kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
-          int warps_per_block = (thread / kWarpSize);
-
-          threads = dim3(kWarpSize, warps_per_block, 1);
-          grid = dim3(ksize_width, ksize_height, output_channels);
-          printf("threads: %d, %d, %d\n", kWarpSize, warps_per_block, 1);
-          printf("grid: %d, %d, %d\n", ksize_width, ksize_height,
-    output_channels);
-        } else {
-    #ifdef __HIPCC__
-          thread = std::min(thread, 256);
-    #endif
-          const int kDimCeil = log2_ceil(output_channels);
-          int kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
-          int warps_per_block = (thread / kWarpSize);
-
-          threads = dim3(kWarpSize, warps_per_block, 1);
-          grid = dim3((output_height + dilate_height - 1) / dilate_height,
-                      dilate_height, batch_size);
-        }
-    */
     int filter_multiplier = output_channels / input_channels;
 
 #define check_case(c_filter_multiplier, c_stride, c_filter)                    \
