@@ -100,7 +100,7 @@ from .pooling import adaptive_max_pool3d  # noqa: F401
 from .pooling import adaptive_avg_pool1d  # noqa: F401
 from .pooling import adaptive_avg_pool2d  # noqa: F401
 from .pooling import adaptive_avg_pool3d  # noqa: F401
-from .pooling import max_unpool2d
+from .pooling import max_unpool2d  # noqa: F401
 
 from .vision import affine_grid  # noqa: F401
 from .vision import grid_sample  # noqa: F401
