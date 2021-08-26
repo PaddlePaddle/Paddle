@@ -89,7 +89,8 @@ class FCPrimitiveFactory {
     // descriptor has been divided into separate cases, based on the number
     // of input dimensions.
     size_t input_dim_num = input->dims().size();
-    boost::optional<mkldnn::inner_product_forward::primitive_desc> fc_prim_desc;
+    paddle::optional<mkldnn::inner_product_forward::primitive_desc>
+        fc_prim_desc;
     memory::desc usr_weights_desc = {};
     switch (input_dim_num) {
       case 2:
@@ -545,11 +546,11 @@ class FCPrimitiveFactory {
 
  private:
   const mkldnn::engine& engine_;
-  boost::optional<memory> input_;
-  boost::optional<memory> output_;
+  paddle::optional<memory> input_;
+  paddle::optional<memory> output_;
   std::shared_ptr<memory> bias_;
   std::shared_ptr<memory> weights_;
-  boost::optional<inner_product_forward> fc_;
+  paddle::optional<inner_product_forward> fc_;
 };
 
 // Attempt to fetch cached primitive factory based on provided parameters

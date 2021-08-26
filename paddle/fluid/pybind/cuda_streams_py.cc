@@ -105,7 +105,7 @@ void BindCudaStream(py::module *m_ptr) {
       .def("wait_stream",
            [](paddle::platform::stream::CUDAStream &self,
               paddle::platform::stream::CUDAStream &stream) {
-             auto event = paddle::platform::CudaEvent();
+             paddle::platform::CudaEvent event;
              event.Record(stream);
 
              self.WaitEvent(event.GetRawCudaEvent());

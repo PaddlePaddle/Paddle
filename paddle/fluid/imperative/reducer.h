@@ -209,6 +209,12 @@ class Reducer {
   std::condition_variable cv_;
 #endif
 
+  // grad_need_hooks_ is used to mark whether gradient synchronization is
+  // required across process. The default value is false. When backward()
+  // is called, grad_need_hooks_ will be assigned to true during preparation
+  // of backward and revert to false while finalizing backward.
+  bool grad_need_hooks_{false};
+
   // it just for checking hook, each parameter can only trigger one hook
   std::vector<bool> vars_marked_ready_;
 

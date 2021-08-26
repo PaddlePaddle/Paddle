@@ -35,7 +35,14 @@ class Record {
   std::vector<float> data;
   std::vector<int32_t> shape;
   paddle::PaddleDType type;
+  int label;
 };
+
+std::string read_file(std::string filename) {
+  std::ifstream file(filename);
+  return std::string((std::istreambuf_iterator<char>(file)),
+                     std::istreambuf_iterator<char>());
+}
 
 void SingleThreadPrediction(paddle_infer::Predictor *predictor,
                             std::map<std::string, Record> *input_data_map,
@@ -44,14 +51,37 @@ void SingleThreadPrediction(paddle_infer::Predictor *predictor,
   // prepare input tensor
   auto input_names = predictor->GetInputNames();
   for (const auto & [ key, value ] : *input_data_map) {
-    auto input_tensor = predictor->GetInputHandle(key);
-    input_tensor->Reshape(value.shape);
-    input_tensor->CopyFromCpu(value.data.data());
+    switch (value.type) {
+      case paddle::PaddleDType::INT64: {
+        std::vector<int64_t> input_value =
+            std::vector<int64_t>(value.data.begin(), value.data.end());
+        auto input_tensor = predictor->GetInputHandle(key);
+        input_tensor->Reshape(value.shape);
+        input_tensor->CopyFromCpu(input_value.data());
+        break;
+      }
+      case paddle::PaddleDType::INT32: {
+        std::vector<int32_t> input_value =
+            std::vector<int32_t>(value.data.begin(), value.data.end());
+        auto input_tensor = predictor->GetInputHandle(key);
+        input_tensor->Reshape(value.shape);
+        input_tensor->CopyFromCpu(input_value.data());
+        break;
+      }
+      case paddle::PaddleDType::FLOAT32: {
+        std::vector<float> input_value =
+            std::vector<float>(value.data.begin(), value.data.end());
+        auto input_tensor = predictor->GetInputHandle(key);
+        input_tensor->Reshape(value.shape);
+        input_tensor->CopyFromCpu(input_value.data());
+        break;
+      }
+    }
   }
 
   // inference
   for (size_t i = 0; i < repeat_times; ++i) {
-    predictor->Run();
+    ASSERT_TRUE(predictor->Run());
   }
 
   // get output data to Record
@@ -112,8 +142,8 @@ void CompareRecord(std::map<std::string, Record> *truth_output_data,
     size_t numel = value.data.size() / sizeof(float);
     EXPECT_EQ(value.data.size(), truth_record.data.size());
     for (size_t i = 0; i < numel; ++i) {
-      CHECK_LT(fabs(value.data.data()[i] - truth_record.data.data()[i]),
-               epislon);
+      ASSERT_LT(fabs(value.data.data()[i] - truth_record.data.data()[i]),
+                epislon);
     }
   }
 }

@@ -48,9 +48,8 @@ class EltwiseMulMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     if (dx) {
       // dx = dout*y
       platform::BinaryMKLDNNHandler<T> handler(
-          dnnl::algorithm::binary_mul, axis, dev_ctx, mkldnn_engine,
-          ctx.GetPlace(), dout, y, dx, 1.0f, 1.0f, 1.0f,
-          ctx.InputName(framework::GradVarName("Out")));
+          dnnl::algorithm::binary_mul, axis, mkldnn_engine, ctx.GetPlace(),
+          dout, y, dx, 1.0f, 1.0f, 1.0f);
 
       const auto src_dout_memory = handler.AcquireSrcMemory(dout);
       const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
@@ -75,9 +74,8 @@ class EltwiseMulMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       // Handler is having nullptr passed instead of output tensor as
       // we want Dst buffer to be allocated by oneDNN not to use Tensor
       platform::BinaryMKLDNNHandler<T> handler(
-          dnnl::algorithm::binary_mul, axis, dev_ctx, mkldnn_engine,
-          ctx.GetPlace(), dout, x, nullptr, 1.0f, 1.0f, 1.0f,
-          ctx.InputName(framework::GradVarName("Out")));
+          dnnl::algorithm::binary_mul, axis, mkldnn_engine, ctx.GetPlace(),
+          dout, x, nullptr, 1.0f, 1.0f, 1.0f);
 
       const auto src_dout_memory = handler.AcquireSrcMemory(dout);
       const auto src_x_memory = handler.AcquireSecondSrcMemory(x);
