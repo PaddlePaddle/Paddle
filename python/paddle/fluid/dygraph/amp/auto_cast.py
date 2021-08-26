@@ -55,6 +55,18 @@ BLACK_LIST = {
     'reduce_sum',
 }
 
+PURE_FP16_BLACK_LIST = {
+    'exp',
+    'square',
+    'log',
+    'mean',
+    'sum',
+    'cos_sim',
+    'softmax',
+    # default fp32 can avoid return inf when the sum value large than 65504
+    'reduce_sum',
+}
+
 AMP_RELATED_FLAGS = [
     'FLAGS_cudnn_exhaustive_search',
     'FLAGS_conv_workspace_size_limit',
@@ -299,7 +311,10 @@ def amp_guard(enable=True,
 
     # use default white_list and black_list if no custom lists provided
     _white_list = WHITE_LIST
-    _black_list = BLACK_LIST
+    if enable_pure_fp16:
+        _black_list = PURE_FP16_BLACK_LIST
+    else:
+        _black_list = BLACK_LIST
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
                                                 custom_black_list)
@@ -393,11 +408,14 @@ def amp_decorator(mode='pure_fp16',
         )
 
     _white_list = WHITE_LIST
-    _black_list = BLACK_LIST
+
+    if mode == 'pure_fp16':
+        _black_list = PURE_FP16_BLACK_LIST
+    else:
+        _black_list = BLACK_LIST
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
                                                 custom_black_list)
-
     if tracer:
         if mode == 'pure_fp16':
             tracer._enable_autocast = True
