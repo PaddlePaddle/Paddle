@@ -28,14 +28,15 @@ if(WITH_MKLDNN)
 endif()
 
 cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer)
+cc_library(paddle_infer_contrib SRCS paddle_infer_contrib.cc DEPS zero_copy_tensor)
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 if(WITH_CRYPTO)
     cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-              analysis_config zero_copy_tensor trainer_desc_proto paddle_crypto custom_operator)
+              analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto paddle_crypto custom_operator)
 else()
     cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-              analysis_config zero_copy_tensor trainer_desc_proto custom_operator)
+              analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto custom_operator)
 endif()
 
 if(WIN32)
