@@ -34,7 +34,7 @@ class HCCLCommImpl : public HCCLComm {
     return BOOST_GET_CONST(NPUPlace, dev_ctx_->GetPlace()).device;
   }
 
-  ~HCCLCommImpl() {
+  virtual ~HCCLCommImpl() {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclCommDestroy(comm_));
   }
 
