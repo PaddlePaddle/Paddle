@@ -22,6 +22,6 @@ __all__ = [
     'cholesky',  #noqa
     'norm',
     'inv',
-    'matrix_rank'
+    'matrix_rank',
     'matrix_power'
 ]
