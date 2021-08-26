@@ -62,6 +62,14 @@ void BindAscendWrapper(py::module *m) {
            py::call_guard<py::gil_scoped_release>());
 }
 
+static void destroy_hccl_comm() {
+  platform::HCCLCommContext::Instance().ReleaseHCCLComms();
+}
+
+void BindAscendHCCL(py::module *m) {
+  m->def("destroy_hccl_comm", &destroy_hccl_comm, "destroy_hccl_comm");
+}
+
 std::map<AscendString, AscendString> convert_map(
     const std::map<std::string, std::string> &options) {
   std::map<AscendString, AscendString> rets;
