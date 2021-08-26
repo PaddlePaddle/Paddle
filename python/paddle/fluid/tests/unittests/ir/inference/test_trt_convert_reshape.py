@@ -81,7 +81,7 @@ class TrtConvertDynamicReshapeTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.dynamic_shape.min_input_shape = {"input_data": [1, 12, 4]}
         self.dynamic_shape.max_input_shape = {"input_data": [4, 12, 4]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [4, 12, 4]}
+        self.dynamic_shape.opt_input_shape = {"input_data": [1, 12, 4]}
         self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-5)
 
     def test_dynamic_shape_fp16_check_output(self):
@@ -137,7 +137,7 @@ class TrtConvertReshapeInputShapeTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.dynamic_shape.min_input_shape = {"input_data": [1, 2, 4, 6]}
         self.dynamic_shape.max_input_shape = {"input_data": [4, 2, 4, 6]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [4, 2, 4, 6]}
+        self.dynamic_shape.opt_input_shape = {"input_data": [1, 2, 4, 6]}
         self.run_test(trt_engine_num=0, paddle_op_num=3, threshold=1e-5)
 
     def test_dynamic_shape_fp16_check_output(self):
@@ -194,7 +194,7 @@ class TrtConvertReshapeInputShapeTensorTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.dynamic_shape.min_input_shape = {"input_data": [1, 2, 4, 6]}
         self.dynamic_shape.max_input_shape = {"input_data": [4, 2, 4, 6]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [4, 2, 4, 6]}
+        self.dynamic_shape.opt_input_shape = {"input_data": [1, 2, 4, 6]}
         self.run_test(trt_engine_num=0, paddle_op_num=3, threshold=1e-5)
 
     def test_dynamic_shape_fp16_check_output(self):
