@@ -531,6 +531,7 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
   int input_idx, left_idx, stride;
   int block_size = 0;
   bool need_store = true;
+  int tid = 0;
   // the last dim gets involved in reduction
   if (reduce_lastdim) {
     input_idx = blockIdx.y * blockDim.x;
@@ -538,12 +539,14 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
     stride = gridDim.y * blockDim.x;
     block_size = blockDim.x;
     need_store = (threadIdx.x == 0) && (left_idx < left_num);
+    tid = threadIdx.x;
   } else {
     input_idx = blockIdx.y * blockDim.y;
     left_idx = blockIdx.x * blockDim.x + threadIdx.x;
     stride = gridDim.y * blockDim.y;
     block_size = blockDim.y;
     need_store = (threadIdx.y == 0) && (left_idx < left_num);
+    tid = threadIdx.y;
   }
   int store_offset = blockIdx.y * left_num + left_idx;
   // calculate the offset, means the addr where each thread really start.
@@ -570,12 +573,20 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
           &reduce_var, &input_compute[0], reducer, reduce_lastdim);
     }
 
-    kps::Init<Tx, REDUCE_VEC_SIZE>(&input_reg[0], static_cast<Tx>(init));
+    kps::Init<MPType, REDUCE_VEC_SIZE>(&input_compute[0], init);
     kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, IndexCalculator, true>(
         &input_reg[0], input, input_idx, reduce_index_calculator, 1, reduce_num,
         1, stride, reduce_lastdim);
-    kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
-        &input_compute[0], &input_reg[0], transformer);
+    input_idx += tid;
+#pragma unroll
+    for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
+      if (input_idx >= reduce_num) {
+        break;
+      }
+      kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
+          &input_compute[i], &input_reg[i], transformer);
+      input_idx += stride;
+    }
     kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
                 kps::details::ReduceMode::LocalMode>(
         &reduce_var, &input_compute[0], reducer, reduce_lastdim);
