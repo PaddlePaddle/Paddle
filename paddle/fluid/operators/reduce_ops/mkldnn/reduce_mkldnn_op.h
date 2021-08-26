@@ -143,7 +143,7 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
       auto input_dy_md = dnnl::memory::desc(
           framework::vectorize(input_dy->dims()),
           platform::MKLDNNGetDataType<T>(), input_dy->format());
-      auto input_dy_ex_md = input_dy_md.reshape(output_dims);
+      auto input_dy_ex_md = input_dy_md.reshape(input_dims);
       // TODO(jczaja): once MD is stored in Tensor we no longer need to guess
       // formats
       x_format_tag = platform::GetMKLDNNFormat(input_dy_ex_md);
