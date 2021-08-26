@@ -18,13 +18,10 @@
 
 namespace egr {
 
-// run_backward(): 
-// tensors corresponds to those lived in the backward graph
-// each grad_tensors[i] keeps the value for its corresponding tensors[i]
-void RunBackward(std::vector<pt::Tensor> &tensors,
-                 const std::vector<pt::Tensor> &grad_tensors,
-                 bool retain_graph = false);
-
-// Reserved for gradient()
+void ScaleAPI(const pt::Tensor& x, float scale, float bias, bool bias_after_scale, std::vector<pt::Tensor>& outs);
+void FillConstAPI(double value, const pt::DDim& ddim, const pt::Backend& backend, 
+                  const pt::DataType& dtype, const pt::DataLayout& layout,
+                  pt::Tensor& target);
+void AccumulateTensorsAPI(pt::Tensor& t0, const pt::Tensor& t1);
 
 } // namespace egr

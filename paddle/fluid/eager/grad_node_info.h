@@ -61,14 +61,23 @@ class GradNodeBase {
    * **/
   virtual std::vector<pt::Tensor> operator()(
       const std::vector<pt::Tensor>& grads) = 0;
-
+  
+  // FIXME: Do we need a TensorWrapper class?
   /**
-   * AddEdge is designed to set all input tensors' backward Node as current
+   * Copy input tensors and attach them to the Node
+   * One special case: if a tensor's grad_node happened to
+   * be the same as "this" (likely an output tensor)
+   * Then we copy everything except "grad_node" field to avoid reference cycle
+   * **/
+  virtual void SetTensorWrappers(const std::vector<pt::Tensor>& tensors) = 0;
+  
+  /**
+   * AddEdges is designed to set all input tensors' backward Node as current
    * node's Edges.
    * This method should be call in forward code and for double backward depends
    * computation.
    * **/
-  void AddEdge(const std::vector<AutogradMeta*>& metas);
+  void AddEdges(const std::vector<AutogradMeta*>& metas);
   
   /**
    * GetEdges is designed to get all edges of current node**/

@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/eager/api/api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/top/core/dense_tensor.h"
+#include "paddle/fluid/eager/nodes/accumulation_node.h"
 
 namespace egr {
 
@@ -30,6 +32,34 @@ void RegisterReduceHookForTensor(pt::Tensor& tensor, std::function<void(void)>& 
     std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
 
     grad_node->RegisterReduceHook(hook);
+}
+
+void RetainGradForTensor(pt::Tensor& tensor) {
+    auto tensor_instance = std::dynamic_pointer_cast<pt::DenseTensor>(tensor.impl());
+    
+    AutogradMeta* meta = EagerUtils::autograd_meta(tensor);
+    pt::Tensor& grad_tensor = meta->MutableGrad();
+
+    // Define Hook
+    std::function<pt::Tensor(const pt::Tensor&)> hook = [&grad_tensor](const pt::Tensor& t) { 
+        // Simply Copy impl() to grad_tensor
+        grad_tensor.SetImpl(t.impl());
+        
+        return grad_tensor;
+    };
+
+    if(EagerUtils::IsLeafTensor(tensor)) {
+        // Add RetainGrad as PostHook to AccumulationNode
+        std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
+        auto accumulation_grad_node = std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);
+        PADDLE_ENFORCE(accumulation_grad_node != nullptr,
+                    paddle::platform::errors::Fatal("Leaf tensor should have had grad_node with type: GradNodeAccumulation"));
+        accumulation_grad_node->RetainGrad(hook);
+        
+    } else {
+        // Append to GradientHooks
+        RegisterGradientHookForTensor(tensor, hook);
+    }
 }
 
 } // namespace egr

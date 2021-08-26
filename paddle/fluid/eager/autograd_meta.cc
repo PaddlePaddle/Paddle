@@ -13,18 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/function_api.h"
+#include "paddle/fluid/eager/nodes/accumulation_node.h"
 
 /**
  * Implementation of AutogradMeta and AbstractAutogradMeta.
 **/
 
 namespace egr {
-
+  
 AutogradMeta* EagerUtils::autograd_meta(pt::Tensor& target) {
   auto* p_autograd_meta = target.get_autograd_meta();
   if (!p_autograd_meta) {
-    target.set_autograd_meta(std::static_pointer_cast<pt::AbstractAutogradMeta>(
-        std::make_shared<AutogradMeta>()));
+    auto p_autograd_meta_ptr = std::make_shared<AutogradMeta>();
+    p_autograd_meta = p_autograd_meta_ptr.get();
+    target.set_autograd_meta(p_autograd_meta_ptr);
   }
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
@@ -49,7 +52,16 @@ std::shared_ptr<GradNodeBase> EagerUtils::grad_node(pt::Tensor& target) {
   return autograd_meta(target)->GetMutableGradNode();
 }
 
-void PassStopGradient(AutogradMeta** outs, size_t outs_num,
+bool EagerUtils::IsLeafTensor(pt::Tensor& target) {
+    std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
+    if(std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
+        return true;
+    }
+
+    return false;
+}
+
+void EagerUtils::PassStopGradient(AutogradMeta** outs, size_t outs_num,
                       bool generate_grad) {
   for (size_t i = 0; i < outs_num; ++i) {
     if (!outs[i]) {
@@ -61,19 +73,40 @@ void PassStopGradient(AutogradMeta** outs, size_t outs_num,
   }
 }
 
-bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num, AutogradMeta** outs,
+bool EagerUtils::ComputeRequireGrad(AutogradMeta** ins, size_t ins_num, AutogradMeta** outs,
                         size_t outs_num, bool trace_backward) {
   if (!trace_backward) return false;
 
   for (size_t i = 0; i < ins_num; ++i) {
     auto ins_stop_gradient = ins[i]->StopGradient();
     if (!ins_stop_gradient) {
-      VLOG(0) << "Find out input Stop Gradient is False";
       PassStopGradient(outs, outs_num, ins_stop_gradient);
       return true;
     }
   }
   return false;
+}
+
+void EagerUtils::SetHistoryForTensor(pt::Tensor& target, const std::shared_ptr<GradNodeBase>& grad_node) {
+  AutogradMeta* autograd_meta = EagerUtils::autograd_meta(target);
+  autograd_meta->SetGradNode(grad_node);
+}
+  
+pt::Tensor EagerUtils::CreateTensorWithValue(const pt::DDim& ddim, const pt::Backend& backend,
+                                             const pt::DataType& dtype, const pt::DataLayout& layout,
+                                             double value, bool is_leaf) {
+    pt::Tensor out = pt::Tensor();
+    FillConstAPI(value, ddim, backend, dtype, layout, out);
+    
+    if(is_leaf) {
+        AutogradMeta* meta = autograd_meta(out);
+        auto accumulation_node = std::make_shared<GradNodeAccumulation>();
+        meta->SetGradNode(accumulation_node);
+        meta->SetOutRank(0);
+        meta->SetNumericStopGradient(false);
+    }
+
+    return out;
 }
 
 }  // namespace egr

@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/nodes/scale_node.h"
+#include "paddle/fluid/eager/nodes/accumulation_node.h"
 #include "paddle/fluid/eager/function_api.h"
 
 #include "paddle/top/api/all.h"
+#include "paddle/top/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
 
@@ -24,28 +25,40 @@
 
 #include "glog/logging.h"
 
+static void CopyOrAddTensor(pt::Tensor& tensor, const pt::Tensor& t) {
+    if(!tensor.defined() || !tensor.initialized()) {
+        // Simply copy tensor->impl
+        tensor = t;
+    } else {
+        // Accumulation
+        egr::AccumulateTensorsAPI(tensor, t);
+    }
+}
+
 namespace egr {
   
-void GradNodeScale::SetTensorWrappers(const std::vector<pt::Tensor>& tensors) {
+void GradNodeAccumulation::SetTensorWrappers(const std::vector<pt::Tensor>& tensors) {
     // Does nothing
 }
 
-void GradNodeScale::SetAttributes(float scale) {
-    scale_ = scale;
+void GradNodeAccumulation::RetainGrad(std::function<pt::Tensor(const pt::Tensor&)>& hook) {
+    retain_grad_hook = hook;
 }
 
-std::vector<pt::Tensor> GradNodeScale::operator()(const std::vector<pt::Tensor>& grads) {
+std::vector<pt::Tensor> GradNodeAccumulation::operator()(const std::vector<pt::Tensor>& grads) {
     PADDLE_ENFORCE(grads.size() == 1,
-                paddle::platform::errors::Fatal("ScaleGradNode should take exactly 1 grad tensor"
+                paddle::platform::errors::Fatal("GradNodeAccumulation should take exactly 1 grad tensor"
                                                 "However received: %d", grads.size()));
-    std::vector<pt::Tensor> outs(1);
-
     // Apply Gradient Hooks
     if(GradientHooksRegistered()) {
         std::vector<pt::Tensor> hooked_grads = ApplyGradientHooks(grads);
-        ScaleAPI(hooked_grads[0], scale_, 0.0/* bias */, true/* bias_after_scale */, outs);
+        CopyOrAddTensor(accumulated_grad, hooked_grads[0]);
     } else {
-        ScaleAPI(grads[0], scale_, 0.0/* bias */, true/* bias_after_scale */, outs);
+        CopyOrAddTensor(accumulated_grad, grads[0]);
+    }
+    
+    if(retain_grad_hook != nullptr) {
+        retain_grad_hook(accumulated_grad);
     }
     
     // Apply Reduce Hooks
@@ -53,7 +66,7 @@ std::vector<pt::Tensor> GradNodeScale::operator()(const std::vector<pt::Tensor>&
         ApplyReduceHooks();
     }
         
-    return outs;
+    return { accumulated_grad };
 }
 
 } // namespace egr

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/function_api.h"
 
 #include "paddle/top/core/dense_tensor.h"
 #include "paddle/top/core/dtype.h"
@@ -28,8 +29,7 @@
 **/
 namespace egr {
 
-void GradNodeBase::AddEdge(const std::vector<AutogradMeta*>& metas) {
-  VLOG(0) << "Add Edge for tensors";
+void GradNodeBase::AddEdges(const std::vector<AutogradMeta*>& metas) {
   for (const auto& meta : metas) {
     adj_edges_.emplace_back(meta->GetMutableGradNode(), meta->OutRank());
   }
@@ -61,8 +61,12 @@ std::vector<pt::Tensor> GradNodeBase::ApplyGradientHooks(const std::vector<pt::T
         PADDLE_ENFORCE(output_rank < tensors.size(), 
             paddle::platform::errors::Fatal("OutputRank from registered hook should be smaller than size of grad_tensors"));
 
-        const pt::Tensor& tensor = tensors[output_rank];
-        outs[output_rank] = hook(tensor);
+        pt::Tensor& out = outs[output_rank];
+        if(!out.defined() || !out.initialized()) {
+            out = hook(tensors[output_rank]);
+        } else {
+            out = hook(out);
+        }
     }
 
     for(size_t i = 0; i < outs.size(); i++) {
@@ -80,29 +84,9 @@ void GradNodeBase::ApplyReduceHooks() {
     }
 }
 
-template<typename T>
-static void add_kernel(const pt::DenseTensor& t0, const pt::DenseTensor& t1, pt::DenseTensor& out) {
-    const T* t0_ptr = t0.data<T>();
-    const T* t1_ptr = t1.data<T>();
-    T* out_ptr = out.mutable_data<T>();
-    for(int i = 0; i < t0.numel(); i++) {
-        out_ptr[i] = t0_ptr[i] + t1_ptr[i];
-    }
-}
-
 void InputBuffer::add(size_t pos, const pt::Tensor& t, bool fill_one) {
-    // TODO: Add support for other tensor types
-    std::shared_ptr<pt::DenseTensor> tensor_instance = std::dynamic_pointer_cast<pt::DenseTensor>(t.impl());
-    
-    PADDLE_ENFORCE(tensor_instance != nullptr, 
-        paddle::platform::errors::Fatal("InputBuffer::add() Only supports DenseTensor for now."));
-    
-    PADDLE_ENFORCE(tensor_instance->backend() == pt::Backend::kCPU, 
-        paddle::platform::errors::Fatal("InputBuffer::add() Only supports tensors with CPU backend for now."));
-    
-    PADDLE_ENFORCE(pos < buffer.size(), 
+    PADDLE_ENFORCE(pos < buffer.size(),
         paddle::platform::errors::Fatal("Invalid pos for InputBuffer::add() which exceeds size of buffer"));
-    
     pt::Tensor& buffer_tensor = buffer[pos];
     if(!fill_one) {
         if(!buffer_tensor.defined() || !buffer_tensor.initialized()) {
@@ -111,86 +95,16 @@ void InputBuffer::add(size_t pos, const pt::Tensor& t, bool fill_one) {
 
         } else {
             // Accumulation
-            std::shared_ptr<pt::DenseTensor> buffer_tensor_instance = std::dynamic_pointer_cast<pt::DenseTensor>(buffer_tensor.impl());
-            
-            PADDLE_ENFORCE(buffer_tensor_instance != nullptr, 
-                paddle::platform::errors::Fatal("InputBuffer::add() Only supports InputBuffer with DenseTensor for now."));
-            PADDLE_ENFORCE(t.type() == buffer_tensor.type(), 
-                paddle::platform::errors::Fatal("Unable to accumulate tensors with different dtype"));
-            PADDLE_ENFORCE(t.numel() == buffer_tensor.numel(), 
-                paddle::platform::errors::Fatal("Unable to accumulate tensors with different sizes"));
-            
-            PADDLE_ENFORCE(t.initialized(), 
-                paddle::platform::errors::Fatal("Tensors to accumulate has not been initialized"));
-    
-            
-            // TODO: Replace this with call to add_kernel_api
-            switch(t.type()) {
-                case pt::DataType::kINT64: {
-                    add_kernel<int64_t>(*buffer_tensor_instance.get(), *tensor_instance.get(), *buffer_tensor_instance.get());
-                    break;
-                }
-                case pt::DataType::kINT32: {
-                    add_kernel<int32_t>(*buffer_tensor_instance.get(), *tensor_instance.get(), *buffer_tensor_instance.get());
-                    break;
-                }
-                case pt::DataType::kFLOAT64: {
-                    add_kernel<double>(*buffer_tensor_instance.get(), *tensor_instance.get(), *buffer_tensor_instance.get());
-                    break;
-                }
-                case pt::DataType::kFLOAT32: {
-                    add_kernel<float>(*buffer_tensor_instance.get(), *tensor_instance.get(), *buffer_tensor_instance.get());
-                    break;
-                }
-                default: {
-                    PADDLE_THROW(paddle::platform::errors::Fatal("Only supports tensor with fp32, fp64, int32, int64 datatypes for now"));
-                    break;
-                }
-            }
+            AccumulateTensorsAPI(buffer_tensor, t);
         }
 
     } else {
         // Create new tensor->impl and fill it with 1.0
-        std::unique_ptr<pt::TensorMeta> tensor_meta = std::make_unique<pt::TensorMeta>(tensor_instance->dims(), tensor_instance->backend(), 
-                                                                                       tensor_instance->type(), tensor_instance->layout());
-        
+        auto t_impl = t.impl();
+
         // Fill 1.0
-        std::shared_ptr<pt::DenseTensor> tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
-        switch(tensor_dense->type()) {
-            case pt::DataType::kINT64: {
-                int64_t* data_ptr = tensor_dense->mutable_data<int64_t>();
-                for(int i = 0; i < tensor_dense->numel(); i++)
-                    data_ptr[i] = 1;
-                break;
-            }
-            case pt::DataType::kINT32: {
-                int32_t* data_ptr = tensor_dense->mutable_data<int32_t>();
-                for(int i = 0; i < tensor_dense->numel(); i++)
-                    data_ptr[i] = 1;
-                break;
-            }
-            case pt::DataType::kFLOAT64: {
-                double* data_ptr = tensor_dense->mutable_data<double>();
-                for(int i = 0; i < tensor_dense->numel(); i++)
-                    data_ptr[i] = 1.0;
-                break;
-            }
-            case pt::DataType::kFLOAT32: {
-                float* data_ptr = tensor_dense->mutable_data<float>();
-                for(int i = 0; i < tensor_dense->numel(); i++)
-                    data_ptr[i] = 1.0;
-                break;
-            }
-            default: {
-                PADDLE_THROW(paddle::platform::errors::Fatal("Only supports tensor with fp32, fp64, int32, int64 datatypes for now"));
-                break;
-            }
-        }
-        
-        buffer[pos].SetImpl(tensor_dense);
-
+        FillConstAPI(1.0, t_impl->dims(), t_impl->backend(), t_impl->type(), t_impl->layout(), buffer_tensor);
     }
-
 }
 
 }  // namespace egr

@@ -42,8 +42,6 @@ std::shared_ptr<TensorImplT> MakeTensorImpl(const Tensor& tensor,
 #endif
   if (holder != nullptr) {
     tensor_impl->template ShareAllocation(tensor.Holder());
-  } else {
-    LOG(WARNING) << "Old Tensor holder is nullptr.";
   }
   return tensor_impl;
 }

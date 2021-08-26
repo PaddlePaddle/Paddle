@@ -14,34 +14,25 @@
 
 #include "paddle/fluid/eager/grad_node_info.h"
 
-/* 
-    Each Operation has a specific GradNode inheritted from GradNodeBase
-    A specific GradNode defines
-    1. Input Tensors
-    2. overrides operator() to perform actual backward computations
-
-    TODO: Generate GradNode via auto-code-generation
-*/
 namespace egr {
 
-class GradNodeScale : public GradNodeBase {
+class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  GradNodeScale() : GradNodeBase(1) {}
-  ~GradNodeScale() override = default;
+  GradNodeAccumulation() : GradNodeBase(1) {}
+  ~GradNodeAccumulation() override = default;
 
   // Functor: perform backward computations
   virtual std::vector<pt::Tensor> operator()(
       const std::vector<pt::Tensor>& grads) override;
   
   virtual void SetTensorWrappers(const std::vector<pt::Tensor>& tensors) override;
-  
-  void SetAttributes(float scale);
+  void RetainGrad(std::function<pt::Tensor(const pt::Tensor&)>& hook);
 
-  // Members: define fwd input tensors
-  // For Scale there is no fwd input tensor needed   
  private:
-  float scale_ = 1.0;
+  pt::Tensor accumulated_grad;
+
+  std::function<pt::Tensor(const pt::Tensor&)> retain_grad_hook;
 };
 
 } // namespace egr
