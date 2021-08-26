@@ -55,6 +55,8 @@ class PipelineParallel(MetaParallelBase):
         self.global_rank = self._hcg.get_global_rank()
         self.micro_batch_id = 0
 
+        self._compute_loss = True
+
         logger.info("Pipeline Info -- num_stages: {}, stage_id: {}".format(
             self.num_stages, self.stage_id))
 
@@ -157,6 +159,45 @@ class PipelineParallel(MetaParallelBase):
         self._optimizer_step()
         return self.train_loss
 
+    def eval_batch(self, data, compute_loss=False):
+
+        self._layers.eval()
+        self._compute_loss = compute_loss
+
+        startup_steps = (self.num_stages - self.stage_id - 1)
+        startup_steps = min(startup_steps, self.accumulate_steps)
+        steady_steps = self.accumulate_steps - startup_steps
+
+        input_buffers = []
+        output_buffers = []
+
+        for step_id in range(startup_steps):
+            input_tensor = p2p.recv_forward()
+
+            output_tensor = self._forward_step(input_tensor)
+            p2p.send_forward(output_tensor)
+
+            input_buffers.append(input_tensor)
+            output_buffers.append(output_tensor)
+
+        if steady_steps > 0:
+            input_tensor = p2p.recv_forward()
+
+        for i in range(steady_steps):
+            last_iter = (i == (steady_steps - 1))
+
+            output_tensor = self._forward_step(input_tensor)
+
+            p2p.send_forward(output_tensor)
+
+            input_buffers.append(input_tensor)
+            output_buffers.append(output_tensor)
+
+            if not last_iter:
+                input_tensor = p2p.recv_forward()
+
+        return output_buffers
+
     def _forward_step(self, input_tensor):
         if self.stage_id == 0:
             input_tensor = self._load_micro_batch(self.micro_batch_id)
@@ -164,18 +205,20 @@ class PipelineParallel(MetaParallelBase):
         output_tensor = self._layers.forward(input_tensor)
 
         if self.is_last_stage:
-            labels = self._load_micro_batch(self.micro_batch_id)
-            output_tensor = self._layers._loss_fn(output_tensor, labels)
-            assert isinstance(
-                output_tensor, paddle.
-                Tensor), "Currently, loss_fn should obtain Paddle.Tensor dtype"
+            # train calculate loss for train
+            if self._compute_loss and self._layers._loss_fn is not None:
+                labels = self._load_micro_batch(self.micro_batch_id)
+                output_tensor = self._layers._loss_fn(output_tensor, labels)
+                assert isinstance(
+                    output_tensor, paddle.Tensor
+                ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
-            if self.accumulate_steps > 1:
-                output_tensor = output_tensor / self.accumulate_steps
+                if self.accumulate_steps > 1:
+                    output_tensor = output_tensor / self.accumulate_steps
 
-            if self.total_loss is None:
-                self.total_loss = paddle.zeros_like(output_tensor)
-            self.total_loss += output_tensor.detach()
+                if self.total_loss is None:
+                    self.total_loss = paddle.zeros_like(output_tensor)
+                self.total_loss += output_tensor.detach()
 
         self.micro_batch_id += 1
         return output_tensor
