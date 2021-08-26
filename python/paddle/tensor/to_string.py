@@ -43,6 +43,7 @@ def set_printoptions(precision=None,
         precision (int, optional): Number of digits of the floating number, default 8.
         threshold (int, optional): Total number of elements printed, default 1000.
         edgeitems (int, optional): Number of elements in summary at the begining and end of each dimension, defalt 3.
+        linewidth (int, optional): Number of characters per line, defalt 80.
         sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
     
     Returns:
