@@ -62,8 +62,10 @@ CCommDestroy operator
 
 Destroy collective communicatoin context within this trainer
 )DOC");
-    AddInput("X", "Raw variable contains a NCCL UniqueId instaces.");
-    AddOutput("Out", "Raw variable contains a HCCL UniqueId instaces.");
+    AddInput("X", "Raw variable contains a NCCL UniqueId instaces.")
+        .AsDuplicable();
+    AddOutput("Out", "Raw variable contains a HCCL UniqueId instaces.")
+        .AsDuplicable();
     AddAttr<int>(
         "device_id",
         "(int) The deivce_id on which to destroy the communicator."
