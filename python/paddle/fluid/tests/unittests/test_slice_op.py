@@ -694,6 +694,34 @@ class TestInferShape(unittest.TestCase):
         out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
         self.assertEqual(out0.shape, (3, 3, 5))
 
+    def test_axis_less_than_zero(self):
+
+        # Using paddle.disable_static will make other unittest fail.
+        with fluid.dygraph.guard():
+            x_arr = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(x_arr, (0, 0, 0)))
+
+            starts = paddle.to_tensor(
+                np.reshape(
+                    np.array(
+                        [], dtype=np.int32), (0, )))
+            ends = paddle.to_tensor(
+                np.reshape(
+                    np.array(
+                        [], dtype=np.int32), (0, )))
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, [-1000000], starts, ends)
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, [1000000], starts, ends)
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, [], starts, ends)
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, 0, starts, ends)
+
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
