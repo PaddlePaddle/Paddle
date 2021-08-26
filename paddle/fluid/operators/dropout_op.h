@@ -178,7 +178,7 @@ class DropoutGradKernel : public framework::OpKernel<T> {
         dX.device(place) = static_cast<T>(1) * dY;
       } else {
         float dropout_prob = context.Attr<float>("dropout_prob");
-        dX.device(place) = dY / static_cast<T>(1.0f - dropout_prob);
+        dX.device(place) = dY * static_cast<T>(1.0f - dropout_prob);
       }
     } else {
       auto M = EigenVector<uint8_t>::Flatten(*mask);
