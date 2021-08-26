@@ -5313,6 +5313,8 @@ class PipelineOptimizer(object):
                     # we set the dtype of float and fp16 both to 2.
                     # Under this way, the fused vars' shape for float and fp16 are all [128]
                     "user_defined_size_of_dtype": 2,
+                    "set_constant": core.is_compiled_with_npu(),
+                    "constant": float(0.0),
                     "copy_data": False,
                     "use_align": True,
                     "dtype": grads[0].dtype,
