@@ -55,14 +55,14 @@ function check_whl {
 function compile_install_paddle {
     export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto}
     export PY_VERSION=3.7
-    export WITH_DISTRIBUTE=OFF
+    export WITH_DISTRIBUTE=ON
     export WITH_GPU=ON
     export WITH_TENSORRT=OFF
     export WITH_TESTING=OFF
     export WITH_UNITY_BUILD=ON
     check_whl
     cd /workspace/Paddle
-    git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/paddlepaddle/benchmark.git
+    git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP --recurse-submodules=PaddleDetection --recurse-submodules=PaddleVideo --recurse-submodules=PaddleSeg --recurse-submodules=PaddleGAN --recurse-submodules=PaddleOCR --recurse-submodules=models https://github.com/paddlepaddle/benchmark.git
 }
 
 function prepare_data {
@@ -83,7 +83,8 @@ function run_model_benchmark {
     cd /workspace/Paddle
     pip install build/pr_whl/*.whl
     cd ${cache_dir}/benchmark_data
-    export data_path=${cache_dir}/benchmark_data/dataset
+    export data_path=${cfs_dir}/model_dataset/model_benchmark_data
+    export prepare_path=${cfs_dir}/model_dataset/model_benchmark_prepare
     export BENCHMARK_ROOT=/workspace/Paddle/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
     bash model_ci.sh
