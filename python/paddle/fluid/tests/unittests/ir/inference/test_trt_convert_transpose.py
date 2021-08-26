@@ -42,10 +42,8 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
         self.paddle = 2
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
-        weight = np.random.randn(24, 3, 3, 3).astype("float32")
-        filter = TensorConfig(shape=[24, 3, 3, 3], data=weight)
         transpose_input = TensorConfig(shape=[-1, 3, 64, 64])
-        self.program_weights = {"conv2d_weight": filter}
+        self.program_weights = {}
         self.program_inputs = {"transpose_input": transpose_input}
         self.program_outputs = ["transpose_output"]
 
@@ -107,10 +105,8 @@ class DynamicShapeTrtConvertTransposeTest(TrtLayerAutoScanTest):
         self.paddle = 2
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
-        weight = np.random.randn(24, 3, 3, 3).astype("float32")
-        filter = TensorConfig(shape=[24, 3, 3, 3], data=weight)
         transpose_input = TensorConfig(shape=[-1, 3, 64, 64])
-        self.program_weights = {"conv2d_weight": filter}
+        self.program_weights = {}
         self.program_inputs = {"transpose_input": transpose_input}
         self.program_outputs = ["transpose_output"]
 
