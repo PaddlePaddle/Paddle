@@ -168,40 +168,64 @@ __global__ void ElementVectorizedTernary(const InT *__restrict__ in0,
   }
 }
 
-template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
-void LaunchSameDimsElementwiseCudaKernel(
-    const platform::CUDADeviceContext &ctx,
-    const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, Functor func) {
-  // calculate the max vec_size for all ins and outs
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
+          int VecSize>
+void ElementwiseCudaKernel(const platform::CUDADeviceContext &ctx,
+                           const std::vector<const framework::Tensor *> &ins,
+                           std::vector<framework::Tensor *> *outs,
+                           Functor func) {
   auto numel = ins[0]->numel();
-  const int vec_size = 4;
-  int block_size = GetThreadsConfig(ctx, numel, vec_size);
+  int block_size = GetThreadsConfig(ctx, numel, VecSize);
   int grid_size =
-      ((numel + vec_size - 1) / vec_size + block_size - 1) / block_size;
+      ((numel + VecSize - 1) / VecSize + block_size - 1) / block_size;
   const InT *in0 = ins[0]->data<InT>();
   OutT *out = (*outs)[0]->data<OutT>();
   // cuda kernel
   auto stream = ctx.stream();
   switch (ET) {
     case ElementwiseType::kTernary:
-      ElementVectorizedTernary<vec_size, InT, OutT,
+      ElementVectorizedTernary<VecSize, InT, OutT,
                                Functor><<<grid_size, block_size, 0, stream>>>(
           in0, ins[1]->data<InT>(), ins[2]->data<InT>(), out, numel, func);
       break;
     case ElementwiseType::kBinary:
-      ElementVectorizedBinary<vec_size, InT, OutT,
+      ElementVectorizedBinary<VecSize, InT, OutT,
                               Functor><<<grid_size, block_size, 0, stream>>>(
           in0, ins[1]->data<InT>(), out, numel, func);
       break;
     case ElementwiseType::kUnary:
-      ElementVectorizedUnary<vec_size, InT, OutT,
+      ElementVectorizedUnary<VecSize, InT, OutT,
                              Functor><<<grid_size, block_size, 0, stream>>>(
           in0, out, numel, func);
       break;
     default: {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported this ElementwiseType : %d !", ET));
+      break;
+    }
+  }
+}
+
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
+void LaunchSameDimsElementwiseCudaKernel(
+    const platform::CUDADeviceContext &ctx,
+    const std::vector<const framework::Tensor *> &ins,
+    std::vector<framework::Tensor *> *outs, Functor func) {
+  // calculate the max vec_size for all ins and outs
+  int vec_size = GetVectorizedSizeForIO<InT, OutT>(ins, *outs);
+  switch (vec_size) {
+    case 4:
+      ElementwiseCudaKernel<ET, InT, OutT, Functor, 4>(ctx, ins, outs, func);
+      break;
+    case 2:
+      ElementwiseCudaKernel<ET, InT, OutT, Functor, 2>(ctx, ins, outs, func);
+      break;
+    case 1:
+      ElementwiseCudaKernel<ET, InT, OutT, Functor, 1>(ctx, ins, outs, func);
+      break;
+    default: {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported vectorized size: %d !", vec_size));
       break;
     }
   }
