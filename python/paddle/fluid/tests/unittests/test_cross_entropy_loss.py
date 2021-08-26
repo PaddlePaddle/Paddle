@@ -1034,7 +1034,6 @@ class CrossEntropyLoss(unittest.TestCase):
     def test_cross_entropy_loss_1d_mean(self):
         input_np = np.random.random([100, 200]).astype(self.dtype)  #N,C
         label_np = np.random.randint(0, 100, size=(100)).astype(np.int64)  #N,1
-        # weight_np = np.random.random([200]).astype(self.dtype)  #C
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -1043,7 +1042,6 @@ class CrossEntropyLoss(unittest.TestCase):
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(name='input', shape=[100, 200], dtype=self.dtype)
             label = fluid.data(name='label', shape=[100], dtype='int64')
-            # weight = fluid.data(name='weight', shape=[100], dtype=self.dtype)
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss()
             ret = cross_entropy_loss(input, label)
             exe = fluid.Executor(place)
