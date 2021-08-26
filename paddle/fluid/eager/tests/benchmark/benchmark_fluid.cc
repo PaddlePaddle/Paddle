@@ -31,38 +31,7 @@
 using namespace paddle;
 using namespace imperative;
 
-static void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out) {
-    imperative::Tracer tracer;
-
-    framework::AttributeMap attrs;
-    
-    attrs["use_mkldnn"] = false;
-    attrs["scale"] = 2;
-    attrs["bias"] = 3;
-    attrs["bias_after_scale"] = true;
-
-    // NameVarBaseMap = std::map<std::string, std::vector<std::shared_ptr<VarBase>>>
-    imperative::NameVarBaseMap outs = {{"Out", {Out}}};
-    imperative::NameVarBaseMap ins = {{"X", {X}}};
-
-    platform::CPUPlace place;
-    
-    size_t max_num_runs = 500;
-    for(size_t i = 0; i < max_num_runs; i++) {
-        tracer.TraceOp("scale", ins, outs, attrs, place, true);
-        if(i != max_num_runs - 1) {
-            ins = {{ "X", outs["Out"] }};
-            outs = {{"Out", { std::shared_ptr<imperative::VarBase>(new imperative::VarBase(true, "Out")) }}};
-        }
-    }
-    
-    auto *engine = tracer.GetEngine();
-    std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
-    engine->Init(outs["Out"], grad_tensors, false /*retain_graph*/);
-    engine->Execute();
-}
-
-static void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out) {
+inline void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out) {
     imperative::Tracer tracer;
 
     framework::AttributeMap attrs;
@@ -106,6 +75,39 @@ static void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>&
     
 }
 
+
+inline void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out) {
+    imperative::Tracer tracer;
+
+    framework::AttributeMap attrs;
+    
+    attrs["use_mkldnn"] = false;
+    attrs["scale"] = 2;
+    attrs["bias"] = 3;
+    attrs["bias_after_scale"] = true;
+
+    // NameVarBaseMap = std::map<std::string, std::vector<std::shared_ptr<VarBase>>>
+    imperative::NameVarBaseMap outs = {{"Out", {Out}}};
+    imperative::NameVarBaseMap ins = {{"X", {X}}};
+
+    platform::CPUPlace place;
+    
+    size_t max_num_runs = 5000;
+    for(size_t i = 0; i < max_num_runs; i++) {
+        tracer.TraceOp("scale", ins, outs, attrs, place, true);
+        if(i != max_num_runs - 1) {
+            ins = {{ "X", outs["Out"] }};
+            outs = {{"Out", { std::shared_ptr<imperative::VarBase>(new imperative::VarBase(true, "Out")) }}};
+        }
+    }
+    
+    auto *engine = tracer.GetEngine();
+    std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
+    engine->Init(outs["Out"], grad_tensors, false /*retain_graph*/);
+    engine->Execute();
+}
+
+/*
 TEST(Benchmark, FluidAccuracy) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
@@ -123,6 +125,7 @@ TEST(Benchmark, FluidAccuracy) {
 
     benchmark_fluid_accuracy_check(X, Out);
 }
+*/
 
 TEST(Benchmark, FluidPerformance) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
@@ -142,11 +145,11 @@ TEST(Benchmark, FluidPerformance) {
     auto t_start = std::chrono::high_resolution_clock::now();
     
     benchmark_fluid(X, Out);
-    
+
     auto t_end = std::chrono::high_resolution_clock::now();
     double elapsed_time_ms = std::chrono::duration<double, std::milli>(t_end-t_start).count();
 
-    VLOG(2) << "Duration: " << elapsed_time_ms << " ms";
+    std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 }
 
 USE_OP(scale);

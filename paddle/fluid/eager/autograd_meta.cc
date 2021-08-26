@@ -80,7 +80,6 @@ bool EagerUtils::ComputeRequireGrad(AutogradMeta** ins, size_t ins_num, Autograd
   for (size_t i = 0; i < ins_num; ++i) {
     auto ins_stop_gradient = ins[i]->StopGradient();
     if (!ins_stop_gradient) {
-      VLOG(0) << "Find out input Stop Gradient is False";
       PassStopGradient(outs, outs_num, ins_stop_gradient);
       return true;
     }

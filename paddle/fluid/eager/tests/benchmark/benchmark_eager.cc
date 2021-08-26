@@ -25,7 +25,7 @@
 
 using namespace egr;
 
-void benchmark_eager_accuracy_check(pt::Tensor& tensor) {
+inline void benchmark_eager_accuracy_check(pt::Tensor& tensor) {
   // 2. Run Forward for certain number of times
   pt::Tensor input_tensor = tensor;
   float scale = 2.0;
@@ -51,13 +51,13 @@ void benchmark_eager_accuracy_check(pt::Tensor& tensor) {
       paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1024.0));
 }
 
-void benchmark_eager(pt::Tensor& tensor) {
+inline void benchmark_eager(pt::Tensor& tensor) {
   // 2. Run Forward for certain number of times
   pt::Tensor input_tensor = tensor;
   float scale = 2.0;
   float bias = 3.0;
 
-  size_t max_num_runs = 500;
+  size_t max_num_runs = 5000;
   for(size_t i = 0; i < max_num_runs; i++) {
     input_tensor = egr::scale(input_tensor, scale, bias, true /*bias_after_scale*/, true /*trace_backward*/)[0];
   }
@@ -67,16 +67,18 @@ void benchmark_eager(pt::Tensor& tensor) {
   RunBackward(target_tensors, {});
 }
 
+/*
 TEST(Benchmark, EagerAccuracy) {
     // 1. Prepare Input
     paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
     pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
                                                           pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-                                                          5.0 /*value*/, true /*is_leaf*/);
+                                                          5.0 , true);
     RetainGradForTensor(tensor);
     
     benchmark_eager_accuracy_check(tensor);
 }
+*/
 
 TEST(Benchmark, EagerPerformance) {
     // 1. Prepare Input
@@ -87,11 +89,11 @@ TEST(Benchmark, EagerPerformance) {
     RetainGradForTensor(tensor);
     
     auto t_start = std::chrono::high_resolution_clock::now();
-
+    
     benchmark_eager(tensor);
-
+    
     auto t_end = std::chrono::high_resolution_clock::now();
     double elapsed_time_ms = std::chrono::duration<double, std::milli>(t_end-t_start).count();
     
-    VLOG(2) << "Duration: " << elapsed_time_ms << " ms";
+    std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 }
