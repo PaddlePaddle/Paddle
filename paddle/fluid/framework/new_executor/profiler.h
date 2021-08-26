@@ -15,6 +15,7 @@
 #pragma once
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
@@ -63,9 +64,10 @@ static std::pair<size_t, size_t> GetTensorMemorySize(
 }
 
 struct CostInfo {
-  double total_time{0.};          // ms
-  size_t host_memory_bytes{0};    // bytes
-  size_t device_memory_bytes{0};  // bytes
+  double total_time{0.};                // ms
+  size_t host_memory_bytes{0};          // bytes
+  size_t device_memory_bytes{0};        // bytes
+  size_t device_total_memory_bytes{0};  // total allocated memory size
 };
 
 class InterpreterProfiler {
@@ -82,6 +84,7 @@ class InterpreterProfiler {
     cost_info_.total_time = 0.;
     cost_info_.host_memory_bytes = 0;
     cost_info_.device_memory_bytes = 0;
+    cost_info_.device_total_memory_bytes = 0;
   }
 
   void ParseMemoryInfo(const std::vector<Variable*>& vars) {
@@ -96,6 +99,15 @@ class InterpreterProfiler {
         std::max(cost_info_.device_memory_bytes, memory_info.second);
     timer_.Pause();
     cost_info_.total_time -= timer_.ElapsedMS();
+  }
+
+  void TotalCUDAAllocatedMemorySize(const platform::Place& place) {
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Only support CUDAPlace, but receive %s.", place));
+    auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, place);
+    cost_info_.device_total_memory_bytes =
+        platform::RecordedCudaMallocSize(cuda_place.device);
   }
 
   const CostInfo& GetCostInfo() const { return cost_info_; }

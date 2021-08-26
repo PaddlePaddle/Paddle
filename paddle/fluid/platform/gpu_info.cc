@@ -514,9 +514,7 @@ class RecordedCudaMallocHelper {
     auto result = cudaMalloc(ptr, size);
 #endif
     if (result == gpuSuccess) {
-      if (NeedRecord()) {
-        cur_size_ += size;
-      }
+      cur_size_ += size;
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       return gpuSuccess;
     } else {
@@ -551,7 +549,7 @@ class RecordedCudaMallocHelper {
     if (err != cudaErrorCudartUnloading) {
 #endif
       PADDLE_ENFORCE_CUDA_SUCCESS(err);
-      if (NeedRecord()) {
+      {
         std::lock_guard<std::mutex> guard(*mtx_);
         cur_size_ -= size;
       }
@@ -596,7 +594,7 @@ class RecordedCudaMallocHelper {
 
   uint64_t RecordedSize() const {
     LockGuardPtr<std::mutex> lock(mtx_);
-    return NeedRecord() ? cur_size_ : 0;
+    return cur_size_;
   }
 
   uint64_t LimitSize() const { return limit_size_; }
