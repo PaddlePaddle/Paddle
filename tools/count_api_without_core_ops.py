@@ -54,7 +54,11 @@ def split_with_and_without_core_ops(member, cur_name):
     if member.__doc__.find(':api_attr: Static Graph') != -1:
         return
 
-    if cur_name.find('ParamBase') != -1 or cur_name.find('Parameter') != -1 or cur_name.find('Variable') != -1 or cur_name.find('control_flow') != -1 or cur_name.find('contrib.mixed_precision') != -1:
+    if cur_name.find('ParamBase') != -1 or cur_name.find(
+            'Parameter') != -1 or cur_name.find(
+                'Variable') != -1 or cur_name.find(
+                    'control_flow') != -1 or cur_name.find(
+                        'contrib.mixed_precision') != -1:
         return
 
     if inspect.isclass(member):
@@ -122,10 +126,12 @@ def is_primitive(instance):
     else:
         return False
 
+
 ErrorSet = set()
 IdSet = set()
 skiplist = []
 visited_modules = set()
+
 
 def visit_all_module(mod, func):
     mod_name = mod.__name__
@@ -161,6 +167,7 @@ def visit_all_module(mod, func):
         except:
             if not cur_name in ErrorSet and not cur_name in skiplist:
                 ErrorSet.add(cur_name)
+
 
 def get_apis_with_and_without_core_ops(modules):
     global api_with_ops, api_without_ops
