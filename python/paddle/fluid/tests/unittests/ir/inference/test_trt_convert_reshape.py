@@ -36,10 +36,8 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
         self.batch_size_set = [1, 1, 1]
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
-        weight = np.random.randn(24, 3, 3, 3).astype("float32")
-        filter = TensorConfig(shape=[24, 3, 3, 3], data=weight)
         input_data = TensorConfig(shape=[1, 48])
-        self.program_weights = {"conv2d_weight": filter}
+        self.program_weights = {}
         self.program_inputs = {"input_data": input_data}
         self.program_outputs = ["shape_output_data"]
 
@@ -70,10 +68,8 @@ class TrtConvertDynamicReshapeTest(TrtLayerAutoScanTest):
         self.batch_size_set = [1, 1, 1]
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
-        weight = np.random.randn(24, 3, 3, 3).astype("float32")
-        filter = TensorConfig(shape=[24, 3, 3, 3], data=weight)
         input_data = TensorConfig(shape=[1, 12, 4])
-        self.program_weights = {"conv2d_weight": filter}
+        self.program_weights = {}
         self.program_inputs = {"input_data": input_data}
         self.program_outputs = ["shape_output_data"]
 
@@ -110,17 +106,12 @@ class TrtConvertReshapeInputShapeTest(TrtLayerAutoScanTest):
         self.batch_size_set = [1, 1, 1]
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
-        weight = np.random.randn(24, 3, 3, 3).astype("float32")
-        filter = TensorConfig(shape=[24, 3, 3, 3], data=weight)
         input_data = TensorConfig(shape=[1, 2, 4, 6])
         shape_data = TensorConfig(
             shape=[1, 2],
             dtype='int32',
             data=np.array([1, 48]).astype(np.int32))
-        self.program_weights = {
-            "conv2d_weight": filter,
-            "shape_data": shape_data
-        }
+        self.program_weights = {"shape_data": shape_data}
         self.program_inputs = {"input_data": input_data}
         self.program_outputs = ["shape_output_data"]
 
@@ -166,15 +157,12 @@ class TrtConvertReshapeInputShapeTensorTest(TrtLayerAutoScanTest):
         self.batch_size_set = [1, 1, 1]
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
-        weight = np.random.randn(24, 3, 3, 3).astype("float32")
-        filter = TensorConfig(shape=[24, 3, 3, 3], data=weight)
         input_data = TensorConfig(shape=[1, 2, 4, 6])
         shapeT1_data = TensorConfig(
             shape=[1], dtype='int32', data=np.array([2]).astype(np.int32))
         shapeT2_data = TensorConfig(
             shape=[1], dtype='int32', data=np.array([24]).astype(np.int32))
         self.program_weights = {
-            "conv2d_weight": filter,
             "shapeT1_data": shapeT1_data,
             "shapeT2_data": shapeT2_data
         }
