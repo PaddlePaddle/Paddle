@@ -903,26 +903,26 @@ class BroadcastDataMKLDNNHandler
                              const Tensor* x, float scale_x, float scale_y,
                              const std::vector<int64_t>& input_dims)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-      PADDLE_ENFORCE_EQ(
-          x->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-      PADDLE_ENFORCE_NE(
-          x->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for X tensor."));
+    PADDLE_ENFORCE_EQ(
+        x->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+    PADDLE_ENFORCE_NE(
+        x->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
-      const auto src0_tz = framework::vectorize(out->dims());
+    const auto src0_tz = framework::vectorize(out->dims());
 
-      const auto src0_md = dnnl::memory::desc(
-          src0_tz, platform::MKLDNNGetDataType<T>(), out->format());
-      const auto src1_md = dnnl::memory::desc(
-          input_dims, platform::MKLDNNGetDataType<T>(), out->format());
+    const auto src0_md = dnnl::memory::desc(
+        src0_tz, platform::MKLDNNGetDataType<T>(), out->format());
+    const auto src1_md = dnnl::memory::desc(
+        input_dims, platform::MKLDNNGetDataType<T>(), out->format());
 
-      dnnl::primitive_attr attributes;
-      attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
-      attributes.set_scales(DNNL_ARG_SRC_1, 0, {scale_y});
+    dnnl::primitive_attr attributes;
+    attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
+    attributes.set_scales(DNNL_ARG_SRC_1, 0, {scale_y});
 
-      this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md,
-                                              src1_md, src0_md);
+    this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
+                                            src0_md);
   }
 
   template <typename T_out = T>

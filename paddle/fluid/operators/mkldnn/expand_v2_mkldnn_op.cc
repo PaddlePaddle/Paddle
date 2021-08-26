@@ -48,8 +48,8 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
     out->set_format(x_format_tag);
 
     paddle::platform::BroadcastDataMKLDNNHandler<T> handler(
-        dnnl::algorithm::binary_add, onednn_engine, ctx.GetPlace(),
-        out, x, 0.0f, 1.0f, x_vec_dims);
+        dnnl::algorithm::binary_add, onednn_engine, ctx.GetPlace(), out, x,
+        0.0f, 1.0f, x_vec_dims);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(out);
