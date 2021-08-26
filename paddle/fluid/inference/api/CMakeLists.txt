@@ -23,7 +23,6 @@ if(WITH_MKLDNN)
   set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
   set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/mkldnn_quantizer.cc)
   cc_library(${mkldnn_quantizer_cfg} SRCS mkldnn_quantizer_config.cc DEPS lod_tensor paddle_pass_builder)
-  set(mkldnn_quantizer_src ${mkldnn_quantizer_src} PARENT_SCOPE)
   set(mkldnn_quantizer_cfg ${mkldnn_quantizer_cfg} PARENT_SCOPE)
 endif()
 
