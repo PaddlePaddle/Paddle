@@ -129,8 +129,7 @@ class SliceInfo:
 
     def set_item(self, tensor_origin, value):
 
-        if not isinstance(value,
-                          (paddle.fluid.core.VarBase, paddle.fluid.Variable)):
+        if not isinstance(value, paddle.fluid.Variable):
             value = paddle.assign(value)
         tensor_type = None
 
