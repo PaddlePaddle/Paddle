@@ -820,14 +820,14 @@ def searchsorted(sorted_sequence,
             # [[1, 3, 4],
             # [1, 2, 4]])
 
-            out2=paddle.searchsorted(sorted_sequence,values,right=True)
+            out2 = paddle.searchsorted(sorted_sequence,values,right=True)
             print(out2)
             # Tensor(shape=[2, 3], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             # [[2, 3, 5],
             # [1, 3, 4]]) 
 
-            sorted_sequence_1d= paddle.to_tensor([1,3,5,7,9])
-            out3=paddle.searchsorted(sorted_sequence_1d,values)       
+            sorted_sequence_1d = paddle.to_tensor([1,3,5,7,9])
+            out3 = paddle.searchsorted(sorted_sequence_1d,values)       
             print(out3)
             # Tensor(shape=[2, 3], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             # [[1, 3, 4],

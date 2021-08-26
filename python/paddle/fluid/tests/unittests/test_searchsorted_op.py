@@ -88,18 +88,25 @@ class TestSearchSortedAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                SortedSequence = paddle.fluid.data(
-                    'SortedSequence', dtype=self.dtype)
-                Values = paddle.fluid.data('Values', dtype=self.dtype)
-                out = np.searchsorted(SortedSequence, Values)
+                sorted_sequence = paddle.static.data(
+                    'SortedSequence',
+                    shape=self.sorted_sequence.shape,
+                    dtype=self.dtype)
+                values = paddle.static.data(
+                    'Values', shape=self.values.shape, dtype=self.dtype)
+                out = paddle.searchsorted(sorted_sequence, values)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={
                     'SortedSequence': self.sorted_sequence,
                     'Values': self.values
-                })
-            out_ref = np.searchsorted(self.sortedsequence, self.values)
+                },
+                              fetch_list=out)
+            out_ref = np.searchsorted(self.sorted_sequence, self.values)
             for r in res:
                 self.assertEqual(np.allclose(out_ref, r), True)
+
+        for place in self.place:
+            run(place)
 
     def test_dygraph_api(self):
         def run(place):

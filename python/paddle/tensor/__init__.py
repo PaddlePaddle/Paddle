@@ -252,7 +252,7 @@ tensor_method_func  = [ #noqa
            'round_',
            'rsqrt',
            'rsqrt_',
-           'searchsorted'
+           'searchsorted',
            'scale',
            'scale_',
            'sign',
@@ -355,7 +355,6 @@ tensor_method_func  = [ #noqa
            'index_select',
            'nonzero',
            'sort',
-           'searchsorted',
            'index_sample',
            'mean',
            'std',

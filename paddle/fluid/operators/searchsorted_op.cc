@@ -53,22 +53,23 @@ class SearchSortedOp : public framework::OperatorWithKernel {
     auto values_dims = ctx->GetInputDim("Values");
     auto out_int32 = ctx->Attrs().Get<bool>("out_int32");
 
-    PADDLE_ENFORCE_EQ(
-        sequences_dims.size() == 1 ||
-            SearchsortedDimsMatchedBeforeLastDim(sequences_dims, values_dims),
-        true,
-        platform::errors::Unavailable(
-            "The sorted_sequence tensor should be 1 dimension or the first N-1 "
-            "dimensions of sorted_sequence tensor and input values tensor must "
-            "match, but we got sorted_sequence tensor ( %s ), and input value "
-            "tensor ( %s )",
-            sequences_dims, values_dims));
+    if (sequences_dims.size() != 1)
+      PADDLE_ENFORCE_EQ(
+          SearchsortedDimsMatchedBeforeLastDim(sequences_dims, values_dims),
+          true,
+          platform::errors::Unavailable("The sorted_sequence tensor should be "
+                                        "1 dimension or the first N-1 "
+                                        "dimensions of sorted_sequence tensor "
+                                        "and input values tensor must "
+                                        "match, but we got sorted_sequence "
+                                        "tensor ( %s ), and input value "
+                                        "tensor ( %s )",
+                                        sequences_dims, values_dims));
 
     if (out_int32) {
-      PADDLE_ENFORCE_GT(
-          sequences_dims[sequences_dims.size() - 1] <
-              std::numeric_limits<int>::max(),
-          true,
+      PADDLE_ENFORCE_LT(
+          sequences_dims[sequences_dims.size() - 1],
+          std::numeric_limits<int>::max(),
           platform::errors::Unavailable(
               "the size of sorted_sequence last dimension should be less than "
               "%d but we got %d",
