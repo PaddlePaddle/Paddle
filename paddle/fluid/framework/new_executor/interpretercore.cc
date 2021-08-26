@@ -22,6 +22,8 @@ USE_EVENT(kCUDA);
 
 #include <unordered_set>
 
+#include <unordered_set>
+
 namespace paddle {
 namespace framework {
 
@@ -566,6 +568,7 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
     ops.push_back(op_base);
   }
 
+<<<<<<< HEAD
   auto unused_var_map = get_unused_vars(global_block, ops);
 
   size_t ops_index = 0;
@@ -578,6 +581,8 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
     auto inputs_names = op->Inputs();
     auto outputs_names = op->Outputs();
 
+=======
+>>>>>>> 678a259... Support Multi-Stream, Single-Thread in New Executor (#35024)
     VariableValueMap ins_map;
     std::map<std::string, std::vector<int>> ins_name2id;
     for (auto& var_name_item : inputs_names) {
@@ -792,6 +797,7 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
     op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
     op_func_node.kernel_func_(exec_ctx);
     vec_func_list->push_back(op_func_node);
+<<<<<<< HEAD
 
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op_base);
@@ -883,10 +889,66 @@ void InterpreterCore::WaitOrSync(const std::vector<EventInter>& events,
       cuda_dev_ctx->context()->Stream()->WaitEvent(
           event.event_->GetRawCudaEvent());
     }
+=======
+    VLOG(3) << "run " << op_base->Type() << " done.";
+>>>>>>> 678a259... Support Multi-Stream, Single-Thread in New Executor (#35024)
   }
 #endif
 }
 
+<<<<<<< HEAD
+=======
+platform::DeviceContext* InterpreterCore::ParseDeviceContextForInstruction(
+    const OpFuncNode& op_func_node, const OperatorBase& op_base) {
+  auto& op_type = op_base.Type();
+  auto* dev_ctx = op_func_node.dev_ctx_;
+  if (op_type == kMemcpyH2D) {
+    VLOG(3) << "Get dev_ctx from d2h_context_pool_";
+    dev_ctx = d2h_ctx_pool_.Get(place_);
+  } else if (op_type == kMemcpyD2H) {
+    VLOG(3) << "Get dev_ctx from h2d_context_pool_";
+    dev_ctx = h2d_ctx_pool_.Get(place_);
+  }
+
+  return dev_ctx;
+}
+
+void InterpreterCore::RecordEventInstruction(const Instruction& instruction,
+                                             const OpFuncNode& op_func_node) {
+  // If InterpreterCore in on CPUPlace, do nothing.
+  if (platform::is_cpu_place(place_)) return;
+
+#ifdef PADDLE_WITH_CUDA
+  const platform::CUDADeviceContext* dev_ctx =
+      reinterpret_cast<const platform::CUDADeviceContext*>(
+          instruction.dev_ctx_);
+  for (auto& event : instruction.output_events_) {
+    VLOG(3) << "Record event in out_var_id: " << event.var_id_;
+    event.event_->Record(*(dev_ctx->context()->Stream()));
+  }
+#endif
+}
+
+void InterpreterCore::WaitOrSync(const std::vector<EventInter>& events,
+                                 const platform::DeviceContext* dev_ctx) {
+#ifdef PADDLE_WITH_CUDA
+  auto* cuda_dev_ctx =
+      reinterpret_cast<const platform::CUDADeviceContext*>(dev_ctx);
+
+  for (auto& event : events) {
+    if (event.is_sync_) {
+      VLOG(3) << "host sync wait in_var_id " << event.var_id_;
+      event.event_->Synchronize();
+    } else {
+      VLOG(3) << "stream async wait in_var_id " << event.var_id_;
+      cuda_dev_ctx->context()->Stream()->WaitEvent(
+          event.event_->GetRawCudaEvent());
+    }
+  }
+#endif
+}
+
+>>>>>>> 678a259... Support Multi-Stream, Single-Thread in New Executor (#35024)
 void InterpreterCore::StreamWaitEventOrSync(const Instruction& instruction) {
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place_)) return;
