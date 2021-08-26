@@ -128,7 +128,7 @@ class PD_INFER_DECL Tensor {
 
   template <typename T>
   void CopyToCpuImpl(T* data, void* stream = nullptr, CallbackFunc cb = nullptr,
-                     void* cb_params = nullptr) const;
+                     void* cb_params = nullptr) const {}
 
   std::string name_;
   // The corresponding tensor pointer inside Paddle workspace is cached for

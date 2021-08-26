@@ -138,6 +138,7 @@ void HCCLCommContext::ReleaseHCCLComms() {
       q.second.reset();
     }
   }
+  comm_map_.clear();
 }
 
 }  // namespace platform

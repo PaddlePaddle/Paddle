@@ -217,7 +217,7 @@ class HCCLCommContext {
   // we may use group feature in the feature
   // HCCLCommContext() { InitHcomWorldGroup(); }
 
-  HcclComm comm_;
+  // HcclComm comm_;
 
  public:
   ~HCCLCommContext() {}

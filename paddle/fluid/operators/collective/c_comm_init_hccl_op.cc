@@ -51,6 +51,7 @@ class CCommInitOpAscend : public framework::OperatorBase {
         var, platform::errors::InvalidArgument("Input con not be empty."));
 #if defined(PADDLE_WITH_ASCEND_CL)
     HcclRootInfo* hccl_id = var->GetMutable<HcclRootInfo>();
+    VLOG(10) << "hccl_id:" << hccl_id;
 
     int rank_ids = Attr<int>("rank_ids");
     int rank_id = Attr<int>("rank");
@@ -61,6 +62,9 @@ class CCommInitOpAscend : public framework::OperatorBase {
     }
     platform::HCCLCommContext::Instance().CreateHCCLComm(
         hccl_id, rank_ids, rank_id, device_id, rid);
+
+    VLOG(3) << "rank_ids" << rank_ids << "rank_id:" << rank_id << "rid:" << rid
+            << "device_id:" << device_id;
 
     //  Build comm
     float* buff;

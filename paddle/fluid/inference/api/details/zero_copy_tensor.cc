@@ -186,6 +186,7 @@ void Tensor::CopyFromCpu(const T *data) {
   }
 }
 
+/*
 template <typename T>
 void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
                            void *cb_params) const {
@@ -273,6 +274,7 @@ void Tensor::CopyToCpuImpl(T *data, void *exec_stream, CallbackFunc cb,
         "The analysis predictor supports CPU, GPU, NPU and XPU now."));
   }
 }
+*/
 
 template <typename T>
 void Tensor::CopyToCpu(T *data) const {
