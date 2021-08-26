@@ -4659,6 +4659,9 @@ class PipelineOptimizer(object):
             op._set_attr(self._op_device_key, f"{self._device}:all")
         elif op.type == "alloc_float_status" or op.type == "clear_float_status":
             op._set_attr(self._op_device_key, f"{self._device}:all")
+            # NOTE(wangxi): NPU should only clear the float status
+            # once at each batch step
+            op._set_attr(self._op_role_key, self._op_role.LRSched)
         else:
             other_known_ops = [
                 'update_loss_scaling', 'reduce_any', 'concat', 'sum',
