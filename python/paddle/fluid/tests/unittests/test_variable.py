@@ -492,7 +492,7 @@ class TestListIndex(unittest.TestCase):
         index_shape = [3, 3, 2, 1]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
 
-        for i in range(3):
+        for _ in range(3):
             program = paddle.static.Program()
 
             index_mod = (index % (array.shape[0])).tolist()
@@ -530,7 +530,7 @@ class TestListIndex(unittest.TestCase):
 
         index_shape = [2, 3, 4, 5, 6]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
-        for i in range(len(inps_shape) - 1):
+        for _ in range(len(inps_shape) - 1):
 
             pt = paddle.to_tensor(array)
             index_mod = (index % (array.shape[-1])).tolist()
@@ -680,7 +680,7 @@ class TestListIndex(unittest.TestCase):
         value_np = np.arange(
             self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
 
-        for i in range(3):
+        for _ in range(3):
             program = paddle.static.Program()
 
             index_mod = (index % (min(array.shape))).tolist()
@@ -703,7 +703,7 @@ class TestListIndex(unittest.TestCase):
         value_np = np.arange(
             self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
 
-        for i in range(4):
+        for _ in range(4):
             program = paddle.static.Program()
             index_mod = (index % (min(array.shape))).tolist()
 
@@ -742,7 +742,7 @@ class TestListIndex(unittest.TestCase):
         value_shape = [4]
         value_np = np.arange(
             self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
-        for zz_ in range(3):
+        for _ in range(3):
 
             index_mod1 = index1 % (min(array.shape))
             index_mod2 = index2 % (min(array.shape))
@@ -813,7 +813,7 @@ class TestListIndex(unittest.TestCase):
         index2 = np.arange(
             self.numel(index_shape), dtype='int32').reshape(index_shape) + 2
 
-        for zz_ in range(3):
+        for _ in range(3):
             index_mod1 = index1 % (min(array.shape))
             index_mod2 = index2 % (min(array.shape))
 
@@ -879,7 +879,7 @@ class TestListIndex(unittest.TestCase):
         index2 = np.arange(
             self.numel(index_shape), dtype='int32').reshape(index_shape) + 2
 
-        for zz_ in range(3):
+        for _ in range(3):
 
             index_mod1 = index1 % (min(array.shape))
             index_mod2 = index2 % (min(array.shape))

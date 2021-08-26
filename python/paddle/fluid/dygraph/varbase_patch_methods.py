@@ -543,22 +543,22 @@ def monkey_patch_varbase():
             array = array.astype(dtype)
         return array
 
+    def contain_tensor(item):
+        if not isinstance(item, tuple):
+            item = [item]
+
+        for slice_item in item:
+            if isinstance(slice_item, slice):
+                if isinstance(slice_item.start, Variable)  \
+                    or isinstance(slice_item.stop, Variable) \
+                        or isinstance(slice_item.step, Variable):
+                    return True
+            else:
+                if isinstance(slice_item, Variable):
+                    return True
+        return False
+
     def __getitem__(self, item):
-        def contain_tensor(item):
-            if not isinstance(item, tuple):
-                item = [item]
-
-            for slice_item in item:
-                if isinstance(slice_item, slice):
-                    if isinstance(slice_item.start, Variable)  \
-                        or isinstance(slice_item.stop, Variable) \
-                           or isinstance(slice_item.step, Variable):
-                        return True
-                else:
-                    if isinstance(slice_item, Variable):
-                        return True
-            return False
-
         def is_list_tuple(index, contain_type):
             def _is_list_tuple(item):
                 if not (isinstance(item, (list, tuple)) or
@@ -587,28 +587,14 @@ def monkey_patch_varbase():
             return self._getitem_index_not_tensor(item)
 
     def __setitem__(self, item, value):
-        def contain_tensor(item):
-            if not isinstance(item, tuple):
-                item = [item]
-
-            for slice_item in item:
-                if isinstance(slice_item, slice):
-                    if isinstance(slice_item.start, Variable)  \
-                        or isinstance(slice_item.stop, Variable) \
-                           or isinstance(slice_item.step, Variable):
-                        return True
-                else:
-                    if isinstance(slice_item, Variable):
-                        return True
-            return False
 
         if contain_tensor(item):
-            # 1. Call _getitem_impl_ when item contains tensor.
+            # 1. Call _setitem_impl_ when item contains tensor.
             # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
             return _setitem_impl_(self, item, value)
 
         else:
-            # 2. Call c++ func getitem_index_not_tensor to speedup.
+            # 2. Call c++ func __setitem_varbase__ to speedup.
             return self.__setitem_varbase__(item, value)
 
     for method_name, method in (

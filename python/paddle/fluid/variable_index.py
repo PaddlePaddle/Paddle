@@ -69,11 +69,10 @@ class SliceInfo:
         self.indexes = []
 
     def update(self, index):
-        if is_list_tuple(index, int) or isinstance(
-                index, (paddle.fluid.core.VarBase, paddle.fluid.Variable,
-                        np.ndarray)):  # Tensor
-            if not isinstance(index, (paddle.fluid.core.VarBase,
-                                      paddle.fluid.Variable)):
+        if is_list_tuple(index, int) or isinstance(index, (
+                paddle.fluid.Variable, np.ndarray)):
+            # convert index to Tensor
+            if not isinstance(index, paddle.fluid.Variable):
                 index = paddle.assign(index)
 
             self.indexes.append(index)
@@ -105,15 +104,12 @@ class SliceInfo:
         return reduce(lambda x, y: x * y, shape)
 
     def get_offset_stride(self, tensor_shape):
-        for i in range(len(self.indexes)):
-            index = self.indexes[i]
-            if not isinstance(index, (paddle.fluid.core.VarBase,
-                                      paddle.fluid.Variable)):  #tensor
+        for index in self.indexes:
+            if not isinstance(index, paddle.fluid.Variable):
                 raise ValueError(
                     "only support list/tensor index, but received {}.".format(
                         type(index)))
 
-        # if len(self.indexes)>1:
         if len(self.indexes) <= len(tensor_shape) or len(self.indexes) == 1:
             shape = paddle.stack(self.indexes)
             axes = list(range(1, len(self.pre_shape) + 1)) + [0, ]
@@ -367,7 +363,6 @@ def _getitem_impl_(var, item):
             return index_select(var, index=idx, axis=0)
 
         elif isinstance(slice_item, np.ndarray):
-            # delete
             slice_info.update(slice_item)
             continue
         elif isinstance(slice_item, (Variable)):
