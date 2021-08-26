@@ -47,9 +47,8 @@ class Partitioner(object):
         1. partition op: replace a serial op into its corresponding dist op infered from the shard annotation
         2. partition var: if a var is sharded, modify the shape of var according to its shard annotation
 
-    Beside the Partitioner will temporarily be responsible to rewrite the program according to the user defined strategy, like AMP / Recompute / Sharding.
+    Partitioner is supposed to be call by the auto parallel framework, and not supposed to be directly called by user.
 
-    Partitioner is supposed to be call by the auto parallel framework, and not supposed to be used by user.
     Example:
         ....
             import paddle.distributed.auto_parallel as auto
@@ -97,7 +96,7 @@ class Partitioner(object):
     def __init__(self, dist_strategy, auto_parallel_context, rank_id=0):
         """
         Args:
-            dist_strategy (paddle.fleet.distributed_strategy): used to determine the user defined distributed strategy, like AMP and Recompute, since these strategy will effect how the program should be transpiled.
+            dist_strategy (paddle.fleet.distributed_strategy): used to determine the user defined distributed strategy.
             auto_parallel_context (paddle.fluid.DistributedContext): used to access the distributed_attr of var & op, every Partitioner object could maintain its own DistributedContext member, and partition program base on that shard scenario.
             rank_id (int): global rank id to which the partitioned distributed program belong.
         """
@@ -143,9 +142,7 @@ class Partitioner(object):
         function in auto parallel scenario, in order to facilitate distributed inference/evaluation which need to DECOUPLE strategy specific forward transpilation with fleet.distributed_optimizer.minimize().
 
         by now the fleet.distributed_strategy that need transpile forward program are following: 
-            1. AMP 
-            2. Recompute 
-            4. sharding
+            1. (optimizer) sharding
 
         Args:
             main_program (paddle.fluid.framework.program): serial main program with forward network only
@@ -246,16 +243,6 @@ class Partitioner(object):
         new_main_prog, new_startup_program = self._dist_var_op_forward_transpile(
             main_program, startup_program)
 
-        # AMP
-        if self._dist_strategy.amp:
-            new_main_prog, new_startup_program = self._amp_forward_transpile(
-                new_main_prog, new_startup_program)
-
-        # Recompute
-        if self._dist_strategy.recompute:
-            new_main_prog, new_startup_program = self._recompute_forward_transpile(
-                new_main_prog, new_startup_program)
-
         # Sharding
         if self._dist_strategy.sharding:
             new_main_prog, new_startup_program = self._sharding_forward_transpile(
@@ -274,10 +261,6 @@ class Partitioner(object):
                             callbacks=None):
         """
         """
-
-        # AMP
-        if self._dist_strategy.amp:
-            self._amp_backward_transpile(new_main_prog, new_startup_program)
 
         params_grads = self._dist_var_op_backward_transpile(
             serial_loss, serial_main_program, serial_startup_program,
@@ -601,41 +584,6 @@ class Partitioner(object):
         assert dist_attr is not None, "dist_attr of var [{}] is None".format(
             var.name)
         return _is_distributed(dist_attr)
-
-    def _amp_forward_transpile(self, main_prog, startup_program):
-        """
-        this transpile conduct the modification in forward program need by amp strategy
-        which majorly include:
-            1. insert cast op for parameter
-
-        NOTE the transpile modification is inplace on the input program
-        """
-
-        raise NotImplementedError("Amp is NOT support in AutoParallel yet!")
-
-    def _amp_backward_transpile(self, main_prog, startup_program):
-        """
-        this transpile conduct the modification in backward program need by amp strategy
-        which majorly include:
-            1. conduct loss scaling
-
-        NOTE the transpile modification is inplace on the input program
-        """
-
-        raise NotImplementedError("Amp is NOT support in AutoParallel yet!")
-
-    def _recompute_forward_transpile(self, main_prog, startup_program):
-        """
-        this transpile conduct the modification in forward program need by recompute strategy
-        which majorly include:
-            1. insert seed op for dropout
-            2. modify dropout 
-
-        NOTE the transpile modification is inplace on the input program
-        """
-
-        raise NotImplementedError(
-            "Recompute is NOT support in AutoParallel yet!")
 
     def _sharding_forward_transpile(self, main_prog, startup_program):
         """
