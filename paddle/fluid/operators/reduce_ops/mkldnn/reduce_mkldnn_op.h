@@ -141,11 +141,12 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
 
     if (input_dims != output_dims) {
       auto input_dy_md = dnnl::memory::desc(
-          input_dims, platform::MKLDNNGetDataType<T>(), input_dy->format());
-      auto output_dy_md = input_dy_md.reshape(output_dims);
+          framework::vectorize(input_dy->dims()),
+          platform::MKLDNNGetDataType<T>(), input_dy->format());
+      auto input_dy_ex_md = input_dy_md.reshape(output_dims);
       // TODO(jczaja): once MD is stored in Tensor we no longer need to guess
       // formats
-      x_format_tag = platform::GetMKLDNNFormat(output_dy_md);
+      x_format_tag = platform::GetMKLDNNFormat(input_dy_ex_md);
 
     } else {
       // There was no broadcasting then just simple copy is done
@@ -171,6 +172,8 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     binary_prim->execute(astream, args);
     astream.wait();
+
+    output_dx->set_layout(framework::DataLayout::kMKLDNN);
   }
 
  protected:
