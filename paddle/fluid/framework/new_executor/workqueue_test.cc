@@ -43,3 +43,33 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   EXPECT_EQ(finished.load(), true);
   EXPECT_EQ(counter.load(), kLoopNum);
 }
+
+TEST(WorkQueue, TestMultiThreadedWorkQueue) {
+  VLOG(1) << "In Test";
+  using paddle::framework::WorkQueue;
+  using paddle::framework::CreateMultiThreadedWorkQueue;
+  std::atomic<bool> finished{false};
+  std::atomic<unsigned> counter{0};
+  constexpr unsigned kExternalLoopNum = 100;
+  constexpr unsigned kLoopNum = 1000000;
+  // CreateSingleThreadedWorkQueue
+  std::unique_ptr<WorkQueue> work_queue = CreateMultiThreadedWorkQueue(10);
+  // NumThreads
+  EXPECT_EQ(work_queue->NumThreads(), 10u);
+  // AddTask
+  EXPECT_EQ(finished.load(), false);
+  EXPECT_EQ(counter.load(), 0u);
+  for (unsigned i = 0; i < kExternalLoopNum; ++i) {
+    work_queue->AddTask([&counter, &finished, kLoopNum]() {
+      for (unsigned i = 0; i < kLoopNum; ++i) {
+        ++counter;
+      }
+      finished = true;
+    });
+  }
+  // WaitQueueEmpty
+  EXPECT_EQ(finished.load(), false);
+  work_queue->WaitQueueEmpty();
+  EXPECT_EQ(finished.load(), true);
+  EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum);
+}

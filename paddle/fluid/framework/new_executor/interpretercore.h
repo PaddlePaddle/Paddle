@@ -26,6 +26,7 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_event.h"
+#include "paddle/fluid/platform/event.h"
 
 namespace paddle {
 namespace framework {
@@ -70,9 +71,22 @@ class InterpreterCore {
                const VariableScope& var_scope, const platform::Place& place,
                std::vector<VariableMetaInfo>& working_var_ref);  // NOLINT
 
+  platform::DeviceContext* ParseDeviceContextForInstruction(
+      const OpFuncNode& op_func_node, const OperatorBase& op_base);
+
+  void RecordEventInstruction(const Instruction& instruction,
+                              const OpFuncNode& op_func_node);
+
+  void WaitOrSync(const std::vector<EventInter>& events,
+                  const platform::DeviceContext* dev_ctx);
+
+  void StreamWaitEventOrSync(const Instruction& instruction);
+
   const platform::Place& place_;
   ProgramDesc main_program_;
   VariableScope* global_scope_;
+  platform::DeviceContextPool d2h_ctx_pool_;
+  platform::DeviceContextPool h2d_ctx_pool_;
   std::vector<VariableMetaInfo> vec_meta_info_;
 
   std::vector<paddle::framework::OpFuncNode> vec_func_list_;
@@ -87,6 +101,7 @@ class InterpreterCore {
   bool is_build_;
 
   std::vector<std::string> feed_names_;
+  std::map<size_t, std::shared_ptr<platform::CudaEvent>> var_id2event_;
 
   std::vector<paddle::platform::DeviceEvent> gc_event_;
   std::unique_ptr<GarbageQueue> garbages_;
