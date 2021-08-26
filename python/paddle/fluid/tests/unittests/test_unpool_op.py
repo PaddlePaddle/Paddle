@@ -159,6 +159,22 @@ class TestUnpoolOpException(unittest.TestCase):
             MaxPool2D = F.maxunpool2d(
                 data, indices, kernel_size=2, stride=2, data_format="NHWC")
 
+        def data_outputsize_error():
+            data = paddle.randint(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
+            MaxPool2D = F.maxunpool2d(
+                data,
+                indices,
+                kernel_size=2,
+                stride=2,
+                output_size=[5, 6, 7, 8])
+
+        def data_outputsize_error2():
+            data = paddle.randint(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
+            MaxPool2D = F.maxunpool2d(
+                data, indices, kernel_size=2, stride=2, output_size=[100, 100])
+
         self.assertRaises(ValueError, indices_size_error)
         self.assertRaises(ValueError, indices_value_error)
         self.assertRaises(ValueError, data_format_error)
@@ -213,6 +229,36 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
                 input_x, kernel_size=2, stride=2, return_mask=True)
             out_pp = F.max_unpool2d(
                 output, indices, kernel_size=2, stride=None, output_size=(5, 5))
+            output_np = output.numpy()
+            indices_np = indices.numpy()
+            expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
+                [2,2], [0,0], [5,5]).astype("float64")
+            self.assertTrue(np.allclose(out_pp.numpy(), expect_res))
+
+
+class TestUnpoolOpAPI_dy3(unittest.TestCase):
+    def test_case(self):
+        import paddle
+        import paddle.nn.functional as F
+        import paddle.fluid.core as core
+        import paddle.fluid as fluid
+        import numpy as np
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.array([[[[1, 2, 3, 4], [5, 6, 7, 8],
+                                     [9, 10, 11, 12],
+                                     [13, 14, 15, 16]]]]).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            Pool2d = paddle.nn.MaxPool2D(
+                kernel_size=2, stride=2, return_mask=True)
+            UnPool = paddle.nn.MaxUnPool2D(kernel_size=2, stride=2)
+
+            output, indices = Pool2d(input_x)
+            out_pp = UnPool(output, indices)
             output_np = output.numpy()
             indices_np = indices.numpy()
             expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
