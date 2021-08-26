@@ -1989,7 +1989,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
-  m.def("destroy_hccl_comm", &DestroyHCCLComm, "destroy_hccl_comm");
+  m.def("destroy_hccl_comm", &DestroyHCCLComm);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
