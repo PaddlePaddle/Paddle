@@ -654,11 +654,15 @@ class Executor(object):
         for op in global_block.ops:
             if op.desc.type() == 'feed':
                 feed_target_name = op.desc.output('Out')[0]
-                cur_feed = feed[feed_target_name]
+                cur_feed_data = feed[feed_target_name]
                 var = global_block.var(feed_target_name)
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = _as_lodtensor(cur_feed, self.place, var.dtype)
-                check_feed_shape_type(var, cur_feed)
+                if isinstance(cur_feed_data, (list, tuple)) and isinstance(
+                        cur_feed_data[0], str):
+                    cur_feed = cur_feed_data
+                elif not isinstance(cur_feed_data, core.LoDTensor):
+                    cur_feed = _as_lodtensor(cur_feed_data, self.place,
+                                             var.dtype)
+                    check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:

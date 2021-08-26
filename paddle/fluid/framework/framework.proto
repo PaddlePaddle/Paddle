@@ -147,6 +147,8 @@ message VarType {
     // in operators like nccl_op
     RAW = 17;
     TUPLE = 18;
+    STRINGS = 25;
+    FEED_LIST = 27;
   }
 
   required Type type = 1;

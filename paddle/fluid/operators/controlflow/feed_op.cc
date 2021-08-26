@@ -29,6 +29,40 @@ class OpBase;
 
 namespace paddle {
 namespace operators {
+
+class FeedVariableVisitor : public boost::static_visitor<void> {
+ public:
+  explicit FeedVariableVisitor(framework::Variable *out_var,
+                               const platform::Place &place)
+      : out_var_(out_var), place_(place) {}
+
+  void operator()(const framework::LoDTensor &in_tensor) const {
+    VLOG(3) << "feed LoDTensor";
+    framework::LoDTensor *out_tensor =
+        out_var_->GetMutable<framework::LoDTensor>();
+    if (platform::is_same_place(in_tensor.place(), place_)) {
+      out_tensor->ShareDataWith(in_tensor);
+    } else {
+      platform::DeviceContext *context =
+          platform::DeviceContextPool::Instance().Get(place_);
+      framework::TensorCopy(in_tensor, place_, *context, out_tensor);
+    }
+    out_tensor->set_lod(in_tensor.lod());
+  }
+
+  void operator()(const framework::STRINGS &in_str) const {
+    VLOG(3) << "feed STRINGS";
+    out_var_->Clear();
+    framework::STRINGS *out_str = out_var_->GetMutable<framework::STRINGS>();
+    out_str->resize(in_str.size());
+    *out_str = in_str;
+  }
+
+ private:
+  framework::Variable *out_var_;
+  const platform::Place &place_;
+};
+
 class FeedOp : public framework::OperatorBase {
  public:
   FeedOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -79,15 +113,9 @@ class FeedOp : public framework::OperatorBase {
             col, feed_list.size()));
 
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
-    auto *out_item = out_var->GetMutable<framework::FeedType>();
 
-    if (platform::is_same_place(feed_item.place(), place)) {
-      out_item->ShareDataWith(feed_item);
-    } else {
-      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      framework::TensorCopy(feed_item, place, *dev_ctx, out_item);
-    }
-    out_item->set_lod(feed_item.lod());
+    FeedVariableVisitor visitor(out_var, place);
+    boost::apply_visitor(visitor, feed_item);
   }
 };
 
@@ -95,7 +123,8 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>) A feeding list of LoDTensor, which may have "
+             "(vector<LoDTensor>|vector<std::wstring>) "
+             "A feeding list of LoDTensor or wstring, which may have "
              "different dimension and data type.");
     AddOutput("Out",
               "(LoDTensor) The LoDTensor which is a copy of the col-th feeding "

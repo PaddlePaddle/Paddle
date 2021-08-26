@@ -1205,6 +1205,9 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) {
              return py::bytes(*self.GetMutable<std::string>());
            })
+      .def("get_string_tensor",
+           [](Variable &self) { return self.GetMutable<STRINGS>(); },
+           py::return_value_policy::reference)
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
@@ -2035,7 +2038,12 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
-  m.def("set_feed_variable", framework::SetFeedVariable);
+  m.def("set_feed_variable",
+        static_cast<void (*)(Scope *, const LoDTensor &, const std::string &,
+                             size_t)>(&framework::SetFeedVariable));
+  m.def("set_feed_variable",
+        static_cast<void (*)(Scope *, const STRINGS &, const std::string &,
+                             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
         [](const Scope &scope, const std::string &var_name,
            size_t index) -> py::object {
