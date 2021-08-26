@@ -950,6 +950,8 @@ class TestVarBase(unittest.TestCase):
         paddle.disable_static(paddle.CPUPlace())
         paddle.seed(2021)
         x = paddle.rand([128])
+        paddle.set_printoptions(
+            precision=8, threshold=1000, edgeitems=3, linewidth=80)
         a_str = str(x)
 
         expected = '''Tensor(shape=[128], dtype=float32, place=CPUPlace, stop_gradient=True,
@@ -979,7 +981,7 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
-    def test_tensor_str_linewidth(self):
+    def test_tensor_str_linewidth2(self):
         paddle.disable_static(paddle.CPUPlace())
         paddle.seed(2021)
         x = paddle.rand([128])
