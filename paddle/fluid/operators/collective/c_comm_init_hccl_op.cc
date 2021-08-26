@@ -63,8 +63,8 @@ class CCommInitOpAscend : public framework::OperatorBase {
     platform::HCCLCommContext::Instance().CreateHCCLComm(
         hccl_id, rank_ids, rank_id, device_id, rid);
 
-    VLOG(3) << "rank_ids" << rank_ids << "rank_id:" << rank_id << "rid:" << rid
-            << "device_id:" << device_id;
+    VLOG(3) << "rank_ids:" << rank_ids << ", rank_id:" << rank_id
+            << ", rid:" << rid << ", device_id:" << device_id;
 
     //  Build comm
     float* buff;
