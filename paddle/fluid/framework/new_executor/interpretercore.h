@@ -66,6 +66,10 @@ class InterpreterCore {
   void BuildVariableScope(const framework::ProgramDesc& pdesc,
                           VariableScope* var_scope);
 
+  void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
+               const VariableScope& var_scope, const platform::Place& place,
+               std::vector<VariableMetaInfo>& working_var_ref);  // NOLINT
+
   const platform::Place& place_;
   ProgramDesc main_program_;
   VariableScope* global_scope_;

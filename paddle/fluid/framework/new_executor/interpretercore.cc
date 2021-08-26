@@ -276,84 +276,8 @@ void InterpreterCore::ExecuteInstructionList(
     }
 
     // GC infomation
-
-    auto& gc_check_list = instr_node.gc_check_var_list;
-    for (auto var_id : gc_check_list) {
-      --working_var_ref[var_id].var_ref_count_;
-      if (var_scope.vec_meta_info_[var_id].vardesc_ &&
-          !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
-          working_var_ref[var_id].var_ref_count_ == 0) {
-        Variable* var = var_scope.var_list[var_id];
-        if (var->IsType<LoDTensor>()) {
-          garbages_->emplace_back(
-              var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-          if (garbages_->back()) {
-            cur_memory_size_ += garbages_->back()->size();
-          }
-        } else if (var->IsType<SelectedRows>()) {
-          garbages_->emplace_back(var->GetMutable<SelectedRows>()
-                                      ->mutable_value()
-                                      ->MoveMemoryHolder());
-          if (garbages_->back()) {
-            cur_memory_size_ += garbages_->back()->size();
-          }
-        } else if (var->IsType<LoDTensorArray>()) {
-          auto* tensor_arr = var->GetMutable<LoDTensorArray>();
-          for (auto& t : *tensor_arr) {
-            garbages_->emplace_back(t.MoveMemoryHolder());
-            if (garbages_->back()) {
-              cur_memory_size_ += garbages_->back()->size();
-            }
-          }
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "The variable(%s) is not supported in eager deletion.",
-              framework::ToTypeName(var->Type())));
-        }
-      }
-    }
-
-    if (!garbages_->empty()) {
-      if (max_memory_size_ <= 1) {
-#if defined(PADDLE_WITH_CUDA)
-        auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
-            platform::DeviceContextPool::Instance().Get(place));
-        gc_event_[instr_id].Record(place, dev_ctx);
-        gc_queue_->AddTask([
-          container = garbages_.release(), event = &gc_event_[instr_id]
-        ]() {
-          while (!event->Query()) {
-            continue;
-          }
-          delete container;
-        });
-        garbages_.reset(new GarbageQueue());
-#else
-        delete garbages_.release();
-        garbages_.reset(new GarbageQueue());
-#endif
-      } else if (cur_memory_size_ >= max_memory_size_) {
-#if defined(PADDLE_WITH_CUDA)
-        auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
-            platform::DeviceContextPool::Instance().Get(place));
-        gc_event_[instr_id].Record(place, dev_ctx);
-        gc_queue_->AddTask([
-          container = garbages_.release(), event = &gc_event_[instr_id]
-        ]() {
-          while (!event->Query()) {
-            continue;
-          }
-          delete container;
-        });
-        garbages_.reset(new GarbageQueue());
-        cur_memory_size_ = 0;
-#else
-        delete garbages_.release();
-        garbages_.reset(new GarbageQueue());
-        cur_memory_size_ = 0;
-#endif
-      }
-    }
+    CheckGC(instr_id, instr_node.gc_check_var_list, var_scope, place,
+            working_var_ref);
   }
 
   fetch_context_pool_.Get(place)->Wait();
@@ -361,6 +285,87 @@ void InterpreterCore::ExecuteInstructionList(
   for (size_t i = 0; i < working_var_ref.size(); ++i) {
     if (working_var_ref[i].var_ref_count_ != 0) {
       std::cerr << " var ref is not zero " << i << std::endl;
+    }
+  }
+}
+
+void InterpreterCore::CheckGC(size_t instr_id,
+                              const std::vector<size_t>& gc_check_list,
+                              const VariableScope& var_scope,
+                              const platform::Place& place,
+                              std::vector<VariableMetaInfo>& working_var_ref) {
+  for (auto var_id : gc_check_list) {
+    --working_var_ref[var_id].var_ref_count_;
+    if (var_scope.vec_meta_info_[var_id].vardesc_ &&
+        !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
+        working_var_ref[var_id].var_ref_count_ == 0) {
+      Variable* var = var_scope.var_list[var_id];
+      if (var->IsType<LoDTensor>()) {
+        garbages_->emplace_back(
+            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+        if (garbages_->back()) {
+          cur_memory_size_ += garbages_->back()->size();
+        }
+      } else if (var->IsType<SelectedRows>()) {
+        garbages_->emplace_back(var->GetMutable<SelectedRows>()
+                                    ->mutable_value()
+                                    ->MoveMemoryHolder());
+        if (garbages_->back()) {
+          cur_memory_size_ += garbages_->back()->size();
+        }
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+        for (auto& t : *tensor_arr) {
+          garbages_->emplace_back(t.MoveMemoryHolder());
+          if (garbages_->back()) {
+            cur_memory_size_ += garbages_->back()->size();
+          }
+        }
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "The variable(%s) is not supported in eager deletion.",
+            framework::ToTypeName(var->Type())));
+      }
+    }
+  }
+
+  if (!garbages_->empty()) {
+    if (max_memory_size_ <= 1) {
+#if defined(PADDLE_WITH_CUDA)
+      auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+          platform::DeviceContextPool::Instance().Get(place));
+      gc_event_[instr_id].Record(place, dev_ctx);
+      gc_queue_->AddTask(
+          [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
+            while (!event->Query()) {
+              continue;
+            }
+            delete container;
+          });
+      garbages_.reset(new GarbageQueue());
+#else
+      delete garbages_.release();
+      garbages_.reset(new GarbageQueue());
+#endif
+    } else if (cur_memory_size_ >= max_memory_size_) {
+#if defined(PADDLE_WITH_CUDA)
+      auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+          platform::DeviceContextPool::Instance().Get(place));
+      gc_event_[instr_id].Record(place, dev_ctx);
+      gc_queue_->AddTask(
+          [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
+            while (!event->Query()) {
+              continue;
+            }
+            delete container;
+          });
+      garbages_.reset(new GarbageQueue());
+      cur_memory_size_ = 0;
+#else
+      delete garbages_.release();
+      garbages_.reset(new GarbageQueue());
+      cur_memory_size_ = 0;
+#endif
     }
   }
 }
