@@ -212,10 +212,19 @@ class AmpScaler(object):
     def _unscale(self, optimizer):
         if not self._enable:
             return
-        param_grads = [
-            param._grad_ivar() for param in optimizer._parameter_list
-            if param._grad_ivar() is not None
-        ]
+
+        if getattr(optimizer, '_param_groups', None) and isinstance(
+                optimizer._param_groups[0], dict):
+            param_grads = []
+            for group in optimizer._param_groups:
+                for param in group['params']:
+                    if param._grad_ivar() is not None:
+                        param_grads.append(param._grad_ivar())
+        else:
+            param_grads = [
+                param._grad_ivar() for param in optimizer._parameter_list
+                if param._grad_ivar() is not None
+            ]
         _C_ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
                                         self._found_inf)
 
