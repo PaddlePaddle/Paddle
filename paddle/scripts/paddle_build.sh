@@ -2351,6 +2351,30 @@ function main() {
         assert_api_spec_approvals
         check_whl_size
         ;;
+      build_and_check_cpu)
+        set +e
+        check_style_info=$(check_style)
+        check_style_code=$?
+        find_temporary_files
+        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        check_sequence_op_unittest
+        generate_api_spec ${PYTHON_ABI:-""} "PR"
+        ;;
+      build_and-check_gpu)
+        set +e
+        example_info_gpu=""
+        example_code_gpu=0
+        if [ "${WITH_GPU}" == "ON" ] ; then
+            example_info_gpu=$(exec_samplecode_test gpu)
+            example_code_gpu=$?
+        fi
+        example_info=$(exec_samplecode_test cpu)
+        example_code=$?
+        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        assert_api_spec_approvals
+        check_whl_size
+        ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
