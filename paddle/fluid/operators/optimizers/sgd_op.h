@@ -19,9 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/operators/mkldnn/axpy_handler.h"
-#endif
 #include "paddle/fluid/platform/bfloat16.h"
 
 namespace paddle {
@@ -142,97 +139,12 @@ struct sgd_dense_param_kernel<
               "Got [%s], but expected less than [%s]",
               grad_rows[i], grad_height));
       const int64_t row = grad_rows[i];
-#ifdef PADDLE_WITH_MKLDNN
-      operators::onednn_handler_axpy(grad_width, -lr[0],
-                                     grad_data + i * grad_width,
-                                     out_data + row * grad_width);
-#else
       for (int64_t j = 0; j < grad_width; ++j) {
         out_data[row * grad_width + j] -= lr[0] * grad_data[i * grad_width + j];
       }
-#endif
     }
   }
 };
-
-template <typename T>
-void sgd_op_invoke_dense_param_kernel(const framework::ExecutionContext &ctx) {
-  const auto *param = ctx.Input<framework::Tensor>("Param");
-  auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-  const auto *grad_var = ctx.InputVar("Grad");
-
-  if (grad_var->IsType<framework::LoDTensor>()) {
-    const auto *grad = ctx.Input<framework::Tensor>("Grad");
-    const auto sz = param_out->numel();
-    PADDLE_ENFORCE_EQ(param->numel(), sz,
-                      platform::errors::InvalidArgument(
-                          "The input tensor Param's numel of SgdOp "
-                          "should be equal with ParamOut's numel. "
-                          "But received Param's "
-                          "numel = [%s], ParamOut's numel = [%s]",
-                          param->numel(), sz));
-    PADDLE_ENFORCE_EQ(grad->numel(), sz,
-                      platform::errors::InvalidArgument(
-                          "The input tensor Grad's numel of SgdOp "
-                          "should be equal with ParamOut's numel. "
-                          "But received Grad's "
-                          "numel = [%s], ParamOut's numel = [%s]",
-                          grad->numel(), sz));
-
-    sgd_dense_param_kernel<
-        T, framework::VarTypeTrait<framework::LoDTensor>::kId>()(ctx);
-  } else if (grad_var->IsType<framework::SelectedRows>()) {
-    // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
-    // This manual optimization brings difficulty to track data dependency.
-    // It's better to find a more elegant solution.
-    PADDLE_ENFORCE_EQ(param, param_out,
-                      platform::errors::InvalidArgument(
-                          "The input tensor Param of SgdOp "
-                          "should be equal with ParamOut if variable's "
-                          "type is SelectedRows. "));
-    const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
-
-    // for distributed training, a sparse var may be empty,
-    // just skip updating.
-    if (grad->rows().size() == 0) {
-      return;
-    }
-
-    auto out_dims = param_out->dims();
-    PADDLE_ENFORCE_EQ(
-        grad->height(), out_dims[0],
-        platform::errors::InvalidArgument(
-            "The input tensor Grad's height of SgdOp "
-            "should be equal with ParamOut's dims. But received  Grad's "
-            "height [%s] and ParamOut's dims [%s]",
-            grad->height(), out_dims[0]));
-
-    auto &grad_value = grad->value();
-    auto &grad_rows = grad->rows();
-    const auto param_height = param_out->dims()[0];
-    const auto param_width = param_out->numel() / param_height;
-    // note: it is not grad->height()
-    const auto grad_height = static_cast<int64_t>(grad_rows.size());
-    const auto grad_width = grad_value.numel() / grad_height;
-
-    PADDLE_ENFORCE_EQ(
-        grad_width, param_width,
-        platform::errors::InvalidArgument(
-            "The grad_value's numel of SgdOp "
-            "should be equal with param_out's numel. But received "
-            "grad_value's numel [%s] and param_out's numel [%s]",
-            grad_width, param_width));
-
-    sgd_dense_param_kernel<
-        T, framework::VarTypeTrait<framework::SelectedRows>::kId>()(ctx);
-  } else {
-    PADDLE_ENFORCE_EQ(
-        false, true, platform::errors::PermissionDenied(
-                         "Unsupported Variable Type of Grad in SgdOp. Excepted "
-                         "LodTensor or SelectedRows, But received [%s]",
-                         paddle::framework::ToTypeName(grad_var->Type())));
-  }
-}
 
 }  // namespace detail
 
@@ -253,7 +165,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
     const auto *grad_var = ctx.InputVar("Grad");
 
     if (param_var->IsType<framework::LoDTensor>()) {
-      detail::sgd_op_invoke_dense_param_kernel<T>(ctx);
+      invoke_dense_param_kernel(ctx);
     } else if (param_var->IsType<framework::SelectedRows>()) {
       PADDLE_ENFORCE_EQ(grad_var->IsType<framework::SelectedRows>(), true,
                         platform::errors::InvalidArgument(
@@ -302,6 +214,96 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
               "LodTensor or SelectedRows, But received [%s]",
               paddle::framework::ToTypeName(param_var->Type())));
     }
+  }
+
+ protected:
+  void invoke_dense_param_kernel(const framework::ExecutionContext &ctx) const {
+    const auto *param = ctx.Input<framework::Tensor>("Param");
+    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
+    const auto *grad_var = ctx.InputVar("Grad");
+
+    if (grad_var->IsType<framework::LoDTensor>()) {
+      const auto *grad = ctx.Input<framework::Tensor>("Grad");
+      const auto sz = param_out->numel();
+      PADDLE_ENFORCE_EQ(param->numel(), sz,
+                        platform::errors::InvalidArgument(
+                            "The input tensor Param's numel of SgdOp "
+                            "should be equal with ParamOut's numel. "
+                            "But received Param's "
+                            "numel = [%s], ParamOut's numel = [%s]",
+                            param->numel(), sz));
+      PADDLE_ENFORCE_EQ(grad->numel(), sz,
+                        platform::errors::InvalidArgument(
+                            "The input tensor Grad's numel of SgdOp "
+                            "should be equal with ParamOut's numel. "
+                            "But received Grad's "
+                            "numel = [%s], ParamOut's numel = [%s]",
+                            grad->numel(), sz));
+
+      dense_param_and_grad_kernel(ctx);
+    } else if (grad_var->IsType<framework::SelectedRows>()) {
+      // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
+      // This manual optimization brings difficulty to track data dependency.
+      // It's better to find a more elegant solution.
+      PADDLE_ENFORCE_EQ(param, param_out,
+                        platform::errors::InvalidArgument(
+                            "The input tensor Param of SgdOp "
+                            "should be equal with ParamOut if variable's "
+                            "type is SelectedRows. "));
+      const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
+
+      // for distributed training, a sparse var may be empty,
+      // just skip updating.
+      if (grad->rows().size() == 0) {
+        return;
+      }
+
+      auto out_dims = param_out->dims();
+      PADDLE_ENFORCE_EQ(
+          grad->height(), out_dims[0],
+          platform::errors::InvalidArgument(
+              "The input tensor Grad's height of SgdOp "
+              "should be equal with ParamOut's dims. But received  Grad's "
+              "height [%s] and ParamOut's dims [%s]",
+              grad->height(), out_dims[0]));
+
+      auto &grad_value = grad->value();
+      auto &grad_rows = grad->rows();
+      const auto param_height = param_out->dims()[0];
+      const auto param_width = param_out->numel() / param_height;
+      // note: it is not grad->height()
+      const auto grad_height = static_cast<int64_t>(grad_rows.size());
+      const auto grad_width = grad_value.numel() / grad_height;
+
+      PADDLE_ENFORCE_EQ(
+          grad_width, param_width,
+          platform::errors::InvalidArgument(
+              "The grad_value's numel of SgdOp "
+              "should be equal with param_out's numel. But received "
+              "grad_value's numel [%s] and param_out's numel [%s]",
+              grad_width, param_width));
+
+      dense_param_sparse_grad_kernel(ctx);
+    } else {
+      PADDLE_ENFORCE_EQ(
+          false, true,
+          platform::errors::PermissionDenied(
+              "Unsupported Variable Type of Grad in SgdOp. Excepted "
+              "LodTensor or SelectedRows, But received [%s]",
+              paddle::framework::ToTypeName(grad_var->Type())));
+    }
+  }
+
+  virtual void dense_param_and_grad_kernel(
+      const framework::ExecutionContext &ctx) const {
+    detail::sgd_dense_param_kernel<
+        T, framework::VarTypeTrait<framework::LoDTensor>::kId>()(ctx);
+  }
+
+  virtual void dense_param_sparse_grad_kernel(
+      const framework::ExecutionContext &ctx) const {
+    detail::sgd_dense_param_kernel<
+        T, framework::VarTypeTrait<framework::SelectedRows>::kId>()(ctx);
   }
 };
 
