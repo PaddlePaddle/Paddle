@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -151,6 +152,18 @@ class OpDesc {
 
   const BlockDesc *Block() const { return this->block_; }
 
+  // This thread-safe implementation seems to be redudent since the neural
+  // networks
+  // are usually constructed in a single thread
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> id{0};
+    return ++id;
+  }
+
+  // Note: the identity only used as a key for referring to its
+  // distributed attribute now.
+  uint64_t Id() { return id_; }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
@@ -173,6 +186,8 @@ class OpDesc {
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.
   bool need_update_{false};
+
+  uint64_t id_ = GenerateId();
 };
 }  // namespace framework
 }  // namespace paddle

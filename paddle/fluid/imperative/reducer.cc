@@ -527,6 +527,7 @@ void Reducer::TraverseBackwardGraph(
 void Reducer::PrepareForBackward(
     const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
   VLOG(3) << "after forward, then reset count for backward.";
+  grad_need_hooks_ = true;
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
     group.pending_ = group.variable_indices_.size();
@@ -598,6 +599,11 @@ void Reducer::AddDistHook(size_t var_index) {
                         "Out of bounds variable index. it must be less"
                         "than %d, but it is %d",
                         variable_locators_.size(), var_index));
+
+  // gradient synchronization is not required when grad_need_hooks_ is false.
+  if (!grad_need_hooks_) {
+    return;
+  }
 
   VLOG(3) << "Var[" << var_index << "] ["
           << vars_[var_index]->GradVarBase()->Name()
@@ -692,8 +698,8 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
         auto var_base = vars_[var_index]->GradVarBase();
         auto tensor =
             var_base->MutableVar()->GetMutable<framework::LoDTensor>();
-        TensorCopy(*tensor, place_, *dev_ctx, &group_tensor);
-        group_tensor.Resize({static_cast<int64_t>(length)});
+        group_tensor.ShareDataWith(*tensor).Resize(
+            {static_cast<int64_t>(length)});
       } else {
         group_tensor.Resize({static_cast<int64_t>(length)});
         operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
@@ -907,6 +913,10 @@ void Reducer::ProcessUnusedDenseVars() {
 
       // 3. create grad var base or get grad var base
       auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
+      // NOTE(haohongxiang): Calling SetIsEmpty here is to make sure that
+      // gradient accumulation can continue normally after clear_gradients()
+      // especiall in cases including complex control flow.
+      grad_var_base_tmp->SharedVar()->SetIsEmpty(false);
 
       // 4. set grad tensor
       auto *dest_grad_tensor =
@@ -942,6 +952,7 @@ bool Reducer::HasGrad(size_t var_index) {
 
 void Reducer::FinalizeBackward() {
   groups_need_finalize_ = false;
+  grad_need_hooks_ = false;
 #ifdef PADDLE_WITH_XPU_BKCL
   {
     std::unique_lock<std::mutex> lock(mutex_);

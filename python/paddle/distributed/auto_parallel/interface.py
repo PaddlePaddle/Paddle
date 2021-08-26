@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import numpy
-import paddle.fluid.core as core
+import copy
 import paddle
+import paddle.fluid.core as core
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import in_dygraph_mode
 
@@ -237,6 +238,23 @@ class ProcessMesh(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __str__(self):
+        str = "shape {} and process group {}".format(self.topology,
+                                                     self.process_group)
+        return str
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            # No need to copy the owner tensor and context
+            if k == "_desc":
+                setattr(result, k, v)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result
+
 
 def _dim_mapping_checker(tensor, mesh, dim_mapping):
     assert len(tensor.shape) == len(dim_mapping)
@@ -320,6 +338,15 @@ def set_shard_mask(x, mask):
     """
     _static_mode_check()
     assert isinstance(mask, list)
+    np_mask = numpy.array(mask)
+    min_ele = numpy.min(np_mask)
+    max_ele = numpy.max(np_mask)
+    assert min_ele >= 0 and max_ele <= 1, "Elements in mask must be 0 or 1."
+    x_mesh = x.process_mesh
+    assert x_mesh, "Please set process mesh for the variable firstly."
+    assert x_mesh.topology == list(np_mask.shape), (
+        "The shape of mask "
+        "must be the same as the shape of its Process Mesh.")
     attr_name = _append_attr_suffix('mask')
     x._set_attr(attr_name, _flatten_nested_list(mask))
     return x
@@ -407,6 +434,7 @@ def set_offload_device(x, device):
 
     """
     _static_mode_check()
+    assert device == "cpu", "Only 'cpu' is supported for destination device."
     attr_name = _append_attr_suffix("offload_device")
     x._set_attr(attr_name, device)
     return x
