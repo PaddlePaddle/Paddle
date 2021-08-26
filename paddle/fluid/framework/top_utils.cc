@@ -48,7 +48,7 @@ std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
 template <>
 void ShareTensorImpl<pt::DenseTensor>(pt::DenseTensor* tensor_impl,
                                       Tensor* out) {
-  out->ResetHolderWithType(tensor_impl->MoveMemory(),
+  out->ResetHolderWithType(tensor_impl->allocation(),
                            pt::TransToProtoVarType(tensor_impl->type()));
 }
 
@@ -78,7 +78,7 @@ std::shared_ptr<pt::MKLDNNDenseTensor> MakeTensorImpl<pt::MKLDNNDenseTensor>(
 
 template <>
 void ShareTensorImpl(pt::MKLDNNDenseTensor* tensor_impl, Tensor* out) {
-  out->ResetHolderWithType(tensor_impl->MoveMemory(),
+  out->ResetHolderWithType(tensor_impl->allocation(),
                            pt::TransToProtoVarType(tensor_impl->type()));
   out->set_format(tensor_impl->format());
 }

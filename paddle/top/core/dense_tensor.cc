@@ -100,10 +100,6 @@ void DenseTensor::CheckMemorySize() const {
           MemorySize()));
 }
 
-std::shared_ptr<Allocation> DenseTensor::MoveMemory() {
-  return std::move(allocation_);
-}
-
 const void* DenseTensor::data() const {
   CheckMemorySize();
   return reinterpret_cast<const void*>(

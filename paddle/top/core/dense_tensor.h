@@ -136,8 +136,6 @@ class DenseTensor : public TensorInterface {
 
   void CheckMemorySize() const;
 
-  std::shared_ptr<Allocation> MoveMemory();
-
  private:
   // The actual Tensor storage holder
   std::shared_ptr<Allocation> allocation_;

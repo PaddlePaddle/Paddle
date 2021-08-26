@@ -95,6 +95,11 @@ namespace paddle {
 
 namespace detail_ordered_hash {
 
+// fix windows compiled error:
+// see: https://stackoverflow.com/questions/2561368/illegal-token-on-right-side-of
+#undef max
+#undef min
+
 template <typename T>
 struct make_void {
   using type = void;

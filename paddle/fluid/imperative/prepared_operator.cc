@@ -250,7 +250,7 @@ static pt::OpKernelContext BuildDygraphOpKernelContext(
   for (auto& var_pair : ins) {
     auto in_def = input_defs.at(i);
     for (auto var : var_pair.second) {
-      const auto& variable = var->template Var();
+      const auto& variable = var->Var();
       const auto& tensor = variable.template Get<framework::LoDTensor>();
       auto pt_in = framework::MakeTensorImpl<pt::DenseTensor>(
           tensor, in_def.backend, in_def.dtype, in_def.layout);
@@ -263,7 +263,7 @@ static pt::OpKernelContext BuildDygraphOpKernelContext(
   for (auto it = outs.begin(); it != outs.end(); ++it) {
     auto out_def = output_defs.at(i);
     for (auto var : it->second) {
-      auto* variable = var->template MutableVar();
+      auto* variable = var->MutableVar();
       auto* tensor = variable->template GetMutable<framework::LoDTensor>();
       // mutable_data before run kernel, to avoid share output form
       // OpKernelContext to original tensor

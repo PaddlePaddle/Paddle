@@ -36,7 +36,7 @@ void Sign(const DevCtx& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   auto eigen_out = paddle::framework::EigenVector<T>::Flatten(*out);
   auto eigen_x = paddle::framework::EigenVector<T>::Flatten(x);
 
-  auto& dev = *dev_ctx.template eigen_device();
+  auto& dev = *dev_ctx.eigen_device();
   paddle::operators::EigenSign<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x);
 }
