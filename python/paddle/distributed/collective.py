@@ -1129,8 +1129,8 @@ def _parallel_linear(x,
         name=name)
 
     # NOTE: npu linear function use matmul_v2 but linear use matmul
-    linear_function = \
-        _linear if core.is_compiled_with_npu() else paddle.nn.functional.linear
+    linear_function = _linear if core.is_compiled_with_npu()\
+        else paddle.nn.functional.linear
     linear_out = linear_function(
         x,
         linear.weight,
