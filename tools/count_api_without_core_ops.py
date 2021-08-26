@@ -51,13 +51,19 @@ def split_with_and_without_core_ops(member, cur_name):
     if cur_name in omitted_list:
         return
 
+    if member.__doc__.find(':api_attr: Static Graph') != -1:
+        return
+
+    if cur_name.find('ParamBase') != -1 or cur_name.find('Parameter') != -1 or cur_name.find('Variable') != -1 or cur_name.find('control_flow') != -1 or cur_name.find('contrib.mixed_precision') != -1:
+        return
+
     if inspect.isclass(member):
         pass
     else:
         try:
             source = inspect.getsource(member)
             if source.find('append_op') != -1:
-                if source.find('core.ops') != -1:
+                if source.find('core.ops') != -1 or source.find('_C_ops') != -1:
                     api_with_ops.append(cur_name)
                 else:
                     api_without_ops.append(cur_name)
@@ -116,8 +122,12 @@ def is_primitive(instance):
     else:
         return False
 
+ErrorSet = set()
+IdSet = set()
+skiplist = []
+visited_modules = set()
 
-def visit_all_module(mod, visited, func):
+def visit_all_module(mod, func):
     mod_name = mod.__name__
     if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
         return
@@ -125,30 +135,32 @@ def visit_all_module(mod, visited, func):
     if mod_name.startswith('paddle.fluid.core'):
         return
 
-    if mod in visited:
+    if mod in visited_modules:
         return
+    visited_modules.add(mod)
 
-    visited.add(mod)
-
-    for member_name in (
-            name
-            for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))
-            if not name.startswith("_")):
-        instance = getattr(mod, member_name, None)
-        if instance is None:
+    member_names = dir(mod)
+    if hasattr(mod, "__all__"):
+        member_names += mod.__all__
+    for member_name in member_names:
+        if member_name.startswith('_'):
             continue
-
-        if is_primitive(instance):
+        cur_name = mod_name + '.' + member_name
+        if cur_name in skiplist:
             continue
-
-        if not hasattr(instance, "__name__"):
-            continue
-
-        if inspect.ismodule(instance):
-            visit_all_module(instance, visited, func)
-        else:
-            visit_member(mod.__name__, instance, func)
-
+        try:
+            instance = getattr(mod, member_name)
+            if inspect.ismodule(instance):
+                visit_all_module(instance, func)
+            else:
+                instance_id = id(instance)
+                if instance_id in IdSet:
+                    continue
+                IdSet.add(instance_id)
+                visit_member(mod.__name__, instance, func)
+        except:
+            if not cur_name in ErrorSet and not cur_name in skiplist:
+                ErrorSet.add(cur_name)
 
 def get_apis_with_and_without_core_ops(modules):
     global api_with_ops, api_without_ops
@@ -156,7 +168,7 @@ def get_apis_with_and_without_core_ops(modules):
     api_without_ops = []
     for m in modules:
         visit_all_module(
-            importlib.import_module(m), set(), split_with_and_without_core_ops)
+            importlib.import_module(m), split_with_and_without_core_ops)
     return api_with_ops, api_without_ops
 
 
@@ -164,7 +176,7 @@ def get_api_source_desc(modules):
     global func_dict
     func_dict = collections.OrderedDict()
     for m in modules:
-        visit_all_module(importlib.import_module(m), set(), get_md5_of_func)
+        visit_all_module(importlib.import_module(m), get_md5_of_func)
     return func_dict
 
 

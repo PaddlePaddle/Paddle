@@ -3751,7 +3751,7 @@ def distribute_fpn_proposals(fpn_rois,
                 refer_level=4,
                 refer_scale=224)
     """
-    num_lvl = max_level - min_level + 1
+    num_lvl = max_level - min_level + 1 
 
     if in_dygraph_mode():
         assert rois_num is not None, "rois_num should not be None in dygraph mode."
