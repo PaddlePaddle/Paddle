@@ -1933,6 +1933,8 @@ void BindImperative(py::module *m_ptr) {
            &imperative::BKCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
+
+#if defined(PADDLE_WITH_GLOO)
   // xiongkun
   py::class_<imperative::GLOOParallelContext, imperative::ParallelContext,
              std::shared_ptr<imperative::GLOOParallelContext>>(
@@ -1943,6 +1945,7 @@ void BindImperative(py::module *m_ptr) {
       .def("init_with_ring_id",
            &imperative::GLOOParallelContext::InitWithRingID,
            py::arg("ring_id"));
+#endif
 
   m.def("pylayer_apply",
         [](const platform::CPUPlace &place, const py::object &cls,
