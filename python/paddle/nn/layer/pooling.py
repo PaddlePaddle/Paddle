@@ -1199,7 +1199,7 @@ class MaxUnPool2D(Layer):
                  data_format="NCHW",
                  output_size=None,
                  name=None):
-        super(MaxPool2D, self).__init__()
+        super(MaxUnPool2D, self).__init__()
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -1208,7 +1208,7 @@ class MaxUnPool2D(Layer):
         self.name = name
 
     def forward(self, x, indices):
-        return F.maxunpool2d(
+        return F.max_unpool2d(
             x,
             indices,
             kernel_size=self.ksize,

@@ -178,6 +178,8 @@ class TestUnpoolOpException(unittest.TestCase):
         self.assertRaises(ValueError, indices_size_error)
         self.assertRaises(ValueError, indices_value_error)
         self.assertRaises(ValueError, data_format_error)
+        self.assertRaises(ValueError, data_outputsize_error)
+        self.assertRaises(ValueError, data_outputsize_error2)
 
 
 class TestUnpoolOpAPI_dy(unittest.TestCase):
@@ -262,7 +264,7 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
             output_np = output.numpy()
             indices_np = indices.numpy()
             expect_res =unpool2dmax_forward_naive(output_np, indices_np, [2,2], \
-                [2,2], [0,0], [5,5]).astype("float64")
+                [2,2], [0,0], [4,4]).astype("float64")
             self.assertTrue(np.allclose(out_pp.numpy(), expect_res))
 
 
