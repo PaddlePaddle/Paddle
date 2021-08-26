@@ -895,20 +895,14 @@ class BinaryMKLDNNHandler
 
 template <typename T>
 class BroadcastDataMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::binary> {
+    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   BroadcastDataMKLDNNHandler(const dnnl::algorithm algo,
-                             const MKLDNNDeviceContext& dev_ctx,
                              const mkldnn::engine engine,
                              platform::Place cpu_place, const Tensor* out,
                              const Tensor* x, float scale_x, float scale_y,
-                             const std::string& uniq_name,
                              const std::vector<int64_t>& input_dims)
-      : platform::MKLDNNHandlerT<T, dnnl::binary>(
-            dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
-                                uniq_name)) {
-    if (!this->isCached()) {
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
       PADDLE_ENFORCE_EQ(
           x->layout(), DataLayout::kMKLDNN,
           platform::errors::InvalidArgument("Wrong layout set for X tensor."));
@@ -929,7 +923,6 @@ class BroadcastDataMKLDNNHandler
 
       this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md,
                                               src1_md, src0_md);
-    }
   }
 
   template <typename T_out = T>
@@ -938,8 +931,7 @@ class BroadcastDataMKLDNNHandler
         this->place_, this->fwd_pd_->dst_desc().get_size());
     ;
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
 
