@@ -187,6 +187,7 @@ from .random import randperm  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
+from .search import searchsorted  # noqa: F401
 from .search import topk  # noqa: F401
 from .search import where  # noqa: F401
 from .search import index_select  # noqa: F401
@@ -251,6 +252,7 @@ tensor_method_func  = [ #noqa
            'round_',
            'rsqrt',
            'rsqrt_',
+           'searchsorted'
            'scale',
            'scale_',
            'sign',
@@ -353,6 +355,7 @@ tensor_method_func  = [ #noqa
            'index_select',
            'nonzero',
            'sort',
+           'searchsorted',
            'index_sample',
            'mean',
            'std',
