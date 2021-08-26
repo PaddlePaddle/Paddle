@@ -91,6 +91,7 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   auto iter = interpretercores_.find(oss.str());
 
   if (iter == interpretercores_.end()) {
+    VLOG(3) << "create interpreter_core for " << oss.str();
     auto core = std::make_shared<InterpreterCore>(
         place_, main_prog_, &global_scope_, feed_names, fetch_names);
     interpretercores_.emplace(oss.str(), core);
