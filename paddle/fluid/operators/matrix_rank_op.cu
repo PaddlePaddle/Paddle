@@ -297,7 +297,7 @@ void MatrixRankGPUKernel<float>::SyevjBatched(
   // Compute eigenvalues only
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
   // Lower triangle of A is stored
-  // cusolver中矩阵是column-major即转置的形势，numpy和torch中使用下三角来进行计算
+  // cusolver中矩阵是column-major即转置的形式，numpy和torch中使用下三角来进行计算
   // 因为转置的缘故需要上三角来进行计算
   cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
   float* A = const_cast<float*>(cA);

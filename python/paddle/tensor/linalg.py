@@ -787,16 +787,52 @@ def cholesky(x, upper=False, name=None):
 
 def matrix_rank(x, tol=None, hermitian=False, name=None):
     r"""
-    matrix_rank
+    Computes the numerical rank of a matrix.
+
+    The matrix rank is computed as the number of singular values (or eigenvalues in absolute value when hermitian= True) that 
+    are greater than the specified tol threshold.
+
+    Supports input of float, double dtypes. Also supports batches of matrices, and if x is a batch of matrices then the output 
+    has the same batch dimensions.
+    
+    If hermitian= True, x is assumed to be Hermitian, but this is not checked internally. Instead, just the lower triangular 
+    part of the matrix is used in the computations.
+
+    If tol is not specified and x is a matrix of dimensions (m, n), the tolerance is set to be tol=sigma * max(m,n) * eps where 
+    sigma is the largest singular value (or eigenvalue in absolute value when hermitian= True), and eps is the epsilon value for the 
+    dtype of x. If x is a batch of matrices, tol is computed this way for every element of the batch.
 
     Args:
-        x (Tensor): The first input tensor.
-        tol (float|Tensor): tol
-        hermitian (bool, optional): hermitian
+        x (Tensor): tensor of shape [*, m, n] where * is zero or more batch dimensions.
+        tol (float,Tensor,optional): the tolerance value. See above for the value it takes when None. Default: None.
+        hermitian (bool,optional): indicates whether x is Hermitian. Default: False.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. A Tensor.
+        Tensor: Rank of tensor x.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            a = paddle.eye(10)
+            b = paddle.linalg.matrix_rank(a)
+            print(b)
+            # b = [10]
+
+            c = paddle.rand(shape=[2, 3, 4])
+            d = paddle.linalg.matrix_rank(c, tol=0.01)
+            print(d)
+            # d = [3, 3]
+
+            e = paddle.rand(shape=[3, 4, 5, 6])
+            f = paddle.linalg.matrix_rank(e, tol=0.01, hermitian=True)
+            print(f)
+            # f = [[5, 4, 4, 5],
+                   [5, 5, 5, 5],
+                   [5, 5, 5, 5]]
+    
     """
 
     # tolTensor = None
