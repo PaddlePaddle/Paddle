@@ -677,8 +677,11 @@ class MAOutputScaleLayer(layers.Layer):
     def forward(self, *inputs, **kwargs):
         out = self._layer(*inputs, **kwargs)
         # TODO (jc): support the ops of several outputs
-        if (isinstance(out, list) or isinstance(out, tuple)) and len(out) > 1:
-            return out
+        if (isinstance(out, list) or isinstance(out, tuple)):
+            return (out if len(out) > 1 else self._ma_output_scale(out[0]))
+        elif isinstance(out, dict):
+            return (out if len(out) > 1 else
+                    self._ma_output_scale([v for v in out.values()][0]))
         else:
             return self._ma_output_scale(out)
 
