@@ -114,6 +114,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/npu_profiler.h"
 #endif
@@ -179,6 +180,12 @@ bool IsCompiledWithNPU() {
   return false;
 #else
   return true;
+#endif
+}
+
+void DestroyHCCLComm() {
+#ifdef PADDLE_WITH_ASCEND_CL
+  platform::HCCLCommContext::Instance().ReleaseHCCLComms();
 #endif
 }
 
@@ -1982,6 +1989,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
+  m.def("destroy_hccl_comm", &DestroyHCCLComm, "destroy_hccl_comm");
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
@@ -3167,7 +3175,6 @@ All parameter, weight, gradient are variables in Paddle.
   BindAscendWrapper(&m);
   BindAscendGraph(&m);
   BindAscendDevice(&m);
-  BindAscendHCCL(&m);
 #endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);

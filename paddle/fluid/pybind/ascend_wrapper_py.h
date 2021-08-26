@@ -26,7 +26,6 @@ namespace pybind {
 void BindAscendGraph(py::module* m);
 void BindAscendWrapper(py::module* m);
 void BindAscendDevice(py::module* m);
-void BindAscendHCCL(py::module* m);
 
 }  // namespace pybind
 }  // namespace paddle
