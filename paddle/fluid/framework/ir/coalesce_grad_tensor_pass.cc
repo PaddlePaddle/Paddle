@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
+#include <algorithm>
 #include <string>
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -254,8 +255,15 @@ class CoalesceGradTensorPass : public ir::Pass {
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const details::ParamsAndGrads &params_grads,
       details::GroupParamsAndGrads *group_params_grads) const {
-    SetGroupAccordingToLayers(vars_info, params_grads, group_params_grads);
-    SetGroupAccordingToMemorySize(vars_info, group_params_grads);
+    if (GetFuseParameterMemorySize() == 0) {
+      group_params_grads->resize(1);
+      auto &result_param_grads = (*group_params_grads)[0];
+      result_param_grads = params_grads;
+      std::sort(result_param_grads.begin(), result_param_grads.end());
+    } else {
+      SetGroupAccordingToLayers(vars_info, params_grads, group_params_grads);
+      SetGroupAccordingToMemorySize(vars_info, group_params_grads);
+    }
     if (!IsUnifiedDtype(params_grads, vars_info)) {
       ReGroupByDtype(vars_info, group_params_grads);
     }

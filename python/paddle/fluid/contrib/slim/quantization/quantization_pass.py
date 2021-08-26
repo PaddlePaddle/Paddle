@@ -1273,12 +1273,17 @@ class QuantizationFreezePass(object):
             var_type=output_var_node.type(),
             shape=output_var_node.shape(),
             var_dtype=output_var_node.dtype())
+        if op_node.op().has_attr("x_num_col_dims"):
+            x_num_col_dims = op_node.op().attr("x_num_col_dims")
+        else:
+            x_num_col_dims = 1
         dequant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_dequantize_max_abs',
             attrs={
                 'quant_bits': [self._weight_bits, self._activation_bits],
                 'quant_axis': quant_axis,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+                'x_num_col_dims': x_num_col_dims
             },
             inputs={
                 'X': output_var_node,
@@ -1312,6 +1317,7 @@ class QuantizationFreezePass(object):
                 assert self._is_float(
                     scale_v), 'The scale of parameter %s is not a float.' % (
                         original_var_name)
+                scale_v = 1e-8 if scale_v == 0.0 else scale_v
                 max_range *= param_range / scale_v
             else:
                 max_range *= act_range
@@ -1413,6 +1419,7 @@ class QuantizationFreezePass(object):
                     x[:, i] = _clip(x[:, i], s)
                     x[:, i] = np.round(x[:, i] / s * bnt)
         else:
+            scale = 1e-8 if scale == 0.0 else scale
             x = _clip(x, scale)
             x = np.round(x / scale * bnt)
         return x

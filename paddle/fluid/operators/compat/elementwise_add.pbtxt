@@ -26,12 +26,10 @@ extra {
   attrs {
     name: "x_data_format"
     type: STRING
-    # no longer to use
   }
   attrs {
     name: "y_data_format"
     type: STRING
-    # no longer to use
   }
   attrs {
     name: "Scale_x"

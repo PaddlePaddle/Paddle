@@ -26,14 +26,14 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-int PReluPlugin::initialize() {
+int PReluPlugin::initialize() TRT_NOEXCEPT {
   cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());
   cudaMemcpy(p_gpu_weight_, weight_.data(), weight_.size() * sizeof(float),
              cudaMemcpyHostToDevice);
   return 0;
 }
 
-void PReluPlugin::terminate() {
+void PReluPlugin::terminate() TRT_NOEXCEPT {
   if (p_gpu_weight_) {
     cudaFree(p_gpu_weight_);
     p_gpu_weight_ = nullptr;
@@ -42,7 +42,7 @@ void PReluPlugin::terminate() {
 
 nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,
                                                 const nvinfer1::Dims *inputDims,
-                                                int nbInputs) {
+                                                int nbInputs) TRT_NOEXCEPT {
   assert(nbInputs == 1);
   assert(index < this->getNbOutputs());
   nvinfer1::Dims const &input_dims = inputDims[0];
@@ -55,14 +55,14 @@ int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
                          void **outputs, void *workspace, cudaStream_t stream) {
 #else
                          void *const *outputs, void *workspace,
-                         cudaStream_t stream) {
+                         cudaStream_t stream) TRT_NOEXCEPT {
 #endif
   // input dims is CHW.
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);
   // const float *alpha = reinterpret_cast<const float *>(alpha_.get().values);
   const float *alpha = p_gpu_weight_;
-  float *output = reinterpret_cast<float **>(outputs)[0];
+  float *const output = reinterpret_cast<float *const *>(outputs)[0];
   int numel = 1;
   for (int i = 0; i < input_dims.nbDims; i++) {
     numel *= input_dims.d[i];
@@ -86,13 +86,13 @@ int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
 
 #if IS_TRT_VERSION_GE(6000)
 
-void PReluPluginDynamic::terminate() {
+void PReluPluginDynamic::terminate() TRT_NOEXCEPT {
   if (p_gpu_weight_) {
     cudaFree(p_gpu_weight_);
   }
 }
 
-int PReluPluginDynamic::initialize() {
+int PReluPluginDynamic::initialize() TRT_NOEXCEPT {
   cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());
   cudaMemcpy(p_gpu_weight_, weight_.data(), weight_.size() * sizeof(float),
              cudaMemcpyHostToDevice);
@@ -107,24 +107,24 @@ PReluPluginDynamic::PReluPluginDynamic(void const *serialData,
   mode_ = std::string(prelu_mode);
 }
 
-size_t PReluPluginDynamic::getSerializationSize() const {
+size_t PReluPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(mode_.c_str()) + SerializedSize(weight_);
 }
 
-void PReluPluginDynamic::serialize(void *buffer) const {
+void PReluPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, weight_);
   SerializeValue(&buffer, mode_.c_str());
 }
 
 nvinfer1::DimsExprs PReluPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
 bool PReluPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
@@ -141,7 +141,8 @@ bool PReluPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType PReluPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
                                   "The PRelu Plugin only has one input, so the "
                                   "index value should be 0, but get %d.",
@@ -155,7 +156,8 @@ nvinfer1::DataType PReluPluginDynamic::getOutputDataType(
 int PReluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
                                 const nvinfer1::PluginTensorDesc *output_desc,
                                 const void *const *inputs, void *const *outputs,
-                                void *workspace, cudaStream_t stream) {
+                                void *workspace,
+                                cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   const float *alpha = p_gpu_weight_;
   const float *input = static_cast<const float *>(inputs[0]);

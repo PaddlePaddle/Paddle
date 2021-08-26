@@ -433,6 +433,7 @@ class Test_get_api_md5(unittest.TestCase):
                 """paddle.two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'ff0f188c95030158cc6398d2a6c55two'))""",
                 """paddle.three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'ff0f188c95030158cc6398d2a6cthree'))""",
                 """paddle.four_plus_four (paddle.four_plus_four, ('document', 'ff0f188c95030158cc6398d2a6c5four'))""",
+                """paddle.five_plus_five (ArgSpec(), ('document', 'ff0f188c95030158cc6398d2a6c5five'))""",
             ]))
 
     def tearDown(self):
@@ -449,6 +450,8 @@ class Test_get_api_md5(unittest.TestCase):
                          res['paddle.three_plus_three'])
         self.assertEqual("ff0f188c95030158cc6398d2a6c5four",
                          res['paddle.four_plus_four'])
+        self.assertEqual("ff0f188c95030158cc6398d2a6c5five",
+                         res['paddle.five_plus_five'])
 
 
 class Test_get_incrementapi(unittest.TestCase):

@@ -371,7 +371,10 @@ def monkey_patch_varbase():
                 # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False, [500.])
 
         """
-        msg = "tensor.grad will return the tensor value of the gradient."
+        msg = 'tensor.grad will return the tensor value of the gradient.' \
+            ' This is an incompatible upgrade for tensor.grad API. ' \
+            ' It\'s return type changes from numpy.ndarray in version 2.0 to paddle.Tensor in version 2.1.0. ' \
+            ' If you want to get the numpy value of the gradient, you can use :code:`x.grad.numpy()`'
         warning_msg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
         # ensure ANSI escape sequences print correctly in cmd and powershell
         if sys.platform.lower() == 'win32':

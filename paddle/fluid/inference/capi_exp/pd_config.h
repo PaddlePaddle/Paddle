@@ -177,12 +177,28 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     PD_Bool autotune, const char* autotune_file, const char* precision,
     PD_Bool adaptive_seqlen);
 ///
+/// \brief Turn on NPU.
+///
+/// \param[in] pd_onfig config
+/// \param[in] device_id device_id the NPU card to use.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableNpu(
+    __pd_keep PD_Config* pd_config, int32_t device_id);
+///
 /// \brief A boolean state telling whether the XPU is turned on.
 ///
 /// \param[in] pd_onfig config
 /// \return Whether the XPU is turned on.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseXpu(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief A boolean state telling whether the NPU is turned on.
+///
+/// \param[in] pd_onfig config
+/// \return Whether the NPU is turned on.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseNpu(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Get the GPU device id.
@@ -199,6 +215,14 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigGpuDeviceId(
 /// \return The XPU device id.
 ///
 PADDLE_CAPI_EXPORT extern int32_t PD_ConfigXpuDeviceId(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Get the NPU device id.
+///
+/// \param[in] pd_onfig config
+/// \return The NPU device id.
+///
+PADDLE_CAPI_EXPORT extern int32_t PD_ConfigNpuDeviceId(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Get the initial size in MB of the GPU memory pool.
@@ -611,6 +635,14 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigAppendPass(
 /// \return Return list of the passes.
 ///
 PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayCstr* PD_ConfigAllPasses(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Get information of config.
+/// Attention, Please release the string manually.
+///
+/// \return Return config info.
+///
+PADDLE_CAPI_EXPORT extern const char* PD_ConfigSummary(
     __pd_keep PD_Config* pd_config);
 
 #ifdef __cplusplus

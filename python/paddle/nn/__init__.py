@@ -15,6 +15,11 @@
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 
+from ..fluid.dygraph.layers import Layer  # noqa: F401
+from ..fluid.dygraph.container import LayerList  # noqa: F401
+from ..fluid.dygraph.container import ParameterList  # noqa: F401
+from ..fluid.dygraph.container import Sequential  # noqa: F401
+
 from .clip import ClipGradByGlobalNorm  # noqa: F401
 from .clip import ClipGradByNorm  # noqa: F401
 from .clip import ClipGradByValue  # noqa: F401
@@ -50,6 +55,7 @@ from .layer.common import Pad3D  # noqa: F401
 from .layer.common import CosineSimilarity  # noqa: F401
 from .layer.common import Embedding  # noqa: F401
 from .layer.common import Linear  # noqa: F401
+from .layer.common import Identity  # noqa: F401
 from .layer.common import Flatten  # noqa: F401
 from .layer.common import Upsample  # noqa: F401
 from .layer.common import UpsamplingNearest2D  # noqa: F401
@@ -130,10 +136,6 @@ from .utils.spectral_norm_hook import spectral_norm
 
 # TODO: remove loss, keep it for too many used in unitests
 from .layer import loss  # noqa: F401
-from ..fluid.dygraph.layers import Layer  # noqa: F401
-from ..fluid.dygraph.container import LayerList  # noqa: F401
-from ..fluid.dygraph.container import ParameterList  # noqa: F401
-from ..fluid.dygraph.container import Sequential  # noqa: F401
 
 from . import utils  # noqa: F401
 from . import functional  # noqa: F401

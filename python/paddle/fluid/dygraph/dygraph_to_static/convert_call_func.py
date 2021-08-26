@@ -88,7 +88,7 @@ def is_unsupported(func):
         for v in m.__dict__.values():
             func_in_dict = func == v
             if isinstance(func_in_dict, (list, numpy.ndarray)):
-                func_in_dict = any(func_in_dict)
+                func_in_dict = numpy.array(func_in_dict).any()
             if func_in_dict:
                 translator_logger.log(
                     2,

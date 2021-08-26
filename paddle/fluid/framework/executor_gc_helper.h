@@ -36,6 +36,11 @@ GetUnusedVars(const BlockDesc &block,
               const std::vector<std::unique_ptr<OperatorBase>> &ops,
               const std::vector<std::string> &skip_vars);
 
+// Collect unused tensors
+void DeleteUnusedTensors(const Scope &scope,
+                         const std::vector<std::string> &delete_vars,
+                         GarbageCollector *gc);
+
 // Collect unused tensors after op runs
 void DeleteUnusedTensors(
     const Scope &scope, const OperatorBase *op,

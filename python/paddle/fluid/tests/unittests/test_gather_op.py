@@ -275,10 +275,10 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_dtype)
 
-            def test_axis_dtype():
+            def test_axis_dtype1():
                 paddle.gather(x, index, axis=axis)
 
-            self.assertRaises(TypeError, test_axis_dtype)
+            self.assertRaises(TypeError, test_axis_dtype1)
 
     def test_error2(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):

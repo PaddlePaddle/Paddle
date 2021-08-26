@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .softmax_mask_fuse_upper_triangle import softmax_mask_fuse_upper_triangle  # noqa: F401
+from .softmax_mask_fuse import softmax_mask_fuse  # noqa: F401

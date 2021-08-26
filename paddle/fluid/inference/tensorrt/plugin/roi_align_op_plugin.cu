@@ -200,7 +200,8 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(void const* data, size_t length) {
   smem_per_block_ = smem_per_block;
 }
 
-nvinfer1::IPluginV2DynamicExt* RoiAlignPluginDynamic::clone() const {
+nvinfer1::IPluginV2DynamicExt* RoiAlignPluginDynamic::clone() const
+    TRT_NOEXCEPT {
   auto* plugin =
       new RoiAlignPluginDynamic(data_type_, pooled_height_, pooled_width_,
                                 spatial_scale_, sampling_ratio_);
@@ -210,7 +211,7 @@ nvinfer1::IPluginV2DynamicExt* RoiAlignPluginDynamic::clone() const {
 
 nvinfer1::DimsExprs RoiAlignPluginDynamic::getOutputDimensions(
     int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
-    nvinfer1::IExprBuilder& exprBuilder) {
+    nvinfer1::IExprBuilder& exprBuilder) TRT_NOEXCEPT {
   nvinfer1::DimsExprs ret{};
   ret.nbDims = 4;
   ret.d[0] = inputs[1].d[0];  // roi
@@ -222,7 +223,7 @@ nvinfer1::DimsExprs RoiAlignPluginDynamic::getOutputDimensions(
 
 bool RoiAlignPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* inOut, int nbInputs,
-    int nbOutputs) {
+    int nbOutputs) TRT_NOEXCEPT {
   if (inOut[pos].format != nvinfer1::TensorFormat::kLINEAR) {
     return false;
   }
@@ -234,11 +235,12 @@ bool RoiAlignPluginDynamic::supportsFormatCombination(
 
 void RoiAlignPluginDynamic::configurePlugin(
     const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
-    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) {}
+    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) TRT_NOEXCEPT {}
 
 size_t RoiAlignPluginDynamic::getWorkspaceSize(
     const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
-    const nvinfer1::PluginTensorDesc* outputs, int nbOutputs) const {
+    const nvinfer1::PluginTensorDesc* outputs,
+    int nbOutputs) const TRT_NOEXCEPT {
   return 0;
 }
 
@@ -287,7 +289,7 @@ int RoiAlignPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                    const nvinfer1::PluginTensorDesc* outputDesc,
                                    const void* const* inputs,
                                    void* const* outputs, void* workspace,
-                                   cudaStream_t stream) {
+                                   cudaStream_t stream) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(outputDesc[0].type, data_type_,
                     platform::errors::InvalidArgument(
                         "TRT RoiAlignPluginDynamic expects outputDesc[0].type "
@@ -302,21 +304,22 @@ int RoiAlignPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
 }
 
 nvinfer1::DataType RoiAlignPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* inputTypes, int nbInputs) const {
+    int index, const nvinfer1::DataType* inputTypes,
+    int nbInputs) const TRT_NOEXCEPT {
   return inputTypes[0];
 }
 
-const char* RoiAlignPluginDynamic::getPluginType() const {
+const char* RoiAlignPluginDynamic::getPluginType() const TRT_NOEXCEPT {
   return "roi_align_plugin_dynamic";
 }
 
-int RoiAlignPluginDynamic::getNbOutputs() const { return 1; }
+int RoiAlignPluginDynamic::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 
-int RoiAlignPluginDynamic::initialize() { return 0; }
+int RoiAlignPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
-void RoiAlignPluginDynamic::terminate() {}
+void RoiAlignPluginDynamic::terminate() TRT_NOEXCEPT {}
 
-size_t RoiAlignPluginDynamic::getSerializationSize() const {
+size_t RoiAlignPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   size_t serialize_size = 0;
   serialize_size += SerializedSize(data_type_);
   serialize_size += SerializedSize(pooled_height_);
@@ -326,7 +329,7 @@ size_t RoiAlignPluginDynamic::getSerializationSize() const {
   return serialize_size;
 }
 
-void RoiAlignPluginDynamic::serialize(void* buffer) const {
+void RoiAlignPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, data_type_);
   SerializeValue(&buffer, pooled_height_);
   SerializeValue(&buffer, pooled_width_);
@@ -334,40 +337,43 @@ void RoiAlignPluginDynamic::serialize(void* buffer) const {
   SerializeValue(&buffer, sampling_ratio_);
 }
 
-void RoiAlignPluginDynamic::destroy() {}
+void RoiAlignPluginDynamic::destroy() TRT_NOEXCEPT {}
 
 RoiAlignPluginDynamicCreator::RoiAlignPluginDynamicCreator() {}
 
-void RoiAlignPluginDynamicCreator::setPluginNamespace(
-    const char* lib_namespace) {
+void RoiAlignPluginDynamicCreator::setPluginNamespace(const char* lib_namespace)
+    TRT_NOEXCEPT {
   namespace_ = std::string(lib_namespace);
 }
 
-const char* RoiAlignPluginDynamicCreator::getPluginNamespace() const {
+const char* RoiAlignPluginDynamicCreator::getPluginNamespace() const
+    TRT_NOEXCEPT {
   return namespace_.c_str();
 }
 
-const char* RoiAlignPluginDynamicCreator::getPluginName() const {
+const char* RoiAlignPluginDynamicCreator::getPluginName() const TRT_NOEXCEPT {
   return "roi_align_plugin_dynamic";
 }
 
-const char* RoiAlignPluginDynamicCreator::getPluginVersion() const {
+const char* RoiAlignPluginDynamicCreator::getPluginVersion() const
+    TRT_NOEXCEPT {
   return "1";
 }
 
 const nvinfer1::PluginFieldCollection*
-RoiAlignPluginDynamicCreator::getFieldNames() {
+RoiAlignPluginDynamicCreator::getFieldNames() TRT_NOEXCEPT {
   return &field_collection_;
 }
 
 nvinfer1::IPluginV2Ext* RoiAlignPluginDynamicCreator::createPlugin(
-    const char* name, const nvinfer1::PluginFieldCollection* fc) {
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT {
   const nvinfer1::PluginField* fields = fc->fields;
   return nullptr;
 }
 
 nvinfer1::IPluginV2Ext* RoiAlignPluginDynamicCreator::deserializePlugin(
-    const char* name, const void* serial_data, size_t serial_length) {
+    const char* name, const void* serial_data,
+    size_t serial_length) TRT_NOEXCEPT {
   auto plugin = new RoiAlignPluginDynamic(serial_data, serial_length);
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
