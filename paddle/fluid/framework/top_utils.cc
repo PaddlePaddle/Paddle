@@ -31,7 +31,7 @@ std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
   if (holder != nullptr) {
     tensor_impl->ShareAllocation(tensor.Holder());
   } else {
-    LOG(WARNING) << "Old Tensor holder is nullptr.";
+    VLOG(1) << "Old Tensor holder is nullptr.";
   }
   return tensor_impl;
 }
@@ -69,7 +69,7 @@ std::shared_ptr<pt::MKLDNNDenseTensor> MakeTensorImpl<pt::MKLDNNDenseTensor>(
   if (holder != nullptr) {
     tensor_impl->ShareAllocation(tensor.Holder());
   } else {
-    LOG(WARNING) << "Old MKLDNN Tensor holder is nullptr.";
+    VLOG(1) << "Old MKLDNN Tensor holder is nullptr.";
   }
 
   tensor_impl->set_format(tensor.format());

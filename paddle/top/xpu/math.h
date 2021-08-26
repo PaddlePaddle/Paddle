@@ -20,7 +20,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
 
 namespace pt {
 
