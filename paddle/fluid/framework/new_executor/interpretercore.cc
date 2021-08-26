@@ -19,8 +19,11 @@
 using ::paddle::platform::kCUDA;
 USE_EVENT(kCUDA);
 #endif
+<<<<<<< HEAD
 
 #include <unordered_set>
+=======
+>>>>>>> f147203... gc for newexecutor (#35085)
 
 #include <unordered_set>
 
@@ -569,12 +572,23 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f147203... gc for newexecutor (#35085)
   auto unused_var_map = get_unused_vars(global_block, ops);
 
   size_t ops_index = 0;
   for (auto& op : global_block.AllOps()) {
     VLOG(3) << op->Type();
     // << op->Type() << endl;
+<<<<<<< HEAD
+=======
+
+    auto op_base = ops[ops_index++];
+
+    auto inputs_names = op->Inputs();
+    auto outputs_names = op->Outputs();
+>>>>>>> f147203... gc for newexecutor (#35085)
 
     auto op_base = ops[ops_index++];
 
@@ -798,6 +812,9 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
     op_func_node.kernel_func_(exec_ctx);
     vec_func_list->push_back(op_func_node);
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f147203... gc for newexecutor (#35085)
 
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op_base);
@@ -839,6 +856,7 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
 
     delete garbages;  // free mem
 
+<<<<<<< HEAD
     VLOG(3) << "run " << op_base->Type() << " done.";
   }
 }
@@ -890,6 +908,8 @@ void InterpreterCore::WaitOrSync(const std::vector<EventInter>& events,
           event.event_->GetRawCudaEvent());
     }
 =======
+=======
+>>>>>>> f147203... gc for newexecutor (#35085)
     VLOG(3) << "run " << op_base->Type() << " done.";
 >>>>>>> 678a259... Support Multi-Stream, Single-Thread in New Executor (#35024)
   }
