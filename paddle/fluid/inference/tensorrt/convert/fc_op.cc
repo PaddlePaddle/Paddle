@@ -98,9 +98,6 @@ class FcOpConverter : public OpConverter {
     auto x_dim = X->getDimensions();
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
-    PADDLE_ENFORCE_NOT_NULL(
-        Y_v, platform::errors::NotFound(
-                 "Can not find %s presistale var of fc in scope.", w_name));
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
@@ -118,8 +115,6 @@ class FcOpConverter : public OpConverter {
     bool enable_int8 = op_desc.HasAttr("enable_int8");
     float in_scale = 0.;
     if (enable_int8) {
-#if IS_TRT_VERSION_GE(5000)
-      CHECK(op_desc.HasAttr(i_name + "_scale"));
       in_scale =
           BOOST_GET_CONST(float, op_desc.GetAttr(i_name + "_scale")) * 127;
       auto weight_scale =
@@ -127,17 +122,11 @@ class FcOpConverter : public OpConverter {
       weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
                                               Y_t, true, weight_scale);
       engine_->SetTensorDynamicRange(X, in_scale);
-#endif
     } else {
       weight_data =
           engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t, false);
     }
 
-    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL,
-                      platform::errors::InvalidArgument(
-                          "The fc's weight should be a matrix with 2 dims, but "
-                          "it's %d-dimensional.",
-                          Y_t->dims().size()));  // a matrix
     size_t n_output = Y_t->dims()[1];
     int m = Y_t->dims()[0];
     int n = Y_t->dims()[1];
@@ -154,10 +143,6 @@ class FcOpConverter : public OpConverter {
                          TensorRTEngine::Weight& bias) {
       if (enable_int8) {
         // add conv layer
-        PADDLE_ENFORCE_EQ(
-            op_desc.HasAttr("out_threshold"), true,
-            platform::errors::InvalidArgument(
-                "must have out threshold in fc layers in int8 mode"));
         float out_scale =
             BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         nvinfer1::DimsHW nv_ksize(1, 1);
