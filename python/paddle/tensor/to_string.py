@@ -113,7 +113,7 @@ def _to_summary(var):
         if var.shape[0] > 2 * edgeitems:
             begin = [x for x in var[:edgeitems]]
             end = [x for x in var[(-1 * edgeitems):]]
-            return np.stack([_to_sumary(x) for x in (begin + end)])
+            return np.stack([_to_summary(x) for x in (begin + end)])
         else:
             return np.stack([_to_summary(x) for x in var])
 
@@ -168,6 +168,7 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
         signed(bool): Print +/- or not.
     """
     edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
+    linewidth = DEFAULT_PRINT_OPTIONS.linewidth
 
     if len(var.shape) == 0:
         # currently, shape = [], i.e., scaler tensor is not supported.
@@ -175,10 +176,9 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
         return _format_item(var, max_width, signed)
     elif len(var.shape) == 1:
         item_length = max_width + 2
-        items_per_line = (
-            DEFAULT_PRINT_OPTIONS.linewidth - indent) // item_length
+        items_per_line = (linewidth - indent) // item_length
         items_per_line = max(1, items_per_line)
-        print(items_per_line)
+
         if summary and var.shape[0] > 2 * edgeitems:
             items = [
                 _format_item(item, max_width, signed)
@@ -205,13 +205,8 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
                 _format_tensor(x, summary, indent + 1, max_width, signed)
                 for x in var[:edgeitems]
             ] + ['...'] + [
-<<<<<<< HEAD
-                _format_tensor(x, sumary, indent + 1, max_width, signed)
-                for x in var[(-1 * edgeitems):]
-=======
                 _format_tensor(x, summary, indent + 1, max_width, signed)
-                for x in var[-edgeitems:]
->>>>>>> support setting linewith when printing tensor
+                for x in var[(-1 * edgeitems):]
             ]
         else:
             vars = [
