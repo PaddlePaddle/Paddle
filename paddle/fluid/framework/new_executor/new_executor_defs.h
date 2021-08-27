@@ -35,11 +35,13 @@ struct OpKernelFunc {
 
 struct VariableMetaInfo {
   int var_ref_count_;
+  paddle::framework::VarDesc* vardesc_;
 };
 
 struct VariableScope {
   std::vector<Variable*> var_list;
   std::map<std::string, int> name2id;
+  std::vector<VariableMetaInfo> vec_meta_info_;
 };
 
 struct EventRun {
