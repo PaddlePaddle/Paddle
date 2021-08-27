@@ -12,16 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device_event.h"
+#pragma once
+
+#include <functional>
+#include <memory>
 
 namespace paddle {
-namespace platform {
+namespace framework {
 
-EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];
-EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];
-EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];
-EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];
-EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
+class WorkQueue {
+ public:
+  WorkQueue() = default;
 
-}  // namespace platform
+  WorkQueue(const WorkQueue&) = delete;
+
+  WorkQueue& operator=(const WorkQueue&) = delete;
+
+  virtual ~WorkQueue() = default;
+
+  virtual void AddTask(std::function<void()> fn) = 0;
+
+  virtual void WaitQueueEmpty() = 0;
+
+  virtual size_t NumThreads() = 0;
+};
+
+std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue();
+
+std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(int num_threads);
+
+}  // namespace framework
 }  // namespace paddle
