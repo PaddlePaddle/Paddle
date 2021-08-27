@@ -27,13 +27,13 @@ class DeviceEvent;
 constexpr int MaxDeviceTypes =
     static_cast<int>(platform::DeviceType::MAX_DEVICE_TYPES);
 
-typedef void (*EventCreateFunction)(DeviceEvent*, const platform::Place&);
-typedef void (*EventRecordFunction)(DeviceEvent*, const platform::Place&,
-                                    const DeviceContext*);
+typedef void (*EventCreateFunction)(DeviceEvent*, const platform::Place&,
+                                    unsigned int flag);
+typedef void (*EventRecordFunction)(DeviceEvent*, const DeviceContext*);
 typedef bool (*EventQueryFunction)(const DeviceEvent*);
 typedef void (*EventFinishFunction)(const DeviceEvent*);
 typedef void (*EventSetFinishedFunction)(const DeviceEvent*);
-typedef void (*EventWaitFunction)(const DeviceEvent*, DeviceContext*);
+typedef void (*EventWaitFunction)(const DeviceEvent*, const DeviceContext*);
 
 inline int DeviceTypeToId(const DeviceType& device_type) {
   return static_cast<int>(device_type);
@@ -48,7 +48,9 @@ enum EventStatus {
 
 class DeviceEvent {
  public:
-  explicit DeviceEvent(const platform::Place& place) : event_(), place_(place) {
+  explicit.DeviceEvent(const platform::Place& place, unsigned int flag = 0)
+      : event_(),
+      place_(place), flag_(flag) {
     type_id_ = DeviceTypeToId(platform::Place2DeviceType(place));
     PADDLE_ENFORCE_LT(type_id_, MaxDeviceTypes,
                       platform::errors::PreconditionNotMet(
@@ -62,17 +64,17 @@ class DeviceEvent {
         event_creator_[type_id_],
         platform::errors::Unavailable(
             "event_creator_[%d] shall not be nullptr.", type_id_));
-    event_creator_[type_id_](this, place);
+    event_creator_[type_id_](this, place, flag);
   }
 
   ~DeviceEvent() {}
 
-  void Record(const platform::Place& place, const DeviceContext* dev_ctx) {
+  void Record(const DeviceContext* dev_ctx) {
     PADDLE_ENFORCE_NOT_NULL(
         event_recorder_[type_id_],
         platform::errors::Unavailable(
             "event_recorder_[%d] shall not be nullptr.", type_id_));
-    event_recorder_[type_id_](this, place, dev_ctx);
+    event_recorder_[type_id_](this, dev_ctx);
   }
 
   bool Query() {
@@ -99,7 +101,7 @@ class DeviceEvent {
     event_finished_setter_[type_id_](this);
   }
 
-  void Wait(const DeviceType& waiter_type, DeviceContext* context) const {
+  void Wait(const DeviceType& waiter_type, const DeviceContext* context) const {
     auto waiter_idx = DeviceTypeToId(waiter_type);
     PADDLE_ENFORCE_NOT_NULL(event_waiter_[waiter_idx][type_id_],
                             platform::errors::Unavailable(
@@ -116,6 +118,7 @@ class DeviceEvent {
   std::shared_ptr<void> event_;
   platform::Place place_;
   int type_id_;
+  unsigned int flag_;
 
   static EventCreateFunction event_creator_[MaxDeviceTypes];
   static EventRecordFunction event_recorder_[MaxDeviceTypes];
@@ -157,7 +160,7 @@ template <DeviceType device_type>
 struct EventCreateFunctionRegisterer : public framework::Registrar {
   explicit EventCreateFunctionRegisterer(EventCreateFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_creator with type_id :" << type_idx;
+    // VLOG(3) << "register event_creator with type_id :" << type_idx;
     DeviceEvent::event_creator_[type_idx] = func;
     // DeviceEventRegistry::Instance().GetEventFunction(type_idx).creator =
     // func;
@@ -180,7 +183,7 @@ template <DeviceType device_type>
 struct EventRecordFunctionRegisterer : public framework::Registrar {
   explicit EventRecordFunctionRegisterer(EventRecordFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_recorder with type_id :" << type_idx;
+    // VLOG(3) << "register event_recorder with type_id :" << type_idx;
     DeviceEvent::event_recorder_[type_idx] = func;
   }
 };
@@ -201,7 +204,7 @@ template <DeviceType device_type>
 struct EventQueryFunctionRegisterer : public framework::Registrar {
   explicit EventQueryFunctionRegisterer(EventQueryFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_querier with type_id :" << type_idx;
+    // VLOG(3) << "register event_querier with type_id :" << type_idx;
     DeviceEvent::event_querier_[type_idx] = func;
   }
 };
@@ -222,7 +225,7 @@ template <DeviceType device_type>
 struct EventFinishFunctionRegisterer : public framework::Registrar {
   explicit EventFinishFunctionRegisterer(EventFinishFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_finisher with type_id :" << type_idx;
+    // VLOG(3) << "register event_finisher with type_id :" << type_idx;
     DeviceEvent::event_finisher_[type_idx] = func;
   }
 };
@@ -243,7 +246,7 @@ template <DeviceType device_type>
 struct EventSetFinishedFunctionRegisterer : public framework::Registrar {
   explicit EventSetFinishedFunctionRegisterer(EventSetFinishedFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_finished_setter with type_id :" << type_idx;
+    // VLOG(3) << "register event_finished_setter with type_id :" << type_idx;
     DeviceEvent::event_finished_setter_[type_idx] = func;
   }
 };
@@ -265,8 +268,8 @@ struct EventWaitFunctionRegisterer : public framework::Registrar {
   explicit EventWaitFunctionRegisterer(EventWaitFunction func) {
     auto waiter_idx = DeviceTypeToId(waiter_type);
     auto event_idx = DeviceTypeToId(event_type);
-    VLOG(3) << "register event_finisher with waiter_idx : " << waiter_idx
-            << ", event_idx : " << event_idx;
+    // VLOG(3) << "register event_finisher with waiter_idx : " << waiter_idx
+    //         << ", event_idx : " << event_idx;
     DeviceEvent::event_waiter_[waiter_idx][event_idx] = func;
   }
 };

@@ -39,7 +39,7 @@ TEST(DeviceEvent, CUDA) {
   DeviceEvent event(place);
   ASSERT_NE(event.GetEvent().get(), nullptr);
   // case 2. test for event_recorder
-  event.Record(place, context);
+  event.Record(context);
   bool status = event.Query();
   ASSERT_EQ(status, false);
   // case 3. test for event_finisher
@@ -54,7 +54,7 @@ TEST(DeviceEvent, CUDA) {
   cudaMalloc(reinterpret_cast<void**>(&dst_fp32), size);
   cudaMemcpyAsync(dst_fp32, src_fp32, size, cudaMemcpyHostToDevice,
                   context->stream());
-  event.Record(place, context);  // step 1. record it
+  event.Record(context);  // step 1. record it
   status = event.Query();
   ASSERT_EQ(status, false);
 
@@ -80,7 +80,7 @@ TEST(DeviceEvent, CPU) {
   auto* context = pool.Get(place);
 
   // TODO(Aurelius84): All DeviceContext should has Record/Wait
-  event.Record(place, context);
+  event.Record(context);
   event.SetFininshed();
   bool status = event.Query();
   ASSERT_EQ(status, true);

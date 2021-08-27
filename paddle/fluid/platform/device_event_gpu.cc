@@ -19,8 +19,8 @@
 namespace paddle {
 namespace platform {
 struct CUDADeviceEventWrapper {
-  explicit CUDADeviceEventWrapper(const platform::Place& place)
-      : inner_event_() {
+  CUDADeviceEventWrapper(const platform::Place& place, unsigned int flag)
+      : inner_event_(flag) {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(place), true,
         platform::errors::PreconditionNotMet(
@@ -38,12 +38,12 @@ struct CUDADeviceEventWrapper {
   int device_id_;
 };
 
-void DeviceEventCreateCUDA(DeviceEvent* event, const platform::Place& place) {
-  event->InitEvent(std::make_shared<CUDADeviceEventWrapper>(place));
+void DeviceEventCreateCUDA(DeviceEvent* event, const platform::Place& place,
+                           unsigned int flag) {
+  event->InitEvent(std::make_shared<CUDADeviceEventWrapper>(place, flag));
 }
 
-void DeviceEventRecordCUDA(DeviceEvent* event, const platform::Place& place,
-                           const DeviceContext* context) {
+void DeviceEventRecordCUDA(DeviceEvent* event, const DeviceContext* context) {
   auto* wrapper = static_cast<CUDADeviceEventWrapper*>(event->GetEvent().get());
 
   auto* cuda_dev_ctx =
@@ -72,7 +72,8 @@ void DeviceEventFinishCUDA(const DeviceEvent* event) {
   wrapper->inner_event_.Synchronize();
 }
 
-void DeviceEventCUDAWaitCUDA(const DeviceEvent* event, DeviceContext* context) {
+void DeviceEventCUDAWaitCUDA(const DeviceEvent* event,
+                             const DeviceContext* context) {
   auto* wrapper = static_cast<CUDADeviceEventWrapper*>(event->GetEvent().get());
   auto* cuda_dev_ctx =
       dynamic_cast<const platform::CUDADeviceContext*>(context);
@@ -85,7 +86,8 @@ void DeviceEventCUDAWaitCUDA(const DeviceEvent* event, DeviceContext* context) {
       wrapper->inner_event_.GetRawCudaEvent());
 }
 
-void DeviceEventCPUWaitCUDA(const DeviceEvent* event, DeviceContext* context) {
+void DeviceEventCPUWaitCUDA(const DeviceEvent* event,
+                            const DeviceContext* context) {
   DeviceEventFinishCUDA(event);
 }
 

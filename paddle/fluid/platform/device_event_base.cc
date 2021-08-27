@@ -25,12 +25,12 @@ EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];
 EventFinishFunction DeviceEvent::event_finished_setter_[MaxDeviceTypes];
 EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
 
-void DeviceEventCreateCPU(DeviceEvent* event, const platform::Place& place) {
-  event->InitEvent(std::make_shared<CPUDeviceEventWrapper>(place));
+void DeviceEventCreateCPU(DeviceEvent* event, const platform::Place& place,
+                          unsigned int flag) {
+  event->InitEvent(std::make_shared<CPUDeviceEventWrapper>(place, flag));
 }
 
-void DeviceEventRecordCPU(DeviceEvent* event, const platform::Place& place,
-                          const DeviceContext* context) {
+void DeviceEventRecordCPU(DeviceEvent* event, const DeviceContext* context) {
   auto* wrapper = static_cast<CPUDeviceEventWrapper*>(event->GetEvent().get());
 
   std::unique_lock<std::mutex> lock(wrapper->mutex_);
@@ -61,7 +61,8 @@ void DeviceEventFinishCPU(const DeviceEvent* event) {
   }
 }
 
-void DeviceEventCPUWaitCPU(const DeviceEvent* event, DeviceContext* context) {
+void DeviceEventCPUWaitCPU(const DeviceEvent* event,
+                           const DeviceContext* context) {
   DeviceEventFinishCPU(event);
 }
 

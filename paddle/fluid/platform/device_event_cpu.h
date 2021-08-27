@@ -22,7 +22,8 @@ namespace paddle {
 namespace platform {
 
 struct CPUDeviceEventWrapper {
-  explicit CPUDeviceEventWrapper(const platform::Place& place) {
+  explicit CPUDeviceEventWrapper(const platform::Place& place,
+                                 unsigned int flag = 0) {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(place), true,
         platform::errors::PreconditionNotMet(
