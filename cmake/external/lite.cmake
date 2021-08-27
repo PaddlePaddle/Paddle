@@ -35,6 +35,14 @@ if (LITE_WITH_XPU)
   ENDIF()
 endif()
 
+if (LITE_WITH_NNADAPTER)
+  add_definitions(-DLITE_SUBGRAPH_WITH_NNADAPTER) 
+  if (NNADAPTER_WITH_NPU)
+    add_definitions(-DLITE_SUBGRAPH_WITH_NPU)
+    set(NPU_SDK_ROOT "/usr/local/Ascend/ascend-toolkit/latest" CACHE STRING "default NPU SDK ROOT")
+  endif()
+endif()
+
 if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
@@ -67,6 +75,9 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
                            -DXPU_SDK_URL=${XPU_BASE_URL}
                            -DXPU_SDK_ENV=${XPU_SDK_ENV}
+                           -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
+                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_NPU}
+                           -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
                            -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=ON)
     ExternalProject_Add(
@@ -77,6 +88,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       PREFIX              ${LITE_SOURCES_DIR}
       PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_SOURCES_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_SOURCES_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake
       UPDATE_COMMAND      ""
+      BUILD_ALWAYS         1
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND     ""
       CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -110,6 +122,9 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
                            -DXPU_SDK_URL=${XPU_BASE_URL}
                            -DXPU_SDK_ENV=${XPU_SDK_ENV}
+                           -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
+                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_NPU}
+                           -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
                            -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=OFF)
 
@@ -146,6 +161,11 @@ endif()
 if (WITH_ARM)
   if(LITE_WITH_XPU)
     set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.xpu)
+  elseif(LITE_WITH_NNADAPTER)
+    message("Enable LITE_WITH_NNADAPTER")
+    if (NNADAPTER_WITH_NPU)
+      set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.nnadapter)
+    endif()
   else()
     set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8)
   endif()
@@ -173,6 +193,18 @@ endfunction()
 
 external_lite_libs(lite_full_static ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so)
 set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so)
+
+if (LITE_WITH_NNADAPTER)
+  if (NNADAPTER_WITH_NPU)
+    external_lite_libs(lite_nnadapter ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter_driver_huawei_ascend_npu.so)
+    set(LITE_DEPS lite_full_static lite_nnadapter)
+    set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so 
+      ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so
+      ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter_driver_huawei_ascend_npu.so)
+  endif()
+else()
+  set(LITE_DEPS lite_full_static)
+endif()
 
 add_definitions(-DPADDLE_WITH_LITE)
 add_definitions(-DLITE_WITH_LOG)
