@@ -25,7 +25,6 @@
 #endif
 
 #include "paddle/fluid/inference/lite/engine.h"
-#include <iostream>
 #include <utility>
 
 namespace paddle {

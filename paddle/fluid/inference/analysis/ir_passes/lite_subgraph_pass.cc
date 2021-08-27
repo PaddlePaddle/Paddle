@@ -250,7 +250,7 @@ void LiteSubgraphPass::SetUpEngine(
   std::string autotune_file = Get<std::string>("autotune_file");
   std::string precision = Get<std::string>("precision");
   bool adaptive_seqlen = Get<bool>("adaptive_seqlen");
-  // NPU Related
+  // NNAdapter Related
   bool use_nnadapter = Get<bool>("use_nnadapter");
   std::string model_cache_dir = Get<std::string>("model_cache_dir");
   auto device_names = Get<std::vector<std::string>>("device_names");
@@ -307,7 +307,7 @@ void LiteSubgraphPass::SetUpEngine(
   config.autotune_file = autotune_file;
   config.precision = precision;
   config.adaptive_seqlen = adaptive_seqlen;
-  // NPU Related
+  // NNAdapter Related
   config.nnadapter_model_cache_dir = model_cache_dir;
   config.nnadapter_device_names = device_names;
   config.nnadapter_context_properties = context_properties;
