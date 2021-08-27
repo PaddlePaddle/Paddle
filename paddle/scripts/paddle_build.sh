@@ -733,7 +733,7 @@ function check_whl_size() {
     echo "dev_whl_size: ${dev_whl_size}"
 
     whldiffSize=`expr ${pr_whl_size} - ${dev_whl_size}`
-    if [ ${whldiffSize} -gt 10 ] ; then
+    if [ ${whldiffSize} -gt 10 ]; then
        set +x
        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
        set -x
@@ -747,6 +747,7 @@ function check_whl_size() {
            exit 6
        fi
     fi
+    echo 11111,$?
     set -x
 }
 
