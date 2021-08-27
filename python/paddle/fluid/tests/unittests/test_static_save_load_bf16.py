@@ -22,6 +22,7 @@ import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.tests.unittests.test_imperative_base import new_program_scope
 from paddle.fluid.tests.unittests.test_static_save_load import PtbModel
+from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
 import numpy as np
 
 
@@ -75,6 +76,7 @@ class TestSaveLoadBF16(unittest.TestCase):
 
             sgd.minimize(static_loss, framework.default_startup_program())
             out = exe.run(framework.default_startup_program())
+            #sgd.amp_init(place)
 
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
@@ -85,6 +87,10 @@ class TestSaveLoadBF16(unittest.TestCase):
                     (num_layers, batch_size, hidden_size), dtype='float32')
                 init_cell_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
+
+                #init_hidden_data = convert_float_to_uint16(init_hidden_data)
+                #init_cell_data = convert_float_to_uint16(init_cell_data)
+
                 fetch_list = [static_loss, static_last_hidden, static_last_cell]
                 out = exe.run(fluid.default_main_program(),
                               feed={
