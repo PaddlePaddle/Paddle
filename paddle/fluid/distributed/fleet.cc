@@ -235,7 +235,7 @@ void FleetWrapper::PullSparseVarsSync(
         pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size(),
         training);
     pull_sparse_status.clear();
-    t pull_sparse_status.push_back(std::move(status));
+    pull_sparse_status.push_back(std::move(status));
     bool flag = true;
     for (auto& t : pull_sparse_status) {
       t.wait();
