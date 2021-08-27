@@ -110,7 +110,8 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
             {framework::proto::VarType::BOOL, framework::proto::VarType::INT32,
              framework::proto::VarType::INT64, framework::proto::VarType::FP32,
              framework::proto::VarType::FP64})
-        .SetDefault(framework::proto::VarType::FP32);
+        .SetDefault(framework::proto::VarType::FP32)
+        .AsExtra();
     AddAttr<std::vector<int64_t>>(
         "axes", "(list<int64_t>) Axes that `starts` and `ends` apply to.");
     AddAttr<std::vector<int64_t>>(
@@ -131,15 +132,20 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
 
     AddAttr<std::vector<int>>("bool_values", "Store the bool values.")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<float>>("fp32_values", "Store the float32 values.")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>("int32_values", "Store the int32 values.")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int64_t>>("int64_values", "Store the int64 values.")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<double>>("fp64_values", "Store the float64 values.")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
 
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
         .SetDefault({});
