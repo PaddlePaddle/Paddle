@@ -24,8 +24,6 @@ from op_test_xpu import XPUOpTest
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestLabelSmoothOp(XPUOpTest):
     def config(self):
         self.op_type = "label_smooth"
@@ -45,14 +43,14 @@ class TestLabelSmoothOp(XPUOpTest):
         self.outputs = {'Out': smoothed_label}
 
     def test_check_output(self):
+        if not paddle.is_compiled_with_xpu():
+            return
         self.check_output_with_place(paddle.XPUPlace(0), atol=1e-6)
 
     def test_check_grad(self):
         return
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestLabelSmoothOp3D(TestLabelSmoothOp):
     def setUp(self):
         super(TestLabelSmoothOp3D, self).setUp()
