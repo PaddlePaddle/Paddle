@@ -36,7 +36,7 @@ struct float16;
 namespace paddle {
 namespace operators {
 
-static void DataCopy(const framework::LoDTensor &src_item,
+static void DeepCopy(const framework::LoDTensor &src_item,
                      const std::string &fetch_var_name,
                      framework::LoDTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
@@ -132,7 +132,7 @@ class FetchV2Kernel {
                         platform::errors::InvalidArgument(
                             "Tensor's place of input(X) must be CPUPlace."));
       if (deepcopy) {
-        DataCopy(src_item, fetch_var_name, dst_item);
+        DeepCopy(src_item, fetch_var_name, dst_item);
       } else {
         dst_item->ShareDataWith(src_item);
       }
@@ -147,7 +147,7 @@ class FetchV2Kernel {
                           platform::errors::InvalidArgument(
                               "Tensor's place of input(X) must be CPUPlace."));
         if (deepcopy) {
-          DataCopy(src_item[i], fetch_var_name, &dst_item[i]);
+          DeepCopy(src_item[i], fetch_var_name, &dst_item[i]);
         } else {
           dst_item[i].ShareDataWith(src_item[i]);
         }
