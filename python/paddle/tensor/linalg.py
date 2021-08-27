@@ -947,7 +947,7 @@ def matrix_power(x, n, name=None):
     r"""
     Computes the n-th power of a square matrix or a batch of square matrices.
 
-    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
+    Let :math: `X` be a sqaure matrix or a batch of square matrices, :math:`n` be
     an exponent, the equation should be:
 
     .. math::
@@ -1015,18 +1015,14 @@ def matrix_power(x, n, name=None):
 
 def solve(x, y, name=None):
     """
-    To computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
-    `solve` follows the complete broadcast rules,
-    and its behavior is consistent with `torch.linalg.solve`.
-    
-    The equation is:
+    Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
+
+    Let :math: `X` be a sqaure matrix or a batch of square matrices, 
+    this system of linear equations has one solution if and only if input 'X' is invertible. 
+
+    the equation should be:
     $$Out = X^-1 * Y$$
     
-    This system of linear equations has one solution if and only if input 'X' is invertible. 
-    This function assumes that 'X' is invertible.
-
-    The input tensor X's dimensions should be larger than 1 and the inner-most 2 dimensions all should be square matrices.
-
     Also see comments of `matmul_v2` for more details about * operation.
 
     Args:
