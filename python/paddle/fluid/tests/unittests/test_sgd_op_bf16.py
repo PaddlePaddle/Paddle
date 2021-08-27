@@ -213,6 +213,10 @@ class TestSparseGradParamSGDOpBF16Case2(TestSparseGradParamSGDOpBF16):
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestSGDOpBF16API(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        np.random.seed(12345)
+
     def setUp(self):
         self.sample_count = 20
         self.value = np.random.random()
@@ -222,7 +226,6 @@ class TestSGDOpBF16API(unittest.TestCase):
         self.y_shape = (32, 16)
         self.learning_rate = 0.1
 
-        np.random.seed(12345)
         self._set_initializer()
         fluid.set_flags({'FLAGS_use_mkldnn': True})
 
