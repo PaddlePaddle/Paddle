@@ -186,7 +186,7 @@ function cmake_base() {
     fi
 
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
-    gloo_flag=${distibuted_flag}
+    gloo_flag=ON
 
     if [ "$CMD" != "assert_file_approvals" ];then
       python -m pip install distro
