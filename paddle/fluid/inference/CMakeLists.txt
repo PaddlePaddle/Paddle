@@ -35,6 +35,7 @@ endif()
 
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
+get_property(top_modules GLOBAL PROPERTY TOP_MODULES)
 
 # Adapt to custom op mechanism: Include the header files related to the data type
 # to avoid exposing the path of the underlying file
@@ -50,9 +51,9 @@ set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
         analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
 #TODO(wilber, T8T9): Do we still need to support windows gpu static library?
 if(WIN32 AND WITH_GPU)
-  cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API})
+  cc_library(paddle_inference DEPS ${fluid_modules} ${top_modules} ${STATIC_INFERENCE_API})
 else()
-  create_static_lib(paddle_inference ${fluid_modules} ${STATIC_INFERENCE_API})
+  create_static_lib(paddle_inference ${fluid_modules} ${top_modules} ${STATIC_INFERENCE_API})
 endif()
 
 if(NOT APPLE)
@@ -82,7 +83,7 @@ set(SHARED_INFERENCE_SRCS
     ${PADDLE_CUSTOM_OP_SRCS})
 
 # shared inference library deps
-set(SHARED_INFERENCE_DEPS ${fluid_modules} analysis_predictor top)
+set(SHARED_INFERENCE_DEPS ${fluid_modules} ${top_modules} analysis_predictor)
 
 if (WITH_CRYPTO) 
     set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
