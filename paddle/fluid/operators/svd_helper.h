@@ -240,8 +240,6 @@ struct DeviceIndependenceTensorOperations {
   }
   // transpose the last two dimision
   framework::Tensor transpose(const framework::Tensor& x) {
-    // PADDLE_ENFORCE_EQ(0, 1, "The Function Still have bugs, use
-    // matmul(transpose=True)") ;
     framework::Tensor out;
     auto x_dim = x.dims();
     auto x_vec = framework::vectorize<int>(x_dim);
@@ -270,13 +268,15 @@ struct DeviceIndependenceTensorOperations {
     Shape out_shape;
     if (x_rank == 2) {
       PADDLE_ENFORCE_EQ(x.dims()[0], x.dims()[1],
-                        "if X is a Matrix, then X must be square");
+                        platform::errors::InvalidArgument(
+                            "if X is a Matrix, then X must be square"));
       out_shape.push_back(x.dims()[0]);
     } else if (x_rank == 1) {
       out_shape.push_back(x.dims()[0]);
       out_shape.push_back(x.dims()[0]);
     } else {
-      PADDLE_ENFORCE_EQ(0, 1, "Rank must less or equal than 2");
+      PADDLE_ENFORCE_EQ(0, 1, platform::errors::InvalidArgument(
+                                  "Rank must less or equal than 2"));
     }
     return _CreateOpRunAndReturnTensor("diag_v2", inputs, attrs, out_shape);
   }
@@ -362,17 +362,21 @@ struct DeviceIndependenceTensorOperations {
     NameInTensorMap inputs({{"Input", {&x}}});
     Shape out_shape = framework::vectorize<int>(x.dims());
     int rank = out_shape.size();
-    PADDLE_ENFORCE_EQ(axes.size(), starts.size(),
-                      "Slice Operator Argument Invalided");
-    PADDLE_ENFORCE_EQ(ends.size(), starts.size(),
-                      "Slice Operator Argument Invalided");
+    PADDLE_ENFORCE_EQ(
+        axes.size(), starts.size(),
+        platform::errors::InvalidArgument("Slice Operator Argument Invalided"));
+    PADDLE_ENFORCE_EQ(
+        ends.size(), starts.size(),
+        platform::errors::InvalidArgument("Slice Operator Argument Invalided"));
     for (unsigned int i = 0; i < axes.size(); ++i) {
       int axis = axes[i];
       if (axis < 0) axis = rank + axis;
       new_axes[i] = axis;  // change negative to positive
       int st = starts[i];
       int ed = ends[i];
-      PADDLE_ENFORCE_GT(ed, st, "C++ Slice Operation Not Support End < Start");
+      PADDLE_ENFORCE_GT(ed, st,
+                        platform::errors::InvalidArgument(
+                            "C++ Slice Operation Not Support End < Start"));
       out_shape[axis] = ed - st;
     }
     framework::AttributeMap attrs;

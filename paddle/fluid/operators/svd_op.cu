@@ -64,8 +64,9 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_count);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
-    GesvdjBatched(dev_ctx, batch_count, n, m, std::min(m, n), x_tmp.data<T>(),
-                  vh_data, u_data, s_data, info_ptr, full_matrices);
+    GesvdjBatched(dev_ctx, batch_count, n, m, std::min(m, n),
+                  x_tmp.mutable_data<T>(context.GetPlace()), vh_data, u_data,
+                  s_data, info_ptr, full_matrices);
 
     framework::DDim UT_dim = U->dims();
     std::swap(UT_dim[rank - 1], UT_dim[rank - 2]);  // Get the dim of UT_dim
@@ -77,20 +78,19 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     U->ShareDataWith(tmp_U);  // U becomse UT, aka VT
   }
   void GesvdjBatched(const platform::CUDADeviceContext& dev_ctx, int batchSize,
-                     int m, int n, int k, const T* A, T* U, T* V, T* S,
-                     int* info, int thin_UV = 1) const;
+                     int m, int n, int k, T* A, T* U, T* V, T* S, int* info,
+                     int thin_UV = 1) const;
 };
 
 template <>
 void SvdGPUKernel<float>::GesvdjBatched(
     const platform::CUDADeviceContext& dev_ctx, int batchSize, int m, int n,
-    int k, const float* cA, float* U, float* V, float* S, int* info,
+    int k, float* A, float* U, float* V, float* S, int* info,
     int thin_UV) const {
   /* compute singular vectors */
   const cusolverEigMode_t jobz =
       CUSOLVER_EIG_MODE_VECTOR; /* compute singular vectors */
   gesvdjInfo_t gesvdj_params = NULL;
-  float* A = const_cast<float*>(cA);
   int lda = m;
   int ldu = m;
   int ldt = n;
@@ -128,13 +128,12 @@ void SvdGPUKernel<float>::GesvdjBatched(
 template <>
 void SvdGPUKernel<double>::GesvdjBatched(
     const platform::CUDADeviceContext& dev_ctx, int batchSize, int m, int n,
-    int k, const double* cA, double* U, double* V, double* S, int* info,
+    int k, double* A, double* U, double* V, double* S, int* info,
     int thin_UV) const {
   /* compute singular vectors */
   const cusolverEigMode_t jobz =
       CUSOLVER_EIG_MODE_VECTOR; /* compute singular vectors */
   gesvdjInfo_t gesvdj_params = NULL;
-  double* A = const_cast<double*>(cA);
   int lda = m;
   int ldu = m;
   int ldt = n;
