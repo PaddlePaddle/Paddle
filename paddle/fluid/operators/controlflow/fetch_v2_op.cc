@@ -38,8 +38,7 @@ namespace operators {
 
 static void DataCopy(const framework::LoDTensor &src_item,
                      const std::string &fetch_var_name,
-                     framework::LoDTensor *dst_item,
-                     const platform::DeviceContext &dev_ctx) {
+                     framework::LoDTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
@@ -53,26 +52,13 @@ static void DataCopy(const framework::LoDTensor &src_item,
                                  : paddle::platform::MKLDNNDeviceContext::tls()
                                        .get_cur_paddle_data_layout(),
           src_item, &out, platform::CPUPlace());
-      TensorCopy(src_item, platform::CPUPlace(), dev_ctx, dst_item);
+      TensorCopySync(out, platform::CPUPlace(), dst_item);
     } else {
-      if (platform::is_gpu_place(src_item.place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        TensorCopy(src_item, platform::CUDAPinnedPlace(), dev_ctx, dst_item);
-#endif
-      } else {
-        TensorCopy(src_item, platform::CPUPlace(), dst_item);
-      }
+      TensorCopySync(src_item, platform::CPUPlace(), dst_item);
     }
 #else
-    if (platform::is_gpu_place(src_item.place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      TensorCopy(src_item, platform::CUDAPinnedPlace(), dev_ctx, dst_item);
+    TensorCopySync(src_item, platform::CPUPlace(), dst_item);
 #endif
-    } else {
-      TensorCopy(src_item, platform::CPUPlace(), dst_item);
-    }
-#endif
-
   } else {
     // Not copy, if the src tensor is empty.
     dst_item->clear();
@@ -92,15 +78,14 @@ class FetchV2Op : public framework::OperatorWithKernel {
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+                                   tensor.place(), tensor.layout());
   }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+        platform::CPUPlace());
   }
 };
 
@@ -119,12 +104,10 @@ class FetchV2Kernel {
     if (fetch_var == nullptr) {
       return;
     }
-    PADDLE_ENFORCE_EQ(ctx.HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of memcpy_d2h_op is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx.HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of fetch_v2_op is not found."));
     auto *out_var = ctx.OutputVar("Out");
-    // Get dev_ctx from ExecutionContext, it's D2H stream
-    auto &dev_ctx = ctx.device_context();
 
     int col = ctx.Attr<int>("col");
     PADDLE_ENFORCE_GE(
@@ -140,10 +123,19 @@ class FetchV2Kernel {
       fetch_list->resize(col + 1);
     }
 
+    bool deepcopy = ctx.Attr<bool>("deepcopy");
+
     if (fetch_var->IsType<framework::LoDTensor>()) {
       auto &src_item = fetch_var->Get<framework::LoDTensor>();
       auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
-      DataCopy(src_item, fetch_var_name, dst_item, dev_ctx);
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item.place()), true,
+                        platform::errors::InvalidArgument(
+                            "Tensor's place of input(X) must be CPUPlace."));
+      if (deepcopy) {
+        DataCopy(src_item, fetch_var_name, dst_item);
+      } else {
+        dst_item->ShareDataWith(src_item);
+      }
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       framework::LoDTensorArray tmp(src_item.size());
@@ -151,7 +143,14 @@ class FetchV2Kernel {
       auto &dst_item =
           BOOST_GET(framework::LoDTensorArray, fetch_list->at(col));
       for (size_t i = 0; i < src_item.size(); ++i) {
-        DataCopy(src_item[i], fetch_var_name, &dst_item[i], dev_ctx);
+        PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item[i].place()), true,
+                          platform::errors::InvalidArgument(
+                              "Tensor's place of input(X) must be CPUPlace."));
+        if (deepcopy) {
+          DataCopy(src_item[i], fetch_var_name, &dst_item[i]);
+        } else {
+          dst_item[i].ShareDataWith(src_item[i]);
+        }
       }
     }
   }
@@ -167,6 +166,8 @@ class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
               "(vector<LoDTensor>) A fetching list of LoDTensor which may have "
               "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
+    AddAttr<bool>("deepcopy", "(bool) Whether deep copy is required.")
+        .SetDefault(true);
     AddComment(R"DOC(
 FetchV2 Operator.
 
@@ -192,19 +193,3 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
                                int64_t, ops::FetchV2Kernel, bool,
                                ops::FetchV2Kernel, plat::float16,
                                ops::FetchV2Kernel);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
-                                ops::FetchV2Kernel, int, ops::FetchV2Kernel,
-                                int64_t, ops::FetchV2Kernel, bool,
-                                ops::FetchV2Kernel, plat::float16,
-                                ops::FetchV2Kernel);
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
-                               ops::FetchV2Kernel, int, ops::FetchV2Kernel,
-                               int64_t, ops::FetchV2Kernel, bool,
-                               ops::FetchV2Kernel, plat::float16,
-                               ops::FetchV2Kernel);
-#endif

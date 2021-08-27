@@ -95,8 +95,6 @@ class InterpreterCore {
 
   std::vector<std::string> feed_names_;
   std::map<size_t, std::shared_ptr<platform::CudaEvent>> var_id2event_;
-
-  platform::DeviceContextPool fetch_context_pool_;
 };
 }  // namespace framework
 }  // namespace paddle
