@@ -26,10 +26,9 @@ from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
-
 # Correct: General.
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+
+
 class TestSqueezeOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -58,8 +57,8 @@ class TestSqueezeOp(OpTest):
 
 
 # Correct: There is mins axis.
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+
+
 class TestSqueezeOp1(TestSqueezeOp):
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)
@@ -68,8 +67,8 @@ class TestSqueezeOp1(TestSqueezeOp):
 
 
 # Correct: No axes input.
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+
+
 class TestSqueezeOp2(TestSqueezeOp):
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
@@ -78,8 +77,8 @@ class TestSqueezeOp2(TestSqueezeOp):
 
 
 # Correct: Just part of axes be squeezed. 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+
+
 class TestSqueezeOp3(TestSqueezeOp):
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)
@@ -88,8 +87,8 @@ class TestSqueezeOp3(TestSqueezeOp):
 
 
 # Correct: The demension of axis is not of size 1 remains unchanged.
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+
+
 class TestSqueezeOp4(TestSqueezeOp):
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)

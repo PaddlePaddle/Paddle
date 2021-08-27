@@ -694,6 +694,45 @@ class TestInferShape(unittest.TestCase):
         out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
         self.assertEqual(out0.shape, (3, 3, 5))
 
+    def test_axis_less_than_zero(self):
+
+        # Using paddle.disable_static will make other unittests fail.
+        with fluid.dygraph.guard():
+            x_arr = np.arange(0, 24, dtype=np.float32).reshape([2, 3, 4])
+            x = paddle.to_tensor(x_arr)
+
+            pp_slice = paddle.slice(x, [100, ], [0], [1])
+            np_slice = x_arr[:, :, 0:1]
+            self.assertTrue(np.array_equal(pp_slice, np_slice))
+
+            pp_slice = paddle.slice(x, [-100, ], [0], [1])
+            np_slice = x_arr[0:1]
+            self.assertTrue(np.array_equal(pp_slice, np_slice))
+
+            x_arr = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(x_arr, (0, 0, 0)))
+
+            starts = paddle.to_tensor(
+                np.reshape(
+                    np.array(
+                        [], dtype=np.int32), (0, )))
+            ends = paddle.to_tensor(
+                np.reshape(
+                    np.array(
+                        [], dtype=np.int32), (0, )))
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, [-1000000], starts, ends)
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, [1000000], starts, ends)
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, [], starts, ends)
+
+            with self.assertRaises(ValueError):
+                paddle.slice(x, 0, starts, ends)
+
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")

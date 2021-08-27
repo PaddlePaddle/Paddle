@@ -24,10 +24,10 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-int LayerNormPlugin::initialize() { return 0; }
+int LayerNormPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims *inputDims, int nbInputs) {
+    int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
   assert(nbInputs == 1);
   assert(index < this->getNbOutputs());
   nvinfer1::Dims const &input_dims = inputDims[0];
@@ -41,10 +41,10 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
 #else
                              void *const *outputs, void *workspace,
 #endif
-                             cudaStream_t stream) {
+                             cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);
-  float *output = reinterpret_cast<float **>(outputs)[0];
+  float *output = reinterpret_cast<float *const *>(outputs)[0];
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
 
@@ -91,13 +91,13 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
 
 nvinfer1::DimsExprs LayerNormPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputDims, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   return inputDims[0];
 }
 
 bool LayerNormPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of layernorm plugin shoule not be nullptr."));
@@ -118,7 +118,8 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType LayerNormPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index, 0,
                     platform::errors::InvalidArgument(
                         "The LayerNormPlugin only has one input, so the "
@@ -130,7 +131,7 @@ nvinfer1::DataType LayerNormPluginDynamic::getOutputDataType(
 int LayerNormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) {
+    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = input_desc[0].dims;
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;

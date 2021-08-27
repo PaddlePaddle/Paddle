@@ -60,8 +60,8 @@ size_t PluginTensorRT::getBaseSerializationSize() const {
   return SeriaSize(input_dims_, data_type_, data_format_, with_fp16_);
 }
 
-bool PluginTensorRT::supportsFormat(nvinfer1::DataType type,
-                                    nvinfer1::PluginFormat format) const {
+bool PluginTensorRT::supportsFormat(
+    nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
   return ((type == nvinfer1::DataType::kFLOAT) &&
           (format == nvinfer1::PluginFormat::kLINEAR));
 }
@@ -69,7 +69,7 @@ bool PluginTensorRT::supportsFormat(nvinfer1::DataType type,
 void PluginTensorRT::configureWithFormat(
     const nvinfer1::Dims* input_dims, int num_inputs,
     const nvinfer1::Dims* output_dims, int num_outputs, nvinfer1::DataType type,
-    nvinfer1::PluginFormat format, int max_batch_size) {
+    nvinfer1::PluginFormat format, int max_batch_size) TRT_NOEXCEPT {
   data_type_ = type;
   data_format_ = format;
   input_dims_.assign(input_dims, input_dims + num_inputs);
@@ -95,26 +95,28 @@ void PluginTensorRTV2Ext::configurePlugin(
     const nvinfer1::DataType* input_types,
     const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
     const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
-    int32_t max_batch_size) {
+    int32_t max_batch_size) TRT_NOEXCEPT {
   input_dims_.assign(input_dims, input_dims + nb_inputs);
   data_format_ = float_format;
   data_type_ = input_types[0];
 }
 
-const nvinfer1::PluginFieldCollection* TensorRTPluginCreator::getFieldNames() {
+const nvinfer1::PluginFieldCollection* TensorRTPluginCreator::getFieldNames()
+    TRT_NOEXCEPT {
   return &field_collection_;
 }
 
 nvinfer1::IPluginV2* TensorRTPluginCreator::createPlugin(
-    const char* name, const nvinfer1::PluginFieldCollection* fc) {
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT {
   return nullptr;
 }
 
-void TensorRTPluginCreator::setPluginNamespace(const char* lib_namespace) {
+void TensorRTPluginCreator::setPluginNamespace(const char* lib_namespace)
+    TRT_NOEXCEPT {
   plugin_namespace_ = lib_namespace;
 }
 
-const char* TensorRTPluginCreator::getPluginNamespace() const {
+const char* TensorRTPluginCreator::getPluginNamespace() const TRT_NOEXCEPT {
   return plugin_namespace_.c_str();
 }
 

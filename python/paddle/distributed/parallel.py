@@ -193,6 +193,12 @@ def init_parallel_env():
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place))
+
+    other_endpoints = strategy.trainer_endpoints[:]
+    other_endpoints.remove(strategy.current_endpoint)
+    if strategy.local_rank == 0:
+        wait_server_ready(other_endpoints)
+
     parallel_helper._init_parallel_ctx()
 
     # 5: init gloo context (step 2: gloo init)

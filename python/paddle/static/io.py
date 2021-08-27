@@ -510,7 +510,7 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
     program = _get_valid_program(kwargs.get('program', None))
     program = normalize_program(program, feed_vars, fetch_vars)
     # serialize and save program
-    program_bytes = _serialize_program(program)
+    program_bytes = _serialize_program(program._remove_training_info())
     save_to_file(model_path, program_bytes)
     # serialize and save params
     params_bytes = _serialize_persistables(program, executor)
@@ -757,7 +757,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
                 "params_filename cannot be None when path_prefix is None.")
         load_dirname = ''
         program_bytes = model_filename
-        params_filename = params_filename
+        params_bytes = params_filename
     # load from file
     else:
         # check and norm path_prefix
@@ -795,12 +795,12 @@ def load_inference_model(path_prefix, executor, **kwargs):
         program_bytes = load_from_file(model_path)
         load_dirname = os.path.dirname(params_path)
         params_filename = os.path.basename(params_path)
+        # load params data
+        params_path = os.path.join(load_dirname, params_filename)
+        params_bytes = load_from_file(params_path)
 
     # deserialize bytes to program
     program = deserialize_program(program_bytes)
-    # load params data
-    params_path = os.path.join(load_dirname, params_filename)
-    params_bytes = load_from_file(params_path)
     # deserialize bytes to params
     deserialize_persistables(program, params_bytes, executor)
 

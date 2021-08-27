@@ -28,15 +28,15 @@ def softmax_mask_fuse_upper_triangle(x):
     :return: the result of softmax mask fuse (upper triangle)
     """
     if in_dygraph_mode():
-        out = core.ops.softmax_mask_fuse_upper_triangle(x)
+        out = core.ops.fused_softmax_mask_upper_triangle(x)
         return out
 
-    helper = LayerHelper('softmax_mask_fuse_upper_triangle', **locals())
+    helper = LayerHelper('fused_softmax_mask_upper_triangle', **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
-        type='softmax_mask_fuse_upper_triangle',
+        type='fused_softmax_mask_upper_triangle',
         inputs={'X': [x]},
         outputs={'Out': [out]})
     return out

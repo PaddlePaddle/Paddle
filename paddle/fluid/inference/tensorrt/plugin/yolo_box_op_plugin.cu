@@ -70,15 +70,16 @@ YoloBoxPlugin::~YoloBoxPlugin() {
   }
 }
 
-const char* YoloBoxPlugin::getPluginType() const { return "yolo_box_plugin"; }
+const char* YoloBoxPlugin::getPluginType() const TRT_NOEXCEPT {
+  return "yolo_box_plugin";
+}
 
-const char* YoloBoxPlugin::getPluginVersion() const { return "1"; }
+const char* YoloBoxPlugin::getPluginVersion() const TRT_NOEXCEPT { return "1"; }
 
-int YoloBoxPlugin::getNbOutputs() const { return 2; }
+int YoloBoxPlugin::getNbOutputs() const TRT_NOEXCEPT { return 2; }
 
-nvinfer1::Dims YoloBoxPlugin::getOutputDimensions(int index,
-                                                  const nvinfer1::Dims* inputs,
-                                                  int nb_input_dims) {
+nvinfer1::Dims YoloBoxPlugin::getOutputDimensions(
+    int index, const nvinfer1::Dims* inputs, int nb_input_dims) TRT_NOEXCEPT {
   const int anchor_num = anchors_.size() / 2;
   const int box_num = inputs[0].d[1] * inputs[0].d[2] * anchor_num;
 
@@ -90,13 +91,15 @@ nvinfer1::Dims YoloBoxPlugin::getOutputDimensions(int index,
   return nvinfer1::Dims2(box_num, class_num_);
 }
 
-bool YoloBoxPlugin::supportsFormat(nvinfer1::DataType type,
-                                   nvinfer1::TensorFormat format) const {
+bool YoloBoxPlugin::supportsFormat(
+    nvinfer1::DataType type, nvinfer1::TensorFormat format) const TRT_NOEXCEPT {
   return ((type == data_type_ || type == nvinfer1::DataType::kINT32) &&
           format == nvinfer1::TensorFormat::kLINEAR);
 }
 
-size_t YoloBoxPlugin::getWorkspaceSize(int max_batch_size) const { return 0; }
+size_t YoloBoxPlugin::getWorkspaceSize(int max_batch_size) const TRT_NOEXCEPT {
+  return 0;
+}
 
 template <typename T>
 __device__ inline T sigmoid(T x) {
@@ -219,7 +222,7 @@ __global__ void KeYoloBoxFw(const T* const input, const int* const imgsize,
 
 template <typename T>
 int YoloBoxPlugin::enqueue_impl(int batch_size, const void* const* inputs,
-                                void** outputs, void* workspace,
+                                void* const* outputs, void* workspace,
                                 cudaStream_t stream) {
   const int n = batch_size;
   const int h = input_h_;
@@ -247,7 +250,7 @@ int YoloBoxPlugin::enqueue(int batch_size, const void* const* inputs,
 #else
                            void* const* outputs, void* workspace,
 #endif
-                           cudaStream_t stream) {
+                           cudaStream_t stream) TRT_NOEXCEPT {
   if (data_type_ == nvinfer1::DataType::kFLOAT) {
     return enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
   } else if (data_type_ == nvinfer1::DataType::kHALF) {
@@ -256,11 +259,11 @@ int YoloBoxPlugin::enqueue(int batch_size, const void* const* inputs,
   assert("unsupported type.");
 }
 
-int YoloBoxPlugin::initialize() { return 0; }
+int YoloBoxPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
-void YoloBoxPlugin::terminate() {}
+void YoloBoxPlugin::terminate() TRT_NOEXCEPT {}
 
-size_t YoloBoxPlugin::getSerializationSize() const {
+size_t YoloBoxPlugin::getSerializationSize() const TRT_NOEXCEPT {
   size_t serialize_size = 0;
   serialize_size += SerializedSize(data_type_);
   serialize_size += SerializedSize(anchors_);
@@ -274,7 +277,7 @@ size_t YoloBoxPlugin::getSerializationSize() const {
   return serialize_size;
 }
 
-void YoloBoxPlugin::serialize(void* buffer) const {
+void YoloBoxPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, data_type_);
   SerializeValue(&buffer, anchors_);
   SerializeValue(&buffer, class_num_);
@@ -286,28 +289,30 @@ void YoloBoxPlugin::serialize(void* buffer) const {
   SerializeValue(&buffer, input_w_);
 }
 
-void YoloBoxPlugin::destroy() {}
+void YoloBoxPlugin::destroy() TRT_NOEXCEPT {}
 
-void YoloBoxPlugin::setPluginNamespace(const char* lib_namespace) {
+void YoloBoxPlugin::setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT {
   namespace_ = std::string(lib_namespace);
 }
 
-const char* YoloBoxPlugin::getPluginNamespace() const {
+const char* YoloBoxPlugin::getPluginNamespace() const TRT_NOEXCEPT {
   return namespace_.c_str();
 }
 
 nvinfer1::DataType YoloBoxPlugin::getOutputDataType(
-    int index, const nvinfer1::DataType* input_type, int nb_inputs) const {
+    int index, const nvinfer1::DataType* input_type,
+    int nb_inputs) const TRT_NOEXCEPT {
   return input_type[0];
 }
 
-bool YoloBoxPlugin::isOutputBroadcastAcrossBatch(int output_index,
-                                                 const bool* input_is_broadcast,
-                                                 int nb_inputs) const {
+bool YoloBoxPlugin::isOutputBroadcastAcrossBatch(
+    int output_index, const bool* input_is_broadcast,
+    int nb_inputs) const TRT_NOEXCEPT {
   return false;
 }
 
-bool YoloBoxPlugin::canBroadcastInputAcrossBatch(int input_index) const {
+bool YoloBoxPlugin::canBroadcastInputAcrossBatch(int input_index) const
+    TRT_NOEXCEPT {
   return false;
 }
 
@@ -317,9 +322,9 @@ void YoloBoxPlugin::configurePlugin(
     const nvinfer1::DataType* input_types,
     const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
     const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
-    int max_batct_size) {}
+    int max_batct_size) TRT_NOEXCEPT {}
 
-nvinfer1::IPluginV2Ext* YoloBoxPlugin::clone() const {
+nvinfer1::IPluginV2Ext* YoloBoxPlugin::clone() const TRT_NOEXCEPT {
   return new YoloBoxPlugin(data_type_, anchors_, class_num_, conf_thresh_,
                            downsample_ratio_, clip_bbox_, scale_x_y_, input_h_,
                            input_w_);
@@ -327,26 +332,30 @@ nvinfer1::IPluginV2Ext* YoloBoxPlugin::clone() const {
 
 YoloBoxPluginCreator::YoloBoxPluginCreator() {}
 
-void YoloBoxPluginCreator::setPluginNamespace(const char* lib_namespace) {
+void YoloBoxPluginCreator::setPluginNamespace(const char* lib_namespace)
+    TRT_NOEXCEPT {
   namespace_ = std::string(lib_namespace);
 }
 
-const char* YoloBoxPluginCreator::getPluginNamespace() const {
+const char* YoloBoxPluginCreator::getPluginNamespace() const TRT_NOEXCEPT {
   return namespace_.c_str();
 }
 
-const char* YoloBoxPluginCreator::getPluginName() const {
+const char* YoloBoxPluginCreator::getPluginName() const TRT_NOEXCEPT {
   return "yolo_box_plugin";
 }
 
-const char* YoloBoxPluginCreator::getPluginVersion() const { return "1"; }
+const char* YoloBoxPluginCreator::getPluginVersion() const TRT_NOEXCEPT {
+  return "1";
+}
 
-const nvinfer1::PluginFieldCollection* YoloBoxPluginCreator::getFieldNames() {
+const nvinfer1::PluginFieldCollection* YoloBoxPluginCreator::getFieldNames()
+    TRT_NOEXCEPT {
   return &field_collection_;
 }
 
 nvinfer1::IPluginV2Ext* YoloBoxPluginCreator::createPlugin(
-    const char* name, const nvinfer1::PluginFieldCollection* fc) {
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT {
   const nvinfer1::PluginField* fields = fc->fields;
 
   int type_id = -1;
@@ -392,7 +401,8 @@ nvinfer1::IPluginV2Ext* YoloBoxPluginCreator::createPlugin(
 }
 
 nvinfer1::IPluginV2Ext* YoloBoxPluginCreator::deserializePlugin(
-    const char* name, const void* serial_data, size_t serial_length) {
+    const char* name, const void* serial_data,
+    size_t serial_length) TRT_NOEXCEPT {
   auto plugin = new YoloBoxPlugin(serial_data, serial_length);
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;

@@ -27,8 +27,6 @@ SEED = 2021
 EPOCH = 100
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -60,13 +58,12 @@ class TestSliceOp(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
             return
-        self.check_grad_with_place(
-            self.place, ['Input'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 
 class TestSliceOp2(TestSliceOp):
@@ -79,8 +76,6 @@ class TestSliceOp2(TestSliceOp):
         self.out = self.input[:, 0:1, :]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceOpFp16(TestSliceOp):
     def init_dtype(self):
         self.dtype = np.float16
@@ -147,8 +142,6 @@ class TestSliceOpTensor2(TestSliceOpTensor):
         self.out = self.input[:, 0:1, :]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceOpFp16Tensor(TestSliceOpTensor):
     def init_dtype(self):
         self.dtype = np.float16
@@ -237,8 +230,6 @@ class TestSliceOpTensorList2(TestSliceOpTensorList):
         self.out = self.input[:, 0:1, :]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceOpFp16TensorList(TestSliceOpTensorList):
     def init_dtype(self):
         self.dtype = np.float16
@@ -249,8 +240,6 @@ class TestSliceOpFp16TensorList(TestSliceOpTensorList):
         self.place = paddle.NPUPlace(0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

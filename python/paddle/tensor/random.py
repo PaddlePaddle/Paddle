@@ -20,6 +20,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, check_shape
 from ..fluid.layers import utils
 import paddle
+from paddle import _C_ops
 
 __all__ = []
 
@@ -65,7 +66,7 @@ def bernoulli(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.bernoulli(x)
+        return _C_ops.bernoulli(x)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "bernoulli")
 
@@ -130,8 +131,8 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
         "multinomial op is not supported on ROCM yet.")
 
     if in_dygraph_mode():
-        return core.ops.multinomial(x, 'num_samples', num_samples,
-                                    'replacement', replacement)
+        return _C_ops.multinomial(x, 'num_samples', num_samples, 'replacement',
+                                  replacement)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "multinomial")
 
@@ -189,10 +190,9 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return core.ops.gaussian_random('shape', shape, 'mean',
-                                        float(mean), 'std',
-                                        float(std), 'seed', seed, 'dtype',
-                                        dtype)
+        return _C_ops.gaussian_random('shape', shape, 'mean',
+                                      float(mean), 'std',
+                                      float(std), 'seed', seed, 'dtype', dtype)
 
     check_shape(shape, op_type_for_check)
     check_dtype(dtype, 'dtype', ['float32', 'float64'], op_type_for_check)
@@ -499,9 +499,9 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return core.ops.uniform_random('shape', shape, 'min',
-                                       float(min), 'max',
-                                       float(max), 'seed', seed, 'dtype', dtype)
+        return _C_ops.uniform_random('shape', shape, 'min',
+                                     float(min), 'max',
+                                     float(max), 'seed', seed, 'dtype', dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
     check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform/rand')
@@ -599,8 +599,8 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return core.ops.randint('shape', shape, 'low', low, 'high', high,
-                                'seed', 0, 'dtype', dtype)
+        return _C_ops.randint('shape', shape, 'low', low, 'high', high, 'seed',
+                              0, 'dtype', dtype)
 
     check_shape(shape, 'randint')
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
@@ -656,7 +656,7 @@ def randperm(n, dtype="int64", name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return core.ops.randperm('n', n, 'seed', 0, 'dtype', dtype)
+        return _C_ops.randperm('n', n, 'seed', 0, 'dtype', dtype)
 
     if n < 1:
         raise ValueError("The input n should be greater than 0 in randperm op.")

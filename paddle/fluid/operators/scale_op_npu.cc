@@ -27,20 +27,24 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::Tensor>("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
-    auto scale = static_cast<float>(ctx.Attr<float>("scale"));
-    auto bias = static_cast<float>(ctx.Attr<float>("bias"));
+    auto scale = ctx.Attr<float>("scale");
+    auto bias = ctx.Attr<float>("bias");
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    float _power = 1.0;
+    float power = 1.0;
     VLOG(4) << "scale:" << scale << ", bias:" << bias
             << " ,bias_after_scale:" << bias_after_scale;
+    if (ctx.HasInput("ScaleTensor")) {
+      auto* scale_tensor = ctx.Input<framework::Tensor>("ScaleTensor");
+      scale = static_cast<float>(GetAttrFromTensor<T>(scale_tensor));
+    }
     if (bias_after_scale) {
       out->mutable_data<T>(ctx.GetPlace());
       const auto& runner =
           NpuOpRunner("Power", {*x}, {*out},
-                      {{"power", _power}, {"scale", scale}, {"shift", bias}});
+                      {{"power", power}, {"scale", scale}, {"shift", bias}});
 
       runner.Run(stream);
     } else {
@@ -55,7 +59,7 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
       float _bias = 0.0;
       const auto& runner =
           NpuOpRunner("Power", {tmp_x}, {*out},
-                      {{"power", _power}, {"scale", scale}, {"shift", _bias}});
+                      {{"power", power}, {"scale", scale}, {"shift", _bias}});
       runner.Run(stream);
     }
   }
