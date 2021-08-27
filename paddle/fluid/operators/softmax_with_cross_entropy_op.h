@@ -44,6 +44,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
       const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
       int axis_dim = softmax->dims()[axis];
 
+      // avoid devided by zero
       PADDLE_ENFORCE_GT(
           axis_dim, 0,
           platform::errors::InvalidArgument(
