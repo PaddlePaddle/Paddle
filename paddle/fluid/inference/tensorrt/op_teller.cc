@@ -421,6 +421,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
+      auto resize_inputs = desc.Inputs();
+      if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+        if (desc.Input("SizeTensor").size() >= 1) {
+          VLOG(3)
+              << "The Paddle-TRT doesn't support the SizeTensor for op_type "
+              << op_type;
+          return false;
+        }
+      }
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "bilinear") {
@@ -428,30 +437,36 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
-      auto align_corners =
-          BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
       if (align_corners != false) {
         VLOG(3) << "The TRT only supports align_corners with false.";
         return false;
       }
 
-      if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
-          !desc.HasAttr("out_w")) {
-        VLOG(3) << "The op_type " << op_type
-                << " doesn't have scale or out_h / out_w and return false";
-        return false;
-      } else {
-        auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
-        auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
-        auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
-        if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
-          if (out_h <= 0) {
-            VLOG(3) << "out_h must be greater than 0 if scale is not set.";
-            return false;
-          }
-          if (out_w <= 0) {
-            VLOG(3) << "out_w must be greater than 0 if scale is not set.";
-            return false;
+      // when the Scale vector doesn't exist, fallback to the attr scale or
+      // out_h / in_h, out_w / in_w
+      if (desc.Input("Scale").size() != 1) {
+        VLOG(3) << "The Scale of bilinear_interp is "
+                << desc.Input("Scale").size();
+
+        if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
+            !desc.HasAttr("out_w")) {
+          VLOG(3) << "The op_type " << op_type
+                  << " doesn't have scale or out_h / out_w and return false";
+          return false;
+        } else {
+          auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
+          auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+          auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+          if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
+            if (out_h <= 0) {
+              VLOG(3) << "out_h must be greater than 0 if scale is not set.";
+              return false;
+            }
+            if (out_w <= 0) {
+              VLOG(3) << "out_w must be greater than 0 if scale is not set.";
+              return false;
+            }
           }
         }
       }
@@ -465,6 +480,16 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (!desc.HasAttr(attr)) {
           VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
                   << attr << " and return false";
+          return false;
+        }
+      }
+
+      auto resize_inputs = desc.Inputs();
+      if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+        if (desc.Input("SizeTensor").size() >= 1) {
+          VLOG(3)
+              << "The Paddle-TRT doesn't support the SizeTensor for op_type "
+              << op_type;
           return false;
         }
       }
