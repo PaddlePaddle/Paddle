@@ -27,6 +27,16 @@ using Tensor = framework::Tensor;
 template <typename T1, typename T2, typename OutType>
 class GpuAndCpuSearchSortedCompute {
  public:
+  static HOSTDEVICE bool IsNan(float x) { return std::isnan(x); }
+  static HOSTDEVICE bool IsNan(double x) { return std::isnan(x); }
+  static HOSTDEVICE bool IsNan(int x) { return false; }
+  static HOSTDEVICE bool IsNan(int64_t x) { return false; }
+
+  static HOSTDEVICE bool IsInf(float x) { return std::isinf(x); }
+  static HOSTDEVICE bool IsInf(double x) { return std::isinf(x); }
+  static HOSTDEVICE bool IsInf(int x) { return false; }
+  static HOSTDEVICE bool IsInf(int64_t x) { return false; }
+
   HOSTDEVICE GpuAndCpuSearchSortedCompute(const T1* sequence_data,
                                           const T2* value_data, bool right,
                                           bool is_1d_boundaries,
@@ -44,7 +54,7 @@ class GpuAndCpuSearchSortedCompute {
     const T1* sequence_ptr = is_1d_boundaries_
                                  ? sequence_data_
                                  : sequence_data_ + idx / val_size_ * seq_size_;
-    if (std::isnan(*value_ptr) || std::isinf(*value_ptr)) {
+    if (IsNan(*value_ptr) || IsInf(*value_ptr)) {
       out_data_[idx] = 0;
     } else {
       if (right_) {

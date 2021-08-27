@@ -773,65 +773,65 @@ def searchsorted(sorted_sequence,
                  right=False,
                  name=None):
     """
-    This OP is used to find the indices from the innermost dimension of `sorted_sequence`. If the correspoding values in `values`
-    were inserted before the indices, the order of the corresponding *innermost* dimension within :attr:`sorted_sequence` would 
-    be preserved.Return a new tensor with the same size as `values`. If `right` is False (default),then the left boundary of 
-    `sorted_sequence` is closed. More formally, the returned index satisfies the following rules:
-    * - :attr:`sorted_sequence`
-      - :attr:`right`
-      - *returned index satisfies*
-    * - 1-D
-     - False
-     - ``sorted_sequence[i-1] < values[m][n]...[l][x] <= sorted_sequence[i]``
-    * - 1-D
-     - True
-     - ``sorted_sequence[i-1] <= values[m][n]...[l][x] < sorted_sequence[i]``
-    * - N-D
-     - False
-     - ``sorted_sequence[m][n]...[l][i-1] < values[m][n]...[l][x] <= sorted_sequence[m][n]...[l][i]``
-    * - N-D
-     - True
-     - ``sorted_sequence[m][n]...[l][i-1] <= values[m][n]...[l][x] < sorted_sequence[m][n]...[l][i]``
+        This OP is used to find the indices from the innermost dimension of `sorted_sequence`. If the correspoding values in `values`
+        were inserted before the indices, the order of the corresponding *innermost* dimension within :attr:`sorted_sequence` would 
+        be preserved.Return a new tensor with the same size as `values`. If `right` is False (default),then the left boundary of 
+        `sorted_sequence` is closed. More formally, the returned index satisfies the following rules:
+        * - :attr:`sorted_sequence`
+        - :attr:`right`
+        - *returned index satisfies*
+        * - 1-D
+        - False
+        - ``sorted_sequence[i-1] < values[m][n]...[l][x] <= sorted_sequence[i]``
+        * - 1-D
+        - True
+        - ``sorted_sequence[i-1] <= values[m][n]...[l][x] < sorted_sequence[i]``
+        * - N-D
+        - False
+        - ``sorted_sequence[m][n]...[l][i-1] < values[m][n]...[l][x] <= sorted_sequence[m][n]...[l][i]``
+        * - N-D
+        - True
+        - ``sorted_sequence[m][n]...[l][i-1] <= values[m][n]...[l][x] < sorted_sequence[m][n]...[l][i]``
 
-    Args:
-    sorted_sequence(Tensor): N-D or 1-D tensor, containing monotonically increasing sequence on the innermost dimension. The data type can be int32, int64, float32, float64.
-    values(Tensor or Scalar): N-D tensor or a Scalar containing the search value(s). The data type can be int32, int64, float32, float64.
-    out_int32(bool, optional): indicate the output data type. The default value is False.
-    right(bool, optional): if False, return the first suitable location that is found. If True, return the
-                            last such index. If no suitable index found, return 0 for non-numerical value
-                            (eg. nan, inf). In other words, if False, gets the lower bound index for each value in `values` on the corresponding
-                            innermost dimension of the `sorted_sequence`. If True, gets the upper bound index instead. The default value is False.
-    name(str, optional):The default value is None. Normally there is no need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
+        Args:
+        sorted_sequence(Tensor): N-D or 1-D tensor, containing monotonically increasing sequence on the innermost dimension. The data type can be int32, int64, float32, float64.
+        values(Tensor or Scalar): N-D tensor or a Scalar containing the search value(s). The data type can be int32, int64, float32, float64.
+        out_int32(bool, optional): indicate the output data type. The default value is False.
+        right(bool, optional): if False, return the first suitable location that is found. If True, return the
+                                last such index. If no suitable index found, return 0 for non-numerical value
+                                (eg. nan, inf). In other words, if False, gets the lower bound index for each value in `values` on the corresponding
+                                innermost dimension of the `sorted_sequence`. If True, gets the upper bound index instead. The default value is False.
+        name(str, optional):The default value is None. Normally there is no need for user to set this property. For more information, please
+                refer to :ref:`api_guide_Name`.
 
-    Returns:
-    output (Tensor):return the indices from the innermost dimension of sorted_sequence. The output tensor is the same size as values.
+        Returns:
+        output (Tensor):return the indices from the innermost dimension of sorted_sequence. The output tensor is the same size as values.
 
-    Examples:
+        Examples:
 
-    .. code-block:: python
-            import paddle
-            sorted_sequence = paddle.to_tensor([[1, 3, 5, 7, 9,11],
-                                            [2, 4, 6, 8, 10, 12]],dtype = 'int32')
-            values = paddle.to_tensor([[3,6,9],[3,6,9]],dtype = 'int32')
-            out1 = paddle.searchsorted(sorted_sequence,values)
-            print(out1)
-            # Tensor(shape=[2, 3], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            # [[1, 3, 4],
-            # [1, 2, 4]])
+        .. code-block:: python
+                import paddle
+                sorted_sequence = paddle.to_tensor([[1, 3, 5, 7, 9,11],
+                                                [2, 4, 6, 8, 10, 12]],dtype = 'int32')
+                values = paddle.to_tensor([[3,6,9],[3,6,9]],dtype = 'int32')
+                out1 = paddle.searchsorted(sorted_sequence,values)
+                print(out1)
+                # Tensor(shape=[2, 3], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+                # [[1, 3, 4],
+                # [1, 2, 4]])
 
-            out2 = paddle.searchsorted(sorted_sequence,values,right=True)
-            print(out2)
-            # Tensor(shape=[2, 3], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            # [[2, 3, 5],
-            # [1, 3, 4]]) 
+                out2 = paddle.searchsorted(sorted_sequence,values,right=True)
+                print(out2)
+                # Tensor(shape=[2, 3], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+                # [[2, 3, 5],
+                # [1, 3, 4]]) 
 
-            sorted_sequence_1d = paddle.to_tensor([1,3,5,7,9])
-            out3 = paddle.searchsorted(sorted_sequence_1d,values)       
-            print(out3)
-            # Tensor(shape=[2, 3], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            # [[1, 3, 4],
-            # [1, 3, 4]])
+                sorted_sequence_1d = paddle.to_tensor([1,3,5,7,9])
+                out3 = paddle.searchsorted(sorted_sequence_1d,values)       
+                print(out3)
+                # Tensor(shape=[2, 3], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+                # [[1, 3, 4],
+                # [1, 3, 4]])
     """
 
     if in_dygraph_mode():

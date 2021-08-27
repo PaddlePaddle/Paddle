@@ -25,7 +25,7 @@ namespace operators {
 namespace math {
 
 template <typename T>
-HOSTDEVICE inline int64_t BinarySearch(const T *x, size_t num, const T &val) {
+HOSTDEVICE inline int64_t BinarySearch(const T *x, int64_t num, const T &val) {
   int64_t beg = 0, end = num - 1;
   while (beg <= end) {
     auto mid = ((beg + end) >> 1);

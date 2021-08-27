@@ -16,11 +16,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 from op_test import OpTest
@@ -102,8 +99,7 @@ class TestSearchSortedAPI(unittest.TestCase):
                 },
                               fetch_list=out)
             out_ref = np.searchsorted(self.sorted_sequence, self.values)
-            for r in res:
-                self.assertEqual(np.allclose(out_ref, r), True)
+            self.assertTrue(np.allclose(out_ref, res))
 
         for place in self.place:
             run(place)
@@ -112,9 +108,9 @@ class TestSearchSortedAPI(unittest.TestCase):
         def run(place):
 
             paddle.disable_static(place)
-            SortedSequence = paddle.to_tensor(self.sorted_sequence)
-            Values = paddle.to_tensor(self.values)
-            out = paddle.searchsorted(SortedSequence, Values)
+            sorted_sequence = paddle.to_tensor(self.sorted_sequence)
+            values = paddle.to_tensor(self.values)
+            out = paddle.searchsorted(sorted_sequence, values)
             out_ref = np.searchsorted(self.sorted_sequence, self.values)
             self.assertEqual(np.allclose(out_ref, out.numpy()), True)
             paddle.enable_static()

@@ -14,11 +14,6 @@
 
 #include "paddle/fluid/operators/searchsorted_op.h"
 
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <vector>
-
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -53,7 +48,7 @@ class SearchSortedOp : public framework::OperatorWithKernel {
     auto values_dims = ctx->GetInputDim("Values");
     auto out_int32 = ctx->Attrs().Get<bool>("out_int32");
 
-    if (sequences_dims.size() != 1)
+    if (sequences_dims.size() != 1) {
       PADDLE_ENFORCE_EQ(
           SearchsortedDimsMatchedBeforeLastDim(sequences_dims, values_dims),
           true,
@@ -62,9 +57,10 @@ class SearchSortedOp : public framework::OperatorWithKernel {
                                         "dimensions of sorted_sequence tensor "
                                         "and input values tensor must "
                                         "match, but we got sorted_sequence "
-                                        "tensor ( %s ), and input value "
+                                        "tensor ( %s ), and input values "
                                         "tensor ( %s )",
                                         sequences_dims, values_dims));
+    }
 
     if (out_int32) {
       PADDLE_ENFORCE_LT(
