@@ -87,17 +87,17 @@ class BilinearInterpolateOpConverter : public OpConverter {
               op_type_, scale_h));
     } else {
       // get attr(scale)
-      if(op_type_ == "bilinear_interp") { // v1
+      if (op_type_ == "bilinear_interp") {  // v1
         auto scale_val = BOOST_GET_CONST(float, op_desc.GetAttr("scale"));
         scale_h = scale_val;
         scale_w = scale_val;
-      } else { // v2
+      } else {  // v2
         const std::vector<float> scale_attr =
             BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("scale"));
         if (scale_attr.size() > 1) {
           scale_h = scale_attr[0];
           scale_w = scale_attr[1];
-      
+
           PADDLE_ENFORCE_EQ(
               scale_w > 0, true,
               platform::errors::InvalidArgument(
@@ -124,19 +124,17 @@ class BilinearInterpolateOpConverter : public OpConverter {
       scale_w = static_cast<float>(out_w) / static_cast<float>(in_w);
     }
 
-    PADDLE_ENFORCE_EQ(
-        scale_w > 0, true,
-        platform::errors::InvalidArgument(
-            "The scale_w in Attr(scale) of Operator(%s) "
-            "should be greater than 0, but received value is %d.", op_type_,
-            scale_w));
+    PADDLE_ENFORCE_EQ(scale_w > 0, true,
+                      platform::errors::InvalidArgument(
+                          "The scale_w in Attr(scale) of Operator(%s) "
+                          "should be greater than 0, but received value is %d.",
+                          op_type_, scale_w));
 
-    PADDLE_ENFORCE_EQ(
-        scale_h > 0, true,
-        platform::errors::InvalidArgument(
-            "The scale_h in Attr(scale) of Operator(%s) "
-            "should be greater than 0, but received value is %d.", op_type_,
-            scale_h));
+    PADDLE_ENFORCE_EQ(scale_h > 0, true,
+                      platform::errors::InvalidArgument(
+                          "The scale_h in Attr(scale) of Operator(%s) "
+                          "should be greater than 0, but received value is %d.",
+                          op_type_, scale_h));
 
     std::vector<float> scale;
     scale.reserve(3);
@@ -159,8 +157,7 @@ class BilinearInterpolateOpConverter : public OpConverter {
     }
 
     layer->setScales(scale.data(), scale.size());
-    RreplenishLayerAndOutput(layer, op_type_, {output_name},
-                             test_mode);
+    RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
   }
 
  protected:
@@ -183,4 +180,3 @@ class BilinearInterpolateV2OpConverter : public BilinearInterpolateOpConverter {
 
 REGISTER_TRT_OP_CONVERTER(bilinear_interp, BilinearInterpolateV1OpConverter);
 REGISTER_TRT_OP_CONVERTER(bilinear_interp_v2, BilinearInterpolateV2OpConverter);
-
