@@ -63,9 +63,12 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
-    {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
+    {"momentum", {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
+    {"adam",
+     {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
+      "Beta2Pow", "MasterParam"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -96,11 +99,14 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
-    {"momentum", {"ParamOut", "VelocityOut"}},
+    {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"run_program", {"DOut"}},
+    {"adam",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -117,11 +123,12 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
 std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"sgd", {"ParamOut"}},
     {"adam",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
     {"average_accumulates",
      {"out_sum_1", "out_sum_2", "out_sum_3", "out_num_accumulates",
       "out_old_num_accumulates", "out_num_updates"}},
-    {"momentum", {"ParamOut", "VelocityOut"}},
+    {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},

@@ -137,26 +137,29 @@ class Momentum(Optimizer):
         self._master_weights = {}
 
     def _create_master_weight(self, param):
-        assert isinstance(self.helper, LayerHelper)
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
 
-        var_name = param.name + "_fp32_master"
-        var_name = unique_name.generate(var_name)
-        var = layers.create_global_var(
-            name=var_name,
-            shape=param.shape,
-            value=0,
-            dtype='float32',
-            persistable=True)
-        block = self.helper.startup_program.global_block()
-        block.append_op(
-            type="cast",
-            inputs={"X": [param]},
-            outputs={"Out": [var]},
-            attrs={
-                "in_dtype": param.dtype,
-                "out_dtype": core.VarDesc.VarType.FP32
-            })
-        self._master_weights[param.name] = var
+            var_name = param.name + "_fp32_master"
+            var_name = unique_name.generate(var_name)
+            var = layers.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True)
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32
+                })
+            self._master_weights[param.name] = var
         return var
 
     def _get_accumulator(self, name, param):
@@ -203,19 +206,21 @@ class Momentum(Optimizer):
                                              param_and_grad[0])
         lr = self._create_param_lr(param_and_grad)
 
-        if framework.in_dygraph_mode():
-            _, _ = _C_ops.momentum(
-                param_and_grad[0], param_and_grad[1], velocity_acc, lr,
-                param_and_grad[0], velocity_acc, 'mu', self._momentum,
-                'use_nesterov', self._use_nesterov, 'regularization_method',
-                self._regularization_method, 'regularization_coeff',
-                self._regularization_coeff)
-            return None
-
         find_master = self._multi_precision and param_and_grad[
             0].dtype == core.VarDesc.VarType.FP16
         master_weight = (self._master_weights[param_and_grad[0].name]
                          if find_master else None)
+
+        if framework.in_dygraph_mode():
+            _, _, _ = _C_ops.momentum(
+                param_and_grad[0], param_and_grad[1], velocity_acc, lr,
+                master_weight, param_and_grad[0], velocity_acc, master_weight,
+                'mu', self._momentum, 'use_nesterov', self._use_nesterov,
+                'regularization_method', self._regularization_method,
+                'regularization_coeff', self._regularization_coeff,
+                'multi_precision', find_master)
+            return None
+
         attrs = {
             "mu": self._momentum,
             "use_nesterov": self._use_nesterov,
