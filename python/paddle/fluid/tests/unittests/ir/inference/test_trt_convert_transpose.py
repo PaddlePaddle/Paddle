@@ -21,7 +21,6 @@ import paddle.inference as paddle_infer
 
 class TrtConvertTransposeTest(TrtLayerAutoScanTest):
     def setUp(self):
-        self.set_params()
         self.ops_config = [{
             "op_type": "transpose",
             "op_inputs": {
@@ -31,15 +30,10 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
                 "Out": ["transpose_output"]
             },
             "op_attrs": {
-                "axis": self.axis
+                "axis": [[0, 1, 3, 2], [0, 3, 2, 1]]
             }
         }]
         self.batch_size_set = [1, 2, 4]
-
-    def set_params(self):
-        self.axis = [[0, 1, 3, 2]]
-        self.trt = 1
-        self.paddle = 2
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         transpose_input = TensorConfig(shape=[-1, 3, 64, 64])
@@ -50,41 +44,29 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
     def test_check_fp32_output(self):
         self.trt_param.precision == paddle_infer.PrecisionType.Float32
         # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
-        self.run_test(
-            trt_engine_num=self.trt, paddle_op_num=self.paddle, threshold=1e-5)
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-5)
 
     def test_check_fp16_output(self):
         self.trt_param.precision == paddle_infer.PrecisionType.Half
-        self.run_test(
-            trt_engine_num=self.trt, paddle_op_num=self.paddle, threshold=1e-2)
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-2)
 
     def test_dynamic_shape_fp32_check_output(self):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.dynamic_shape.min_input_shape = {"transpose_input": [1, 3, 32, 64]}
         self.dynamic_shape.max_input_shape = {"transpose_input": [4, 3, 64, 64]}
         self.dynamic_shape.opt_input_shape = {"transpose_input": [1, 3, 64, 64]}
-        self.run_test(
-            trt_engine_num=self.trt, paddle_op_num=self.paddle, threshold=1e-5)
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-5)
 
     def test_dynamic_shape_fp16_check_output(self):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         self.dynamic_shape.min_input_shape = {"transpose_input": [1, 3, 32, 64]}
         self.dynamic_shape.max_input_shape = {"transpose_input": [4, 3, 64, 64]}
         self.dynamic_shape.opt_input_shape = {"transpose_input": [1, 3, 64, 64]}
-        self.run_test(
-            trt_engine_num=self.trt, paddle_op_num=self.paddle, threshold=1e-2)
-
-
-class TrtConvertTransposeAxisTest(TrtConvertTransposeTest):
-    def set_params(self):
-        self.axis = [[0, 3, 2, 1]]
-        self.trt = 1
-        self.paddle = 2
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-2)
 
 
 class DynamicShapeTrtConvertTransposeTest(TrtLayerAutoScanTest):
     def setUp(self):
-        self.set_params()
         self.ops_config = [{
             "op_type": "transpose",
             "op_inputs": {
@@ -94,15 +76,10 @@ class DynamicShapeTrtConvertTransposeTest(TrtLayerAutoScanTest):
                 "Out": ["transpose_output"]
             },
             "op_attrs": {
-                "axis": self.axis
+                "axis": [[3, 2, 0, 1]]
             }
         }]
         self.batch_size_set = [1, 2, 4]
-
-    def set_params(self):
-        self.axis = [[3, 2, 0, 1]]
-        self.trt = 1
-        self.paddle = 2
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         transpose_input = TensorConfig(shape=[-1, 3, 64, 64])
@@ -124,16 +101,14 @@ class DynamicShapeTrtConvertTransposeTest(TrtLayerAutoScanTest):
         self.dynamic_shape.min_input_shape = {"transpose_input": [1, 3, 32, 64]}
         self.dynamic_shape.max_input_shape = {"transpose_input": [4, 3, 64, 64]}
         self.dynamic_shape.opt_input_shape = {"transpose_input": [1, 3, 64, 64]}
-        self.run_test(
-            trt_engine_num=self.trt, paddle_op_num=self.paddle, threshold=1e-5)
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-5)
 
     def test_dynamic_shape_fp16_check_output(self):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         self.dynamic_shape.min_input_shape = {"transpose_input": [1, 3, 32, 64]}
         self.dynamic_shape.max_input_shape = {"transpose_input": [4, 3, 64, 64]}
         self.dynamic_shape.opt_input_shape = {"transpose_input": [1, 3, 64, 64]}
-        self.run_test(
-            trt_engine_num=self.trt, paddle_op_num=self.paddle, threshold=1e-2)
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-2)
 
 
 if __name__ == "__main__":
