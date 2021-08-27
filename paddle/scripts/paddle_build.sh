@@ -1059,7 +1059,7 @@ function get_quickly_disable_ut() {
 
 function card_test() {
     set -m
-    CTEST_PARALLEL_LEVEL=2
+
     case_count $1 $2
     ut_startTime_s=`date +%s` 
 
@@ -1725,16 +1725,22 @@ set +x
                 single_card_tests="$single_card_tests|^$testcase$"
             fi
         done <<< "$test_cases";
-        card_test "$single_card_tests" 1
+
+        ut_actual_total_startTime_s=`date +%s`
+
+        card_test "$single_card_tests" 1 # run cases 1 job each time with single GPU
         collect_failed_tests
+
         # add unit test retry for NPU
         rm -f $tmp_dir/*
         exec_times=0
         retry_unittests_record=''
-        retry_time=3
-        exec_time_array=('first' 'second' 'third')
+        retry_time=4
+        exec_time_array=('first' 'second' 'third' 'fourth')
+        parallel_failed_tests_exec_retry_threshold=80
         exec_retry_threshold=10
         is_retry_execuate=0
+        rerun_ut_startTime_s=`date +%s`
         if [ -n "$failed_test_lists" ];then
             if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
                 bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
@@ -1743,14 +1749,30 @@ set +x
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
             read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
-            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
-                while ( [ $exec_times -lt $retry_time ] )
-                    do
+            while ( [ $exec_times -lt $retry_time ] )
+                do
+                    if [[ "${exec_times}" == "0" ]] ;then
+                        if [ $need_retry_ut_count -lt $parallel_failed_tests_exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    elif [[ "${exec_times}" == "1" ]] ;then
+                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_arr=(${need_retry_ut_str})
+                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    fi
+                    if [[ "$is_retry_execuate" == "0" ]];then
                         set +e
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
                         set -e
-                        if [[ "${exec_times}" == "1" ]];then
+                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "3" ]];then
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
@@ -1761,11 +1783,11 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${retry_unittests}"
-                            
+                        echo "${retry_unittests}"                    
                         for line in ${retry_unittests[@]} ;
                             do
                                 read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
+
                                 if [[ "$tmp_one_tmp" != ""  ]]; then
                                     if [[ "$one_card_retry" == "" ]]; then
                                         one_card_retry="^$line$"
@@ -1773,23 +1795,26 @@ set +x
                                         one_card_retry="$one_card_retry|^$line$"
                                     fi
                                 fi
+
                             done
 
                         if [[ "$one_card_retry" != "" ]]; then
-                            card_test "$one_card_retry" 1
+                            card_test "$one_card_retry" 1 # run cases 1 job each time with single GPU
                         fi
-
                         exec_times=$[$exec_times+1]
                         failed_test_lists=''
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         one_card_retry=''
-                    done
-            else 
-                # There are more than 10 failed unit tests, so no unit test retry
-                is_retry_execuate=1
-            fi
+                    fi 
+                done
         fi
+
+        rerun_ut_endTime_s=`date +%s`
+        
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        ut_actual_total_endTime_s=`date +%s`
+        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
         fi
@@ -2106,20 +2131,25 @@ function test_fluid_lib() {
     Testing fluid library for inference ...
     ========================================
 EOF
-    fluid_startTime_s=`date +%s`
+    demo_ci_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
     DEMO_EXIT_CODE=$?
     ./clean.sh
+    demo_ci_endTime_s=`date +%s`
+    echo "demo_ci tests Total time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s"
+    echo "ipipe_log_param_Demo_Ci_Tests_Total_Time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+
+    infer_ut_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_ROOT_DIR:-/usr}
     TEST_EXIT_CODE=$?
-    fluid_endTime_s=`date +%s`
-    echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
-    echo "ipipe_log_param_Test_Fluid_Lib_Total_Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt     
+    infer_ut_endTime_s=`date +%s`
+    echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"
+    echo "ipipe_log_param_Infer_Ut_Tests_Total_Time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt  
     if [[ "$DEMO_EXIT_CODE" != "0" || "$TEST_EXIT_CODE" != "0" ]]; then
         exit 8;
     fi
@@ -2421,6 +2451,11 @@ function main() {
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
         python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         gen_fluid_lib ${parallel_number}
+        ;;
+      gpu_inference)
+        test_fluid_lib
+        test_go_inference_api
+        check_approvals_of_unittest 3
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}

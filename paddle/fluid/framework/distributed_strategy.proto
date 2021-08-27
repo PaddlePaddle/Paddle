@@ -42,6 +42,7 @@ message ShardingConfig {
   optional bool optimize_offload = 9 [ default = false ];
   optional bool pp_allreduce_in_optimize = 10 [ default = false ];
   optional int32 pp_degree = 11 [ default = 1 ];
+  optional bool optimize_cast = 12 [ default = false ];
 }
 
 message HybridConfig {
@@ -199,6 +200,7 @@ message DistributedStrategy {
   optional int32 fuse_grad_size_in_num = 31 [ default = 8 ];
   optional bool calc_comm_same_stream = 32 [ default = false ];
   optional bool asp = 33 [ default = false ];
+  optional bool fuse_grad_merge = 34 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
