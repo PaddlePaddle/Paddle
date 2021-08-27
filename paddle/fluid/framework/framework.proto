@@ -177,6 +177,8 @@ message VarType {
 
   message Tuple { repeated Type element_type = 1; }
   optional Tuple tuple = 7;
+
+  optional TensorDesc strings = 8;
 }
 
 message VarDesc {

@@ -47,6 +47,8 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
     var->GetMutable<ReaderHolder>();
   } else if (var_type == proto::VarType::RAW) {
     // GetMutable will be called in operator
+  } else if (var_type == proto::VarType::STRINGS) {
+    var->GetMutable<framework::STRINGS>();
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Variable type %d is not in "
