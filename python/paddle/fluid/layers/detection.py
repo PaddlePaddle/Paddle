@@ -3754,7 +3754,7 @@ def distribute_fpn_proposals(fpn_rois,
     num_lvl = max_level - min_level + 1
 
     if in_dygraph_mode():
-        assert rois_num is not None, "rois_num should not be sdf None in dygraph mode."
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
         attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
                  refer_level, 'refer_scale', refer_scale)
         multi_rois, restore_ind, rois_num_per_level = _C_ops.distribute_fpn_proposals(
