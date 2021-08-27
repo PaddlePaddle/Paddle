@@ -50,6 +50,20 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
         self.trt_param.precision == paddle_infer.PrecisionType.Half
         self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-2)
 
+    def test_dynamic_shape_fp32_check_output(self):
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        self.dynamic_shape.min_input_shape = {"input_data": [1, 48]}
+        self.dynamic_shape.max_input_shape = {"input_data": [4, 48]}
+        self.dynamic_shape.opt_input_shape = {"input_data": [1, 48]}
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-5)
+
+    def test_dynamic_shape_fp16_check_output(self):
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        self.dynamic_shape.min_input_shape = {"input_data": [1, 48]}
+        self.dynamic_shape.max_input_shape = {"input_data": [4, 48]}
+        self.dynamic_shape.opt_input_shape = {"input_data": [1, 48]}
+        self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-2)
+
 
 class TrtConvertDynamicReshapeTest(TrtLayerAutoScanTest):
     def setUp(self):
