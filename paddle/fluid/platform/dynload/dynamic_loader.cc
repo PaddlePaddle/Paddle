@@ -445,6 +445,16 @@ void* GetTensorRtDsoHandle() {
 #endif
 }
 
+// void* GetLapackesoHandle() {
+// #if defined(__APPLE__) || defined(__OSX__)
+//   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dylib");
+// #elif defined(_WIN32)
+//   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "lapack.dll");
+// #else
+//   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.so.3");
+// #endif
+// }
+
 void* GetMKLMLDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");

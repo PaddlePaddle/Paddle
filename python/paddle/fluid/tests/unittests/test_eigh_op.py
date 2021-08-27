@@ -21,48 +21,47 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from gradient_checker import grad_check
+from decorator_helper import prog_scope
+paddle.enable_static()
 
 
-@skip_check_grad_ci(
-    reason="The input of ceigh_op should always be symmetric positive-definite. "
-    "However, OpTest calculates the numeric gradient of each element in input "
-    "via small finite difference, which makes the input no longer symmetric "
-    "positive-definite thus can not compute the Cholesky decomposition. "
-    "While we can use the gradient_checker.grad_check to perform gradient "
-    "check of eigh_op, since it supports check gradient with a program "
-    "and we can construct symmetric positive-definite matrices in the program")
 class TestEighOp(OpTest):
     def setUp(self):
         self.op_type = "eigh"
-        self.init_dtype_type()
+        self.init_input()
         self.init_config()
-        x_np = np.random.random(self.x_shape).astype(self.x_type)
-        out_v, out_w = np.linalg.eigh(x_np, self.UPLO)
-        self.inputs = {"X": x_np}
+        np.random.seed(123)
+        out_v, out_w = np.linalg.eigh(self.x_np, self.UPLO)
+        self.inputs = {"X": self.x_np}
         self.attrs = {"UPLO": self.UPLO}
         self.outputs = {'OutValue': out_v, 'OutVector': out_w}
+        self.grad_out = np.tril(self.x_np, 0)
 
     def init_config(self):
         self.UPLO = 'L'
 
-    def init_dtype_type(self):
-        self.x_shape = (2, 2)
+    def init_input(self):
+        self.x_shape = (10, 10)
         self.x_type = np.float64
+        self.x_np = np.random.random(self.x_shape).astype(self.x_type)
 
     def test_check_output(self):
         self.check_output()
 
-
-class TestEighDataTypeCase(TestEighOp):
-    def init_dtype_type(self):
-        self.x_shape = (3, 3)
-        self.x_type = np.float32
+    def test_grad(self):
+        self.check_grad(
+            ["X"], ["OutValue", "OutVector"],
+            numeric_grad_delta=1e-5,
+            max_relative_error=0.6)
 
 
 class TestEighBatchCase(TestEighOp):
-    def init_dtype_type(self):
-        self.x_shape = (10, 2, 2)
-        self.x_type = np.float32
+    def init_input(self):
+        self.x_shape = (10, 5, 5)
+        self.x_type = np.float64
+        self.x_np = np.random.random(self.x_shape).astype(self.x_type)
 
 
 class TestEighUPLOCase(TestEighOp):
@@ -138,13 +137,14 @@ class TestEighAPI(unittest.TestCase):
 
     def test_eigh_grad(self):
         def run_test(uplo):
+            paddle.disable_static()
             for place in self.places:
-                x = paddle.to_tensor(self.real_data, stop_gradient=False)
+                x = paddle.to_tensor(self.complex_data, stop_gradient=False)
                 w, v = paddle.linalg.eigh(x)
                 (w.sum() + paddle.abs(v).sum()).backward()
                 np.testing.assert_allclose(
-                    x.grad.numpy(),
-                    x.grad.numpy().conj().transpose(-1, -2),
+                    abs(x.grad.numpy()),
+                    abs(x.grad.numpy().conj().transpose(-1, -2)),
                     rtol=self.rtol,
                     atol=self.atol)
 
