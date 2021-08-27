@@ -743,13 +743,13 @@ def max_unpool2d(x,
                                       output_size)
 
     if in_dygraph_mode():
-        output = _C_ops.unpool2d(x, indices, 'unpooling_type', 'max', 'ksize',
-                                 kernel_size, 'strides', stride, 'paddings',
-                                 padding, "output_size", output_size,
-                                 "data_format", data_format)
+        output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
+                               kernel_size, 'strides', stride, 'paddings',
+                               padding, "output_size", output_size,
+                               "data_format", data_format)
         return output
 
-    op_type = "unpool2d"
+    op_type = "unpool"
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype(input_param_name="x")
     unpool_out = helper.create_variable_for_type_inference(dtype)

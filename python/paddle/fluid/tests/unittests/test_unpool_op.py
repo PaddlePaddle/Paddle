@@ -55,7 +55,7 @@ def unpool2dmax_forward_naive(input, indices, ksize, strides, paddings,
 
 class TestUnpoolOp(OpTest):
     def setUp(self):
-        self.op_type = "unpool2d"
+        self.op_type = "unpool"
         self.init_test_case()
         input = np.random.randint(0, 100, self.shape)
         nsize, csize, hsize, wsize = input.shape
