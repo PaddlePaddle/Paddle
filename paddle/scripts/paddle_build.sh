@@ -2360,8 +2360,9 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
+        check_whl_size
         ;;
-      build_and-check_gpu)
+      build_and_check_gpu)
         set +e
         example_info_gpu=""
         example_code_gpu=0
@@ -2373,7 +2374,6 @@ function main() {
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
-        check_whl_size
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
