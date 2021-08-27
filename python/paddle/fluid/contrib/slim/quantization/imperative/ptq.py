@@ -64,11 +64,14 @@ class ImperativePTQ(object):
             model(paddle.nn.Layer): The model to be quantized.
             inplace(bool): Whether apply quantization to the input model.
                            Default: False.
-            fuse(bool): Whether fuse layers.
+            fuse(bool): Whether to fuse layers.
                         Default: False.
-            fuse_list(list): The layers to fuse.
-                             Default: None.
-        Returns:
+            fuse_list(list): The layers' names to be fused. For example,
+                "fuse_list = [["conv1", "bn1"], ["conv2", "bn2"]]".
+                A TypeError would be raised if "fuse" was set as
+                True but "fuse_list" was None.
+                Default: None.
+        Return
             quantized_model(paddle.nn.Layer): The quantized model.
         """
         assert isinstance(model, paddle.nn.Layer), \

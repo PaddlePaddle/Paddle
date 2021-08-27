@@ -29,7 +29,22 @@ class Identity(nn.Layer):
 
 
 def fuse_layers(model, layers_to_fuse, inplace=False):
-    '''fuse layers in layers_to_fuse'''
+    '''
+       fuse layers in layers_to_fuse
+
+       Args:
+           model(paddle.nn.Layer): The model to be fused.
+           layers_to_fuse(list): The layers' names to be fused. For
+               example,"fuse_list = [["conv1", "bn1"], ["conv2", "bn2"]]".
+               A TypeError would be raised if "fuse" was set as
+               True but "fuse_list" was None.
+                                 Default: None.
+           inplace(bool): Whether apply fusing to the input model.
+                          Default: False.
+
+       Return
+           fused_model(paddle.nn.Layer): The fused model.
+    '''
     if inplace == False:
         model = copy.deepcopy(model)
     for layers in layers_to_fuse:
@@ -39,39 +54,39 @@ def fuse_layers(model, layers_to_fuse, inplace=False):
 
 def _fuse_layers(model, layers_list):
     '''fuse all the layers in layers_list'''
-    lay_list = []
+    layer_list = []
     for layer_name in layers_list:
         parent_layer, sub_name = utils.find_parent_layer_and_sub_name(
             model, layer_name)
-        lay_list.append(getattr(parent_layer, sub_name))
-    new_layers = fuse_func(lay_list)
+        layer_list.append(getattr(parent_layer, sub_name))
+    new_layers = _fuse_func(layer_list)
     for i, item in enumerate(layers_list):
         parent_layer, sub_name = utils.find_parent_layer_and_sub_name(model,
                                                                       item)
         setattr(parent_layer, sub_name, new_layers[i])
 
 
-def fuse_func(lay_list):
+def _fuse_func(layer_list):
     '''choose the fuser method and fuse layers'''
-    types = tuple(type(m) for m in lay_list)
-    fuser_method = layer_list_to_fuse_method.get(types, None)
-    new_layers = [None] * len(lay_list)
-    fused = fuser_method(*lay_list)
-    for handle_id, pre_hook_fn in lay_list[0]._forward_pre_hooks.items():
-        fused.register_forward_pre_hook(pre_hook_fn)
-        del lay_list[0]._forward_pre_hooks[handle_id]
-    for handle_id, hook_fn in lay_list[-1]._forward_post_hooks.items():
-        fused.register_forward_post_hook(hook_fn)
-        del lay_list[-1]._forward_post_hooks[handle_id]
-    new_layers[0] = fused
-    for i in range(1, len(lay_list)):
+    types = tuple(type(m) for m in layer_list)
+    fusion_method = types_to_fusion_method.get(types, None)
+    new_layers = [None] * len(layer_list)
+    fused_layer = fusion_method(*layer_list)
+    for handle_id, pre_hook_fn in layer_list[0]._forward_pre_hooks.items():
+        fused_layer.register_forward_pre_hook(pre_hook_fn)
+        del layer_list[0]._forward_pre_hooks[handle_id]
+    for handle_id, hook_fn in layer_list[-1]._forward_post_hooks.items():
+        fused_layer.register_forward_post_hook(hook_fn)
+        del layer_list[-1]._forward_post_hooks[handle_id]
+    new_layers[0] = fused_layer
+    for i in range(1, len(layer_list)):
         identity = Identity()
-        identity.training = lay_list[0].training
+        identity.training = layer_list[0].training
         new_layers[i] = identity
     return new_layers
 
 
-def fuse_conv_bn(conv, bn):
+def _fuse_conv_bn(conv, bn):
     '''fuse conv and bn for train or eval'''
     assert(conv.training == bn.training),\
         "Conv and BN both must be in the same mode (train or eval)."
@@ -79,26 +94,26 @@ def fuse_conv_bn(conv, bn):
         assert bn._num_features == conv._out_channels, 'Output channel of Conv2d must match num_features of BatchNorm2d'
         raise NotImplementedError
     else:
-        return fuse_conv_bn_eval(conv, bn)
+        return _fuse_conv_bn_eval(conv, bn)
 
 
-def fuse_conv_bn_eval(conv, bn):
+def _fuse_conv_bn_eval(conv, bn):
     '''fuse conv and bn for eval'''
     assert (not (conv.training or bn.training)), "Fusion only for eval!"
     fused_conv = copy.deepcopy(conv)
 
-    fused_weight, fused_bias = fuse_conv_bn_weights(
+    fused_weight, fused_bias = _fuse_conv_bn_weights(
         fused_conv.weight, fused_conv.bias, bn._mean, bn._variance, bn._epsilon,
         bn.weight, bn.bias)
     fused_conv.weight.set_value(fused_weight)
     if fused_conv.bias is None:
         fused_conv.bias = paddle.create_parameter(
-            shape=[fused_conv._out_channels], is_bias=True, dtype='float32')
+            shape=[fused_conv._out_channels], is_bias=True, dtype=bn.bias.dtype)
     fused_conv.bias.set_value(fused_bias)
     return fused_conv
 
 
-def fuse_conv_bn_weights(conv_w, conv_b, bn_rm, bn_rv, bn_eps, bn_w, bn_b):
+def _fuse_conv_bn_weights(conv_w, conv_b, bn_rm, bn_rv, bn_eps, bn_w, bn_b):
     '''fuse weights and bias of conv and bn'''
     if conv_b is None:
         conv_b = paddle.zeros_like(bn_rm)
@@ -113,7 +128,7 @@ def fuse_conv_bn_weights(conv_w, conv_b, bn_rm, bn_rv, bn_eps, bn_w, bn_b):
     return conv_w, conv_b
 
 
-def fuse_linear_bn(linear, bn):
+def _fuse_linear_bn(linear, bn):
     '''fuse linear and bn'''
     assert (linear.training == bn.training),\
         "Linear and BN both must be in the same mode (train or eval)."
@@ -122,27 +137,29 @@ def fuse_linear_bn(linear, bn):
             1], 'Output channel of Linear must match num_features of BatchNorm'
         raise NotImplementedError
     else:
-        return fuse_linear_bn_eval(linear, bn)
+        return _fuse_linear_bn_eval(linear, bn)
 
 
-def fuse_linear_bn_eval(linear, bn):
+def _fuse_linear_bn_eval(linear, bn):
     '''fuse linear and bn for eval'''
     assert (not (linear.training or bn.training)), "Fusion only for eval!"
     fused_linear = copy.deepcopy(linear)
 
-    fused_weight, fused_bias = fuse_linear_bn_weights(
+    fused_weight, fused_bias = _fuse_linear_bn_weights(
         fused_linear.weight, fused_linear.bias, bn._mean, bn._variance,
         bn._epsilon, bn.weight, bn.bias)
     fused_linear.weight.set_value(fused_weight)
     if fused_linear.bias is None:
         fused_linear.bias = paddle.create_parameter(
-            shape=[fused_linear.weight.shape[1]], is_bias=True, dtype='float32')
+            shape=[fused_linear.weight.shape[1]],
+            is_bias=True,
+            dtype=bn.bias.dtype)
     fused_linear.bias.set_value(fused_bias)
     return fused_linear
 
 
-def fuse_linear_bn_weights(linear_w, linear_b, bn_rm, bn_rv, bn_eps, bn_w,
-                           bn_b):
+def _fuse_linear_bn_weights(linear_w, linear_b, bn_rm, bn_rv, bn_eps, bn_w,
+                            bn_b):
     '''fuse weights and bias of linear and bn'''
     if linear_b is None:
         linear_b = paddle.zeros_like(bn_rm)
@@ -152,7 +169,7 @@ def fuse_linear_bn_weights(linear_w, linear_b, bn_rm, bn_rv, bn_eps, bn_w,
     return fused_w, fused_b
 
 
-layer_list_to_fuse_method = {
-    (nn.Conv2D, nn.BatchNorm2D): fuse_conv_bn,
-    (nn.Linear, nn.BatchNorm1D): fuse_linear_bn,
+types_to_fusion_method = {
+    (nn.Conv2D, nn.BatchNorm2D): _fuse_conv_bn,
+    (nn.Linear, nn.BatchNorm1D): _fuse_linear_bn,
 }

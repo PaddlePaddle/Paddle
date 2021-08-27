@@ -39,6 +39,7 @@ _logger = get_logger(
 
 class TestFuseLinearBn(unittest.TestCase):
     """
+    Fuse the linear and bn layers, and then quantize the model.
     """
 
     def test_fuse(self):
@@ -51,7 +52,8 @@ class TestFuseLinearBn(unittest.TestCase):
         quant_model = ptq.quantize(model, fuse=True, fuse_list=f_l)
         quant_h = ptq.quantize(model_h, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
-            print(name, layer)
+            assert not (isinstance(layer, nn.BatchNorm1D) or
+                        isinstance(layer, nn.BatchNorm2D))
         out = model(inputs)
         out_h = model_h(inputs)
         out_quant = quant_model(inputs)
@@ -260,7 +262,8 @@ class TestImperativePTQfuse(TestImperativePTQ):
         f_l = [['features.0', 'features.1'], ['features.4', 'features.5']]
         quant_model = self.ptq.quantize(model, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
-            print(name, layer)
+            assert not (isinstance(layer, nn.BatchNorm1D) or
+                        isinstance(layer, nn.BatchNorm2D))
         before_acc_top1 = self.model_test(quant_model, self.batch_num,
                                           self.batch_size)
 
@@ -285,10 +288,14 @@ class TestImperativePTQfuse(TestImperativePTQ):
         print('After converted acc_top1: %s' % after_acc_top1)
         print('Infer acc_top1: %s' % infer_acc_top1)
 
+        #Check whether the quant_model is correct after converting.
+        #The acc of quantized model should be higher than 0.95.
         self.assertTrue(
             after_acc_top1 >= self.eval_acc_top1,
             msg="The test acc {%f} is less than {%f}." %
             (after_acc_top1, self.eval_acc_top1))
+        #Check the saved infer_model.The acc of infer model 
+        #should not be lower than the one of dygraph model.
         self.assertTrue(
             infer_acc_top1 >= after_acc_top1,
             msg='The acc is lower after converting model.')
