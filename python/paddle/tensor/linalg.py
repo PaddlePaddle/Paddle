@@ -941,3 +941,71 @@ def mv(x, vec, name=None):
         type='mv', inputs={'X': x,
                            'Vec': vec}, outputs={'Out': out})
     return out
+
+
+def multi_dot(x, name=None):
+    """
+    Compute the dot product of tow or more matrix in a single function call, while automatically selecting the fastest evaluation order.
+
+    Supports inputs of float, double and float16 dtypes. This function does not support batched inputs.
+
+    Every tensor in x must be 2D, except for the first and last which may be 1D. if the first tensor is a 1D vector of shape(n, ) it is treated as row vector of shape(1, n), similarly if the last tensor is a 1D vector of shape(n, ), it is treated as a column vector of shape(n, 1).
+    If the first and last tensors are matrices, the output will be a matrix. However, if either is a 1D vector, then the output will be a 1D vector.
+
+    Notes:
+        The cost of multiplying two matrices with shapes (a, b) and (b, c) is a * b * c. Given matrices A, B, C with shapes (10, 100), (100, 5), (5, 50) respectively, we can calculate the cost of different multiplication orders as follows:
+        Cost((AB)C) = 10x100x5 + 10x5x50 = 7500
+        Cost(A(BC)) = 10x100x50 + 100x5x50 = 75000
+
+       In this case, multiplying A and B first followed by C is 10 times faster.
+
+    Args:
+        x ([Tensor]): The input tensors which is a list Tensor.
+
+    Returns:
+        Tensor: The output Tensor.
+
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        # A * B
+        A_data = np.random.random([3, 4]).astype(np.float32)
+        B_data = np.random.random([4, 5]).astype(np.float32)
+        A = paddle.to_tensor(A_data)
+        B = paddle.to_tensor(B_data)
+        out = paddle.multi_dot([A, B])
+        print(out.numpy().shape)
+        # [3, 5]
+
+        # A * B * C
+        A_data = np.random.random([10, 5]).astype(np.float32)
+        B_data = np.random.random([5, 8]).astype(np.float32)
+        C_data = np.random.random([8, 7]).astype(np.float32)
+        A = paddle.to_tensor(A_data)
+        B = paddle.to_tensor(B_data)
+        C = paddle.to_tensor(C_data)
+        out = paddle.multi_dot([A, B, C])
+        print(out.numpy().shape)
+        # [10, 7]
+    """
+    if in_dygraph_mode():
+        return _C_ops.multi_dot(x)
+
+    check_type(x, 'x', (list, tuple), 'multi_dot')
+    for id, item in enumerate(x):
+        check_variable_and_dtype(item, 'x[' + str(id) + ']',
+                                 ['float16', 'float32', 'float64'], 'multi_dot')
+        if item.dtype != x[0].dtype:
+            raise TypeError(
+                "All the Tensors in the input must have the same data type.")
+
+    helper = LayerHelper('multi_dot', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type='multi_dot', inputs={"X": x}, outputs={"Out": out})
+    return out
