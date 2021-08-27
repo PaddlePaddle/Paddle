@@ -227,18 +227,38 @@ void FleetWrapper::PullSparseVarsSync(
   for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
-  bool training = true;
-  auto status = pserver_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size(),
-      training);
-  pull_sparse_status.push_back(std::move(status));
-  for (auto& t : pull_sparse_status) {
-    t.wait();
-    auto status = t.get();
-    if (status != 0) {
-      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
-      sleep(sleep_seconds_before_fail_exit_);
-      exit(-1);
+
+  in32_t cnt = 0;
+  while (true) {
+    bool training = true;
+    auto status = pserver_ptr_->_worker_ptr->pull_sparse(
+        pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size(),
+        training);
+    pull_sparse_status.clear();
+    pull_sparse_status.push_back(std::move(status));
+    bool flag = true;
+    for (auto& t : pull_sparse_status) {
+      t.wait();
+      int32_t status = -1;
+      try {
+        status = t.get();
+      } catch (const std::future_error& e) {
+        LOG(ERROR) << "Caught a future_error with code" << e.code()
+                   << ", Message:" << e.what();
+      }
+      if (status != 0) {
+        LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(sleep_seconds_before_fail_exit_);
+        flag = false;
+        cnt++;
+      }
+      if (cnt > 3) {
+        LOG(ERROR) << "fleet pull sparse failed, retry 3 times";
+        exit(-1);
+      }
+    }
+    if (flag) {
+      break;
     }
   }
 }
