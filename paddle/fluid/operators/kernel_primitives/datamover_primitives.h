@@ -107,36 +107,23 @@ struct BroadcastConfig {
 };
 
 #undef INT_BITS
-
-template <typename T, int NX, int NY, int BlockSize>
-__device__ __forceinline__ void WriteDataBase(T* dst, const T* __restrict__ src,
-                                              int size) {
-  int dx = threadIdx.x * NX;
-#pragma unroll
-  for (int idx = 0; idx < NX; ++idx) {
-    if ((idx + dx) >= size) {
-      break;
-    }
-    dst[idx + dx] = src[idx];
-  }
-}
-
 }  // namespace details
 
-template <typename T, int NX, int NY, int BlockSize>
-__device__ __forceinline__ void ReadDataBase(T* dst, const T* __restrict__ src,
-                                             int size) {
-  int dx = threadIdx.x * NX;
-#pragma unroll
-  for (int idx = 0; idx < NX; ++idx) {
-    if ((idx + dx) >= size) {
-      break;
-    }
-    dst[idx] = src[idx + dx];
-  }
-}
+/**
+ * @brief load data from src to dst, src can be 1D data or 2D data. Note that
+ * you can use this function when you are sure that the data will not cross the
+ * boundary.
+ * @typename:
+ * Tx: data type of src
+ * Ty: data type of dstt
+ * NX: the cols of src, dst
+ * NY: the rows of src, dst
+ * BlockSize: the config of this device
+ * @param：
+ * stride_nx: the stride of cols
+ * stride_ny: the stride of rows
+ */
 
-// dst[NY][NX];
 template <typename Tx, typename Ty, int NX, int NY, int BlockSize>
 __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
                                          int stride_nx, int stride_ny) {
@@ -166,6 +153,23 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
   }
 }
 
+/**
+ * @brief load data from src to dst, src can be 1D data or 2D data. When
+ * boundary judgment is required, you need to set a to true, and a is false by
+ * default.
+ * @typename:
+ * Tx: data type of src
+ * Ty: data type of dstt
+ * NX: the cols of src, dst
+ * NY: the rows of src, dst
+ * BlockSize: the config of this device
+ * IsBoundary: whether to make boundary judgment
+ * @param：
+ * size_nx: number of columns to be processed by the current block
+ * size_ny: number of rows to be processed by the current block
+ * stride_nx: the stride of cols
+ * stride_ny: the stride of rows
+ */
 template <typename Tx, typename Ty, int NX, int NY, int BlockSize,
           bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
@@ -174,6 +178,7 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
   int dx = threadIdx.x * NX;
   int size = size_nx - dx;
 
+  // Each branch is added for better performance
   if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
     if (IsBoundary) {
       if (dx < size_nx) {
@@ -232,22 +237,18 @@ __device__ __forceinline__ void Init(T* dst, T init_data) {
   }
 }
 
-// when shape size is 1, this function can be used
 /** @brief: ReadData
- * when shape size is 1, this function can be used, eg: elementwise
- * @param：
- * src: the source pointer
- * dst: the dst pointer
- * size: how many data have to deal with
- * attention : when shape size is 1, dst[NY, NX] will be dst[1, NX * NY]
- *             you should set NY' = 1, NX' = NY * NX
+ * @brief load data from src to dst, src can be 1D data, you should set NY = 1.
+ * When boundary judgment is required, you need to set a to true, and a is false
+ * by default.
  * @typename:
- * Tx : the data type of src
- * Ty : the data type of dst
- * NX : how many data will be deal with per times and per thread
- * NY : 1
- * BlockSize : the config of device
- * IsBoundary : blockDim.x * NX is larger than num
+ * T : the data type of src
+ * NX: the cols of src, dst
+ * NY: in this function NY only can be 1
+ * BlockSize: the config of this device
+ * IsBoundary: whether to make boundary judgment
+ * @param：
+ * num: number of columns to be processed by the current block
  */
 template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
@@ -261,16 +262,16 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
       }
     }
   } else {  // blockDim,x * NX < num
-    const int VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
-    const int VECTORS_PER_THREAD = NX / VECTOR_SIZE;
-    int tid = threadIdx.x * VECTORS_PER_THREAD;
+    const int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    const int kVectorsPerThread = NX / kVectorSize;
+    int tid = threadIdx.x * kVectorsPerThread;
 
-    using VecType = details::VectorType<T, VECTOR_SIZE>;
+    using VecType = details::VectorType<T, kVectorSize>;
     const VecType* vec_input = reinterpret_cast<const VecType*>(src);
-    VecType vec_temp[VECTORS_PER_THREAD];
+    VecType vec_temp[kVectorsPerThread];
 
 #pragma unroll
-    for (int i = 0; i < VECTORS_PER_THREAD; ++i) {
+    for (int i = 0; i < kVectorsPerThread; ++i) {
       vec_temp[i] = vec_input[i + tid];
 #pragma unroll
       for (int idx = 0; idx < NX; ++idx) {
@@ -280,21 +281,22 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
   }
 }
 
-/** @brief: ReadDataBc
- * read data from src ptr when the shape of src and dst are different
- * @param：
- * src: the source pointer
- * dst: the dst pointer
- * stride_nx: the stride of src
- * stride_ny: the stride of src
- * the shape of dst is [NY, NX]
+/**
+ * @brief: read data for broadcast
  * @typename:
- * Tx : the data type of src
- * Ty : the data type of dst
- * NX : number of columns to be processed continuously per thread
- * NY : number of rows to be processed per thread
- * BlockSize : the config of device
- * IsBoundary : blockDim.x * NX is larger than num
+ * T : the data type of src
+ * NX: the cols of src, dst
+ * NY: in this function NY only can be 1
+ * BlockSize: the config of this device
+ * ShapeSize: the shape size of out. eg in[1, 35], out[32, 35] then shape size
+ * is 2
+ * IsBoundary: whether to make boundary judgment
+ * @param：
+ * fix: data offset of this block, blockDim.x * blockIdx.x * NX;
+ * config: get the global index in src, attention config was declared in host;
+ * num: the num of out
+ * stride_nx: the stride of cols
+ * stride_ny: the stride of rows
  */
 template <typename T, int NX, int NY, int BlockSize, int ShapeSize,
           bool IsBoundary = false>
@@ -327,24 +329,35 @@ __device__ __forceinline__ void ReadDataBc(
   }
 }
 
-/** @brief: ReadDataReduce
- * read data from global memory for reduce op, the idx of src should be less
- * than size_nx and size_ny
+/**
+ * @brief: read data for broadcast
+ * @typename:
+ * T : the data type of src
+ * NX: the cols of src, dst
+ * NY: in this function NY only can be 1
+ * BlockSize: the config of this device
+ * ShapeSize: the shape size of out. eg in[1, 35], out[32, 35] then shape size
+ * is 2
+ * IndexCal: get the global index in src, attention config was declared in host;
+ * IsBoundary: whether to make boundary judgment
  * @param：
- * src: the source pointer
- * dst: the dst pointer
- * stride_nx: the stride of src
- * stride_ny: the stride of src
- * the shape of dst is [NY, NX]
+ * fix: data offset of this block, blockDim.x * blockIdx.x * NX;
+ * index_cal: get the global index in src, attention config was declared in
+ * host;
+ * size_nx: number of columns to be processed by the current block
+ * size_ny: number of rows to be processed by the current block
+ * stride_nx: the stride of cols
+ * stride_ny: the stride of rows
+ * reduce_last_dim: according to the block split set threadIdx
  */
 template <typename T, int NX, int NY, int BlockSize, int ShapeSize,
           typename IndexCal, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataReduce(
     T* dst, const T* __restrict__ src, int fix, const IndexCal& index_cal,
     int size_nx, int size_ny, int stride_nx, int stride_ny,
-    bool reduce_lastdim) {
+    bool reduce_last_dim) {
   int base_offset = fix;
-  if (reduce_lastdim) {
+  if (reduce_last_dim) {
     base_offset += threadIdx.x;
   } else {
     base_offset += threadIdx.y;
@@ -385,15 +398,19 @@ __device__ __forceinline__ void ReadDataReduce(
   }
 }
 
-template <typename T, int NX, int NY, int BlockSize>
-__device__ __forceinline__ void WriteData(T* dst, const T* __restrict__ src) {
-  int dx = threadIdx.x * NX;
-#pragma unroll
-  for (int idx = 0; idx < NX; ++idx) {
-    dst[idx + dx] = src[idx];
-  }
-}
-
+/** @brief: WriteData
+ * @brief store data from src to dst, src can be 1D data, you should set NY = 1.
+ * When boundary judgment is required, you need to set a to true, and a is false
+ * by default.
+ * @typename:
+ * T : the data type of src
+ * NX: the cols of src, dst
+ * NY: in this function NY only can be 1
+ * BlockSize: the config of this device
+ * IsBoundary: whether to make boundary judgment
+ * @param：
+ * num: number of columns to be processed by the current block
+ */
 template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
                                           int num) {
@@ -407,15 +424,15 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
     }
   } else {
     // Vector type
-    const int VECTOR_SIZE = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
-    const int VECTORS_PER_THREAD = NX / VECTOR_SIZE;
+    const int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    const int kVectorsPerThread = NX / kVectorSize;
 
-    int dx = threadIdx.x * VECTORS_PER_THREAD;
-    using VecType = details::VectorType<T, VECTOR_SIZE>;
+    int dx = threadIdx.x * kVectorsPerThread;
+    using VecType = details::VectorType<T, kVectorSize>;
     VecType* vec_dst = reinterpret_cast<VecType*>(dst);
-    VecType vec_temp[VECTORS_PER_THREAD];
+    VecType vec_temp[kVectorsPerThread];
 #pragma unroll
-    for (int idx = 0; idx < VECTORS_PER_THREAD; ++idx) {
+    for (int idx = 0; idx < kVectorsPerThread; ++idx) {
       vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
       vec_dst[dx + idx] = vec_temp[idx];
     }
