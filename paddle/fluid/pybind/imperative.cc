@@ -816,10 +816,10 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
-      .def("_setitem_index_not_tensor",
+      .def("__setitem_varbase__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
               py::object &value_obj) {
-             VLOG(4) << "Call _setitem_index_not_tensor";
+             VLOG(4) << "Call __setitem_varbase__";
 
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();

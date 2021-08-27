@@ -900,11 +900,6 @@ class TestError(TestSetValueBase):
             idx = paddle.assign([True, False, True])
             x[idx] = 0
 
-        with self.assertRaises(IndexError):
-            x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            idx = paddle.assign([0, 1])
-            x[idx] = 0
-
     def _broadcast_mismatch(self):
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
