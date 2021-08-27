@@ -122,13 +122,15 @@ def array_write(x, i, array=None):
     return layers.array_write(x, i, array)
 
 
-def create_array(dtype):
+def create_array(dtype, initialized_list=None):
     """
     This OP creates an array. It is used as the input of :ref:`api_paddle_tensor_array_array_read` and
     :ref:`api_paddle_tensor_array_array_write`.
 
     Args:
         dtype (str): The data type of the elements in the array. Support data type: float32, float64, int32, int64 and bool.
+        initialized_list(list): Used to initialize as default value for created array.
+                    In static mode, all values in initialized list should be a Tensor.
 
     Returns:
         list|Tensor: An empty array. In dynamic mode, ``array`` is a Python list. But in static mode, array is a Tensor
@@ -149,4 +151,4 @@ def create_array(dtype):
             print(item)     # [[5., 5., 5.]]
 
     """
-    return layers.create_array(dtype)
+    return layers.create_array(dtype, initialized_list)
