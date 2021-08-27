@@ -5313,12 +5313,16 @@ class PipelineOptimizer(object):
                     # we set the dtype of float and fp16 both to 2.
                     # Under this way, the fused vars' shape for float and fp16 are all [128]
                     "user_defined_size_of_dtype": 2,
-                    "set_constant": core.is_compiled_with_npu(),
-                    "constant": float(0.0),
                     "copy_data": False,
                     "use_align": True,
                     "dtype": grads[0].dtype,
-                    self._op_role_key: self._op_role.Backward
+                    self._op_role_key: self._op_role.Backward,
+                    # On npu, the nan/inf check login is different with gpu.
+                    # If there are some not initialized sections in the fused var,
+                    # and the value in those sections are nan/inf, it will trigger the nan/inf check.
+                    # To avoid these problematic triggers, set constant is needed for npu
+                    "set_constant": core.is_compiled_with_npu(),
+                    "constant": float(0.0),
                 })
             offset += 1
             # For the gradient_merged_fused_var, given a init value during the coalesce op
