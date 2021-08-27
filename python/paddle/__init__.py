@@ -99,6 +99,7 @@ from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
+from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
@@ -272,6 +273,7 @@ from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
 from .fluid.framework import is_compiled_with_cuda  # noqa: F401
 from .fluid.framework import is_compiled_with_rocm  # noqa: F401
+from .fluid.framework import disable_signal_handler  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
@@ -485,10 +487,12 @@ __all__ = [  # noqa
            'enable_static',
            'scatter_nd',
            'set_default_dtype',
+           'disable_signal_handler',
            'expand_as',
            'stack',
            'sqrt',
            'cholesky',
+           'matrix_power',
            'randperm',
            'linspace',
            'reshape',
