@@ -76,17 +76,15 @@ class BilinearInterpolateOpConverter : public OpConverter {
       PADDLE_ENFORCE_EQ(
           scale_w > 0, true,
           platform::errors::InvalidArgument(
-              "The scale_w in input 'Scale' Tensor of "
-              "Operator(bilinear_interp_v2) "
+              "The scale_w in input 'Scale' Tensor of Operator(%s) "
               "should be greater than 0, but received value is %d.",
-              scale_w));
+              op_type_, scale_w));
       PADDLE_ENFORCE_EQ(
           scale_h > 0, true,
           platform::errors::InvalidArgument(
-              "The scale_h in input 'Scale' Tensor of "
-              "Operator(bilinear_interp_v2) "
+              "The scale_h in input 'Scale' Tensor of Operator(%s) "
               "should be greater than 0, but received value is %d.",
-              scale_h));
+              op_type_, scale_h));
     } else {
       // get attr(scale)
       if(op_type_ == "bilinear_interp") { // v1
@@ -129,15 +127,15 @@ class BilinearInterpolateOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         scale_w > 0, true,
         platform::errors::InvalidArgument(
-            "The scale_w in Attr(scale) of Operator(bilinear_interp_v2) "
-            "should be greater than 0, but received value is %d.",
+            "The scale_w in Attr(scale) of Operator(%s) "
+            "should be greater than 0, but received value is %d.", op_type_,
             scale_w));
 
     PADDLE_ENFORCE_EQ(
         scale_h > 0, true,
         platform::errors::InvalidArgument(
-            "The scale_h in Attr(scale) of Operator(bilinear_interp_v2) "
-            "should be greater than 0, but received value is %d.",
+            "The scale_h in Attr(scale) of Operator(%s) "
+            "should be greater than 0, but received value is %d.", op_type_,
             scale_h));
 
     std::vector<float> scale;
@@ -161,7 +159,7 @@ class BilinearInterpolateOpConverter : public OpConverter {
     }
 
     layer->setScales(scale.data(), scale.size());
-    RreplenishLayerAndOutput(layer, "bilinear_interp_v2", {output_name},
+    RreplenishLayerAndOutput(layer, op_type_, {output_name},
                              test_mode);
   }
 
