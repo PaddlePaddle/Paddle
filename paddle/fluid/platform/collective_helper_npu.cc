@@ -34,8 +34,13 @@ class HCCLCommImpl : public HCCLComm {
     return BOOST_GET_CONST(NPUPlace, dev_ctx_->GetPlace()).device;
   }
 
-  virtual ~HCCLCommImpl() {
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclCommDestroy(comm_));
+  virtual ~HCCLCommImpl() { destroy_hccl_comm(); }
+
+  void destroy_hccl_comm() {
+    if (comm_) {
+      PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclCommDestroy(comm_));
+    }
+    comm_ = nullptr;
   }
 
   void set_comm(HcclComm comm) { comm_ = comm; }
@@ -52,7 +57,7 @@ class HCCLCommImpl : public HCCLComm {
   int ring_id_;
   int nranks_;
   int rank_;
-  HcclComm comm_;
+  HcclComm comm_ = nullptr;
   std::unique_ptr<NPUDeviceContext> dev_ctx_;
 };
 
@@ -95,7 +100,7 @@ HCCLComm* HCCLCommContext::CreateHCCLComm(HcclRootInfo* hccl_id, int nranks,
           << ", with comm: " << comm_wrapper->comm();
 
   std::call_once(once_flag_, []() {
-    std::atexit([]() { HCCLCommContext::Instance().ReleaseHCCLComms(); });
+    std::atexit([]() { HCCLCommContext::Instance().Release(); });
   });
 
   return comm_wrapper;
@@ -103,15 +108,10 @@ HCCLComm* HCCLCommContext::CreateHCCLComm(HcclRootInfo* hccl_id, int nranks,
 
 HCCLComm* HCCLCommContext::AssignHCCLComm(HcclComm comm, int nranks, int rank,
                                           int dev_id, int ring_id) {
-  std::unique_ptr<NPUDeviceContext> dev_ctx(
-      new NPUDeviceContext(NPUPlace(dev_id)));
-
   HCCLCommImpl* c = new HCCLCommImpl;
   c->set_ring_id(ring_id);
   c->set_nranks(nranks);
   c->set_rank(rank);
-  c->set_comm(comm);
-  c->set_dev_ctx(std::move(dev_ctx));
 
   comm_map_mutex_.lock();
   if (comm_map_.count(ring_id) == 0) {
@@ -119,7 +119,18 @@ HCCLComm* HCCLCommContext::AssignHCCLComm(HcclComm comm, int nranks, int rank,
   }
   auto& dev2comm = comm_map_[ring_id];
 
-  dev2comm.emplace(dev_id, std::unique_ptr<HCCLComm>(c));
+  if (dev2comm.count(dev_id) == 0) {
+    std::unique_ptr<NPUDeviceContext> dev_ctx(
+        new NPUDeviceContext(NPUPlace(dev_id)));
+
+    c->set_dev_ctx(std::move(dev_ctx));
+    c->set_comm(comm);
+
+    dev2comm.emplace(dev_id, std::unique_ptr<HCCLComm>(c));
+  } else {
+    auto hccl_comm = dynamic_cast<HCCLCommImpl*>(dev2comm[dev_id].get());
+    hccl_comm->set_comm(comm);
+  }
   comm_map_mutex_.unlock();
 
   if (ring_id == 0) {
@@ -133,6 +144,15 @@ HCCLComm* HCCLCommContext::AssignHCCLComm(HcclComm comm, int nranks, int rank,
 }
 
 void HCCLCommContext::ReleaseHCCLComms() {
+  for (auto& p : comm_map_) {
+    for (auto& q : p.second) {
+      auto hccl_comm = dynamic_cast<HCCLCommImpl*>(q.second.get());
+      hccl_comm->destroy_hccl_comm();
+    }
+  }
+}
+
+void HCCLCommContext::Release() {
   for (auto& p : comm_map_) {
     for (auto& q : p.second) {
       q.second.reset();

@@ -227,6 +227,7 @@ class HCCLCommContext {
 
   // void InitHcomWorldGroup();
   void ReleaseHCCLComms();
+  void Release();
 
   DISABLE_COPY_AND_ASSIGN(HCCLCommContext);
 };
