@@ -560,21 +560,12 @@ def _setitem_impl_(var, item, value):
             slice_info.update(slice_item)
             continue
 
-        elif isinstance(slice_item, list):
-            if len(item) != 1:
-                raise IndexError(
-                    "When index contains a list, its length must be 1, but received {}.".
-                    format(len(item)))
-            for i in slice_item:
-                if not isinstance(i, bool):
-                    raise TypeError("Only support bool in index list.")
-
-            from .layers import assign
-            idx_tensor = assign(slice_item)
-            return set_value_for_bool_tensor(var, idx_tensor, value)
-
         elif isinstance(slice_item, Variable):
             if slice_item.dtype == core.VarDesc.VarType.BOOL:
+                if len(item) != 1:
+                    raise IndexError(
+                        "When index contains a bool tensor, its length must be 1, but received {}.".
+                        format(len(item)))
                 return set_value_for_bool_tensor(var, slice_item, value)
             else:
                 slice_info.update(slice_item)
