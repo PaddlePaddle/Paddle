@@ -192,8 +192,9 @@ def normalize_program(program, feed_vars, fetch_vars):
     with program_guard(program):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
-            var = layers.scale(
-                var, 1., name="save_infer_model/scale_{}".format(i))
+            if var.dtype != paddle.bool:
+                var = layers.scale(
+                    var, 1., name="save_infer_model/scale_{}".format(i))
             uniq_fetch_vars.append(var)
         fetch_vars = uniq_fetch_vars
 
