@@ -16,9 +16,9 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    unpool2d, ops::UnpoolKernel<paddle::platform::CUDADeviceContext, float>,
+    unpool, ops::UnpoolKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnpoolKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
-    unpool2d_grad,
+    unpool_grad,
     ops::UnpoolGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnpoolGradKernel<paddle::platform::CUDADeviceContext, double>);
