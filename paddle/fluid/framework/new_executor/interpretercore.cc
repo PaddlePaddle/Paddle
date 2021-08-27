@@ -15,6 +15,9 @@
 
 #include <unordered_set>
 
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_gc_helper.h"
+
 namespace paddle {
 namespace framework {
 
@@ -67,27 +70,26 @@ std::vector<size_t> ParseEventVarIds(const Instruction& cur_instr,
 }
 
 void AssociateInputWithEvents(
-    const std::vector<size_t>& new_event_var_id, Instruction* next_instr,
-    std::map<size_t, std::shared_ptr<platform::CudaEvent>>* var_id2event,
+    const platform::Place& place, const std::vector<size_t>& new_event_var_id,
+    Instruction* next_instr,
+    std::map<size_t, std::shared_ptr<platform::DeviceEvent>>* var_id2event,
     bool is_sync) {
-#ifdef PADDLE_WITH_CUDA
   for (auto var_id : new_event_var_id) {
     if (var_id2event->count(var_id) == 0) {
-      auto cuda_event = std::make_shared<platform::CudaEvent>(
-          platform::get_cuda_flags(false, false, false));
-      var_id2event->emplace(var_id, std::move(cuda_event));
+      auto device_event = std::make_shared<platform::DeviceEvent>(
+          place, platform::get_cuda_flags(false, false, false));
+      var_id2event->emplace(var_id, std::move(device_event));
     }
     // Add events for next_instr.inputs
     next_instr->intput_events_.emplace_back(var_id, var_id2event->at(var_id),
                                             is_sync);
   }
-#endif
 }
 
 void ParseDirectAndEventRunOps(
-    const std::vector<OpFuncNode>& op_func_nodes,
+    const platform::Place& place, const std::vector<OpFuncNode>& op_func_nodes,
     const std::vector<size_t>& downstream_ops, size_t op_index,
-    std::map<size_t, std::shared_ptr<platform::CudaEvent>>* var_id2event,
+    std::map<size_t, std::shared_ptr<platform::DeviceEvent>>* var_id2event,
     std::vector<Instruction>* instructions) {
   auto& op_func_type = op_func_nodes[op_index].type_;
   auto& cur_instr = instructions->at(op_index);
@@ -112,8 +114,8 @@ void ParseDirectAndEventRunOps(
 
       bool is_sync =
           (op_func_nodes[next_op_id].type_ == OpFuncType::kQueueSync);
-      AssociateInputWithEvents(new_event_var_ids, &next_instr, var_id2event,
-                               is_sync);
+      AssociateInputWithEvents(place, new_event_var_ids, &next_instr,
+                               var_id2event, is_sync);
 
       if (is_sync) {  // GPU -> CPU
         next_instruction.synchronize_run_.emplace_back(next_op_id);
@@ -121,7 +123,6 @@ void ParseDirectAndEventRunOps(
         next_instruction.event_wait_run_.emplace_back(next_op_id);
       }
     }
-#ifdef PADDLE_WITH_CUDA
     // Create events for these cross-stream vars
     VLOG(3) << cur_instr.kernel_func_.operator_base_->Type()
             << " event_var_ids.size: " << event_var_ids.size();
@@ -129,7 +130,6 @@ void ParseDirectAndEventRunOps(
       cur_instr.output_events_.emplace_back(var_id, var_id2event->at(var_id),
                                             false /*not used*/);
     }
-#endif
   }
 }
 }  // namespace
@@ -146,6 +146,12 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       h2d_ctx_pool_({place}),
       fetch_context_pool_({place}) {
   is_build_ = false;
+
+  garbages_.reset(new GarbageQueue());
+  max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
+  cur_memory_size_ = 0;
+  gc_queue_ = CreateSingleThreadedWorkQueue();
+
   feed_names_ = feed_names;
 
   // Step1: add feedop and fetchop to main_program
@@ -216,11 +222,24 @@ void InterpreterCore::Convert() {
     temp_inst.input_index_ = vec_func_list_[i].input_index;
     temp_inst.output_index_ = vec_func_list_[i].output_index;
 
+    OpInOutInfo info;
+
     std::vector<size_t> gc_check_input_list;
     for (auto& item : vec_func_list_[i].input_index) {
       for (auto id : item.second) {
         input_var2op_info_[id].push_back(i);
-        gc_check_input_list.push_back(id);
+        // var can be gc-ed
+        if (!info.IsBuilt()) {
+          info.Build(op_list_[i]);
+        }
+        if (global_scope_->vec_meta_info_[id].vardesc_) {
+          if (info.IsInArgBufferNeeded(
+                  global_scope_->vec_meta_info_[id].vardesc_->Name())) {
+            gc_check_input_list.push_back(id);
+          }
+        } else {
+          gc_check_input_list.push_back(id);
+        }
       }
     }
     std::sort(gc_check_input_list.begin(), gc_check_input_list.end());
@@ -237,6 +256,11 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    // int device_type = static_cast<int>(paddle::platform::DeviceType::CUDA);
+    // paddle::platform::DeviceOption dev_opt(
+    //     device_type, BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+    gc_event_.emplace_back(place_);
+
     std::vector<size_t> vec_temp;
     for (auto& item : vec_instruction_[i].output_index_) {
       for (auto id : item.second) {
@@ -254,8 +278,8 @@ void InterpreterCore::Convert() {
       }
     }
 
-    ParseDirectAndEventRunOps(vec_func_list_, filter_next, i, &var_id2event_,
-                              &vec_instruction_);
+    ParseDirectAndEventRunOps(place_, vec_func_list_, filter_next, i,
+                              &var_id2event_, &vec_instruction_);
 
     // checkout ouput
     for (auto& item : vec_instruction_[i].output_index_) {
@@ -375,11 +399,8 @@ void InterpreterCore::ExecuteInstructionList(
     }
 
     // GC infomation
-
-    auto& gc_check_list = instr_node.gc_check_var_list;
-    for (auto var_id : gc_check_list) {
-      --working_var_ref[var_id].var_ref_count_;
-    }
+    CheckGC(instr_id, instr_node.gc_check_var_list, var_scope, place,
+            working_var_ref);
   }
 
   fetch_context_pool_.Get(place)->Wait();
@@ -387,6 +408,87 @@ void InterpreterCore::ExecuteInstructionList(
   for (size_t i = 0; i < working_var_ref.size(); ++i) {
     if (working_var_ref[i].var_ref_count_ != 0) {
       std::cerr << " var ref is not zero " << i << std::endl;
+    }
+  }
+}
+
+void InterpreterCore::CheckGC(size_t instr_id,
+                              const std::vector<size_t>& gc_check_list,
+                              const VariableScope& var_scope,
+                              const platform::Place& place,
+                              std::vector<VariableMetaInfo>& working_var_ref) {
+  for (auto var_id : gc_check_list) {
+    --working_var_ref[var_id].var_ref_count_;
+    if (var_scope.vec_meta_info_[var_id].vardesc_ &&
+        !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
+        working_var_ref[var_id].var_ref_count_ == 0) {
+      Variable* var = var_scope.var_list[var_id];
+      if (var->IsType<LoDTensor>()) {
+        garbages_->emplace_back(
+            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+        if (garbages_->back()) {
+          cur_memory_size_ += garbages_->back()->size();
+        }
+      } else if (var->IsType<SelectedRows>()) {
+        garbages_->emplace_back(var->GetMutable<SelectedRows>()
+                                    ->mutable_value()
+                                    ->MoveMemoryHolder());
+        if (garbages_->back()) {
+          cur_memory_size_ += garbages_->back()->size();
+        }
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+        for (auto& t : *tensor_arr) {
+          garbages_->emplace_back(t.MoveMemoryHolder());
+          if (garbages_->back()) {
+            cur_memory_size_ += garbages_->back()->size();
+          }
+        }
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "The variable(%s) is not supported in eager deletion.",
+            framework::ToTypeName(var->Type())));
+      }
+    }
+  }
+
+  if (!garbages_->empty()) {
+    if (max_memory_size_ <= 1) {
+#if defined(PADDLE_WITH_CUDA)
+      auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+          platform::DeviceContextPool::Instance().Get(place));
+      gc_event_[instr_id].Record(dev_ctx);
+      gc_queue_->AddTask(
+          [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
+            while (!event->Query()) {
+              continue;
+            }
+            delete container;
+          });
+      garbages_.reset(new GarbageQueue());
+#else
+      delete garbages_.release();
+      garbages_.reset(new GarbageQueue());
+#endif
+    } else if (cur_memory_size_ >= max_memory_size_) {
+#if defined(PADDLE_WITH_CUDA)
+      auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+          platform::DeviceContextPool::Instance().Get(place));
+      gc_event_[instr_id].Record(dev_ctx);
+      gc_queue_->AddTask(
+          [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
+            while (!event->Query()) {
+              continue;
+            }
+            delete container;
+          });
+      garbages_.reset(new GarbageQueue());
+      cur_memory_size_ = 0;
+#else
+      delete garbages_.release();
+      garbages_.reset(new GarbageQueue());
+      cur_memory_size_ = 0;
+#endif
     }
   }
 }
@@ -419,6 +521,11 @@ void InterpreterCore::BuildVariableScope(const framework::ProgramDesc& pdesc,
       auto v = new Variable();
       InitializeVariable(v, var->GetType());
       var_scope->var_list.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = var;
+      var_scope->vec_meta_info_.push_back(info);
     }
   }
 }
@@ -431,6 +538,7 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
   auto& global_block = pdesc.Block(0);
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
 
+  std::vector<OperatorBase*> ops;
   for (auto& op : global_block.AllOps()) {
     VLOG(3) << "Build OpFuncNode from : " << op->Type();
 
@@ -446,6 +554,20 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
     // step 1. Prepare VariableValueMap of input/output
     auto op_base =
         info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
+    ops.push_back(op_base);
+  }
+
+  auto unused_var_map = get_unused_vars(global_block, ops);
+
+  size_t ops_index = 0;
+  for (auto& op : global_block.AllOps()) {
+    VLOG(3) << op->Type();
+    // << op->Type() << endl;
+
+    auto op_base = ops[ops_index++];
+
+    auto inputs_names = op->Inputs();
+    auto outputs_names = op->Outputs();
 
     VariableValueMap ins_map;
     std::map<std::string, std::vector<int>> ins_name2id;
@@ -550,6 +672,11 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
           v->GetMutable<LoDTensor>();
           var_scope->name2id[new_var_name] = var_scope->var_list.size();
           var_scope->var_list.push_back(v);
+
+          VariableMetaInfo info;
+          info.var_ref_count_ = 0;
+          info.vardesc_ = nullptr;
+          var_scope->vec_meta_info_.push_back(info);
 
           VariableNameMap copy_in_map;
           auto x_iter = inputs_names.find(it->first);
@@ -656,6 +783,47 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
     op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
     op_func_node.kernel_func_(exec_ctx);
     vec_func_list->push_back(op_func_node);
+
+    // gc---------------------------------------------------------------------------
+    auto iter = unused_var_map.find(op_base);
+    if (iter == unused_var_map.end()) {
+      continue;
+    }
+
+    auto& delete_vars = iter->second;
+    std::deque<std::shared_ptr<memory::Allocation>>* garbages =
+        new std::deque<std::shared_ptr<memory::Allocation>>();
+
+    for (auto& var_name : delete_vars) {
+      auto it = var_scope->name2id.find(var_name);
+      assert(it != var_scope->name2id.end());
+      auto* var = var_scope->var_list[it->second];
+      if (var == nullptr) {
+        continue;
+      }
+
+      VLOG(2) << "Erase variable " << var_name;
+      if (var->IsType<LoDTensor>()) {
+        garbages->emplace_back(
+            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+      } else if (var->IsType<SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<SelectedRows>()
+                                   ->mutable_value()
+                                   ->MoveMemoryHolder());
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+        for (auto& t : *lod_tensor_arr) {
+          garbages->emplace_back(t.MoveMemoryHolder());
+        }
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Type %s of variable %s is not supported eager deletion.",
+            framework::ToTypeName(var->Type()), var_name));
+      }
+    }
+
+    delete garbages;  // free mem
+
     VLOG(3) << "run " << op_base->Type() << " done.";
   }
 }
@@ -680,34 +848,23 @@ void InterpreterCore::RecordEventInstruction(const Instruction& instruction,
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place_)) return;
 
-#ifdef PADDLE_WITH_CUDA
-  const platform::CUDADeviceContext* dev_ctx =
-      reinterpret_cast<const platform::CUDADeviceContext*>(
-          instruction.dev_ctx_);
   for (auto& event : instruction.output_events_) {
     VLOG(3) << "Record event in out_var_id: " << event.var_id_;
-    event.event_->Record(*(dev_ctx->context()->Stream()));
+    event.event_->Record(instruction.dev_ctx_);
   }
-#endif
 }
 
 void InterpreterCore::WaitOrSync(const std::vector<EventInter>& events,
                                  const platform::DeviceContext* dev_ctx) {
-#ifdef PADDLE_WITH_CUDA
-  auto* cuda_dev_ctx =
-      reinterpret_cast<const platform::CUDADeviceContext*>(dev_ctx);
-
-  for (auto& event : events) {
-    if (event.is_sync_) {
-      VLOG(3) << "host sync wait in_var_id " << event.var_id_;
-      event.event_->Synchronize();
+  for (auto& event_iter : events) {
+    if (event_iter.is_sync_) {
+      VLOG(3) << "host sync wait in_var_id " << event_iter.var_id_;
+      event_iter.event_->Wait(platform::kCPU, dev_ctx);
     } else {
-      VLOG(3) << "stream async wait in_var_id " << event.var_id_;
-      cuda_dev_ctx->context()->Stream()->WaitEvent(
-          event.event_->GetRawCudaEvent());
+      VLOG(3) << "stream async wait in_var_id " << event_iter.var_id_;
+      event_iter.event_->Wait(platform::kCUDA, dev_ctx);
     }
   }
-#endif
 }
 
 void InterpreterCore::StreamWaitEventOrSync(const Instruction& instruction) {

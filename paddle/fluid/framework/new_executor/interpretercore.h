@@ -21,16 +21,18 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/device_event.h"
 
 namespace paddle {
 namespace framework {
 
 class InterpreterCore {
  public:
+  using GarbageQueue = std::deque<std::shared_ptr<memory::Allocation>>;
   InterpreterCore(const platform::Place& place, const ProgramDesc& main_prog,
                   VariableScope* global_scope,
                   const std::vector<std::string>& feed_names,
@@ -64,6 +66,10 @@ class InterpreterCore {
   void BuildVariableScope(const framework::ProgramDesc& pdesc,
                           VariableScope* var_scope);
 
+  void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
+               const VariableScope& var_scope, const platform::Place& place,
+               std::vector<VariableMetaInfo>& working_var_ref);  // NOLINT
+
   platform::DeviceContext* ParseDeviceContextForInstruction(
       const OpFuncNode& op_func_node, const OperatorBase& op_base);
 
@@ -94,7 +100,13 @@ class InterpreterCore {
   bool is_build_;
 
   std::vector<std::string> feed_names_;
-  std::map<size_t, std::shared_ptr<platform::CudaEvent>> var_id2event_;
+  std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
+
+  std::vector<paddle::platform::DeviceEvent> gc_event_;
+  std::unique_ptr<GarbageQueue> garbages_;
+  size_t max_memory_size_;
+  size_t cur_memory_size_;
+  std::unique_ptr<WorkQueue> gc_queue_;
 
   platform::DeviceContextPool fetch_context_pool_;
 };

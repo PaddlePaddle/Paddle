@@ -113,7 +113,7 @@ class SliceOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", out_dims);
-    if (axes[0] != 0) {
+    if (axes.size() > 0 && axes[0] != 0) {
       ctx->ShareLoD("Input", /*->*/ "Out");
     }
   }

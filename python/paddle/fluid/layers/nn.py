@@ -10975,6 +10975,22 @@ def slice(input, axes, starts, ends):
         attrs = ()
         starts_tensor = None
         ends_tensor = None
+
+        if isinstance(axes, (list, tuple)):
+            if len(axes) == 0:
+                raise ValueError(
+                    "Input axes should not be an empty list/tuple.")
+            for i in range(len(axes)):
+                if axes[i] < 0:
+                    axes[i] = max(0, axes[i] + len(input.shape))
+                else:
+                    axes[i] = min(len(input.shape) - 1, axes[i])
+
+        else:
+            raise ValueError(
+                "Input axes must be a python list or tuple, but reveived {}".
+                format(type(axes)))
+
         infer_flags = list(1 for i in range(len(axes)))
 
         if isinstance(starts, (list, tuple)):
