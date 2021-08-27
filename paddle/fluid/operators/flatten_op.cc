@@ -200,6 +200,7 @@ class Flatten2OpMaker : public FlattenOpMaker {
               "XShape is just used to store the shape and lod of X, which will "
               "be used in FlattenGradOp.")
         .AsIntermediate();
+    .AsExtra()
   }
 };
 

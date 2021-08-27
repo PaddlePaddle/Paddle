@@ -342,7 +342,8 @@ class CReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(string::Sprintf(R"DOC(
 CReduce %s Operator
 
