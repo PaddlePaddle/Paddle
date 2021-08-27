@@ -193,8 +193,16 @@ def create_global_var(shape,
                     numpy.int64), 'create_global_var')
 
     check_dtype(dtype, 'dtype', [
-        'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
-        'int64', 'uint8'
+        'bool',
+        'float16',
+        'float32',
+        'float64',
+        'int8',
+        'int16',
+        'int32',
+        'int64',
+        'uint8',
+        'uint16',
     ], 'create_global_var')
 
     helper = LayerHelper("global_var", **locals())
