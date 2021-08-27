@@ -25,15 +25,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
-<<<<<<< HEAD
-<<<<<<< HEAD
 #include "paddle/fluid/platform/device_event.h"
-=======
->>>>>>> 678a259... Support Multi-Stream, Single-Thread in New Executor (#35024)
-=======
-#include "paddle/fluid/platform/device_event.h"
->>>>>>> f147203... gc for newexecutor (#35085)
-#include "paddle/fluid/platform/event.h"
 
 namespace paddle {
 namespace framework {
@@ -74,19 +66,10 @@ class InterpreterCore {
   void BuildVariableScope(const framework::ProgramDesc& pdesc,
                           VariableScope* var_scope);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> f147203... gc for newexecutor (#35085)
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
                const VariableScope& var_scope, const platform::Place& place,
                std::vector<VariableMetaInfo>& working_var_ref);  // NOLINT
 
-<<<<<<< HEAD
-=======
->>>>>>> 678a259... Support Multi-Stream, Single-Thread in New Executor (#35024)
-=======
->>>>>>> f147203... gc for newexecutor (#35085)
   platform::DeviceContext* ParseDeviceContextForInstruction(
       const OpFuncNode& op_func_node, const OperatorBase& op_base);
 
@@ -117,16 +100,7 @@ class InterpreterCore {
   bool is_build_;
 
   std::vector<std::string> feed_names_;
-  std::map<size_t, std::shared_ptr<platform::CudaEvent>> var_id2event_;
-<<<<<<< HEAD
-
-  std::vector<paddle::platform::DeviceEvent> gc_event_;
-  std::unique_ptr<GarbageQueue> garbages_;
-  size_t max_memory_size_;
-  size_t cur_memory_size_;
-  std::unique_ptr<WorkQueue> gc_queue_;
-=======
->>>>>>> 678a259... Support Multi-Stream, Single-Thread in New Executor (#35024)
+  std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
 
   std::vector<paddle::platform::DeviceEvent> gc_event_;
   std::unique_ptr<GarbageQueue> garbages_;
@@ -138,3 +112,4 @@ class InterpreterCore {
 };
 }  // namespace framework
 }  // namespace paddle
+

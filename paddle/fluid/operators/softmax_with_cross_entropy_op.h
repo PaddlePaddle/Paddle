@@ -45,19 +45,11 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
       int axis_dim = softmax->dims()[axis];
 
       PADDLE_ENFORCE_GT(
-<<<<<<< HEAD
           axis_dim, 0,
           platform::errors::InvalidArgument(
               "The axis dimention should be larger than 0, but received "
               "axis dimention is %d.",
               axis_dim));
-=======
-	        axis_dim, 0,
-	        platform::errors::InvalidArgument(
-		          "The axis dimention should be larger than 0, but received "
-		          "axis dimention is %d.",
-		          axis_dim));
->>>>>>> 8e02224... 2.0 code format
 
       softmax_out->mutable_data<T>(context.GetPlace());
       loss->mutable_data<T>(context.GetPlace());
@@ -65,17 +57,10 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
       const int n = SizeToAxis(axis, softmax->dims());
 
       PADDLE_ENFORCE_GT(
-<<<<<<< HEAD
           n, 0, platform::errors::InvalidArgument(
                     "The size of axis should be larger than 0, but received "
                     "axis size is %d.",
                     n));
-=======
-	      n, 0, platform::errors::InvalidArgument(
-		              "The size of axis should be larger than 0, but received "
-		              "axis size is %d.",
-		              n));
->>>>>>> 8e02224... 2.0 code format
 
       const int d = SizeFromAxis(axis, softmax->dims());
 
@@ -110,36 +95,21 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logits->dims()[axis];
     PADDLE_ENFORCE_GT(
-<<<<<<< HEAD
         axis_dim, 0,
         platform::errors::InvalidArgument(
             "The axis dimention should be larger than 0, but received "
             "axis dimention is %d.",
             axis_dim));
-=======
-	      axis_dim, 0,
-	      platform::errors::InvalidArgument(
-		        "The axis dimention should be larger than 0, but received "
-		        "axis dimention is %d.",
-		        axis_dim));
->>>>>>> 8e02224... 2.0 code format
 
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
 
     const int n = SizeToAxis(axis, logits->dims());
     PADDLE_ENFORCE_GT(
-<<<<<<< HEAD
         n, 0, platform::errors::InvalidArgument(
                   "The size of axis should be larger than 0, but received "
                   "axis size is %d.",
                   n));
-=======
-	      n, 0, platform::errors::InvalidArgument(
-		              "The size of axis should be larger than 0, but received "
-		              "axis size is %d.",
-		              n));
->>>>>>> 8e02224... 2.0 code format
 
     const int d = SizeFromAxis(axis, logits->dims());
     Tensor logits_2d, softmax_2d, labels_2d, loss_2d;
@@ -180,7 +150,6 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logit_grad->dims()[axis];
     PADDLE_ENFORCE_GT(
-<<<<<<< HEAD
         axis_dim, 0,
         platform::errors::InvalidArgument(
             "The axis dimention should be larger than 0, but received "
@@ -193,20 +162,6 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
                   "The size of axis should be larger than 0, but received "
                   "axis size is %d.",
                   n));
-=======
-	      axis_dim, 0,
-	      platform::errors::InvalidArgument(
-		        "The axis dimention should be larger than 0, but received "
-		        "axis dimention is %d.",
-		        axis_dim));
-
-    const int n = SizeToAxis(axis, logit_grad->dims());
-    PADDLE_ENFORCE_GT(
-	      n, 0, platform::errors::InvalidArgument(
-		              "The size of axis should be larger than 0, but received "
-		              "axis size is %d.",
-		              n));
->>>>>>> 8e02224... 2.0 code format
 
     const int d = SizeFromAxis(axis, logit_grad->dims());
     Tensor logit_grad_2d, labels_2d, out_grad_2d;
@@ -314,3 +269,4 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
+
