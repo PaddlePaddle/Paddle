@@ -85,7 +85,7 @@ class TestReshape2OneDNNOpDimInfer2(TestReshape2OneDNNOp):
             'XShape': np.random.random(self.ori_shape).astype("float32")
         }
 
-    def init_data(self):
+    def init_data1(self):
         self.ori_shape = (6, 20)
         self.new_shape = (0, -1, 20)
         self.actual_shape = (2, 3, 20)

@@ -1001,7 +1001,9 @@ def ctc_loss(log_probs,
              label_lengths,
              blank=0,
              reduction='mean',
-             norm_by_times=False):
+             norm_by_times=False,
+             norm_by_batchsize=False,
+             norm_by_total_logits_len=False):
     """
 
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
@@ -1017,7 +1019,9 @@ def ctc_loss(log_probs,
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
         norm_by_times (bool, default False) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
-
+        norm_by_batchsize (bool): normalize the loss by the batch size (default: `False`). If `True`, supersedes `norm_by_times` (default: `False`)
+        norm_by_total_logits_len (bool): normalize the loss by the total number of frames in the batch. If `True`, supersedes `norm_by_batchsize` and `norm_by_times` (default: `False`)
+            
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
 
@@ -1025,6 +1029,7 @@ def ctc_loss(log_probs,
 
         .. code-block:: python
 
+            # required: skiptest
             # declarative mode
             import paddle.nn.functional as F
             import numpy as np
@@ -1081,15 +1086,280 @@ def ctc_loss(log_probs,
     """
 
     loss_out = fluid.layers.warpctc(log_probs, labels, blank, norm_by_times,
-                                    input_lengths, label_lengths)
+                                    input_lengths, label_lengths,
+                                    norm_by_batchsize, norm_by_total_logits_len)
 
-    loss_out = fluid.layers.squeeze(loss_out, [-1])
+    loss_out = fluid.layers.squeeze(loss_out, [-1])  # (B)
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
         loss_out = paddle.mean(loss_out / label_lengths)
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
     return loss_out
+
+
+def margin_cross_entropy(logits,
+                         label,
+                         margin1=1.0,
+                         margin2=0.5,
+                         margin3=0.0,
+                         scale=64.0,
+                         group=None,
+                         return_softmax=False,
+                         reduction='mean'):
+    """
+    .. math::
+
+        L=-\\frac{1}{N}\sum^N_{i=1}\log\\frac{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\\neq y_i} e^{scos\\theta_{y_i}}}
+
+    where the :math:`\\theta_{y_i}` is the angle between the feature :math:`x` and
+    the representation of class :math:`i`. The details of ArcFace loss
+    could be referred to https://arxiv.org/abs/1801.07698.
+
+    .. hint::
+        The API supports model parallel and single GPU. And logits.shape[-1] can be different at each rank.
+
+    Args:
+    	logits (Tensor): shape[N, local_num_classes], the output of the normalized X multiply the normalized W.
+                The logits is shard_logits when using model parallel.
+    	label (Tensor): shape[N] or shape[N, 1], the groud truth label.
+    	margin1 (float, optional): m1 of margin loss, default value is `1.0`.
+    	margin2 (float, optional): m2 of margin loss, default value is `0.5`.
+    	margin3 (float, optional): m3 of margin loss, default value is `0.0`.
+    	scale (float, optional): s of margin loss, default value is `64.0`.
+        group (Group, optional): The abstract representation of group, see paddle.distributed.collective.Group.
+            Default `None`.
+        return_softmax (bool, optional): Whether return softmax probability. Default value is `False`.
+        reduction (str, optional): The candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                    If :attr:`reduction` is ``'mean'``, return the average of loss;
+                    If :attr:`reduction` is ``'sum'``, return the sum of loss;
+                    If :attr:`reduction` is ``'none'``, no reduction will be applied.
+                    Default value is `'mean'`.
+
+    Returns:
+        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
+            `return_softmax` is False, otherwise the tuple \
+            (loss, softmax), softmax is shard_softmax when \
+            using model parallel, otherwise softmax is in \
+            the same shape with input logits. If ``reduction == None``, \
+            the shape of loss is ``[N, 1]``, otherwise the shape is ``[1]``.
+
+    Examples:
+
+    .. code-block:: python
+        :name: code-example1
+
+        # required: gpu
+        # Single GPU
+        import paddle
+        m1 = 1.0
+        m2 = 0.5
+        m3 = 0.0
+        s = 64.0
+        batch_size = 2
+        feature_length = 4
+        num_classes = 4
+
+        label = paddle.randint(low=0, high=num_classes, shape=[batch_size], dtype='int64')
+
+        X = paddle.randn(
+            shape=[batch_size, feature_length],
+            dtype='float64')
+        X_l2 = paddle.sqrt(paddle.sum(paddle.square(X), axis=1, keepdim=True))
+        X = paddle.divide(X, X_l2)
+
+        W = paddle.randn(
+            shape=[feature_length, num_classes],
+            dtype='float64')
+        W_l2 = paddle.sqrt(paddle.sum(paddle.square(W), axis=0, keepdim=True))
+        W = paddle.divide(W, W_l2)
+
+        logits = paddle.matmul(X, W)
+        loss, softmax = paddle.nn.functional.margin_cross_entropy(
+            logits, label, margin1=m1, margin2=m2, margin3=m3, scale=s, return_softmax=True, reduction=None)
+
+        print(logits)
+        print(label)
+        print(loss)
+        print(softmax)
+        
+        #Tensor(shape=[2, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+        #       [[ 0.85204151, -0.55557678,  0.04994566,  0.71986042],
+        #        [-0.20198586, -0.35270476, -0.55182702,  0.09749021]])
+        #Tensor(shape=[2], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #       [2, 3])
+        #Tensor(shape=[2, 1], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+        #       [[82.37059586],
+        #        [12.13448420]])
+        #Tensor(shape=[2, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+        #       [[0.99978819, 0.00000000, 0.00000000, 0.00021181],
+        #        [0.99992995, 0.00006468, 0.00000000, 0.00000537]])
+
+    .. code-block:: python
+        :name: code-example2
+
+        # required: distributed
+        # Multi GPU, test_margin_cross_entropy.py
+        import paddle
+        import paddle.distributed as dist
+        strategy = dist.fleet.DistributedStrategy()
+        dist.fleet.init(is_collective=True, strategy=strategy)
+        rank_id = dist.get_rank()
+        m1 = 1.0
+        m2 = 0.5
+        m3 = 0.0
+        s = 64.0
+        batch_size = 2
+        feature_length = 4
+        num_class_per_card = [4, 8]
+        num_classes = paddle.sum(paddle.to_tensor(num_class_per_card))
+
+        label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')
+        label_list = []
+        dist.all_gather(label_list, label)
+        label = paddle.concat(label_list, axis=0)
+
+        X = paddle.randn(
+            shape=[batch_size, feature_length],
+            dtype='float64')
+        X_list = []
+        dist.all_gather(X_list, X)
+        X = paddle.concat(X_list, axis=0)
+        X_l2 = paddle.sqrt(paddle.sum(paddle.square(X), axis=1, keepdim=True))
+        X = paddle.divide(X, X_l2)
+
+        W = paddle.randn(
+            shape=[feature_length, num_class_per_card[rank_id]],
+            dtype='float64')
+        W_l2 = paddle.sqrt(paddle.sum(paddle.square(W), axis=0, keepdim=True))
+        W = paddle.divide(W, W_l2)
+
+        logits = paddle.matmul(X, W)
+        loss, softmax = paddle.nn.functional.margin_cross_entropy(
+            logits, label, margin1=m1, margin2=m2, margin3=m3, scale=s, return_softmax=True, reduction=None)
+
+        print(logits)
+        print(label)
+        print(loss)
+        print(softmax)
+
+        # python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py 
+        ## for rank0 input
+        #Tensor(shape=[4, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+        #       [[ 0.32888934,  0.02408748, -0.02763289,  0.18173063],
+        #        [-0.52893978, -0.10623845, -0.21596515, -0.06432517],
+        #        [-0.00536345, -0.03924667,  0.66735314, -0.28640926],
+        #        [-0.09907366, -0.48534973, -0.10365338, -0.39472322]])
+        #Tensor(shape=[4], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #       [11, 1 , 10, 11])
+
+        ## for rank1 input
+        #Tensor(shape=[4, 8], dtype=float64, place=CUDAPlace(1), stop_gradient=True,
+        #       [[ 0.68654754,  0.28137170,  0.69694954, -0.60923933, -0.57077653,  0.54576703, -0.38709028,  0.56028204],
+        #        [-0.80360371, -0.03042448, -0.45107338,  0.49559349,  0.69998950, -0.45411693,  0.61927630, -0.82808600],
+        #        [ 0.11457570, -0.34785879, -0.68819499, -0.26189226, -0.48241491, -0.67685711,  0.06510185,  0.49660849],
+        #        [ 0.31604851,  0.52087884,  0.53124749, -0.86176582, -0.43426329,  0.34786144, -0.10850784,  0.51566383]])
+        #Tensor(shape=[4], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
+        #       [11, 1 , 10, 11])
+
+        ## for rank0 output
+        #Tensor(shape=[4, 1], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+        #       [[38.96608230],
+        #        [81.28152394],
+        #        [69.67229865],
+        #        [31.74197251]])
+        #Tensor(shape=[4, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
+        #       [[0.00000000, 0.00000000, 0.00000000, 0.00000000],
+        #        [0.00000000, 0.00000000, 0.00000000, 0.00000000],
+        #        [0.00000000, 0.00000000, 0.99998205, 0.00000000],
+        #        [0.00000000, 0.00000000, 0.00000000, 0.00000000]])
+        ## for rank1 output
+        #Tensor(shape=[4, 1], dtype=float64, place=CUDAPlace(1), stop_gradient=True,
+        #       [[38.96608230],
+        #        [81.28152394],
+        #        [69.67229865],
+        #        [31.74197251]])
+        #Tensor(shape=[4, 8], dtype=float64, place=CUDAPlace(1), stop_gradient=True,
+        #       [[0.33943993, 0.00000000, 0.66051859, 0.00000000, 0.00000000, 0.00004148, 0.00000000, 0.00000000],
+        #        [0.00000000, 0.00000000, 0.00000000, 0.00000207, 0.99432097, 0.00000000, 0.00567696, 0.00000000],
+        #        [0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00001795],
+        #        [0.00000069, 0.33993085, 0.66006319, 0.00000000, 0.00000000, 0.00000528, 0.00000000, 0.00000000]])
+    """
+
+    assert reduction in ['mean', 'sum', 'none', None]
+    if group is not None and not group.is_member():
+        return
+
+    ring_id = 0 if group is None else group.id
+    rank = 0
+    nranks = 1
+    if core.is_compiled_with_dist():
+        parallel_env = paddle.distributed.ParallelEnv()
+        global_rank = parallel_env.rank
+        rank = global_rank if group is None else group.get_group_rank(
+            global_rank)
+        nranks = parallel_env.world_size if group is None else group.nranks
+
+    input_dims = len(list(logits.shape))
+    label_dims = len(list(label.shape))
+    if input_dims - 1 != label_dims and input_dims != label_dims:
+        raise ValueError(
+            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
+             (got nput_dims{}, label_dims{})'.format(input_dims, label_dims))
+    if input_dims - 1 == label_dims:
+        label = paddle.unsqueeze(label, axis=-1)
+
+    if in_dygraph_mode():
+        softmax, loss = core.ops.margin_cross_entropy(
+            logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
+            'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',
+            scale, 'return_softmax', return_softmax)
+        if reduction == 'mean':
+            loss = paddle.mean(loss)
+        elif reduction == 'sum':
+            loss = paddle.sum(loss)
+        if not return_softmax:
+            return loss
+        else:
+            return loss, softmax
+
+    op_type = 'margin_cross_entropy'
+    helper = LayerHelper(op_type, **locals())
+    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+
+    check_variable_and_dtype(logits, 'logits',
+                             ['float16', 'float32', 'float64'],
+                             'margin_cross_entropy')
+    check_variable_and_dtype(label, 'label', ['int32', 'int64'],
+                             'margin_cross_entropy')
+
+    helper.append_op(
+        type=op_type,
+        inputs={'Logits': logits,
+                'Label': label},
+        outputs={'Softmax': softmax,
+                 'Loss': loss},
+        attrs={
+            'return_softmax': return_softmax,
+            'ring_id': ring_id,
+            'rank': rank,
+            'nranks': nranks,
+            'margin1': margin1,
+            'margin2': margin2,
+            'margin3': margin3,
+            'scale': scale,
+        })
+
+    if reduction == 'mean':
+        loss = paddle.mean(loss)
+    elif reduction == 'sum':
+        loss = paddle.sum(loss)
+
+    if not return_softmax:
+        return loss
+    else:
+        return loss, softmax
 
 
 @deprecated(
@@ -1274,7 +1544,7 @@ def cross_entropy(input,
             Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
+            If :attr:`norm_by_batchsize` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
 
@@ -1382,6 +1652,26 @@ def cross_entropy(input,
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
     if in_dygraph_mode():
+        if soft_label == False:
+            valid_label = paddle.where(label == ignore_index,
+                                       paddle.zeros_like(label), label)
+            # TODO: Temporarily use paddle.nonzero instead of paddle.max 
+            # to detect and find out possible illegal label values
+            if len(paddle.nonzero(valid_label < 0)) > 0:
+                invalid_label = paddle.gather_nd(
+                    valid_label, paddle.nonzero(valid_label < 0))
+                raise ValueError(
+                    "Target({}) is out of class_dimension's lower bound({})".
+                    format(invalid_label[0], 0))
+            # TODO: Temporarily use paddle.nonzero instead of paddle.max 
+            # to detect and find out possible illegal label values
+            if len(paddle.nonzero(valid_label >= input.shape[-1])) > 0:
+                invalid_label = paddle.gather_nd(
+                    valid_label, paddle.nonzero(valid_label >= input.shape[-1]))
+                raise ValueError(
+                    "Target({}) is out of class_dimension's upper bound({})".
+                    format(invalid_label[0], input.shape[-1] - 1))
+
         _, out = _C_ops.softmax_with_cross_entropy(
             input, label, 'soft_label', soft_label, 'ignore_index',
             ignore_index, 'numeric_stable_mode', True, 'axis', axis,
@@ -1389,7 +1679,7 @@ def cross_entropy(input,
 
         if weight is not None:
 
-            #trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
+            # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
             if soft_label == True:
                 # chajchaj:
                 # weight's shape is C, where C is class num.
@@ -1407,14 +1697,21 @@ def cross_entropy(input,
                 out = _C_ops.elementwise_mul(out, weight_gather_reshape)
 
             else:
-                label_min = paddle.min(label)
-                label_max = paddle.max(label)
-                if label_min < 0 or label_max >= input.shape[-1]:
+                if input.shape[-1] != weight.shape[-1]:
                     raise ValueError(
-                        'Expected 0 <= label_value < class_dimension({}), but got {} <= label_value <= {} '.
-                        format(input.shape[-1],
-                               label_min.numpy(), label_max.numpy()))
-                weight_gather = _C_ops.gather_nd(weight, label)
+                        "input's class_dimension({}) must equal to \
+                        weight's class_dimension({}) \
+                            when weight is provided"
+                        .format(input.shape[-1], weight.shape[-1]))
+
+                ignore_weight_mask = paddle.cast((label != ignore_index),
+                                                 out.dtype)
+                if ignore_weight_mask.ndim > 1 and ignore_weight_mask.shape[
+                        -1] == 1:
+                    ignore_weight_mask.squeeze_(-1)
+                weight_gather = _C_ops.gather_nd(weight, valid_label)
+                weight_gather = _C_ops.elementwise_mul(weight_gather,
+                                                       ignore_weight_mask)
                 input_shape = list(label.shape)
                 weight_gather_reshape = reshape(
                     weight_gather, shape=input_shape)
@@ -1422,22 +1719,22 @@ def cross_entropy(input,
                 out = _C_ops.elementwise_mul(out, weight_gather_reshape)
 
         if reduction == "sum":
-            #   because of fluid_softmax_with_cross_entropy op's inner logic, 
+            #   because of fluid_softmax_with_cross_entropy op's inner logic,
             #   in the out tensor of this op, the loss of sample with class_index==ignore_index is 0
             #   so, reduce_sum all directly is ok
             return _C_ops.reduce_sum(out, 'reduce_all', True)
         elif reduction == "mean":
-            #1. if weight==none, 
-            #    numerator: reduce_sum all loss directly is ok causeof fluid_softmax_with_cross_entropy's inner logic
-            #    denominator: count sample num with class_index!=ignore_index
-            #2. else
-            #    numerator: loss's weighted sum 
-            #    denominator: cal the sum of weight where the sample's class_index!=ignore_index
+            # 1. if weight==none,
+            #     numerator: reduce_sum all loss directly is ok causeof fluid_softmax_with_cross_entropy's inner logic
+            #     denominator: count sample num with class_index!=ignore_index
+            # 2. else
+            #     numerator: loss's weighted sum
+            #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
             if ignore_index != -100:
                 out_sum = _C_ops.reduce_sum(out, 'reduce_all', True)
-                #for each label[i],set 1 or 0, according to ignore_index
-                #mask[i]=0, if label[i]==ignore_index
-                #mask[i]=1, otherwise 
+                # for each label[i],set 1 or 0, according to ignore_index
+                # mask[i]=0, if label[i]==ignore_index
+                # mask[i]=1, otherwise
                 mask = (label != ignore_index)
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
@@ -1493,7 +1790,7 @@ def cross_entropy(input,
         weight_name = name if reduction == 'none' else None
         if soft_label == True:
             # chajchaj:
-            #trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
+            # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
             # weight's shape is C, where C is class num.
             # for 1d case: label's shape is [N,C], weight_gather's shape is N.
             # for 2d case: label's shape is [N,H,W,C], weight_gather's shape is [N,H,W].
@@ -1507,8 +1804,22 @@ def cross_entropy(input,
             weight_gather_reshape = reshape(weight_gather, shape=out_shape)
             out = paddle.cast(out, weight_gather_reshape.dtype)
         else:
-            weight_gather = paddle.gather_nd(
-                weight, label)  #trans weight from class to sample, shape:N
+            if input.shape[-1] != weight.shape[-1]:
+                raise ValueError("input's class_dimension({}) must equal to "\
+                        "weight's class_dimension({}) "\
+                            "when weight is provided"
+                                 .format(input.shape[-1], weight.shape[-1]))
+
+            valid_label = paddle.where(label == ignore_index,
+                                       paddle.zeros_like(label), label)
+            ignore_weight_mask = paddle.cast((label != ignore_index),
+                                             input.dtype)
+            if ignore_weight_mask.ndim > 1 and ignore_weight_mask.shape[
+                    -1] == 1:
+                ignore_weight_mask = paddle.squeeze(ignore_weight_mask, -1)
+            weight_gather = paddle.gather_nd(weight, valid_label)
+            weight_gather = paddle.multiply(weight_gather, ignore_weight_mask)
+
             input_shape = list(label.shape)
             weight_gather_reshape = reshape(weight_gather, shape=input_shape)
         out = paddle.multiply(out, weight_gather_reshape, name=weight_name)
@@ -1518,9 +1829,9 @@ def cross_entropy(input,
     elif reduction == "mean":
         if ignore_index != -100:
             out_sum = paddle.sum(out, name=name)
-            #for each label[i],set 1 or 0, according to ignore_index
-            #mask[i]=0, if label[i]==ignore_index
-            #mask[i]=1, otherwise 
+            # for each label[i],set 1 or 0, according to ignore_index
+            # mask[i]=0, if label[i]==ignore_index
+            # mask[i]=1, otherwise
             mask = (label != ignore_index)
             if (weight is None):
                 mask = paddle.cast(mask, dtype=out_sum.dtype)
