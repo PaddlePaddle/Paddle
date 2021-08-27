@@ -211,11 +211,18 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
     fi
     set -e
 
+    #output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+    #cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
+    #tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
+    #two_parallel_job=$(echo $output | cut -d ";" -f 3)
+    #non_parallel_job=$(echo $output | cut -d ";" -f 4)
     output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
     cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
-    tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
-    two_parallel_job=$(echo $output | cut -d ";" -f 3)
-    non_parallel_job=$(echo $output | cut -d ";" -f 4)
+    secondary_cpu_parallel_job=$(echo $output | cut -d ";" -f 2)
+    third_cpu_parallel_job=$(echo $output | cut -d ";" -f 3)
+    tetrad_parallel_job=$(echo $output | cut -d ";" -f 4)
+    two_parallel_job=$(echo $output | cut -d ";" -f 5)
+    non_parallel_job=$(echo $output | cut -d ";" -f 6)
 fi
 
 failed_test_lists=''
@@ -354,10 +361,17 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
             exit 8;
         fi
     fi
-    run_unittest_gpu $cpu_parallel_job 12
-    run_unittest_gpu $tetrad_parallel_job 4
-    run_unittest_gpu $two_parallel_job 2
-    run_unittest_gpu $non_parallel_job
+    #run_unittest_gpu $cpu_parallel_job 14
+    #run_unittest_gpu $secondary_cpu_parallel_job 14
+    #run_unittest_gpu $third_cpu_parallel_job 14
+    run_unittest_gpu $tetrad_parallel_job 5
+    run_unittest_gpu $two_parallel_job 5
+    
+    #run_unittest_gpu $non_parallel_job 5 
+    #run_unittest_gpu $non_parallel_job 2
+    #run_unittest_gpu $tetrad_parallel_job 4
+    #run_unittest_gpu $two_parallel_job 2
+    #run_unittest_gpu $non_parallel_job
 else
     run_unittest_cpu
 fi
