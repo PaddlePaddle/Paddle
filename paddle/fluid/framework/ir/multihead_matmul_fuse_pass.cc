@@ -890,21 +890,21 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
             BOOST_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
         auto out_scale_max = std::max(out_scale0, out_scale1);
         out_scale_max = std::max(out_scale_max, out_scale2);
-        multihead_op_desc.SetAttr("out_threshold", out_scale_max);
+        multihead_op_desc.SetAttr("fc_out_threshold", out_scale_max);
       }
     }
 
     auto* softmax_qk_op_desc = softmax_qk->Op();
-    if (softmax_qk_op_desc->HasAttr("out_threshold")) {
-      auto qkv_plugin_scale =
-          BOOST_GET_CONST(float, softmax_qk_op_desc->GetAttr("out_threshold"));
-      multihead_op_desc.SetAttr("dp_probs", qkv_plugin_scale);
-    }
     auto* matmul_qk_op_desc = matmul_qk->Op();
     if (matmul_qk_op_desc->HasAttr("X_scale")) {
-      multihead_op_desc.SetAttr("qkv_plugin_int8", true);
+      multihead_op_desc.SetAttr("qkv2context_plugin_int8", true);
+      if (softmax_qk_op_desc->HasAttr("out_threshold")) {
+        auto qkv_plugin_scale = BOOST_GET_CONST(
+            float, softmax_qk_op_desc->GetAttr("out_threshold"));
+        multihead_op_desc.SetAttr("dp_probs", qkv_plugin_scale);
+      }
     } else {
-      multihead_op_desc.SetAttr("qkv_plugin_int8", false);
+      multihead_op_desc.SetAttr("qkv2context_plugin_int8", false);
     }
 
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
