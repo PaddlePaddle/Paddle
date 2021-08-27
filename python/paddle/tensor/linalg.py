@@ -830,8 +830,8 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             f = paddle.linalg.matrix_rank(e, tol=0.01, hermitian=True)
             print(f)
             # f = [[5, 4, 4, 5],
-                   [5, 5, 5, 5],
-                   [5, 5, 5, 5]]
+            #      [5, 5, 5, 5],
+            #      [5, 5, 5, 5]]
     
     """
 

@@ -83,7 +83,6 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batches);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
-#if CUDA_VERSION >= 9020 && !defined(_WIN32)
     // compute eigenvalue/svd
     Tensor eigenvalue_tensor;
     auto* eigenvalue_data = eigenvalue_tensor.mutable_data<T>(
@@ -180,8 +179,6 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     std::vector<int> res_shape = framework::vectorize<int>(dim_out);
     Tensor res = dito_int.reduce_sum(compare_result, res_shape);
     out->ShareDataWith(res);
-
-#endif
   }
 
   void GesvdjBatched(const platform::CUDADeviceContext& dev_ctx, int batchSize,
@@ -192,7 +189,6 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
                     int n, const T* cA, T* W, int* info) const;
 };
 
-#if CUDA_VERSION >= 9020 && !defined(_WIN32)
 template <>
 void MatrixRankGPUKernel<float>::GesvdjBatched(
     const platform::CUDADeviceContext& dev_ctx, int batchSize, int m, int n,
@@ -286,9 +282,7 @@ void MatrixRankGPUKernel<double>::GesvdjBatched(
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
 }
-#endif
 
-#if CUDA_VERSION >= 9020 && !defined(_WIN32)
 template <>
 void MatrixRankGPUKernel<float>::SyevjBatched(
     const platform::CUDADeviceContext& dev_ctx, int batchSize, int n,
@@ -368,7 +362,6 @@ void MatrixRankGPUKernel<double>::SyevjBatched(
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::cusolverDnDestroySyevjInfo(params));
 }
-#endif
 
 }  // namespace operators
 }  // namespace paddle
