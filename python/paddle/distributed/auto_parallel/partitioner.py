@@ -555,6 +555,16 @@ class Partitioner(object):
                 self._enable_tensor_parallel = True
                 break
 
+        for var in program.list_vars():
+            var_dist_attr = self._auto_parallel_context.get_tensor_distributed_attr_for_program(
+                var)
+            if not var_dist_attr.is_parameter():
+                mapping = var_dist_attr.get_dims_mapping()
+                mesh = var_dist_attr.get_process_mesh().topology
+                if mapping[0] >= 0 and mesh[mapping[0]] > 1:
+                    self._enable_data_parallel = True
+                    break
+
         # tensor parallelism
         if self._enable_tensor_parallel:
             model_parallel_axis, process_mesh = self._auto_parallel_context._get_model_parallel_info(
@@ -568,9 +578,7 @@ class Partitioner(object):
         # data parallelism
         data_parallel_axis, process_mesh = self._auto_parallel_context._get_data_parallel_info(
         )
-        if process_mesh.ndim == 2 or (process_mesh.ndim == 1 and
-                                      not self._enable_tensor_parallel):
-            self._enable_data_parallel = True
+        if self._enable_data_parallel:
             group_ranks = _get_comm_group(process_mesh.process_group,
                                           process_mesh.topology,
                                           data_parallel_axis, self._rank_id)
