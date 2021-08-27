@@ -42,6 +42,7 @@ function check_whl {
     sed -i '/version.py/d' /tmp/pr/*/RECORD
     sed -i '/version.py/d' /tmp/develop/*/RECORD
     diff_whl=`diff /tmp/pr/*/RECORD /tmp/develop/*/RECORD|wc -l`
+    
     #[ $? -ne 0 ] && echo "diff paddle whl failed." && exit 1
     #if [ ${diff_whl} -eq 0 ];then
     #    echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
