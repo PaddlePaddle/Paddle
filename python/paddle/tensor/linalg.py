@@ -1010,8 +1010,9 @@ def matrix_power(x, n, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'n': n})
+    return out
 
-        
+
 def solve(x, y, name=None):
     """
     To computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
