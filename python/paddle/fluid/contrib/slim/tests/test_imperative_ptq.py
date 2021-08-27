@@ -52,8 +52,9 @@ class TestFuseLinearBn(unittest.TestCase):
         quant_model = ptq.quantize(model, fuse=True, fuse_list=f_l)
         quant_h = ptq.quantize(model_h, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
-            assert not (isinstance(layer, nn.BatchNorm1D) or
-                        isinstance(layer, nn.BatchNorm2D))
+            if name in f_l:
+                assert not (isinstance(layer, nn.BatchNorm1D) or
+                            isinstance(layer, nn.BatchNorm2D))
         out = model(inputs)
         out_h = model_h(inputs)
         out_quant = quant_model(inputs)
@@ -262,8 +263,9 @@ class TestImperativePTQfuse(TestImperativePTQ):
         f_l = [['features.0', 'features.1'], ['features.4', 'features.5']]
         quant_model = self.ptq.quantize(model, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
-            assert not (isinstance(layer, nn.BatchNorm1D) or
-                        isinstance(layer, nn.BatchNorm2D))
+            if name in f_l:
+                assert not (isinstance(layer, nn.BatchNorm1D) or
+                            isinstance(layer, nn.BatchNorm2D))
         before_acc_top1 = self.model_test(quant_model, self.batch_num,
                                           self.batch_size)
 
