@@ -747,7 +747,6 @@ function check_whl_size() {
            exit 6
        fi
     fi
-    echo 11111,$?
     set -x
 }
 
@@ -2364,6 +2363,7 @@ function main() {
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         check_whl_size
+        echo 11111,$?
         ;;
       build_and_check_gpu)
         set +e
