@@ -32,9 +32,22 @@ EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
  */
 unsigned int GenerateDeviceEventFlag(bool enable_timing, bool blocking,
                                      bool interprocess) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  return get_cuda_flags(enable_timing, blocking, interprocess);
+#ifdef PADDLE_WITH_CUDA
+  unsigned int flags =
+      (blocking ? cudaEventBlockingSync : cudaEventDefault) |
+      (enable_timing ? cudaEventDefault : cudaEventDisableTiming) |
+      (interprocess ? cudaEventInterprocess : cudaEventDefault);
+  return flags;
 #endif
+
+#ifdef PADDLE_WITH_HIP
+  unsigned int flags =
+      (blocking ? hipEventBlockingSync : hipEventDefault) |
+      (enable_timing ? hipEventDefault : hipEventDisableTiming) |
+      (interprocess ? hipEventInterprocess : hipEventDefault);
+  return flags;
+#endif
+
   return 0;
 }
 
