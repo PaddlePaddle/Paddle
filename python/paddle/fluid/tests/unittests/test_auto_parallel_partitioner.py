@@ -166,6 +166,13 @@ class MLPLayer(nn.Layer):
                 self.linear0.weight, _global_process_mesh, dim_mapping=[-1, 1])
             auto.shard_tensor(
                 self.linear1.weight, _global_process_mesh, dim_mapping=[1, -1])
+        else:
+            auto.shard_tensor(
+                self.linear0.weight, _global_process_mesh,
+                dim_mapping=[-1, -1])
+            auto.shard_tensor(
+                self.linear1.weight, _global_process_mesh,
+                dim_mapping=[-1, -1])
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -750,6 +757,11 @@ class DecoderLayer(nn.Layer):
             auto.shard_tensor(
                 self.out_proj.weight, _global_process_mesh,
                 dim_mapping=[1, -1])
+        else:
+            auto.shard_tensor(
+                self.out_proj.weight,
+                _global_process_mesh,
+                dim_mapping=[-1, -1])
 
         # Add residual
         residual = embeddings + self.dropout2(out)
@@ -868,6 +880,68 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             initialization_check(_global_parallel_stratergy, dist_context,
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
+
+    def test_decoder_noparallel(self):
+        global _global_parallel_stratergy
+        _global_parallel_stratergy = "None"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)
+        serial_main_prog, serial_startup_prog, dist_main_prog, dist_startup_prog, dist_context = get_programs(
+            decoder_pretrain_forward)
+
+        # param should be partition
+        nrank = 1
+        # col parallel
+        weights = [
+            'linear_0.w_0', 'linear_1.w_0', 'linear_2.w_0', 'linear_4.w_0'
+        ]
+        self.assertTrue(
+            check_tensor_split(dist_main_prog, weights, serial_main_prog,
+                               weights, 1, nrank))
+        weights = [
+            'linear_0.b_0', 'linear_1.b_0', 'linear_2.b_0', 'linear_4.b_0'
+        ]
+        self.assertTrue(
+            check_tensor_split(dist_main_prog, weights, serial_main_prog,
+                               weights, 0, nrank))
+        # row parallel
+        weights = ['word_embeddings', 'linear_3.w_0', 'linear_5.w_0']
+        self.assertTrue(
+            check_tensor_split(dist_main_prog, weights, serial_main_prog,
+                               weights, 0, nrank))
+        weights = [
+            'linear_3.b_0', 'pos_embeddings', 'layer_norm_0.b_0',
+            'layer_norm_0.w_0', 'linear_5.b_0'
+        ]
+        self.assertTrue(
+            check_tensor_split(dist_main_prog, weights, serial_main_prog,
+                               weights, 0, 1))
+
+        # row and col allreduce
+        dist_ops = dist_main_prog.global_block().ops
+        dist_ops = [op.type for op in dist_ops]
+        ref_ops = [
+            'lookup_table_v2', 'lookup_table_v2', 'elementwise_add', 'dropout',
+            'layer_norm', 'matmul', 'elementwise_add', 'reshape2', 'transpose2',
+            'matmul', 'elementwise_add', 'matmul', 'elementwise_add',
+            'reshape2', 'transpose2', 'reshape2', 'transpose2', 'matmul',
+            'softmax', 'dropout', 'matmul_v2', 'transpose2', 'reshape2',
+            'matmul', 'elementwise_add', 'dropout', 'elementwise_add',
+            'layer_norm', 'matmul', 'elementwise_add', 'gelu', 'matmul',
+            'elementwise_add', 'dropout', 'elementwise_add'
+        ]
+        self.assertTrue(dist_ops == ref_ops)
+        dist_ops = dist_startup_prog.global_block().ops
+        dist_ops = [op.type for op in dist_ops]
+        ref_ops = [
+            'gaussian_random', 'gaussian_random', 'gaussian_random',
+            'fill_constant', 'gaussian_random', 'fill_constant',
+            'gaussian_random', 'fill_constant', 'gaussian_random',
+            'fill_constant', 'gaussian_random', 'fill_constant',
+            'gaussian_random', 'fill_constant', 'fill_constant', 'fill_constant'
+        ]
+        self.assertTrue(dist_ops == ref_ops)
 
 
 if __name__ == "__main__":
