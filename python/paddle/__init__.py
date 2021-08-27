@@ -162,6 +162,7 @@ from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
+from .tensor.math import cumprod  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
 from .tensor.math import floor  # noqa: F401
@@ -329,6 +330,7 @@ __all__ = [  # noqa
            'empty_like',
            'eye',
            'cumsum',
+           'cumprod',
            'sign',
            'is_empty',
            'equal',

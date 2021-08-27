@@ -107,6 +107,7 @@ from .math import cos  # noqa: F401
 from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
+from .math import cumprod  # noqa: F401
 from .math import exp  # noqa: F401
 from .math import exp_  # noqa: F401
 from .math import expm1  # noqa: F401
@@ -234,6 +235,7 @@ tensor_method_func  = [ #noqa
            'cos',
            'cosh',
            'cumsum',
+           'cumprod',
            'exp',
            'exp_',
            'floor',

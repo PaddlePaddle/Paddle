@@ -1921,6 +1921,59 @@ def cumsum(x, axis=None, dtype=None, name=None):
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
 
+def cumprod(x, dim=None, dtype=None):
+    """
+    Compute the cumulative product of the input along a given dim.
+
+    **Note**:
+    The first element of the result is the same as the first element of the input.
+
+    Args:
+        x (Tensor): the input tensor need to be cumproded.
+        dim (int): the dimension to accumulate along. It need to be in the range of [-x.size(),x.size()], -1 means the last dimension.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+
+    Returns:
+        Tensor, the result of cumprod operator.
+
+    Examples:
+
+        import paddle
+
+        data = paddle.arange(12)
+        data = paddle.reshape(data, (3, 4))
+        # [[ 0  1  2  3 ]
+        #  [ 4  5  6  7 ]
+        #  [ 8  9  10 11]
+
+        y = paddle.cumprod(data, dim=0)
+        # [[ 0  1   2   3]
+        #  [ 0  5  12  21]
+        #  [ 0 45 120 231]]
+
+        y = paddle.cumprod(data, dim=-1)
+        # [[ 0   0   0    0]
+        #  [ 4  20 120  840]
+        #  [ 8  72 720 7920]]
+
+    """
+    check_type(dim, 'dim', (int), 'cumprod')
+
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = layers.cast(x, dtype)
+
+    if in_dygraph_mode():
+        return _C_ops.cumprod(x, 'dim', dim)
+
+    check_type(x, 'x', (Variable), 'cumprod')
+    locals_var = locals().copy()
+    kwargs = dict()
+    for name, val in locals_var.items():
+        if val is not None:
+            kwargs[name] = val
+    _cum_prod_ = generate_layer_fn('cumprod')
+    return _cum_prod_(**kwargs)
+
 def isfinite(x, name=None):
     """
 
