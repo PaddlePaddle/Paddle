@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/event.h"
 
 namespace paddle {
 namespace framework {
@@ -35,8 +36,8 @@ class InterpreterCore {
                   const std::vector<std::string>& feed_names,
                   const std::vector<std::string>& fetch_names);
 
-  void Run(const std::vector<framework::Tensor>& feed_tensors,
-           std::vector<framework::Tensor>* fetch_tensors);
+  paddle::framework::FetchList Run(
+      const std::vector<framework::Tensor>& feed_tensors);
 
   static void BuildOpFuncList(const platform::Place& place,
                               const framework::ProgramDesc& pdesc,
@@ -47,9 +48,11 @@ class InterpreterCore {
  private:
   void Convert();
 
-  void RunInstruction(const Instruction& instr_node,
-                      const VariableScope& var_scope,
-                      const platform::Place& place);
+  void BuildInstructionCtx(Instruction* instr_node,
+                           const VariableScope& var_scope,
+                           const platform::Place& place);
+
+  void RunInstruction(const Instruction& instr_node);
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
                               const VariableScope& var_scope,
@@ -61,9 +64,22 @@ class InterpreterCore {
   void BuildVariableScope(const framework::ProgramDesc& pdesc,
                           VariableScope* var_scope);
 
+  platform::DeviceContext* ParseDeviceContextForInstruction(
+      const OpFuncNode& op_func_node, const OperatorBase& op_base);
+
+  void RecordEventInstruction(const Instruction& instruction,
+                              const OpFuncNode& op_func_node);
+
+  void WaitOrSync(const std::vector<EventInter>& events,
+                  const platform::DeviceContext* dev_ctx);
+
+  void StreamWaitEventOrSync(const Instruction& instruction);
+
   const platform::Place& place_;
-  const ProgramDesc& main_program_;
+  ProgramDesc main_program_;
   VariableScope* global_scope_;
+  platform::DeviceContextPool d2h_ctx_pool_;
+  platform::DeviceContextPool h2d_ctx_pool_;
   std::vector<VariableMetaInfo> vec_meta_info_;
 
   std::vector<paddle::framework::OpFuncNode> vec_func_list_;
@@ -78,7 +94,9 @@ class InterpreterCore {
   bool is_build_;
 
   std::vector<std::string> feed_names_;
-  std::vector<std::string> fetch_names_;
+  std::map<size_t, std::shared_ptr<platform::CudaEvent>> var_id2event_;
+
+  platform::DeviceContextPool fetch_context_pool_;
 };
 }  // namespace framework
 }  // namespace paddle

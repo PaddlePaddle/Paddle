@@ -20,7 +20,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
 
 namespace pt {
 
@@ -58,13 +58,13 @@ void Scale(const XPUContext& dev_ctx,
            bool bias_after_scale,
            DenseTensor* out) {
   T* out_data = out->mutable_data<T>();
-  PADDLE_ENFORCE_EQ(
-      x.dims(),
-      out->dims(),
-      platform::errors::InvalidArgument("In and out should have the same dim,"
-                                        " expected %s, but got %s.",
-                                        x.dims().to_str().c_str(),
-                                        out->dims().to_str().c_str()));
+  PADDLE_ENFORCE_EQ(x.dims(),
+                    out->dims(),
+                    paddle::platform::errors::InvalidArgument(
+                        "In and out should have the same dim,"
+                        " expected %s, but got %s.",
+                        x.dims().to_str().c_str(),
+                        out->dims().to_str().c_str()));
   int r = xpu::scale(dev_ctx.x_context(),
                      x.data<T>(),
                      out_data,

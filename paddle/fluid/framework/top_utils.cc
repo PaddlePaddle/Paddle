@@ -31,7 +31,7 @@ std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
   if (holder != nullptr) {
     tensor_impl->ShareAllocation(tensor.Holder());
   } else {
-    LOG(WARNING) << "Old Tensor holder is nullptr.";
+    VLOG(1) << "Old Tensor holder is nullptr.";
   }
   return tensor_impl;
 }
@@ -48,7 +48,7 @@ std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
 template <>
 void ShareTensorImpl<pt::DenseTensor>(pt::DenseTensor* tensor_impl,
                                       Tensor* out) {
-  out->ResetHolderWithType(tensor_impl->MoveMemory(),
+  out->ResetHolderWithType(tensor_impl->allocation(),
                            pt::TransToProtoVarType(tensor_impl->type()));
 }
 
@@ -69,7 +69,7 @@ std::shared_ptr<pt::MKLDNNDenseTensor> MakeTensorImpl<pt::MKLDNNDenseTensor>(
   if (holder != nullptr) {
     tensor_impl->ShareAllocation(tensor.Holder());
   } else {
-    LOG(WARNING) << "Old MKLDNN Tensor holder is nullptr.";
+    VLOG(1) << "Old MKLDNN Tensor holder is nullptr.";
   }
 
   tensor_impl->set_format(tensor.format());
@@ -78,7 +78,7 @@ std::shared_ptr<pt::MKLDNNDenseTensor> MakeTensorImpl<pt::MKLDNNDenseTensor>(
 
 template <>
 void ShareTensorImpl(pt::MKLDNNDenseTensor* tensor_impl, Tensor* out) {
-  out->ResetHolderWithType(tensor_impl->MoveMemory(),
+  out->ResetHolderWithType(tensor_impl->allocation(),
                            pt::TransToProtoVarType(tensor_impl->type()));
   out->set_format(tensor_impl->format());
 }

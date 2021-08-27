@@ -100,10 +100,6 @@ void DenseTensor::CheckMemorySize() const {
           MemorySize()));
 }
 
-std::shared_ptr<Allocation> DenseTensor::MoveMemory() {
-  return std::move(allocation_);
-}
-
 const void* DenseTensor::data() const {
   CheckMemorySize();
   return reinterpret_cast<const void*>(
@@ -126,7 +122,6 @@ void* DenseTensor::mutable_data() {
     allocation_.reset();
     allocation_ = paddle::memory::AllocShared(place, size);
   } else {
-    LOG(WARNING) << "When call mutable_data, DenseTensor has been initialized.";
     if (!(allocation_->place() == place) ||
         allocation_->size() < size + meta_.offset) {
       allocation_.reset();

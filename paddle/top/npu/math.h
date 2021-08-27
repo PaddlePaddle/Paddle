@@ -57,15 +57,15 @@ void Scale(const NPUContext& dev_ctx,
 
     runner.Run(stream);
   } else {
-    DenseTensor tmp_x(std::unique_ptr<TensorMeta>(
-        new TensorMeta(x.dims(), x.backend(), x.type(), x.layout())));
+    DenseTensor tmp_x(TensorMeta(x.dims(), x.backend(), x.type(), x.layout()),
+                      TensorStatus());
     tmp_x.mutable_data<T>();
 
     auto runner_tmp =
         paddle::operators::NpuOpRunner("Adds", {x}, {tmp_x}, {{"value", bias}});
     runner_tmp.Run(stream);
 
-    out->mutable_data<T>(x.place());
+    out->mutable_data<T>();
     float bias = 0.0;
     auto runner = paddle::operators::NpuOpRunner(
         "Power",
