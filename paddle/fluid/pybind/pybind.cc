@@ -524,6 +524,12 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("from_dlpack", [](py::capsule *dltensor) {
     DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
         PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
+
+    PADDLE_ENFORCE_NOT_NULL(
+        dmt, platform::errors::InvalidArgument(
+                 "from_dlpack received an invalid capsule. "
+                 "Note that a DLPack tensor can be consumed only once."));
+
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
     framework::Tensor tensor;

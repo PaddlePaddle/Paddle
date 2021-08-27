@@ -37,6 +37,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       }
 
       global_scope_.var_list.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = nullptr;
+      global_scope_.vec_meta_info_.push_back(info);
     }
   }
 
@@ -71,6 +76,11 @@ void StandaloneExecutor::BuildVariableOuterScope(
       auto v = outer_scope->Var(var->Name());
       InitializeVariable(v, var->GetType());
       var_scope->var_list.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = var;
+      var_scope->vec_meta_info_.push_back(info);
     }
   }
 }
@@ -91,6 +101,7 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   auto iter = interpretercores_.find(oss.str());
 
   if (iter == interpretercores_.end()) {
+    VLOG(3) << "create interpreter_core for " << oss.str();
     auto core = std::make_shared<InterpreterCore>(
         place_, main_prog_, &global_scope_, feed_names, fetch_names);
     interpretercores_.emplace(oss.str(), core);
