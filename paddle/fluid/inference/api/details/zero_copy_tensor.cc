@@ -185,20 +185,82 @@ void Tensor::CopyFromCpu(const T *data) {
 }
 
 template <typename T>
-void Tensor::CopyToCpu(T *data) const {
-  CopyToCpuImpl<T>(data, nullptr, nullptr, nullptr);
-}
+void Tensor::CopyToCpu(T *data) {
+  EAGER_GET_TENSOR;
+  auto ele_num = tensor->numel();
+  auto *t_data = tensor->data<T>();
+  auto t_place = tensor->place();
 
-template <typename T>
-void Tensor::CopyToCpuAsync(T *data, void *exec_stream) const {
-  CopyToCpuImpl<T>(data, exec_stream, nullptr, nullptr);
-}
+  paddle::framework::Tensor out;
+  auto mem_allocation = std::make_shared<paddle::memory::Allocation>(
+      static_cast<void *>(data), ele_num * sizeof(T),
+      paddle::platform::CPUPlace());
+  out.ResetHolder(mem_allocation);
 
-template <typename T>
-void Tensor::CopyToCpuAsync(T *data, CallbackFunc cb, void *cb_params) const {
-  CopyToCpuImpl<T>(data, nullptr, cb, cb_params);
+  if (paddle::platform::is_cpu_place(t_place)) {
+#ifdef PADDLE_WITH_MKLDNN
+    if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
+      paddle::framework::innerTransDataLayoutFromMKLDNN(
+          tensor->layout(), paddle::platform::MKLDNNDeviceContext::tls()
+                                .get_cur_paddle_data_layout(),
+          *tensor, &out, paddle::platform::CPUPlace(), true);
+    else
+      std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
+#else
+    std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
+#endif
+  } else if (place_ == PlaceType::kGPU) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, t_place);
+    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
+        pool.Get(gpu_place));
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data), gpu_place, t_data,
+                         ele_num * sizeof(T), dev_ctx->stream());
+#ifdef PADDLE_WITH_HIP
+    hipStreamSynchronize(dev_ctx->stream());
+#else
+    cudaStreamSynchronize(dev_ctx->stream());
+#endif
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with CUDA place because paddle is not compiled "
+        "with CUDA."));
+#endif
+  } else if (place_ == PlaceType::kXPU) {
+#ifdef PADDLE_WITH_XPU
+    auto xpu_place = BOOST_GET_CONST(paddle::platform::XPUPlace, t_place);
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data), xpu_place, t_data,
+                         ele_num * sizeof(T));
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with XPU place because paddle is not compiled "
+        "with XPU."));
+#endif
+  } else if (place_ == PlaceType::kNPU) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto npu_place = BOOST_GET_CONST(paddle::platform::NPUPlace, t_place);
+    auto *dev_ctx = static_cast<const paddle::platform::NPUDeviceContext *>(
+        pool.Get(npu_place));
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data), npu_place, t_data,
+                         ele_num * sizeof(T), dev_ctx->stream());
+    aclrtSynchronizeStream(dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with NPU place because paddle is not compiled "
+        "with NPU."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU, NPU and XPU now."));
+  }
 }
-
 template PD_INFER_DECL void Tensor::CopyFromCpu<float>(const float *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int64_t>(const int64_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
