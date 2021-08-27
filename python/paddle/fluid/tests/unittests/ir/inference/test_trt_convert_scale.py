@@ -38,7 +38,7 @@ class TrtConvertScaleDims3Test(TrtLayerAutoScanTest):
         self.batch_size_set = [1, 2, 4]
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
-        scale_input_data = TensorConfig(shape=[2, 3, 32], dtype="float32")
+        scale_input_data = TensorConfig(shape=[1, 3, 32], dtype="float32")
         self.program_weights = {}
         self.program_inputs = {"scale_input_data": scale_input_data}
         self.program_outputs = ["scale_output_data"]
