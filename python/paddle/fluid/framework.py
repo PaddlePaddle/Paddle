@@ -1224,6 +1224,14 @@ class Variable(object):
         if self.persistable:
             var_str = "persist " + var_str
 
+        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        dist_context = get_default_distributed_context()
+        var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+            self)
+        if var_dist_attr is not None:
+            var_str += ", {name} = {value}".format(
+                name="dist_attr", value=var_dist_attr)
+
         return var_str
 
     def to_string(self, throw_on_error, with_details=False):
@@ -2383,6 +2391,13 @@ class Operator(object):
             attrs_str += a
             if i != len(attr_names) - 1:
                 attrs_str += ", "
+
+        from paddle.distributed.auto_parallel.context import get_default_distributed_context
+        dist_context = get_default_distributed_context()
+        op_dist_attr = dist_context.get_op_distributed_attr_for_program(self)
+        if op_dist_attr is not None:
+            attrs_str += ", {name} = {value}".format(
+                name="dist_attr", value=op_dist_attr)
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\

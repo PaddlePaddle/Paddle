@@ -164,36 +164,6 @@ class TestDistRunnerBase(object):
 
         sys.stdout.buffer.write(pickle.dumps(out_losses))
 
-        if args.save_model:
-            model_save_dir = "/tmp"
-            if fleet.worker_index() == 0:
-                model_save_dir_fluid = os.path.join(model_save_dir,
-                                                    "fluid_persistables")
-                model_save_dir_fleet = os.path.join(model_save_dir,
-                                                    "fleet_persistables")
-                infer_save_dir_fluid = os.path.join(model_save_dir,
-                                                    "fluid_infer")
-                infer_save_dir_fleet = os.path.join(model_save_dir,
-                                                    "fleet_infer")
-            else:
-                model_save_dir_fluid = os.path.join(model_save_dir,
-                                                    "fluid_persistables_2")
-                model_save_dir_fleet = os.path.join(model_save_dir,
-                                                    "fleet_persistables_2")
-                infer_save_dir_fluid = os.path.join(model_save_dir,
-                                                    "fluid_infer_2")
-                infer_save_dir_fleet = os.path.join(model_save_dir,
-                                                    "fleet_infer_2")
-            fluid.io.save_persistables(exe, model_save_dir_fluid,
-                                       fleet._origin_program)
-            fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
-            feeded_var_names = [var.name for var in feed_var_list]
-            fluid.io.save_inference_model(infer_save_dir_fluid,
-                                          feeded_var_names, [avg_cost], exe,
-                                          fleet._origin_program)
-            fleet.save_inference_model(exe, infer_save_dir_fleet,
-                                       feeded_var_names, [avg_cost])
-
     def run_use_fleet_api_20_trainer(self, args):
         """
         1. remove codes for DistributedStrategy and leave the DistributedStrategy part to get_model()
