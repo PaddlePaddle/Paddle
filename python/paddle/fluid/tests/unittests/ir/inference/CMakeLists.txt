@@ -42,5 +42,4 @@ set_tests_properties(test_trt_convert_conv2d PROPERTIES TIMEOUT 100)
 set_tests_properties(test_trt_fc_fuse_quant_dequant_pass PROPERTIES TIMEOUT 100)
 set_tests_properties(test_trt_conv_quant_dequant_pass PROPERTIES TIMEOUT 100)
 set_tests_properties(test_trt_matmul_quant_dequant PROPERTIES TIMEOUT 100)
-
 endif()
