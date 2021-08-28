@@ -36,12 +36,117 @@ np.random.seed(SEED)
 paddle.seed(SEED)
 
 
-class TestBatchNormOpTraining(unittest.TestCase):
-    def set_npu(self):
-        self.__class__.use_npu = True
+@unittest.skipIf(False, "skip for tmp")
+class TestBatchNormOpInference(unittest.TestCase):
+    def setUp(self):
+        self.dtype = np.float32
+        self.init_kernel_type()
+        self.data_formats = ["NCHW", "NHWC"]
 
+    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
+        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+
+    def check_with_place(self, place, data_layout, dtype, shape):
+        epsilon = epsilon = 0.00001
+        if len(shape) == 2:
+            x_shape = shape
+            c = x_shape[1]
+        else:
+            n, h, w, c = shape[0], shape[1], shape[2], shape[3]
+            if data_layout == "NHWC":
+                x_shape = [n, h, w, c]
+            elif data_layout == "NCHW":
+                x_shape = [n, c, h, w]
+            else:
+                raise ValueError("Unknown data layout.")
+        scale_shape = [c]
+
+        x = np.random.random_sample(x_shape).astype(dtype)
+        x = x - 0.5
+        scale = np.random.random_sample(scale_shape).astype(np.float32)
+        bias = np.random.random_sample(scale_shape).astype(np.float32)
+        mean = np.zeros(scale_shape).astype(np.float32)
+        variance = np.ones(scale_shape).astype(np.float32)
+        y = _reference_testing(x, scale, bias, mean, variance, epsilon,
+                               data_layout).astype(dtype)
+        var_dict = locals()
+        var_names = ["x", "scale", "bias", "mean", "variance", "y"]
+        ground_truth = {name: var_dict[name] for name in var_names}
+        ground_truth["saved_mean"] = mean
+        ground_truth["saved_variance"] = variance
+
+        program = fluid.Program()
+        with fluid.program_guard(program):
+            block = program.global_block()
+            for name in ground_truth:
+                block.create_var(
+                    name=name, dtype="float32", shape=ground_truth[name].shape)
+            inputs = {
+                "X": block.var("x"),
+                "Scale": block.var("scale"),
+                "Bias": block.var("bias"),
+                "Mean": block.var("mean"),
+                "Variance": block.var("variance")
+            }
+            attrs = {
+                "epsilon": epsilon,
+                "is_test": True,
+                "data_layout": data_layout,
+                "use_mkldnn": False,
+                "fuse_with_relu": False,
+            }
+            outputs = {
+                "Y": block.var("y"),
+                "MeanOut": block.var("mean"),  # share memory
+                "VarianceOut": block.var("variance"),  # share memory
+                "SavedMean": block.var("saved_mean"),
+                "SavedVariance": block.var("saved_variance")
+            }
+            block.create_var(name="reserve_space", dtype='float32')
+            outputs["ReserveSpace"] = block.var('reserve_space')
+            bn_op = block.append_op(
+                type="sync_batch_norm",
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs)
+
+            program._sync_with_cpp()
+
+            exe = fluid.Executor(place)
+            out = exe.run(
+                program,
+                feed={
+                    name: ground_truth[name]
+                    for name in ["x", "scale", "bias", "mean", "variance"]
+                },
+                fetch_list=["y"])
+
+            print('expect: ', var_dict["y"])
+            print('actual: ', out[0])
+            self.__assert_close(var_dict["y"], out[0], "y", atol=1e-3)
+
+    def test_check_output(self):
+        place = core.NPUPlace(0)
+        for data_format in self.data_formats:
+            self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+
+    def init_kernel_type(self):
+        pass
+
+
+@unittest.skipIf(True, "skip for tmp")
+class TestFP16BatchNormOpInference(TestBatchNormOpInference):
+    def setUp(self):
+        self.dtype = np.float16
+        self.init_kernel_type()
+        self.data_formats = ["NCHW", "NHWC"]
+
+
+@unittest.skipIf(False, "skip for tmp")
+class TestBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
         self.set_npu()
+        self.set_dtype()
         self.use_mkldnn = False
         self.fuse_with_relu = False
         self.data_formats = ["NCHW", "NHWC"]
@@ -52,6 +157,12 @@ class TestBatchNormOpTraining(unittest.TestCase):
         self.epsilon = 0.00001
         self.init_kernel_type()
         self.init_test_case()
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def set_dtype(self):
+        self.dtype = np.float32
 
     def init_test_case(self):
         self.use_global_stats = False
@@ -113,10 +224,12 @@ class TestBatchNormOpTraining(unittest.TestCase):
             scale_shape = [c]
 
             np.random.seed(123)
-            x = np.random.random_sample(shape).astype(np.float32)
+            x = np.random.random_sample(shape).astype(self.dtype)
             scale = np.random.random_sample(scale_shape).astype(np.float32)
             bias = np.random.random_sample(scale_shape).astype(np.float32)
             mean, variance = self.set_mean_variance(scale_shape, x, data_layout)
+            mean = mean.astype(np.float32)
+            variance = variance.astype(np.float32)
             y_grad = np.random.random_sample(shape).astype(np.float32)
             momentum_var = np.array([momentum]).astype(np.float32)
 
@@ -164,9 +277,12 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "use_global_stats": self.use_global_stats
                 }
                 if self.use_momentum_variable:
+                    print('11111111')
                     inputs['MomentumTensor'] = block.var('momentum_var')
                 else:
                     attrs['momentum'] = momentum
+                    print('22222222')
+                print('attrs: ', attrs)
 
                 outputs = {
                     "Y": block.var("y"),
@@ -244,6 +360,40 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
     def init_kernel_type(self):
         pass
+
+
+@unittest.skipIf(True, "skip for tmp")
+class TestFP16BatchNormOpTraining(TestBatchNormOpTraining):
+    def set_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(False, "skip for tmp")
+class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
+
+
+@unittest.skipIf(False, "skip for tmp")
+class TestBatchNormOpTrainingCase3(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.no_grad_set = set(['x@GRAD'])
+        self.fetch_list = ['y', 'mean', 'variance', 'scale@GRAD', 'bias@GRAD']
+
+
+@unittest.skipIf(False, "skip for tmp")
+class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_momentum_variable = True
+        self.use_global_stats = False
+        self.no_grad_set = set()
+        self.fetch_list = [
+            'y', 'mean', 'variance', 'saved_mean', 'saved_variance', 'x@GRAD',
+            'scale@GRAD', 'bias@GRAD'
+        ]
 
 
 if __name__ == "__main__":
