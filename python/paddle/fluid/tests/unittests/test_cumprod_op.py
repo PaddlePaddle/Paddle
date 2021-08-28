@@ -59,8 +59,8 @@ class TestCumprod(OpTest):
         self.outputs = {'Out': None}
         self.attrs = {'dim': None}
 
-    def _get_places(self):
-        return [paddle.CUDAPlace(0)]
+    #def _get_places(self):
+    #return [paddle.CUDAPlace(0)]
 
     # test forward.
     def test_check_output(self):
