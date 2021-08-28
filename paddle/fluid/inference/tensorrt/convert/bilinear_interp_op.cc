@@ -43,6 +43,7 @@ class BilinearInterpolateOpConverter : public OpConverter {
     auto interp_method =
         BOOST_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
 
+    auto resize_inputs = op_desc.Inputs();
     auto input_names = op_desc.Input("X");
     auto out_h = BOOST_GET_CONST(int, op_desc.GetAttr("out_h"));
     auto out_w = BOOST_GET_CONST(int, op_desc.GetAttr("out_w"));
@@ -61,7 +62,12 @@ class BilinearInterpolateOpConverter : public OpConverter {
     int in_h = in_dim.d[h_axis];
     int in_w = in_dim.d[w_axis];
 
-    bool has_scale_input = (op_desc.Input("Scale").size() > 0) ? true : false;
+    bool has_scale_input = false;
+    bool has_scale_input_attr =
+        (resize_inputs.find("Scale") != resize_inputs.end());
+    if (has_scale_input_attr) {
+      has_scale_input = (op_desc.Input("Scale").size() > 0) ? true : false;
+    }
     if (has_scale_input) {
       auto* scale_var = scope.FindVar(op_desc.Input("Scale")[0]);
       auto* scale_tensor = scale_var->GetMutable<framework::LoDTensor>();
@@ -97,7 +103,6 @@ class BilinearInterpolateOpConverter : public OpConverter {
         if (scale_attr.size() > 1) {
           scale_h = scale_attr[0];
           scale_w = scale_attr[1];
-
           PADDLE_ENFORCE_EQ(
               scale_w > 0, true,
               platform::errors::InvalidArgument(
@@ -119,22 +124,37 @@ class BilinearInterpolateOpConverter : public OpConverter {
       out_w = static_cast<int>(in_w * scale_w);
     }
 
-    if (!(scale_w > 0. && scale_h > 0.)) {
+    bool has_out_size_input = false;
+    bool has_out_size_attr =
+        (resize_inputs.find("OutSize") != resize_inputs.end());
+    if (has_out_size_attr) {
+      has_out_size_input = (op_desc.Input("OutSize").size() > 0) ? true : false;
+    }
+    if (has_out_size_input) {
+      auto* out_size_var = scope.FindVar(op_desc.Input("OutSize")[0]);
+      auto* out_size_tensor = out_size_var->GetMutable<framework::LoDTensor>();
+      auto* out_size_d = out_size_tensor->data<int>();
+      out_h = out_size_d[0];
+      out_w = out_size_d[1];
+    }
+
+    if (scale_h <= 0 || scale_w <= 0) {
       scale_h = static_cast<float>(out_h) / static_cast<float>(in_h);
       scale_w = static_cast<float>(out_w) / static_cast<float>(in_w);
     }
 
-    PADDLE_ENFORCE_EQ(scale_w > 0, true,
-                      platform::errors::InvalidArgument(
-                          "The scale_w in Attr(scale) of Operator(%s) "
-                          "should be greater than 0, but received value is %d.",
-                          op_type_, scale_w));
-
-    PADDLE_ENFORCE_EQ(scale_h > 0, true,
-                      platform::errors::InvalidArgument(
-                          "The scale_h in Attr(scale) of Operator(%s) "
-                          "should be greater than 0, but received value is %d.",
-                          op_type_, scale_h));
+    PADDLE_ENFORCE_EQ(
+        scale_w > 0, true,
+        platform::errors::InvalidArgument(
+            "The scale_w in Attr(scale) of Operator(bilinear_interp_v2) "
+            "should be greater than 0, but received value is %d.",
+            scale_w));
+    PADDLE_ENFORCE_EQ(
+        scale_h > 0, true,
+        platform::errors::InvalidArgument(
+            "The scale_h in Attr(scale) of Operator(bilinear_interp_v2) "
+            "should be greater than 0, but received value is %d.",
+            scale_h));
 
     std::vector<float> scale;
     scale.reserve(3);

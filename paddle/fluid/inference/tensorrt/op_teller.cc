@@ -443,11 +443,21 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
-      // when the Scale vector doesn't exist, fallback to the attr scale or
+      // when the Scale and OutSize vector doesn't exist, fallback to the attr scale or
       // out_h / in_h, out_w / in_w
-      if (desc.Input("Scale").size() != 1) {
-        VLOG(3) << "The Scale of bilinear_interp is "
-                << desc.Input("Scale").size();
+      bool has_out_size = (resize_inputs.find("OutSize") != resize_inputs.end());
+      bool has_scale_input_size = (resize_inputs.find("Scale") != resize_inputs.end());
+
+      if ((has_scale_input_size && desc.Input("Scale").size() != 1) || (has_out_size && desc.Input("OutSize").size() != 1)) {
+        if(has_scale_input_size && desc.Input("Scale").size() != 1) {
+          VLOG(3) << "The Scale of bilinear_interp is "
+                  << desc.Input("Scale").size();
+         }
+
+        if(has_out_size && desc.Input("OutSize").size() != 1) {
+          VLOG(3) << "The OutSize of bilinear_interp is "
+                  << desc.Input("OutSize").size();
+         }
 
         if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
             !desc.HasAttr("out_w")) {
@@ -515,9 +525,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
 
-      if (desc.Input("Scale").size() != 1) {
-        VLOG(3) << "The Scale of bilinear_interp_v2 is "
-                << desc.Input("Scale").size();
+      bool has_out_size = (resize_inputs.find("OutSize") != resize_inputs.end());
+      bool has_scale_input_size = (resize_inputs.find("Scale") != resize_inputs.end());
+
+      if ((has_scale_input_size && desc.Input("Scale").size() != 1) || (has_out_size && desc.Input("OutSize").size() != 1)) {
+        if(has_scale_input_size && desc.Input("Scale").size() != 1) {
+          VLOG(3) << "The Scale of bilinear_interp_v2 is "
+                  << desc.Input("Scale").size();
+         }
+
+        if(has_out_size && desc.Input("OutSize").size() != 1) {
+          VLOG(3) << "The OutSize of bilinear_interp_v2 is "
+                  << desc.Input("OutSize").size();
+         }
+
         const std::vector<float> scale =
             BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
         if (scale.size() <= 1) {
