@@ -61,8 +61,8 @@ class BilinearInterpolateOpConverter : public OpConverter {
     int in_h = in_dim.d[h_axis];
     int in_w = in_dim.d[w_axis];
 
-    auto* scale_var = scope.FindVar(op_desc.Input("Scale").front());
-    if (scale_var != nullptr) {
+    bool has_scale_input = (op_desc.Input("Scale").size() > 0) ? true : false;
+    if (has_scale_input) {
       auto* scale_var = scope.FindVar(op_desc.Input("Scale")[0]);
       auto* scale_tensor = scale_var->GetMutable<framework::LoDTensor>();
       auto* scale_d = scale_tensor->data<float>();
