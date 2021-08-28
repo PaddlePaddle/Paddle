@@ -14,23 +14,19 @@
 
 from __future__ import print_function
 
-import sys
-sys.path.append("..")
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.test_norm_op import l2_norm
 
-SEED = 2021
-
-
-def l2_norm(x, axis, epsilon):
-    x2 = x**2
-    s = np.sum(x2, axis=axis, keepdims=True)
-    r = np.sqrt(s) + epsilon
-    y = x / np.broadcast_to(r, x.shape)
-    return y, r
+# def l2_norm(x, axis, epsilon):
+#     x2 = x**2
+#     s = np.sum(x2, axis=axis, keepdims=True)
+#     r = np.sqrt(s) + epsilon
+#     y = x / np.broadcast_to(r, x.shape)
+#     return y, r
 
 
 class TestNorm(OpTest):
@@ -40,6 +36,7 @@ class TestNorm(OpTest):
         self.place = paddle.NPUPlace(0)
         self.op_type = "norm"
         self.init_dtype()
+        self.init_test_case()
 
         x = np.random.random(self.shape).astype(self.dtype)
         y, norm = l2_norm(x, self.axis, self.epsilon)
@@ -52,6 +49,8 @@ class TestNorm(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def init_test_case(self):
         self.axis = 1
         self.epsilon = 1e-10
         self.shape = (2, 3, 4, 5)
@@ -65,7 +64,6 @@ class TestNormOp2(TestNorm):
         self.shape = [5, 3, 9, 7]
         self.axis = 0
         self.epsilon = 1e-8
-        self.dtype = np.float32
 
 
 class TestNormOp3(TestNorm):
@@ -73,7 +71,6 @@ class TestNormOp3(TestNorm):
         self.shape = [5, 3, 2, 7]
         self.axis = -1
         self.epsilon = 1e-8
-        self.dtype = np.float32
 
 
 class TestNormOp4(TestNorm):
@@ -81,7 +78,6 @@ class TestNormOp4(TestNorm):
         self.shape = [128, 1024, 14, 14]
         self.axis = 2
         self.epsilon = 1e-8
-        self.dtype = np.float32
 
 
 class API_NormTest(unittest.TestCase):
@@ -103,6 +99,8 @@ class TestNormFP16(TestNorm):
 
     def init_dtype(self):
         self.dtype = np.float16
+
+    def init_test_case(self):
         self.axis = -1
         self.epsilon = 1e-10
         self.shape = (2, 3, 100)
