@@ -48,9 +48,13 @@ class TestCumprod(OpTest):
         self.shape = [4, 5, 6]
         self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
 
+    def init_dtype(self):
+        self.dtype = np.float64
+
     def setUp(self):
         self.init_params()
         self.op_type = "cumprod"
+        self.init_dtype()
         self.inputs = {'X': None}
         self.outputs = {'Out': None}
         self.attrs = {'dim': None}
