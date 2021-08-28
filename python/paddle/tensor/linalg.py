@@ -1026,34 +1026,32 @@ def eigh(x, UPLO='L', name=None):
             import numpy as np
             import paddle
 
-            x_data = np.array([[1, -2j], [2j, 5]])
+            x_data = np.array([[1, -2], [2, 5]])
             x = paddle.to_tensor(x_data)
             out_value, out_vector = paddle.eigh(x)
     """
     if in_dygraph_mode():
-        if UPLO is 'L' or UPLO is 'U':
-            out_value, out_vector = _C_ops.eigh(x, 'UPLO', UPLO)
-            return out_value, out_vector
-        else:
-            raise ValueError(
-                "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
+        return _C_ops.eigh(x, 'UPLO', UPLO)
 
-    def __check_input(x):
+    def __check_input(x, UPLO):
         x_shape = list(x.shape)
         if len(x.shape) < 2:
             raise ValueError(
                 "Input(input) only support >=2 tensor, but received "
-                "length of Input(input) is %s." % len(input.shape))
+                "length of Input(input) is %s." % len(x.shape))
         if x_shape[-1] != x_shape[-2]:
             raise ValueError(
                 "The input matrix must be batches of square matrices. But received x's dimention: {}".
                 format(x_shape))
+        if UPLO is not 'L' and UPLO is not 'U':
+            raise ValueError(
+                "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
 
-    __check_input(x)
+    __check_input(x, UPLO)
 
     helper = LayerHelper('eigh', **locals())
-    # check_variable_and_dtype(x, 'x', ['float32', 'float64', 'complex32', 'complex64'],
-    #                          'eigh')
+    check_variable_and_dtype(
+        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'eigh')
 
     out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
     out_vector = helper.create_variable_for_type_inference(dtype=x.dtype)

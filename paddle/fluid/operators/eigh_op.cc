@@ -101,7 +101,6 @@ class EighGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    // std::cout << "InferShape>>>>>>> " << std::endl;
     OP_INOUT_CHECK(ctx->HasInput("OutValue"), "Input", "OutValue", "EighGrad");
     OP_INOUT_CHECK(ctx->HasInput("OutVector"), "Input", "OutVector",
                    "EighGrad");
@@ -133,8 +132,6 @@ class EighGradOpMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    // std::cout << "this->ForwardOpType(): " << this->ForwardOpType() <<
-    // std::endl;
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("OutValue", this->Output("OutValue"));
     op->SetInput("OutVector", this->Output("OutVector"));
@@ -158,7 +155,11 @@ REGISTER_OPERATOR(eigh_grad, ops::EighGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     eigh, ops::EighKernel<paddle::platform::CPUDeviceContext, float, float>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, double, double>);
+    ops::EighKernel<paddle::platform::CPUDeviceContext, double, double>,
+    ops::EighKernel<paddle::platform::CPUDeviceContext, float,
+                    paddle::platform::complex<float>>,
+    ops::EighKernel<paddle::platform::CPUDeviceContext, double,
+                    paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     eigh_grad,

@@ -56,7 +56,7 @@ class TestEighOp(OpTest):
         self.param[:, 9] = -1
 
     def test_check_output(self):
-        self.check_output_with_place(place=core.CPUPlace(), atol=1e-05)
+        self.check_output_with_place(place=core.CPUPlace())
 
     def test_grad(self):
         self.check_grad(["X"], ["OutValue"])
@@ -86,8 +86,8 @@ class TestEighAPI(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
         np.random.seed(123)
         self.real_data = np.random.random(self.x_shape).astype(self.dtype)
-        # self.complex_data = np.random.random(self.x_shape).astype(
-        #     self.dtype) + 1J * np.random.random(self.x_shape).astype(self.dtype)
+        self.complex_data = np.random.random(self.x_shape).astype(
+            self.dtype) + 1J * np.random.random(self.x_shape).astype(self.dtype)
 
     def compare_result(self, actual_w, actual_v, expected_w, expected_v):
         np.testing.assert_allclose(
@@ -108,16 +108,16 @@ class TestEighAPI(unittest.TestCase):
             actual_w, actual_v = np.linalg.eigh(self.real_data)
             self.compare_result(actual_w, actual_v, expected_w, expected_v)
 
-            # input_x = fluid.layers.data(
-            #     'input_x', shape=self.x_shape, dtype=self.dtype)
-            # output_w, output_v = paddle.linalg.eigh(input_x)
-            # exe = fluid.Executor(place)
-            # expected_w, expected_v = exe.run(
-            #     fluid.default_main_program(),
-            #     feed={"input_x": self.complex_data},
-            #     fetch_list=[output_w, output_v])
-            # actual_w, actual_v = np.linalg.eigh(self.complex_data)
-            # self.compare_result(actual_w, actual_v, expected_w, expected_v)
+            input_x = fluid.layers.data(
+                'input_x', shape=self.x_shape, dtype=self.dtype)
+            output_w, output_v = paddle.linalg.eigh(input_x)
+            exe = fluid.Executor(place)
+            expected_w, expected_v = exe.run(
+                fluid.default_main_program(),
+                feed={"input_x": self.complex_data},
+                fetch_list=[output_w, output_v])
+            actual_w, actual_v = np.linalg.eigh(self.complex_data)
+            self.compare_result(actual_w, actual_v, expected_w, expected_v)
 
     def test_in_static_mode(self):
         paddle.enable_static()
@@ -133,50 +133,51 @@ class TestEighAPI(unittest.TestCase):
                 self.compare_result(actual_w,
                                     actual_v.numpy(), expected_w, expected_v)
 
-                # input_complex_data = fluid.dygraph.to_variable(
-                #     self.complex_data)
-                # input_complex_data = paddle.to_tensor(self.complex_data)
-                # expected_w, expected_v = np.linalg.eigh(self.complex_data)
-                # actual_w, actual_v = paddle.linalg.eigh(input_complex_data)
-                # self.compare_result(actual_w,
-                #                     actual_v.numpy(), expected_w, expected_v)
+                input_complex_data = fluid.dygraph.to_variable(
+                    self.complex_data)
+                input_complex_data = paddle.to_tensor(self.complex_data)
+                expected_w, expected_v = np.linalg.eigh(self.complex_data)
+                actual_w, actual_v = paddle.linalg.eigh(input_complex_data)
+                self.compare_result(actual_w,
+                                    actual_v.numpy(), expected_w, expected_v)
 
-            # def test_eigh_grad(self):
-            #     def run_test(uplo):
-            #         paddle.disable_static()
-            #         for place in self.places:
-            #             x = paddle.to_tensor(self.complex_data, stop_gradient=False)
-            #             w, v = paddle.linalg.eigh(x)
-            #             (w.sum() + paddle.abs(v).sum()).backward()
-            #             np.testing.assert_allclose(
-            #                 abs(x.grad.numpy()),
-            #                 abs(x.grad.numpy().conj().transpose(-1, -2)),
-            #                 rtol=self.rtol,
-            #                 atol=self.atol)
+            def test_eigh_grad(self):
+                def run_test(uplo):
+                    paddle.disable_static()
+                    for place in self.places:
+                        x = paddle.to_tensor(
+                            self.complex_data, stop_gradient=False)
+                        w, v = paddle.linalg.eigh(x)
+                        (w.sum() + paddle.abs(v).sum()).backward()
+                        np.testing.assert_allclose(
+                            abs(x.grad.numpy()),
+                            abs(x.grad.numpy().conj().transpose(-1, -2)),
+                            rtol=self.rtol,
+                            atol=self.atol)
 
-            #     for uplo in ["L", "U"]:
-            #         run_test(uplo)
+                for uplo in ["L", "U"]:
+                    run_test(uplo)
 
-            # class TestEighAPIError(unittest.TestCase):
-            #     def setUp(self):
-            #         self.op_type = "eigh"
-            #         self.dtypes = "float32"
 
-            #     def test_error(self):
-            #         #input matrix must be square matrix
-            #         x_data = np.random.random((12,32)).astype('float32')
-            #         input_x = paddle.to_tensor(x_data)
-            #         self.assertRaises(ValueError, paddle.linalg.eigh, input_x)
+class TestEighAPIError(unittest.TestCase):
+    def test_error(self):
+        with program_guard(Program(), Program()):
+            #input maxtrix must greater than 2 dimensions
+            input_x = fluid.data(name='x_1', shape=[12], dtype='float32')
+            self.assertRaises(ValueError, paddle.linalg.eigh, input_x)
 
-            #         x_data = np.random.random((4,4)).astype('float32')
-            #         uplo = 'R'
-            #         input_x = paddle.to_tensor(x_data)
-            #         self.assertRaises(ValueError, paddle.linalg.eigh, input_x, uplo)
+            #input matrix must be square matrix
+            input_x = fluid.data(name='x_2', shape=[12, 32], dtype='float32')
+            self.assertRaises(ValueError, paddle.linalg.eigh, input_x)
 
-            #         #x_data cannot be integer
-            #         # x_data = np.random.random((4,4)).astype('int32')
-            #         # input_x = paddle.to_tensor(x_data)
-            #         # self.assertRaises(TypeError, paddle.linalg.eigh, input_x)
+            #uplo must be in 'L' or 'U'
+            input_x = fluid.data(name='x_3', shape=[4, 4], dtype="float32")
+            uplo = 'R'
+            self.assertRaises(ValueError, paddle.linalg.eigh, input_x, uplo)
+
+            #x_data cannot be integer
+            input_x = fluid.data(name='x_4', shape=[4, 4], dtype="int32")
+            self.assertRaises(TypeError, paddle.linalg.eigh, input_x)
 
 
 if __name__ == "__main__":

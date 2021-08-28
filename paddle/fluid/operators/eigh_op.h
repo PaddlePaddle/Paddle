@@ -54,14 +54,24 @@ class EighKernel : public framework::OpKernel<T> {
     int rows = dims[dims.size() - 2];
     int cols = dims[dims.size() - 1];
     int k = std::min(rows, cols);
-    auto* x_data = input.mutable_data<T>(dims, ctx.GetPlace());
-
     auto* value_data = output_w_var.mutable_data<ValueType>(
         EigenvalueDim(dims, k), ctx.GetPlace());
-    auto* vector_data = output_v_var.mutable_data<T>(dims, ctx.GetPlace());
-    math::BatchEigenvalues<T, ValueType>(x_data, value_data, vector_data,
-                                         batch_size, rows, cols, k);
+    if (framework::IsComplexType(input_var.type())) {
+      auto* x_data = input.mutable_data<T>(dims, ctx.GetPlace());
+      auto* vector_data = output_v_var.mutable_data<T>(dims, ctx.GetPlace());
+      math::BatchComplexValues<T, ValueType>(x_data, value_data, vector_data,
+                                             batch_size, rows, cols, k);
+    } else {
+      auto* x_data = input.mutable_data<ValueType>(dims, ctx.GetPlace());
+      auto* vector_data =
+          output_v_var.mutable_data<ValueType>(dims, ctx.GetPlace());
+      math::BatchEigenvalues<ValueType>(x_data, value_data, vector_data,
+                                        batch_size, rows, cols, k);
+    }
+    // if(lower=="U"){
+    // std::cout << "#####";
     output_v_var = dito.transpose(output_v_var);
+    // }
   }
 };
 
@@ -83,11 +93,11 @@ class EighGradKernel : public framework::OpKernel<T> {
         math::DeviceIndependenceTensorOperations<DeviceContext, T, ValueType>(
             ctx);
     auto tV = dito.transpose(dito.conj_(output_v_var));
+    // std::cout << tV;
     auto W = dito.sub(dito.unsqueeze(output_w_var, -2),
                       dito.unsqueeze(output_w_var, -1));
     Tensor result = dito.matmul(tV, output_v_grad);
-    // auto* result_data = result.mutable_data<T>(dims, ctx.GetPlace());
-    //  std::cout << "\n>>>>result: >>>>>>>>>>\n";
+    result.mutable_data<T>(dims, ctx.GetPlace());
     // for(int i=0; i < output_v_var.numel(); i++){
     //   std::cout << result_data[i] << "\t";
     // }
@@ -99,7 +109,8 @@ class EighGradKernel : public framework::OpKernel<T> {
     const int m = dims[dims.size() - 1];
     result = dito.div(result, W);
     result = dito.diag_copy(m, m, m, 0, output_w_grad, result);
-    x_grad.ShareDataWith(dito.matmul(output_v_var, dito.matmul(result, tV)));
+    x_grad = dito.matmul(output_v_var, dito.matmul(result, tV));
+    // x_grad.ShareDataWith(dito.matmul(output_v_var, dito.matmul(result, tV)));
   }
 };
 
