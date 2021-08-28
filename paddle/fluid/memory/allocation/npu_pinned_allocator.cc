@@ -20,6 +20,7 @@ namespace memory {
 namespace allocation {
 
 void NPUPinnedAllocator::ProcessEventsAndFree() {
+  VLOG(10) << "process event and free:" << npu_events_.size();
   for (auto it = npu_events_.begin(); it != npu_events_.end();) {
     aclrtEvent event = it->second;
     aclrtEventStatus status = ACL_EVENT_STATUS_COMPLETE;
@@ -40,6 +41,7 @@ void NPUPinnedAllocator::ProcessEventsAndFree() {
 
 Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
   std::lock_guard<std::mutex> lock(mtx_);
+  VLOG(10) << "alloc events" << npu_events_.size();
   ProcessEventsAndFree();
   void *ptr;
   int error = posix_memalign(&ptr, kAlignment, size);
