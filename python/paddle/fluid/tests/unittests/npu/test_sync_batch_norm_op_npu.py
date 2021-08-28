@@ -134,7 +134,7 @@ class TestBatchNormOpInference(unittest.TestCase):
         pass
 
 
-@unittest.skipIf(True, "skip for tmp")
+@unittest.skipIf(False, "skip for tmp")
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
         self.dtype = np.float16
@@ -347,11 +347,22 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     self.__assert_close(
                         var_dict[name], out[id], name, atol=1e-3)
                     continue
+
                 # if name == 'x@GRAD':
                 #     self.__assert_close(
                 #         var_dict[name], out[id], name, atol=1e-5)
                 #     continue
-                self.__assert_close(var_dict[name], out[id], name)
+
+                if self.dtype == np.float16:
+                    if name == 'y':
+                        self.__assert_close(
+                            var_dict[name], out[id], name, atol=1e-2)
+                    if name == 'saved_mean':
+                        self.__assert_close(
+                            var_dict[name], out[id], name, atol=1e-2)
+                else:
+                    self.__assert_close(var_dict[name], out[id], name)
+
             print("op test forward and backward passed: ",
                   str(place), data_layout)
 
@@ -362,7 +373,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
         pass
 
 
-@unittest.skipIf(True, "skip for tmp")
+@unittest.skipIf(False, "skip for tmp")
 class TestFP16BatchNormOpTraining(TestBatchNormOpTraining):
     def set_dtype(self):
         self.dtype = np.float16
