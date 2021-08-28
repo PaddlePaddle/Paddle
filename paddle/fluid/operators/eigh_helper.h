@@ -16,8 +16,9 @@
 #include <Eigen/src/Core/util/Constants.h>
 #include <assert.h>
 #include <Eigen/Dense>
-#include <Eigen/SVD>
-#include <iostream>
+#include "Eigen/Core"
+// #include <Eigen/Eigenvalues>
+// #include <iostream>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -36,79 +37,69 @@ using OutTensors = std::vector<Tensor*>;
 using Shape = std::vector<int>;
 using OpName = std::string;
 
-// void BatchEigenvalues(const T* x_data, ValueType* eigenvalues_data,
-//                       T* eigenvectors_data, int batches, int rows, int cols,
-//                       int k, boolean isComplex) {
-//   T* input = const_cast<T*>(x_data);
-//   int stride = rows * cols;
-//   for (int i = 0; i < batches; i++) {
-//     // compute eigenvalues
-//     // VLOG(3) << "compute eigenvalues";
-//     auto m = Eigen::Map<
-//         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-//         input + i * stride, rows, rows);
-//     m = m.selfadjointView<Eigen::Lower>();
-//     // VLOG(3) << m;
-//     // m.eigenvalues() == torch.linalg.eigvals()
-//     // m.selfadjointView<Eigen::Lower>().eigenvalues() == m.eigenvalues() ==
-//     // torch.linalg.eigvalsh()
-//     // eigvalsh() is used in torch.linalg.matrix_rank()
-//     Eigen::SelfAdjointEigenSolver<
-//         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-//         eigen_solver(m);
-//     auto eigenvalues = eigen_solver.eigenvalues().cwiseAbs();
-//     auto eigenvectors = eigen_solver.eigenvectors();
-//     // 为什么这样调用不可以？？
-//     // auto eigenvalues =
-//     // m.selfadjointView<Eigen::Lower>().eigenvalues().cwiseAbs();
-//     // VLOG(3) << "auto eigenvalues: " << eigenvalues;
-//     if (isComplex) {
-//       *(eigenvalues_data + i * k + j) =
-//       static_cast<ValueType>(eigenvalues[j]);
-//       // eig.eigenvalues().template cast<ValueType>();
-//       memcpy(eigenvectors_data, eigenvalues.matrixU().data(),
-//              eigenvalues.matrixU().size() * sizeof(T));
-//     } else {
-//       memcpy(eigenvalues_data, eigenvalues.matrixU().data(),
-//              eigenvalues.matrixU().size() * sizeof(T));
-//       memcpy(eigenvectors_data, eigenvalues.matrixU().data(),
-//              eigenvalues.matrixU().size() * sizeof(T));
-//     }
-//     // memcpy(eigenvalues_data, eigenvalues.matrixU().data(),
-//     // eigenvalues.matrixU().size() * sizeof(T));
-//     // memcpy(eigenvectors_data, eigenvalues.matrixU().data(),
-//     // eigenvalues.matrixU().size() * sizeof(T));
-//     // memcpy(VH, V_trans.data(), V_trans.size() * sizeof(T));
-//     // memcpy(S, svd.singularValues().data(),
-//     //        svd.singularValues().size() * sizeof(T));
-//     // for (int j = 0; j < k; j++) {
-//     //   // 不能用下标的方式访问吗？？
-//     //   *(eigenvalues_data + i * k + j) = eigenvalues[j];
-//     //   *(eigenvectors_data +i * k+j)
-//     //   // eigenvalues_data[i*k+j] = eigenvalues[j];
-//     //   // VLOG(3) << "eigenvalues_data[i*k+j]: " <<
-//     *(eigenvalues_data+i*k+j);
-//     // }
-//   }
-// }
+template <typename T, typename ValueType>
+void BatchEigenvalues(const T* x_data, ValueType* eigenvalues_data,
+                      T* eigenvectors_data, int batches, int rows, int cols,
+                      int k) {
+  T* input = const_cast<T*>(x_data);
+  int stride = rows * cols;
+  for (int i = 0; i < batches; i++) {
+    auto m = Eigen::Map<
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        input + i * stride, rows, rows);
+    // m = m.triangularView<Eigen::Lower>();
+    // m = m.selfadjointView<Eigen::Lower>();
+    // VLOG(3) << m;
+    // m.eigenvalues() == torch.linalg.eigvals()
 
-// void BatchEigenvalues(const T* x_data, T* eigenvalues_data, int batches,
-//                       int rows, int cols, int k) {
-//  Eigen::SelfAdjointEigenSolver<Matrix> eig(
-//         inputs[0],
-//         compute_v_ ? Eigen::ComputeEigenvectors : Eigen::EigenvaluesOnly);
-//     // TODO(rmlarsen): Output more detailed error info on failure.
-//     OP_REQUIRES(
-//         context, eig.info() == Eigen::Success,
-//         errors::InvalidArgument("Self-adjoint eigen decomposition was not "
-//                                 "successful. The input might not be
-//                                 valid."));
+    // torch.linalg.eigvalsh()
+    // eigvalsh() is used in torch.linalg.matrix_rank()
+    // auto view = m.template selfadjointView<Eigen::Lower>();;
+    // if(lower!="L"){
+    //    view = m.template selfadjointView<Eigen::Upper>();
+    // }
+    Eigen::SelfAdjointEigenSolver<
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+        eigen_solver(m);
 
-//     outputs->at(0) = eig.eigenvalues().template cast<Scalar>();
-//     if (compute_v_) {
-//       outputs->at(1) = eig.eigenvectors();
-//     }
-//                       }
+    // lower = lower.eigenvalues().cwiseAbs();
+    auto eigenvalues = eigen_solver.eigenvalues().transpose();
+    auto eigenvectors = eigen_solver.eigenvectors();
+
+    // 为什么这样调用不可以？？
+    // auto eigenvalues =
+    // m.selfadjointView<Eigen::Lower>().eigenvalues().cwiseAbs();
+    // VLOG(3) << "auto eigenvalues: " << eigenvalues;
+    // if (isComplex) {
+    //   for (int j = 0; j < k; j++) {
+    //       *(eigenvalues_data + i * k + j) =
+    //       static_cast<ValueType>(eigenvalues[j]);
+    //   }
+    //   // eig.eigenvalues().template cast<ValueType>();
+    //   memcpy(eigenvectors_data, eigenvalues.matrix().data(),
+    //          eigenvalues.matrixU().size() * sizeof(T));
+    // } else {
+    // memcpy(eigenvalues_data, eigenvalues.matrix().data(),
+    //        eigenvalues.matrix().size() * sizeof(T));
+    // memcpy(eigenvectors_data, eigenvalues.matrix().data(),
+    //        eigenvalues.matrix().size() * sizeof(T));
+    // }
+    // memcpy(eigenvalues_data, eigenvalues.matrixU().data(),
+    // eigenvalues.matrixU().size() * sizeof(T));
+    // memcpy(eigenvectors_data, eigenvalues.matrixU().data(),
+    // eigenvalues.matrixU().size() * sizeof(T));
+    // memcpy(VH, V_trans.data(), V_trans.size() * sizeof(T));
+    // memcpy(S, svd.singularValues().data(),
+    //        svd.singularValues().size() * sizeof(T));
+    for (int j = 0; j < k; j++) {
+      // 不能用下标的方式访问吗？？
+      *(eigenvalues_data + i * k + j) = eigenvalues[j];
+      // std::cout << "eigenvalues_data[i*k+j]: " << *(eigenvalues_data+i*k+j);
+    }
+    memcpy(eigenvectors_data + i * stride, eigenvectors.data(),
+           eigenvectors.size() * sizeof(T));
+  }
+}
 
 template <typename T>
 struct TransposeFunctor {
@@ -192,34 +183,6 @@ struct DiagFillFunctor {
   T* output_;
   int64_t numel_;
   float exp ;
-};
-*/
-
-/*
-class FakeExecutionContext {
- public:
-  using NameMapper = std::map<std::string, void *> ;
-  FakeExecutionContext(const ExecutionContext & ctx, NameMapper & map)
-      : context(ctx), mapper(map){}
- public:
-  template<typename T>
-  const T * Input(std::string name) const{
-    return reinterpret_cast<T*>(mapper[name]) ;
-  }
-  template<typename T>
-  T * Output(std::string name) const{
-    return reinterpret_cast<T*>(mapper[name]) ;
-  }
-  template<typename T>
-  T Attr(std::string name) const{
-    return (* reinterpret_cast<T*>(mapper[name])) ;
-  }
-  operator const framework::ExecutionContext& () const{
-    return context ;
-  }
- private:
-  const framework::ExecutionContext & context ;
-  NameMapper & mapper ;
 };
 */
 
@@ -312,6 +275,26 @@ struct DeviceIndependenceTensorOperations {
       blas.MatMul(mat_a, trans_a, mat_b, trans_b, mat_out) ;
   }
   */
+  // upper
+  Tensor triu_(const Tensor& x) {
+    Shape out_shape = framework::vectorize<int>(x.dims());
+    framework::AttributeMap attrs;
+    attrs["diagonal"] = 0;
+    attrs["lower"] = false;
+    NameInTensorMap inputs({{"X", {&x}}});
+    return _CreateOpRunAndReturnTensor("tril_triu", inputs, attrs, out_shape);
+  }
+
+  // lower
+  Tensor tril_(const Tensor& x) {
+    Shape out_shape = framework::vectorize<int>(x.dims());
+    framework::AttributeMap attrs;
+    attrs["diagonal"] = 0;
+    attrs["lower"] = true;
+    NameInTensorMap inputs({{"X", {&x}}});
+    return _CreateOpRunAndReturnTensor("tril_triu", inputs, attrs, out_shape);
+  }
+
   framework::Tensor matmul(const framework::Tensor& mat_a,
                            const framework::Tensor& mat_b, bool trans_a = false,
                            bool trans_b = false) {
@@ -369,7 +352,7 @@ struct DeviceIndependenceTensorOperations {
     return _CreateOpRunAndReturnTensor("diag_v2", inputs, attrs, out_shape);
   }
 
-  framework::Tensor conj(const framework::Tensor& x) {
+  framework::Tensor conj_(const framework::Tensor& x) {
     // InTensors ins({&x});
     Shape out_shape = framework::vectorize<int>(x.dims());
     framework::AttributeMap attrs;

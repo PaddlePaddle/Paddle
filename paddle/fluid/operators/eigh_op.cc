@@ -158,11 +158,7 @@ REGISTER_OPERATOR(eigh_grad, ops::EighGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     eigh, ops::EighKernel<paddle::platform::CPUDeviceContext, float, float>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, float,
-                    paddle::platform::complex<float>>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, double,
-                    paddle::platform::complex<double>>);
+    ops::EighKernel<paddle::platform::CPUDeviceContext, double, double>);
 
 REGISTER_OP_CPU_KERNEL(
     eigh_grad,
