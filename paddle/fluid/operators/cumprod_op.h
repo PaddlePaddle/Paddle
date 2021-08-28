@@ -24,8 +24,17 @@ using Tensor = framework::Tensor;
 static void GetCumprodDimInfo(const framework::DDim& dim, int cumprod_dim,
                               size_t* outer_dim, size_t* mid_dim,
                               size_t* inner_dim) {
-  PADDLE_ENFORCE_GE(cumprod_dim, -dim.size());
-  PADDLE_ENFORCE_LT(cumprod_dim, dim.size());
+  PADDLE_ENFORCE_GE(
+      cumprod_dim, -dim.size(),
+      platform::errors::InvalidArgument(
+          "The input dim of CumprodOp should be larger than the opposite "
+          "dimension of input x which is %d.But received dim=%d",
+          -dim.size(), cumprod_dim));
+  PADDLE_ENFORCE_LT(cumprod_dim, dim.size(),
+                    platform::errors::InvalidArgument(
+                        "The input dim of CumprodOp should be smaller than the "
+                        "dimension of input x which is %d.But received dim=%d",
+                        dim.size(), cumprod_dim));
   if (cumprod_dim < 0) cumprod_dim += dim.size();
 
   *outer_dim = 1;

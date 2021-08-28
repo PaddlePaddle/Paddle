@@ -93,7 +93,7 @@ class TestCumprodAPI(unittest.TestCase):
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
                 X = paddle.fluid.data('X', self.shape, dtype=self.dtype)
-                out = paddle.cumprod(X, -5)
+                out = paddle.cumprod(X, -2)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X': self.x})
             out_ref = np.cumprod(self.x, -2)
@@ -109,7 +109,7 @@ class TestCumprodAPI(unittest.TestCase):
         def run(place):
             paddle.disable_static(place)
             X = paddle.to_tensor(self.x)
-            out = paddle.cumprod(X, 4)
+            out = paddle.cumprod(X, 1)
             out_ref = np.cumprod(self.x, 1)
             self.assertEqual(np.allclose(out_ref, out.numpy()), True)
             paddle.enable_static()
