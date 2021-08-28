@@ -278,15 +278,50 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
         Tensor x_sub_mean;
         {
-          x_sub_mean.Resize(x->dims());
-          x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+          LOG(WARNING) << "x: ";
+          PrintTensor<T>(*x, ctx);
 
-          const auto &runner =
-              NpuOpRunner("Sub", {*x, mean_tile}, {x_sub_mean}, {});
-          runner.Run(stream);
+          if (x->type() == framework::proto::VarType::FP16) {
+            Tensor x_tmp;
+            {
+              auto dst_dtype =
+                  ConvertToNpuDtype(framework::proto::VarType::FP32);
+              framework::NPUAttributeMap attr_input = {
+                  {"dst_type", static_cast<int>(dst_dtype)}};
 
-          LOG(WARNING) << "x_sub_mean: ";
-          PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
+              x_tmp.Resize(x->dims());
+              x_tmp.mutable_data<BatchNormParamType<T>>(place);
+
+              const auto &runner =
+                  NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
+              runner.Run(stream);
+
+              LOG(WARNING) << "x_tmp: ";
+              PrintTensor<BatchNormParamType<T>>(x_tmp, ctx);
+            }
+
+            {
+              x_sub_mean.Resize(x->dims());
+              x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+
+              const auto &runner =
+                  NpuOpRunner("Sub", {x_tmp, mean_tile}, {x_sub_mean}, {});
+              runner.Run(stream);
+
+              LOG(WARNING) << "x_sub_mean: ";
+              PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
+            }
+          } else {
+            x_sub_mean.Resize(x->dims());
+            x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+
+            const auto &runner =
+                NpuOpRunner("Sub", {*x, mean_tile}, {x_sub_mean}, {});
+            runner.Run(stream);
+
+            LOG(WARNING) << "x_sub_mean: ";
+            PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
+          }
         }
 
         Tensor normalized;
@@ -446,18 +481,56 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
       {
         // cacl saved_mean
         {
-          saved_mean->mutable_data<BatchNormParamType<T>>(place);
+          LOG(WARNING) << "x: ";
+          PrintTensor<T>(*x, ctx);
 
-          framework::NPUAttributeMap attr_input = {{"keep_dims", false},
-                                                   {"axes", axes}};
+          if (x->type() == framework::proto::VarType::FP16) {
+            Tensor x_tmp;
+            {
+              auto dst_dtype =
+                  ConvertToNpuDtype(framework::proto::VarType::FP32);
+              framework::NPUAttributeMap attr_input = {
+                  {"dst_type", static_cast<int>(dst_dtype)}};
 
-          const auto &runner =
-              NpuOpRunner("ReduceMeanD", {*x}, {*saved_mean}, attr_input);
+              x_tmp.Resize(x->dims());
+              x_tmp.mutable_data<BatchNormParamType<T>>(place);
 
-          runner.Run(stream);
+              const auto &runner =
+                  NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
+              runner.Run(stream);
 
-          LOG(WARNING) << "saved_mean: ";
-          PrintTensor<BatchNormParamType<T>>(*saved_mean, ctx);
+              LOG(WARNING) << "x_tmp: ";
+              PrintTensor<BatchNormParamType<T>>(x_tmp, ctx);
+            }
+
+            {
+              saved_mean->mutable_data<BatchNormParamType<T>>(place);
+
+              framework::NPUAttributeMap attr_input = {{"keep_dims", false},
+                                                       {"axes", axes}};
+
+              const auto &runner = NpuOpRunner("ReduceMeanD", {x_tmp},
+                                               {*saved_mean}, attr_input);
+
+              runner.Run(stream);
+
+              LOG(WARNING) << "saved_mean: ";
+              PrintTensor<BatchNormParamType<T>>(*saved_mean, ctx);
+            }
+          } else {
+            saved_mean->mutable_data<BatchNormParamType<T>>(place);
+
+            framework::NPUAttributeMap attr_input = {{"keep_dims", false},
+                                                     {"axes", axes}};
+
+            const auto &runner =
+                NpuOpRunner("ReduceMeanD", {*x}, {*saved_mean}, attr_input);
+
+            runner.Run(stream);
+
+            LOG(WARNING) << "saved_mean: ";
+            PrintTensor<BatchNormParamType<T>>(*saved_mean, ctx);
+          }
         }
 
         // cacl var_ref
@@ -466,13 +539,42 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           // cacl x_square
           {
             x_square.Resize(x->dims());
-            x_square.mutable_data<T>(place);
+            x_square.mutable_data<BatchNormParamType<T>>(place);
 
-            const auto &runner = NpuOpRunner("Square", {*x}, {x_square}, {});
-            runner.Run(stream);
+            if (x->type() == framework::proto::VarType::FP16) {
+              Tensor x_tmp;
+              {
+                auto dst_dtype =
+                    ConvertToNpuDtype(framework::proto::VarType::FP32);
+                framework::NPUAttributeMap attr_input = {
+                    {"dst_type", static_cast<int>(dst_dtype)}};
 
-            LOG(WARNING) << "x_square: ";
-            PrintTensor<T>(x_square, ctx);
+                x_tmp.Resize(x->dims());
+                x_tmp.mutable_data<BatchNormParamType<T>>(place);
+
+                const auto &runner =
+                    NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
+                runner.Run(stream);
+
+                LOG(WARNING) << "x_tmp: ";
+                PrintTensor<BatchNormParamType<T>>(x_tmp, ctx);
+              }
+
+              {
+                const auto &runner =
+                    NpuOpRunner("Square", {x_tmp}, {x_square}, {});
+                runner.Run(stream);
+
+                LOG(WARNING) << "x_square: ";
+                PrintTensor<BatchNormParamType<T>>(x_square, ctx);
+              }
+            } else {
+              const auto &runner = NpuOpRunner("Square", {*x}, {x_square}, {});
+              runner.Run(stream);
+
+              LOG(WARNING) << "x_square: ";
+              PrintTensor<BatchNormParamType<T>>(x_square, ctx);
+            }
           }
 
           Tensor x_square_sum;
@@ -482,14 +584,14 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                                                      {"axes", axes}};
 
             x_square_sum.Resize({C});
-            x_square_sum.mutable_data<T>(place);
+            x_square_sum.mutable_data<BatchNormParamType<T>>(place);
 
             const auto &runner = NpuOpRunner("ReduceSumD", {x_square},
                                              {x_square_sum}, attr_input);
             runner.Run(stream);
 
             LOG(WARNING) << "x_square_sum: ";
-            PrintTensor<T>(x_square_sum, ctx);
+            PrintTensor<BatchNormParamType<T>>(x_square_sum, ctx);
           }
 
           Tensor x_square_sum_mean;
@@ -499,28 +601,28 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                 {"value", 1.0f * C / x_numel}};
 
             x_square_sum_mean.Resize({C});
-            x_square_sum_mean.mutable_data<T>(place);
+            x_square_sum_mean.mutable_data<BatchNormParamType<T>>(place);
 
             const auto &runner = NpuOpRunner("Muls", {x_square_sum},
                                              {x_square_sum_mean}, attr_input);
             runner.Run(stream);
 
             LOG(WARNING) << "x_square_sum_mean: ";
-            PrintTensor<T>(x_square_sum_mean, ctx);
+            PrintTensor<BatchNormParamType<T>>(x_square_sum_mean, ctx);
           }
 
           Tensor mean_square;
           // cacl mean_square
           {
             mean_square.Resize(mean->dims());
-            mean_square.mutable_data<T>(place);
+            mean_square.mutable_data<BatchNormParamType<T>>(place);
 
             const auto &runner =
                 NpuOpRunner("Square", {*mean}, {mean_square}, {});
             runner.Run(stream);
 
             LOG(WARNING) << "mean_square: ";
-            PrintTensor<T>(mean_square, ctx);
+            PrintTensor<BatchNormParamType<T>>(mean_square, ctx);
           }
 
           // cacl var_ref
@@ -635,15 +737,48 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
       Tensor x_sub_mean;
       {
-        x_sub_mean.Resize(x->dims());
-        x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+        LOG(WARNING) << "x: ";
+        PrintTensor<T>(*x, ctx);
 
-        const auto &runner =
-            NpuOpRunner("Sub", {*x, mean_tile}, {x_sub_mean}, {});
-        runner.Run(stream);
+        if (x->type() == framework::proto::VarType::FP16) {
+          Tensor x_tmp;
+          {
+            auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::FP32);
+            framework::NPUAttributeMap attr_input = {
+                {"dst_type", static_cast<int>(dst_dtype)}};
 
-        LOG(WARNING) << "x_sub_mean: ";
-        PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
+            x_tmp.Resize(x->dims());
+            x_tmp.mutable_data<BatchNormParamType<T>>(place);
+
+            const auto &runner = NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
+            runner.Run(stream);
+
+            LOG(WARNING) << "x_tmp: ";
+            PrintTensor<BatchNormParamType<T>>(x_tmp, ctx);
+          }
+
+          {
+            x_sub_mean.Resize(x->dims());
+            x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+
+            const auto &runner =
+                NpuOpRunner("Sub", {x_tmp, mean_tile}, {x_sub_mean}, {});
+            runner.Run(stream);
+
+            LOG(WARNING) << "x_sub_mean: ";
+            PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
+          }
+        } else {
+          x_sub_mean.Resize(x->dims());
+          x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+
+          const auto &runner =
+              NpuOpRunner("Sub", {*x, mean_tile}, {x_sub_mean}, {});
+          runner.Run(stream);
+
+          LOG(WARNING) << "x_sub_mean: ";
+          PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
+        }
       }
 
       Tensor normalized;
