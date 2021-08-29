@@ -158,7 +158,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
           if (qkv2context_plugin_int8) {
             dp_probs =
                 BOOST_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
-            dp_probs = dp_probs / 127.0;
           }
         }
 
