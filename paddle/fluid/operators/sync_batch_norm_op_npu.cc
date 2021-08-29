@@ -37,14 +37,6 @@ void PrintTensor(const framework::Tensor &src,
   LOG(WARNING) << "vec: " << outputVector<T>(vec);
 }
 
-// template <typename T>
-// using CudnnDataType = platform::CudnnDataType<T>;
-// template <typename T>
-// using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
-
-template <typename T>
-using BatchNormParamType = float;
-
 template <typename T>
 void training_or_inference(
     const framework::ExecutionContext &ctx, const aclrtStream &stream,
@@ -71,18 +63,18 @@ void training_or_inference(
   Tensor mean_tile_1;
   {
     mean_tile_1.Resize({C});
-    mean_tile_1.mutable_data<BatchNormParamType<T>>(place);
+    mean_tile_1.mutable_data<float>(place);
 
     TensorCopySync(*common_mean, place, &mean_tile_1);
     LOG(WARNING) << "mean_tile_1: ";
-    PrintTensor<BatchNormParamType<T>>(mean_tile_1, ctx);
+    PrintTensor<float>(mean_tile_1, ctx);
 
     if (layout == framework::DataLayout::kNCHW)
       mean_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
       mean_tile_1.Resize({1, 1, 1, C});
     LOG(WARNING) << "mean_tile_1: ";
-    PrintTensor<BatchNormParamType<T>>(mean_tile_1, ctx);
+    PrintTensor<float>(mean_tile_1, ctx);
   }
 
   Tensor mean_tile;
@@ -90,31 +82,31 @@ void training_or_inference(
     framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
     mean_tile.Resize(x->dims());
-    mean_tile.mutable_data<BatchNormParamType<T>>(place);
+    mean_tile.mutable_data<float>(place);
 
     const auto &runner =
         NpuOpRunner("TileD", {mean_tile_1}, {mean_tile}, attr_input);
     runner.Run(stream);
 
     LOG(WARNING) << "mean_tile: ";
-    PrintTensor<BatchNormParamType<T>>(mean_tile, ctx);
+    PrintTensor<float>(mean_tile, ctx);
   }
 
   Tensor var_tile_1;
   {
     var_tile_1.Resize({C});
-    var_tile_1.mutable_data<BatchNormParamType<T>>(place);
+    var_tile_1.mutable_data<float>(place);
 
     TensorCopySync(*common_var, place, &var_tile_1);
     LOG(WARNING) << "var_tile_1: ";
-    PrintTensor<BatchNormParamType<T>>(var_tile_1, ctx);
+    PrintTensor<float>(var_tile_1, ctx);
 
     if (layout == framework::DataLayout::kNCHW)
       var_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
       var_tile_1.Resize({1, 1, 1, C});
     LOG(WARNING) << "var_tile_1: ";
-    PrintTensor<BatchNormParamType<T>>(var_tile_1, ctx);
+    PrintTensor<float>(var_tile_1, ctx);
   }
 
   Tensor var_tile;
@@ -122,14 +114,14 @@ void training_or_inference(
     framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
     var_tile.Resize(x->dims());
-    var_tile.mutable_data<BatchNormParamType<T>>(place);
+    var_tile.mutable_data<float>(place);
 
     const auto &runner =
         NpuOpRunner("TileD", {var_tile_1}, {var_tile}, attr_input);
     runner.Run(stream);
 
     LOG(WARNING) << "var_tile: ";
-    PrintTensor<BatchNormParamType<T>>(var_tile, ctx);
+    PrintTensor<float>(var_tile, ctx);
   }
 
   Tensor var_tile_add_epsilon;
@@ -137,27 +129,27 @@ void training_or_inference(
     framework::NPUAttributeMap attr_input = {{"value", epsilon}};
 
     var_tile_add_epsilon.Resize(x->dims());
-    var_tile_add_epsilon.mutable_data<BatchNormParamType<T>>(place);
+    var_tile_add_epsilon.mutable_data<float>(place);
 
     const auto &runner =
         NpuOpRunner("Adds", {var_tile}, {var_tile_add_epsilon}, attr_input);
     runner.Run(stream);
 
     LOG(WARNING) << "var_tile_add_epsilon: ";
-    PrintTensor<BatchNormParamType<T>>(var_tile_add_epsilon, ctx);
+    PrintTensor<float>(var_tile_add_epsilon, ctx);
   }
 
   Tensor var_tile_add_epsilon_sqrt;
   {
     var_tile_add_epsilon_sqrt.Resize(x->dims());
-    var_tile_add_epsilon_sqrt.mutable_data<BatchNormParamType<T>>(place);
+    var_tile_add_epsilon_sqrt.mutable_data<float>(place);
 
     const auto &runner = NpuOpRunner("Sqrt", {var_tile_add_epsilon},
                                      {var_tile_add_epsilon_sqrt}, {});
     runner.Run(stream);
 
     LOG(WARNING) << "var_tile_add_epsilon_sqrt: ";
-    PrintTensor<BatchNormParamType<T>>(var_tile_add_epsilon_sqrt, ctx);
+    PrintTensor<float>(var_tile_add_epsilon_sqrt, ctx);
   }
 
   Tensor x_sub_mean;
@@ -173,67 +165,67 @@ void training_or_inference(
             {"dst_type", static_cast<int>(dst_dtype)}};
 
         x_tmp.Resize(x->dims());
-        x_tmp.mutable_data<BatchNormParamType<T>>(place);
+        x_tmp.mutable_data<float>(place);
 
         const auto &runner = NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "x_tmp: ";
-        PrintTensor<BatchNormParamType<T>>(x_tmp, ctx);
+        PrintTensor<float>(x_tmp, ctx);
       }
 
       {
         x_sub_mean.Resize(x->dims());
-        x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+        x_sub_mean.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("Sub", {x_tmp, mean_tile}, {x_sub_mean}, {});
         runner.Run(stream);
 
         LOG(WARNING) << "x_sub_mean: ";
-        PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
+        PrintTensor<float>(x_sub_mean, ctx);
       }
     } else {
       x_sub_mean.Resize(x->dims());
-      x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+      x_sub_mean.mutable_data<float>(place);
 
       const auto &runner =
           NpuOpRunner("Sub", {*x, mean_tile}, {x_sub_mean}, {});
       runner.Run(stream);
 
       LOG(WARNING) << "x_sub_mean: ";
-      PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
+      PrintTensor<float>(x_sub_mean, ctx);
     }
   }
 
   Tensor normalized;
   {
     normalized.Resize(x->dims());
-    normalized.mutable_data<BatchNormParamType<T>>(place);
+    normalized.mutable_data<float>(place);
 
     const auto &runner = NpuOpRunner(
         "Div", {x_sub_mean, var_tile_add_epsilon_sqrt}, {normalized}, {});
     runner.Run(stream);
 
     LOG(WARNING) << "normalized: ";
-    PrintTensor<BatchNormParamType<T>>(normalized, ctx);
+    PrintTensor<float>(normalized, ctx);
   }
 
   Tensor scale_tile_1;
   {
     scale_tile_1.Resize({C});
-    scale_tile_1.mutable_data<BatchNormParamType<T>>(place);
+    scale_tile_1.mutable_data<float>(place);
 
     TensorCopySync(*scale, place, &scale_tile_1);
     LOG(WARNING) << "scale_tile_1: ";
-    PrintTensor<BatchNormParamType<T>>(scale_tile_1, ctx);
+    PrintTensor<float>(scale_tile_1, ctx);
 
     if (layout == framework::DataLayout::kNCHW)
       scale_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
       scale_tile_1.Resize({1, 1, 1, C});
     LOG(WARNING) << "scale_tile_1: ";
-    PrintTensor<BatchNormParamType<T>>(scale_tile_1, ctx);
+    PrintTensor<float>(scale_tile_1, ctx);
   }
 
   Tensor scale_tile;
@@ -241,44 +233,44 @@ void training_or_inference(
     framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
     scale_tile.Resize(x->dims());
-    scale_tile.mutable_data<BatchNormParamType<T>>(place);
+    scale_tile.mutable_data<float>(place);
 
     const auto &runner =
         NpuOpRunner("TileD", {scale_tile_1}, {scale_tile}, attr_input);
     runner.Run(stream);
 
     LOG(WARNING) << "scale_tile: ";
-    PrintTensor<BatchNormParamType<T>>(scale_tile, ctx);
+    PrintTensor<float>(scale_tile, ctx);
   }
 
   Tensor normalized_mul_scale;
   {
     normalized_mul_scale.Resize(x->dims());
-    normalized_mul_scale.mutable_data<BatchNormParamType<T>>(place);
+    normalized_mul_scale.mutable_data<float>(place);
 
     const auto &runner = NpuOpRunner("Mul", {normalized, scale_tile},
                                      {normalized_mul_scale}, {});
     runner.Run(stream);
 
     LOG(WARNING) << "normalized_mul_scale: ";
-    PrintTensor<BatchNormParamType<T>>(normalized_mul_scale, ctx);
+    PrintTensor<float>(normalized_mul_scale, ctx);
   }
 
   Tensor bias_tile_1;
   {
     bias_tile_1.Resize({C});
-    bias_tile_1.mutable_data<BatchNormParamType<T>>(place);
+    bias_tile_1.mutable_data<float>(place);
 
     TensorCopySync(*bias, place, &bias_tile_1);
     LOG(WARNING) << "bias_tile_1: ";
-    PrintTensor<BatchNormParamType<T>>(bias_tile_1, ctx);
+    PrintTensor<float>(bias_tile_1, ctx);
 
     if (layout == framework::DataLayout::kNCHW)
       bias_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
       bias_tile_1.Resize({1, 1, 1, C});
     LOG(WARNING) << "bias_tile_1: ";
-    PrintTensor<BatchNormParamType<T>>(bias_tile_1, ctx);
+    PrintTensor<float>(bias_tile_1, ctx);
   }
 
   Tensor bias_tile;
@@ -286,14 +278,14 @@ void training_or_inference(
     framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
     bias_tile.Resize(x->dims());
-    bias_tile.mutable_data<BatchNormParamType<T>>(place);
+    bias_tile.mutable_data<float>(place);
 
     const auto &runner =
         NpuOpRunner("TileD", {bias_tile_1}, {bias_tile}, attr_input);
     runner.Run(stream);
 
     LOG(WARNING) << "bias_tile: ";
-    PrintTensor<BatchNormParamType<T>>(bias_tile, ctx);
+    PrintTensor<float>(bias_tile, ctx);
   }
 
   // at last, we get y
@@ -302,14 +294,14 @@ void training_or_inference(
       Tensor y_tmp;
       {
         y_tmp.Resize(y->dims());
-        y_tmp.mutable_data<BatchNormParamType<T>>(place);
+        y_tmp.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("Add", {normalized_mul_scale, bias_tile}, {y_tmp}, {});
         runner.Run(stream);
 
         LOG(WARNING) << "y_tmp: ";
-        PrintTensor<BatchNormParamType<T>>(y_tmp, ctx);
+        PrintTensor<float>(y_tmp, ctx);
       }
 
       {
@@ -342,9 +334,9 @@ void training_or_inference(
     Tensor ones;
     {
       ones.Resize({C});
-      ones.mutable_data<BatchNormParamType<T>>(place);
+      ones.mutable_data<float>(place);
 
-      FillNpuTensorWithConstant<BatchNormParamType<T>>(&ones, 1);
+      FillNpuTensorWithConstant<float>(&ones, 1);
 
       // Or
       // const auto &runner =
@@ -352,7 +344,7 @@ void training_or_inference(
       // runner.Run(stream);
 
       LOG(WARNING) << "ones: ";
-      PrintTensor<BatchNormParamType<T>>(ones, ctx);
+      PrintTensor<float>(ones, ctx);
     }
 
     // cacl mean_out
@@ -362,14 +354,14 @@ void training_or_inference(
         framework::NPUAttributeMap attr_input = {{"value", momentum}};
 
         momentum_mul_mean.Resize({C});
-        momentum_mul_mean.mutable_data<BatchNormParamType<T>>(place);
+        momentum_mul_mean.mutable_data<float>(place);
 
         const auto &runner = NpuOpRunner("Muls", {*common_mean},
                                          {momentum_mul_mean}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "momentum_mul_mean: ";
-        PrintTensor<BatchNormParamType<T>>(momentum_mul_mean, ctx);
+        PrintTensor<float>(momentum_mul_mean, ctx);
       }
 
       Tensor saved_mean_mul_1_sub_momentum;
@@ -377,8 +369,7 @@ void training_or_inference(
         framework::NPUAttributeMap attr_input = {{"value", 1 - momentum}};
 
         saved_mean_mul_1_sub_momentum.Resize({C});
-        saved_mean_mul_1_sub_momentum.mutable_data<BatchNormParamType<T>>(
-            place);
+        saved_mean_mul_1_sub_momentum.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("Muls", {*common_mean}, {saved_mean_mul_1_sub_momentum},
@@ -386,10 +377,10 @@ void training_or_inference(
         runner.Run(stream);
 
         LOG(WARNING) << "saved_mean_mul_1_sub_momentum: ";
-        PrintTensor<BatchNormParamType<T>>(saved_mean_mul_1_sub_momentum, ctx);
+        PrintTensor<float>(saved_mean_mul_1_sub_momentum, ctx);
       }
 
-      mean_out->mutable_data<BatchNormParamType<T>>(place);
+      mean_out->mutable_data<float>(place);
 
       const auto &runner =
           NpuOpRunner("Add", {saved_mean_mul_1_sub_momentum, momentum_mul_mean},
@@ -397,7 +388,7 @@ void training_or_inference(
       runner.Run(stream);
 
       LOG(WARNING) << "mean_out: ";
-      PrintTensor<BatchNormParamType<T>>(*mean_out, ctx);
+      PrintTensor<float>(*mean_out, ctx);
     }
 
     // cacl variance_out
@@ -407,14 +398,14 @@ void training_or_inference(
         framework::NPUAttributeMap attr_input = {{"value", momentum}};
 
         momentum_mul_var.Resize({C});
-        momentum_mul_var.mutable_data<BatchNormParamType<T>>(place);
+        momentum_mul_var.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("Muls", {*common_var}, {momentum_mul_var}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "momentum_mul_var: ";
-        PrintTensor<BatchNormParamType<T>>(momentum_mul_var, ctx);
+        PrintTensor<float>(momentum_mul_var, ctx);
       }
 
       Tensor var_ref_mul_1_sub_momentum;
@@ -422,17 +413,17 @@ void training_or_inference(
         framework::NPUAttributeMap attr_input = {{"value", 1 - momentum}};
 
         var_ref_mul_1_sub_momentum.Resize({C});
-        var_ref_mul_1_sub_momentum.mutable_data<BatchNormParamType<T>>(place);
+        var_ref_mul_1_sub_momentum.mutable_data<float>(place);
 
         const auto &runner = NpuOpRunner(
             "Muls", {*common_var}, {var_ref_mul_1_sub_momentum}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "var_ref_mul_1_sub_momentum: ";
-        PrintTensor<BatchNormParamType<T>>(var_ref_mul_1_sub_momentum, ctx);
+        PrintTensor<float>(var_ref_mul_1_sub_momentum, ctx);
       }
 
-      variance_out->mutable_data<BatchNormParamType<T>>(place);
+      variance_out->mutable_data<float>(place);
 
       const auto &runner =
           NpuOpRunner("Add", {var_ref_mul_1_sub_momentum, momentum_mul_var},
@@ -440,7 +431,7 @@ void training_or_inference(
       runner.Run(stream);
 
       LOG(WARNING) << "variance_out: ";
-      PrintTensor<BatchNormParamType<T>>(*variance_out, ctx);
+      PrintTensor<float>(*variance_out, ctx);
     }
 
     // cacl saved_variance
@@ -450,37 +441,37 @@ void training_or_inference(
         framework::NPUAttributeMap attr_input = {{"value", epsilon}};
 
         var_ref_add_epsilon.Resize({C});
-        var_ref_add_epsilon.mutable_data<BatchNormParamType<T>>(place);
+        var_ref_add_epsilon.mutable_data<float>(place);
 
         const auto &runner = NpuOpRunner("Adds", {*common_var},
                                          {var_ref_add_epsilon}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "var_ref_add_epsilon: ";
-        PrintTensor<BatchNormParamType<T>>(var_ref_add_epsilon, ctx);
+        PrintTensor<float>(var_ref_add_epsilon, ctx);
       }
 
       Tensor var_ref_add_epsilon_sqrt;
       {
         var_ref_add_epsilon_sqrt.Resize({C});
-        var_ref_add_epsilon_sqrt.mutable_data<BatchNormParamType<T>>(place);
+        var_ref_add_epsilon_sqrt.mutable_data<float>(place);
 
         const auto &runner = NpuOpRunner("Sqrt", {var_ref_add_epsilon},
                                          {var_ref_add_epsilon_sqrt}, {});
         runner.Run(stream);
 
         LOG(WARNING) << "var_ref_add_epsilon_sqrt: ";
-        PrintTensor<BatchNormParamType<T>>(var_ref_add_epsilon_sqrt, ctx);
+        PrintTensor<float>(var_ref_add_epsilon_sqrt, ctx);
       }
 
-      saved_variance->mutable_data<BatchNormParamType<T>>(place);
+      saved_variance->mutable_data<float>(place);
 
       const auto &runner = NpuOpRunner("Div", {ones, var_ref_add_epsilon_sqrt},
                                        {*saved_variance}, {});
       runner.Run(stream);
 
       LOG(WARNING) << "saved_variance: ";
-      PrintTensor<BatchNormParamType<T>>(*saved_variance, ctx);
+      PrintTensor<float>(*saved_variance, ctx);
     }
   }
 }
@@ -577,10 +568,10 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
     int x_numel = x->numel();
 
     // const T *x_data = x->data<T>();
-    // const auto *scale_data = scale->data<BatchNormParamType<T>>();
-    // const auto *bias_data = bias->data<BatchNormParamType<T>>();
-    auto *mean_data = mean->data<BatchNormParamType<T>>();
-    auto *mean_out_data = mean_out->data<BatchNormParamType<T>>();
+    // const auto *scale_data = scale->data<float>();
+    // const auto *bias_data = bias->data<float>();
+    auto *mean_data = mean->data<float>();
+    auto *mean_out_data = mean_out->data<float>();
 
     LOG(WARNING) << "mean_data: " << mean_data;
     LOG(WARNING) << "mean_out_data: " << mean_out_data;
@@ -603,18 +594,18 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
       LOG(WARNING) << "inference";
 
       // cacl saved_mean
-      saved_mean->mutable_data<BatchNormParamType<T>>(place);
+      saved_mean->mutable_data<float>(place);
       // saved_mean->ShareDataWith(*mean);
       TensorCopySync(*mean, place, saved_mean);
       LOG(WARNING) << "saved_mean: ";
-      PrintTensor<BatchNormParamType<T>>(*saved_mean, ctx);
+      PrintTensor<float>(*saved_mean, ctx);
 
       // cacl saved_variance
-      saved_variance->mutable_data<BatchNormParamType<T>>(place);
+      saved_variance->mutable_data<float>(place);
       // saved_variance->ShareDataWith(*variance);
       TensorCopySync(*variance, place, saved_variance);
       LOG(WARNING) << "saved_variance: ";
-      PrintTensor<BatchNormParamType<T>>(*saved_variance, ctx);
+      PrintTensor<float>(*saved_variance, ctx);
 
       // cacl y
       training_or_inference<T>(ctx, stream, place, layout, test_mode, N, C, H,
@@ -639,7 +630,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
       Tensor var_ref;
       {
         var_ref.Resize({C});
-        var_ref.mutable_data<BatchNormParamType<T>>(place);
+        var_ref.mutable_data<float>(place);
       }
       {
         // cacl saved_mean
@@ -656,18 +647,18 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                   {"dst_type", static_cast<int>(dst_dtype)}};
 
               x_tmp.Resize(x->dims());
-              x_tmp.mutable_data<BatchNormParamType<T>>(place);
+              x_tmp.mutable_data<float>(place);
 
               const auto &runner =
                   NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
               runner.Run(stream);
 
               LOG(WARNING) << "x_tmp: ";
-              PrintTensor<BatchNormParamType<T>>(x_tmp, ctx);
+              PrintTensor<float>(x_tmp, ctx);
             }
 
             {
-              saved_mean->mutable_data<BatchNormParamType<T>>(place);
+              saved_mean->mutable_data<float>(place);
 
               framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                        {"axes", axes}};
@@ -678,10 +669,10 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
               runner.Run(stream);
 
               LOG(WARNING) << "saved_mean: ";
-              PrintTensor<BatchNormParamType<T>>(*saved_mean, ctx);
+              PrintTensor<float>(*saved_mean, ctx);
             }
           } else {
-            saved_mean->mutable_data<BatchNormParamType<T>>(place);
+            saved_mean->mutable_data<float>(place);
 
             framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                      {"axes", axes}};
@@ -692,7 +683,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             runner.Run(stream);
 
             LOG(WARNING) << "saved_mean: ";
-            PrintTensor<BatchNormParamType<T>>(*saved_mean, ctx);
+            PrintTensor<float>(*saved_mean, ctx);
           }
         }
 
@@ -702,7 +693,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           // cacl x_square
           {
             x_square.Resize(x->dims());
-            x_square.mutable_data<BatchNormParamType<T>>(place);
+            x_square.mutable_data<float>(place);
 
             if (x->type() == framework::proto::VarType::FP16) {
               Tensor x_tmp;
@@ -713,14 +704,14 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                     {"dst_type", static_cast<int>(dst_dtype)}};
 
                 x_tmp.Resize(x->dims());
-                x_tmp.mutable_data<BatchNormParamType<T>>(place);
+                x_tmp.mutable_data<float>(place);
 
                 const auto &runner =
                     NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
                 runner.Run(stream);
 
                 LOG(WARNING) << "x_tmp: ";
-                PrintTensor<BatchNormParamType<T>>(x_tmp, ctx);
+                PrintTensor<float>(x_tmp, ctx);
               }
 
               {
@@ -729,14 +720,14 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                 runner.Run(stream);
 
                 LOG(WARNING) << "x_square: ";
-                PrintTensor<BatchNormParamType<T>>(x_square, ctx);
+                PrintTensor<float>(x_square, ctx);
               }
             } else {
               const auto &runner = NpuOpRunner("Square", {*x}, {x_square}, {});
               runner.Run(stream);
 
               LOG(WARNING) << "x_square: ";
-              PrintTensor<BatchNormParamType<T>>(x_square, ctx);
+              PrintTensor<float>(x_square, ctx);
             }
           }
 
@@ -747,14 +738,14 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                                                      {"axes", axes}};
 
             x_square_sum.Resize({C});
-            x_square_sum.mutable_data<BatchNormParamType<T>>(place);
+            x_square_sum.mutable_data<float>(place);
 
             const auto &runner = NpuOpRunner("ReduceSumD", {x_square},
                                              {x_square_sum}, attr_input);
             runner.Run(stream);
 
             LOG(WARNING) << "x_square_sum: ";
-            PrintTensor<BatchNormParamType<T>>(x_square_sum, ctx);
+            PrintTensor<float>(x_square_sum, ctx);
           }
 
           Tensor x_square_sum_mean;
@@ -764,28 +755,28 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                 {"value", 1.0f * C / x_numel}};
 
             x_square_sum_mean.Resize({C});
-            x_square_sum_mean.mutable_data<BatchNormParamType<T>>(place);
+            x_square_sum_mean.mutable_data<float>(place);
 
             const auto &runner = NpuOpRunner("Muls", {x_square_sum},
                                              {x_square_sum_mean}, attr_input);
             runner.Run(stream);
 
             LOG(WARNING) << "x_square_sum_mean: ";
-            PrintTensor<BatchNormParamType<T>>(x_square_sum_mean, ctx);
+            PrintTensor<float>(x_square_sum_mean, ctx);
           }
 
           Tensor mean_square;
           // cacl mean_square
           {
             mean_square.Resize(mean->dims());
-            mean_square.mutable_data<BatchNormParamType<T>>(place);
+            mean_square.mutable_data<float>(place);
 
             const auto &runner =
                 NpuOpRunner("Square", {*mean}, {mean_square}, {});
             runner.Run(stream);
 
             LOG(WARNING) << "mean_square: ";
-            PrintTensor<BatchNormParamType<T>>(mean_square, ctx);
+            PrintTensor<float>(mean_square, ctx);
           }
 
           // cacl var_ref
@@ -795,7 +786,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             runner.Run(stream);
 
             LOG(WARNING) << "var_ref: ";
-            PrintTensor<BatchNormParamType<T>>(var_ref, ctx);
+            PrintTensor<float>(var_ref, ctx);
           }
         }
       }
@@ -837,7 +828,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
 
     LOG(WARNING) << "saved_mean: ";
-    PrintTensor<BatchNormParamType<T>>(*saved_mean, ctx);
+    PrintTensor<float>(*saved_mean, ctx);
 
     // sync_batch_norm with inplace as false will take X as grad input, which
     // is same as cuDNN batch_norm backward calculation, batch_norm
@@ -916,12 +907,12 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     Tensor saved_mean_tmp;
     {
       saved_mean_tmp.Resize({C});
-      saved_mean_tmp.mutable_data<BatchNormParamType<T>>(place);
+      saved_mean_tmp.mutable_data<float>(place);
     }
     Tensor var_ref;
     {
       var_ref.Resize({C});
-      var_ref.mutable_data<BatchNormParamType<T>>(place);
+      var_ref.mutable_data<float>(place);
     }
     {
       // cacl saved_mean_tmp
@@ -935,7 +926,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         runner.Run(stream);
 
         LOG(WARNING) << "saved_mean_tmp: ";
-        PrintTensor<BatchNormParamType<T>>(saved_mean_tmp, ctx);
+        PrintTensor<float>(saved_mean_tmp, ctx);
       }
 
       // cacl var_ref
@@ -1008,7 +999,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           runner.Run(stream);
 
           LOG(WARNING) << "var_ref: ";
-          PrintTensor<BatchNormParamType<T>>(var_ref, ctx);
+          PrintTensor<float>(var_ref, ctx);
         }
       }
     }
@@ -1016,18 +1007,18 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     Tensor saved_mean_tile_1;
     {
       saved_mean_tile_1.Resize({C});
-      saved_mean_tile_1.mutable_data<BatchNormParamType<T>>(place);
+      saved_mean_tile_1.mutable_data<float>(place);
 
       TensorCopySync(*saved_mean, place, &saved_mean_tile_1);
       LOG(WARNING) << "saved_mean_tile_1: ";
-      PrintTensor<BatchNormParamType<T>>(saved_mean_tile_1, ctx);
+      PrintTensor<float>(saved_mean_tile_1, ctx);
 
       if (layout == framework::DataLayout::kNCHW)
         saved_mean_tile_1.Resize({1, C, 1, 1});
       else if (layout == framework::DataLayout::kNHWC)
         saved_mean_tile_1.Resize({1, 1, 1, C});
       LOG(WARNING) << "saved_mean_tile_1: ";
-      PrintTensor<BatchNormParamType<T>>(saved_mean_tile_1, ctx);
+      PrintTensor<float>(saved_mean_tile_1, ctx);
     }
 
     Tensor saved_mean_tile;
@@ -1035,44 +1026,44 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
       saved_mean_tile.Resize(x->dims());
-      saved_mean_tile.mutable_data<BatchNormParamType<T>>(place);
+      saved_mean_tile.mutable_data<float>(place);
 
       const auto &runner = NpuOpRunner("TileD", {saved_mean_tile_1},
                                        {saved_mean_tile}, attr_input);
       runner.Run(stream);
 
       LOG(WARNING) << "saved_mean_tile: ";
-      PrintTensor<BatchNormParamType<T>>(saved_mean_tile, ctx);
+      PrintTensor<float>(saved_mean_tile, ctx);
     }
 
     Tensor x_sub_saved_mean;
     {
       x_sub_saved_mean.Resize(x->dims());
-      x_sub_saved_mean.mutable_data<BatchNormParamType<T>>(place);
+      x_sub_saved_mean.mutable_data<float>(place);
 
       const auto &runner =
           NpuOpRunner("Sub", {*x, saved_mean_tile}, {x_sub_saved_mean}, {});
       runner.Run(stream);
 
       LOG(WARNING) << "x_sub_saved_mean: ";
-      PrintTensor<BatchNormParamType<T>>(x_sub_saved_mean, ctx);
+      PrintTensor<float>(x_sub_saved_mean, ctx);
     }
 
     Tensor var_ref_tile_1;
     {
       var_ref_tile_1.Resize({C});
-      var_ref_tile_1.mutable_data<BatchNormParamType<T>>(place);
+      var_ref_tile_1.mutable_data<float>(place);
 
       TensorCopySync(var_ref, place, &var_ref_tile_1);
       LOG(WARNING) << "var_ref_tile_1: ";
-      PrintTensor<BatchNormParamType<T>>(var_ref_tile_1, ctx);
+      PrintTensor<float>(var_ref_tile_1, ctx);
 
       if (layout == framework::DataLayout::kNCHW)
         var_ref_tile_1.Resize({1, C, 1, 1});
       else if (layout == framework::DataLayout::kNHWC)
         var_ref_tile_1.Resize({1, 1, 1, C});
       LOG(WARNING) << "var_ref_tile_1: ";
-      PrintTensor<BatchNormParamType<T>>(var_ref_tile_1, ctx);
+      PrintTensor<float>(var_ref_tile_1, ctx);
     }
 
     Tensor var_ref_tile;
@@ -1080,14 +1071,14 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
       var_ref_tile.Resize(x->dims());
-      var_ref_tile.mutable_data<BatchNormParamType<T>>(place);
+      var_ref_tile.mutable_data<float>(place);
 
       const auto &runner =
           NpuOpRunner("TileD", {var_ref_tile_1}, {var_ref_tile}, attr_input);
       runner.Run(stream);
 
       LOG(WARNING) << "var_ref_tile: ";
-      PrintTensor<BatchNormParamType<T>>(var_ref_tile, ctx);
+      PrintTensor<float>(var_ref_tile, ctx);
     }
 
     Tensor var_ref_tile_add_epsilon;
@@ -1095,40 +1086,40 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       framework::NPUAttributeMap attr_input = {{"value", epsilon}};
 
       var_ref_tile_add_epsilon.Resize(x->dims());
-      var_ref_tile_add_epsilon.mutable_data<BatchNormParamType<T>>(place);
+      var_ref_tile_add_epsilon.mutable_data<float>(place);
 
       const auto &runner = NpuOpRunner("Adds", {var_ref_tile},
                                        {var_ref_tile_add_epsilon}, attr_input);
       runner.Run(stream);
 
       LOG(WARNING) << "var_ref_tile_add_epsilon: ";
-      PrintTensor<BatchNormParamType<T>>(var_ref_tile_add_epsilon, ctx);
+      PrintTensor<float>(var_ref_tile_add_epsilon, ctx);
     }
 
     Tensor var_ref_tile_add_epsilon_sqrt;
     {
       var_ref_tile_add_epsilon_sqrt.Resize(x->dims());
-      var_ref_tile_add_epsilon_sqrt.mutable_data<BatchNormParamType<T>>(place);
+      var_ref_tile_add_epsilon_sqrt.mutable_data<float>(place);
 
       const auto &runner = NpuOpRunner("Sqrt", {var_ref_tile_add_epsilon},
                                        {var_ref_tile_add_epsilon_sqrt}, {});
       runner.Run(stream);
 
       LOG(WARNING) << "var_ref_tile_add_epsilon_sqrt: ";
-      PrintTensor<BatchNormParamType<T>>(var_ref_tile_add_epsilon_sqrt, ctx);
+      PrintTensor<float>(var_ref_tile_add_epsilon_sqrt, ctx);
     }
 
     Tensor dy_mul_x_sub_mean;
     {
       dy_mul_x_sub_mean.Resize(x->dims());
-      dy_mul_x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+      dy_mul_x_sub_mean.mutable_data<float>(place);
 
       const auto &runner =
           NpuOpRunner("Mul", {*d_y, x_sub_saved_mean}, {dy_mul_x_sub_mean}, {});
       runner.Run(stream);
 
       LOG(WARNING) << "dy_mul_x_sub_mean: ";
-      PrintTensor<BatchNormParamType<T>>(dy_mul_x_sub_mean, ctx);
+      PrintTensor<float>(dy_mul_x_sub_mean, ctx);
     }
 
     // cacl d_x
@@ -1141,31 +1132,31 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
                                                  {"axes", axes}};
 
         dy_mean.Resize({C});
-        dy_mean.mutable_data<BatchNormParamType<T>>(place);
+        dy_mean.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("ReduceMeanD", {*d_y}, {dy_mean}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "dy_mean: ";
-        PrintTensor<BatchNormParamType<T>>(dy_mean, ctx);
+        PrintTensor<float>(dy_mean, ctx);
       }
 
       Tensor dy_mean_tile_1;
       {
         dy_mean_tile_1.Resize({C});
-        dy_mean_tile_1.mutable_data<BatchNormParamType<T>>(place);
+        dy_mean_tile_1.mutable_data<float>(place);
 
         TensorCopySync(dy_mean, place, &dy_mean_tile_1);
         LOG(WARNING) << "dy_mean_tile_1: ";
-        PrintTensor<BatchNormParamType<T>>(dy_mean_tile_1, ctx);
+        PrintTensor<float>(dy_mean_tile_1, ctx);
 
         if (layout == framework::DataLayout::kNCHW)
           dy_mean_tile_1.Resize({1, C, 1, 1});
         else if (layout == framework::DataLayout::kNHWC)
           dy_mean_tile_1.Resize({1, 1, 1, C});
         LOG(WARNING) << "mean_tile_1: ";
-        PrintTensor<BatchNormParamType<T>>(dy_mean_tile_1, ctx);
+        PrintTensor<float>(dy_mean_tile_1, ctx);
       }
 
       Tensor dy_mean_tile;
@@ -1173,27 +1164,27 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
         dy_mean_tile.Resize(x->dims());
-        dy_mean_tile.mutable_data<BatchNormParamType<T>>(place);
+        dy_mean_tile.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("TileD", {dy_mean_tile_1}, {dy_mean_tile}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "dy_mean_tile: ";
-        PrintTensor<BatchNormParamType<T>>(dy_mean_tile, ctx);
+        PrintTensor<float>(dy_mean_tile, ctx);
       }
 
       Tensor dy_sub_dy_mean;
       {
         dy_sub_dy_mean.Resize(x->dims());
-        dy_sub_dy_mean.mutable_data<BatchNormParamType<T>>(place);
+        dy_sub_dy_mean.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("Sub", {*d_y, dy_mean_tile}, {dy_sub_dy_mean}, {});
         runner.Run(stream);
 
         LOG(WARNING) << "dy_sub_dy_mean: ";
-        PrintTensor<BatchNormParamType<T>>(dy_sub_dy_mean, ctx);
+        PrintTensor<float>(dy_sub_dy_mean, ctx);
       }
 
       Tensor dy_mul_x_sub_mean_mean;
@@ -1202,33 +1193,32 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
                                                  {"axes", axes}};
 
         dy_mul_x_sub_mean_mean.Resize({C});
-        dy_mul_x_sub_mean_mean.mutable_data<BatchNormParamType<T>>(place);
+        dy_mul_x_sub_mean_mean.mutable_data<float>(place);
 
         const auto &runner = NpuOpRunner("ReduceMeanD", {dy_mul_x_sub_mean},
                                          {dy_mul_x_sub_mean_mean}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "dy_mul_x_sub_mean_mean: ";
-        PrintTensor<BatchNormParamType<T>>(dy_mul_x_sub_mean_mean, ctx);
+        PrintTensor<float>(dy_mul_x_sub_mean_mean, ctx);
       }
 
       Tensor dy_mul_x_sub_mean_mean_tile_1;
       {
         dy_mul_x_sub_mean_mean_tile_1.Resize({C});
-        dy_mul_x_sub_mean_mean_tile_1.mutable_data<BatchNormParamType<T>>(
-            place);
+        dy_mul_x_sub_mean_mean_tile_1.mutable_data<float>(place);
 
         TensorCopySync(dy_mul_x_sub_mean_mean, place,
                        &dy_mul_x_sub_mean_mean_tile_1);
         LOG(WARNING) << "dy_mul_x_sub_mean_mean_tile_1: ";
-        PrintTensor<BatchNormParamType<T>>(dy_mul_x_sub_mean_mean_tile_1, ctx);
+        PrintTensor<float>(dy_mul_x_sub_mean_mean_tile_1, ctx);
 
         if (layout == framework::DataLayout::kNCHW)
           dy_mul_x_sub_mean_mean_tile_1.Resize({1, C, 1, 1});
         else if (layout == framework::DataLayout::kNHWC)
           dy_mul_x_sub_mean_mean_tile_1.Resize({1, 1, 1, C});
         LOG(WARNING) << "dy_mul_x_sub_mean_mean_tile_1: ";
-        PrintTensor<BatchNormParamType<T>>(dy_mul_x_sub_mean_mean_tile_1, ctx);
+        PrintTensor<float>(dy_mul_x_sub_mean_mean_tile_1, ctx);
       }
 
       Tensor dy_mul_x_sub_mean_mean_tile;
@@ -1236,7 +1226,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
         dy_mul_x_sub_mean_mean_tile.Resize(x->dims());
-        dy_mul_x_sub_mean_mean_tile.mutable_data<BatchNormParamType<T>>(place);
+        dy_mul_x_sub_mean_mean_tile.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("TileD", {dy_mul_x_sub_mean_mean_tile_1},
@@ -1244,7 +1234,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         runner.Run(stream);
 
         LOG(WARNING) << "dy_mul_x_sub_mean_mean_tile: ";
-        PrintTensor<BatchNormParamType<T>>(dy_mul_x_sub_mean_mean_tile, ctx);
+        PrintTensor<float>(dy_mul_x_sub_mean_mean_tile, ctx);
       }
 
       // (x - mean) * np.mean(dy * (x - mean), axis=axis)
@@ -1252,14 +1242,14 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       Tensor tmp1;
       {
         tmp1.Resize(x->dims());
-        tmp1.mutable_data<BatchNormParamType<T>>(place);
+        tmp1.mutable_data<float>(place);
 
         const auto &runner = NpuOpRunner(
             "Mul", {x_sub_saved_mean, dy_mul_x_sub_mean_mean_tile}, {tmp1}, {});
         runner.Run(stream);
 
         LOG(WARNING) << "tmp1: ";
-        PrintTensor<BatchNormParamType<T>>(tmp1, ctx);
+        PrintTensor<float>(tmp1, ctx);
       }
 
       // (x - mean) * np.mean(dy * (x - mean), axis=axis) / (var + epsilon)
@@ -1268,14 +1258,14 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       Tensor tmp2;
       {
         tmp2.Resize(x->dims());
-        tmp2.mutable_data<BatchNormParamType<T>>(place);
+        tmp2.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("Div", {tmp1, var_ref_tile_add_epsilon}, {tmp2}, {});
         runner.Run(stream);
 
         LOG(WARNING) << "tmp2: ";
-        PrintTensor<BatchNormParamType<T>>(tmp2, ctx);
+        PrintTensor<float>(tmp2, ctx);
       }
 
       // dy - np.mean(dy, axis) - (x - mean) * np.mean(dy * (x - mean), axis) /
@@ -1284,31 +1274,31 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       Tensor tmp3;
       {
         tmp3.Resize(x->dims());
-        tmp3.mutable_data<BatchNormParamType<T>>(place);
+        tmp3.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("Sub", {dy_sub_dy_mean, tmp2}, {tmp3}, {});
         runner.Run(stream);
 
         LOG(WARNING) << "tmp3: ";
-        PrintTensor<BatchNormParamType<T>>(tmp3, ctx);
+        PrintTensor<float>(tmp3, ctx);
       }
 
       Tensor scale_tile_1;
       {
         scale_tile_1.Resize({C});
-        scale_tile_1.mutable_data<BatchNormParamType<T>>(place);
+        scale_tile_1.mutable_data<float>(place);
 
         TensorCopySync(*scale, place, &scale_tile_1);
         LOG(WARNING) << "scale_tile_1: ";
-        PrintTensor<BatchNormParamType<T>>(scale_tile_1, ctx);
+        PrintTensor<float>(scale_tile_1, ctx);
 
         if (layout == framework::DataLayout::kNCHW)
           scale_tile_1.Resize({1, C, 1, 1});
         else if (layout == framework::DataLayout::kNHWC)
           scale_tile_1.Resize({1, 1, 1, C});
         LOG(WARNING) << "scale_tile_1: ";
-        PrintTensor<BatchNormParamType<T>>(scale_tile_1, ctx);
+        PrintTensor<float>(scale_tile_1, ctx);
       }
 
       Tensor scale_tile;
@@ -1316,14 +1306,14 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
         scale_tile.Resize(x->dims());
-        scale_tile.mutable_data<BatchNormParamType<T>>(place);
+        scale_tile.mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("TileD", {scale_tile_1}, {scale_tile}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "scale_tile: ";
-        PrintTensor<BatchNormParamType<T>>(scale_tile, ctx);
+        PrintTensor<float>(scale_tile, ctx);
       }
 
       // scale * (dy - np.mean(dy, axis) - (x - mean) * np.mean(dy * (x - mean),
@@ -1332,26 +1322,26 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       Tensor dx_1;
       {
         dx_1.Resize(x->dims());
-        dx_1.mutable_data<BatchNormParamType<T>>(place);
+        dx_1.mutable_data<float>(place);
 
         const auto &runner = NpuOpRunner("Mul", {scale_tile, tmp3}, {dx_1}, {});
         runner.Run(stream);
 
         LOG(WARNING) << "dx_1: ";
-        PrintTensor<BatchNormParamType<T>>(dx_1, ctx);
+        PrintTensor<float>(dx_1, ctx);
       }
 
       // dx_1 / var_ref_tile_add_epsilon_sqrt
       {
         d_x->Resize(x->dims());
-        d_x->mutable_data<BatchNormParamType<T>>(place);
+        d_x->mutable_data<float>(place);
 
         const auto &runner = NpuOpRunner(
             "Div", {dx_1, var_ref_tile_add_epsilon_sqrt}, {*d_x}, {});
         runner.Run(stream);
 
         LOG(WARNING) << "d_x: ";
-        PrintTensor<BatchNormParamType<T>>(*d_x, ctx);
+        PrintTensor<float>(*d_x, ctx);
       }
     }
 
@@ -1360,7 +1350,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       Tensor d_scale_2;
       {
         d_scale_2.Resize(x->dims());
-        d_scale_2.mutable_data<BatchNormParamType<T>>(place);
+        d_scale_2.mutable_data<float>(place);
 
         const auto &runner = NpuOpRunner(
             "Div", {dy_mul_x_sub_mean, var_ref_tile_add_epsilon_sqrt},
@@ -1368,21 +1358,21 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         runner.Run(stream);
 
         LOG(WARNING) << "d_scale_2: ";
-        PrintTensor<BatchNormParamType<T>>(d_scale_2, ctx);
+        PrintTensor<float>(d_scale_2, ctx);
       }
 
       {
         framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                  {"axes", axes}};
 
-        d_scale->mutable_data<BatchNormParamType<T>>(place);
+        d_scale->mutable_data<float>(place);
 
         const auto &runner =
             NpuOpRunner("ReduceSumD", {d_scale_2}, {*d_scale}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "d_scale: ";
-        PrintTensor<BatchNormParamType<T>>(*d_scale, ctx);
+        PrintTensor<float>(*d_scale, ctx);
       }
     }
 
@@ -1391,14 +1381,14 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                {"axes", axes}};
 
-      d_bias->mutable_data<BatchNormParamType<T>>(place);
+      d_bias->mutable_data<float>(place);
 
       const auto &runner =
           NpuOpRunner("ReduceSumD", {*d_y}, {*d_bias}, attr_input);
       runner.Run(stream);
 
       LOG(WARNING) << "d_bias: ";
-      PrintTensor<BatchNormParamType<T>>(*d_bias, ctx);
+      PrintTensor<float>(*d_bias, ctx);
     }
   }
 };
