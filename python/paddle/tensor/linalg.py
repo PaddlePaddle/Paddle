@@ -821,30 +821,15 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             print(b)
             # b = [10]
 
-            c = paddle.rand(shape=[2, 3, 4])
-            d = paddle.linalg.matrix_rank(c, tol=0.01)
+            c = paddle.ones(shape=[3, 4, 5, 5])
+            d = paddle.linalg.matrix_rank(c, tol=0.01, hermitian=True)
             print(d)
-            # d = [3, 3]
-
-            e = paddle.rand(shape=[3, 4, 5, 6])
-            f = paddle.linalg.matrix_rank(e, tol=0.01, hermitian=True)
-            print(f)
-            # f = [[5, 4, 4, 5],
-            #      [5, 5, 5, 5],
-            #      [5, 5, 5, 5]]
+            # d = [[1, 1, 1, 1],
+            #      [1, 1, 1, 1],
+            #      [1, 1, 1, 1]]
     
     """
 
-    # tolTensor = None
-    # hasTol = False
-    # if tol is None:
-    #     tolTensor = paddle.to_tensor(0.0, dtype=x.dtype)
-    # elif isinstance(tol, Variable):
-    #     tolTensor = tol.astype(x.dtype)
-    #     hasTol = True
-    # else:
-    #     tolTensor = paddle.to_tensor(tol, dtype=x.dtype)
-    #     hasTol = True
     if in_dygraph_mode():
         if tol is None:
             return _C_ops.matrix_rank(x, None, 'hermitian', hermitian,
@@ -859,15 +844,6 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         else:
             return _C_ops.matrix_rank(x, None, "tol", tol, 'hermitian',
                                       hermitian, 'use_default_tol', False)
-
-        # if tol is None:
-        #     return _C_ops.matrix_rank(x, 'hermitian', hermitian)
-        # elif isinstance(tol, Variable):
-        #     # op = getattr(_C_ops, 'matrix_rank')
-        #     # return op(x, tol, 'hermitian', hermitian)
-        #     return _C_ops.matrix_rank(x, tol, 'hermitian', hermitian)
-        # else:
-        #     return _C_ops.matrix_rank(x,"tol", tol, 'hermitian', hermitian)
 
     inputs = {}
     attrs = {}

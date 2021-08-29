@@ -29,8 +29,6 @@ DDim EigenvalueDim(const DDim& dim, int k);
 
 DDim NewAxisDim(const DDim& dim, int k);
 
-DDim RemoveLastAndNewAxisDim(const DDim& dim, int k);
-
 DDim RemoveLastDim(const DDim& dim);
 
 DDim UDDim(const DDim& x_dim, int k);

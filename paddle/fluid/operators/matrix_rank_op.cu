@@ -60,17 +60,13 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     Tensor temp_tensor;
     T rtol_T = 0;
     if (use_default_tol) {
-      VLOG(3) << "not has tol";
       framework::TensorFromVector<T>(std::vector<T>{0},
                                      context.device_context(), &temp_tensor);
       atol_tensor = &temp_tensor;
       rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
     } else if (context.HasInput("TolTensor")) {
-      VLOG(3) << "has toltensor";
       atol_tensor = context.Input<Tensor>("TolTensor");
     } else {
-      VLOG(3) << "has tol";
-      VLOG(3) << context.Attr<float>("tol");
       framework::TensorFromVector<T>(std::vector<T>{context.Attr<float>("tol")},
                                      context.device_context(), &temp_tensor);
       atol_tensor = &temp_tensor;
@@ -79,7 +75,7 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     // Must Copy X once, because the gesvdj will destory the content when exit.
     Tensor x_tmp;
     TensorCopy(*x, context.GetPlace(), &x_tmp);
-    // cusolver API use
+    // cusolver API used
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batches);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
@@ -88,8 +84,7 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     auto* eigenvalue_data = eigenvalue_tensor.mutable_data<T>(
         EigenvalueDim(dim_x, k), context.GetPlace());
     if (hermitian) {
-      // m == n
-      VLOG(3) << "hermitian";
+      // rows == cols
       SyevjBatched(dev_ctx, batches, rows, x_tmp.data<T>(), eigenvalue_data,
                    info_ptr);
       // compute abs(eigenvalues)
@@ -99,27 +94,13 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
                                   eigenvalue_tensor.numel());
       for_range(functor);
     } else {
-      VLOG(3) << "not hermitian";
       Tensor U, VH;
       auto* u_data = U.mutable_data<T>(UDDim(dim_x, k), context.GetPlace());
       auto* vh_data = VH.mutable_data<T>(VHDDim(dim_x, k), context.GetPlace());
       GesvdjBatched(dev_ctx, batches, cols, rows, k, x_tmp.data<T>(), vh_data,
                     u_data, eigenvalue_data, info_ptr, 1);
     }
-
-    VLOG(3) << "eigenvalue_tensor shape: " << eigenvalue_tensor.dims();
-    std::vector<T> eigenvalue_vec(eigenvalue_tensor.numel());
-    TensorToVector(eigenvalue_tensor, context.device_context(),
-                   &eigenvalue_vec);
-    for (int i = 0; i < eigenvalue_vec.size(); i++) {
-      VLOG(3) << "eigenvalue_vec: " << eigenvalue_vec[i];
-    }
-
-    // compare atol(absolute tol) with rtol(relative tol)
-    // T rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
-    // if (hasTol) {
-    //   rtol_T = 0;
-    // }
+    // compute tol_tensor
     auto dito_T =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  T>(context);
@@ -127,47 +108,27 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
         framework::vectorize<int>(RemoveLastDim(eigenvalue_tensor.dims()));
     Tensor max_eigenvalue_tensor =
         dito_T.reduce_max(eigenvalue_tensor, max_eigenvalue_shape);
-
-    VLOG(3) << "max_eigenvalue_tensor shape: " << max_eigenvalue_tensor.dims();
-    std::vector<T> max_eigenvalue_vec(max_eigenvalue_tensor.numel());
-    TensorToVector(max_eigenvalue_tensor, context.device_context(),
-                   &max_eigenvalue_vec);
-    for (int i = 0; i < max_eigenvalue_vec.size(); i++) {
-      VLOG(3) << "max_eigenvalue_vec: " << max_eigenvalue_vec[i];
-    }
-
     Tensor temp_rtol_tensor;
     framework::TensorFromVector<T>(std::vector<T>{rtol_T},
                                    context.device_context(), &temp_rtol_tensor);
-    // rtol_tensor.mutable_data<T>(max_eigenvalue_tensor.dims(),
-    // context.GetPlace());
     Tensor rtol_tensor = dito_T.mul(temp_rtol_tensor, max_eigenvalue_tensor);
-
     Tensor tol_tensor;
     tol_tensor.mutable_data<T>(dim_out, context.GetPlace());
     ElementwiseComputeEx<GreaterElementFunctor<T>, platform::CUDADeviceContext,
                          T, T>(context, atol_tensor, &rtol_tensor, -1,
                                GreaterElementFunctor<T>(), &tol_tensor);
+    // add new axis dim
     tol_tensor.Resize(NewAxisDim(tol_tensor.dims(), 1));
-
-    VLOG(3) << "tol_tensor shape: " << tol_tensor.dims();
-    std::vector<T> tol_vec(tol_tensor.numel());
-    TensorToVector(tol_tensor, context.device_context(), &tol_vec);
-    for (int i = 0; i < tol_vec.size(); i++) {
-      VLOG(3) << "tol_vec: " << tol_vec[i];
-    }
 
     Tensor compare_result;
     compare_result.mutable_data<int64_t>(NewAxisDim(dim_out, k),
                                          context.GetPlace());
     int axis = -1;
     if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
-      VLOG(3) << "eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()";
       ElementwiseComputeEx<CompareFunctor<T>, platform::CUDADeviceContext, T,
                            int64_t>(context, &eigenvalue_tensor, &tol_tensor,
                                     axis, CompareFunctor<T>(), &compare_result);
     } else {
-      VLOG(3) << "eigenvalue_tensor.dims().size() < tol_tensor.dims().size()";
       ElementwiseComputeEx<InverseCompareFunctor<T>,
                            platform::CUDADeviceContext, T, int64_t>(
           context, &eigenvalue_tensor, &tol_tensor, axis,
@@ -194,9 +155,8 @@ void MatrixRankGPUKernel<float>::GesvdjBatched(
     const platform::CUDADeviceContext& dev_ctx, int batchSize, int m, int n,
     int k, const float* cA, float* U, float* V, float* S, int* info,
     int thin_UV) const {
-  /* no compute singular vectors */
-  const cusolverEigMode_t jobz =
-      CUSOLVER_EIG_MODE_NOVECTOR; /* no compute singular vectors */
+  /* not compute singular vectors */
+  const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
   gesvdjInfo_t gesvdj_params = NULL;
   float* A = const_cast<float*>(cA);
   int lda = m;
@@ -219,13 +179,6 @@ void MatrixRankGPUKernel<float>::GesvdjBatched(
         handle, jobz, thin_UV, m, n, A + stride_A * i, lda, S + k * i,
         U + stride_U * i, ldu, V + stride_V * i, ldt, workspace_ptr, lwork,
         info, gesvdj_params));
-    // platform::dynload::cusolverDnSgesvdj(
-    //         handle, jobz, thin_UV, m, n, A+stride_A*i, lda, S+k*i,
-    //         U+stride_U*i,
-    //         ldu, V+stride_V*i, ldt, workspace_ptr, lwork, info,
-    //         gesvdj_params);
-    // std::cout << "info:" << *info << std::endl;
-    // check the error info
     int error_info;
     memory::Copy(platform::CPUPlace(), &error_info,
                  BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()), info,
@@ -290,9 +243,9 @@ void MatrixRankGPUKernel<float>::SyevjBatched(
   auto handle = dev_ctx.cusolver_dn_handle();
   // Compute eigenvalues only
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
-  // Lower triangle of A is stored
-  // cusolver中矩阵是column-major即转置的形式，numpy和torch中使用下三角来进行计算
-  // 因为转置的缘故需要上三角来进行计算
+  // matrix is saved as column-major in cusolver.
+  // numpy and torch use lower triangle to compute eigenvalues, so here use
+  // upper triangle
   cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
   float* A = const_cast<float*>(cA);
   int lda = n;
@@ -303,8 +256,6 @@ void MatrixRankGPUKernel<float>::SyevjBatched(
       platform::dynload::cusolverDnCreateSyevjInfo(&params));
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSsyevj_bufferSize(
       handle, jobz, uplo, n, A, lda, W, &lwork, params));
-  // PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnXsyevjSetMaxSweeps(params,
-  // 15));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(float));
   float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
   for (int i = 0; i < batchSize; i++) {
@@ -319,7 +270,8 @@ void MatrixRankGPUKernel<float>::SyevjBatched(
     PADDLE_ENFORCE_EQ(
         error_info, 0,
         platform::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
+            "For batch [%d]: CUSolver eigenvalues is not zero. [%d]", i,
+            error_info));
   }
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::cusolverDnDestroySyevjInfo(params));
@@ -357,7 +309,8 @@ void MatrixRankGPUKernel<double>::SyevjBatched(
     PADDLE_ENFORCE_EQ(
         error_info, 0,
         platform::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
+            "For batch [%d]: CUSolver eigenvalues is not zero. [%d]", i,
+            error_info));
   }
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::cusolverDnDestroySyevjInfo(params));
