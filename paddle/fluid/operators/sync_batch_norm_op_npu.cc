@@ -45,6 +45,299 @@ void PrintTensor(const framework::Tensor &src,
 template <typename T>
 using BatchNormParamType = float;
 
+template <typename T>
+void training_or_inference(const framework::ExecutionContext &ctx,
+                           const platform::Place &place, const bool &test_mode,
+                           const DataLayout &layout, const aclrtStream &stream,
+                           const int &N, const int &C, const int &H,
+                           const int &W, const float epsilon, const Tensor *x,
+                           const Tensor *scale, const Tensor *bias,
+                           const Tensor *mean, const Tensor *variance,
+                           Tensor *y) {
+  std::vector<int> axes;
+  if (layout == framework::DataLayout::kNCHW) {
+    axes = {0, 2, 3};
+  } else if (layout == framework::DataLayout::kNHWC) {
+    axes = {0, 1, 2};
+  }
+
+  std::vector<int> multiples;
+  if (layout == framework::DataLayout::kNCHW)
+    multiples = {N, 1, H, W};
+  else if (layout == framework::DataLayout::kNHWC)
+    multiples = {N, H, W, 1};
+
+  Tensor mean_tile_1;
+  {
+    mean_tile_1.Resize({C});
+    mean_tile_1.mutable_data<BatchNormParamType<T>>(place);
+
+    TensorCopySync(*mean, place, &mean_tile_1);
+    LOG(WARNING) << "mean_tile_1: ";
+    PrintTensor<BatchNormParamType<T>>(mean_tile_1, ctx);
+
+    if (layout == framework::DataLayout::kNCHW)
+      mean_tile_1.Resize({1, C, 1, 1});
+    else if (layout == framework::DataLayout::kNHWC)
+      mean_tile_1.Resize({1, 1, 1, C});
+    LOG(WARNING) << "mean_tile_1: ";
+    PrintTensor<BatchNormParamType<T>>(mean_tile_1, ctx);
+  }
+
+  Tensor mean_tile;
+  {
+    framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
+
+    mean_tile.Resize(x->dims());
+    mean_tile.mutable_data<BatchNormParamType<T>>(place);
+
+    const auto &runner =
+        NpuOpRunner("TileD", {mean_tile_1}, {mean_tile}, attr_input);
+    runner.Run(stream);
+
+    LOG(WARNING) << "mean_tile: ";
+    PrintTensor<BatchNormParamType<T>>(mean_tile, ctx);
+  }
+
+  Tensor var_tile_1;
+  {
+    var_tile_1.Resize({C});
+    var_tile_1.mutable_data<BatchNormParamType<T>>(place);
+
+    TensorCopySync(*variance, place, &var_tile_1);
+    LOG(WARNING) << "var_tile_1: ";
+    PrintTensor<BatchNormParamType<T>>(var_tile_1, ctx);
+
+    if (layout == framework::DataLayout::kNCHW)
+      var_tile_1.Resize({1, C, 1, 1});
+    else if (layout == framework::DataLayout::kNHWC)
+      var_tile_1.Resize({1, 1, 1, C});
+    LOG(WARNING) << "var_tile_1: ";
+    PrintTensor<BatchNormParamType<T>>(var_tile_1, ctx);
+  }
+
+  Tensor var_tile;
+  {
+    framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
+
+    var_tile.Resize(x->dims());
+    var_tile.mutable_data<BatchNormParamType<T>>(place);
+
+    const auto &runner =
+        NpuOpRunner("TileD", {var_tile_1}, {var_tile}, attr_input);
+    runner.Run(stream);
+
+    LOG(WARNING) << "var_tile: ";
+    PrintTensor<BatchNormParamType<T>>(var_tile, ctx);
+  }
+
+  Tensor var_tile_add_epsilon;
+  {
+    framework::NPUAttributeMap attr_input = {{"value", epsilon}};
+
+    var_tile_add_epsilon.Resize(x->dims());
+    var_tile_add_epsilon.mutable_data<BatchNormParamType<T>>(place);
+
+    const auto &runner =
+        NpuOpRunner("Adds", {var_tile}, {var_tile_add_epsilon}, attr_input);
+    runner.Run(stream);
+
+    LOG(WARNING) << "var_tile_add_epsilon: ";
+    PrintTensor<BatchNormParamType<T>>(var_tile_add_epsilon, ctx);
+  }
+
+  Tensor var_tile_add_epsilon_sqrt;
+  {
+    var_tile_add_epsilon_sqrt.Resize(x->dims());
+    var_tile_add_epsilon_sqrt.mutable_data<BatchNormParamType<T>>(place);
+
+    const auto &runner = NpuOpRunner("Sqrt", {var_tile_add_epsilon},
+                                     {var_tile_add_epsilon_sqrt}, {});
+    runner.Run(stream);
+
+    LOG(WARNING) << "var_tile_add_epsilon_sqrt: ";
+    PrintTensor<BatchNormParamType<T>>(var_tile_add_epsilon_sqrt, ctx);
+  }
+
+  Tensor x_sub_mean;
+  {
+    LOG(WARNING) << "x: ";
+    PrintTensor<T>(*x, ctx);
+
+    if (x->type() == framework::proto::VarType::FP16) {
+      Tensor x_tmp;
+      {
+        auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::FP32);
+        framework::NPUAttributeMap attr_input = {
+            {"dst_type", static_cast<int>(dst_dtype)}};
+
+        x_tmp.Resize(x->dims());
+        x_tmp.mutable_data<BatchNormParamType<T>>(place);
+
+        const auto &runner = NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
+        runner.Run(stream);
+
+        LOG(WARNING) << "x_tmp: ";
+        PrintTensor<BatchNormParamType<T>>(x_tmp, ctx);
+      }
+
+      {
+        x_sub_mean.Resize(x->dims());
+        x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+
+        const auto &runner =
+            NpuOpRunner("Sub", {x_tmp, mean_tile}, {x_sub_mean}, {});
+        runner.Run(stream);
+
+        LOG(WARNING) << "x_sub_mean: ";
+        PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
+      }
+    } else {
+      x_sub_mean.Resize(x->dims());
+      x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
+
+      const auto &runner =
+          NpuOpRunner("Sub", {*x, mean_tile}, {x_sub_mean}, {});
+      runner.Run(stream);
+
+      LOG(WARNING) << "x_sub_mean: ";
+      PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
+    }
+  }
+
+  Tensor normalized;
+  {
+    normalized.Resize(x->dims());
+    normalized.mutable_data<BatchNormParamType<T>>(place);
+
+    const auto &runner = NpuOpRunner(
+        "Div", {x_sub_mean, var_tile_add_epsilon_sqrt}, {normalized}, {});
+    runner.Run(stream);
+
+    LOG(WARNING) << "normalized: ";
+    PrintTensor<BatchNormParamType<T>>(normalized, ctx);
+  }
+
+  Tensor scale_tile_1;
+  {
+    scale_tile_1.Resize({C});
+    scale_tile_1.mutable_data<BatchNormParamType<T>>(place);
+
+    TensorCopySync(*scale, place, &scale_tile_1);
+    LOG(WARNING) << "scale_tile_1: ";
+    PrintTensor<BatchNormParamType<T>>(scale_tile_1, ctx);
+
+    if (layout == framework::DataLayout::kNCHW)
+      scale_tile_1.Resize({1, C, 1, 1});
+    else if (layout == framework::DataLayout::kNHWC)
+      scale_tile_1.Resize({1, 1, 1, C});
+    LOG(WARNING) << "scale_tile_1: ";
+    PrintTensor<BatchNormParamType<T>>(scale_tile_1, ctx);
+  }
+
+  Tensor scale_tile;
+  {
+    framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
+
+    scale_tile.Resize(x->dims());
+    scale_tile.mutable_data<BatchNormParamType<T>>(place);
+
+    const auto &runner =
+        NpuOpRunner("TileD", {scale_tile_1}, {scale_tile}, attr_input);
+    runner.Run(stream);
+
+    LOG(WARNING) << "scale_tile: ";
+    PrintTensor<BatchNormParamType<T>>(scale_tile, ctx);
+  }
+
+  Tensor normalized_mul_scale;
+  {
+    normalized_mul_scale.Resize(x->dims());
+    normalized_mul_scale.mutable_data<BatchNormParamType<T>>(place);
+
+    const auto &runner = NpuOpRunner("Mul", {normalized, scale_tile},
+                                     {normalized_mul_scale}, {});
+    runner.Run(stream);
+
+    LOG(WARNING) << "normalized_mul_scale: ";
+    PrintTensor<BatchNormParamType<T>>(normalized_mul_scale, ctx);
+  }
+
+  Tensor bias_tile_1;
+  {
+    bias_tile_1.Resize({C});
+    bias_tile_1.mutable_data<BatchNormParamType<T>>(place);
+
+    TensorCopySync(*bias, place, &bias_tile_1);
+    LOG(WARNING) << "bias_tile_1: ";
+    PrintTensor<BatchNormParamType<T>>(bias_tile_1, ctx);
+
+    if (layout == framework::DataLayout::kNCHW)
+      bias_tile_1.Resize({1, C, 1, 1});
+    else if (layout == framework::DataLayout::kNHWC)
+      bias_tile_1.Resize({1, 1, 1, C});
+    LOG(WARNING) << "bias_tile_1: ";
+    PrintTensor<BatchNormParamType<T>>(bias_tile_1, ctx);
+  }
+
+  Tensor bias_tile;
+  {
+    framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
+
+    bias_tile.Resize(x->dims());
+    bias_tile.mutable_data<BatchNormParamType<T>>(place);
+
+    const auto &runner =
+        NpuOpRunner("TileD", {bias_tile_1}, {bias_tile}, attr_input);
+    runner.Run(stream);
+
+    LOG(WARNING) << "bias_tile: ";
+    PrintTensor<BatchNormParamType<T>>(bias_tile, ctx);
+  }
+
+  // at last, we get y
+  {
+    if (x->type() == framework::proto::VarType::FP16) {
+      Tensor y_tmp;
+      {
+        y_tmp.Resize(y->dims());
+        y_tmp.mutable_data<BatchNormParamType<T>>(place);
+
+        const auto &runner =
+            NpuOpRunner("Add", {normalized_mul_scale, bias_tile}, {y_tmp}, {});
+        runner.Run(stream);
+
+        LOG(WARNING) << "y_tmp: ";
+        PrintTensor<BatchNormParamType<T>>(y_tmp, ctx);
+      }
+
+      {
+        auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::FP16);
+        framework::NPUAttributeMap attr_input = {
+            {"dst_type", static_cast<int>(dst_dtype)}};
+
+        y->mutable_data<T>(place);
+
+        const auto &runner = NpuOpRunner("Cast", {y_tmp}, {*y}, attr_input);
+        runner.Run(stream);
+
+        LOG(WARNING) << "y: ";
+        PrintTensor<T>(*y, ctx);
+      }
+
+    } else {
+      y->mutable_data<T>(place);
+
+      const auto &runner =
+          NpuOpRunner("Add", {normalized_mul_scale, bias_tile}, {*y}, {});
+      runner.Run(stream);
+
+      LOG(WARNING) << "y: ";
+      PrintTensor<T>(*y, ctx);
+    }
+  }
+}
+
 template <typename DeviceContext, typename T>
 class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
  public:
@@ -177,287 +470,9 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
       PrintTensor<BatchNormParamType<T>>(*saved_variance, ctx);
 
       // cacl y
-      {
-        std::vector<int> multiples;
-        if (layout == framework::DataLayout::kNCHW)
-          multiples = {N, 1, H, W};
-        else if (layout == framework::DataLayout::kNHWC)
-          multiples = {N, H, W, 1};
+      training_or_inference<T>(ctx, place, test_mode, layout, stream, N, C, H,
+                               W, epsilon, x, scale, bias, mean, variance, y);
 
-        Tensor mean_tile_1;
-        {
-          mean_tile_1.Resize({C});
-          mean_tile_1.mutable_data<BatchNormParamType<T>>(place);
-
-          TensorCopySync(*mean, place, &mean_tile_1);
-          LOG(WARNING) << "mean_tile_1: ";
-          PrintTensor<BatchNormParamType<T>>(mean_tile_1, ctx);
-
-          if (layout == framework::DataLayout::kNCHW)
-            mean_tile_1.Resize({1, C, 1, 1});
-          else if (layout == framework::DataLayout::kNHWC)
-            mean_tile_1.Resize({1, 1, 1, C});
-          LOG(WARNING) << "mean_tile_1: ";
-          PrintTensor<BatchNormParamType<T>>(mean_tile_1, ctx);
-        }
-
-        Tensor mean_tile;
-        {
-          framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
-
-          mean_tile.Resize(x->dims());
-          mean_tile.mutable_data<BatchNormParamType<T>>(place);
-
-          const auto &runner =
-              NpuOpRunner("TileD", {mean_tile_1}, {mean_tile}, attr_input);
-          runner.Run(stream);
-
-          LOG(WARNING) << "mean_tile: ";
-          PrintTensor<BatchNormParamType<T>>(mean_tile, ctx);
-        }
-
-        Tensor var_tile_1;
-        {
-          var_tile_1.Resize({C});
-          var_tile_1.mutable_data<BatchNormParamType<T>>(place);
-
-          TensorCopySync(*variance, place, &var_tile_1);
-          LOG(WARNING) << "var_tile_1: ";
-          PrintTensor<BatchNormParamType<T>>(var_tile_1, ctx);
-
-          if (layout == framework::DataLayout::kNCHW)
-            var_tile_1.Resize({1, C, 1, 1});
-          else if (layout == framework::DataLayout::kNHWC)
-            var_tile_1.Resize({1, 1, 1, C});
-          LOG(WARNING) << "var_tile_1: ";
-          PrintTensor<BatchNormParamType<T>>(var_tile_1, ctx);
-        }
-
-        Tensor var_tile;
-        {
-          framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
-
-          var_tile.Resize(x->dims());
-          var_tile.mutable_data<BatchNormParamType<T>>(place);
-
-          const auto &runner =
-              NpuOpRunner("TileD", {var_tile_1}, {var_tile}, attr_input);
-          runner.Run(stream);
-
-          LOG(WARNING) << "var_tile: ";
-          PrintTensor<BatchNormParamType<T>>(var_tile, ctx);
-        }
-
-        Tensor var_tile_add_epsilon;
-        {
-          framework::NPUAttributeMap attr_input = {{"value", epsilon}};
-
-          var_tile_add_epsilon.Resize(x->dims());
-          var_tile_add_epsilon.mutable_data<BatchNormParamType<T>>(place);
-
-          const auto &runner = NpuOpRunner("Adds", {var_tile},
-                                           {var_tile_add_epsilon}, attr_input);
-          runner.Run(stream);
-
-          LOG(WARNING) << "var_tile_add_epsilon: ";
-          PrintTensor<BatchNormParamType<T>>(var_tile_add_epsilon, ctx);
-        }
-
-        Tensor var_tile_add_epsilon_sqrt;
-        {
-          var_tile_add_epsilon_sqrt.Resize(x->dims());
-          var_tile_add_epsilon_sqrt.mutable_data<BatchNormParamType<T>>(place);
-
-          const auto &runner = NpuOpRunner("Sqrt", {var_tile_add_epsilon},
-                                           {var_tile_add_epsilon_sqrt}, {});
-          runner.Run(stream);
-
-          LOG(WARNING) << "var_tile_add_epsilon_sqrt: ";
-          PrintTensor<BatchNormParamType<T>>(var_tile_add_epsilon_sqrt, ctx);
-        }
-
-        Tensor x_sub_mean;
-        {
-          LOG(WARNING) << "x: ";
-          PrintTensor<T>(*x, ctx);
-
-          if (x->type() == framework::proto::VarType::FP16) {
-            Tensor x_tmp;
-            {
-              auto dst_dtype =
-                  ConvertToNpuDtype(framework::proto::VarType::FP32);
-              framework::NPUAttributeMap attr_input = {
-                  {"dst_type", static_cast<int>(dst_dtype)}};
-
-              x_tmp.Resize(x->dims());
-              x_tmp.mutable_data<BatchNormParamType<T>>(place);
-
-              const auto &runner =
-                  NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
-              runner.Run(stream);
-
-              LOG(WARNING) << "x_tmp: ";
-              PrintTensor<BatchNormParamType<T>>(x_tmp, ctx);
-            }
-
-            {
-              x_sub_mean.Resize(x->dims());
-              x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
-
-              const auto &runner =
-                  NpuOpRunner("Sub", {x_tmp, mean_tile}, {x_sub_mean}, {});
-              runner.Run(stream);
-
-              LOG(WARNING) << "x_sub_mean: ";
-              PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
-            }
-          } else {
-            x_sub_mean.Resize(x->dims());
-            x_sub_mean.mutable_data<BatchNormParamType<T>>(place);
-
-            const auto &runner =
-                NpuOpRunner("Sub", {*x, mean_tile}, {x_sub_mean}, {});
-            runner.Run(stream);
-
-            LOG(WARNING) << "x_sub_mean: ";
-            PrintTensor<BatchNormParamType<T>>(x_sub_mean, ctx);
-          }
-        }
-
-        Tensor normalized;
-        {
-          normalized.Resize(x->dims());
-          normalized.mutable_data<BatchNormParamType<T>>(place);
-
-          const auto &runner = NpuOpRunner(
-              "Div", {x_sub_mean, var_tile_add_epsilon_sqrt}, {normalized}, {});
-          runner.Run(stream);
-
-          LOG(WARNING) << "normalized: ";
-          PrintTensor<BatchNormParamType<T>>(normalized, ctx);
-        }
-
-        Tensor scale_tile_1;
-        {
-          scale_tile_1.Resize({C});
-          scale_tile_1.mutable_data<BatchNormParamType<T>>(place);
-
-          TensorCopySync(*scale, place, &scale_tile_1);
-          LOG(WARNING) << "scale_tile_1: ";
-          PrintTensor<BatchNormParamType<T>>(scale_tile_1, ctx);
-
-          if (layout == framework::DataLayout::kNCHW)
-            scale_tile_1.Resize({1, C, 1, 1});
-          else if (layout == framework::DataLayout::kNHWC)
-            scale_tile_1.Resize({1, 1, 1, C});
-          LOG(WARNING) << "scale_tile_1: ";
-          PrintTensor<BatchNormParamType<T>>(scale_tile_1, ctx);
-        }
-
-        Tensor scale_tile;
-        {
-          framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
-
-          scale_tile.Resize(x->dims());
-          scale_tile.mutable_data<BatchNormParamType<T>>(place);
-
-          const auto &runner =
-              NpuOpRunner("TileD", {scale_tile_1}, {scale_tile}, attr_input);
-          runner.Run(stream);
-
-          LOG(WARNING) << "scale_tile: ";
-          PrintTensor<BatchNormParamType<T>>(scale_tile, ctx);
-        }
-
-        Tensor normalized_mul_scale;
-        {
-          normalized_mul_scale.Resize(x->dims());
-          normalized_mul_scale.mutable_data<BatchNormParamType<T>>(place);
-
-          const auto &runner = NpuOpRunner("Mul", {normalized, scale_tile},
-                                           {normalized_mul_scale}, {});
-          runner.Run(stream);
-
-          LOG(WARNING) << "normalized_mul_scale: ";
-          PrintTensor<BatchNormParamType<T>>(normalized_mul_scale, ctx);
-        }
-
-        Tensor bias_tile_1;
-        {
-          bias_tile_1.Resize({C});
-          bias_tile_1.mutable_data<BatchNormParamType<T>>(place);
-
-          TensorCopySync(*bias, place, &bias_tile_1);
-          LOG(WARNING) << "bias_tile_1: ";
-          PrintTensor<BatchNormParamType<T>>(bias_tile_1, ctx);
-
-          if (layout == framework::DataLayout::kNCHW)
-            bias_tile_1.Resize({1, C, 1, 1});
-          else if (layout == framework::DataLayout::kNHWC)
-            bias_tile_1.Resize({1, 1, 1, C});
-          LOG(WARNING) << "bias_tile_1: ";
-          PrintTensor<BatchNormParamType<T>>(bias_tile_1, ctx);
-        }
-
-        Tensor bias_tile;
-        {
-          framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
-
-          bias_tile.Resize(x->dims());
-          bias_tile.mutable_data<BatchNormParamType<T>>(place);
-
-          const auto &runner =
-              NpuOpRunner("TileD", {bias_tile_1}, {bias_tile}, attr_input);
-          runner.Run(stream);
-
-          LOG(WARNING) << "bias_tile: ";
-          PrintTensor<BatchNormParamType<T>>(bias_tile, ctx);
-        }
-
-        // at last, we get y
-        {
-          if (x->type() == framework::proto::VarType::FP16) {
-            Tensor y_tmp;
-            {
-              y_tmp.Resize(y->dims());
-              y_tmp.mutable_data<BatchNormParamType<T>>(place);
-
-              const auto &runner = NpuOpRunner(
-                  "Add", {normalized_mul_scale, bias_tile}, {y_tmp}, {});
-              runner.Run(stream);
-
-              LOG(WARNING) << "y_tmp: ";
-              PrintTensor<BatchNormParamType<T>>(y_tmp, ctx);
-            }
-
-            {
-              auto dst_dtype =
-                  ConvertToNpuDtype(framework::proto::VarType::FP16);
-              framework::NPUAttributeMap attr_input = {
-                  {"dst_type", static_cast<int>(dst_dtype)}};
-
-              y->mutable_data<T>(place);
-
-              const auto &runner =
-                  NpuOpRunner("Cast", {y_tmp}, {*y}, attr_input);
-              runner.Run(stream);
-
-              LOG(WARNING) << "y: ";
-              PrintTensor<T>(*y, ctx);
-            }
-
-          } else {
-            y->mutable_data<T>(place);
-
-            const auto &runner =
-                NpuOpRunner("Add", {normalized_mul_scale, bias_tile}, {*y}, {});
-            runner.Run(stream);
-
-            LOG(WARNING) << "y: ";
-            PrintTensor<T>(*y, ctx);
-          }
-        }
-      }
     } else {  // training
       LOG(WARNING) << "training";
 
