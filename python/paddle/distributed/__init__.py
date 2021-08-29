@@ -18,6 +18,10 @@ from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
 from .parallel import get_world_size  # noqa: F401
 
+from .parallel_with_gloo import gloo_init_parallel_env
+from .parallel_with_gloo import gloo_barrier
+from .parallel_with_gloo import gloo_release
+
 from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
 
@@ -61,6 +65,9 @@ __all__ = [  # noqa
       "ParallelEnv",
       "new_group",
       "init_parallel_env",
+      "gloo_init_parallel_env",
+      "gloo_barrier",
+      "gloo_release",
       "QueueDataset",
       "split",
       "CountFilterEntry",

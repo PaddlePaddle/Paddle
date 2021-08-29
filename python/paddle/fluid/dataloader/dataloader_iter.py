@@ -59,6 +59,7 @@ class _DataLoaderIterBase(object):
         self._places = loader.places
         self._return_list = loader.return_list
         self._batch_sampler = loader.batch_sampler
+        self._drop_last = loader.drop_last
         self._auto_collate_batch = loader.auto_collate_batch
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
@@ -111,7 +112,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
         self._dataset_fetcher = _DatasetKind.create_fetcher(
             self._dataset_kind, self._dataset, self._auto_collate_batch,
-            self._collate_fn, True)
+            self._collate_fn, self._drop_last)
 
         # NOTE: _structrue_infos used to record the data structure of
         # batch to restore batch structure after reading Tensor
@@ -309,8 +310,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 args=(self._dataset, self._dataset_kind, indices_queue,
                       self._data_queue, self._workers_done_event,
                       self._auto_collate_batch, self._collate_fn,
-                      self._worker_init_fn, i, self._num_workers,
-                      self._use_shared_memory))
+                      self._drop_last, self._worker_init_fn, i,
+                      self._num_workers, self._use_shared_memory))
             worker.daemon = True
             worker.start()
             self._workers.append(worker)

@@ -395,6 +395,31 @@ def is_compiled_with_xpu():
     return core.is_compiled_with_xpu()
 
 
+def disable_signal_handler():
+    """
+    Reset signal handler registered by Paddle.
+
+    Paddle installs signal handlers at C++ level to log debug information upon failing.
+    However, conflicts can happen if another python module is making use of such signal.
+    Such being the case, one may disblae paddle signal handler via this interface.
+    
+    Known frameworks that require disabling signal handler includes:
+    1. TVM
+    2. ADLIK
+
+    Make sure you called paddle.disable_signal_handler() before using above mentioned frameworks.
+
+    Returns: None 
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.disable_signal_handler()
+    """
+    core.disable_signal_handler()
+
+
 def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
@@ -3368,6 +3393,12 @@ class Block(object):
         return ret_var
 
 
+# NOTE(zjl): you should be careful that after you call this method,
+# some Python Variable and all Python Operators should not be used
+# again. Because all Python Variables and all Python Operators are
+# re-constructed inside this method. The underlying VarDesc(OpDesc)
+# of some old Python Variables(all old Python Operators) may have 
+# been destructed.
 def _apply_pass(main_program,
                 startup_program,
                 pass_name,
@@ -4301,6 +4332,14 @@ class Program(object):
         self._graph = None
 
     def _find_var_class_kwargs(self, new_desc):
+        # NOTE: not all variables support shape/dtype/lod_level methods.
+        # For example: RAW, STEP_SCOPES, etc.
+        def get_var_desc_attr_or_none(var_desc, attr_name, allowed_types):
+            if var_desc.type() in allowed_types:
+                return getattr(var_desc, attr_name)()
+            else:
+                return None
+
         old_desc = self.desc
         all_new_vars = []
         block_num = new_desc.num_blocks()
@@ -4317,9 +4356,21 @@ class Program(object):
                 kwargs = {
                     'type': new_var_desc.type(),
                     'name': new_var_desc.name(),
-                    'shape': new_var_desc.shape(),
-                    'dtype': new_var_desc.dtype(),
-                    'lod_level': new_var_desc.lod_level(),
+                    'shape': get_var_desc_attr_or_none(new_var_desc, "shape", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.SELECTED_ROWS,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
+                    'dtype': get_var_desc_attr_or_none(new_var_desc, "dtype", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.SELECTED_ROWS,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
+                    'lod_level':
+                    get_var_desc_attr_or_none(new_var_desc, "lod_level", [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    ]),
                     'error_clip': old_var.error_clip
                     if old_var is not None else None,
                     'stop_gradient': old_var.stop_gradient
@@ -4358,14 +4409,20 @@ class Program(object):
         all_new_vars = self._find_var_class_kwargs(desc)
         block_num = desc.num_blocks()
         assert block_num == len(all_new_vars)
+        assert block_num == self.desc.num_blocks()
 
         # clear old blocks and desc
-        self.blocks = []
-        self.desc = None
+        for idx in range(block_num):
+            block = self.blocks[idx]
+            block.vars.clear()
+            block.ops.clear()
 
-        # create new blocks and set desc
-        self.desc = desc
-        self.blocks = [Block(self, idx) for idx in range(block_num)]
+        for idx in range(block_num):
+            block_desc = self.blocks[idx].desc
+            new_block_desc = desc.block(idx)
+            block_desc._move_from(new_block_desc)
+
+        del desc
 
         # add new vars first
         for idx in range(block_num):
