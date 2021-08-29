@@ -253,6 +253,9 @@ def update_tensor_node_dims_mapping(dist_context, tensor_node, fwd=True):
     if (not tensor_node.is_var()) or (tensor_node.var() is None):
         return False
     tensor_desc = tensor_node.var()
+    # Skip reader tensor
+    if tensor_desc.type() == core.VarDesc.VarType.READER:
+        return False
     tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_graph(
         tensor_node)
     assert tensor_dist_attr is not None
@@ -263,6 +266,10 @@ def update_tensor_node_dims_mapping(dist_context, tensor_node, fwd=True):
         dims_mapping_list = []
         for pred_op_node in tensor_node.inputs:
             if pred_op_node.op() is not None:
+                if pred_op_node.op().type() == "create_py_reader" \
+                    or pred_op_node.op().type() == "create_double_buffer_reader" \
+                    or pred_op_node.op().type() == "read":
+                    continue
                 op_dist_attr = dist_context.get_op_distributed_attr_for_graph(
                     pred_op_node)
                 op_dims_mapping = op_dist_attr.get_output_dims_mapping(
@@ -279,6 +286,10 @@ def update_tensor_node_dims_mapping(dist_context, tensor_node, fwd=True):
         dims_mapping_list = []
         for succ_op_node in tensor_node.outputs:
             if succ_op_node.op() is not None:
+                if succ_op_node.op().type() == "create_py_reader" \
+                    or succ_op_node.op().type() == "create_double_buffer_reader" \
+                    or succ_op_node.op().type() == "read":
+                    continue
                 op_dist_attr = dist_context.get_op_distributed_attr_for_graph(
                     succ_op_node)
                 op_dims_mapping = op_dist_attr.get_input_dims_mapping(
@@ -298,11 +309,18 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
     changed = False
     if (not op_node.is_op()) or (op_node.op() is None):
         return False
+    # Skip reader op 
     op_desc = op_node.op()
+    if op_desc.type() == "create_py_reader" \
+        or op_desc.type() == "create_double_buffer_reader" \
+        or op_desc.type() == "read":
+        return False
     op_dist_attr = dist_context.get_op_distributed_attr_for_graph(op_node)
     if fwd:
         for tensor_node in op_node.inputs:
             if tensor_node.var() is not None:
+                if tensor_node.var().type() == core.VarDesc.VarType.READER:
+                    continue
                 tensor_desc = tensor_node.var()
                 if op_dist_attr.is_annotated_input_dims_mapping(
                         tensor_desc.name()):
@@ -344,6 +362,8 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
     else:
         for tensor_node in op_node.outputs:
             if tensor_node.var() is not None:
+                if tensor_node.var().type() == core.VarDesc.VarType.READER:
+                    continue
                 tensor_desc = tensor_node.var()
                 if op_dist_attr.is_annotated_output_dims_mapping(
                         tensor_desc.name()):

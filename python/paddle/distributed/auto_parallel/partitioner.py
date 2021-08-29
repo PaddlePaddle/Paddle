@@ -244,9 +244,9 @@ class Partitioner(object):
             main_program, startup_program)
 
         # Sharding
-        if self._dist_strategy.sharding:
-            new_main_prog, new_startup_program = self._sharding_forward_transpile(
-                new_main_prog, new_startup_program)
+        # if self._dist_strategy.sharding:
+        #     new_main_prog, new_startup_program = self._sharding_forward_transpile(
+        #         new_main_prog, new_startup_program)
 
         return new_main_prog, new_startup_program
 
@@ -265,10 +265,10 @@ class Partitioner(object):
         params_grads = self._dist_var_op_backward_transpile(
             serial_loss, serial_main_program, serial_startup_program,
             dist_main_program, dist_startup_program)
-        # Sharding
-        if self._dist_strategy.sharding:
-            self._sharding_backward_transpile(new_main_prog,
-                                              new_startup_program)
+        # # Sharding
+        # if self._dist_strategy.sharding:
+        #     self._sharding_backward_transpile(new_main_prog,
+        #                                       new_startup_program)
 
         # Data Parallel pass
         if self._enable_data_parallel:
@@ -291,9 +291,9 @@ class Partitioner(object):
             dist_startup_program (paddle.fluid.framework.program): dist startup program with forward & backward  network 
         """
 
-        if self._dist_strategy.sharding:
-            params_grads = sharding_optimize_transpile(
-                params_grads, dist_main_program, dist_startup_program)
+        # if self._dist_strategy.sharding:
+        #     params_grads = sharding_optimize_transpile(
+        #         params_grads, dist_main_program, dist_startup_program)
 
         optimize_ops = self._optimize_transpile(user_define_optimizer,
                                                 params_grads, dist_main_program,
@@ -561,7 +561,7 @@ class Partitioner(object):
             if not var_dist_attr.is_parameter():
                 mapping = var_dist_attr.get_dims_mapping()
                 mesh = var_dist_attr.get_process_mesh().topology
-                if mapping[0] >= 0 and mesh[mapping[0]] > 1:
+                if mapping and mapping[0] >= 0 and mesh[mapping[0]] > 1:
                     self._enable_data_parallel = True
                     break
 
