@@ -22,10 +22,8 @@ from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 
 
 def l2_norm(x, axis, epsilon):
-    print('x.shape: ', x.shape)
     x2 = x**2
     s = np.sum(x2, axis=axis, keepdims=True)
-    print('s.shape: ', s.shape)
     r = np.sqrt(s + epsilon)
     y = x / np.broadcast_to(r, x.shape)
     return y, r

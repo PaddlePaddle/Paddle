@@ -21,15 +21,7 @@ import paddle.fluid as fluid
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_norm_op import l2_norm
 
-# def l2_norm(x, axis, epsilon):
-#     x2 = x**2
-#     s = np.sum(x2, axis=axis, keepdims=True)
-#     r = np.sqrt(s) + epsilon
-#     y = x / np.broadcast_to(r, x.shape)
-#     return y, r
 
-
-@unittest.skipIf(False, "skip for tmp")
 class TestNPUNormOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -67,7 +59,6 @@ class TestNPUNormOp(OpTest):
             self.place, ['X'], 'Out', max_relative_error=0.006)
 
 
-@unittest.skipIf(False, "skip for tmp")
 class TestNPUNormOp2(TestNPUNormOp):
     def init_test_case(self):
         self.shape = [5, 3, 9, 7]
@@ -75,7 +66,6 @@ class TestNPUNormOp2(TestNPUNormOp):
         self.epsilon = 1e-8
 
 
-@unittest.skipIf(False, "skip for tmp")
 class TestNPUNormOp3(TestNPUNormOp):
     def init_test_case(self):
         self.shape = [5, 3, 2, 7]
@@ -83,7 +73,6 @@ class TestNPUNormOp3(TestNPUNormOp):
         self.epsilon = 1e-8
 
 
-@unittest.skipIf(False, "skip for tmp")
 @skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
                     "however it is desirable to cover the forward pass")
 class TestNPUNormOp4(TestNPUNormOp):
@@ -96,7 +85,6 @@ class TestNPUNormOp4(TestNPUNormOp):
         pass
 
 
-@unittest.skipIf(False, "skip for tmp")
 @skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
                     "however it is desirable to cover the forward pass")
 class TestNPUNormOp5(TestNPUNormOp):
@@ -109,7 +97,6 @@ class TestNPUNormOp5(TestNPUNormOp):
         pass
 
 
-@unittest.skipIf(False, "skip for tmp")
 class API_NormTest(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
@@ -122,7 +109,6 @@ class API_NormTest(unittest.TestCase):
             self.assertRaises(TypeError, test_norm_x_type)
 
 
-@unittest.skipIf(False, "skip for tmp")
 class TestNPUNormOpFP16(TestNPUNormOp):
     def set_npu(self):
         self.__class__.use_npu = True

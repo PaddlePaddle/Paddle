@@ -77,17 +77,10 @@ template <typename DeviceContext, typename T>
 class NormGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(WARNING) << "NormGradNPUKernel";
-    LOG(WARNING) << "op type: " << ctx.Type();
-
     float epsilon = ctx.Attr<float>("epsilon");
     int axis = ctx.Attr<int>("axis");
 
-    LOG(WARNING) << "epsilon: " << epsilon;
-    LOG(WARNING) << "axis: " << axis;
-
     auto *x = ctx.Input<Tensor>("X");
-    auto *norm = ctx.Input<framework::Tensor>("Norm");
     auto *dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
@@ -96,15 +89,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    LOG(WARNING) << "x dims: " << x->dims();
-    LOG(WARNING) << "x numel: " << x->numel();
-    LOG(WARNING) << "norm dims: " << norm->dims();
-    LOG(WARNING) << "norm numel: " << norm->numel();
-    LOG(WARNING) << "dy dims: " << dy->dims();
-    LOG(WARNING) << "dy numel: " << dy->numel();
-    LOG(WARNING) << "dx dims: " << dx->dims();
-    LOG(WARNING) << "dx numel: " << dx->numel();
-
     // dx = ( dy/sqrt(sum(x*x)) ) * [1 - x*sum(x) / (sum(x*x) + e)]
     //    = [dy - dy * x * sum(x) / (sum(x*x) + e)] / sqrt(sum(x*x))
     //    = [dy - x * sum(x*dy) / (sum(x*x) + e)] / sqrt(sum(x*x))
@@ -112,8 +96,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
     std::vector<int> remainVec;
     GetRemainDims(x->dims(), axis, &remainVec);
     auto remainDim = framework::make_ddim(remainVec);
-    // framework::DDim remainDim = {2, 1, 4, 5};
-    LOG(WARNING) << "remainDim: " << remainDim;
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -128,9 +110,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
 
       const auto &runner = NpuOpRunner("Mul", {*x, *dy}, {x_mul_dy}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "x_mul_dy: ";
-      PrintTensor<float>(x_mul_dy, ctx);
     }
 
     Tensor x_mul_dy_sum;
@@ -144,9 +123,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
       const auto &runner =
           NpuOpRunner("ReduceSumD", {x_mul_dy}, {x_mul_dy_sum}, attr_input);
       runner.Run(stream);
-
-      LOG(WARNING) << "x_mul_dy_sum: ";
-      PrintTensor<float>(x_mul_dy_sum, ctx);
     }
 
     Tensor x_mul_dy_sum_broadcast;
@@ -160,9 +136,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
       const auto &runner = NpuOpRunner("BroadcastToD", {x_mul_dy_sum},
                                        {x_mul_dy_sum_broadcast}, attr_input);
       runner.Run(stream);
-
-      LOG(WARNING) << "x_mul_dy_sum_broadcast: ";
-      PrintTensor<float>(x_mul_dy_sum_broadcast, ctx);
     }
 
     Tensor x_square;
@@ -172,9 +145,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
 
       const auto &runner = NpuOpRunner("Square", {*x}, {x_square}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "x_square: ";
-      PrintTensor<float>(x_square, ctx);
     }
 
     Tensor x_square_sum;
@@ -188,9 +158,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
       const auto &runner =
           NpuOpRunner("ReduceSumD", {x_square}, {x_square_sum}, attr_input);
       runner.Run(stream);
-
-      LOG(WARNING) << "x_square_sum: ";
-      PrintTensor<float>(x_square_sum, ctx);
     }
 
     Tensor x_square_sum_broadcast;
@@ -204,9 +171,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
       const auto &runner = NpuOpRunner("BroadcastToD", {x_square_sum},
                                        {x_square_sum_broadcast}, attr_input);
       runner.Run(stream);
-
-      LOG(WARNING) << "x_square_sum_broadcast: ";
-      PrintTensor<float>(x_square_sum_broadcast, ctx);
     }
 
     // x_square_sum -> x_square_sum_broadcast
@@ -220,9 +184,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
       const auto &runner = NpuOpRunner("Adds", {x_square_sum_broadcast},
                                        {x_square_sum_plus_epsilon}, attr_input);
       runner.Run(stream);
-
-      LOG(WARNING) << "x_square_sum_plus_epsilon: ";
-      PrintTensor<float>(x_square_sum_plus_epsilon, ctx);
     }
 
     // x_square_sum -> x_square_sum_broadcast
@@ -234,9 +195,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
       const auto &runner = NpuOpRunner("Sqrt", {x_square_sum_broadcast},
                                        {x_square_sum_sqrt}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "x_square_sum_sqrt: ";
-      PrintTensor<float>(x_square_sum_sqrt, ctx);
     }
 
     // x * sum(x*dy)
@@ -248,9 +206,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
 
       const auto &runner = NpuOpRunner("Mul", {*x, x_mul_dy_sum}, {tmp1}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "tmp1: ";
-      PrintTensor<float>(tmp1, ctx);
     }
 
     // x * sum(x*dy) / (sum(x*x) + e)
@@ -263,9 +218,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
       const auto &runner =
           NpuOpRunner("Div", {tmp1, x_square_sum_plus_epsilon}, {tmp2}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "tmp2: ";
-      PrintTensor<float>(tmp2, ctx);
     }
 
     // dy - x * sum(x*dy) / (sum(x*x) + e)
@@ -277,9 +229,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
 
       const auto &runner = NpuOpRunner("Sub", {*dy, tmp2}, {tmp3}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "tmp3: ";
-      PrintTensor<float>(tmp3, ctx);
     }
 
     // at last, we get dx
@@ -290,9 +239,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
       const auto &runner =
           NpuOpRunner("Div", {tmp3, x_square_sum_sqrt}, {*dx}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "dx: ";
-      PrintTensor<float>(*dx, ctx);
     }
   }
 };

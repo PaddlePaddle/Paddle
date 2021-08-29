@@ -19,24 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-std::string outputVector(const std::vector<T> vec) {
-  std::ostringstream oss;
-  // for (auto ele : vec) oss << ele << ' ';
-  for (size_t i = 0; i < vec.size() && i < 10; ++i) {
-    oss << vec[i] << ' ';
-  }
-  return oss.str();
-}
-template <typename T>
-void PrintTensor(const framework::Tensor& src,
-                 const framework::ExecutionContext& ctx) {
-  std::vector<T> vec(src.numel());
-  TensorToVector(src, ctx.device_context(), &vec);
-  LOG(WARNING) << "src shape: " << src.dims();
-  LOG(WARNING) << "vec: " << outputVector<T>(vec);
-}
-
 inline void GetDims(const framework::DDim& dim, int axis, int* pre, int* n,
                     int* post) {
   *pre = 1;
