@@ -29,7 +29,8 @@ from paddle.fluid.tests.unittests.test_norm_op import l2_norm
 #     return y, r
 
 
-class TestNorm(OpTest):
+@unittest.skipIf(False, "skip for tmp")
+class TestNPUNormOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.set_npu()
@@ -58,28 +59,57 @@ class TestNorm(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
 
-class TestNormOp2(TestNorm):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', max_relative_error=0.006)
+
+
+@unittest.skipIf(False, "skip for tmp")
+class TestNPUNormOp2(TestNPUNormOp):
     def init_test_case(self):
         self.shape = [5, 3, 9, 7]
         self.axis = 0
         self.epsilon = 1e-8
 
 
-class TestNormOp3(TestNorm):
+@unittest.skipIf(False, "skip for tmp")
+class TestNPUNormOp3(TestNPUNormOp):
     def init_test_case(self):
         self.shape = [5, 3, 2, 7]
         self.axis = -1
         self.epsilon = 1e-8
 
 
-class TestNormOp4(TestNorm):
+@unittest.skipIf(False, "skip for tmp")
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class TestNPUNormOp4(TestNPUNormOp):
     def init_test_case(self):
         self.shape = [128, 1024, 14, 14]
         self.axis = 2
         self.epsilon = 1e-8
 
+    def test_check_grad(self):
+        pass
 
+
+@unittest.skipIf(False, "skip for tmp")
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class TestNPUNormOp5(TestNPUNormOp):
+    def init_test_case(self):
+        self.shape = [2048, 2048]
+        self.axis = 1
+        self.epsilon = 1e-8
+
+    def test_check_grad(self):
+        pass
+
+
+@unittest.skipIf(False, "skip for tmp")
 class API_NormTest(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
@@ -92,7 +122,8 @@ class API_NormTest(unittest.TestCase):
             self.assertRaises(TypeError, test_norm_x_type)
 
 
-class TestNormFP16(TestNorm):
+@unittest.skipIf(False, "skip for tmp")
+class TestNPUNormOpFP16(TestNPUNormOp):
     def set_npu(self):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True
