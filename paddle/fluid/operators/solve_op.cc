@@ -198,6 +198,8 @@ class SolveGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "solve");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    "Out@GRAD", "solve");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "solve");
+
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
@@ -224,6 +226,7 @@ class SolveOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput("X", this->Input("X"));
     retv->SetInput("Y", this->Input("Y"));
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetInput("Out", this->Output("Out"));
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     retv->SetAttrMap(this->Attrs());
