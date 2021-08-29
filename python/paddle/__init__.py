@@ -14,7 +14,7 @@
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
-
+    from paddle.cuda_env import *
 except ImportError:
     import sys
     sys.stderr.write('''Warning with import paddle: you should not
