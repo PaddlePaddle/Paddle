@@ -245,6 +245,13 @@ if(LINUX AND WITH_MKLDNN)
 	download_quant_model(${QUANT2_GRU_MODEL_DIR} ${QUANT2_GRU_MODEL_ARCHIVE} cf207f8076dcfb8b74d8b6bdddf9090c)
 	set(QUANT2_GRU_OPS_TO_QUANTIZE "multi_gru")
 
+	# Quant2 LSTM
+	set(QUANT2_LSTM_MODEL_ARCHIVE "LSTM_quant.tar.gz")
+	set(QUANT2_LSTM_MODEL_DIR "${QUANT_INSTALL_DIR}/LSTM_quant2")
+	download_quant_model(${QUANT2_LSTM_MODEL_DIR} ${QUANT2_LSTM_MODEL_ARCHIVE})
+	set(QUANT2_LSTM_OPS_TO_QUANTIZE "fusion_lstm")
+
+
 	### Save FP32 model or INT8 model from Quant model
         
 	set(QUANT2_INT8_RESNET50_SAVE_PATH "${QUANT_INSTALL_DIR}/ResNet50_quant2_int8")
@@ -255,6 +262,9 @@ if(LINUX AND WITH_MKLDNN)
 
 	set(QUANT2_INT8_GRU_SAVE_PATH "${QUANT_INSTALL_DIR}/GRU_quant2_int8")
 	save_quant_nlp_model_test(save_quant2_model_gru ${QUANT2_GRU_MODEL_DIR}/GRU_quant_acc ${QUANT2_INT8_GRU_SAVE_PATH} ${QUANT2_GRU_OPS_TO_QUANTIZE})
+
+	set(QUANT2_INT8_LSTM_SAVE_PATH "${QUANT_INSTALL_DIR}/lstm_quant2_int8")
+	save_quant_nlp_model_test(save_quant2_model_lstm ${QUANT2_LSTM_MODEL_DIR}/lstm_quant ${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_LSTM_OPS_TO_QUANTIZE})
 
 	# Convert Quant2 model to dot and pdf files 
 	set(QUANT2_INT8_ERNIE_DOT_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8_dot_file")
