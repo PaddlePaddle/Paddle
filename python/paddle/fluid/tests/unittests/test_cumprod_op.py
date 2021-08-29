@@ -58,7 +58,7 @@ class TestCumprodAPI(unittest.TestCase):
 
     def setUp(self):
         self.init_dtype()
-        self.x = np.random.rand(2, 3, 10, 10) + 0.5
+        self.x = (np.random.rand(2, 3, 10, 10) + 0.5).astype(self.type)
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
