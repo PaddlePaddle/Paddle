@@ -53,7 +53,7 @@ class TrtConvertBilinearInterpV2Test_all(TrtLayerAutoScanTest):
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         input_data = TensorConfig(shape=[-1, 3, 64, 64])
-        alpha = np.random.random(size=(2)).astype("float32")
+        alpha = np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
         input_scale = TensorConfig(shape=[2], data=alpha)
 
         self.program_weights = {"input_scale": input_scale}
@@ -99,7 +99,7 @@ class TrtConvertBilinearInterpV2Test(TrtConvertBilinearInterpV2Test_all):
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         input_data = TensorConfig(shape=[-1, 3, 64, 64])
-        alpha = np.random.random(size=(2)).astype("float32")
+        alpha = np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
         input_scale = TensorConfig(shape=[2], data=alpha)
 
         self.program_weights = {"input_scale": input_scale}
