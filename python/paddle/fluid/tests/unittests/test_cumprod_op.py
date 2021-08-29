@@ -53,12 +53,12 @@ class TestCumprod(OpTest):
 # test api.
 class TestCumprodAPI(unittest.TestCase):
     def init_dtype(self):
-        self.dtype = 'int32'
+        self.dtype = 'complex'
         self.shape = [2, 3, 10, 10]
 
     def setUp(self):
         self.init_dtype()
-        self.x = (np.random.rand(2, 3, 10, 10) + 0.5).astype(self.type)
+        self.x = (np.random.rand(2, 3, 10, 10) + 0.5).astype(self.dtype)
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))

@@ -1931,7 +1931,7 @@ def cumprod(x, dim=None, dtype=None):
     Args:
         x (Tensor): the input tensor need to be cumproded.
         dim (int): the dimension to accumulate along. It need to be in the range of [-x.size(),x.size()], -1 means the last dimension.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64, complex. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
 
     Returns:
         Tensor, the result of cumprod operator.
