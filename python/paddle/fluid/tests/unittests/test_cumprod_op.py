@@ -30,57 +30,30 @@ np.random.seed(0)
 
 # test function.
 class TestCumprod(OpTest):
-    def prepare_inputs_outputs_attrs(self, dim, zero_num):
-        x = np.random.random(self.shape).astype('float64') + 0.5
-        if zero_num > 0:
-            zero_num = min(zero_num, x.size)
-            shape = x.shape
-            x = x.flatten()
-            indices = random.sample(range(x.size), zero_num)
-            for i in indices:
-                x[i] = 0
-            x = np.reshape(x, self.shape)
-        self.inputs = {'X': x}
-        self.outputs = {'Out': np.cumprod(x, axis=dim)}
-        self.attrs = {'dim': dim}
+    def setUp(self):
+        self.op_type = "cumprod"
+        self.init_dtype()
 
-    def init_params(self):
-        self.shape = [4, 5, 6]
-        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
+        x = (np.random.rand(2, 3, 10, 10) + 0.5).astype(self.dtype)
+        out = np.cumprod(x, axis=1)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'dim': 1}
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+    def test_check_output(self):
+        self.check_output()
 
     def init_dtype(self):
         self.dtype = np.float64
-
-    def setUp(self):
-        self.init_params()
-        self.op_type = "cumprod"
-        self.init_dtype()
-        self.inputs = {'X': None}
-        self.outputs = {'Out': None}
-        self.attrs = {'dim': None}
-
-    #def _get_places(self):
-    #return [paddle.CUDAPlace(0)]
-
-    # test forward.
-    def test_check_output(self):
-        for dim in range(-len(self.shape), len(self.shape)):
-            for zero_num in self.zero_nums:
-                self.prepare_inputs_outputs_attrs(dim, zero_num)
-                self.check_output()
-
-    # test backward.
-    def test_check_grad(self):
-        for dim in range(-len(self.shape), len(self.shape)):
-            for zero_num in self.zero_nums:
-                self.prepare_inputs_outputs_attrs(dim, zero_num)
-                self.check_grad(['X'], 'Out')
 
 
 # test api.
 class TestCumprodAPI(unittest.TestCase):
     def init_dtype(self):
-        self.dtype = 'float64'
+        self.dtype = 'int32'
         self.shape = [2, 3, 10, 10]
 
     def setUp(self):
