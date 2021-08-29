@@ -18,8 +18,15 @@ namespace operators {
 using DDim = framework::DDim;
 using Tensor = framework::Tensor;
 
-// @TODO
-// This function may be no correct !!!
+void CheckAxis(int axis, int rank) {
+  // check the axis is in [-rank, rank-1]
+  if (axis <= rank - 1 && axis >= -rank) return;
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "axis in norm operator must between (%d) and (%d)"
+      "but got (%d).",
+      -rank, rank - 1, axis));
+}
+
 inline void GetRemainDims(const framework::DDim &dim, int axis,
                           std::vector<int> *remainVec) {
   if (axis < 0) axis = dim.size() + axis;
@@ -37,16 +44,6 @@ inline void GetRemainDims(const framework::DDim &dim, int axis,
 
 template <typename DeviceContext, typename T>
 class NormNPUKernel : public framework::OpKernel<T> {
- private:
-  void CheckAxis(int axis, int rank) const {
-    // check the axis is in [-rank, rank-1]
-    if (axis <= rank - 1 && axis >= -rank) return;
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "axis in norm operator must between (%d) and (%d)"
-        "but got (%d).",
-        -rank, rank - 1, axis));
-  }
-
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     VLOG(4) << "Launch Norm Op Kernel on NPU." << std::endl;
@@ -93,6 +90,9 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
     auto *norm = ctx.Input<framework::Tensor>("Norm");
     auto *dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+
+    auto xdim = x->dims();
+    CheckAxis(axis, xdim.size());
 
     auto place = ctx.GetPlace();
 
@@ -209,7 +209,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
       PrintTensor<float>(x_square_sum_broadcast, ctx);
     }
 
-    // @TODO broadcast
     // x_square_sum -> x_square_sum_broadcast
     Tensor x_square_sum_plus_epsilon;
     {
@@ -226,7 +225,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
       PrintTensor<float>(x_square_sum_plus_epsilon, ctx);
     }
 
-    // @TODO broadcast
     // x_square_sum -> x_square_sum_broadcast
     Tensor x_square_sum_sqrt;
     {
@@ -243,7 +241,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
 
     // x * sum(x*dy)
     // x * x_mul_dy_sum
-    // @TODO broadcast
     Tensor tmp1;
     {
       tmp1.Resize(x->dims());
@@ -258,7 +255,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
 
     // x * sum(x*dy) / (sum(x*x) + e)
     // tmp1 / x_square_sum_plus_epsilon
-    // @TODO broadcast
     Tensor tmp2;
     {
       tmp2.Resize(x->dims());
@@ -274,7 +270,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
 
     // dy - x * sum(x*dy) / (sum(x*x) + e)
     // dy - tmp2
-    // @TODO broadcast
     Tensor tmp3;
     {
       tmp3.Resize(x->dims());
@@ -289,7 +284,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
 
     // at last, we get dx
     // tmp3 / x_square_sum_sqrt
-    // @TODO broadcast
     {
       dx->mutable_data<T>(place);
 
