@@ -31,7 +31,7 @@ class TestMultiDotOp(OpTest):
         self.get_inputs_and_outputs()
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def get_inputs_and_outputs(self):
         self.A = np.random.random((2, 8)).astype(self.dtype)
@@ -43,8 +43,8 @@ class TestMultiDotOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
 
 
 class TestMultiDotOpDouble(TestMultiDotOp):
@@ -62,9 +62,9 @@ class TestMultiDotOp3Mat(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x2'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
 
 
 #A*(B*C)
@@ -77,9 +77,9 @@ class TestMultiDotOp3Mat2(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x2'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
 
 
 class TestMultiDotOp4Mat(TestMultiDotOp):
@@ -95,10 +95,10 @@ class TestMultiDotOp4Mat(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x2'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x3'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x3'], 'Out')
 
 
 class TestMultiDotOpFirst1D(TestMultiDotOp):
@@ -118,9 +118,9 @@ class TestMultiDotOp3MatFirst1D(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x2'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
 
 
 class TestMultiDotOp4MatFirst1D(TestMultiDotOp):
@@ -136,10 +136,10 @@ class TestMultiDotOp4MatFirst1D(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x2'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x3'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x3'], 'Out')
 
 
 class TestMultiDotOpLast1D(TestMultiDotOp):
@@ -159,9 +159,9 @@ class TestMultiDotOp3MatLast1D(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x2'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
 
 
 class TestMultiDotOp4MatLast1D(TestMultiDotOp):
@@ -177,10 +177,10 @@ class TestMultiDotOp4MatLast1D(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x2'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x3'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x3'], 'Out')
 
 
 class TestMultiDotOpFirstAndLast1D(TestMultiDotOp):
@@ -191,8 +191,8 @@ class TestMultiDotOpFirstAndLast1D(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
 
 
 class TestMultiDotOp3MatFirstAndLast1D(TestMultiDotOp):
@@ -204,9 +204,9 @@ class TestMultiDotOp3MatFirstAndLast1D(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x2'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
 
 
 class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp):
@@ -222,10 +222,10 @@ class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x1'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x2'], 'Out', max_relative_error=1e-3)
-        self.check_grad(['x3'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x3'], 'Out')
 
 
 #####python API test#######
@@ -236,41 +236,41 @@ class TestMultiDotOpError(unittest.TestCase):
             input1 = 12
             self.assertRaises(TypeError, paddle.multi_dot, [input1, input1])
 
-            # The inputs dtype of multi_dot must be float32, float64 or float16.
+            # The inputs dtype of multi_dot must be float64, float64 or float16.
             input2 = fluid.layers.data(
                 name='input2', shape=[10, 10], dtype="int32")
             self.assertRaises(TypeError, paddle.multi_dot, [input2, input2])
 
             # the number of tensor must be larger than 1
-            x0 = fluid.data(name='x0', shape=[3, 2], dtype="float32")
+            x0 = fluid.data(name='x0', shape=[3, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.multi_dot, [x0])
 
             #the first tensor must be 1D or 2D
-            x1 = fluid.data(name='x1', shape=[3, 2, 3], dtype="float32")
-            x2 = fluid.data(name='x2', shape=[3, 2], dtype="float32")
+            x1 = fluid.data(name='x1', shape=[3, 2, 3], dtype="float64")
+            x2 = fluid.data(name='x2', shape=[3, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.multi_dot, [x1, x2])
 
             #the last tensor must be 1D or 2D
-            x3 = fluid.data(name='x3', shape=[3, 2], dtype="float32")
-            x4 = fluid.data(name='x4', shape=[3, 2, 2], dtype="float32")
+            x3 = fluid.data(name='x3', shape=[3, 2], dtype="float64")
+            x4 = fluid.data(name='x4', shape=[3, 2, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.multi_dot, [x3, x4])
 
             #the tensor must be 2D, except first and last tensor
-            x5 = fluid.data(name='x5', shape=[3, 2], dtype="float32")
-            x6 = fluid.data(name='x6', shape=[2], dtype="float32")
-            x7 = fluid.data(name='x7', shape=[2, 2], dtype="float32")
+            x5 = fluid.data(name='x5', shape=[3, 2], dtype="float64")
+            x6 = fluid.data(name='x6', shape=[2], dtype="float64")
+            x7 = fluid.data(name='x7', shape=[2, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.multi_dot, [x5, x6, x7])
 
 
 class API_TestMultiDot(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
-            x0 = fluid.data(name='x0', shape=[3, 2], dtype="float32")
-            x1 = fluid.data(name='x1', shape=[2, 3], dtype='float32')
+            x0 = fluid.data(name='x0', shape=[3, 2], dtype="float64")
+            x1 = fluid.data(name='x1', shape=[2, 3], dtype='float64')
             result = paddle.multi_dot([x0, x1])
             exe = fluid.Executor(fluid.CPUPlace())
-            data1 = np.random.rand(3, 2).astype("float32")
-            data2 = np.random.rand(2, 3).astype("float32")
+            data1 = np.random.rand(3, 2).astype("float64")
+            data2 = np.random.rand(2, 3).astype("float64")
             np_res = exe.run(feed={'x0': data1,
                                    'x1': data2},
                              fetch_list=[result])

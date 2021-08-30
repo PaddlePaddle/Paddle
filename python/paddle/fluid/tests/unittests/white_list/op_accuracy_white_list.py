@@ -76,8 +76,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'trilinear_interp_v2', \
     'var_conv_2d', \
     'warpctc', \
-    'bilateral_slice',
-    'multi_dot'
+    'bilateral_slice'
 ]
 
 NO_FP16_CHECK_GRAD_OP_LIST = [

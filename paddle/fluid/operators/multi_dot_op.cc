@@ -63,17 +63,11 @@ inline framework::DDim ComputeAndCheckShape(
   // If the last tensor is 1D of size n view it as a column vector (n, 1)
   if (last_dim.size() == 1) {
     last_dim = framework::make_ddim({static_cast<int>(last_dim[0]), 1});
-    if (is_vector) {
-      out_dim = framework::make_ddim({1});
-    } else {
-      out_dim = framework::make_ddim({first_dim[0]});
-    }
+    out_dim = is_vector ? framework::make_ddim({1})
+                        : framework::make_ddim({first_dim[0]});
   } else {
-    if (is_vector) {
-      out_dim = framework::make_ddim({last_dim[1]});
-    } else {
-      out_dim = framework::make_ddim({first_dim[0], last_dim[1]});
-    }
+    out_dim = is_vector ? framework::make_ddim({last_dim[1]})
+                        : framework::make_ddim({first_dim[0], last_dim[1]});
   }
 
   auto width = first_dim[1];
@@ -83,21 +77,21 @@ inline framework::DDim ComputeAndCheckShape(
                           "the input tensor of multi_dot op must be 2D."));
 
     const auto& tmp_dim = inputs_dims[i];
-    PADDLE_ENFORCE_EQ(tmp_dim[0], width,
-                      platform::errors::InvalidArgument(
-                          "the input tensor of multi_dot op must be 2D."));
+    PADDLE_ENFORCE_EQ(
+        tmp_dim[0], width,
+        platform::errors::InvalidArgument(
+            "the input matrix does not meet the multiplication requirements."));
     width = tmp_dim[1];
   }
-  PADDLE_ENFORCE_EQ(last_dim[0], width,
-                    platform::errors::InvalidArgument(
-                        "the input tensor of multi_dot op must be 2D."));
+
+  PADDLE_ENFORCE_EQ(
+      last_dim[0], width,
+      platform::errors::InvalidArgument(
+          "the input matrix does not meet the multiplication requirements."));
 
   return out_dim;
 }
 
-/**
- * @brief the matrix multiplication
- */
 template <typename DeviceContext, typename T>
 inline framework::Tensor MatMul(const framework::ExecutionContext& ctx,
                                 const framework::Tensor& matrix_a,
@@ -109,8 +103,8 @@ inline framework::Tensor MatMul(const framework::ExecutionContext& ctx,
 
   framework::Tensor matrix_c;
   framework::DDim c_dim = framework::make_ddim({a_dim[0], b_dim[1]});
-  matrix_c.mutable_data<T>(place, c_dim[0] * c_dim[1] * sizeof(T));
   matrix_c.Resize(c_dim);
+  matrix_c.mutable_data<T>(place);
 
   auto mat_dim_a = math::CreateMatrixDescriptor(a_dim, 0, false);
   auto mat_dim_b = math::CreateMatrixDescriptor(b_dim, 0, false);
@@ -330,18 +324,15 @@ class MultiDotKernel : public framework::OpKernel<T> {
       const auto Ka = ins_dims[0][1];
       const auto Nb = ins_dims[1][1];
       const auto Nc = ins_dims[2][1];
-      const uint64_t cost1 =
-          Ma * Nb * (Ka + Nc);  // Ma * Ka * Nb + Ma * Nb * Nc;
-      const uint64_t cost2 =
-          Ka * Nc * (Nb + Ma);  // Ka * Nb * Nc + Ma * Ka * Nc;
+      const uint64_t cost1 = Ma * Nb * (Ka + Nc);
+      const uint64_t cost2 = Ka * Nc * (Nb + Ma);
       auto mat_dim_a = math::CreateMatrixDescriptor(ins_dims[0], 0, false);
       auto mat_dim_b = math::CreateMatrixDescriptor(ins_dims[1], 0, false);
       auto mat_dim_c = math::CreateMatrixDescriptor(ins_dims[2], 0, false);
       if (cost1 < cost2) {
         framework::Tensor tmp_out;
         tmp_out.mutable_data<T>(place, Ma * Nb * sizeof(T));
-        framework::DDim tmp_dim = ins_dims[0];
-        tmp_dim[1] = Nb;
+        framework::DDim tmp_dim = framework::make_ddim({Ma, Nb});
         blas.MatMul(*ins[0], mat_dim_a, *ins[1], mat_dim_b, scale, &tmp_out,
                     T(0));
         auto mat_dim_tmp = math::CreateMatrixDescriptor(tmp_dim, 0, false);
@@ -349,8 +340,7 @@ class MultiDotKernel : public framework::OpKernel<T> {
       } else {
         framework::Tensor tmp_out;
         tmp_out.mutable_data<T>(place, Ka * Nc * sizeof(T));
-        framework::DDim tmp_dim = ins_dims[1];
-        tmp_dim[1] = Nc;
+        framework::DDim tmp_dim = framework::make_ddim({Ka, Nc});
         blas.MatMul(*ins[1], mat_dim_b, *ins[2], mat_dim_c, scale, &tmp_out,
                     T(0));
         auto mat_dim_tmp = math::CreateMatrixDescriptor(tmp_dim, 0, false);
@@ -361,7 +351,6 @@ class MultiDotKernel : public framework::OpKernel<T> {
       const auto tmp = MultiDotMatChainOrder<DeviceContext, T>(
           ctx, ins, ins_dims, false, &results);
       auto out_dim = out->dims();
-      // TensorCopy(tmp, place, ctx.device_context(), out);
       *out = tmp;
       out->Resize(out_dim);
     }
@@ -473,7 +462,6 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
     dB.mutable_data<T>(ctx.GetPlace());
 
     CalcGrad(ctx, dout, *A, *B, dout_dim, a_dim, b_dim, &dA, &dB);
-
     MatChainMulGrad(ctx, dA, dx, ins, dA.dims(), ins_dims, order, i, right,
                     results);
     MatChainMulGrad(ctx, dB, dx, ins, dB.dims(), ins_dims, order, left, j,
@@ -489,7 +477,6 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
     auto order = GetOrder(ins, ins_dims);
     auto n = ins.size();
     std::vector<framework::Tensor> results(n * n);
-    // call the forward, get the itermediate result
     MatChainMul<DeviceContext, T>(ctx, ins, ins_dims, order, 0, n - 1, true,
                                   &results);
     MatChainMulGrad(ctx, dout, dx, ins, dout_dim, ins_dims, order, 0, n - 1,
@@ -548,21 +535,10 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
         tmp_out.mutable_data<T>(place);
         tmp_dout.Resize({mat_dim_dout.height_, Nb});
         tmp_dout.mutable_data<T>(place);
-        // tmp_out = A * B
         blas.MatMul(*ins[0], mat_dim_a, *ins[1], mat_dim_b, alpha, &tmp_out,
                     T(0));
-
-        /*
-         * dC = dout * transpose(tmp_out)
-         * tmp_dout = dout * transpose(C)
-         */
         CalcGrad(ctx, dout, tmp_out, *ins[2], dout_dim, tmp_out.dims(),
                  ins_dims[2], &tmp_dout, dx[2]);
-
-        /*
-         * dA = tmp_dout * transpose(B)
-         * dB = tmp_dout * transpose(A)
-         */
         CalcGrad(ctx, tmp_dout, *ins[0], *ins[1], tmp_dout.dims(), ins_dims[0],
                  ins_dims[1], dx[0], dx[1]);
       } else {
@@ -573,18 +549,8 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
         tmp_dout.mutable_data<T>(place);
         blas.MatMul(*ins[1], mat_dim_b, *ins[2], mat_dim_c, alpha, &tmp_out,
                     T(0));
-
-        /*
-         * dA = dout * transpose(tmp_out)
-         * tmp_out = dout * transpose(A)
-         */
         CalcGrad(ctx, dout, *ins[0], tmp_out, dout_dim, ins_dims[0],
                  tmp_dout.dims(), dx[0], &tmp_dout);
-
-        /*
-         * dB = tmp_dout * transpose(C)
-         * dC = tmp_dout * transpose(B)
-         */
         CalcGrad(ctx, tmp_dout, *ins[1], *ins[2], tmp_dout.dims(), ins_dims[1],
                  ins_dims[2], dx[1], dx[2]);
       }
