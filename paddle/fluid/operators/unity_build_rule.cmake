@@ -365,7 +365,6 @@ register_unity_group(cu
     bmm_op.cu
     cast_op.cu
     cholesky_op.cu
-    eigh_op.cu
     clip_by_norm_op.cu
     clip_op.cu
     conv_cudnn_op.cu
