@@ -94,21 +94,26 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
 
     // for parameter prefetch
     AddAttr<bool>("remote_prefetch", "").SetDefault(false);
-    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.")
+        .SetDefault(0)
+        .AsExtra();
     AddAttr<std::vector<int64_t>>("height_sections",
                                   "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int64_t>({}));
+        .SetDefault(std::vector<int64_t>({}))
+        .AsExtra();
     AddAttr<std::vector<std::string>>(
         "epmap",
         "(string vector, default 127.0.0.1:6164)"
         "Server endpoints in the order of input variables for mapping")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<std::string>>(
         "table_names",
         "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
 
     AddComment(R"DOC(
 Lookup Table V2 Operator.
