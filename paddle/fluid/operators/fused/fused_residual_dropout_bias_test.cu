@@ -58,7 +58,6 @@ struct TestFusedResidualDropoutBias {
     is_upscale_in_train = false;
     is_test = false;
     hasbias = true;
-    // ctx = new platform::CUDADeviceContext(place);
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
     ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
@@ -75,7 +74,6 @@ struct TestFusedResidualDropoutBias {
     is_upscale_in_train = is_upscale_in_train_;
     is_test = is_test_;
     hasbias = true;
-    // ctx = new platform::CUDADeviceContext(place);
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
     ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
@@ -100,7 +98,9 @@ struct TestFusedResidualDropoutBias {
       for (int j = 0; j < cols; j++) {
         src_vec[i * cols + j] = static_cast<T>(dis(random));
         residual_vec[i * cols + j] = static_cast<T>(dis(random));
-        if (i == 0) bias_vec[j] = dis(random);
+        if (i == 0) {
+          bias_vec[j] = dis(random);
+        }
       }
     }
 
@@ -155,9 +155,8 @@ struct TestFusedResidualDropoutBias {
   }
 
   void BaseBackward() {
-    DropoutGrad<T>(correct_dsrc.data(), src.dims(), correct_out.data(),
-                   correct_mask.data(), *ctx, dropout_prob,
-                   is_upscale_in_train);
+    DropoutGrad<T>(&correct_dsrc, src.dims(), correct_out, correct_mask, *ctx,
+                   dropout_prob, is_upscale_in_train);
     // calc dbias
     memset(&correct_dbias[0], 0, cols * sizeof(T));
     for (int i = 0; i < rows; i++) {
@@ -187,7 +186,9 @@ struct TestFusedResidualDropoutBias {
   }
 
   void FusedBackward() {
-    if (is_test) return;
+    if (is_test) {
+      return;
+    }
 
     T *bias_ptr = nullptr;
     if (hasbias) {
@@ -223,7 +224,9 @@ struct TestFusedResidualDropoutBias {
   }
 
   void CheckGrad(const T diff) {
-    if (is_test) return;
+    if (is_test) {
+      return;
+    }
 
     const int n = rows * cols;
 

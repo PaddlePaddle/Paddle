@@ -79,24 +79,21 @@ void Dropout(const std::vector<T> &x, const framework::DDim &x_dim,
  * @brief call paddle dropout_grad op
  */
 template <typename T>
-void DropoutGrad(T *dx, const framework::DDim &x_dim, const T *dout,
-                 const uint8_t *mask, const platform::CUDADeviceContext &ctx,
-                 float dropout_prob, bool is_upscale_in_train) {
+void DropoutGrad(std::vector<T> *dx, const framework::DDim &x_dim,
+                 const std::vector<T> &dout, const std::vector<uint8_t> &mask,
+                 const platform::CUDADeviceContext &ctx, float dropout_prob,
+                 bool is_upscale_in_train) {
   framework::Scope scope;
   const size_t n = x_dim[0] * x_dim[1];
   auto var_out = scope.Var("DOut");
   auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+  framework::TensorFromVector(dout, ctx, tensor_out);
   tensor_out->Resize(x_dim);
-  tensor_out->mutable_data<T>(ctx.GetPlace());
-  cudaMemcpy(tensor_out->data<T>(), dout, n * sizeof(T),
-             cudaMemcpyHostToDevice);
 
   auto var_mask = scope.Var("Mask");
   auto tensor_mask = var_mask->GetMutable<framework::LoDTensor>();
+  framework::TensorFromVector(mask, ctx, tensor_mask);
   tensor_mask->Resize(x_dim);
-  tensor_mask->mutable_data<uint8_t>(ctx.GetPlace());
-  cudaMemcpy(tensor_mask->data<uint8_t>(), mask, n * sizeof(uint8_t),
-             cudaMemcpyHostToDevice);
 
   auto var_dx = scope.Var("DX");
   auto tensor_dx = var_dx->GetMutable<framework::LoDTensor>();
@@ -115,7 +112,6 @@ void DropoutGrad(T *dx, const framework::DDim &x_dim, const T *dout,
       {{"X@GRAD", {"DX"}}}, attrs);
   op->Run(scope, ctx.GetPlace());
 
-  cudaMemcpy(dx, tensor_dx->data<T>(), x_dim[0] * x_dim[1] * sizeof(T),
-             cudaMemcpyDeviceToHost);
+  framework::TensorToVector(*tensor_dx, ctx, dx);
   ctx.Wait();
 }
