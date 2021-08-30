@@ -34,7 +34,7 @@ class TestFrameOp(OpTest):
         }
 
     def initTestCase(self):
-        input_shape = (8, 150)
+        input_shape = (150, )
         input_type = 'int32'
         attrs = {
             'frame_length': 50,
@@ -51,6 +51,30 @@ class TestFrameOp(OpTest):
 
 class TestCase1(TestFrameOp):
     def initTestCase(self):
+        input_shape = (150, )
+        input_type = 'int32'
+        attrs = {
+            'frame_length': 50,
+            'hop_length': 15,
+            'axis': 0,
+        }
+        return input_shape, input_type, attrs
+
+
+class TestCase2(TestFrameOp):
+    def initTestCase(self):
+        input_shape = (8, 150)
+        input_type = 'int32'
+        attrs = {
+            'frame_length': 50,
+            'hop_length': 15,
+            'axis': -1,
+        }
+        return input_shape, input_type, attrs
+
+
+class TestCase3(TestFrameOp):
+    def initTestCase(self):
         input_shape = (150, 8)
         input_type = 'int32'
         attrs = {
@@ -62,7 +86,7 @@ class TestCase1(TestFrameOp):
 
 
 # FIXME(chenxiaojie06): There are bugs when input dims >= 3 in librosa.
-# class TestCase2(TestFrameOp):
+# class TestCase3(TestFrameOp):
 #     def initTestCase(self):
 #         input_shape = (4, 2, 150)
 #         input_type = 'int32'
@@ -73,7 +97,7 @@ class TestCase1(TestFrameOp):
 #         }
 #         return input_shape, input_type, attrs
 
-# class TestCase3(TestFrameOp):
+# class TestCase4(TestFrameOp):
 #     def initTestCase(self):
 #         input_shape = (150, 4, 2)
 #         input_type = 'int32'

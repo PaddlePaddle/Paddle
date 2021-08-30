@@ -29,15 +29,13 @@ using Tensor = framework::Tensor;
 template <typename T>
 struct DataMappingFunctor {
   DataMappingFunctor(const T* input, T* output, size_t seq_length,
-                     size_t frame_length, size_t n_frames, size_t hop_length,
-                     int axis)
+                     size_t frame_length, size_t n_frames, size_t hop_length)
       : input_(input),
         output_(output),
         seq_length_(seq_length),
         frame_length_(frame_length),
         n_frames_(n_frames),
-        hop_length_(hop_length),
-        axis_(axis) {}
+        hop_length_(hop_length) {}
 
   /*
     Convert sequences to frames.
@@ -45,8 +43,7 @@ struct DataMappingFunctor {
     1. Dimension infomation:
 
        Sequences                   Frames
-    (seq_length, N)  ->  (n_frames, frame_length, N)  // axis = 0
-    (N, seq_length)  ->  (N, frame_length, n_frames)  // axis = -1
+    (N, seq_length)  ->  (N, frame_length, n_frames)
 
     2. Mapping from `i` to  `src_idx` and `trg_idx` can be derived from:
 
@@ -62,45 +59,28 @@ struct DataMappingFunctor {
 
       c. Maps `i` to `f` and `n`.
         ```cpp
-        f = (axis_ == 0) ? i % (n_frames_ * frame_length_) % frame_length_ :
-                           i % (n_frames_ * frame_length_) / n_frames_;
-        n = (axis_ == 0) ? i % (n_frames_ * frame_length_) / frame_length_ :
-                           i % (n_frames_ * frame_length_) % n_frames_;
+        f = i % (n_frames_ * frame_length_) / n_frames_;
+        n = i % (n_frames_ * frame_length_) % n_frames_;
         ```
 
       d. Replace `sample_idx`, `f` and `n` in the eqations followed.
         ```cpp
         src_idx = sample_idx * seq_length_ + n * hop_length_ + f;
-        trg_idx =
-            (axis_ == 0) ? sample_idx * n_frames_ * frame_length_ +
-                           n * frame_length_ + f :
-                           sample_idx * n_frames_ * frame_length_ +
-                           f * n_frames_ + n;
+        trg_idx = sample_idx * n_frames_ * frame_length_ + f * n_frames_ + n;
         output_[trg_idx] = input_[src_idx];
         ```
 
-      e. Result can be deduced shown in the function body below that differs
-         from axis_.
+      e. Result can be deduced shown in the function body below.
   */
   HOSTDEVICE void operator()(size_t i) const {
     size_t src_idx;
     size_t trg_idx;
-    if (axis_ == 0) {
-      src_idx = i / (n_frames_ * frame_length_) * seq_length_ +
-                i % (n_frames_ * frame_length_) / frame_length_ * hop_length_ +
-                i % (n_frames_ * frame_length_) % frame_length_;
-      trg_idx =
-          i / (n_frames_ * frame_length_) * n_frames_ * frame_length_ +
-          i % (n_frames_ * frame_length_) / frame_length_ * frame_length_ +
-          i % (n_frames_ * frame_length_) % frame_length_;
-    } else {
-      src_idx = i / (n_frames_ * frame_length_) * seq_length_ +
-                i % (n_frames_ * frame_length_) % n_frames_ * hop_length_ +
-                i % (n_frames_ * frame_length_) / n_frames_;
-      trg_idx = i / (n_frames_ * frame_length_) * n_frames_ * frame_length_ +
-                i % (n_frames_ * frame_length_) / n_frames_ * n_frames_ +
-                i % (n_frames_ * frame_length_) % n_frames_;
-    }
+    src_idx = i / (n_frames_ * frame_length_) * seq_length_ +
+              i % (n_frames_ * frame_length_) % n_frames_ * hop_length_ +
+              i % (n_frames_ * frame_length_) / n_frames_;
+    trg_idx = i / (n_frames_ * frame_length_) * n_frames_ * frame_length_ +
+              i % (n_frames_ * frame_length_) / n_frames_ * n_frames_ +
+              i % (n_frames_ * frame_length_) % n_frames_;
     output_[trg_idx] = input_[src_idx];
   }
 
@@ -110,22 +90,81 @@ struct DataMappingFunctor {
   size_t frame_length_;
   size_t n_frames_;
   size_t hop_length_;
-  int axis_;
+};
+
+template <typename T>
+struct DataMappingGradFunctor {
+  DataMappingGradFunctor(const T* dOut, T* dX, size_t seq_length,
+                         size_t frame_length, size_t n_frames,
+                         size_t hop_length)
+      : dOut_(dOut),
+        dX_(dX),
+        seq_length_(seq_length),
+        frame_length_(frame_length),
+        n_frames_(n_frames),
+        hop_length_(hop_length) {}
+
+  //           dOut                          dX
+  // (N, frame_length, n_frames)  ->  (N, seq_length)
+  HOSTDEVICE void operator()(size_t i) const {
+    size_t sample_idx = i / seq_length_;
+    i = i % seq_length_;  // Convert to a relative idx of a seq sample.
+
+    // Sliding window
+    size_t left =
+        0;  // TODO(chenxiaojie06): Compute the start point instead of 0.
+    size_t right = frame_length_ - 1;
+
+    size_t n = 0;  // The idx of num_frames_, increases in each hop.
+    size_t f;  // The idx of frame_lengths_, relative idx from left of a sliding
+               // window.
+    dX_[i] = 0;  // Init dX_[i] to 0, and a while loop followed to sum all grads
+                 // from dOut_.
+    while (left <= i && right < seq_length_) {
+      if (i <= right) {  // Assure i locates in [left, right].
+        // Relative idx from left, and it means the idx of frame dimension.
+        f = i - left;
+        // Accumulate all grads from dOut.
+        dX_[i] +=
+            dOut_[sample_idx * frame_length_ * n_frames_ + f * n_frames_ + n];
+      }
+      // Next frame.
+      left += hop_length_;
+      right += hop_length_;
+      n += 1;
+    }
+  }
+
+  const T* dOut_;
+  T* dX_;
+  size_t seq_length_;
+  size_t frame_length_;
+  size_t n_frames_;
+  size_t hop_length_;
 };
 
 template <typename DeviceContext, typename T>
 struct FrameFunctor {
   void operator()(const DeviceContext& dev_ctx, const Tensor* input,
                   Tensor* output, size_t seq_length, size_t frame_length,
-                  size_t n_frames, size_t hop_length, int axis) const {
+                  size_t n_frames, size_t hop_length,
+                  bool is_grad = false) const {
     auto numel = output->numel();
     auto* input_data = input->data<T>();
     auto* output_data = output->data<T>();
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    DataMappingFunctor<T> functor(input_data, output_data, seq_length,
-                                  frame_length, n_frames, hop_length, axis);
-    for_range(functor);
+    if (!is_grad) {
+      VLOG(0) << "DataMappingFunctor";
+      DataMappingFunctor<T> functor(input_data, output_data, seq_length,
+                                    frame_length, n_frames, hop_length);
+      for_range(functor);
+    } else {
+      VLOG(0) << "DataMappingGradFunctor";
+      DataMappingGradFunctor<T> functor(input_data, output_data, seq_length,
+                                        frame_length, n_frames, hop_length);
+      for_range(functor);
+    }
   }
 };
 
@@ -171,15 +210,17 @@ class FrameKernel : public framework::OpKernel<T> {
     This kernel requires input dims in [1, +∞). The main steps
     as follow:
 
-      1. Case 1 - input dims <= 1:
-        Call a FrameFunctor to compute it directly.
+      - Case 1 - input dims == 1:
+        - axis is -1: Call a FrameFunctor to compute it directly.
+        - axis is  0: Transpose both output firstly, and then it falls
+          into case axis is -1. Finally, it restores the dims of output tensor.
 
-      2. Case 2 - input dims == 2:
-        - axis is -1: Call a FrameFunctor like Case 1.
+      - Case 2 - input dims == 2:
+        - axis is -1: Call a FrameFunctor to compute it directly.
         - axis is  0: Transpose both input and output firstly, and then it falls
           into case axis is -1. Finally, it restores the dims of output tensor.
 
-      3. Case 3 - input dims > 2:
+      - Case 3 - input dims > 2:
         Flatten the input and output dims to 2D and 3D respectively so that it
         falls into Case 2. Finally, it restores the dims of output tensor.
   */
@@ -198,85 +239,87 @@ class FrameKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
-    if (x->dims().size() == 1U) {
-      FrameFunctor<DeviceContext, T>()(dev_ctx, x, out, seq_length,
-                                       frame_length, n_frames, hop_length,
-                                       axis);
-    } else {
-      // When the number of input dims is larger than 2, it needs to copy
-      // from x to resize input into 2d and output into 3d. Morevoer, output
-      // dims will be restored at the last step.
-      Tensor x_(x->type());
-      x_ = *x;
+    // When the number of input dims is larger than 2, it needs to copy
+    // from x to resize input into 2d and output into 3d. Morevoer, output
+    // dims will be restored at the last step.
+    Tensor x_(x->type());
+    x_ = *x;
 
-      framework::DDim preserved_dims;
-      if (x->dims().size() > 2) {
-        // Save dims used to flatten both input and output tensors and restore
-        // output tensor.
-        framework::DDim x_resized_dims;
-        framework::DDim out_resized_dims;
-        if (axis == 0) {
-          preserved_dims =
-              framework::slice_ddim(x_.dims(), 1, x_.dims().size());
-          x_resized_dims = {seq_length, framework::product(preserved_dims)};
-          out_resized_dims = {n_frames, frame_length,
-                              framework::product(preserved_dims)};
-        } else {
-          preserved_dims =
-              framework::slice_ddim(x_.dims(), 0, x_.dims().size() - 1);
-          x_resized_dims = {framework::product(preserved_dims), seq_length};
-          out_resized_dims = {framework::product(preserved_dims), frame_length,
-                              n_frames};
-        }
-
-        x_.Resize(x_resized_dims);
-        out->Resize(out_resized_dims);
-      }
-
-      Tensor trans_x(x_.type());
-      Tensor trans_out(out->type());
-
-      // Transpose input and output in case that axis is 0.
+    framework::DDim preserved_dims;
+    if (x->dims().size() > 2) {
+      // Save dims used to flatten both input and output tensors and restore
+      // output tensor.
+      framework::DDim x_resized_dims;
+      framework::DDim out_resized_dims;
       if (axis == 0) {
-        std::vector<int> perm_x{1, 0};
-        TransCompute<DeviceContext, T>(ctx, x_, &trans_x, perm_x);
+        preserved_dims = framework::slice_ddim(x_.dims(), 1, x_.dims().size());
+        x_resized_dims = {seq_length, framework::product(preserved_dims)};
+        out_resized_dims = {n_frames, frame_length,
+                            framework::product(preserved_dims)};
+      } else {
+        preserved_dims =
+            framework::slice_ddim(x_.dims(), 0, x_.dims().size() - 1);
+        x_resized_dims = {framework::product(preserved_dims), seq_length};
+        out_resized_dims = {framework::product(preserved_dims), frame_length,
+                            n_frames};
+      }
+      x_.Resize(x_resized_dims);
+      out->Resize(out_resized_dims);
+    }
 
-        std::vector<int> perm_out{2, 1, 0};
+    Tensor trans_x(x_.type());
+    Tensor trans_out(out->type());
+
+    // Transpose input and output in case that axis is 0.
+    if (axis == 0) {
+      if (x->dims().size() == 1U) {
+        trans_x = x_;
+        std::vector<int> perm_out{1, 0};
         TransCompute<DeviceContext, T>(ctx, *out, &trans_out, perm_out);
       } else {
-        trans_x = x_;
-        trans_out = *out;
+        std::vector<int> perm_x{1, 0};
+        TransCompute<DeviceContext, T>(ctx, x_, &trans_x, perm_x);
+        std::vector<int> perm_out{2, 1, 0};
+        TransCompute<DeviceContext, T>(ctx, *out, &trans_out, perm_out);
       }
+    } else {
+      trans_x = x_;
+      trans_out = *out;
+    }
 
-      FrameFunctor<DeviceContext, T>()(dev_ctx, &trans_x, &trans_out,
-                                       seq_length, frame_length, n_frames,
-                                       hop_length, /*axis*/ -1);
+    FrameFunctor<DeviceContext, T>()(dev_ctx, &trans_x, &trans_out, seq_length,
+                                     frame_length, n_frames, hop_length,
+                                     /*is_grad*/ false);
 
-      // Transpose output in case axis is 0.
-      if (axis == 0) {
+    // Transpose output in case axis is 0.
+    if (axis == 0) {
+      if (x->dims().size() == 1U) {
+        std::vector<int> perm_out{1, 0};
+        TransCompute<DeviceContext, T>(ctx, trans_out, out, perm_out);
+      } else {
         std::vector<int> perm_out{2, 1, 0};
         TransCompute<DeviceContext, T>(ctx, trans_out, out, perm_out);
       }
+    }
 
-      // Restore output when the number of dims is larger than 2.
-      if (x->dims().size() > 2) {
-        std::vector<int64_t> restored_out_shape;
-        for (int i = 0; i < preserved_dims.size(); i++) {
-          restored_out_shape.push_back(preserved_dims[i]);
-        }
-
-        if (axis == 0) {
-          // (n_frames, frame_length, ...)
-          restored_out_shape.insert(restored_out_shape.begin(), frame_length);
-          restored_out_shape.insert(restored_out_shape.begin(), n_frames);
-        } else {
-          // (..., frame_length, n_frames)
-          restored_out_shape.push_back(frame_length);
-          restored_out_shape.push_back(n_frames);
-        }
-
-        out->Resize(framework::make_ddim(restored_out_shape));
+    // Restore output dims when the number of dims is larger than 2.
+    if (x->dims().size() > 2) {
+      std::vector<int64_t> restored_out_shape;
+      for (int i = 0; i < preserved_dims.size(); i++) {
+        restored_out_shape.push_back(preserved_dims[i]);
       }
+
+      if (axis == 0) {
+        // (n_frames, frame_length, ...)
+        restored_out_shape.insert(restored_out_shape.begin(), frame_length);
+        restored_out_shape.insert(restored_out_shape.begin(), n_frames);
+      } else {
+        // (..., frame_length, n_frames)
+        restored_out_shape.push_back(frame_length);
+        restored_out_shape.push_back(n_frames);
+      }
+
+      out->Resize(framework::make_ddim(restored_out_shape));
     }
   }
 };
