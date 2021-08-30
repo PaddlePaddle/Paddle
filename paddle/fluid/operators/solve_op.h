@@ -134,6 +134,7 @@ class SolveGradKernel : public framework::OpKernel<T> {
              trans_b, out);
     }
   }
+
   void InvBackwardGrad(const framework::ExecutionContext& ctx,
                        const framework::Tensor& x_inv,
                        framework::Tensor* dx) const {
@@ -262,20 +263,10 @@ class SolveGradKernel : public framework::OpKernel<T> {
         ConjHelper<DeviceContext, T> conj_helper(ctx);
         conj_helper(x, x_conj);
       }
-      if (transpose_x && transpose_y) {
-        CalcInputGrad(ctx, y_conj, true, true, dout, true, false, dx);
-        CalcInputGrad(ctx, dout, true, true, x_conj, true, false, dy);
-      } else if (transpose_x) {
-        CalcInputGrad(ctx, y_conj, false, false, dout, true, false, dx);
-        CalcInputGrad(ctx, x_conj, false, false, dout, false, true, dy);
-      } else if (transpose_y) {
-        CalcInputGrad(ctx, dout, false, false, y_conj, false, true, dx);
-        CalcInputGrad(ctx, dout, true, true, x_conj, false, true, dy);
-      } else {
-        CalcInputGrad(ctx, dout, false, false, y_conj, true, false, dx);
-        if (dx) InvBackwardGrad(ctx, x_inv, dx);
-        CalcInputGrad(ctx, x_conj, true, true, dout, false, true, dy);
-      }
+      // transpose_x & transpose_y is false
+      CalcInputGrad(ctx, dout, false, false, y_conj, true, false, dx);
+      if (dx) InvBackwardGrad(ctx, x_inv, dx);
+      CalcInputGrad(ctx, x_conj, true, true, dout, false, true, dy);
 
       if (dx) {
         if (dx_dims != x.dims()) {
@@ -302,47 +293,19 @@ class SolveGradKernel : public framework::OpKernel<T> {
       ConjHelper<DeviceContext, T> conj_helper(ctx);
       conj_helper(x, x_conj);
       conj_helper(y, y_conj);
-      if (transpose_x) {
-        if (transpose_y) {
-          // X'Y': dA = Y'G', dB = G'X'
-          if (dx)
-            MatMulFunction<DeviceContext, T>(&y_conj, &dout, y_dims, dout_dims,
-                                             &dx_help, true, true, ctx);
-          if (dy)
-            MatMulFunction<DeviceContext, T>(&dout, &x_conj, dout_dims, x_dims,
-                                             &dy_help, true, true, ctx);
-        } else {
-          // X'Y: dX = YG', dY = XG
-          if (dx)
-            MatMulFunction<DeviceContext, T>(&y_conj, &dout, y_dims, dout_dims,
-                                             &dx_help, false, true, ctx);
-          if (dy)
-            MatMulFunction<DeviceContext, T>(&x_conj, &dout, x_dims, dout_dims,
-                                             &dy_help, false, false, ctx);
-        }
-      } else {
-        if (transpose_y) {
-          // XY': dX = GY, dY = G'X
-          if (dx)
-            MatMulFunction<DeviceContext, T>(&dout, &y_conj, dout_dims, y_dims,
-                                             &dx_help, false, false, ctx);
-          if (dy)
-            MatMulFunction<DeviceContext, T>(&dout, &x_conj, dout_dims, x_dims,
-                                             &dy_help, true, false, ctx);
-        } else {
-          // XY: dX = GY', dY = X'G
-          if (dx) {
-            MatMulFunction<DeviceContext, T>(&dout, &y_conj, dout_dims, y_dims,
-                                             &dx_help, false, true, ctx);
-            InvBackwardGrad(ctx, x_inv, dx);
-          }
-          if (dy) {
-            MatMulFunction<DeviceContext, T>(&x_conj, &dout, x_dims, dout_dims,
-                                             &dy_help, true, false, ctx);
-            if (is_special) {
-              dy->Resize(y_dim);
-            }
-          }
+
+      // transpose_x & transpose_y is false
+      // XY: dX = GY', dY = X'G
+      if (dx) {
+        MatMulFunction<DeviceContext, T>(&dout, &y_conj, dout_dims, y_dims,
+                                         &dx_help, false, true, ctx);
+        InvBackwardGrad(ctx, x_inv, dx);
+      }
+      if (dy) {
+        MatMulFunction<DeviceContext, T>(&x_conj, &dout, x_dims, dout_dims,
+                                         &dy_help, true, false, ctx);
+        if (is_special) {
+          dy->Resize(y_dim);
         }
       }
 
