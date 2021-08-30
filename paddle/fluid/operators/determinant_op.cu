@@ -104,11 +104,6 @@ class DeterminantGradCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-// template <typename T>
-// T sign(T val) {
-//   return static_cast<T>(T(0) < val) - (val < T(0));
-// }
-
 template <typename T>
 void SlogDeterminant(const Tensor& input, const framework::ExecutionContext ctx, int rank, int batch_count,
   Tensor* output) {

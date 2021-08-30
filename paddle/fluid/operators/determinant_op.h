@@ -42,8 +42,6 @@ struct DeterminantFunctor {
           matrix(i, j) = sub_vec[rank * i + j];
         }
       }
-      VLOG(2) << "det value: " << matrix.determinant();
-      VLOG(2) << "matrix val: " << matrix;
       output_vec.push_back(matrix.determinant());
     }
     framework::TensorFromVector(output_vec, output);
@@ -77,9 +75,7 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     const auto* dout =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    // const T* dout_data = dout->data<T>();
     auto dout_dim = vectorize(dout->dims());
-
     auto* dx =
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
     T* dx_data = dx->mutable_data<T>(context.GetPlace());
@@ -133,7 +129,6 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* input = context.Input<framework::Tensor>("Input");
     auto input_dim = vectorize(input->dims());
-    // VLOG(2)<<"input_dim:XXXXX"<<input_dim;
     auto input_dim_size = input_dim.size();
     auto* output = context.Output<framework::Tensor>("Out");
 
