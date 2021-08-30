@@ -303,6 +303,21 @@ template PD_INFER_DECL void Tensor::CopyToCpu<uint8_t>(uint8_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int8_t>(int8_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<float16>(float16 *data) const;
 
+template PD_INFER_DECL void Tensor::CopyToCpuImpl<float>(float *data,
+                                                         void *exec_stream,
+                                                         CallbackFunc cb,
+                                                         void *cb_params) const;
+template PD_INFER_DECL void Tensor::CopyToCpuImpl<int64_t>(
+    int64_t *data, void *exec_stream, CallbackFunc cb, void *cb_params) const;
+template PD_INFER_DECL void Tensor::CopyToCpuImpl<int32_t>(
+    int32_t *data, void *exec_stream, CallbackFunc cb, void *cb_params) const;
+template PD_INFER_DECL void Tensor::CopyToCpuImpl<uint8_t>(
+    uint8_t *data, void *exec_stream, CallbackFunc cb, void *cb_params) const;
+template PD_INFER_DECL void Tensor::CopyToCpuImpl<int8_t>(
+    int8_t *data, void *exec_stream, CallbackFunc cb, void *cb_params) const;
+template PD_INFER_DECL void Tensor::CopyToCpuImpl<float16>(
+    float16 *data, void *exec_stream, CallbackFunc cb, void *cb_params) const;
+
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<float>(
     float *data, void *exec_stream) const;
 template PD_INFER_DECL void Tensor::CopyToCpuAsync<int64_t>(
