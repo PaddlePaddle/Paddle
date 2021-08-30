@@ -50,7 +50,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
         self.program_weights = {"bias": bias, "scale": scale}
         self.program_inputs = {
             "skip_layernorm_inputX_data": skip_layernorm_inputX_data,
-            "skip_layernorm_inputY_data": skip_layernorm_inputY_data,
+            "skip_layernorm_inputY_data": skip_layernorm_inputY_data
         }
         self.program_outputs = ["skip_layernorm_output_data"]
 
