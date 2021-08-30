@@ -92,7 +92,8 @@ if (WITH_PSCORE)
 endif ()
 
 # Create shared inference library
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--exclude-libs,ALL")
+if (NOT APPLE AND NOT WIN32)
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--exclude-libs,ALL")
 cc_library(paddle_inference_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
     DEPS ${SHARED_INFERENCE_DEPS})
 
