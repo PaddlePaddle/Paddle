@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
+DECLARE_int32(min_loss_scaling);
+
 namespace paddle {
 namespace operators {
 
@@ -49,7 +51,7 @@ void Update(const platform::NPUDeviceContext& ctx,
 
     std::vector<int> bad_out_data;
     TensorToVector(*bad_out_tensor, ctx, &bad_out_data);
-    if (bad_out_data[0] == decr_every_n_nan_or_inf) {
+    if (bad_out_data[0] >= decr_every_n_nan_or_inf) {
       const auto& runner_p3 = NpuOpRunner("Power", {*pre_loss_scaling_tensor},
                                           {*updated_loss_scaling_tensor},
                                           {{"power", static_cast<float>(1)},
@@ -60,13 +62,18 @@ void Update(const platform::NPUDeviceContext& ctx,
 
       std::vector<T> new_loss_scaling;
       TensorToVector(*updated_loss_scaling_tensor, ctx, &new_loss_scaling);
-      if (new_loss_scaling[0] < static_cast<T>(1)) {
+      T min_value = static_cast<T>(1);
+      if (FLAGS_min_loss_scaling > 1) {
+        min_value = static_cast<T>(FLAGS_min_loss_scaling);
+      }
+
+      if (new_loss_scaling[0] < min_value) {
         // updated_loss_scaling_data = 1
-        const auto& runner_p4 = NpuOpRunner("Power", {*pre_loss_scaling_tensor},
-                                            {*updated_loss_scaling_tensor},
-                                            {{"power", static_cast<float>(1)},
-                                             {"scale", static_cast<float>(0)},
-                                             {"shift", static_cast<float>(1)}});
+        const auto& runner_p4 = NpuOpRunner(
+            "Power", {*pre_loss_scaling_tensor}, {*updated_loss_scaling_tensor},
+            {{"power", static_cast<float>(1)},
+             {"scale", static_cast<float>(min_value)},
+             {"shift", static_cast<float>(0)}});
 
         runner_p4.Run(stream);
       }
@@ -93,7 +100,7 @@ void Update(const platform::NPUDeviceContext& ctx,
     std::vector<int> good_out_data;
     TensorToVector(*good_out_tensor, ctx, &good_out_data);
 
-    if (good_out_data[0] == incr_every_n_steps) {
+    if (good_out_data[0] >= incr_every_n_steps) {
       const auto& runner_p3 = NpuOpRunner("Power", {*pre_loss_scaling_tensor},
                                           {*updated_loss_scaling_tensor},
                                           {{"power", static_cast<float>(1)},
