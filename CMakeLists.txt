@@ -38,7 +38,7 @@ project(paddle CXX C)
 # enable language CUDA
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
-find_package(MKL QUIET)
+find_package(MKL CONFIG QUIET)
 option(WITH_ONEMKL      "Compile PaddlePaddle with oneMKL"              ${MKL_FOUND})
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)

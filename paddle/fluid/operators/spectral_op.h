@@ -140,7 +140,7 @@ class FFTC2CGradKernel : public framework::OpKernel<T> {
     auto normalization = get_norm_from_string(norm_str, forward);
 
     FFTC2CFunctor<DeviceContext, C, C> fft_c2c_func;
-    fft_c2c_func(dev_ctx, dy, dx, axes, normalization, forward);
+    fft_c2c_func(dev_ctx, dy, dx, axes, normalization, !forward);
   }
 };
 
