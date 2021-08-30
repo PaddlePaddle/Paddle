@@ -62,8 +62,7 @@ class TestShardIndexShardId0Op(OpTest):
         common_setup(self, 20, 2, 0, -1)
 
     def test_check_output(self):
-        return self.check_output_with_place(
-            place=paddle.NPUPlace(0), check_dygraph=True)
+        return self.check_output_with_place(place=paddle.NPUPlace(0))
 
 
 class TestShardIndexShardId1Op(TestShardIndexShardId0Op):
