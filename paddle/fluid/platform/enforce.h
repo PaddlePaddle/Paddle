@@ -185,11 +185,8 @@ struct TypeConverterImpl<T1, T2, false> {
 
 template <typename T1, typename T2>
 struct TypeConverter {
- private:
   static constexpr bool kIsArithmetic =
       IsArithmetic<T1>() && IsArithmetic<T2>();
-
- public:
   using Type1 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type1;
   using Type2 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type2;
 };

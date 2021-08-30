@@ -41,18 +41,31 @@ class TestInferNoNeedBufferSlots(unittest.TestCase):
 
         block = program.global_block()
         for idx, op in enumerate(block.ops):
+            op_desc = op.desc
+            inputs = {}
+            for input_name in op_desc.input_names():
+                inputs[input_name] = op_desc.input(input_name)
+            outputs = {}
+            for output_name in op_desc.output_names():
+                outputs[output_name] = op_desc.output(output_name)
+            attrs = {}
+            for attr_name in op_desc.attr_names():
+                attrs[attr_name] = op_desc.attr(attr_name)
             if idx == 0:
                 # elementwise_add op
                 self.assertEqual(
-                    core.infer_no_need_buffer_slots(op.desc), set([]))
+                    core.infer_no_need_buffer_slots(op.type, inputs, outputs,
+                                                    attrs), set([]))
             elif idx == 1:
                 # fill constant op
                 self.assertEqual(
-                    core.infer_no_need_buffer_slots(op.desc), set([]))
+                    core.infer_no_need_buffer_slots(op.type, inputs, outputs,
+                                                    attrs), set([]))
             else:
                 # elementwise_add_grad op
                 self.assertEqual(
-                    core.infer_no_need_buffer_slots(op.desc), set(['Y', 'X']))
+                    core.infer_no_need_buffer_slots(op.type, inputs, outputs,
+                                                    attrs), set(['Y', 'X']))
 
 
 if __name__ == '__main__':

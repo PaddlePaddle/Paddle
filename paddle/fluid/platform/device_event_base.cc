@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/device_event_cpu.h"
+#include "paddle/fluid/platform/event.h"
 
 namespace paddle {
 namespace platform {
@@ -24,6 +25,31 @@ EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];
 EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];
 EventFinishFunction DeviceEvent::event_finished_setter_[MaxDeviceTypes];
 EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
+
+/*
+ * Generate flag used to create event on all sorts of equipment.
+ * NOTE: Support CPU/CUDA/ROCM currently.
+ */
+unsigned int GenerateDeviceEventFlag(bool enable_timing, bool blocking,
+                                     bool interprocess) {
+#ifdef PADDLE_WITH_CUDA
+  unsigned int flags =
+      (blocking ? cudaEventBlockingSync : cudaEventDefault) |
+      (enable_timing ? cudaEventDefault : cudaEventDisableTiming) |
+      (interprocess ? cudaEventInterprocess : cudaEventDefault);
+  return flags;
+#endif
+
+#ifdef PADDLE_WITH_HIP
+  unsigned int flags =
+      (blocking ? hipEventBlockingSync : hipEventDefault) |
+      (enable_timing ? hipEventDefault : hipEventDisableTiming) |
+      (interprocess ? hipEventInterprocess : hipEventDefault);
+  return flags;
+#endif
+
+  return 0;
+}
 
 void DeviceEventCreateCPU(DeviceEvent* event, const platform::Place& place,
                           unsigned int flag) {

@@ -22,7 +22,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/variant.h"
-#include "paddle/utils/ordered_map.h"
 
 namespace paddle {
 namespace framework {
@@ -34,32 +33,10 @@ class BlockDesc;
 class Variable;
 class InferNoNeedBufferVarsFN;
 
-/**
- * [ Why need ordered_map? ]
- *
- * The inputs and outputs in OpProto are ordered, but when they used for build
- * OpDesc and Operator, the order info is lost, which cause we can't access Op's
- * inputs and outputs by index, can't construct vector format KernelContext at
- * low cost.
- *
- * Note: For iterators, operator*() and operator->() return a reference and a
- * pointer to const std::pair<Key, T> instead of std::pair<const Key, T> making
- * the value T not modifiable. To modify the value you have to call the value()
- * method of the iterator to get a mutable reference. Example:
- *
- *      paddle::ordered_map<int, int> map = {{1, 1}, {2, 1}, {3, 1}};
- *      for(auto it = map.begin(); it != map.end(); ++it) {
- *          //it->second = 2; // Illegal
- *          it.value() = 2; // Ok
- *      }
- *
- * Reason:
- * - https://github.com/Tessil/ordered-map/issues/32#issuecomment-739492629
- */
-using VariableNameMap =
-    paddle::ordered_map<std::string, std::vector<std::string>>;
-using VariableValueMap =
-    paddle::ordered_map<std::string, std::vector<Variable*>>;
+// TODO(chenweihang): AttirbuteMap also need to be ordered
+// TODO(panyx0718): Replace vector with something like gtl::Vector.
+using VariableNameMap = std::map<std::string, std::vector<std::string>>;
+using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
 // The order should be as same as framework.proto
 using Attribute = boost::variant<
