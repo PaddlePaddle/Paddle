@@ -29,25 +29,6 @@ using Tensor = framework::Tensor;
 
 constexpr int kMULMKLDNNINT8 = 1;
 
-template <typename T>
-void PrintTensor(const framework::LoDTensor& src,
-                 const framework::ExecutionContext& ctx) {
-  std::vector<T> vec(src.numel());
-  TensorToVector(src, ctx.device_context(), &vec);
-  for (int i = 0; i < 10; ++i) {  // static_cast<int>(vec.size())
-    VLOG(3) << "vec[" << i << "] : " << vec[i];
-  }
-}
-template <typename T>
-void PrintTensor(const framework::Tensor& src,
-                 const framework::ExecutionContext& ctx) {
-  std::vector<T> vec(src.numel());
-  TensorToVector(src, ctx.device_context(), &vec);
-  for (int i = 0; i < 10; ++i) {  // static_cast<int>(vec.size())
-    VLOG(3) << "vec[" << i << "] : " << vec[i];
-  }
-}
-
 template <typename DeviceContext, typename T>
 class SolveKernel : public framework::OpKernel<T> {
  public:
@@ -147,6 +128,7 @@ class SolveGradKernel : public framework::OpKernel<T> {
     std::vector<int64_t>::const_iterator f = x_dims_vec.begin();
     std::vector<int64_t>::const_iterator l = x_dims_vec.end() - 1;
     std::vector<int64_t> x_dims_vec_cut(f, l);
+    auto blas = math::GetBlas<DeviceContext, T>(ctx);
 
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
@@ -155,7 +137,11 @@ class SolveGradKernel : public framework::OpKernel<T> {
         x_inv.Resize({x_dim[0] * x_dim[1], x_dim[2]});
         dout.Resize({out->dims()[0] * out->dims()[1], out->dims()[2]});
 
-        MatMulFunction<DeviceContext, T>(&x_inv, &dout, dy, true, false, ctx);
+        // MatMulFunction<DeviceContext, T>(&x_inv, &dout, dy, true, false,
+        // ctx);
+        auto mat_dim_a1 = math::CreateMatrixDescriptor(x_inv.dims(), 0, true);
+        auto mat_dim_b1 = math::CreateMatrixDescriptor(dout.dims(), 0, false);
+        blas.MatMul(x_inv, mat_dim_a1, dout, mat_dim_b1, T(1), dy, T(0));
 
         if (y_dim != dy->dims()) {
           dy->Resize(y_dim);
@@ -178,14 +164,18 @@ class SolveGradKernel : public framework::OpKernel<T> {
           dout.Resize(dout_new_dims);
         }
 
-        MatMulFunction<DeviceContext, T>(&x, &dout, dy, true, false, ctx);
+        // MatMulFunction<DeviceContext, T>(&x, &dout, dy, true, false, ctx);
+
+        auto mat_dim_a1 = math::CreateMatrixDescriptor(x.dims(), 0, true);
+        auto mat_dim_b1 = math::CreateMatrixDescriptor(dout.dims(), 0, false);
+        blas.MatMul(x, mat_dim_a1, dout, mat_dim_b1, T(1), dy, T(0));
+
         if (y_dim != dy->dims()) {
           dy->Resize(y_dim);
         }
       }
     }
     if (dx) {
-      auto blas = math::GetBlas<DeviceContext, T>(ctx);
       // Tensor dout_inv(out->type());  // temporary tensor
       // dout_inv.Resize(out->dims());
       // dout_inv.mutable_data<T>(ctx.GetPlace());
