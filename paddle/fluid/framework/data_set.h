@@ -68,6 +68,7 @@ class Dataset {
   virtual void SetParseLogKey(bool parse_logkey) = 0;
   virtual void SetEnablePvMerge(bool enable_pv_merge) = 0;
   virtual void SetMergeBySid(bool is_merge) = 0;
+  virtual void SetShuffleTimeout(uint64_t timeout_ms) = 0;
   // set merge by ins id
   virtual void SetMergeByInsId(int merge_size) = 0;
   virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns) = 0;
@@ -175,6 +176,7 @@ class DatasetImpl : public Dataset {
   virtual void SetParseLogKey(bool parse_logkey);
   virtual void SetEnablePvMerge(bool enable_pv_merge);
   virtual void SetMergeBySid(bool is_merge);
+  virtual void SetShuffleTimeout(uint64_t timeout_ms);
 
   virtual void SetMergeByInsId(int merge_size);
   virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns);
@@ -272,6 +274,7 @@ class DatasetImpl : public Dataset {
   std::mutex global_index_mutex_;
   int64_t global_index_ = 0;
   std::vector<std::shared_ptr<ThreadPool>> consume_task_pool_;
+  uint64_t shuffle_timeout_ms_ = 86400000;  // 1 day
 };
 
 // use std::vector<MultiSlotType> or Record as data type

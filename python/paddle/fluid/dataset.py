@@ -302,6 +302,19 @@ class DatasetBase(object):
         """
         self.dataset.set_download_cmd(download_cmd)
 
+    def set_shuffle_timeout_ms(self, shuffle_timeout_ms):
+        """
+        Set customized shuffle timeout: shuffle_timeout
+        Examples:
+            .. code-block:: python
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_shuffle_timeout(900000)      //15 min
+        Args:
+            shuffle_timeout(int): customized shuffle timeout in milliseconds
+        """
+        self.dataset.set_shuffle_timeout(shuffle_timeout)
+
     def _prepare_to_run(self):
         """
         Set data_feed_desc before load or shuffle,

@@ -13,7 +13,8 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
-#include <algorithm>
+#include <algorithm>  // NOLINT
+#include <chrono>     // NOLINT
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
@@ -54,6 +55,7 @@ DatasetImpl<T>::DatasetImpl() {
   parse_logkey_ = false;
   preload_thread_num_ = 0;
   global_index_ = 0;
+  shuffle_timeout_ms_ = 86400000;  // 1 day
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -145,6 +147,11 @@ void DatasetImpl<T>::SetMergeByInsId(int merge_size) {
 template <typename T>
 void DatasetImpl<T>::SetMergeBySid(bool is_merge) {
   merge_by_sid_ = is_merge;
+}
+
+template <typename T>
+void DatasetImpl<T>::SetShuffleTimeout(uint64_t timeout_ms) {
+  shuffle_timeout_ms_ = timeout_ms;
 }
 
 template <typename T>
@@ -396,6 +403,7 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
 
   auto global_shuffle_func = [this, get_client_id]() {
     auto fleet_ptr = FleetWrapper::GetInstance();
+    std::chrono::milliseconds shuffle_timeout(shuffle_timeout_ms_);
     std::vector<T> data;
     while (this->input_channel_->Read(data)) {
       std::vector<paddle::framework::BinaryArchive> ars(this->trainer_num_);
@@ -420,7 +428,10 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
         total_status.push_back(std::move(ret));
       }
       for (auto& t : total_status) {
-        t.wait();
+        while (t.wait_for(shuffle_timeout) == std::future_status::timeout) {
+          VLOG(3) << "global shuffle timeout " << shuffle_timeout_ms_ << "ms";
+          exit(-1);
+        }
       }
       ars.clear();
       ars.shrink_to_fit();
