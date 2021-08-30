@@ -1445,7 +1445,7 @@ function show_ut_retry_result() {
         echo "${failed_test_lists_ult}"
         exit 8;
     else
-        read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+        retry_unittests_ut_name=$(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
         retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
@@ -1711,7 +1711,7 @@ function parallel_test_base_npu() {
     ========================================
 EOF
 
-set -x
+set +x
         test_cases=$(ctest -N -V) # get all test cases
         get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
         while read -r line; do
