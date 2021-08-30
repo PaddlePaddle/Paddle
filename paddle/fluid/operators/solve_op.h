@@ -119,12 +119,6 @@ class SolveGradKernel : public framework::OpKernel<T> {
     auto dout = *ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* out = ctx.Input<framework::Tensor>("Out");
 
-    VLOG(3) << "print input === 10 ==== ";
-    PrintTensor<T>(*input, ctx);
-
-    VLOG(3) << "print output === 10 ==== ";
-    PrintTensor<T>(*out, ctx);
-
     auto out_ = *out;
     out_.mutable_data<T>(ctx.GetPlace());
 
@@ -157,19 +151,37 @@ class SolveGradKernel : public framework::OpKernel<T> {
     if (dy) {
       dy->mutable_data<T>(ctx.GetPlace());
 
-      if (y_dim_size == 1 ||
-          (x_dim_size - 1 == y_dim_size) && y_dims_vec == x_dims_vec_cut) {
-        VLOG(3) << "========== dy special case ===============";
-        std::vector<int64_t> dout_dims_vec =
-            paddle::framework::vectorize(dout.dims());
-        dout_dims_vec.push_back(1);
-        auto dout_new_dims = framework::make_ddim(dout_dims_vec);
-        dout.Resize(dout_new_dims);
-      }
+      if (x_dim_size == y_dim_size && x_dim_size == 3 && y_dim[0] == 1) {
+        x_inv.Resize({x_dim[0] * x_dim[1], x_dim[2]});
+        dout.Resize({out->dims()[0] * out->dims()[1], out->dims()[2]});
 
-      MatMulFunction<DeviceContext, T>(&x, &dout, dy, true, false, ctx);
-      if (y_dim != dy->dims()) {
-        dy->Resize(y_dim);
+        MatMulFunction<DeviceContext, T>(&x_inv, &dout, dy, true, false, ctx);
+
+        if (y_dim != dy->dims()) {
+          dy->Resize(y_dim);
+        }
+        if (x_inv.dims() != x_dim) {
+          x_inv.Resize(x_dim);
+        }
+        if (dout.dims() != out->dims()) {
+          dout.Resize(out->dims());
+        }
+      } else {
+        if (y_dim_size == 1 ||
+            (x_dim_size - 1 == y_dim_size) && y_dims_vec == x_dims_vec_cut) {
+          VLOG(3) << "========== special case, likes A(2,3,3) B(2,3) "
+                     "===============";
+          std::vector<int64_t> dout_dims_vec =
+              paddle::framework::vectorize(dout.dims());
+          dout_dims_vec.push_back(1);
+          auto dout_new_dims = framework::make_ddim(dout_dims_vec);
+          dout.Resize(dout_new_dims);
+        }
+
+        MatMulFunction<DeviceContext, T>(&x, &dout, dy, true, false, ctx);
+        if (y_dim != dy->dims()) {
+          dy->Resize(y_dim);
+        }
       }
     }
     if (dx) {
@@ -183,19 +195,19 @@ class SolveGradKernel : public framework::OpKernel<T> {
       // mat_inv(dev_ctx, dout, &dout_inv);  // inverse operation for dout
       VLOG(3) << "====== in dx after mat_inv ======";
 
-      Tensor grad_self(out->type());  // temporary tensor
-      grad_self.Resize(dout.dims());
+      Tensor grad_self(y->type());  // temporary tensor
+      grad_self.Resize(y->dims());  // dout.dims()
       grad_self.mutable_data<T>(ctx.GetPlace());
 
-      MatMulFunction<DeviceContext, T>(&x, &dout, &grad_self, true, false, ctx);
+      MatMulFunction<DeviceContext, T>(&x, &dout, &grad_self, true, false,
+                                       ctx);  // grad_self is dy
 
       if (x_dim_size == 2 && y_dim_size == 2) {
-        auto mat_dim_a1 =
-            math::CreateMatrixDescriptor(grad_self.dims(), 0, false);
+        auto mat_dim_a1 = math::CreateMatrixDescriptor(grad_self.dims(), 0,
+                                                       false);  // grad_self
         auto mat_dim_b1 = math::CreateMatrixDescriptor(out->dims(), 0, true);
-        blas.MatMul(grad_self, mat_dim_a1, *out, mat_dim_b1, T(-1), dx, T(0));
-        // MatMulFunction<DeviceContext, T>(&grad_self, out, dx, false, true,
-        // ctx);
+        blas.MatMul(grad_self, mat_dim_a1, *out, mat_dim_b1, T(-1), dx,
+                    T(0));  // grad_self
         return;
       }
 
@@ -214,20 +226,18 @@ class SolveGradKernel : public framework::OpKernel<T> {
         auto out_new_dims = framework::make_ddim(out_dims_vec);
         out_.Resize(out_new_dims);
 
-        auto mat_dim_a1 =
-            math::CreateMatrixDescriptor(grad_self.dims(), 0, false);
+        auto mat_dim_a1 = math::CreateMatrixDescriptor(grad_self.dims(), 0,
+                                                       false);  // grad_self
         auto mat_dim_b1 = math::CreateMatrixDescriptor(out_.dims(), 0, true);
-        blas.MatMul(grad_self, mat_dim_a1, out_, mat_dim_b1, T(-1), dx, T(0));
-        // MatMulFunction<DeviceContext, T>(&grad_self, &out_, dx, false, true,
-        // ctx);
+        blas.MatMul(grad_self, mat_dim_a1, out_, mat_dim_b1, T(-1), dx,
+                    T(0));  // grad_self
         return;
       }
-      auto mat_dim_a1 =
-          math::CreateMatrixDescriptor(grad_self.dims(), 0, false);
+      auto mat_dim_a1 = math::CreateMatrixDescriptor(grad_self.dims(), 0,
+                                                     false);  // grad_self
       auto mat_dim_b1 = math::CreateMatrixDescriptor(out->dims(), 0, true);
-      blas.MatMul(grad_self, mat_dim_a1, *out, mat_dim_b1, T(-1), dx, T(0));
-      // MatMulFunction<DeviceContext, T>(&grad_self, out, dx, false, true,
-      // ctx);
+      blas.MatMul(grad_self, mat_dim_a1, *out, mat_dim_b1, T(-1), dx,
+                  T(0));  // grad_self
     }
   }
 };
