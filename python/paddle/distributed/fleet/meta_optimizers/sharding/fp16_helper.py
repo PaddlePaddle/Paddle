@@ -73,7 +73,7 @@ class FP16Utils(object):
         return inserted_op_num
 
     @staticmethod
-    def prune_fp16(block, shard, reduced_grads_to_param, ring_id):
+    def prune_fp16(block, shard, reduced_grads_to_param, ring_ids):
         """
         1. prune all cast_fp16_to_fp32 ops if the param not belongs to this shard
         2. revise amp inifine grad checking for sharding
@@ -146,6 +146,7 @@ class FP16Utils(object):
             name=inf_var_name + "@sharding",
             shape=inf_var.shape,
             dtype=inf_var.dtype)
+
         block._insert_op_without_sync(
             update_loss_scaling_op_idx,
             type='cast',
@@ -156,19 +157,26 @@ class FP16Utils(object):
                 "out_dtype": inf_var_int32.dtype,
                 OP_ROLE_KEY: OpRole.Optimize
             })
-        # this allreduce communication should not overlap with calc
+        update_loss_scaling_op_idx += 1
+
+        # allreduce(mp)->allreduce(sharding)->allreduce(pp)
+        for ring_id in ring_ids:
+            if ring_id == -1: continue
+            # this allreduce communication should not overlap with calc
+            block._insert_op_without_sync(
+                update_loss_scaling_op_idx,
+                type='c_allreduce_max',
+                inputs={'X': inf_var_int32},
+                outputs={'Out': inf_var_int32},
+                attrs={
+                    'ring_id': ring_id,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Optimize
+                })
+            update_loss_scaling_op_idx += 1
+
         block._insert_op_without_sync(
-            update_loss_scaling_op_idx + 1,
-            type='c_allreduce_max',
-            inputs={'X': inf_var_int32},
-            outputs={'Out': inf_var_int32},
-            attrs={
-                'ring_id': ring_id,
-                'use_calc_stream': True,
-                OP_ROLE_KEY: OpRole.Optimize
-            })
-        block._insert_op_without_sync(
-            update_loss_scaling_op_idx + 2,
+            update_loss_scaling_op_idx,
             type='cast',
             inputs={'X': inf_var_int32},
             outputs={'Out': inf_var_sharding},
@@ -177,11 +185,12 @@ class FP16Utils(object):
                 "out_dtype": inf_var_sharding.dtype,
                 OP_ROLE_KEY: OpRole.Optimize
             })
+        update_loss_scaling_op_idx += 1
         block._sync_with_cpp()
 
     # TODO (JZ-LIANG) revise this for uniform mixed parallelism
     @staticmethod
-    def sync_amp_check_nan_inf(block, ring_id):
+    def sync_amp_check_nan_inf(block, ring_ids):
         update_loss_scaling_op_idx = -1
 
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -189,10 +198,14 @@ class FP16Utils(object):
                 update_loss_scaling_op_idx = idx
                 inf_var_name = op.desc.input('FoundInfinite')[0]
                 op._rename_input(inf_var_name, inf_var_name + "@GLOBAL_WORLD")
+                break
 
         # not use amp
         if update_loss_scaling_op_idx == -1:
             return
+        # 0. inf_var_int32 = cast(inf_var)
+        # 1. inf_var_int32 = allreduce_max(inf_var_int32)
+        # 3. inf_var = cast(inf_var_int32)
         inf_var = block.var(inf_var_name)
         inf_var_int32 = block.create_var(
             name=inf_var_name + "@cast_int32",
@@ -212,18 +225,25 @@ class FP16Utils(object):
                 "out_dtype": inf_var_int32.dtype,
                 OP_ROLE_KEY: OpRole.Optimize
             })
+        update_loss_scaling_op_idx += 1
+
+        # allreduce(mp)->allreduce(pp)
+        for ring_id in ring_ids:
+            if ring_id == -1: continue
+            block._insert_op_without_sync(
+                update_loss_scaling_op_idx,
+                type='c_allreduce_max',
+                inputs={'X': inf_var_int32},
+                outputs={'Out': inf_var_int32},
+                attrs={
+                    'ring_id': ring_id,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Optimize
+                })
+            update_loss_scaling_op_idx += 1
+
         block._insert_op_without_sync(
-            update_loss_scaling_op_idx + 1,
-            type='c_allreduce_max',
-            inputs={'X': inf_var_int32},
-            outputs={'Out': inf_var_int32},
-            attrs={
-                'ring_id': ring_id,
-                'use_calc_stream': True,
-                OP_ROLE_KEY: OpRole.Optimize
-            })
-        block._insert_op_without_sync(
-            update_loss_scaling_op_idx + 2,
+            update_loss_scaling_op_idx,
             type='cast',
             inputs={'X': inf_var_int32},
             outputs={'Out': inf_var_global},
@@ -232,4 +252,5 @@ class FP16Utils(object):
                 "out_dtype": inf_var_global.dtype,
                 OP_ROLE_KEY: OpRole.Optimize
             })
+        update_loss_scaling_op_idx += 1
         block._sync_with_cpp()

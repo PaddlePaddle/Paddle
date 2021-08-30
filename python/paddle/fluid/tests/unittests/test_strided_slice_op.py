@@ -588,5 +588,331 @@ class TestStridedSliceAPI(unittest.TestCase):
             self.assertFalse(y.place.is_cuda_pinned_place())
 
 
+class ArrayLayer(paddle.nn.Layer):
+    def __init__(self, input_size=224, output_size=10, array_size=1):
+        super(ArrayLayer, self).__init__()
+        self.input_size = input_size
+        self.output_size = output_size
+        self.array_size = array_size
+        for i in range(self.array_size):
+            setattr(self,
+                    self.create_name(i),
+                    paddle.nn.Linear(input_size, output_size))
+
+    def create_name(self, index):
+        return 'linear_' + str(index)
+
+    def forward(self, inps):
+        array = []
+        for i in range(self.array_size):
+            linear = getattr(self, self.create_name(i))
+            array.append(linear(inps))
+
+        tensor_array = self.create_tensor_array(array)
+
+        tensor_array = self.array_slice(tensor_array)
+
+        array1 = paddle.concat(tensor_array)
+        array2 = paddle.concat(tensor_array[::-1])
+        return array1 + array2 * array2
+
+    def get_all_grads(self, param_name='weight'):
+        grads = []
+        for i in range(self.array_size):
+            linear = getattr(self, self.create_name(i))
+            param = getattr(linear, param_name)
+
+            g = param.grad
+            if g is not None:
+                g = g.numpy()
+
+            grads.append(g)
+
+        return grads
+
+    def clear_all_grad(self):
+        param_names = ['weight', 'bias']
+        for i in range(self.array_size):
+            linear = getattr(self, self.create_name(i))
+            for p in param_names:
+                param = getattr(linear, p)
+                param.clear_gradient()
+
+    def array_slice(self, array):
+        return array
+
+    def create_tensor_array(self, tensors):
+        tensor_array = None
+        for i, tensor in enumerate(tensors):
+            index = paddle.full(shape=[1], dtype='int64', fill_value=i)
+            if tensor_array is None:
+                tensor_array = paddle.tensor.array_write(tensor, i=index)
+            else:
+                paddle.tensor.array_write(tensor, i=index, array=tensor_array)
+        return tensor_array
+
+
+class TestStridedSliceTensorArray(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def grad_equal(self, g1, g2):
+        if g1 is None:
+            g1 = np.zeros_like(g2)
+        if g2 is None:
+            g2 = np.zeros_like(g1)
+        return np.array_equal(g1, g2)
+
+    def is_grads_equal(self, g1, g2):
+        for i, g in enumerate(g1):
+
+            self.assertTrue(
+                self.grad_equal(g, g2[i]),
+                msg="gradient_1:\n{} \ngradient_2:\n{}".format(g, g2))
+
+    def is_grads_equal_zeros(self, grads):
+        for g in grads:
+            self.assertTrue(
+                self.grad_equal(np.zeros_like(g), g),
+                msg="The gradient should be zeros, but received \n{}".format(g))
+
+    def create_case(self, net):
+        inps1 = paddle.randn([1, net.input_size], dtype='float32')
+        inps2 = inps1.detach().clone()
+        l1 = net(inps1)
+        s1 = l1.numpy()
+        l1.sum().backward()
+        grads_dy = net.get_all_grads()
+        net.clear_all_grad()
+        grads_zeros = net.get_all_grads()
+
+        self.is_grads_equal_zeros(grads_zeros)
+
+        func = paddle.jit.to_static(net.forward)
+        l2 = func(inps2)
+        s2 = l2.numpy()
+        l2.sum().backward()
+        grads_static = net.get_all_grads()
+        net.clear_all_grad()
+        # compare result of dygraph and static 
+        self.is_grads_equal(grads_static, grads_dy)
+        self.assertTrue(
+            np.array_equal(s1, s2),
+            msg="dygraph graph result:\n{} \nstatic dygraph result:\n{}".format(
+                l1.numpy(), l2.numpy()))
+
+    def test_strided_slice_tensor_array_cuda_pinned_place(self):
+        if paddle.device.is_compiled_with_cuda():
+            with paddle.fluid.dygraph.guard():
+
+                class Simple(paddle.nn.Layer):
+                    def __init__(self):
+                        super(Simple, self).__init__()
+
+                    def forward(self, inps):
+                        tensor_array = None
+                        for i, tensor in enumerate(inps):
+                            index = paddle.full(
+                                shape=[1], dtype='int64', fill_value=i)
+                            if tensor_array is None:
+                                tensor_array = paddle.tensor.array_write(
+                                    tensor, i=index)
+                            else:
+                                paddle.tensor.array_write(
+                                    tensor, i=index, array=tensor_array)
+
+                        array1 = paddle.concat(tensor_array)
+                        array2 = paddle.concat(tensor_array[::-1])
+                        return array1 + array2 * array2
+
+                net = Simple()
+                func = paddle.jit.to_static(net.forward)
+
+                inps1 = paddle.to_tensor(
+                    np.random.randn(2, 10),
+                    place=paddle.CUDAPinnedPlace(),
+                    stop_gradient=False)
+                inps2 = paddle.to_tensor(
+                    np.random.randn(2, 10),
+                    place=paddle.CUDAPinnedPlace(),
+                    stop_gradient=False)
+
+                self.assertTrue(inps1.place.is_cuda_pinned_place())
+                self.assertTrue(inps2.place.is_cuda_pinned_place())
+
+                result = func([inps1, inps2])
+
+                self.assertFalse(result.place.is_cuda_pinned_place())
+
+    def test_strided_slice_tensor_array(self):
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[::-1]
+
+        self.create_case(Net(array_size=10))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[::-2]
+
+        self.create_case(Net(input_size=112, array_size=11))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[::-3]
+
+        self.create_case(Net(input_size=112, array_size=9))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[1::-4]
+
+        self.create_case(Net(input_size=112, array_size=9))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[:7:-4]
+
+        self.create_case(Net(input_size=112, array_size=9))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[8:0:-4]
+
+        self.create_case(Net(input_size=112, array_size=9))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[8:1:-4]
+
+        self.create_case(Net(input_size=112, array_size=9))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[::2]
+
+        self.create_case(Net(input_size=112, array_size=11))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[::3]
+
+        self.create_case(Net(input_size=112, array_size=9))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[1::4]
+
+        self.create_case(Net(input_size=112, array_size=9))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[:8:4]
+
+        self.create_case(Net(input_size=112, array_size=9))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[1:8:4]
+
+        self.create_case(Net(input_size=112, array_size=9))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[8:10:4]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[3:10:4]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[2:10:4]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[3:10:3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[3:15:3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[0:15:3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-1:-5:-3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-1:-6:-3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-3:-6:-3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-5:-1:3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-6:-1:3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-6:-3:3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[0::3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-60:20:3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-3:-60:-3]
+
+        self.create_case(Net(input_size=112, array_size=13))
+
+        class Net(ArrayLayer):
+            def array_slice(self, tensors):
+                return tensors[-1:-60:-3]
+
+
 if __name__ == "__main__":
     unittest.main()

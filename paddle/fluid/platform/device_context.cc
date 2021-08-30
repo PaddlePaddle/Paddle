@@ -209,7 +209,10 @@ Eigen::ThreadPoolDevice* CPUDeviceContext::pool_device() const {
 Place CPUDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
+XPUDeviceContext::XPUDeviceContext() {
+  context_ = xpu::create_context();
+  xpu_version_ = get_xpu_version(place_.device);
+}
 
 XPUDeviceContext::~XPUDeviceContext() {}
 

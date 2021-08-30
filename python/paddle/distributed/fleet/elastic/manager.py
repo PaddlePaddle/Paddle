@@ -80,8 +80,10 @@ class LauncherInterface(object):
             if ret is None:
                 alive = True
             elif ret != 0:
-                logger.error("ERROR rank {} error with code {}".format(p.rank,
-                                                                       ret))
+                logger.error("ABORT!!! ABORT!!! ABORT!!!")
+                logger.error(
+                    "ERROR rank {} error with exit code {}, check log for detail.".
+                    format(p.rank, ret))
                 result = ret
         if not alive and result is None:
             return 0
@@ -131,6 +133,7 @@ class ElasticManager(object):
         self.stopped = False
 
         self.sigint = 0
+        self.need_sync = False
 
         if not server or ':' not in server or not name or not np:
             logger.info(
@@ -175,6 +178,7 @@ class ElasticManager(object):
                 logger.info('register host again {}'.format(self.host))
 
                 self.etcd.put(self.host_path, six.b(self.host))
+                self.need_sync = True
 
         host_watch = self.etcd.add_watch_callback(self.host_path,
                                                   host_call_back)
@@ -252,6 +256,7 @@ class ElasticManager(object):
         return int(self.etcd.get(self.prefix)[0]) == 1
 
     def _match(self):
+
         self.hosts = [
             six.ensure_str(i[0]) for i in self.etcd.get_prefix(self.node_prefix)
         ]
@@ -305,7 +310,8 @@ class ElasticManager(object):
                                                                self.hosts))
 
             idx += 1
-            time.sleep(3)
+            time.sleep(2)
+
         return
 
     def run(self, launcher):
@@ -316,6 +322,9 @@ class ElasticManager(object):
         self.launcher.launch()
 
     def watch(self):
+
+        if self.need_sync:
+            self.need_sync = False
 
         while not self.stopped:
             ret = self.launcher.watch()
@@ -332,7 +341,7 @@ class ElasticManager(object):
                 else:
                     return ElasticStatus.ERROR
 
-            if not self._completed() and not self._match():
+            if not self._completed() and (not self._match() or self.need_sync):
                 self.launcher.stop()
                 return ElasticStatus.HOLD
 

@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/process_mesh_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
@@ -82,6 +83,17 @@ void BindProgramDesc(pybind11::module *m) {
            pybind11::arg("version") = pd::kCurProgramVersion)
       .def("_version",
            [](pd::ProgramDesc &self) -> int64_t { return self.Version(); });
+}
+
+void BindProcessMeshDesc(pybind11::module *m) {
+  pybind11::class_<pd::ProcessMeshDesc>(*m, "ProcessMeshDesc", "")
+      .def(pybind11::init<const std::vector<int32_t> &,
+                          const std::vector<int32_t> &, int32_t>())
+      .def_property_readonly("id", &pd::ProcessMeshDesc::ID)
+      .def_property_readonly("parent", &pd::ProcessMeshDesc::Parent)
+      .def_property_readonly("topology", &pd::ProcessMeshDesc::Topology)
+      .def_property_readonly("process_group",
+                             &pd::ProcessMeshDesc::ProcessGroup);
 }
 
 void BindBlockDesc(pybind11::module *m) {
@@ -175,8 +187,21 @@ void BindVarDsec(pybind11::module *m) {
       .def("serialize_to_string", SerializeMessage<pd::VarDesc>)
       .def("persistable", &pd::VarDesc::Persistable)
       .def("set_persistable", &pd::VarDesc::SetPersistable)
+      .def("is_parameter", &pd::VarDesc::IsParameter)
+      .def("set_is_parameter", &pd::VarDesc::SetIsParameter)
+      .def("clear_is_parameter", &pd::VarDesc::ClearIsParameter)
+      .def("has_is_parameter", &pd::VarDesc::HasIsParameter)
+      .def("stop_gradient", &pd::VarDesc::StopGradient)
+      .def("set_stop_gradient", &pd::VarDesc::SetStopGradient)
+      .def("clear_stop_gradient", &pd::VarDesc::ClearStopGradient)
+      .def("has_stop_gradient", &pd::VarDesc::HasStopGradient)
       .def("need_check_feed", &pd::VarDesc::NeedCheckFeed)
-      .def("set_need_check_feed", &pd::VarDesc::SetNeedCheckFeed);
+      .def("set_need_check_feed", &pd::VarDesc::SetNeedCheckFeed)
+      .def("has_attr", &pd::VarDesc::HasAttr)
+      .def("attr_names", &pd::VarDesc::AttrNames)
+      .def("_set_attr", &pd::VarDesc::SetAttr)
+      .def("remove_attr", &pd::VarDesc::RemoveAttr)
+      .def("attr", &pd::VarDesc::GetAttr);
 
   pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
   g_vartype_pytype = (PyTypeObject *)vartype.ptr();  // NOLINT

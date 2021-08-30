@@ -21,12 +21,9 @@
 
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/float16.h"
-#include "xpu/api.h"
-#include "xpu/refactor/fusion.h"
-#include "xpu/refactor/math.h"
-#include "xpu/refactor/nn.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
+#include "xpu/xdnn.h"
 
 namespace xpu = baidu::xpu::api;
 

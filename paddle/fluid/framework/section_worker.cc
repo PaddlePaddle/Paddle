@@ -164,6 +164,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
   while (fw_step < startup_steps) {
     RunForward(fw_step, gc, unused_vars_);
     fw_step += 1;
+    VLOG(2) << "micro steps fw_step:" << fw_step;
   }
 
   // 1f1b phase
@@ -180,6 +181,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
 
     fw_step += 1;
     bw_step += 1;
+    VLOG(2) << "micro steps fw_step:" << fw_step << ", bw_step:" << bw_step;
   }
 
   int reserve_bw_send_step = bw_step - 2;
@@ -187,8 +189,10 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
   while (bw_step < num_microbatches_) {
     RunBackward(bw_step, gc, unused_vars_);
     bw_step += 1;
+    VLOG(2) << "micro steps  bw_step:" << bw_step;
   }
 
+  VLOG(2) << "run update";
   RunUpdate(gc, unused_vars_);
 
   if (gc) {
@@ -203,6 +207,7 @@ void SectionWorker::Run1F1B(std::unique_ptr<GarbageCollector> &gc) {
 
 void SectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
+  VLOG(2) << "mini batch steps:" << batch_id_;
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;

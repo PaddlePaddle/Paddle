@@ -689,18 +689,18 @@ function get_precision_ut_mac() {
         on_precision=1
         re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
         UT_list_prec_1='ut_list_prec2'
-        for case in $UT_list; do
-            flag=$(echo $case|grep -oE $re)
+        for ut_case in $UT_list; do
+            flag=$(echo $ut_case|grep -oE $re)
             if [ -n "$flag" ];then
                 if [ -z "$UT_list_prec" ];then
-                    UT_list_prec="^$case$"
+                    UT_list_prec="^$ut_case$"
                 elif [[ "${#UT_list_prec}" -gt 10000 ]];then
-                    UT_list_prec_1="$UT_list_prec_1|^$case$"
+                    UT_list_prec_1="$UT_list_prec_1|^$ut_case$"
                 else
-                    UT_list_prec="$UT_list_prec|^$case$"
+                    UT_list_prec="$UT_list_prec|^$ut_case$"
                 fi
             else
-                echo ${case} "won't run in PRECISION_TEST mode."
+                echo ${ut_case} "won't run in PRECISION_TEST mode."
             fi
         done
     fi
@@ -722,6 +722,32 @@ function fetch_upstream_develop_if_not_exist() {
     fi
 }
 
+function check_whl_size() {
+    if [ ! "${pr_whl_size}" ];then
+        echo "pr whl size not found "         
+        exit 1
+    fi
+
+    set +x
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    echo "dev_whl_size: ${dev_whl_size}"
+
+    whldiffSize=`expr ${pr_whl_size} - ${dev_whl_size}`
+    if [ ${whldiffSize} -gt 10 ] ; then
+       approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22334008 22361972`
+       echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+       if [ "${APPROVALS}" == "FALSE" ]; then
+           echo "=========================================================================================="
+           echo "This PR make the release paddlepaddle whl size growth exceeds 10 M."
+           echo "Then you must have one RD (jim19930609 (Recommend) or JiabinYang) approval for this PR\n"
+           echo "=========================================================================================="
+           exit 6
+       fi
+    fi
+    set -x
+}
+
 function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
@@ -730,6 +756,9 @@ function generate_upstream_develop_api_spec() {
     cmake_gen $1
     build $2
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    echo "pr_whl_size: ${pr_whl_size}"
+    
 
     git checkout $cur_branch
     generate_api_spec "$1" "DEV"
@@ -1627,7 +1656,6 @@ function parallel_test_base_npu() {
 EOF
 
 set +x
-        ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V) # get all test cases
         get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
         while read -r line; do
@@ -1643,12 +1671,73 @@ set +x
         done <<< "$test_cases";
         card_test "$single_card_tests" 1
         collect_failed_tests
-set -x
-        ut_endTime_s=`date +%s`
-        echo "NPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        if [[ "$EXIT_CODE" != "0" ]]; then
-            exit 8;
+        # add unit test retry for NPU
+        rm -f $tmp_dir/*
+        exec_times=0
+        retry_unittests_record=''
+        retry_time=3
+        exec_time_array=('first' 'second' 'third')
+        exec_retry_threshold=10
+        is_retry_execuate=0
+        if [ -n "$failed_test_lists" ];then
+            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
+                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
+            fi
+            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                while ( [ $exec_times -lt $retry_time ] )
+                    do
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"
+                            
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
+                                if [[ "$tmp_one_tmp" != ""  ]]; then
+                                    if [[ "$one_card_retry" == "" ]]; then
+                                        one_card_retry="^$line$"
+                                    else
+                                        one_card_retry="$one_card_retry|^$line$"
+                                    fi
+                                fi
+                            done
+
+                        if [[ "$one_card_retry" != "" ]]; then
+                            card_test "$one_card_retry" 1
+                        fi
+
+                        exec_times=$[$exec_times+1]
+                        failed_test_lists=''
+                        collect_failed_tests
+                        rm -f $tmp_dir/*
+                        one_card_retry=''
+                    done
+            else 
+                # There are more than 10 failed unit tests, so no unit test retry
+                is_retry_execuate=1
+            fi
         fi
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            show_ut_retry_result
+        fi
+set -ex
     fi   
 }
 
@@ -1920,7 +2009,7 @@ EOF
     fi
     startTime_s=`date +%s`
     set +e
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
@@ -1966,12 +2055,16 @@ EOF
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
-    EXIT_CODE=$?
+    DEMO_EXIT_CODE=$?
+    ./clean.sh
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_ROOT_DIR:-/usr}
+    TEST_EXIT_CODE=$?
     fluid_endTime_s=`date +%s`
     echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
     echo "ipipe_log_param_Test_Fluid_Lib_Total_Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt     
-    ./clean.sh
-    if [[ "$EXIT_CODE" != "0" ]]; then
+    if [[ "$DEMO_EXIT_CODE" != "0" || "$TEST_EXIT_CODE" != "0" ]]; then
         exit 8;
     fi
 }
@@ -2170,6 +2263,7 @@ function main() {
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
+        check_whl_size
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
@@ -2266,6 +2360,11 @@ function main() {
         #go inference test
         test_go_inference_api
         check_approvals_of_unittest 3 
+        ;;
+      build_inference)
+        PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        gen_fluid_lib ${parallel_number}
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}

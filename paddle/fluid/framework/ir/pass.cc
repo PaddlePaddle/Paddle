@@ -69,6 +69,26 @@ Graph* Pass::Apply(Graph* graph) const {
   return graph;
 }
 
+void Pass::Apply(ProgramDesc* main_program,
+                 ProgramDesc* startup_program) const {
+  PADDLE_ENFORCE_NOT_NULL(main_program, platform::errors::InvalidArgument(
+                                            "main program must be provided"));
+  PADDLE_ENFORCE_NOT_NULL(
+      startup_program,
+      platform::errors::InvalidArgument("startup program must be provided"));
+
+  Graph graph(*main_program);
+  Apply(&graph);
+
+  // TODO(zjl): support details::kStartupProgramDescs and details::kProgramDescs
+  ProgramDesc new_main_program;
+  GraphToProgram(graph, &new_main_program);
+  main_program->CopyFrom(*new_main_program.Proto());
+
+  startup_program->Flush();
+  main_program->Flush();
+}
+
 PassRegistry& PassRegistry::Instance() {
   static PassRegistry g_pass_info_map;
   return g_pass_info_map;

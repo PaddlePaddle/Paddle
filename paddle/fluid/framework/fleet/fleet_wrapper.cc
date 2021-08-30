@@ -262,7 +262,7 @@ void FleetWrapper::HeterPushSparseVars(
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
-      slot = boost::lexical_cast<int>(sparse_key_names[i]);
+      slot = std::stoi(sparse_key_names[i]);
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     if (g_var == nullptr) {
@@ -915,10 +915,15 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     int slot = 0;
     if (dump_slot) {
       try {
-        slot = boost::lexical_cast<int>(sparse_key_names[i]);
-      } catch (boost::bad_lexical_cast const& e) {
+        slot = std::stoi(sparse_key_names[i]);
+      } catch (std::invalid_argument const& e) {
         PADDLE_THROW(platform::errors::PreconditionNotMet(
             "sparse var's name: %s, doesn't support non-integer type name when "
+            "dump_slot=True",
+            sparse_key_names[i]));
+      } catch (std::out_of_range const& e) {
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "sparse var's name: %s, integer type name out of range when "
             "dump_slot=True",
             sparse_key_names[i]));
       }
@@ -1121,7 +1126,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
         data[click_index] = static_cast<float>(fea_labels.at(input_idx));
       }
       if (dump_slot) {
-        int slot = boost::lexical_cast<int>(input_names[index]);
+        int slot = std::stoi(input_names[index]);
         data[0] = static_cast<float>(slot);
       }
       ++input_idx;

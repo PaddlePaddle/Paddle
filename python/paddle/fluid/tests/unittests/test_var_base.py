@@ -72,10 +72,17 @@ class TestVarBase(unittest.TestCase):
                 if core.is_compiled_with_cuda():
                     y = x.pin_memory()
                     self.assertEqual(y.place.__repr__(), "CUDAPinnedPlace")
+                    y = x.cuda()
+                    y = x.cuda(None)
+                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    y = x.cuda(device_id=0)
+                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
                     y = x.cuda(blocking=False)
                     self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
                     y = x.cuda(blocking=True)
                     self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    with self.assertRaises(ValueError):
+                        y = x.cuda("test")
 
                 # support 'dtype' is core.VarType
                 x = paddle.rand((2, 2))
@@ -704,6 +711,7 @@ class TestVarBase(unittest.TestCase):
             var_tensor[None, 2, None, 1].numpy(),
             var_tensor[None].numpy(),
             var_tensor[0, 0, None, 0, 0, None].numpy(),
+            var_tensor[None, None, 0, ..., None].numpy(),
             var_tensor[0, 1:10:2, None, None, ...].numpy(),
         ]
 
@@ -717,11 +725,13 @@ class TestVarBase(unittest.TestCase):
         self.assertTrue(np.array_equal(var[7], np_value[None]))
         self.assertTrue(
             np.array_equal(var[8], np_value[0, 0, None, 0, 0, None]))
+        self.assertTrue(
+            np.array_equal(var[9], np_value[None, None, 0, ..., None]))
 
         # TODO(zyfncg) there is a bug of dimensions when slice step > 1 and 
         #              indexs has int type 
         # self.assertTrue(
-        #     np.array_equal(var[9], np_value[0, 1:10:2, None, None, ...]))
+        #     np.array_equal(var[10], np_value[0, 1:10:2, None, None, ...]))
 
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')

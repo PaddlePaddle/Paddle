@@ -413,7 +413,6 @@ list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable test_cumsum_op temporaily
 # list(REMOVE_ITEM TEST_OPS test_cumsum_op)
-list(REMOVE_ITEM TEST_OPS test_dataloader_dataset)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -671,6 +670,10 @@ if (WITH_XPU_BKCL)
     py_test(test_collective_allreduce_api_xpu SRCS "test_collective_allreduce_api.py")
 endif()
 
+if(WIN32)
+    cc_test(cc_imp_py_test SRCS cc_imp_py_test.cc DEPS python)
+endif()
+
 if (WITH_ASCEND_CL)
     add_subdirectory(npu)
 endif()
@@ -683,8 +686,11 @@ add_subdirectory(asp)
 
 add_subdirectory(ir)
 
+add_subdirectory(interpreter)
+
 if (WITH_TESTING)
     set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=all_reduce_deps_pass=10)
+    set_property(TEST test_parallel_executor_fix_op_run_order PROPERTY ENVIRONMENT GLOG_vmodule=fix_op_run_order_pass=10)
 endif()
 
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
@@ -911,10 +917,24 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_sendrecv_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
     if(WITH_DISTRIBUTE)
+        set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
         set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
         set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
+        set_tests_properties(test_collective_split_embedding
+            test_collective_split_embedding_none_divisible
+            test_collective_split_row_linear
+            test_collective_split_col_linear
+            test_collective_scatter_api
+            test_collective_barrier_api
+            test_collective_reduce_api
+            test_pipeline_parallel
+            test_collective_allreduce_api
+            test_new_group_api
+            test_collective_broadcast_api
+            test_collective_allgather_api
+            test_collective_alltoall_api
+            PROPERTIES LABELS "RUN_TYPE=DIST")
     endif()
     set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_broadcast PROPERTIES TIMEOUT 120)
@@ -931,20 +951,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_collective_split_embedding
-        test_collective_split_embedding_none_divisible
-        test_collective_split_row_linear
-        test_collective_split_col_linear
-        test_collective_scatter_api
-        test_collective_barrier_api
-        test_collective_reduce_api
-        test_pipeline_parallel
-        test_collective_allreduce_api
-        test_new_group_api
-        test_collective_broadcast_api
-        test_collective_allgather_api
-        test_collective_alltoall_api
-        PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_GPU OR WITH_ROCM)
     set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT 120)

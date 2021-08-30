@@ -42,6 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/new_exec.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -117,7 +118,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_CRYPTO
@@ -467,6 +468,19 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
                         string::join_strings(ops, ',')));
 }
 
+#ifdef PADDLE_WITH_NCCL
+static int GetNCCLVersion() {
+#if NCCL_VERSION_CODE >= 2304
+  int ver;
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGetVersion(&ver));
+  return ver;
+#else
+  PADDLE_THROW(platform::errors::External(
+      "Cannot get NCCL version successfully when nccl version < 2.3.4"));
+#endif
+}
+#endif
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -495,6 +509,14 @@ PYBIND11_MODULE(core_noavx, m) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);
 #endif
+
+#ifdef PADDLE_WITH_NCCL
+  m.def("nccl_version", &GetNCCLVersion);
+#endif
+
+  m.def("wait_device", [](const platform::Place &place) {
+    platform::DeviceContextPool::Instance().Get(place)->Wait();
+  });
 
   m.def("from_dlpack", [](py::capsule *dltensor) {
     DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
@@ -1610,7 +1632,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 #ifdef PADDLE_WITH_XPU
+  py::enum_<platform::XPUVersion>(m, "XPUVersion", py::arithmetic())
+      .value("XPU1", platform::XPUVersion::XPU1)
+      .value("XPU2", platform::XPUVersion::XPU2)
+      .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+  m.def("get_xpu_device_version",
+        [](int device_id) { return platform::get_xpu_version(device_id); });
 #endif
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
@@ -1796,20 +1824,20 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::Place &>);
 
   py::class_<OperatorBase>(m, "Operator")
-      .def_static(
-          "create",
-          [](py::bytes protobin) {
-            proto::OpDesc desc;
-            PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin), true,
-                              platform::errors::InvalidArgument(
-                                  "Cannot parse user input to OpDesc"));
-            PADDLE_ENFORCE_EQ(
-                desc.IsInitialized(), true,
-                platform::errors::InvalidArgument(
-                    "The provided OpDesc is not initialized, the reason is: %s",
-                    desc.InitializationErrorString()));
-            return OpRegistry::CreateOp(desc);
-          })
+      .def_static("create",
+                  [](py::bytes protobin) {
+                    proto::OpDesc desc;
+                    PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin),
+                                      true,
+                                      platform::errors::InvalidArgument(
+                                          "Cannot parse user input to OpDesc"));
+                    PADDLE_ENFORCE_EQ(desc.IsInitialized(), true,
+                                      platform::errors::InvalidArgument(
+                                          "The provided OpDesc is not "
+                                          "initialized, the reason is: %s",
+                                          desc.InitializationErrorString()));
+                    return OpRegistry::CreateOp(desc);
+                  })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CPUPlace &place) { self.Run(scope, place); })
@@ -1914,6 +1942,34 @@ All parameter, weight, gradient are variables in Paddle.
                  fetch_vars);
       });
 
+  py::class_<framework::InterpreterCore>(m, "InterpreterCore")
+      .def(py::init<const platform::Place &, const ProgramDesc &,
+                    const ProgramDesc &, Scope *>())
+      .def("run",
+           [](InterpreterCore &self,
+              const std::unordered_map<std::string, py::array> &input_dict,
+              std::vector<std::string> vec_fetch_name) {
+             pybind11::gil_scoped_release release;
+             std::vector<framework::Tensor> vec_tensor;
+             std::vector<std::string> vec_name;
+
+             for (auto &item : input_dict) {
+               framework::LoDTensor t;
+               SetTensorFromPyArray<platform::CPUPlace>(
+                   &t, item.second, platform::CPUPlace(), false);
+               vec_name.push_back(item.first);
+               vec_tensor.push_back(t);
+             }
+
+             std::vector<framework::Tensor> vec_out;
+             self.run(vec_name, vec_tensor, vec_fetch_name, &vec_out);
+             std::vector<py::array> vec_ret;
+             for (size_t i = 0; i < vec_out.size(); ++i) {
+               vec_ret.push_back(TensorToPyArray(vec_out[i], true));
+             }
+             return vec_ret;
+           });
+
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("load_op_meta_info_and_register_op",
@@ -1998,6 +2054,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindOpDesc(&m);
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
+  BindProcessMeshDesc(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -2160,7 +2217,15 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_ASCEND_CL
   m.def("get_npu_device_count", platform::GetNPUDeviceCount);
-  m.def("npu_finalize", []() { platform::AclInstance::Instance().Finalize(); });
+  m.def("npu_finalize", []() {
+    auto &pool = platform::DeviceContextPool::Instance();
+    auto devices = platform::GetSelectedNPUDevices();
+    for (size_t i = 0; i < devices.size(); ++i) {
+      platform::NPUDeviceGuard guard(devices[i]);
+      pool.Get(platform::NPUPlace(devices[i]))->Wait();
+    }
+    platform::AclInstance::Instance().Finalize();
+  });
 
   py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
 
@@ -2928,8 +2993,8 @@ All parameter, weight, gradient are variables in Paddle.
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
-                  "BuildStrategy.memory_optimize must be set to None, False or "
-                  "True"));
+                  "BuildStrategy.memory_optimize must be set to None, False "
+                  "or True"));
             }
           },
           R"DOC((bool, optional): memory opitimize aims to save total memory
@@ -3002,6 +3067,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self,
              const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
             self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
+          })
+      .def_property(
+          "fix_op_run_order",
+          [](const BuildStrategy &self) { return self.fix_op_run_order_; },
+          [](BuildStrategy &self, bool fix_op_run_order) {
+            self.fix_op_run_order_ = fix_op_run_order;
           })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
@@ -3078,6 +3149,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
   BindGraph(&m);
   BindNode(&m);
+  BindPass(&m);
   BindInferenceApi(&m);
   BindCompatible(&m);
   BindDataset(&m);

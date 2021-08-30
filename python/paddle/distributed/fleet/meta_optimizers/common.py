@@ -126,11 +126,11 @@ class CollectiveHelper(object):
             _add_sync_by_allreduce(block)
             return
 
+        comm_id_var = block.create_var(
+            name=unique_name.generate('comm_id'),
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
         if core.is_compiled_with_cuda():
-            comm_id_var = block.create_var(
-                name=unique_name.generate('nccl_id'),
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
             block.append_op(
                 type='c_gen_nccl_id',
                 inputs={},
@@ -139,6 +139,7 @@ class CollectiveHelper(object):
                     'rank': rank,
                     'endpoint': current_endpoint,
                     'other_endpoints': other_endpoints,
+                    'ring_id': ring_id,
                     OP_ROLE_KEY: OpRole.Forward
                 })
             block.append_op(
@@ -152,10 +153,6 @@ class CollectiveHelper(object):
                     OP_ROLE_KEY: OpRole.Forward
                 })
         elif core.is_compiled_with_xpu():
-            comm_id_var = block.create_var(
-                name=unique_name.generate('bkcl_id'),
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
             block.append_op(
                 type='c_gen_bkcl_id',
                 inputs={},
@@ -164,6 +161,7 @@ class CollectiveHelper(object):
                     'rank': rank,
                     'endpoint': current_endpoint,
                     'other_endpoints': other_endpoints,
+                    'ring_id': ring_id,
                     OP_ROLE_KEY: OpRole.Forward
                 })
             block.append_op(
@@ -177,24 +175,20 @@ class CollectiveHelper(object):
                     OP_ROLE_KEY: OpRole.Forward
                 })
         elif core.is_compiled_with_npu():
-            hccl_id_var = block.create_var(
-                name=unique_name.generate('hccl_id'),
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
             block.append_op(
                 type='c_gen_hccl_id',
                 inputs={},
-                outputs={'Out': hccl_id_var},
+                outputs={'Out': comm_id_var},
                 attrs={
                     'rank': rank,
                     'endpoint': current_endpoint,
                     'other_endpoints': other_endpoints,
+                    'ring_id': ring_id,
                     OP_ROLE_KEY: OpRole.Forward
                 })
             block.append_op(
                 type='c_comm_init_hccl',
-                inputs={'X': hccl_id_var},
+                inputs={'X': comm_id_var},
                 outputs={},
                 attrs={
                     'rank': rank,

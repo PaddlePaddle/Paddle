@@ -361,6 +361,45 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.a_sync_configs, configs)
 
     @property
+    def trainer_desc_configs(self):
+        """
+        Set trainer desc configurations. 
+
+        **Notes**:
+            dump_fields_path(str): the path of dump fields
+
+            dump_fields(list(str)): the fields that you want to dump
+
+            dump_param(list(str)): the param that you want to dump
+
+            stat_var_names(list(str)): 
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+
+            strategy = fleet.DistributedStrategy()
+            configs = {"dump_fields_path": "./dump_data", "dump_fields": ["xxx", "yyy"]}
+            strategy.trainer_desc_configs = configs
+
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+
+        """
+        return get_msg_dict(self.strategy.trainer_desc_configs)
+
+    @trainer_desc_configs.setter
+    @is_strict_auto
+    def trainer_desc_configs(self, configs):
+        check_configs_key(self.strategy.trainer_desc_configs, configs,
+                          "trainer_desc_configs")
+        assign_configs_value(self.strategy.trainer_desc_configs, configs)
+
+    @property
     def amp(self):
         """
         Indicating whether we are using automatic mixed precision training

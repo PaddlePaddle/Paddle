@@ -921,6 +921,29 @@ void BindImperative(py::module *m_ptr) {
                    axis -= len;
                  }
 
+                 // Deal with cases that there are more than one
+                 // prefix none index, For example:
+                 // [None, None, :, :, None]
+                 // the none_axes int the return of ParseIndexingSlice is:
+                 // [0,    0,          2   ]
+                 // according to the interface of "unsqueeze2",
+                 // we should convert it to:
+                 // [0,    0,          4   ]
+                 int prefix_zero_cnt = 0;
+                 for (const auto &axis : none_axes) {
+                   if (axis == 0) {
+                     prefix_zero_cnt++;
+                   } else {
+                     break;
+                   }
+                 }
+                 if (prefix_zero_cnt > 0) {
+                   int none_axes_num = static_cast<int>(none_axes.size());
+                   for (int i = prefix_zero_cnt; i < none_axes_num; ++i) {
+                     none_axes[i] += prefix_zero_cnt;
+                   }
+                 }
+
                  imperative::NameVarBaseMap ins = {{"X", {out}}};
                  framework::AttributeMap attrs = {{"axes", none_axes}};
                  auto new_out = std::shared_ptr<imperative::VarBase>(
@@ -1400,20 +1423,26 @@ void BindImperative(py::module *m_ptr) {
 
       )DOC")
       .def("cuda",
-           [](const std::shared_ptr<imperative::VarBase> &self, int device_id,
-              bool blocking) {
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              py::handle &handle, bool blocking) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              PADDLE_THROW(platform::errors::PermissionDenied(
                  "Cannot copy this Tensor to GPU in CPU version Paddle, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
              int device_count = platform::GetCUDADeviceCount();
-             if (device_id == -1) {
+             int device_id = 0;
+             if (handle == py::none()) {
                if (platform::is_gpu_place(self->Place())) {
                  return self;
-               } else {
-                 device_id = 0;
                }
+             } else {
+               PyObject *py_obj = handle.ptr();
+               PADDLE_ENFORCE_EQ(
+                   PyCheckInteger(py_obj), true,
+                   platform::errors::InvalidArgument(
+                       " 'device_id' must be a positive integer"));
+               device_id = py::cast<int>(handle);
              }
              PADDLE_ENFORCE_GE(
                  device_id, 0,
@@ -1437,25 +1466,29 @@ void BindImperative(py::module *m_ptr) {
              }
 #endif
            },
-           py::arg("device_id") = -1, py::arg("blocking") = true, R"DOC(
+           py::arg("device_id") = py::none(), py::arg("blocking") = true, R"DOC(
         Returns a copy of this Tensor in GPU memory.
 
         If this Tensor is already in GPU memory and device_id is default, 
         then no copy is performed and the original Tensor is returned.
         
         Args:
-            device_id(int, optional): The destination GPU device id. Defaults to the current device.
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
             blocking(bool, optional): If False and the source is in pinned memory, the copy will be 
               asynchronous with respect to the host. Otherwise, the argument has no effect. Default: False.
 
         Examples:
             .. code-block:: python
 
+              # required: gpu
               import paddle
               x = paddle.to_tensor(1.0, place=paddle.CPUPlace())
               print(x.place)        # CPUPlace
 
               y = x.cuda()
+              print(y.place)        # CUDAPlace(0)
+            
+              y = x.cuda(None)
               print(y.place)        # CUDAPlace(0)
 
               y = x.cuda(1)

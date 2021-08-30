@@ -22,6 +22,8 @@ import paddle.fluid as fluid
 import six
 from fake_reader import fake_imdb_reader
 
+paddle.enable_static()
+
 
 def bow_net(data,
             label,
@@ -149,7 +151,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
     def check_clip_result(self, out, out_clip):
         global_norm = 0
         for v in out:
-            global_norm += np.sum(np.power(v, 2))
+            global_norm += np.sum(np.square(v))
         global_norm = np.sqrt(global_norm)
         scale = self.clip_norm / np.maximum(self.clip_norm, global_norm)
         res = []
@@ -160,7 +162,8 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
             self.assertTrue(
                 np.allclose(
                     a=u, b=v, rtol=1e-5, atol=1e-8),
-                "gradient clip by global norm has wrong results!")
+                "gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}".
+                format(u, v, u - v))
 
     # test whether the ouput is right when use 'set_gradient_clip'
     def test_old_gradient_clip(self):
@@ -210,12 +213,16 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         params_grads = [(x, None), (x, y), (y, x)]
         params_grads = clip(params_grads)
         self.assertTrue(
-            len(clip(params_grads)) == 2,
+            len(params_grads) == 2,
             "ClipByGlobalNorm: when grad is None, it shouldn't be returned by gradient clip!"
         )
-        self.assertTrue(
-            params_grads[0][1].name != 'y',
-            "ClipByGlobalNorm: param_grad (x, y) should be clipped!")
+
+        ops = [op.type for op in x.block.ops]
+        self.assertListEqual(ops, [
+            'squared_l2_norm', 'squared_l2_norm', 'sum', 'sqrt',
+            'fill_constant', 'elementwise_max', 'elementwise_div',
+            'elementwise_mul', 'elementwise_mul'
+        ])
 
     # raise typeError
     def test_tpyeError(self):

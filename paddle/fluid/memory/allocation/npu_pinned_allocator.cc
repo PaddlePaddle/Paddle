@@ -39,6 +39,7 @@ void NPUPinnedAllocator::ProcessEventsAndFree() {
 }
 
 Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
+  std::lock_guard<std::mutex> lock(mtx_);
   ProcessEventsAndFree();
   void *ptr;
   int error = posix_memalign(&ptr, kAlignment, size);
@@ -50,6 +51,7 @@ Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
 }
 
 void NPUPinnedAllocator::FreeImpl(Allocation *allocation) {
+  std::lock_guard<std::mutex> lock(mtx_);
   void *ptr = allocation->ptr();
   auto iter = npu_events_.find(allocation);
   aclrtEvent event = iter->second;
@@ -65,11 +67,14 @@ void NPUPinnedAllocator::FreeImpl(Allocation *allocation) {
 }
 
 uint64_t NPUPinnedAllocator::ReleaseImpl(const platform::Place &place) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  // Empty implementation
   return static_cast<uint64_t>(0);
 }
 
 void NPUPinnedAllocator::RecordEvent(Allocation *allocation,
                                      aclrtStream stream) {
+  std::lock_guard<std::mutex> lock(mtx_);
   aclrtEvent event = nullptr;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateEvent(&event));
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(event, stream));
