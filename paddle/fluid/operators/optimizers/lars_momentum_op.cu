@@ -222,7 +222,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     cudaLaunchCooperativeKernel(
         reinterpret_cast<void*>(MomentumLarsKernel<T, MT>), grid_real,
         LARS_BLOCK_SIZE, cuda_param, 0, ctx.cuda_device_context().stream());
-#elif
+#else
     auto eigen_p = framework::EigenVector<T>::Flatten(*param);
     auto eigen_g = framework::EigenVector<T>::Flatten(*grad);
     // calculate norms using eigein and launch the kernel.
