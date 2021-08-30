@@ -866,6 +866,9 @@ const CostInfo& InterpreterCore::DryRun(
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
   profiler_.Pause();
+  if (platform::is_gpu_place(place_)) {
+    profiler_.TotalCUDAAllocatedMemorySize(place_);
+  }
   return profiler_.GetCostInfo();
 }
 

@@ -69,6 +69,8 @@ class LinearTestCase(unittest.TestCase):
             self.assertEqual(cost_info.host_memory_bytes(), 16)
             gt = 152 if sys.platform.startswith('win') else 2560
             self.assertEqual(cost_info.device_memory_bytes(), gt)
+            self.assertGreaterEqual(cost_info.device_total_memory_bytes(),
+                                    cost_info.device_memory_bytes())
         else:
             self.assertEqual(cost_info.host_memory_bytes(), 120)
             self.assertEqual(cost_info.device_memory_bytes(), 0)
