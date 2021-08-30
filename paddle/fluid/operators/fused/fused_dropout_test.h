@@ -22,11 +22,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
+namespace memory = paddle::memory;
 
 USE_OP(dropout);
 
@@ -34,17 +36,15 @@ USE_OP(dropout);
  * @brief call paddle dropout op
  */
 template <typename T>
-void Dropout(const T *x, const framework::DDim &x_dim, T *out,
-             std::vector<uint8_t> *mask, const platform::CUDADeviceContext &ctx,
-             uint64_t seed, float dropout_prob, bool is_upscale_in_train,
-             bool is_test) {
+void Dropout(const std::vector<T> &x, const framework::DDim &x_dim,
+             std::vector<T> *out, std::vector<uint8_t> *mask,
+             const platform::CUDADeviceContext &ctx, uint64_t seed,
+             float dropout_prob, bool is_upscale_in_train, bool is_test) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
   auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  framework::TensorFromVector(x, ctx, tensor_x);
   tensor_x->Resize(x_dim);
-  tensor_x->mutable_data<T>(ctx.GetPlace());
-  cudaMemcpy(tensor_x->data<T>(), x, x_dim[0] * x_dim[1] * sizeof(T),
-             cudaMemcpyHostToDevice);
 
   auto var_out = scope.Var("Out");
   auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
@@ -59,6 +59,7 @@ void Dropout(const T *x, const framework::DDim &x_dim, T *out,
   if (is_upscale_in_train) {
     attrs.insert({"dropout_implementation", std::string("upscale_in_train")});
   }
+
   if (is_test) {
     attrs.insert({"is_test", 1});
   }
@@ -66,11 +67,10 @@ void Dropout(const T *x, const framework::DDim &x_dim, T *out,
   auto op = framework::OpRegistry::CreateOp(
       "dropout", {{"X", {"X"}}}, {{"Out", {"Out"}}, {"Mask", {"Mask"}}}, attrs);
   op->Run(scope, ctx.GetPlace());
-  cudaMemcpy(out, tensor_out->data<T>(), x_dim[0] * x_dim[1] * sizeof(T),
-             cudaMemcpyDeviceToHost);
+
+  framework::TensorToVector<T>(*tensor_out, ctx, out);
   if (!is_test) {
-    cudaMemcpy((*mask).data(), tensor_mask->data<uint8_t>(),
-               x_dim[0] * x_dim[1] * sizeof(uint8_t), cudaMemcpyDeviceToHost);
+    framework::TensorToVector<uint8_t>(*tensor_mask, ctx, mask);
   }
   ctx.Wait();
 }

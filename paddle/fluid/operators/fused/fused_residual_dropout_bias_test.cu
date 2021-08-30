@@ -24,7 +24,7 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
 /**
- * @brief the unittest of fused_residual_dropout_bias
+ * @brief the unittest of fusedresidualdropoutbias
  * 1. random input data
  * 2. add bias, call paddle dropout op, add residual, and get the base result
  * 3. call FusedResidualDropoutBias function get fused result
@@ -33,163 +33,169 @@ namespace platform = paddle::platform;
 
 template <typename T>
 struct TestFusedResidualDropoutBias {
-  uint32_t _rows;
-  uint32_t _cols;
-  uint64_t _seed;
-  float _dropout_prob;
-  bool _is_upscale_in_train;
-  bool _is_test;  // default false,  Set to true for inference only
-  bool _has_bias = true;
-  framework::Tensor _src, _residual, _bias, _out, _mask;
-  framework::Tensor _dsrc, _dbias;
+  uint32_t rows;
+  uint32_t cols;
+  uint64_t seed;
+  float dropout_prob;
+  bool is_upscale_in_train;
+  bool is_test;  // default false,  Set to true for inference only
+  bool hasbias = true;
+  framework::Tensor src, residual, bias, out, mask;
+  framework::Tensor dsrc, dbias;
 
-  std::vector<T> _src_vec, _residual_vec, _bias_vec;
-  std::vector<T> _correct_out, _correct_dsrc, _correct_dbias;
-  std::vector<uint8_t> _correct_mask;
+  std::vector<T> src_vec, residual_vec, bias_vec;
+  std::vector<T> correct_out, correct_dsrc, correct_dbias;
+  std::vector<uint8_t> correct_mask;
 
-  platform::CUDAPlace _place;
-  platform::CUDADeviceContext *_ctx;
+  platform::CUDAPlace place;
+  platform::CUDADeviceContext *ctx;
 
   TestFusedResidualDropoutBias() {
-    _rows = 32;
-    _cols = 32;
-    _seed = 0;
-    _dropout_prob = 0.0;
-    _is_upscale_in_train = false;
-    _is_test = false;
-    _has_bias = true;
-    _ctx = new platform::CUDADeviceContext(_place);
+    rows = 32;
+    cols = 32;
+    seed = 0;
+    dropout_prob = 0.0;
+    is_upscale_in_train = false;
+    is_test = false;
+    hasbias = true;
+    // ctx = new platform::CUDADeviceContext(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto devicectx = pool.Get(place);
+    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
   }
 
-  TestFusedResidualDropoutBias(int rows, int cols, uint64_t seed = 0,
-                               float dropout_prob = 0.0,
-                               bool is_upscale_in_train = false,
-                               bool is_test = false) {
-    _rows = rows;
-    _cols = cols;
-    _seed = seed;
-    _dropout_prob = dropout_prob;
-    _is_upscale_in_train = is_upscale_in_train;
-    _is_test = is_test;
-    _has_bias = true;
-    _ctx = new platform::CUDADeviceContext(_place);
+  TestFusedResidualDropoutBias(int rows_, int cols_, uint64_t seed_ = 0,
+                               float dropout_prob_ = 0.0,
+                               bool is_upscale_in_train_ = false,
+                               bool is_test_ = false) {
+    rows = rows_;
+    cols = cols_;
+    seed = seed_;
+    dropout_prob = dropout_prob_;
+    is_upscale_in_train = is_upscale_in_train_;
+    is_test = is_test_;
+    hasbias = true;
+    // ctx = new platform::CUDADeviceContext(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto devicectx = pool.Get(place);
+    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
   }
 
-  ~TestFusedResidualDropoutBias() { delete _ctx; }
+  ~TestFusedResidualDropoutBias() {}
 
   void SetUp() {
-    const int n = _rows * _cols;
-    _correct_out.resize(n);
-    _correct_mask.resize(n);
-    _correct_dsrc.resize(n);
-    _correct_dbias.resize(_cols);
+    const int n = rows * cols;
+    correct_out.resize(n);
+    correct_mask.resize(n);
+    correct_dsrc.resize(n);
+    correct_dbias.resize(cols);
 
-    _src_vec.resize(n);
-    _residual_vec.resize(n);
-    _bias_vec.resize(_cols);
+    src_vec.resize(n);
+    residual_vec.resize(n);
+    bias_vec.resize(cols);
     std::default_random_engine random(time(NULL));
     std::uniform_real_distribution<float> dis(0.0, 1.0);
 
-    for (int i = 0; i < _rows; i++) {
-      for (int j = 0; j < _cols; j++) {
-        _src_vec[i * _cols + j] = static_cast<T>(dis(random));
-        _residual_vec[i * _cols + j] = static_cast<T>(dis(random));
-        if (i == 0) _bias_vec[j] = dis(random);
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        src_vec[i * cols + j] = static_cast<T>(dis(random));
+        residual_vec[i * cols + j] = static_cast<T>(dis(random));
+        if (i == 0) bias_vec[j] = dis(random);
       }
     }
 
-    framework::TensorFromVector<T>(_src_vec, *_ctx, &_src);
-    _src.Resize({_rows, _cols});
-    framework::TensorFromVector<T>(_residual_vec, *_ctx, &_residual);
-    _residual.Resize({_rows, _cols});
-    if (_has_bias) {
-      framework::TensorFromVector<T>(_bias_vec, *_ctx, &_bias);
-      _bias.Resize({_cols});
+    framework::TensorFromVector<T>(src_vec, *ctx, &src);
+    src.Resize({rows, cols});
+    framework::TensorFromVector<T>(residual_vec, *ctx, &residual);
+    residual.Resize({rows, cols});
+    if (hasbias) {
+      framework::TensorFromVector<T>(bias_vec, *ctx, &bias);
+      bias.Resize({cols});
     }
 
     {
-      _out.Resize({_rows, _cols});
-      _out.mutable_data<T>(_place);
-      _mask.Resize({_rows, _cols});
-      _mask.mutable_data<uint8_t>(_place);
-      _dsrc.Resize({_rows, _cols});
-      _dsrc.mutable_data<T>(_place);
+      out.Resize({rows, cols});
+      out.mutable_data<T>(place);
+      mask.Resize({rows, cols});
+      mask.mutable_data<uint8_t>(place);
+      dsrc.Resize({rows, cols});
+      dsrc.mutable_data<T>(place);
 
-      if (_has_bias) {
-        _dbias.Resize({_cols});
-        _dbias.mutable_data<T>(_place);
+      if (hasbias) {
+        dbias.Resize({cols});
+        dbias.mutable_data<T>(place);
       }
     }
   }
 
   void BaseForward() {
-    std::vector<T> out1(_rows * _cols), out2(_rows * _cols);
-    if (_has_bias) {
+    std::vector<T> out1(rows * cols), out2(rows * cols);
+    if (hasbias) {
       // add bias
-      for (int i = 0; i < _rows; i++) {
-        for (int j = 0; j < _cols; j++) {
-          out1[i * _cols + j] = _src_vec[i * _cols + j] + _bias_vec[j];
+      for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+          out1[i * cols + j] = src_vec[i * cols + j] + bias_vec[j];
         }
       }
       // call dropout
-      Dropout<T>(out1.data(), _src.dims(), out2.data(), &_correct_mask, *_ctx,
-                 _seed, _dropout_prob, _is_upscale_in_train, _is_test);
+      Dropout<T>(out1, src.dims(), &out2, &correct_mask, *ctx, seed,
+                 dropout_prob, is_upscale_in_train, is_test);
     } else {
-      Dropout<T>(_src_vec.data(), _src.dims(), out2.data(), &_correct_mask,
-                 *_ctx, _seed, _dropout_prob, _is_upscale_in_train, _is_test);
+      Dropout<T>(src_vec, src.dims(), &out2, &correct_mask, *ctx, seed,
+                 dropout_prob, is_upscale_in_train, is_test);
     }
+    ctx->Wait();
     // add residual
-    for (int i = 0; i < _rows; i++) {
-      for (int j = 0; j < _cols; j++) {
-        _correct_out[i * _cols + j] =
-            _residual_vec[i * _cols + j] + out2[i * _cols + j];
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        correct_out[i * cols + j] =
+            residual_vec[i * cols + j] + out2[i * cols + j];
       }
     }
-    _ctx->Wait();
   }
 
   void BaseBackward() {
-    DropoutGrad<T>(_correct_dsrc.data(), _src.dims(), _correct_out.data(),
-                   _correct_mask.data(), *_ctx, _dropout_prob,
-                   _is_upscale_in_train);
+    DropoutGrad<T>(correct_dsrc.data(), src.dims(), correct_out.data(),
+                   correct_mask.data(), *ctx, dropout_prob,
+                   is_upscale_in_train);
     // calc dbias
-    memset(&_correct_dbias[0], 0, _cols * sizeof(T));
-    for (int i = 0; i < _rows; i++) {
-      for (int j = 0; j < _cols; j++) {
-        _correct_dbias[j] += _correct_out[i * _cols + j];
+    memset(&correct_dbias[0], 0, cols * sizeof(T));
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        correct_dbias[j] += correct_out[i * cols + j];
       }
     }
   }
 
   void FusedForward() {
     auto threads = paddle::operators::Get1DBlocksAnd2DGrids(
-        *_ctx, (uint64_t)_rows, (uint64_t)_cols);
+        *ctx, (uint64_t)rows, (uint64_t)cols);
     const int VecSize = 4;
     const int increment =
-        ((_cols - 1) / (threads.first.x * threads.second.x * VecSize) + 1) *
+        ((cols - 1) / (threads.first.x * threads.second.x * VecSize) + 1) *
         VecSize;
 
     T *bias_ptr = nullptr;
-    if (_has_bias) {
-      bias_ptr = _bias.data<T>();
+    if (hasbias) {
+      bias_ptr = bias.data<T>();
     }
     paddle::operators::LaunchResidualDropoutBias<T, uint8_t>(
-        _rows, _cols, increment, _seed, _dropout_prob, _is_test,
-        _is_upscale_in_train, _src.data<T>(), _residual.data<T>(), bias_ptr,
-        _mask.data<uint8_t>(), _out.data<T>(), *_ctx);
-    _ctx->Wait();
+        rows, cols, increment, seed, dropout_prob, is_test, is_upscale_in_train,
+        src.data<T>(), residual.data<T>(), bias_ptr, mask.data<uint8_t>(),
+        out.data<T>(), *ctx);
+    ctx->Wait();
   }
 
   void FusedBackward() {
-    if (_is_test) return;
+    if (is_test) return;
 
     T *bias_ptr = nullptr;
-    if (_has_bias) {
-      bias_ptr = _dbias.data<T>();
+    if (hasbias) {
+      bias_ptr = dbias.data<T>();
     }
     paddle::operators::LaunchResidualDropoutBiasGrad<T, uint8_t>(
-        _out.data<T>(), _mask.data<uint8_t>(), _dropout_prob,
-        _is_upscale_in_train, _rows, _cols, _dsrc.data<T>(), bias_ptr, *_ctx);
+        out.data<T>(), mask.data<uint8_t>(), dropout_prob, is_upscale_in_train,
+        rows, cols, dsrc.data<T>(), bias_ptr, *ctx);
   }
 
   void Run() {
@@ -201,43 +207,39 @@ struct TestFusedResidualDropoutBias {
   }
 
   void CheckOut(const T diff) {
-    const int n = _rows * _cols;
-    std::vector<T> out(n);
-    std::vector<uint8_t> mask(n);
-    cudaMemcpy(out.data(), _out.data<T>(), _rows * _cols * sizeof(T),
-               cudaMemcpyDeviceToHost);
-    if (!_is_test) {
-      cudaMemcpy(mask.data(), _mask.data<uint8_t>(),
-                 _rows * _cols * sizeof(uint8_t), cudaMemcpyDeviceToHost);
+    const int n = rows * cols;
+    std::vector<T> _out(n);
+    std::vector<uint8_t> _mask(n);
+    framework::TensorToVector(out, *ctx, &_out);
+    if (!is_test) {
+      framework::TensorToVector<uint8_t>(mask, *ctx, &_mask);
     }
-    _ctx->Wait();
+    ctx->Wait();
 
     for (int i = 0; i < n; i++) {
-      EXPECT_LT(std::abs(out[i] - _correct_out[i]), diff);
-      if (!_is_test) EXPECT_EQ(mask[i], _correct_mask[i]);
+      EXPECT_LT(std::abs(_out[i] - correct_out[i]), diff);
+      if (!is_test) EXPECT_EQ(_mask[i], correct_mask[i]);
     }
   }
 
   void CheckGrad(const T diff) {
-    if (_is_test) return;
+    if (is_test) return;
 
-    const int n = _rows * _cols;
+    const int n = rows * cols;
 
-    std::vector<T> dsrc(n);
-    cudaMemcpy(dsrc.data(), _dsrc.data<T>(), _rows * _cols * sizeof(T),
-               cudaMemcpyDeviceToHost);
+    std::vector<T> _dsrc(n);
+    framework::TensorToVector(dsrc, *ctx, &_dsrc);
 
     for (int i = 0; i < n; i++) {
-      EXPECT_LT(std::abs(dsrc[i] - _correct_dsrc[i]), diff);
+      EXPECT_LT(std::abs(_dsrc[i] - correct_dsrc[i]), diff);
     }
 
-    if (_has_bias) {
-      std::vector<T> dbias(_cols);
-      cudaMemcpy(dbias.data(), _dbias.data<T>(), _cols * sizeof(T),
-                 cudaMemcpyDeviceToHost);
-      _ctx->Wait();
-      for (int i = 0; i < _cols; i++) {
-        EXPECT_LT(std::abs(dbias[i] - _correct_dbias[i]), diff);
+    if (hasbias) {
+      std::vector<T> _dbias(cols);
+      framework::TensorToVector(dbias, *ctx, &_dbias);
+      ctx->Wait();
+      for (int i = 0; i < cols; i++) {
+        EXPECT_LT(std::abs(_dbias[i] - correct_dbias[i]), diff);
       }
     }
   }
@@ -261,7 +263,7 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasDouble) {
   test.CheckGrad(static_cast<double>(1e-5));
 }
 
-// test fp16, For inference, check_grad is not required. ref: test_dropout_op.py
+// test fp16, For inference, check_grad is not required. ref: testdropout_op.py
 TEST(FusedDropout, GPUFusedResidualDropoutBiasFp16) {
   const int rows = 16;
   const int cols = 16;
@@ -275,7 +277,7 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasNoBias) {
   const int rows = 16;
   const int cols = 16;
   TestFusedResidualDropoutBias<float> test(rows, cols);
-  test._has_bias = false;
+  test.hasbias = false;
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-5));
@@ -286,7 +288,7 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasNoBias2) {
   const int rows = 16;
   const int cols = 17;
   TestFusedResidualDropoutBias<float> test(rows, cols);
-  test._has_bias = false;
+  test.hasbias = false;
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-5));

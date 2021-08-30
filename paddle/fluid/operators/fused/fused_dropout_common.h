@@ -18,9 +18,8 @@ limitations under the License. */
 #include <cuda.h>
 #include <curand_kernel.h>
 
-#include <iostream>
-#include <memory>
-
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
