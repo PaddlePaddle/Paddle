@@ -311,8 +311,8 @@ class ToTensor(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
     
     Shapes:
-        img (PIL.Image|np.ndarray): The input image with shape (H x W x C).
-        output (np.ndarray): A tensor with shape (C x H x W) or (H x W x C) according option data_format.
+        - img (PIL.Image|np.ndarray): The input image with shape (H x W x C).
+        - output (np.ndarray): A tensor with shape (C x H x W) or (H x W x C) according option data_format.
 
     Returns:
         A callable object of ToTensor.
@@ -376,8 +376,8 @@ class Resize(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): A resized image.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): A resized image.
 
     Returns:
         A callable object of Resize.
@@ -437,8 +437,8 @@ class RandomResizedCrop(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): A cropped image.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): A cropped image.
 
     Returns:
         A callable object of RandomResizedCrop.
@@ -525,8 +525,8 @@ class CenterCrop(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): A cropped image.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): A cropped image.
 
     Returns:
         A callable object of CenterCrop.
@@ -566,8 +566,8 @@ class RandomHorizontalFlip(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): A horiziotal flipped image.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): A horiziotal flipped image.
 
     Returns:
         A callable object of RandomHorizontalFlip.
@@ -607,8 +607,8 @@ class RandomVerticalFlip(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): A vertical flipped image.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): A vertical flipped image.
 
     Returns:
         A callable object of RandomVerticalFlip.
@@ -656,8 +656,8 @@ class Normalize(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): A normalized array or tensor.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): A normalized array or tensor.
 
     Returns:
         A callable object of Normalize.
@@ -716,8 +716,8 @@ class Transpose(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
     
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (np.ndarray|Paddle.Tensor): A transposed array or tensor. If input 
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (np.ndarray|Paddle.Tensor): A transposed array or tensor. If input 
             is a PIL.Image, output will be converted to np.ndarray automatically.
 
     Returns:
@@ -765,8 +765,8 @@ class BrightnessTransform(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in brghtness.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in brghtness.
 
     Returns:
         A callable object of BrightnessTransform.
@@ -808,8 +808,8 @@ class ContrastTransform(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in contrast.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in contrast.
 
     Returns:
         A callable object of ContrastTransform.
@@ -853,8 +853,8 @@ class SaturationTransform(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in saturation.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in saturation.
 
     Returns:
         A callable object of SaturationTransform.
@@ -896,8 +896,8 @@ class HueTransform(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in hue.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in hue.
 
     Returns:
         A callable object of HueTransform.
@@ -946,8 +946,8 @@ class ColorJitter(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): A color jittered image.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): A color jittered image.
 
     Returns:
         A callable object of ColorJitter.
@@ -1032,8 +1032,8 @@ class RandomCrop(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
     
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): A random cropped image.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): A random cropped image.
 
     Returns:
         A callable object of RandomCrop.
@@ -1141,8 +1141,8 @@ class Pad(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
     
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): A paded image.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): A paded image.
 
     Returns:
         A callable object of Pad.
@@ -1221,8 +1221,8 @@ class RandomRotation(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
     
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): A rotated image.
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): A rotated image.
 
     Returns:
         A callable object of RandomRotation.
@@ -1295,8 +1295,8 @@ class Grayscale(BaseTransform):
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shapes:
-        img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        output (PIL.Image|np.ndarray|Paddle.Tensor): Grayscale version of the input image. 
+        - img (PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
+        - output (PIL.Image|np.ndarray|Paddle.Tensor): Grayscale version of the input image. 
             - If output_channels == 1 : returned image is single channel
             - If output_channels == 3 : returned image is 3 channel with r == g == b
 
