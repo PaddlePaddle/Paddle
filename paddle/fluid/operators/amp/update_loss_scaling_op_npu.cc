@@ -62,9 +62,9 @@ void Update(const platform::NPUDeviceContext& ctx,
 
       std::vector<T> new_loss_scaling;
       TensorToVector(*updated_loss_scaling_tensor, ctx, &new_loss_scaling);
-      T min_value = static_cast<T>(1);
+      float min_value = 1.0;
       if (FLAGS_min_loss_scaling > 1) {
-        min_value = static_cast<T>(FLAGS_min_loss_scaling);
+        min_value = static_cast<float>(FLAGS_min_loss_scaling);
       }
 
       if (new_loss_scaling[0] < min_value) {
@@ -72,8 +72,8 @@ void Update(const platform::NPUDeviceContext& ctx,
         const auto& runner_p4 = NpuOpRunner(
             "Power", {*pre_loss_scaling_tensor}, {*updated_loss_scaling_tensor},
             {{"power", static_cast<float>(1)},
-             {"scale", static_cast<float>(min_value)},
-             {"shift", static_cast<float>(0)}});
+             {"scale", static_cast<float>(0)},
+             {"shift", static_cast<float>(min_value)}});
 
         runner_p4.Run(stream);
       }
