@@ -49,5 +49,40 @@ class TestFrameOp(OpTest):
         paddle.disable_static()
 
 
+class TestCase1(TestFrameOp):
+    def initTestCase(self):
+        input_shape = (150, 8)
+        input_type = 'int32'
+        attrs = {
+            'frame_length': 50,
+            'hop_length': 15,
+            'axis': 0,
+        }
+        return input_shape, input_type, attrs
+
+
+# FIXME(chenxiaojie06): There are bugs when input dims >= 3 in librosa.
+# class TestCase2(TestFrameOp):
+#     def initTestCase(self):
+#         input_shape = (4, 2, 150)
+#         input_type = 'int32'
+#         attrs = {
+#             'frame_length': 50,
+#             'hop_length': 15,
+#             'axis': -1,
+#         }
+#         return input_shape, input_type, attrs
+
+# class TestCase3(TestFrameOp):
+#     def initTestCase(self):
+#         input_shape = (150, 4, 2)
+#         input_type = 'int32'
+#         attrs = {
+#             'frame_length': 50,
+#             'hop_length': 15,
+#             'axis': 0,
+#         }
+#         return input_shape, input_type, attrs
+
 if __name__ == '__main__':
     unittest.main()
