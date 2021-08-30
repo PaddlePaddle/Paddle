@@ -111,9 +111,7 @@ class IndexSelectOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) the input tensor.");
     AddInput("Index", "the 1-D tensor containing the indices to index.");
     AddOutput("Out", "the output tensor.");
-    AddAttr<int>("dim", "the dimension in which we index.")
-        .SetDefault(0)
-        .AsExtra();
+    AddAttr<int>("dim", "the dimension in which we index.").SetDefault(0);
     AddComment(R"DOC(
     Returns a new tensor which indexes the input tensor
     along dimension dim using the entries in index which
