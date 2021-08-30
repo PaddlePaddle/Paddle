@@ -64,7 +64,7 @@ def ComputeGrad(x, y, out, axis):
         for i in reduce_axes_y:
             y = np.expand_dims(y, axis=i)
 
-    dx = y * np.power(x, y-1) * grad
+    dx = y * np.power(x, y - 1) * grad
     dy = np.log(x) * np.power(x, y) * grad
 
     if len(reduce_axes_x) > 0:
