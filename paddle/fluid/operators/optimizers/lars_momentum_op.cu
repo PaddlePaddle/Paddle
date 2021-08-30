@@ -92,8 +92,9 @@ __global__ void MomentumLarsKernel(
     const T* __restrict__ p, const T* __restrict__ g, const MT* __restrict__ v,
     const MT* __restrict__ learning_rate, const MT mu, const int64_t numel,
     const MT lars_coeff, const MT lars_weight_decay, T* p_out, MT* v_out,
-    const MT epsilon, const MT* __restrict__ master_p, MT* master_p_out,
-    const MT rescale_grad, MT* tmp_buffer, MT* tmp_buffer_2 = nullptr) {
+    const MT epsilon, const MT* __restrict__ master_p,
+    MT* __restrict__ master_p_out, const MT rescale_grad, MT* tmp_buffer,
+    MT* tmp_buffer2) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
 #if CUDA_VERSION >= 9000
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
@@ -174,7 +175,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
       master_p = master_param->data<MT>();
       master_p_out = master_param_out->mutable_data<MT>(ctx.GetPlace());
     }
-
     T* p_out = param_out->mutable_data<T>(ctx.GetPlace());
     MT* v_out = velocity_out->mutable_data<MT>(ctx.GetPlace());
 
@@ -191,57 +191,81 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     auto* lr = learning_rate->data<MT>();
     int64_t numel = param->numel();
     int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
 #if CUDA_VERSION >= 9000
+    /*
+    Once model trainning with lars optimizer, whose principal implementation
+    is achieved by following two steps:
+      1. Figure out the L2 norm statistic result of grad data and param data.
+      2. Update param and velocity data with usage of L2 norm statistic result.
+
+    Orignally, these two steps were fulfilled by respective eigen function and
+    cuda kernel, however the overhead of eigen function occupied much ratio in
+    total, consequently affect the performance of lars op, make it necessary
+    to combine 2 steps into one cuda kernel.
+    Since the step1 is l2 norm statistic, grid level reduce is needed. To
+    achieve
+    this and continuous calculation of step 2 in only one global lanuch,
+    essential
+    basis is to control all grid-threads while running. Apart from normal kernel
+    lanuch form, cuda 9.0 provides `cudaLaunchCooperativeKernel` api :
+      - The thread quantity must equal to pyhsical SM limited threads
+      - Launches a device function where thread blocks can cooperate and
+        synchronize as they execute.
+    */
     int num_blocks_per_sm = 0;
+    // Figure out how many blocks can be active in each sm.
     cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm,
                                                   MomentumLarsKernel<T, MT>,
                                                   LARS_BLOCK_SIZE, sizeof(MT));
-    int sm_num = ctx.cuda_device_context().GetSMCount();
+    int sm_num = dev_ctx.GetSMCount();
     int grid_real = std::min(sm_num * num_blocks_per_sm, grid);
-    framework::Tensor tmp_buffer_t;
-    auto* tmp_buffer =
-        tmp_buffer_t.mutable_data<MT>({grid_real}, ctx.GetPlace());
-
-    void* cuda_param[] = {reinterpret_cast<void*>(&p),
-                          reinterpret_cast<void*>(&g),
-                          reinterpret_cast<void*>(&v),
-                          reinterpret_cast<void*>(&lr),
-                          reinterpret_cast<void*>(&mu),
-                          reinterpret_cast<void*>(&numel),
-                          reinterpret_cast<void*>(&lars_coeff),
-                          reinterpret_cast<void*>(&lars_weight_decay),
-                          reinterpret_cast<void*>(&p_out),
-                          reinterpret_cast<void*>(&v_out),
-                          reinterpret_cast<void*>(&epsilon),
-                          reinterpret_cast<void*>(&master_p),
-                          reinterpret_cast<void*>(&master_p_out),
-                          reinterpret_cast<void*>(&rescale_grad),
-                          reinterpret_cast<void*>(&tmp_buffer),
-                          nullptr};
+    framework::Tensor tmp_buffer_t =
+        ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>({grid_real},
+                                                               dev_ctx);
+    auto* tmp_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
+    MT* tmp_buffer_2 = nullptr;
+    void* cuda_param[] = {
+        reinterpret_cast<void*>(&p),
+        reinterpret_cast<void*>(&g),
+        reinterpret_cast<void*>(&v),
+        reinterpret_cast<void*>(&lr),
+        reinterpret_cast<void*>(&mu),
+        reinterpret_cast<void*>(&numel),
+        reinterpret_cast<void*>(&lars_coeff),
+        reinterpret_cast<void*>(&lars_weight_decay),
+        reinterpret_cast<void*>(&p_out),
+        reinterpret_cast<void*>(&v_out),
+        reinterpret_cast<void*>(&epsilon),
+        reinterpret_cast<void*>(&master_p),
+        reinterpret_cast<void*>(&master_p_out),
+        reinterpret_cast<void*>(&rescale_grad),
+        reinterpret_cast<void*>(&tmp_buffer),
+        reinterpret_cast<void*>(&tmp_buffer_2)};  // Just a placeholder.
+    // Lanuch all the sm theads.
     cudaLaunchCooperativeKernel(
         reinterpret_cast<void*>(MomentumLarsKernel<T, MT>), grid_real,
-        LARS_BLOCK_SIZE, cuda_param, 0, ctx.cuda_device_context().stream());
+        LARS_BLOCK_SIZE, cuda_param, 0, dev_ctx.stream());
 #else
     auto eigen_p = framework::EigenVector<T>::Flatten(*param);
     auto eigen_g = framework::EigenVector<T>::Flatten(*grad);
     // calculate norms using eigein and launch the kernel.
-    framework::Tensor p_norm_t, g_norm_t;
-    p_norm_t.Resize({1});
-    g_norm_t.Resize({1});
+    framework::Tensor p_norm_t =
+        ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>({1}, dev_ctx);
+    framework::Tensor g_norm_t =
+        ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>({1}, dev_ctx);
     auto* p_norm_data = p_norm_t.mutable_data<MT>(ctx.GetPlace());
     auto* g_norm_data = g_norm_t.mutable_data<MT>(ctx.GetPlace());
     auto ep_norm = framework::EigenScalar<MT>::From(p_norm_t);
     auto eg_norm = framework::EigenScalar<MT>::From(g_norm_t);
-    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
+    auto* place = dev_ctx.eigen_device();
     // eigen unsupport fp16 l2-norm
     ep_norm.device(*place) = eigen_p.template cast<MT>().square().sum().sqrt();
     eg_norm.device(*place) =
         (eigen_g.template cast<MT>() * rescale_grad).square().sum().sqrt();
 
-    MomentumLarsKernel<
-        T,
-        MT><<<grid, LARS_BLOCK_SIZE, 0, ctx.cuda_device_context().stream()>>>(
+    MomentumLarsKernel<T, MT><<<grid, LARS_BLOCK_SIZE, 0, dev_ctx.stream()>>>(
         p, g, v, lr, mu, numel, lars_coeff, lars_weight_decay, p_out, v_out,
         epsilon, master_p, master_p_out, rescale_grad, p_norm_data,
         g_norm_data);
