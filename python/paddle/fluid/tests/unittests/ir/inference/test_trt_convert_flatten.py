@@ -49,7 +49,7 @@ class TrtConvertFlattenTest(TrtLayerAutoScanTest):
         self.program_outputs = ["output_data"]
 
     def test_check_fp32_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Float32
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
         # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
         self.run_test(
             self.static_trt_engine_num,
@@ -57,7 +57,7 @@ class TrtConvertFlattenTest(TrtLayerAutoScanTest):
             threshold=1e-5)
 
     def test_check_fp16_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Half
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
         self.run_test(
             self.static_trt_engine_num,
             self.static_paddle_op_num,
@@ -125,7 +125,7 @@ class TrtConvertFlatten2Test(TrtLayerAutoScanTest):
         self.program_outputs = ["out_data"]
 
     def test_check_fp32_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Float32
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
         # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
         self.run_test(
             self.static_trt_engine_num,
@@ -133,7 +133,7 @@ class TrtConvertFlatten2Test(TrtLayerAutoScanTest):
             threshold=1e-5)
 
     def test_check_fp16_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Half
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
         self.run_test(
             self.static_trt_engine_num,
             self.static_paddle_op_num,
