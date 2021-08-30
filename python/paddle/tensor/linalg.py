@@ -792,7 +792,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     The matrix rank is computed as the number of singular values (or eigenvalues in absolute value when hermitian= True) that 
     are greater than the specified tol threshold.
 
-    Supports input of float, double dtypes. Also supports batches of matrices, and if x is a batch of matrices then the output 
+    Supports input of float, double dtypes. It also supports batches of matrices, and if x is a batch of matrices then the output 
     has the same batch dimensions.
     
     If hermitian= True, x is assumed to be Hermitian, but this is not checked internally. Instead, just the lower triangular 
@@ -832,18 +832,22 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
 
     if in_dygraph_mode():
         if tol is None:
-            return _C_ops.matrix_rank(x, None, 'hermitian', hermitian,
-                                      'use_default_tol', True)
+            tol_tensor = None
+            tol_attr = 0.0
+            use_default_tol = True
         elif isinstance(tol, Variable):
             if tol.dtype != x.dtype:
-                return _C_ops.matrix_rank(x,
-                                          cast(tol, x.dtype), 'hermitian',
-                                          hermitian, 'use_default_tol', False)
-            return _C_ops.matrix_rank(x, tol, 'hermitian', hermitian,
-                                      'use_default_tol', False)
+                tol_tensor = cast(tol, x.dtype)
+            else:
+                tol_tensor = tol
+            tol_attr = 0.0
+            use_default_tol = False
         else:
-            return _C_ops.matrix_rank(x, None, "tol", tol, 'hermitian',
-                                      hermitian, 'use_default_tol', False)
+            tol_tensor = None
+            tol_attr = float(tol)
+            use_default_tol = False
+        return _C_ops.matrix_rank(x, tol_tensor, "tol", tol_attr, 'hermitian',
+                                  hermitian, 'use_default_tol', use_default_tol)
 
     inputs = {}
     attrs = {}

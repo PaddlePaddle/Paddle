@@ -14,24 +14,32 @@ limitations under the License. */
 
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
-#include <thrust/device_vector.h>
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/operators/cholesky_op.h"
-#include "paddle/fluid/operators/elementwise/svd_helper.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/matrix_rank_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/dynload/cusolver.h"
-
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/matrix_rank_op.h"
+#include "paddle/fluid/operators/svd_helper.h"
+#include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
+namespace detail {
+DDim GetUDDim(const DDim& x_dim, int k) {
+  auto x_vec = framework::vectorize(x_dim);
+  x_vec[x_vec.size() - 1] = k;
+  return framework::make_ddim(x_vec);
+}
+
+DDim GetVHDDim(const DDim& x_dim, int k) {
+  auto x_vec = framework::vectorize(x_dim);
+  x_vec[x_vec.size() - 2] = k;
+  return framework::make_ddim(x_vec);
+}
+}  // namespace detail
 
 template <typename T>
 class MatrixRankGPUKernel : public framework::OpKernel<T> {
@@ -39,22 +47,21 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
-    // get input/output
+
     const Tensor* x = context.Input<Tensor>("X");
     auto* x_data = x->data<T>();
     auto* out = context.Output<Tensor>("Out");
     out->mutable_data<int64_t>(context.GetPlace());
     bool hermitian = context.Attr<bool>("hermitian");
-    // get shape
+
     auto dim_x = x->dims();
     auto dim_out = out->dims();
-    // auto dim_atol_tensor = atol_tensor->dims();
     int rows = dim_x[dim_x.size() - 2];
     int cols = dim_x[dim_x.size() - 1];
     int k = std::min(rows, cols);
     auto numel = x->numel();
     int batches = numel / (rows * cols);
-    // get tol
+
     bool use_default_tol = context.Attr<bool>("use_default_tol");
     const Tensor* atol_tensor = nullptr;
     Tensor temp_tensor;
@@ -75,19 +82,15 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     // Must Copy X once, because the gesvdj will destory the content when exit.
     Tensor x_tmp;
     TensorCopy(*x, context.GetPlace(), &x_tmp);
-    // cusolver API used
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batches);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
-    // compute eigenvalue/svd
     Tensor eigenvalue_tensor;
     auto* eigenvalue_data = eigenvalue_tensor.mutable_data<T>(
-        EigenvalueDim(dim_x, k), context.GetPlace());
+        detail::GetEigenvalueDim(dim_x, k), context.GetPlace());
     if (hermitian) {
-      // rows == cols
       SyevjBatched(dev_ctx, batches, rows, x_tmp.data<T>(), eigenvalue_data,
                    info_ptr);
-      // compute abs(eigenvalues)
       platform::ForRange<platform::CUDADeviceContext> for_range(
           dev_ctx, eigenvalue_tensor.numel());
       math::AbsFunctor<T> functor(eigenvalue_data, eigenvalue_data,
@@ -95,19 +98,21 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
       for_range(functor);
     } else {
       Tensor U, VH;
-      auto* u_data = U.mutable_data<T>(UDDim(dim_x, k), context.GetPlace());
-      auto* vh_data = VH.mutable_data<T>(VHDDim(dim_x, k), context.GetPlace());
+      auto* u_data =
+          U.mutable_data<T>(detail::GetUDDim(dim_x, k), context.GetPlace());
+      auto* vh_data =
+          VH.mutable_data<T>(detail::GetVHDDim(dim_x, k), context.GetPlace());
       GesvdjBatched(dev_ctx, batches, cols, rows, k, x_tmp.data<T>(), vh_data,
                     u_data, eigenvalue_data, info_ptr, 1);
     }
-    // compute tol_tensor
+
     auto dito_T =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  T>(context);
-    std::vector<int> max_eigenvalue_shape =
-        framework::vectorize<int>(RemoveLastDim(eigenvalue_tensor.dims()));
+    std::vector<int> max_eigenvalue_shape = framework::vectorize<int>(
+        detail::RemoveLastDim(eigenvalue_tensor.dims()));
     Tensor max_eigenvalue_tensor =
-        dito_T.reduce_max(eigenvalue_tensor, max_eigenvalue_shape);
+        dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
     Tensor temp_rtol_tensor;
     framework::TensorFromVector<T>(std::vector<T>{rtol_T},
                                    context.device_context(), &temp_rtol_tensor);
@@ -117,48 +122,48 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     ElementwiseComputeEx<GreaterElementFunctor<T>, platform::CUDADeviceContext,
                          T, T>(context, atol_tensor, &rtol_tensor, -1,
                                GreaterElementFunctor<T>(), &tol_tensor);
-    // add new axis dim
-    tol_tensor.Resize(NewAxisDim(tol_tensor.dims(), 1));
+
+    tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
 
     Tensor compare_result;
-    compare_result.mutable_data<int64_t>(NewAxisDim(dim_out, k),
+    compare_result.mutable_data<int64_t>(detail::NewAxisDim(dim_out, k),
                                          context.GetPlace());
     int axis = -1;
     if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
-      ElementwiseComputeEx<CompareFunctor<T>, platform::CUDADeviceContext, T,
-                           int64_t>(context, &eigenvalue_tensor, &tol_tensor,
-                                    axis, CompareFunctor<T>(), &compare_result);
+      ElementwiseComputeEx<GreaterThanFunctor<T>, platform::CUDADeviceContext,
+                           T, int64_t>(context, &eigenvalue_tensor, &tol_tensor,
+                                       axis, GreaterThanFunctor<T>(),
+                                       &compare_result);
     } else {
-      ElementwiseComputeEx<InverseCompareFunctor<T>,
-                           platform::CUDADeviceContext, T, int64_t>(
-          context, &eigenvalue_tensor, &tol_tensor, axis,
-          InverseCompareFunctor<T>(), &compare_result);
+      ElementwiseComputeEx<LessThanFunctor<T>, platform::CUDADeviceContext, T,
+                           int64_t>(context, &eigenvalue_tensor, &tol_tensor,
+                                    axis, LessThanFunctor<T>(),
+                                    &compare_result);
     }
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  int64_t>(context);
     std::vector<int> res_shape = framework::vectorize<int>(dim_out);
-    Tensor res = dito_int.reduce_sum(compare_result, res_shape);
+    Tensor res = dito_int.ReduceSum(compare_result, res_shape);
     out->ShareDataWith(res);
   }
 
   void GesvdjBatched(const platform::CUDADeviceContext& dev_ctx, int batchSize,
-                     int m, int n, int k, const T* cA, T* U, T* V, T* S,
-                     int* info, int thin_UV = 1) const;
+                     int m, int n, int k, T* A, T* U, T* V, T* S, int* info,
+                     int thin_UV = 1) const;
 
   void SyevjBatched(const platform::CUDADeviceContext& dev_ctx, int batchSize,
-                    int n, const T* cA, T* W, int* info) const;
+                    int n, T* A, T* W, int* info) const;
 };
 
 template <>
 void MatrixRankGPUKernel<float>::GesvdjBatched(
     const platform::CUDADeviceContext& dev_ctx, int batchSize, int m, int n,
-    int k, const float* cA, float* U, float* V, float* S, int* info,
+    int k, float* A, float* U, float* V, float* S, int* info,
     int thin_UV) const {
-  /* not compute singular vectors */
+  // do not compute singular vectors
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
   gesvdjInfo_t gesvdj_params = NULL;
-  float* A = const_cast<float*>(cA);
   int lda = m;
   int ldu = m;
   int ldt = n;
@@ -195,13 +200,11 @@ void MatrixRankGPUKernel<float>::GesvdjBatched(
 template <>
 void MatrixRankGPUKernel<double>::GesvdjBatched(
     const platform::CUDADeviceContext& dev_ctx, int batchSize, int m, int n,
-    int k, const double* cA, double* U, double* V, double* S, int* info,
+    int k, double* A, double* U, double* V, double* S, int* info,
     int thin_UV) const {
-  /* no compute singular vectors */
-  const cusolverEigMode_t jobz =
-      CUSOLVER_EIG_MODE_NOVECTOR; /* no compute singular vectors */
+  // do not compute singular vectors
+  const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
   gesvdjInfo_t gesvdj_params = NULL;
-  double* A = const_cast<double*>(cA);
   int lda = m;
   int ldu = m;
   int ldt = n;
@@ -238,8 +241,8 @@ void MatrixRankGPUKernel<double>::GesvdjBatched(
 
 template <>
 void MatrixRankGPUKernel<float>::SyevjBatched(
-    const platform::CUDADeviceContext& dev_ctx, int batchSize, int n,
-    const float* cA, float* W, int* info) const {
+    const platform::CUDADeviceContext& dev_ctx, int batchSize, int n, float* A,
+    float* W, int* info) const {
   auto handle = dev_ctx.cusolver_dn_handle();
   // Compute eigenvalues only
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
@@ -247,7 +250,6 @@ void MatrixRankGPUKernel<float>::SyevjBatched(
   // numpy and torch use lower triangle to compute eigenvalues, so here use
   // upper triangle
   cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
-  float* A = const_cast<float*>(cA);
   int lda = n;
   int stride_A = lda * n;
   int lwork = 0;
@@ -279,14 +281,13 @@ void MatrixRankGPUKernel<float>::SyevjBatched(
 
 template <>
 void MatrixRankGPUKernel<double>::SyevjBatched(
-    const platform::CUDADeviceContext& dev_ctx, int batchSize, int n,
-    const double* cA, double* W, int* info) const {
+    const platform::CUDADeviceContext& dev_ctx, int batchSize, int n, double* A,
+    double* W, int* info) const {
   auto handle = dev_ctx.cusolver_dn_handle();
   // Compute eigenvalues only
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
-  //  Lower triangle of A is stored
+  //  upper triangle of A is stored
   cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
-  double* A = const_cast<double*>(cA);
   int lda = n;
   int stride_A = lda * n;
   int lwork = 0;

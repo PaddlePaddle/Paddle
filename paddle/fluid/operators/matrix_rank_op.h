@@ -14,7 +14,6 @@
 
 #pragma once
 #include <vector>
-
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/tensor.h"
 
@@ -23,25 +22,37 @@ namespace operators {
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
-DDim InputBatchDim(const DDim& dim_x);
+namespace detail {
+static DDim GetEigenvalueDim(const DDim& dim, int k) {
+  auto vec = framework::vectorize(dim);
+  vec.erase(vec.end() - 2, vec.end());
+  vec.push_back(k);
+  return framework::make_ddim(vec);
+}
 
-DDim EigenvalueDim(const DDim& dim, int k);
+static DDim NewAxisDim(const DDim& dim, int k) {
+  auto vec = framework::vectorize(dim);
+  vec.push_back(k);
+  return framework::make_ddim(vec);
+}
 
-DDim NewAxisDim(const DDim& dim, int k);
-
-DDim RemoveLastDim(const DDim& dim);
-
-DDim UDDim(const DDim& x_dim, int k);
-
-DDim VHDDim(const DDim& x_dim, int k);
+static DDim RemoveLastDim(const DDim& dim) {
+  auto vec = framework::vectorize(dim);
+  if (vec.size() <= 1) {
+    return framework::make_ddim({1});
+  }
+  vec.erase(vec.end() - 1, vec.end());
+  return framework::make_ddim(vec);
+}
+}  // namespace detail
 
 template <typename T>
-struct CompareFunctor {
+struct GreaterThanFunctor {
   HOSTDEVICE int operator()(const T& a, const T& b) const { return a > b; }
 };
 
 template <typename T>
-struct InverseCompareFunctor {
+struct LessThanFunctor {
   HOSTDEVICE int operator()(const T& a, const T& b) const { return a < b; }
 };
 

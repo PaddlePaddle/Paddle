@@ -85,6 +85,26 @@ class TestMatrixRankOP3(TestMatrixRankOP):
         self.out = np.linalg.matrix_rank(self.x, self.tolTensor, self.hermitian)
 
 
+class TestMatrixRankOP4(TestMatrixRankOP):
+    def init_data(self):
+        self.x = np.random.rand(1, 10).astype(np.float32)
+        self.tolTensor = None
+        self.tol = None
+        self.use_default_tol = True
+        self.hermitian = False
+        self.out = np.linalg.matrix_rank(self.x, self.tolTensor, self.hermitian)
+
+
+class TestMatrixRankOP5(TestMatrixRankOP):
+    def init_data(self):
+        self.x = np.random.rand(5, 1).astype(np.float64)
+        self.tolTensor = np.random.random([1, 4]).astype(self.x.dtype)
+        self.tol = None
+        self.use_default_tol = False
+        self.hermitian = False
+        self.out = np.linalg.matrix_rank(self.x, self.tolTensor, self.hermitian)
+
+
 class TestMatrixRankAPI(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()

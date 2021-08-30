@@ -381,18 +381,16 @@ struct DeviceIndependenceTensorOperations {
     return _CreateOpRunAndReturnTensor("slice", inputs, attrs, out_shape);
   }
 
-  framework::Tensor reduce_sum(const framework::Tensor& x,
-                               const Shape& out_dim) {
-    // InTensors ins({&x, &y});
+  framework::Tensor ReduceSum(const framework::Tensor& x,
+                              const Shape& out_dim) {
     framework::AttributeMap attrs;
     attrs["dim"] = std::vector<int>{-1};
     NameInTensorMap inputs({{"X", {&x}}});
     return _CreateOpRunAndReturnTensor("reduce_sum", inputs, attrs, out_dim);
   }
 
-  framework::Tensor reduce_max(const framework::Tensor& x,
-                               const Shape& out_dim) {
-    // InTensors ins({&x, &y});
+  framework::Tensor ReduceMax(const framework::Tensor& x,
+                              const Shape& out_dim) {
     framework::AttributeMap attrs;
     attrs["dim"] = std::vector<int>{-1};
     NameInTensorMap inputs({{"X", {&x}}});

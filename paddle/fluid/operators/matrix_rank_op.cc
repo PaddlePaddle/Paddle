@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/matrix_rank_op.h"
 #include <memory>
 #include <string>
-
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/elementwise/svd_helper.h"
-#include "paddle/fluid/operators/matrix_rank_op.h"
+#include "paddle/fluid/operators/svd_helper.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -28,7 +26,8 @@ namespace paddle {
 namespace operators {
 using DDim = framework::DDim;
 
-DDim InputBatchDim(const DDim& dim_x) {
+namespace detail {
+static DDim GetInputBatchDim(const DDim& dim_x) {
   auto x_vec = framework::vectorize(dim_x);
   if (x_vec.size() == 2) {
     return framework::make_ddim({1});
@@ -36,40 +35,7 @@ DDim InputBatchDim(const DDim& dim_x) {
   x_vec.erase(x_vec.end() - 2, x_vec.end());
   return framework::make_ddim(x_vec);
 }
-
-DDim EigenvalueDim(const DDim& dim, int k) {
-  auto vec = framework::vectorize(dim);
-  vec.erase(vec.end() - 2, vec.end());
-  vec.push_back(k);
-  return framework::make_ddim(vec);
-}
-
-DDim NewAxisDim(const DDim& dim, int k) {
-  auto vec = framework::vectorize(dim);
-  vec.push_back(k);
-  return framework::make_ddim(vec);
-}
-
-DDim RemoveLastDim(const DDim& dim) {
-  auto vec = framework::vectorize(dim);
-  if (vec.size() == 1) {
-    return framework::make_ddim({1});
-  }
-  vec.erase(vec.end() - 1, vec.end());
-  return framework::make_ddim(vec);
-}
-
-DDim UDDim(const DDim& x_dim, int k) {
-  auto x_vec = framework::vectorize(x_dim);
-  x_vec[x_vec.size() - 1] = k;
-  return framework::make_ddim(x_vec);
-}
-
-DDim VHDDim(const DDim& x_dim, int k) {
-  auto x_vec = framework::vectorize(x_dim);
-  x_vec[x_vec.size() - 2] = k;
-  return framework::make_ddim(x_vec);
-}
+}  // namespace detail
 
 class MatrixRankeOp : public framework::OperatorWithKernel {
  public:
@@ -81,7 +47,7 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
     auto dim_x = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(dim_x.size(), 2,
                       platform::errors::InvalidArgument(
-                          "the dims of input must greater than 2"));
+                          "The dims of input must be greater than 2"));
 
     bool hermitian = ctx->Attrs().Get<bool>("hermitian");
     if (hermitian) {
@@ -92,7 +58,7 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
                             "if hermitian == true, matrix should be n*n"));
     }
 
-    DDim dim_x_batch = InputBatchDim(dim_x);
+    DDim dim_x_batch = detail::GetInputBatchDim(dim_x);
     if (ctx->Attrs().Get<bool>(
             "use_default_tol")) {  // user not input TolTensor and tol
       ctx->SetOutputDim("Out", dim_x_batch);
@@ -155,10 +121,10 @@ class MatrixRankeOpMaker : public framework::OpProtoAndCheckerMaker {
 template <typename T>
 void BatchEigenvalues(const T* x_data, T* eigenvalues_data, int batches,
                       int rows, int cols, int k) {
+  // Eigen::Matrix API need non-const pointer.
   T* input = const_cast<T*>(x_data);
   int stride = rows * cols;
   for (int i = 0; i < batches; i++) {
-    // compute eigenvalues
     auto m = Eigen::Map<
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         input + i * stride, rows, rows);
@@ -175,13 +141,13 @@ void BatchEigenvalues(const T* x_data, T* eigenvalues_data, int batches,
 template <typename T>
 void BatchSVD(const T* x_data, T* eigenvalues_data, int batches, int rows,
               int cols, int k) {
+  // Eigen::Matrix API need non-const pointer.
   T* input = const_cast<T*>(x_data);
   int stride = rows * cols;
   Eigen::BDCSVD<
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
       svd;
   for (int i = 0; i < batches; i++) {
-    // compute SVD
     auto m = Eigen::Map<
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         input + i * stride, rows, cols);
@@ -197,13 +163,12 @@ template <typename T>
 class MatrixRankCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    // get input/output
     const Tensor* x = context.Input<Tensor>("X");
     auto* x_data = x->data<T>();
     auto* out = context.Output<Tensor>("Out");
     out->mutable_data<int64_t>(context.GetPlace());
     bool hermitian = context.Attr<bool>("hermitian");
-    // get shape
+
     auto dim_x = x->dims();
     auto dim_out = out->dims();
     int rows = dim_x[dim_x.size() - 2];
@@ -211,7 +176,7 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
     int k = std::min(rows, cols);
     auto numel = x->numel();
     int batches = numel / (rows * cols);
-    // get tol
+
     bool use_default_tol = context.Attr<bool>("use_default_tol");
     const Tensor* atol_tensor = nullptr;
     Tensor temp_tensor;
@@ -229,23 +194,22 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
       atol_tensor = &temp_tensor;
     }
 
-    // compute eigenvalue/svd
     Tensor eigenvalue_tensor;
     auto* eigenvalue_data = eigenvalue_tensor.mutable_data<T>(
-        EigenvalueDim(dim_x, k), context.GetPlace());
+        detail::GetEigenvalueDim(dim_x, k), context.GetPlace());
     if (hermitian) {
       BatchEigenvalues<T>(x_data, eigenvalue_data, batches, rows, cols, k);
     } else {
       BatchSVD<T>(x_data, eigenvalue_data, batches, rows, cols, k);
     }
-    // compute tol_tensor
+
     auto dito_T =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(
             context);
-    std::vector<int> max_eigenvalue_shape =
-        framework::vectorize<int>(RemoveLastDim(eigenvalue_tensor.dims()));
+    std::vector<int> max_eigenvalue_shape = framework::vectorize<int>(
+        detail::RemoveLastDim(eigenvalue_tensor.dims()));
     Tensor max_eigenvalue_tensor =
-        dito_T.reduce_max(eigenvalue_tensor, max_eigenvalue_shape);
+        dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
 
     Tensor temp_rtol_tensor;
     framework::TensorFromVector<T>(std::vector<T>{rtol_T}, &temp_rtol_tensor);
@@ -256,29 +220,27 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
                          T, T>(context, atol_tensor, &rtol_tensor, -1,
                                GreaterElementFunctor<T>(), &tol_tensor);
 
-    // add new axis dim
-    tol_tensor.Resize(NewAxisDim(tol_tensor.dims(), 1));
+    tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
 
     Tensor compare_result;
-    compare_result.mutable_data<int>(NewAxisDim(dim_out, k),
+    compare_result.mutable_data<int>(detail::NewAxisDim(dim_out, k),
                                      context.GetPlace());
 
     int axis = -1;
     if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
-      ElementwiseComputeEx<CompareFunctor<T>, platform::CPUDeviceContext, T,
+      ElementwiseComputeEx<GreaterThanFunctor<T>, platform::CPUDeviceContext, T,
                            int>(context, &eigenvalue_tensor, &tol_tensor, axis,
-                                CompareFunctor<T>(), &compare_result);
+                                GreaterThanFunctor<T>(), &compare_result);
     } else {
-      ElementwiseComputeEx<InverseCompareFunctor<T>, platform::CPUDeviceContext,
-                           T, int>(context, &eigenvalue_tensor, &tol_tensor,
-                                   axis, InverseCompareFunctor<T>(),
-                                   &compare_result);
+      ElementwiseComputeEx<LessThanFunctor<T>, platform::CPUDeviceContext, T,
+                           int>(context, &eigenvalue_tensor, &tol_tensor, axis,
+                                LessThanFunctor<T>(), &compare_result);
     }
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext,
                                                  int64_t>(context);
     std::vector<int> res_shape = framework::vectorize<int>(dim_out);
-    Tensor res = dito_int.reduce_sum(compare_result, res_shape);
+    Tensor res = dito_int.ReduceSum(compare_result, res_shape);
     out->ShareDataWith(res);
   }
 };
