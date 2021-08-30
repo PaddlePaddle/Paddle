@@ -1989,17 +1989,22 @@ All parameter, weight, gradient are variables in Paddle.
       .def("dry_run",
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<framework::Tensor> vec_tensor;
-             std::vector<std::string> vec_name;
-             pybind11::gil_scoped_release release;
+             std::vector<framework::Tensor> feed_tensors;
+             std::vector<std::string> feed_names;
+
              for (auto &item : input_dict) {
                framework::LoDTensor t;
                SetTensorFromPyArray<platform::CPUPlace>(
                    &t, item.second, platform::CPUPlace(), false);
-               vec_name.push_back(item.first);
-               vec_tensor.push_back(t);
+               feed_names.push_back(item.first);
+               feed_tensors.push_back(t);
              }
-             auto &cost_info = self.DryRun(vec_name, vec_tensor);
+
+             CostInfo cost_info;
+             {
+               pybind11::gil_scoped_release release;
+               cost_info = self.DryRun(feed_names, feed_tensors);
+             }
              return cost_info;
            });
 

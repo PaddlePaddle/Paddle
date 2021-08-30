@@ -62,11 +62,11 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 }
 
 const CostInfo& StandaloneExecutor::DryRun(
-    const std::vector<std::string>& vec_name,
-    const std::vector<framework::Tensor>& vec_tensor) {
-  auto core = GetInterpreterCore(vec_name, {});
+    const std::vector<std::string>& feed_names,
+    const std::vector<framework::Tensor>& feed_tensors) {
+  auto core = GetInterpreterCore(feed_names, {});
 
-  auto& cost_info = core->DryRun(vec_name, vec_tensor);
+  auto& cost_info = core->DryRun(feed_tensors);
   return cost_info;
 }
 

@@ -21,8 +21,8 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
+#include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -42,8 +42,7 @@ class InterpreterCore {
   paddle::framework::FetchList Run(
       const std::vector<framework::Tensor>& feed_tensors);
 
-  const CostInfo& DryRun(const std::vector<std::string>& vec_name,
-                         const std::vector<framework::Tensor>& vec_tensor);
+  const CostInfo& DryRun(const std::vector<framework::Tensor>& feed_tensors);
 
   static void BuildOpFuncList(const platform::Place& place,
                               const framework::ProgramDesc& pdesc,
@@ -71,8 +70,7 @@ class InterpreterCore {
   void BuildVariableScope(const framework::ProgramDesc& pdesc,
                           VariableScope* var_scope);
 
-  void Prepare(const std::vector<std::string>& vec_name,
-               const std::vector<framework::Tensor>& vec_tensor);
+  void Prepare(const std::vector<framework::Tensor>& feed_tensors);
 
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
                const VariableScope& var_scope, const platform::Place& place,
