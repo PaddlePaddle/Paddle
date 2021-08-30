@@ -101,7 +101,7 @@ class AutoScanTest(unittest.TestCase):
                  paddle_op_num: int,
                  threshold=1e-5,
                  quant=False,
-                 msg=None):
+                 error_msg=None):
         for prog_config in self.sample_program_configs():
             model, params = create_fake_model(prog_config)
             if quant:
@@ -134,4 +134,4 @@ class AutoScanTest(unittest.TestCase):
                         threshold=threshold, tensors=results)
                     self.assert_op_size(trt_engine_num, paddle_op_num)
                 except:
-                    logging.info('error occured, ' + msg)
+                    logging.info('error occured, ' + error_msg)
