@@ -77,7 +77,7 @@ void AssociateInputWithEvents(
   for (auto var_id : new_event_var_id) {
     if (var_id2event->count(var_id) == 0) {
       auto device_event = std::make_shared<platform::DeviceEvent>(
-          place, platform::get_cuda_flags(false, false, false));
+          place, platform::GenerateDeviceEventFlag());
       var_id2event->emplace(var_id, std::move(device_event));
     }
     // Add events for next_instr.inputs
