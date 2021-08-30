@@ -52,12 +52,15 @@ extern bool HasCUDADriver();
   __macro(cuModuleLoadData);                            \
   __macro(cuModuleGetFunction);                         \
   __macro(cuModuleUnload);                              \
+  __macro(cuModuleLoadDataEx);                          \
   __macro(cuOccupancyMaxActiveBlocksPerMultiprocessor); \
   __macro(cuLaunchKernel);                              \
   __macro(cuCtxCreate);                                 \
   __macro(cuCtxGetCurrent);                             \
+  __macro(cuDeviceGet);                                 \
   __macro(cuDeviceGetCount);                            \
-  __macro(cuDevicePrimaryCtxGetState)
+  __macro(cuDevicePrimaryCtxGetState);                  \
+  __macro(cuDevicePrimaryCtxRetain)
 
 CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 

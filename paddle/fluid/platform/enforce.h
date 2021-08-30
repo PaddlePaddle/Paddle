@@ -75,6 +75,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/dynload/cuda_driver.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/curand.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
@@ -708,6 +709,7 @@ struct ExternalApiType {};
         platform::proto::ApiType::proto_type;                     \
   }
 
+DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS, CUDRIVER);
 DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess, CUDA);
 DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS, CURAND);
 DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
@@ -749,6 +751,11 @@ inline const char* GetErrorMsgUrl(T status) {
     case platform::proto::ApiType::NCCL:
       return "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/"
              "types.html#ncclresult-t";
+      break;
+    case platform::proto::ApiType::CUDRIVER:
+      return "https://docs.nvidia.com/cuda/cuda-driver-api/"
+             "group__CUDA__TYPES.html#group__CUDA__TYPES_"
+             "1gc6c391505e117393cc2558fff6bfc2e9";
       break;
     default:
       return "Unknown type of External API, can't get error message URL!";
@@ -833,6 +840,7 @@ inline std::string GetExternalErrorMsg(T status) {
   return sout.str();
 }
 
+template std::string GetExternalErrorMsg<CUresult>(CUresult);
 template std::string GetExternalErrorMsg<cudaError_t>(cudaError_t);
 template std::string GetExternalErrorMsg<curandStatus_t>(curandStatus_t);
 template std::string GetExternalErrorMsg<cudnnStatus_t>(cudnnStatus_t);
@@ -841,6 +849,18 @@ template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
 #endif
+
+/*************** CU DRIVER ***************/
+inline bool is_error(CUresult e) { return e != CUDA_SUCCESS; }
+
+inline std::string build_nvidia_error_msg(CUresult e) {
+  std::ostringstream sout;
+  const char* msg;
+  dynload::cuGetErrorString(e, &msg);
+  sout << "CU Driver error(" << e << "), " << msg << ". "
+       << GetExternalErrorMsg(e);
+  return sout.str();
+}
 
 /*************** CUDA ERROR ***************/
 inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
