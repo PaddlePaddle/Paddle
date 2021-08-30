@@ -225,8 +225,12 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::CUDADeviceContext>();
     auto *dx_data = dx->mutable_data<T>(place);
 
-    // Step 1: find cummax-ed zero mask of x
+// Step 1: find cummax-ed zero mask of x
+#ifdef PADDLE_WITH_CUDA
     const auto &exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+#else
+    const auto &exec_policy = thrust::hip::par.on(dev_ctx.stream());
+#endif
     auto zero_mask_without_cummax =
         memory::Alloc(place, numel * sizeof(uint8_t));
     auto *zero_mask_without_cummax_data =

@@ -31,6 +31,7 @@ np.random.seed(0)
 # test function.
 class TestCumprod(OpTest):
     def setUp(self):
+        paddle.enable_static()
         self.op_type = "cumprod"
         self.init_dtype()
 
@@ -53,10 +54,11 @@ class TestCumprod(OpTest):
 # test api.
 class TestCumprodAPI(unittest.TestCase):
     def init_dtype(self):
-        self.dtype = 'complex'
+        self.dtype = 'float64'
         self.shape = [2, 3, 10, 10]
 
     def setUp(self):
+        paddle.enable_static()
         self.init_dtype()
         self.x = (np.random.rand(2, 3, 10, 10) + 0.5).astype(self.dtype)
         self.place = [paddle.CPUPlace()]
@@ -96,5 +98,4 @@ class TestCumprodAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
