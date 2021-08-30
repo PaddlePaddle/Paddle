@@ -33,7 +33,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
                 "Out": ["skip_layernorm_output_data"]
             },
             "op_attrs": {
-                "epsilon": [1e-5],
+                "epsilon": [1e-6],
                 "begin_norm_axis": [0, 1, 2],
                 "enable_int8": [False, True]
             }
