@@ -22,7 +22,6 @@ import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.tests.unittests.test_imperative_base import new_program_scope
 from paddle.fluid.tests.unittests.test_static_save_load import PtbModel
-from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
 import numpy as np
 
 

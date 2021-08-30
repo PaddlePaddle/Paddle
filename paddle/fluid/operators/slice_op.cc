@@ -138,12 +138,9 @@ class SliceOp : public framework::OperatorWithKernel {
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
       if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-        // OneDNN uses blocking format, which cannot be always
-        // supported with reorders, because if blocked dimension is not
-        // divisible
-        // by
-        // 8 or 16(depending on which blocking format is used) submemory cannot
-        // be
+        // OneDNN uses blocking format, which cannot be always supported with
+        // reorders, because if blocked dimension is not divisible by 8 or
+        // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
         auto tmp_md = dnnl::memory::desc(
             framework::vectorize(ctx.Input<Tensor>("Input")->dims()),
@@ -317,10 +314,9 @@ class SliceOpGrad : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      // OneDNN uses blocking format, which cannot be always
-      // supported with reorders, because if blocked dimension is not divisible
-      // by
-      // 8 or 16(depending on which blocking format is used) submemory cannot be
+      // OneDNN uses blocking format, which cannot be always supported with
+      // reorders, because if blocked dimension is not divisible by 8 or
+      // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
       auto tmp_md = dnnl::memory::desc(
           framework::vectorize(
