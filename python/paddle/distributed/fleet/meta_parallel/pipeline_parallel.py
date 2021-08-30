@@ -42,13 +42,13 @@ class PipelineParallel(MetaParallelBase):
         self.accumulate_steps = self._strategy.pipeline_configs[
             'accumulate_steps']
 
-        self.using_cache = True
+        self._using_cache = self._strategy.pipeline_configs['cache_send_recv']
 
         self.num_stages = self._hcg.get_pipe_parallel_world_size()
         self.stage_id = self._hcg.get_stage_id()
         self.pp_group = self._hcg.get_pipe_parallel_group()
 
-        p2p.initialize_p2p_groups(hcg)
+        p2p.initialize_p2p_groups(hcg, self._using_cache)
 
         _initialize_recompute_hcg(hcg)
 
