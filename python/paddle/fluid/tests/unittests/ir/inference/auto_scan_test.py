@@ -16,6 +16,7 @@ import numpy as np
 import unittest
 import abc
 import os
+import logging
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import NumpyArrayInitializer
@@ -53,7 +54,9 @@ class AutoScanTest(unittest.TestCase):
 
         for name, _ in prog_config.inputs.items():
             input_tensor = predictor.get_input_handle(name)
-            input_tensor.copy_from_cpu(feed_data[name])
+            input_tensor.copy_from_cpu(feed_data[name]['shape'])
+            if feed_data[name]['lod'] is not None:
+                input_tensor.set_lod(feed_data[name]['lod'])
         predictor.run()
         result = {}
         for out_name, o_name in zip(prog_config.outputs,
@@ -97,22 +100,38 @@ class AutoScanTest(unittest.TestCase):
                  trt_engine_num: int,
                  paddle_op_num: int,
                  threshold=1e-5,
-                 quant=False):
+                 quant=False,
+                 msg=None):
         for prog_config in self.sample_program_configs():
             model, params = create_fake_model(prog_config)
             if quant:
                 model, params = create_quant_model(model, params)
             for batch_size in self.batch_size_set:
                 feed_data = {}
+                log_str = '  -- Input tensor info: '
                 for name, tensor_config in prog_config.inputs.items():
                     tensor_shape = tensor_config.shape.copy()
                     tensor_shape[0] = batch_size
-                    feed_data[name] = np.random.random(tensor_shape).astype(
-                        tensor_config.dtype)
+                    feed_data[name] = {
+                        'shape': np.random.random(tensor_shape).astype(
+                            tensor_config.dtype),
+                        'lod': tensor_config.lod
+                    }
+                    log_str += str({
+                        name: {
+                            'shape': tensor_shape,
+                            'lod': tensor_config.lod
+                        }
+                    })
+                logging.info(log_str)
                 results: List[Dict[str, Tensor]] = []
                 for pred_config in self.sample_predictor_configs():
                     results.append(
                         self.run_test_config(model, params, prog_config,
                                              pred_config, feed_data))
-                self.assert_tensors_near(threshold=threshold, tensors=results)
-                self.assert_op_size(trt_engine_num, paddle_op_num)
+                try:
+                    self.assert_tensors_near(
+                        threshold=threshold, tensors=results)
+                    self.assert_op_size(trt_engine_num, paddle_op_num)
+                except:
+                    logging.info('error occured, ' + msg)

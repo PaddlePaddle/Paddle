@@ -85,11 +85,19 @@ class TrtLayerAutoScanTest(AutoScanTest):
             op_attr_list = []
             index = 0
             ops = []
-            for op_config in self.ops_config:
+            log_str = 'TEST_CASE: '
+            for i in range(len(self.ops_config)):
+                op_config = self.ops_config[i]
                 op_attr = dict(
                     zip(
                         list(op_config["op_attrs"].keys()), attrs_sample[
                             index:index + len(op_config["op_attrs"])]))
+
+                if i != len(self.ops_config) - 1:
+                    log_str += op_config['op_type'] + str(op_attr) + ' + '
+                else:
+                    log_str += op_config['op_type'] + str(op_attr)
+
                 op_attr_list.append(op_attr)
                 index = index + len(op_config["op_attrs"])
                 ops.append(
@@ -99,6 +107,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         outputs=op_config["op_outputs"],
                         attrs=op_attr))
 
+            logging.info(log_str)
             self.update_program_input_and_weight_with_attr(op_attr_list)
             # if no weight need to save, we create a place_holder to help seriazlie params.
             if not self.program_weights:
@@ -117,6 +126,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             self, use_trt=True,
             precision_mode=paddle_infer.PrecisionType.Float32):
         config = paddle_infer.Config()
+        config.disable_glog_info()
         config.enable_use_gpu(100, 0)
         if use_trt:
             config.switch_ir_debug()
@@ -141,8 +151,29 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     @abc.abstractmethod
     def sample_predictor_configs(self):
+        def precision_to_str(p):
+            if p == paddle_infer.PrecisionType.Float32:
+                return 'float32'
+            elif p == paddle_infer.PrecisionType.Half:
+                return 'half'
+            elif p == paddle_infer.PrecisionType.Int8:
+                return 'int8'
+            else:
+                raise NotImplementedError('not supported type.')
+
+        trt_log_str = ''
+        if len(self.dynamic_shape.min_input_shape
+               ) != 0 and self.dynamic_shape.min_input_shape.keys(
+               ) == self.dynamic_shape.max_input_shape.keys(
+               ) and self.dynamic_shape.min_input_shape.keys(
+               ) == self.dynamic_shape.opt_input_shape.keys():
+            trt_log_str += 'dynamic_shape '
+        else:
+            trt_log_str += 'static_shape '
+        trt_log_str += precision_to_str(self.trt_param.precision)
+
         logging.info('--------- gpu inference ---------')
         yield self.create_program_config(use_trt=False)
-        logging.info('--------- trt inference ---------')
+        logging.info('--------- trt ' + trt_log_str + ' inference ---------')
         yield self.create_program_config(
             use_trt=True, precision_mode=self.trt_param.precision)
