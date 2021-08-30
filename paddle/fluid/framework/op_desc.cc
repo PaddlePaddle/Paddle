@@ -648,9 +648,8 @@ void OpDesc::Rename(const std::string &old_name, const std::string &new_name) {
 
 void OpDesc::RenameOutput(const std::string &old_name,
                           const std::string &new_name) {
-  for (auto &output : outputs_) {
-    std::replace(output.second.begin(), output.second.end(), old_name,
-                 new_name);
+  for (auto it = outputs_.begin(); it != outputs_.end(); ++it) {
+    std::replace(it.value().begin(), it.value().end(), old_name, new_name);
   }
 
   auto it = attrs_.find(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName());
@@ -664,8 +663,8 @@ void OpDesc::RenameOutput(const std::string &old_name,
 
 void OpDesc::RenameInput(const std::string &old_name,
                          const std::string &new_name) {
-  for (auto &input : inputs_) {
-    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
+  for (auto it = inputs_.begin(); it != inputs_.end(); ++it) {
+    std::replace(it.value().begin(), it.value().end(), old_name, new_name);
   }
 
   auto it = attrs_.find(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName());

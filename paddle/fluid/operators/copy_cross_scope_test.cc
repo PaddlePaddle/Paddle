@@ -61,7 +61,7 @@ void Compare1(f::Scope* scope, const p::DeviceContext& ctx,
 
   // run
   f::AttributeMap attrs = {{"to_main_scope", false}, {"num_micro_batches", 3}};
-  std::map<std::string, std::vector<std::string>> output;
+  f::VariableNameMap output;
   auto op = f::OpRegistry::CreateOp(op_type, {{"X", {"tmp"}}, {"Id", {"Id"}}},
                                     output, attrs);
 
@@ -109,7 +109,7 @@ void Compare2(f::Scope* scope, const p::DeviceContext& ctx,
 
   // run
   f::AttributeMap attrs = {{"to_main_scope", true}, {"num_micro_batches", 3}};
-  std::map<std::string, std::vector<std::string>> output;
+  f::VariableNameMap output;
   auto op = f::OpRegistry::CreateOp(op_type, {{"X", {"tmp"}}, {"Id", {"Id"}}},
                                     output, attrs);
 
