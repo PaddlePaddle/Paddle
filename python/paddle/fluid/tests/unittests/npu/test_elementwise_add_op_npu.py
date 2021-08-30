@@ -65,7 +65,7 @@ class TestElementwiseAddOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or self.dtype == np.int or self.dtype == np.int64:
             return
 
         self.check_grad_with_place(
@@ -75,7 +75,7 @@ class TestElementwiseAddOp(OpTest):
             max_relative_error=0.006, )
 
     def test_check_grad_ingore_x(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or self.dtype == np.int or self.dtype == np.int64:
             return
 
         self.check_grad_with_place(
@@ -86,7 +86,7 @@ class TestElementwiseAddOp(OpTest):
             max_relative_error=0.006, )
 
     def test_check_grad_ingore_y(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or self.dtype == np.int or self.dtype == np.int64:
             return
 
         self.check_grad_with_place(
@@ -100,6 +100,16 @@ class TestElementwiseAddOp(OpTest):
 class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TestINTElementwiseAddOp(TestElementwiseAddOp):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestINT64ElementwiseAddOp(TestElementwiseAddOp):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 @skip_check_grad_ci(

@@ -85,12 +85,17 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     elementwise_mul,
     ops::ElementwiseMulNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ElementwiseMulNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::ElementwiseMulNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::ElementwiseMulNPUKernel<paddle::platform::NPUDeviceContext,
                                  paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     elementwise_mul_grad,
     ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext,
+                                     int64_t>,
     ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext,
                                      paddle::platform::float16>);
 #endif

@@ -62,15 +62,34 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
       }
     }
     auto shape = GetShape(ctx);
-
-    Tensor tensor_tmp(data_type);
-    tensor_tmp.mutable_data<T>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<T>(&tensor_tmp, value);
-
     out_var->mutable_data<T>(shape, place);
-    const auto& runner = NpuOpRunner("FillD", {tensor_tmp}, {*out_var},
-                                     {{"dims", framework::vectorize(shape)}});
-    runner.Run(stream);
+
+    if (out_var->type() == framework::proto::VarType::INT64) {
+      Tensor tensor_tmp(framework::proto::VarType::INT32);
+      Tensor cast_out_var(framework::proto::VarType::INT32);
+      tensor_tmp.mutable_data<int>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<int>(&tensor_tmp, static_cast<int>(value));
+      cast_out_var.Resize(out_var->dims());
+      cast_out_var.mutable_data<int>(ctx.GetPlace());
+
+      const auto& runner = NpuOpRunner("FillD", {tensor_tmp}, {cast_out_var},
+                                       {{"dims", framework::vectorize(shape)}});
+      runner.Run(stream);
+
+      auto dst_dtype = ConvertToNpuDtype(out_var->type());
+      const auto& runner_cast_scale =
+          NpuOpRunner("Cast", {cast_out_var}, {*out_var},
+                      {{"dst_type", static_cast<int>(dst_dtype)}});
+      runner_cast_scale.Run(stream);
+    } else {
+      Tensor tensor_tmp(data_type);
+      tensor_tmp.mutable_data<T>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(&tensor_tmp, value);
+
+      const auto& runner = NpuOpRunner("FillD", {tensor_tmp}, {*out_var},
+                                       {{"dims", framework::vectorize(shape)}});
+      runner.Run(stream);
+    }
   }
 };
 }  // namespace operators
@@ -83,5 +102,6 @@ REGISTER_OP_NPU_KERNEL(
     ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext, bool>,
     ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext,
                                paddle::platform::float16>);

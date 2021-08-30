@@ -146,6 +146,12 @@ class TestFillConstantBatchSizeLike9(TestFillConstantBatchSizeLike):
         self.output_dim_idx = 1
 
 
+class TestFillConstantBatchSizeLike10(TestFillConstantBatchSizeLike):
+    def init_dtype(self):
+        self.dtype = core.VarDesc.VarType.INT64
+        self.output_dtype = np.int64
+
+
 class TestFillConstantBatchSizeLikeLodTensor(TestFillConstantBatchSizeLike):
     # test LodTensor
     def setUp(self):

@@ -87,6 +87,8 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     gather, ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext,
                            paddle::platform::float16>);
@@ -94,6 +96,8 @@ REGISTER_OP_NPU_KERNEL(
 REGISTER_OP_NPU_KERNEL(
     gather_grad,
     ops::GatherGradOpNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::GatherGradOpNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::GatherGradOpNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::GatherGradOpNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::GatherGradOpNPUKernel<paddle::platform::NPUDeviceContext,
                                paddle::platform::float16>);

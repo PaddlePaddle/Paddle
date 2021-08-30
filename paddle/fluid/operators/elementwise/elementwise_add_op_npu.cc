@@ -146,8 +146,12 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(elementwise_add, ops::ElementwiseAddNPUKernel<float>,
+                       ops::ElementwiseAddNPUKernel<int>,
+                       ops::ElementwiseAddNPUKernel<int64_t>,
                        ops::ElementwiseAddNPUKernel<plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(elementwise_add_grad,
                        ops::ElementwiseAddGradNPUKernel<float>,
+                       ops::ElementwiseAddGradNPUKernel<int>,
+                       ops::ElementwiseAddGradNPUKernel<int64_t>,
                        ops::ElementwiseAddGradNPUKernel<plat::float16>);

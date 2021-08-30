@@ -53,12 +53,13 @@ class TestFillConstantInt(OpTest):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
         self.op_type = "fill_constant"
+        self.init_dtype()
 
         self.inputs = {}
         self.attrs = {
             'shape': [123, 92],
             'value': 1,
-            'dtype': core.VarDesc.VarType.INT32
+            'dtype': self.tensor_dtype
         }
         self.outputs = {'Out': np.full((123, 92), 1).astype(self.dtype)}
 
@@ -66,10 +67,17 @@ class TestFillConstantInt(OpTest):
         self.__class__.use_npu = True
 
     def init_dtype(self):
+        self.tensor_dtype = core.VarDesc.VarType.INT32
         self.dtype = np.int32
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
+
+
+class TestFillConstantInt64(TestFillConstantInt):
+    def init_dtype(self):
+        self.tensor_dtype = core.VarDesc.VarType.INT64
+        self.dtype = np.int64
 
 
 class TestFillConstantFP16(OpTest):

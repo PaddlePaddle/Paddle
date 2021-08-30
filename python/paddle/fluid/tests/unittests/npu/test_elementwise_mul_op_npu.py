@@ -62,6 +62,16 @@ class TestElementwiseMul(OpTest):
     #
 
 
+class TestElementwiseMulINT(TestElementwiseMul):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestElementwiseMulINT64(TestElementwiseMul):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
 class TestElementwiseMulFp16(OpTest):
     def setUp(self):
         self.set_npu()
