@@ -450,7 +450,12 @@ if __name__ == '__main__':
                 if 'signature' in api_info else 'ArgSpec()'))
         if argcheckit and 'argsdoc_check' in api_info and (
                 not api_info['argsdoc_check']):
-            api_args_check_failed.append(api_name)
+            if api_name.endswith('_'):
+                logger.debug(
+                    "%s args check failed. but it's an inplace api, skip it.",
+                    api_name)
+            else:
+                api_args_check_failed.append(api_name)
 
     exit_value = 0
     if (not args.skip_api_args_doc_check) and api_args_check_failed:
