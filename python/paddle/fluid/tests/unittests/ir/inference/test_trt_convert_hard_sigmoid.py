@@ -49,12 +49,12 @@ class TrtConvertHardSigmoidTest1(TrtLayerAutoScanTest):
         self.program_outputs = ["output_data"]
 
     def test_check_fp32_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Float32
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
         # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
         self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-5)
 
     def test_check_fp16_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Half
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
         self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-5)
 
     def test_dynamic_shape_fp32_check_output(self):
