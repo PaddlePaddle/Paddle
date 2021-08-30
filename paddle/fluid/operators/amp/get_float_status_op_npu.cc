@@ -23,24 +23,24 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-class ClearFloatStatusKernel : public framework::OpKernel<T> {
+class GetFloatStatusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
     auto* float_status_out = ctx.Output<framework::Tensor>("FloatStatusOut");
-    // NOTE(zhiqiu): NPUClearFloatStatus modifies the input.
+    // GetClearFloatStatus modifies the input.
     PADDLE_ENFORCE_EQ(float_status_out, float_status,
                       platform::errors::PreconditionNotMet(
                           "The input(FloatStatus) and Output(FloatStatusOut) "
                           "should be the same."));
     Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
-    const auto& runner =
-        NpuOpRunner("NPUClearFloatStatus", {tmp}, {*float_status_out});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    runner.Run(stream);
+    // NPUGetFloatStatus updates data on input in-place.
+    // tmp is only placeholder.
+    NpuOpRunner("NPUGetFloatStatus", {*float_status}, {tmp}).Run(stream);
   }
 };
 
@@ -50,5 +50,5 @@ class ClearFloatStatusKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    clear_float_status,
-    ops::ClearFloatStatusKernel<paddle::platform::NPUDeviceContext, float>);
+    get_float_status,
+    ops::GetFloatStatusKernel<paddle::platform::NPUDeviceContext, float>);
