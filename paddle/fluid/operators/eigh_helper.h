@@ -36,18 +36,24 @@ using Shape = std::vector<int>;
 using OpName = std::string;
 
 template <typename ValueType>
-void BatchEigenvalues(const ValueType* x_data, ValueType* eigenvalues_data,
+void BatchEigenvalues(ValueType* x_data, ValueType* eigenvalues_data,
                       ValueType* eigenvectors_data, int batches, int rows,
                       int cols, int k) {
-  ValueType* input = const_cast<ValueType*>(x_data);
   int stride = rows * cols;
   for (int i = 0; i < batches; i++) {
     auto m = Eigen::Map<Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic,
-                                      Eigen::RowMajor>>(input + i * stride,
+                                      Eigen::RowMajor>>(x_data + i * stride,
                                                         rows, cols);
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix<
         ValueType, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
         eigen_solver(m);
+    PADDLE_ENFORCE_EQ(eigen_solver.info(), Eigen::Success,
+                      platform::errors::InvalidArgument(
+                          "Self Adjoint Eigen decomposition was"
+                          "not successful. The "
+                          "%d-th input matrice "
+                          "might not be not be positive definite.",
+                          i));
     auto eigenvalues = eigen_solver.eigenvalues().transpose();
     auto eigenvectors = eigen_solver.eigenvectors();
     memcpy(eigenvalues_data + i * rows, eigenvalues.data(),
@@ -58,13 +64,11 @@ void BatchEigenvalues(const ValueType* x_data, ValueType* eigenvalues_data,
 }
 
 template <typename T, typename ValueType>
-void BatchComplexValues(const T* x_data, ValueType* eigenvalues_data,
+void BatchComplexValues(T* x_data, ValueType* eigenvalues_data,
                         T* eigenvectors_data, int batches, int rows, int cols,
                         int k) {
-  const std::complex<ValueType>* input_1 =
-      reinterpret_cast<const std::complex<ValueType>*>(x_data);
   std::complex<ValueType>* input =
-      const_cast<std::complex<ValueType>*>(input_1);
+      reinterpret_cast<std::complex<ValueType>*>(x_data);
   int stride = rows * cols;
   for (int i = 0; i < batches; i++) {
     auto m = Eigen::Map<Eigen::Matrix<std::complex<ValueType>, Eigen::Dynamic,
@@ -74,17 +78,16 @@ void BatchComplexValues(const T* x_data, ValueType* eigenvalues_data,
         Eigen::Matrix<std::complex<ValueType>, Eigen::Dynamic, Eigen::Dynamic,
                       Eigen::RowMajor>>
         eigen_solver(m);
+    PADDLE_ENFORCE_EQ(eigen_solver.info(), Eigen::Success,
+                      platform::errors::InvalidArgument(
+                          "Self Adjoint Eigen decomposition was"
+                          "not successful. The "
+                          "%d-th input matrice "
+                          "might not be not be positive definite.",
+                          i));
 
     auto eigenvalues = eigen_solver.eigenvalues().transpose();
     auto eigenvectors = eigen_solver.eigenvectors();
-    // std::cout << "eigenvalues: " << eigenvalues << std::endl;
-    // std::cout << "eigenvectors: " << eigenvectors << std::endl;
-    // for (int j = 0; j < k; j++) {
-    //   // 不能用下标的方式访问吗？？
-    //   *(eigenvalues_data + i * k + j) = eigenvalues[j];
-    //   // std::cout << "eigenvalues_data[i*k+j]: " <<
-    //   *(eigenvalues_data+i*k+j);
-    // }
     memcpy(eigenvalues_data + i * rows, eigenvalues.data(),
            rows * sizeof(ValueType));
 

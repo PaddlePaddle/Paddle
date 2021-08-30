@@ -184,22 +184,22 @@ class EighGPUKernel : public framework::OpKernel<T> {
                                   value_data, d_work, lwork, info_ptr);
     }
 #endif
-    // memory::Copy(platform::CPUPlace(), error_info.data(),
-    //              BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-    //              info_ptr, sizeof(T) * batch_size, dev_ctx.stream());
+    // check the info
+    std::vector<int> error_info;  // only for checking positive matrix
+    error_info.resize(batch_size);
 
-    // for (int i = 0; i < batch_size; ++i) {
-    //   PADDLE_ENFORCE_GT(error_info[i], 0,
-    //               platform::errors::InvalidArgument(
-    //                   "the [%d] argument had an illegal value",
-    //                   error_info[i]));
-    //   PADDLE_ENFORCE_LT(error_info[i], 0,
-    //               platform::errors::InvalidArgument("if JOBZ = \'N\', [%d]
-    //               off-diagonal elements of an intermediate tridiagonal form
-    //               did not converge to zero; if JOBZ = \'V\', then the
-    //               algorithm failed to compute an eigenvalue",
-    //       error_info[i]));
-    // }
+    memory::Copy(platform::CPUPlace(), error_info.data(),
+                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
+                 info_ptr, sizeof(int) * batch_size, dev_ctx.stream());
+
+    for (int i = 0; i < batch_size; ++i) {
+      PADDLE_ENFORCE_EQ(
+          error_info[i], 0,
+          platform::errors::InvalidArgument(
+              "For batch [%d]: the [%d] argument had an illegal value", i,
+              error_info[i]));
+    }
+
     TransCompute<platform::CUDADeviceContext, T>(
         dim_size, dev_ctx, *output_v_var, &output_v_var_trans, axis);
     paddle::framework::TensorCopy(
