@@ -55,7 +55,7 @@ Place DenseTensor::GetPlaceByBackend() const {
   switch (meta_.backend) {
     case Backend::kCPU:
       return CPUPlace();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case Backend::kCUDA:
       return CUDAPlace();
     case Backend::kCUDAPinned:

@@ -25,7 +25,7 @@ namespace pt {
 
 // TODO(chenweihang): replaced by new DeviceContext later
 using CPUContext = paddle::platform::CPUDeviceContext;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 using CUDAContext = paddle::platform::CUDADeviceContext;
 #endif
 #ifdef PADDLE_WITH_MKLDNN
@@ -84,7 +84,7 @@ struct OpKernelImpl<Return (*)(Args...), kernel_fn> {
   /* DeviceContext Helpers */
 
   PT_SPECIALIZE_OpKernelCallHelper_FOR_DEVICE_CONTEXT(CPUContext);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PT_SPECIALIZE_OpKernelCallHelper_FOR_DEVICE_CONTEXT(CUDAContext);
 #endif
 #ifdef PADDLE_WITH_XPU
