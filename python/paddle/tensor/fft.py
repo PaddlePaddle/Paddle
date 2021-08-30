@@ -309,7 +309,7 @@ def fftn_c2c(x, s, axes, norm, forward):
         axes = axes
         axes.sort()
         if s is None:
-            shape = paddle.shape(x)
+            shape = x.shape
             s = [shape[axis] for axis in axes]
         else:
             assert len(axes) == len(s)
