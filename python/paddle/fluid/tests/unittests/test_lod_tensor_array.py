@@ -62,7 +62,8 @@ class TestCreateArray(unittest.TestCase):
             numpy.random.random(shape).astype('float32')
             for shape in self.shapes
         ]
-        array = paddle.tensor.create_array('float32', [paddle.to_tensor(x) for x in init_data])
+        array = paddle.tensor.create_array(
+            'float32', [paddle.to_tensor(x) for x in init_data])
         for res, gt in zip(array, init_data):
             self.assertTrue(numpy.array_equal(res, gt))
 
