@@ -1711,7 +1711,7 @@ function parallel_test_base_npu() {
     ========================================
 EOF
 
-set +x
+set -x
         test_cases=$(ctest -N -V) # get all test cases
         get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
         while read -r line; do
