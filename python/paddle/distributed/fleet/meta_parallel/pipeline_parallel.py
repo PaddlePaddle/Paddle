@@ -42,6 +42,8 @@ class PipelineParallel(MetaParallelBase):
         self.accumulate_steps = self._strategy.pipeline_configs[
             'accumulate_steps']
 
+        self.using_cache = True
+
         self.num_stages = self._hcg.get_pipe_parallel_world_size()
         self.stage_id = self._hcg.get_stage_id()
         self.pp_group = self._hcg.get_pipe_parallel_group()
