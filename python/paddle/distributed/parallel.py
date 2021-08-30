@@ -182,24 +182,29 @@ def init_parallel_env():
     # directly, if they want to switch default place,
     # they need to call a function to change default place,
     # here just set correctly place to users
-    if core.is_compiled_with_cuda():
+    if is_cpu_only:
+        place = core.CPUPlace()
+    elif core.is_compiled_with_cuda():
         place = core.CUDAPlace(parallel_env.device_id)
     elif core.is_compiled_with_xpu():
         place = core.XPUPlace(parallel_env.device_id)
     else:
-        place = core.CPUPlace()
-    _set_expected_place(place)
+        raise NotImplementedError(
+            "If you want to use CPU-only version, please add PADDLE_PARALLEL_CPU in you environ vairable"
+            "If you want to use CUDA / XPU distributed version, please remove PADDLE_PARALLEL_CPU."
+        )
 
+    _set_expected_place(place)
     # init nccl or bkcl context
-    if core.is_compiled_with_cuda():
+    if is_cpu_only:
+        parallel_helper._set_parallel_ctx(
+            core.GLOOParallelContext(strategy, place))
+    elif core.is_compiled_with_cuda():
         parallel_helper._set_parallel_ctx(
             core.NCCLParallelContext(strategy, place))
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place))
-    else:
-        parallel_helper._set_parallel_ctx(
-            core.GLOOParallelContext(strategy, place))
 
     other_endpoints = strategy.trainer_endpoints[:]
     other_endpoints.remove(strategy.current_endpoint)
