@@ -338,6 +338,12 @@ TEST(enforce, hip_success) {
 }
 #else
 TEST(enforce, cuda_success) {
+  EXPECT_TRUE(CheckCudaStatusSuccess(CUDA_SUCCESS));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUDA_ERROR_INVALID_VALUE, "invalid argument"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUDA_ERROR_NOT_INITIALIZED,
+                                     "initialization error"));
+
   EXPECT_TRUE(CheckCudaStatusSuccess(cudaSuccess));
   EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorInvalidValue, "CUDA error"));
 

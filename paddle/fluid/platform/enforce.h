@@ -850,7 +850,7 @@ template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
 template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
 #endif
 
-/*************** CU DRIVER ***************/
+/*************** CUDA DRIVER ERROR ***************/
 inline bool is_error(CUresult e) { return e != CUDA_SUCCESS; }
 
 inline std::string build_nvidia_error_msg(CUresult e) {

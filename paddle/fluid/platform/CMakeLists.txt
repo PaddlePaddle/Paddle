@@ -45,7 +45,7 @@ cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
 
 set(enforce_deps flags errors boost)
 if(WITH_GPU)
-  set(enforce_deps ${enforce_deps} external_error_proto)
+  set(enforce_deps ${enforce_deps} external_error_proto dynload_cuda)
 endif()
 cc_library(enforce INTERFACE SRCS enforce.cc DEPS ${enforce_deps})
 cc_library(monitor SRCS monitor.cc)
