@@ -112,7 +112,6 @@ class FFTC2CGradOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Output(%s) of FFTC2CGradOp should not be null.", "DX"));
     auto x_grad_name = framework::GradVarName("X");
-    std::cerr << "++++++++++++" << framework::GradVarName("Out") << "\n";
     ctx->SetOutputDim(x_grad_name,
                       ctx->GetInputDim(framework::GradVarName("Out")));
   }
