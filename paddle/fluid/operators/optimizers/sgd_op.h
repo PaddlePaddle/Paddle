@@ -159,53 +159,12 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-
     const auto *param_var = ctx.InputVar("Param");
-    const auto *grad_var = ctx.InputVar("Grad");
 
     if (param_var->IsType<framework::LoDTensor>()) {
       invoke_dense_param_kernel(ctx);
     } else if (param_var->IsType<framework::SelectedRows>()) {
-      PADDLE_ENFORCE_EQ(grad_var->IsType<framework::SelectedRows>(), true,
-                        platform::errors::InvalidArgument(
-                            "When param is SelectedRows, gradient should also "
-                            "be SelectedRows"));
-      const auto &param = param_var->Get<framework::SelectedRows>();
-      auto *param_out = ctx.Output<framework::SelectedRows>("ParamOut");
-      const auto &grad = grad_var->Get<framework::SelectedRows>();
-
-      // for distributed training, a sparse var may be empty,
-      // just skip updating.
-      if (grad.rows().size() == 0) {
-        return;
-      }
-
-      auto param_row_width = param.value().dims()[1];
-      auto grad_row_width = grad.value().dims()[1];
-      PADDLE_ENFORCE_EQ(
-          param_row_width, grad_row_width,
-          platform::errors::InvalidArgument(
-              "The param_row in SgdOP should have the same size with grad_row. "
-              "But received param_row's width is [%s], and grad_row's width is "
-              "[%s]",
-              param_row_width, grad_row_width));
-
-      const auto *lr = learning_rate->data<T>();
-      const auto *grad_data = grad.value().data<T>();
-      auto *out_data = param_out->mutable_value()->data<T>();
-      for (size_t i = 0; i < grad.rows().size(); i++) {
-        int64_t id_index = param_out->AutoGrownIndex(grad.rows()[i], false);
-        PADDLE_ENFORCE_GE(
-            id_index, static_cast<int64_t>(0),
-            platform::errors::InvalidArgument(
-                "The id in SgdOp should be >= 0. But recevied id_index is [%s]",
-                id_index));
-        for (int64_t j = 0; j < grad_row_width; j++) {
-          out_data[id_index * grad_row_width + j] -=
-              lr[0] * grad_data[i * grad_row_width + j];
-        }
-      }
+      sparse_param_and_grad_kernel(ctx);
     } else {
       PADDLE_ENFORCE_EQ(
           false, true,
@@ -291,6 +250,53 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
               "Unsupported Variable Type of Grad in SgdOp. Excepted "
               "LodTensor or SelectedRows, But received [%s]",
               paddle::framework::ToTypeName(grad_var->Type())));
+    }
+  }
+
+  void sparse_param_and_grad_kernel(
+      const framework::ExecutionContext &ctx) const {
+    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    const auto *param_var = ctx.InputVar("Param");
+    const auto *grad_var = ctx.InputVar("Grad");
+
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::SelectedRows>(), true,
+                      platform::errors::InvalidArgument(
+                          "When param is SelectedRows, gradient should also "
+                          "be SelectedRows"));
+    const auto &param = param_var->Get<framework::SelectedRows>();
+    auto *param_out = ctx.Output<framework::SelectedRows>("ParamOut");
+    const auto &grad = grad_var->Get<framework::SelectedRows>();
+
+    // for distributed training, a sparse var may be empty,
+    // just skip updating.
+    if (grad.rows().size() == 0) {
+      return;
+    }
+
+    auto param_row_width = param.value().dims()[1];
+    auto grad_row_width = grad.value().dims()[1];
+    PADDLE_ENFORCE_EQ(
+        param_row_width, grad_row_width,
+        platform::errors::InvalidArgument(
+            "The param_row in SgdOP should have the same size with grad_row. "
+            "But received param_row's width is [%s], and grad_row's width is "
+            "[%s]",
+            param_row_width, grad_row_width));
+
+    const auto *lr = learning_rate->data<T>();
+    const auto *grad_data = grad.value().data<T>();
+    auto *out_data = param_out->mutable_value()->data<T>();
+    for (size_t i = 0; i < grad.rows().size(); i++) {
+      int64_t id_index = param_out->AutoGrownIndex(grad.rows()[i], false);
+      PADDLE_ENFORCE_GE(
+          id_index, static_cast<int64_t>(0),
+          platform::errors::InvalidArgument(
+              "The id in SgdOp should be >= 0. But recevied id_index is [%s]",
+              id_index));
+      for (int64_t j = 0; j < grad_row_width; j++) {
+        out_data[id_index * grad_row_width + j] -=
+            lr[0] * grad_data[i * grad_row_width + j];
+      }
     }
   }
 
