@@ -26,10 +26,10 @@ namespace framework {
 class ExecutorBase {
  public:
   virtual ~ExecutorBase() {}
-  virtual int Run(const std::vector<std::string>& feed_names,
-                  const std::vector<framework::Tensor>& feed_tensors,
-                  const std::vector<std::string>& fetch_names,
-                  std::vector<framework::Tensor>* fetch_tensors) = 0;
+  virtual paddle::framework::FetchList Run(
+      const std::vector<std::string>& feed_names,
+      const std::vector<framework::Tensor>& feed_tensors,
+      const std::vector<std::string>& fetch_names) = 0;
 };
 
 class StandaloneExecutor : public ExecutorBase {
@@ -40,10 +40,10 @@ class StandaloneExecutor : public ExecutorBase {
 
   ~StandaloneExecutor() {}
 
-  virtual int Run(const std::vector<std::string>& feed_names,
-                  const std::vector<framework::Tensor>& feed_tensors,
-                  const std::vector<std::string>& fetch_names,
-                  std::vector<framework::Tensor>* fetch_tensors);
+  virtual paddle::framework::FetchList Run(
+      const std::vector<std::string>& feed_names,
+      const std::vector<framework::Tensor>& feed_tensors,
+      const std::vector<std::string>& fetch_names);
 
   const CostInfo& DryRun(const std::vector<std::string>& vec_name,
                          const std::vector<framework::Tensor>& vec_tensor);

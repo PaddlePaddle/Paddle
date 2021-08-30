@@ -245,5 +245,9 @@ if [[ -f ${exe_dir}/test_summary.txt ]];then
   cat ${exe_dir}/test_summary.txt
   echo "========================================================"
 fi
+
+# tar Gtest output report
+tar -zcvf infer_ut_log.tgz ${log_dir}
+
 echo "infer_ut script finished"
 exit ${EXIT_CODE}

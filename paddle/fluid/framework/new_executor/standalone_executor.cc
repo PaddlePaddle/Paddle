@@ -37,6 +37,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       }
 
       global_scope_.var_list.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = nullptr;
+      global_scope_.vec_meta_info_.push_back(info);
     }
   }
 
@@ -47,15 +52,13 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                    &vec_func_list, &global_scope_);
 }
 
-int StandaloneExecutor::Run(const std::vector<std::string>& feed_names,
-                            const std::vector<framework::Tensor>& feed_tensors,
-                            const std::vector<std::string>& fetch_names,
-                            std::vector<framework::Tensor>* fetch_tensors) {
+paddle::framework::FetchList StandaloneExecutor::Run(
+    const std::vector<std::string>& feed_names,
+    const std::vector<framework::Tensor>& feed_tensors,
+    const std::vector<std::string>& fetch_names) {
   auto core = GetInterpreterCore(feed_names, fetch_names);
 
-  core->Run(feed_tensors, fetch_tensors);
-
-  return 0;
+  return core->Run(feed_tensors);
 }
 
 const CostInfo& StandaloneExecutor::DryRun(
@@ -82,6 +85,11 @@ void StandaloneExecutor::BuildVariableOuterScope(
       auto v = outer_scope->Var(var->Name());
       InitializeVariable(v, var->GetType());
       var_scope->var_list.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = var;
+      var_scope->vec_meta_info_.push_back(info);
     }
   }
 }
@@ -102,6 +110,7 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   auto iter = interpretercores_.find(oss.str());
 
   if (iter == interpretercores_.end()) {
+    VLOG(3) << "create interpreter_core for " << oss.str();
     auto core = std::make_shared<InterpreterCore>(
         place_, main_prog_, &global_scope_, feed_names, fetch_names);
     interpretercores_.emplace(oss.str(), core);

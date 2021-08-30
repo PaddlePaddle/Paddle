@@ -31,79 +31,72 @@ using paddle::framework::GradVarName;
 
 template <typename T>
 class MatMulV2MKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerT<T, dnnl::matmul> {
+    : public paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul> {
  public:
-  MatMulV2MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
-                        const mkldnn::engine engine,
+  MatMulV2MKLDNNHandler(const mkldnn::engine engine,
                         paddle::platform::Place cpu_place,
                         const std::vector<int64_t>& x_org_dims, bool trans_x,
-                        const std::vector<int64_t>& y_org_dims, bool trans_y,
-                        const std::string& uniq_name)
-      : paddle::platform::MKLDNNHandlerT<T, dnnl::matmul>(
-            dev_ctx, engine, cpu_place,
-            paddle::platform::CreateKey(dev_ctx, x_org_dims, uniq_name)) {
-    if (!this->isCached()) {
-      // M X K * K X N
-      std::vector<int64_t> x_dims(x_org_dims);
-      std::vector<int64_t> y_dims(y_org_dims);
+                        const std::vector<int64_t>& y_org_dims, bool trans_y)
+      : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul>(engine,
+                                                                   cpu_place) {
+    // M X K * K X N
+    std::vector<int64_t> x_dims(x_org_dims);
+    std::vector<int64_t> y_dims(y_org_dims);
 
-      const int MB_idx = x_dims.size() - 3;
-      const int H_idx = x_dims.size() - 2;
-      const int W_idx = x_dims.size() - 1;
+    const int MB_idx = x_dims.size() - 3;
+    const int H_idx = x_dims.size() - 2;
+    const int W_idx = x_dims.size() - 1;
 
-      if (trans_x) std::swap(x_dims[H_idx], x_dims[W_idx]);
-      if (trans_y) std::swap(y_dims[H_idx], y_dims[W_idx]);
+    if (trans_x) std::swap(x_dims[H_idx], x_dims[W_idx]);
+    if (trans_y) std::swap(y_dims[H_idx], y_dims[W_idx]);
 
-      const memory::dim M = x_dims[H_idx];
-      const memory::dim K = x_dims[W_idx];
-      const memory::dim N = y_dims[W_idx];
+    const memory::dim M = x_dims[H_idx];
+    const memory::dim K = x_dims[W_idx];
+    const memory::dim N = y_dims[W_idx];
 
-      std::vector<int64_t> x_strides(x_dims.size() - 3, 1);
-      std::vector<int64_t> y_strides(x_dims.size() - 3, 1);
-      std::vector<int64_t> out_strides(x_dims.size() - 3, 1);
-      std::vector<int64_t> out_ddims(x_dims.size() - 3, 1);
+    std::vector<int64_t> x_strides(x_dims.size() - 3, 1);
+    std::vector<int64_t> y_strides(x_dims.size() - 3, 1);
+    std::vector<int64_t> out_strides(x_dims.size() - 3, 1);
+    std::vector<int64_t> out_ddims(x_dims.size() - 3, 1);
 
-      x_strides.reserve(x_dims.size());
-      y_strides.reserve(x_dims.size());
-      out_strides.reserve(x_dims.size());
+    x_strides.reserve(x_dims.size());
+    y_strides.reserve(x_dims.size());
+    out_strides.reserve(x_dims.size());
 
-      if (!trans_x) {
-        x_strides.insert(x_strides.end(), {M * K, K, 1});
-      } else {
-        x_strides.insert(x_strides.end(), {M * K, 1, M});
-      }
-
-      if (!trans_y) {
-        y_strides.insert(y_strides.end(), {N * K, N, 1});
-      } else {
-        y_strides.insert(y_strides.end(), {N * K, 1, K});
-      }
-
-      out_strides.insert(out_strides.end(), {M * N, N, 1});
-      out_ddims.insert(out_ddims.end(),
-                       {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
-
-      for (int i = x_dims.size() - 4; i >= 0; --i) {
-        out_ddims[i] = std::max(x_dims[i], y_dims[i]);
-        x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
-        y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
-        out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
-      }
-
-      auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
-      auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
-      auto out_md =
-          memory::desc(out_ddims, MKLDNNGetDataType<T>(), out_strides);
-
-      this->AcquireForwardPrimitiveDescriptor(x_md, y_md, out_md);
+    if (!trans_x) {
+      x_strides.insert(x_strides.end(), {M * K, K, 1});
+    } else {
+      x_strides.insert(x_strides.end(), {M * K, 1, M});
     }
+
+    if (!trans_y) {
+      y_strides.insert(y_strides.end(), {N * K, N, 1});
+    } else {
+      y_strides.insert(y_strides.end(), {N * K, 1, K});
+    }
+
+    out_strides.insert(out_strides.end(), {M * N, N, 1});
+    out_ddims.insert(out_ddims.end(),
+                     {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
+
+    for (int i = x_dims.size() - 4; i >= 0; --i) {
+      out_ddims[i] = std::max(x_dims[i], y_dims[i]);
+      x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
+      y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
+      out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
+    }
+
+    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
+    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
+    auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<T>(), out_strides);
+
+    this->AcquireForwardPrimitiveDescriptor(x_md, y_md, out_md);
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
     const T* input_data = input->data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<T>(input_data),
-                                            "@weights_mem_p");
+                                            to_void_cast<T>(input_data));
   }
 };
 
@@ -122,9 +115,8 @@ class MatMulV2MKLDNNKernel
                      const Tensor* y, std::vector<int64_t>& y_dims,
                      bool trans_y, Tensor* out, std::vector<int64_t>& out_dims,
                      int execution_number = 0) const {
-    MatMulV2MKLDNNHandler<T> handler(
-        dev_ctx, onednn_engine, ctx.GetPlace(), x_dims, trans_x, y_dims,
-        trans_y, ctx.InputName("X") + std::to_string(execution_number));
+    MatMulV2MKLDNNHandler<T> handler(onednn_engine, ctx.GetPlace(), x_dims,
+                                     trans_x, y_dims, trans_y);
 
     const auto src_memory_p = handler.AcquireSrcMemory(x);
     const auto weights_memory_p = handler.AcquireWeightsMemory(y);
@@ -251,8 +243,8 @@ class MatMulV2GradMKLDNNKernel : public MatMulV2MKLDNNKernel<T> {
                                     const Tensor* dx_tmp, Tensor* dx,
                                     std::vector<int64_t> dx_dims) const {
     paddle::platform::ReductionMKLDNNHandler<T> handler(
-        dnnl::algorithm::reduction_sum, 0.0f, 0.0f, dev_ctx, onednn_engine,
-        ctx.GetPlace(), dx_tmp, dx, ctx.InputName("X"), dx_dims);
+        dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
+        ctx.GetPlace(), dx_tmp, dx, dx_dims);
 
     auto src_memory_p = handler.AcquireSrcMemory(dx_tmp);
     auto dst_memory_p = handler.AcquireDstMemory(dx);

@@ -80,19 +80,24 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
            static_cast<int>(OpRole::kOptimize) |
                static_cast<int>(OpRole::kLRSched),
            static_cast<int>(OpRole::kNotSpecified)})
-      .SetDefault(static_cast<int>(OpRole::kNotSpecified));
+      .SetDefault(static_cast<int>(OpRole::kNotSpecified))
+      .AsExtra();
   AddAttr<std::vector<std::string>>(OpRoleVarAttrName(),
                                     "Optimized for variable")
-      .SetDefault({});
+      .SetDefault({})
+      .AsExtra();
 
   AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namesope.")
-      .SetDefault("");
+      .SetDefault("")
+      .AsExtra();
 
   AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
                                     "Callstack for Op Creatation.")
-      .SetDefault({});
+      .SetDefault({})
+      .AsExtra();
   AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")
-      .SetDefault("");
+      .SetDefault("")
+      .AsExtra();
   Validate();
 }
 
