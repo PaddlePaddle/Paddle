@@ -74,9 +74,17 @@ class SGDOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     using mkldnn::memory;
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-      return framework::OpKernelType(data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+      const auto *param_var = ctx.InputVar("Param");
+      const auto *grad_var = ctx.InputVar("Grad");
+
+      bool dense_param_sparse_grad =
+          param_var->IsType<framework::LoDTensor>() &&
+          grad_var->IsType<framework::SelectedRows>();
+
+      if (dense_param_sparse_grad)
+        return framework::OpKernelType(data_type, ctx.GetPlace(),
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
     }
 #endif
 

@@ -23,12 +23,6 @@ namespace operators {
 template <typename T>
 class SGDOneDNNKernel : public SGDOpKernel<pplat::CPUDeviceContext, T> {
  protected:
-  void dense_param_and_grad_kernel(
-      const framework::ExecutionContext &ctx) const override {
-    detail::sgd_dense_param_kernel<
-        T, framework::VarTypeTrait<framework::LoDTensor>::kId>()(ctx);
-  }
-
   void dense_param_sparse_grad_kernel(
       const framework::ExecutionContext &ctx) const override {
     VLOG(2) << "[ONEDNN]: sgd_dense_param_kernel<T, SelectedRows>";
