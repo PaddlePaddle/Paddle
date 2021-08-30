@@ -93,6 +93,33 @@ class TrtConvertFlattenTest1(TrtConvertFlattenTest):
         self.dynamic_paddle_op_num = 2
 
 
+class TrtConvertFlattenTest2(TrtConvertFlattenTest):
+    def init(self):
+        self.axis = 2
+        self.static_trt_engine_num = 0
+        self.static_paddle_op_num = 3
+        self.dynamic_trt_engine_num = 0
+        self.dynamic_paddle_op_num = 3
+
+
+class TrtConvertFlattenTest3(TrtConvertFlattenTest):
+    def init(self):
+        self.axis = 3
+        self.static_trt_engine_num = 0
+        self.static_paddle_op_num = 3
+        self.dynamic_trt_engine_num = 0
+        self.dynamic_paddle_op_num = 3
+
+
+class TrtConvertFlattenTest4(TrtConvertFlattenTest):
+    def init(self):
+        self.axis = 4
+        self.static_trt_engine_num = 0
+        self.static_paddle_op_num = 3
+        self.dynamic_trt_engine_num = 0
+        self.dynamic_paddle_op_num = 3
+
+
 class TrtConvertFlatten2Test(TrtLayerAutoScanTest):
     def init(self):
         self.axis = 0
@@ -167,6 +194,33 @@ class TrtConvertFlatten2Test1(TrtConvertFlatten2Test):
         self.static_paddle_op_num = 2
         self.dynamic_trt_engine_num = 1
         self.dynamic_paddle_op_num = 2
+
+
+class TrtConvertFlatten2Test2(TrtConvertFlatten2Test):
+    def init(self):
+        self.axis = 2
+        self.static_trt_engine_num = 0
+        self.static_paddle_op_num = 3
+        self.dynamic_trt_engine_num = 0
+        self.dynamic_paddle_op_num = 3
+
+
+class TrtConvertFlatten2Test3(TrtConvertFlatten2Test):
+    def init(self):
+        self.axis = 3
+        self.static_trt_engine_num = 0
+        self.static_paddle_op_num = 3
+        self.dynamic_trt_engine_num = 0
+        self.dynamic_paddle_op_num = 3
+
+
+class TrtConvertFlatten2Test4(TrtConvertFlatten2Test):
+    def init(self):
+        self.axis = 4
+        self.static_trt_engine_num = 0
+        self.static_paddle_op_num = 3
+        self.dynamic_trt_engine_num = 0
+        self.dynamic_paddle_op_num = 3
 
 
 if __name__ == "__main__":
