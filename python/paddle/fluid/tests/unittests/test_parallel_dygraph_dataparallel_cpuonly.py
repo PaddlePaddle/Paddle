@@ -77,9 +77,9 @@ def start_local_trainers(cluster,
         print("trainer proc env:{}".format(current_env))
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            cmd = "python3.7 -m coverage run --branch -p " + training_script
+            cmd = "python -m coverage run --branch -p " + training_script
         else:
-            cmd = "python3.7 -u " + training_script
+            cmd = "python -u " + training_script
 
         print("start trainer proc:{} env:{}".format(cmd, proc_env))
 
@@ -126,7 +126,6 @@ class TestMultipleGpus(unittest.TestCase):
 
 class TestDataParallelGradientCheck(TestMultipleGpus):
     def test_multiple_gpus_dynamic(self):
-        #self.run_mnist_2gpu('/home/data/2742_paddle/Paddle_gloo/python/paddle/fluid/tests/unittests/parallel_dygraph_gradient_check.py')
         self.run_mnist_2gpu('parallel_dygraph_gradient_check.py')
 
 
