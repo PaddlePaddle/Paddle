@@ -45,27 +45,25 @@ __device__ __forceinline__ double fma_root(double x, double y, double z) {
 template <typename T, typename MT>
 __device__ MT L2NormCalculation(const cooperative_groups::grid_group& cg,
                                 const T* __restrict__ data, MT* tmp_buffer,
-                                int tid, const int64_t numel,
+                                int tid, const int repeat_times,
+                                const int grid_stride, const int64_t numel,
                                 const MT rescale_grad = static_cast<MT>(1)) {
-  int stride = gridDim.x * LARS_BLOCK_SIZE;
-  int reduce_times = (numel + stride - 1) / stride;
   MT rescale_grad_pow = rescale_grad * rescale_grad;
-
   __shared__ MT s_buffer;
   s_buffer = static_cast<MT>(0);
 
   MT tmp_val = static_cast<MT>(0);
-  if (reduce_times == 1) {
+  if (repeat_times == 1) {
     if (tid < numel) {
       tmp_val = static_cast<MT>(data[tid]);
     }
     s_buffer += math::blockReduceSum<MT>(tmp_val * tmp_val, FINAL_MASK);
   } else {
-    for (int i = 0; i < reduce_times - 1; ++i) {
+    for (int i = 0; i < repeat_times - 1; ++i) {
       if (tid < numel) {
         tmp_val = static_cast<MT>(data[tid]);
       }
-      tid += stride;
+      tid += grid_stride;
       s_buffer += math::blockReduceSum<MT>(tmp_val * tmp_val, FINAL_MASK);
       __syncthreads();
     }
@@ -94,13 +92,16 @@ __global__ void MomentumLarsKernel(
     const MT lars_coeff, const MT lars_weight_decay, T* p_out, MT* v_out,
     const MT epsilon, const MT* __restrict__ master_p,
     MT* __restrict__ master_p_out, const MT rescale_grad, MT* tmp_buffer,
-    MT* tmp_buffer2) {
+    MT* tmp_buffer_2) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
 #if CUDA_VERSION >= 9000
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
-  MT p_n = L2NormCalculation<T, MT>(cg, p, tmp_buffer, tid, numel);
-  MT g_n =
-      L2NormCalculation<T, MT>(cg, g, tmp_buffer, tid, numel, rescale_grad);
+  const int repeat_times = (numel + grid_stride - 1) / grid_stride;
+  MT p_n = L2NormCalculation<T, MT>(cg, p, tmp_buffer, tid, repeat_times,
+                                    grid_stride, numel);
+  MT g_n = L2NormCalculation<T, MT>(cg, g, tmp_buffer, tid, repeat_times,
+                                    grid_stride, numel, rescale_grad);
 #else
   const MT p_n = tmp_buffer[0];
   const MT g_n = tmp_buffer_2[0];
@@ -114,7 +115,7 @@ __global__ void MomentumLarsKernel(
   }
 
   if (master_p) {
-    for (int i = tid; i < numel; i += blockDim.x * gridDim.x) {
+    for (int i = tid; i < numel; i += grid_stride) {
       MT grad = static_cast<MT>(g[i]) * rescale_grad;
       MT param = master_p[i];
       MT v_new = fma_root(v[i], mu,
@@ -125,7 +126,7 @@ __global__ void MomentumLarsKernel(
       master_p_out[i] = p_new;
     }
   } else {
-    for (int i = tid; i < numel; i += blockDim.x * gridDim.x) {
+    for (int i = tid; i < numel; i += grid_stride) {
       MT grad = static_cast<MT>(g[i]) * rescale_grad;
       MT param = static_cast<MT>(p[i]);
       MT v_new = fma_root(v[i], mu,
@@ -205,12 +206,11 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     total, consequently affect the performance of lars op, make it necessary
     to combine 2 steps into one cuda kernel.
     Since the step1 is l2 norm statistic, grid level reduce is needed. To
-    achieve
-    this and continuous calculation of step 2 in only one global lanuch,
-    essential
-    basis is to control all grid-threads while running. Apart from normal kernel
-    lanuch form, cuda 9.0 provides `cudaLaunchCooperativeKernel` api :
-      - The thread quantity must equal to pyhsical SM limited threads
+    achieve this and continuous calculation of step 2 in only one global
+    lanuch, essential basis is to control all grid-threads while running. Apart
+    from normal lanuch form, cuda9.0 provides `cudaLaunchCooperativeKernel`
+    api :
+      - The thread quantity shall equal to pyhsical SM limited threads
       - Launches a device function where thread blocks can cooperate and
         synchronize as they execute.
     */
@@ -242,8 +242,9 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
         reinterpret_cast<void*>(&master_p_out),
         reinterpret_cast<void*>(&rescale_grad),
         reinterpret_cast<void*>(&tmp_buffer),
-        reinterpret_cast<void*>(&tmp_buffer_2)};  // Just a placeholder.
-    // Lanuch all the sm theads.
+        reinterpret_cast<void*>(&tmp_buffer_2)};  // Just a placeholder for
+                                                  // uniform kernel parameter.
+    // Lanuch all sm theads.
     cudaLaunchCooperativeKernel(
         reinterpret_cast<void*>(MomentumLarsKernel<T, MT>), grid_real,
         LARS_BLOCK_SIZE, cuda_param, 0, dev_ctx.stream());
