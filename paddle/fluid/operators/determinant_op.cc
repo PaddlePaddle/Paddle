@@ -159,19 +159,36 @@ REGISTER_OPERATOR(determinant, ops::DeterminantOp, ops::DeterminantOpMaker,
                   ops::DeterminantGradOpMaker<paddle::framework::OpDesc>,
                   ops::DeterminantGradOpMaker<paddle::imperative::OpBase>);
 
+REGISTER_OPERATOR(determinant_grad, ops::DeterminantGradOp)
+
+
 REGISTER_OP_CPU_KERNEL(determinant, ops::DeterminantKernel<int>,
                        ops::DeterminantKernel<int64_t>,
                        ops::DeterminantKernel<float>,
                        ops::DeterminantKernel<double>,
                        ops::DeterminantKernel<bool>);
 
+REGISTER_OP_CPU_KERNEL(determinant_grad, ops::DeterminantGradKernel<int>,
+                       ops::DeterminantGradKernel<int64_t>,
+                       ops::DeterminantGradKernel<float>,
+                       ops::DeterminantGradKernel<double>,
+                       ops::DeterminantGradKernel<bool>);
+
 REGISTER_OPERATOR(slogdeterminant, ops::SlogDeterminantOp,
                   ops::SlogDeterminantOpMaker,
                   ops::SlogDeterminantGradOpMaker<paddle::framework::OpDesc>,
                   ops::SlogDeterminantGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(slogdeterminant_grad, ops::DeterminantGradOp) // reuse det grad op
 
 REGISTER_OP_CPU_KERNEL(slogdeterminant, ops::SlogDeterminantKernel<int>,
                        ops::SlogDeterminantKernel<int64_t>,
                        ops::SlogDeterminantKernel<float>,
                        ops::SlogDeterminantKernel<double>,
                        ops::SlogDeterminantKernel<bool>);
+
+REGISTER_OP_CPU_KERNEL(slogdeterminant_grad, ops::DeterminantGradKernel<int>,
+                       ops::DeterminantGradKernel<int64_t>,
+                       ops::DeterminantGradKernel<float>,
+                       ops::DeterminantGradKernel<double>,
+                       ops::DeterminantGradKernel<bool>);

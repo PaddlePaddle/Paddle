@@ -33,19 +33,21 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
-from paddle.fluid.tests.unittests.testsuite import (
-    create_op,
-    set_input,
-    append_input_output,
-    append_loss_ops, )
+from testsuite import create_op, set_input, append_input_output, append_loss_ops
+# from paddle.fluid.tests.unittests.testsuite import (
+#     create_op,
+#     set_input,
+#     append_input_output,
+#     append_loss_ops, )
 from paddle.fluid import unique_name
-from paddle.fluid.tests.unittests.white_list import (
-    op_accuracy_white_list,
-    check_shape_white_list,
-    compile_vs_runtime_white_list,
-    no_check_set_white_list,
-    op_threshold_white_list,
-    no_grad_set_white_list, )
+from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list, op_threshold_white_list, no_grad_set_white_list
+# from paddle.fluid.tests.unittests.white_list import (
+#     op_accuracy_white_list,
+#     check_shape_white_list,
+#     compile_vs_runtime_white_list,
+#     no_check_set_white_list,
+#     op_threshold_white_list,
+#     no_grad_set_white_list, )
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):

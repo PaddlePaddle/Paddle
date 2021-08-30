@@ -994,7 +994,7 @@ def slogdet(x):
     def __check_input(input):
         check_dtype(
             x.dtype, 'Input',
-            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'], 'det')
+            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'], 'slogdet')
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2,                     \
