@@ -183,14 +183,27 @@ DeviceContextPool::DeviceContextPool(
 
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
+  std::cout << ">>>>>>>3>>>>>>>>>\n";
+  Eigen::ThreadPool pool(20 /*number of threads*/);
+  pool_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20));
 }
 
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
+  // Eigen::ThreadPoolInterface* threadpool =
+  //       eigen_worker_threads_.workers->AsEigenThreadPool();
+  std::cout << ">>>>>>>>>>>>>1>>>\n";
+  Eigen::ThreadPool pool(20 /*number of threads*/);
+  pool_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20));
 }
 
 Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
   return eigen_device_.get();
+}
+
+Eigen::ThreadPoolDevice* CPUDeviceContext::pool_device() const {
+  std::cout << ">>>>>>>2>>>>>>>>>\n";
+  return pool_device_.get();
 }
 
 Place CPUDeviceContext::GetPlace() const { return place_; }

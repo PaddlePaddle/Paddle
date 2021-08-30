@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
-
+#include "paddle/fluid/platform/timer.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -155,6 +155,46 @@ inline void ExtractActivationGradTensor(
   }
 }
 
+inline void test_multithread_elementwise() {
+  Eigen::Tensor<float, 3> in1(200, 30, 70);
+  Eigen::Tensor<float, 3> in2(200, 30, 70);
+  Eigen::Tensor<double, 3> out(200, 30, 70);
+
+  in1.setRandom();
+  in2.setRandom();
+
+  Eigen::ThreadPool tp(4);
+  Eigen::ThreadPoolDevice thread_pool_device(&tp, 4);
+  out.device(thread_pool_device) = (in1 + in2 * 3.14f).cast<double>();
+}
+template <typename Device>
+inline void test_multithread_elementwise_1(Device d) {
+  Eigen::Tensor<float, 3> in1(200, 30, 70);
+  Eigen::Tensor<float, 3> in2(200, 30, 70);
+  Eigen::Tensor<double, 3> out(200, 30, 70);
+
+  in1.setRandom();
+  in2.setRandom();
+
+  // Eigen::ThreadPool tp(4);
+  // Eigen::ThreadPoolDevice thread_pool_device(&tp, 4);
+  out.device(d) = (in1 + in2 * 3.14f).cast<double>();
+}
+
+inline void test_elementwise() {
+  Eigen::Tensor<float, 3> in1(200, 30, 70);
+  Eigen::Tensor<float, 3> in2(200, 30, 70);
+  Eigen::Tensor<double, 3> out(200, 30, 70);
+  in1.setRandom();
+  in2.setRandom();
+  for (int i = 0; i < 200; ++i) {
+    for (int j = 0; j < 30; ++j) {
+      for (int k = 0; k < 70; ++k) {
+        out(i, j, k) = static_cast<double>(in1(i, j, k) + in2(i, j, k) * 3.14f);
+      }
+    }
+  }
+}
 template <typename DeviceContext, typename Functor>
 class ActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -162,6 +202,8 @@ class ActivationKernel
   using T = typename Functor::ELEMENT_TYPE;
 
   void Compute(const framework::ExecutionContext& context) const override {
+    // platform::Timer timeline;
+    // timeline.Start();
     const framework::Tensor* X = nullptr;
     framework::Tensor* Out = nullptr;
     ExtractActivationTensor(context, &X, &Out);
@@ -173,7 +215,45 @@ class ActivationKernel
         GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
+    // Eigen::setNbThreads(20);
+    // auto* place =
+    //     context.template device_context<DeviceContext>().pool_device();
+
+    // out.device(*place) = x.cwiseMax(static_cast<T>(0));
+    // test_multithread_elementwise();
+    // timeline.Pause();
+    // std::cout << "\tcost time=" << timeline.ElapsedSec() << "\t";
+
+    // // timeline.Start();
+    Eigen::ThreadPool pool(20 /* number of threads in pool */);
+    // Create the Eigen ThreadPoolDevice.
+    Eigen::ThreadPoolDevice my_device(&pool, 20 /* number of threads to use */);
+    // // std::cout << "x: " << x << std::endl;
+    // out.device(my_device) = x.cwiseMax(static_cast<T>(0));
+    // // test_multithread_elementwise_1(*place);
+    // timeline.Pause();
+    // std::cout << "\tcost time 2=" << timeline.ElapsedSec()<<"\t";
+
     Functor functor;
+    // Eigen::Tensor<float, 2> a(30, 40);
+    // Eigen::Tensor<float, 2> b(30, 40);
+    // platform::Timer timeline;
+    // timeline.Start();
+    // Create the Eigen ThreadPool
+    // Eigen::ThreadPool pool(8 /* number of threads in pool */);
+    // // Create the Eigen ThreadPoolDevice.
+    // Eigen::ThreadPoolDevice my_device(&pool, 4 /* number of threads to use
+    // */);
+    // // Now just use the device when evaluating expressions.
+    // Eigen::Tensor<float, 2> c(30, 50);
+    // c.device(my_device) = a.contract(b, 1);
+    // timeline.Pause();
+    // std::cout << "\tcost time=" << timeline.ElapsedSec() << "\t";
+
+    // timeline.Start();
+    // c.device(*place) = a.contract(b, 1);
+    // timeline.Pause();
+    // std::cout << "\tcost time 2=" << timeline.ElapsedSec()<<"\t";
 
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
@@ -185,8 +265,10 @@ class ActivationKernel
     if (use_32bit_index && is_gpu_place) {
       functor(*place, To32BitIndex(x), To32BitIndex(out));
     } else {
-      functor(*place, x, out);
+      functor(my_device, x, out);
     }
+    // timeline.Pause();
+    // std::cout << "\tcost time =" << timeline.ElapsedSec()<<"\t";
   }
 };
 
@@ -212,6 +294,9 @@ class ActivationGradKernel
         GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
+    Eigen::ThreadPool pool(20 /* number of threads in pool */);
+    // Create the Eigen ThreadPoolDevice.
+    Eigen::ThreadPoolDevice my_device(&pool, 20 /* number of threads to use */);
     Functor functor;
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
@@ -224,7 +309,7 @@ class ActivationGradKernel
       functor(*place, To32BitIndex(x), To32BitIndex(out), To32BitIndex(dout),
               To32BitIndex(dx));
     } else {
-      functor(*place, x, out, dout, dx);
+      functor(my_device, x, out, dout, dx);
     }
   }
 };
@@ -403,7 +488,17 @@ template <typename T>
 struct ReluCPUFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
+    //  std::cout << ">>>>";
+    //  Eigen::ThreadPool pool(20 /* number of threads in pool */);
+    // // Create the Eigen ThreadPoolDevice.
+    // Eigen::ThreadPoolDevice my_device(&pool, 10 /* number of threads to use
+    // */);
+    // // std::cout << "x: " << x << std::endl;
+    // platform::Timer timeline;
+    // timeline.Start();
     out.device(d) = x.cwiseMax(static_cast<T>(0));
+    // timeline.Pause();
+    // std::cout << "\tcost time=" << timeline.ElapsedSec() << "\t";
   }
 };
 

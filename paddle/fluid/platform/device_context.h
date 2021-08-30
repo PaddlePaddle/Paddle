@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-
+#define EIGEN_USE_THREADS
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
@@ -121,11 +121,14 @@ class CPUDeviceContext : public DeviceContext {
 
   Eigen::DefaultDevice* eigen_device() const;
 
+  Eigen::ThreadPoolDevice* pool_device() const;
+
   Place GetPlace() const override;
 
  private:
   CPUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  std::unique_ptr<Eigen::ThreadPoolDevice> pool_device_;
 };
 
 template <typename Place>
