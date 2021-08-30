@@ -48,7 +48,11 @@ class RecvOpV2 : public framework::OperatorWithKernel {
                             "is less than 1.",
                             i, out_shape[i]));
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
+
+    if (ctx->GetOutputsVarType("Out").front() ==
+        framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
+    }
   }
 
  protected:
