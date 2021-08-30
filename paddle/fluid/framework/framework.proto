@@ -138,9 +138,8 @@ message VarType {
     TUPLE = 18;
 
     STRINGS = 25;
-    MAP = 26;
+    STRING_MAP = 26;
     FEED_LIST = 27;
-    WSTRING = 28;
   }
 
   required Type type = 1;
@@ -170,11 +169,8 @@ message VarType {
   message Tuple { repeated Type element_type = 1; }
   optional Tuple tuple = 7;
 
-  message MapDesc {
-    required TensorDesc tensor = 1;
-    optional int32 lod_level = 2 [ default = 0 ];
-  }
-  optional MapDesc map = 8;
+  optional TensorDesc string_map = 8;
+  optional TensorDesc strings = 9;
 }
 
 message VarDesc {

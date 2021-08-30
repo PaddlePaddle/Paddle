@@ -131,7 +131,7 @@ def monkey_patch_math_varbase():
         return int(var.numpy().flatten()[0])
 
     def _len_(var):
-        if var.type == core.VarDesc.VarType.MAP:
+        if var.type == core.VarDesc.VarType.STRING_MAP:
             return len(var.value().get_map_tensor())
         elif var.type == core.VarDesc.VarType.STRINGS:
             return len(var.value().get_string_tensor())

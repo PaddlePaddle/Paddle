@@ -91,7 +91,6 @@ class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
 namespace paddle {
 namespace framework {
 
-using WSTRING = std::wstring;
 using STRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
 
 const char *ToTypeName(int var_id);
@@ -167,10 +166,9 @@ struct VarTypeRegistryImpl {
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
-    WSTRING, STRINGS, LoDTensorArray, platform::PlaceList, ReaderHolder,
-    std::string, Scope *, operators::reader::LoDTensorBlockingQueueHolder,
-    FetchList, FeedList,
-    operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
+    STRINGS, LoDTensorArray, platform::PlaceList, ReaderHolder, std::string,
+    Scope *, operators::reader::LoDTensorBlockingQueueHolder, FetchList,
+    FeedList, operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ncclUniqueId, platform::Communicator, platform::NCCLCommunicator,
@@ -206,7 +204,6 @@ struct VarTypeTrait {
 
 // Users should set some of variable type ids to be what is defined in
 // framework.proto below
-REG_PROTO_VAR_TYPE_TRAIT(WSTRING, proto::VarType::WSTRING);
 REG_PROTO_VAR_TYPE_TRAIT(STRINGS, proto::VarType::STRINGS);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(SelectedRows, proto::VarType::SELECTED_ROWS);
@@ -219,7 +216,7 @@ REG_PROTO_VAR_TYPE_TRAIT(FeedList, proto::VarType::FEED_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
-REG_PROTO_VAR_TYPE_TRAIT(STRING_MAP, proto::VarType::MAP);
+REG_PROTO_VAR_TYPE_TRAIT(STRING_MAP, proto::VarType::STRING_MAP);
 
 /** End of variable type registration */
 

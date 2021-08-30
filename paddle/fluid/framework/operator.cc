@@ -74,6 +74,8 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
     } else {
       return var->Get<SelectedRows>().GetCompleteDims();
     }
+  } else if (var->IsType<STRINGS>()) {
+    return DDim({static_cast<int64_t>(var->Get<STRINGS>().size())});
   } else {
     return DDim({-1});
   }
@@ -104,6 +106,8 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     } else {
       return DataTypeToString(tensor.type());
     }
+  } else if (var->IsType<STRINGS>()) {
+    return "strings";
   } else {
     return "";
   }

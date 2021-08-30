@@ -209,6 +209,10 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
       return desc_.type().lod_tensor().tensor();
     case proto::VarType::LOD_TENSOR_ARRAY:
       return desc_.type().tensor_array().tensor();
+    case proto::VarType::STRINGS:
+      return desc_.type().strings();
+    case proto::VarType::STRING_MAP:
+      return desc_.type().string_map();
     default:
       PADDLE_THROW(platform::errors::Unavailable(
           "Getting 'tensor_desc' is not supported by the %s type variable.",
@@ -249,8 +253,10 @@ proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
       return desc_.mutable_type()->mutable_lod_tensor()->mutable_tensor();
     case proto::VarType::LOD_TENSOR_ARRAY:
       return desc_.mutable_type()->mutable_tensor_array()->mutable_tensor();
-    case proto::VarType::MAP:
-      return desc_.mutable_type()->mutable_map()->mutable_tensor();
+    case proto::VarType::STRINGS:
+      return desc_.mutable_type()->mutable_strings();
+    case proto::VarType::STRING_MAP:
+      return desc_.mutable_type()->mutable_string_map();
     default:
       PADDLE_THROW(
           platform::errors::Unavailable("Getting 'mutable_tensor_desc' is not "

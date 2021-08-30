@@ -41,7 +41,7 @@ using InvVocab = unordered_map<int, wstring>;
 class BasicTokenizer {
  public:
   explicit BasicTokenizer(bool do_lower_case = true);
-  vector<wstring> Tokenize(const wstring& text) const;
+  vector<wstring> Tokenize(const string& text) const;
 
  private:
   wstring clean_text(const wstring& text) const;
@@ -69,7 +69,7 @@ class WordPieceTokenizer {
 class BertTokenizer {
  public:
   explicit BertTokenizer(const framework::STRING_MAP vocab,
-                         bool do_lower_case = false,
+                         bool do_lower_case = true,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
                          const wstring& cls_token = L"[CLS]",
@@ -77,7 +77,7 @@ class BertTokenizer {
                          const wstring& sep_token = L"[SEP]",
                          const string& padding_site = "right");
 
-  vector<wstring> Tokenize(const wstring& text) const;
+  vector<wstring> Tokenize(const string& text) const;
   vector<int64_t> BuildInputsWithSpecialTokens(
       const vector<int64_t>& token_ids_0,
       const vector<int64_t>& token_ids_1 = vector<int64_t>()) const;
@@ -98,7 +98,7 @@ class BertTokenizer {
       const bool already_has_special_tokens = false) const;
   int64_t GetNumSpecialTokensToAdd(const bool pair = false) const;
   unordered_map<string, vector<int64_t>> Encode(
-      const wstring& text, const wstring& text_pair = L"",
+      const string& text, const string& text_pair = "",
       const size_t max_seq_len = 0, bool pad_to_max_seq_len = false,
       bool return_length = false, bool return_token_type_ids = true,
       bool return_position_ids = false, bool return_attention_mask = false,
@@ -106,8 +106,8 @@ class BertTokenizer {
       bool return_overflowing_tokens = false,
       bool return_special_tokens_mask = false) const;
   vector<unordered_map<string, vector<int64_t>>> BatchEncode(
-      const vector<wstring>& batch_text,
-      const vector<wstring>& batch_text_pair = vector<wstring>(),
+      const vector<string>& batch_text,
+      const vector<string>& batch_text_pair = vector<string>(),
       bool is_split_into_words = false, const size_t max_seq_len = 0,
       bool pad_to_max_seq_len = false, bool return_length = false,
       bool return_token_type_ids = true, bool return_position_ids = false,
@@ -135,14 +135,14 @@ class BertTokenizer {
   unordered_set<int64_t> all_special_token_ids_;
   InvVocab inv_vocab_;
 
-  vector<int64_t> get_input_ids(const wstring& text) const;
+  vector<int64_t> get_input_ids(const string& text) const;
 };
 
 template <typename T>
 class TokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* text = ctx.Input<std::vector<std::wstring>>("Text");
+    auto* text = ctx.Input<std::vector<std::string>>("Text");
     auto* vocab = ctx.Input<std::unordered_map<std::wstring, int>>("Vocab");
 
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
@@ -154,7 +154,7 @@ class TokenizerKernel : public framework::OpKernel<T> {
     auto pad_to_max_seq_len =
         static_cast<bool>(ctx.Attr<bool>("pad_to_max_seq_len"));
 
-    auto* text_pair = ctx.Input<std::vector<std::wstring>>("TextPair");
+    auto* text_pair = ctx.Input<std::vector<std::string>>("TextPair");
     if (text_pair && text->size() != text_pair->size()) {
       VLOG(3) << "The input text(list(str)) and text pair (list(str)) must"
               << "be the same number of text sequence. Please check the input!";
@@ -175,7 +175,7 @@ class TokenizerKernel : public framework::OpKernel<T> {
                                      max_seq_len, pad_to_max_seq_len);
     } else {
       batch_encode_inputs = tokenizer_ptr->BatchEncode(
-          *text, vector<wstring>(), is_split_into_words, max_seq_len,
+          *text, vector<string>(), is_split_into_words, max_seq_len,
           pad_to_max_seq_len);
     }
     for (size_t i = 0; i < batch_size; ++i) {

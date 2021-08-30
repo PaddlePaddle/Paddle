@@ -44,9 +44,9 @@ if(WITH_ASCEND OR WITH_ASCEND_CL)
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         mkdir -p ${UTF8PROC_SOURCE_DIR}/build
           && cd ${UTF8PROC_SOURCE_DIR}/build && cmake .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && make
-          && mkdir -p ${UTF8PROC_LIBRARY_DIR} ${UTF8PROC_INCLUDE_DIR}/utf8proc
+          && mkdir -p ${UTF8PROC_LIBRARY_DIR} ${UTF8PROC_INCLUDE_DIR}
       INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/build/libutf8proc.a ${UTF8PROC_LIBRARY_DIR}
-      COMMAND              ${CMAKE_COMMAND} -E copy_directory "${UTF8PROC_SOURCE_DIR}/" "${UTF8PROC_INCLUDE_DIR}/utf8proc"
+      COMMAND              ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/utf8proc.h ${UTF8PROC_INCLUDE_DIR}
       BUILD_BYPRODUCTS     ${UTF8PROC_LIBRARIES}
   )
 else()
@@ -61,9 +61,9 @@ else()
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         mkdir -p ${UTF8PROC_SOURCE_DIR}/build
           && cd ${UTF8PROC_SOURCE_DIR}/build && cmake .. && make
-          && mkdir -p ${UTF8PROC_LIBRARY_DIR} ${UTF8PROC_INCLUDE_DIR}/utf8proc
+          && mkdir -p ${UTF8PROC_LIBRARY_DIR} ${UTF8PROC_INCLUDE_DIR}
       INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/build/libutf8proc.a ${UTF8PROC_LIBRARY_DIR}
-      COMMAND              ${CMAKE_COMMAND} -E copy_directory "${UTF8PROC_SOURCE_DIR}/" "${UTF8PROC_INCLUDE_DIR}/utf8proc"
+      COMMAND              ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/utf8proc.h ${UTF8PROC_INCLUDE_DIR}
       BUILD_BYPRODUCTS     ${UTF8PROC_LIBRARIES}
   )
 endif()

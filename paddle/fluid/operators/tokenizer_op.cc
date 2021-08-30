@@ -260,8 +260,9 @@ vector<wstring> BasicTokenizer::run_split_on_punc(const wstring& text) const {
   return output;
 }
 
-vector<wstring> BasicTokenizer::Tokenize(const wstring& text) const {
-  wstring unicode_text = clean_text(text);
+vector<wstring> BasicTokenizer::Tokenize(const string& text) const {
+  wstring unicode_text = ConvertStrToWstr(text);
+  unicode_text = clean_text(unicode_text);
 
   unicode_text = tokenize_chinese_chars(unicode_text);
 
@@ -349,7 +350,7 @@ vector<wstring> WordPieceTokenizer::Tokenize(const wstring& text) const {
 // }
 
 BertTokenizer::BertTokenizer(const framework::STRING_MAP vocab,
-                             bool do_lower_case /* = false */,
+                             bool do_lower_case /* = true */,
                              const wstring& unk_token /* = L"[UNK]" */,
                              const wstring& pad_token /* = L"[PAD]" */,
                              const wstring& cls_token /* = L"[CLS]" */,
@@ -414,7 +415,7 @@ string BertTokenizer::ConvertTokensToString(
   return text;
 }
 
-vector<wstring> BertTokenizer::Tokenize(const wstring& text) const {
+vector<wstring> BertTokenizer::Tokenize(const string& text) const {
   vector<wstring> split_tokens;
   for (auto& token : basic_tokenizer_.Tokenize(text))
     for (auto& sub_token : word_piece_tokenizer_.Tokenize(token))
@@ -589,7 +590,7 @@ vector<int64_t> BertTokenizer::GetSpecialTokensMask(
   }
 }
 
-vector<int64_t> BertTokenizer::get_input_ids(const wstring& text) const {
+vector<int64_t> BertTokenizer::get_input_ids(const string& text) const {
   vector<wstring> tokens = Tokenize(text);
   vector<int64_t> token_ids = ConvertTokensToIds(tokens);
   return token_ids;
@@ -606,7 +607,7 @@ int64_t BertTokenizer::GetMaskTokenID() const { return mask_token_id_; }
 int64_t BertTokenizer::GetPadTokenID() const { return pad_token_id_; }
 
 unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
-    const wstring& text, const wstring& text_pair /* = "" */,
+    const string& text, const string& text_pair /* = "" */,
     const size_t max_seq_len /* = 0 */, bool pad_to_max_seq_len /* = false */,
     bool return_length /* = false */, bool return_token_type_ids /* = true */,
     bool return_position_ids /* = false */,
@@ -616,7 +617,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
     bool return_special_tokens_mask /* = false */) const {
   vector<int64_t> ids = get_input_ids(text);
   vector<int64_t> pair_ids;
-  if (text_pair != L"") {
+  if (text_pair != "") {
     vector<int64_t> res = get_input_ids(text_pair);
     pair_ids.swap(res);
   }
@@ -757,8 +758,8 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
 }
 
 vector<unordered_map<string, vector<int64_t>>> BertTokenizer::BatchEncode(
-    const vector<wstring>& batch_text,
-    const vector<wstring>& batch_text_pair /* = vector<string>() */,
+    const vector<string>& batch_text,
+    const vector<string>& batch_text_pair /* = vector<string>() */,
     bool is_split_into_words /* = false */, const size_t max_seq_len /* = 0 */,
     bool pad_to_max_seq_len /* = false */, bool return_length /* = false */,
     bool return_token_type_ids /* = true */,
@@ -840,12 +841,12 @@ class TokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
              "(std::map<std::wstring, std::int>), The vocab to map "
              "token string to token id.");
     AddInput("Text",
-             "(std::vector<std::wstring>), The sequence to be processed. "
+             "(std::vector<std::string>), The sequence to be processed. "
              "One sequence is a string, a list of strings, "
              "or a list of integers depending on whether it "
              "has been pretokenized and converted to ids. ");
     AddInput("TextPair",
-             "(std::vector<std::wstring>), Same as `text` argument, "
+             "(std::vector<std::string>), Same as `text` argument, "
              "while it represents for the latter sequence of the "
              "sequence pair.")
         .AsDispensable();
