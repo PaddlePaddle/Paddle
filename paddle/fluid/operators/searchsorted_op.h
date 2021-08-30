@@ -14,12 +14,15 @@
 
 #pragma once
 
+#include <math.h>
+
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
+
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
@@ -27,13 +30,13 @@ using Tensor = framework::Tensor;
 template <typename T1, typename T2, typename OutType>
 class GpuAndCpuSearchSortedCompute {
  public:
-  static HOSTDEVICE bool IsNan(float x) { return std::isnan(x); }
-  static HOSTDEVICE bool IsNan(double x) { return std::isnan(x); }
+  static HOSTDEVICE bool IsNan(float x) { return ::isnan(x); }
+  static HOSTDEVICE bool IsNan(double x) { return ::isnan(x); }
   static HOSTDEVICE bool IsNan(int x) { return false; }
   static HOSTDEVICE bool IsNan(int64_t x) { return false; }
 
-  static HOSTDEVICE bool IsInf(float x) { return std::isinf(x); }
-  static HOSTDEVICE bool IsInf(double x) { return std::isinf(x); }
+  static HOSTDEVICE bool IsInf(float x) { return ::isinf(x); }
+  static HOSTDEVICE bool IsInf(double x) { return ::isinf(x); }
   static HOSTDEVICE bool IsInf(int x) { return false; }
   static HOSTDEVICE bool IsInf(int64_t x) { return false; }
 
@@ -54,8 +57,8 @@ class GpuAndCpuSearchSortedCompute {
     const T1* sequence_ptr = is_1d_boundaries_
                                  ? sequence_data_
                                  : sequence_data_ + idx / val_size_ * seq_size_;
-    if (IsNan(*value_ptr) || IsInf(*value_ptr)) {
-      out_data_[idx] = 0;
+    if (IsInf(*value_ptr) || IsNan(*value_ptr)) {
+      out_data_[idx] = seq_size_;
     } else {
       if (right_) {
         out_data_[idx] = static_cast<OutType>(

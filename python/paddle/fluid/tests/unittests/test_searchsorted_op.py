@@ -16,8 +16,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 from op_test import OpTest
@@ -27,7 +27,6 @@ class TestSearchSorted(OpTest):
     def setUp(self):
 
         self.op_type = "searchsorted"
-        self.init_dtype()
         self.init_test_case()
 
         self.inputs = {
@@ -35,7 +34,7 @@ class TestSearchSorted(OpTest):
             'Values': self.values
         }
         self.attrs = {"out_int32": False, "right": False}
-        self.side = "right" if self.attrs["right"] else "left"
+        self.attrs["right"] = True if self.side == 'right' else False
         self.outputs = {
             'Out': np.searchsorted(
                 self.sorted_sequence, self.values, side=self.side)
@@ -49,33 +48,47 @@ class TestSearchSorted(OpTest):
         self.values = np.array([[3, 6, 9], [3, 6, 9]])
         self.side = "left"
 
-    def init_dtype(self):
-        self.dtype = np.float64
+
+# sorted_sequence is one dimension
+class TestSearchSortedOp1(TestSearchSorted):
+    def init_test_case(self):
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9])
+        self.values = np.array([[3, 6, 9], [3, 6, 9]])
+        self.side = "right"
 
 
-class TestSearchSorted_float32(TestSearchSorted):
-    def init_dtype(self):
-        self.dtype = np.float32
+class TestSearchSortedOp2(TestSearchSorted):
+    def init_test_case(self):
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9])
+        self.values = np.array([[3, 6, 9], [3, 6, 9]])
+        self.side = "left"
 
 
-class TestSearchSorted_int32(TestSearchSorted):
-    def init_dtype(self):
-        self.dtype = np.int32
+# if the element of values is nan
+class TestSearchSortedOp3(TestSearchSorted):
+    def init_test_case(self):
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9])
+        self.values = np.array(
+            [[np.nan, np.nan, np.nan], [3, 6, 9]]).astype("float64")
+        self.side = "left"
 
 
-class TestSearchSorted_int64(TestSearchSorted):
-    def init_dtype(self):
-        self.dtype = np.int64
+# if the element of values is inf
+class TestSearchSortedOp4(TestSearchSorted):
+    def init_test_case(self):
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9])
+        self.values = np.array(
+            [[np.inf, np.inf, np.inf], [3, 6, 9]]).astype("float64")
+        self.side = "left"
 
 
 class TestSearchSortedAPI(unittest.TestCase):
-    def init_dtype(self):
-        self.dtype = np.int64
+    def init_test_case(self):
+        self.sorted_sequence = np.array([2, 4, 6, 8, 10]).astype("float64")
+        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype("float64")
 
     def setUp(self):
-        self.init_dtype()
-        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype(self.dtype)
-        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype(self.dtype)
+        self.init_test_case()
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
@@ -88,9 +101,9 @@ class TestSearchSortedAPI(unittest.TestCase):
                 sorted_sequence = paddle.static.data(
                     'SortedSequence',
                     shape=self.sorted_sequence.shape,
-                    dtype=self.dtype)
+                    dtype="float64")
                 values = paddle.static.data(
-                    'Values', shape=self.values.shape, dtype=self.dtype)
+                    'Values', shape=self.values.shape, dtype="float64")
                 out = paddle.searchsorted(sorted_sequence, values)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={
@@ -117,6 +130,31 @@ class TestSearchSortedAPI(unittest.TestCase):
 
         for place in self.place:
             run(place)
+
+
+class TestSearchSortedError(unittest.TestCase):
+    def test_error_api(self):
+        paddle.enable_static()
+
+        def test_sortedsequence_values_dim_error():
+            with paddle.static.program_guard(paddle.static.Program()):
+                sorted_sequence = paddle.static.data(
+                    'SortedSequence', shape=[2, 2, 3], dtype="float64")
+                values = paddle.static.data(
+                    'Values', shape=[2, 5], dtype="float64")
+                out = paddle.searchsorted(sorted_sequence, values)
+
+        self.assertRaises(RuntimeError, test_sortedsequence_values_dim_error)
+
+        def test_sortedsequence_values_type_error():
+            with paddle.static.program_guard(paddle.static.Program()):
+                sorted_sequence = paddle.static.data(
+                    'SortedSequence', shape=[2, 3], dtype="int16")
+                values = paddle.static.data(
+                    'Values', shape=[2, 5], dtype="float64")
+                out = paddle.searchsorted(sorted_sequence, values)
+
+        self.assertRaises(TypeError, test_sortedsequence_values_type_error)
 
 
 if __name__ == '__main__':
