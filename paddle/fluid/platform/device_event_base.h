@@ -39,6 +39,10 @@ inline int DeviceTypeToId(const DeviceType& device_type) {
   return static_cast<int>(device_type);
 }
 
+unsigned int GenerateDeviceEventFlag(bool enable_timing = false,
+                                     bool blocking = false,
+                                     bool interprocess = false);
+
 enum EventStatus {
   INITIALIZED = 0,
   SCHEDULED = 1,
