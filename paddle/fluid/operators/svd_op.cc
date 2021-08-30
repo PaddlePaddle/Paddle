@@ -26,19 +26,19 @@ namespace paddle {
 namespace operators {
 
 using DDim = framework::DDim;
-DDim UDDim(const DDim& x_dim, int k) {
+static DDim UDDim(const DDim& x_dim, int k) {
   // get x_dim and return the ddim of U
   auto x_vec = vectorize(x_dim);
   x_vec[x_vec.size() - 1] = k;
   return framework::make_ddim(x_vec);
 }
-DDim VHDDim(const DDim& x_dim, int k) {
+static DDim VHDDim(const DDim& x_dim, int k) {
   // get x_dim and return the ddim of U
   auto x_vec = vectorize(x_dim);
   x_vec[x_vec.size() - 2] = k;
   return framework::make_ddim(x_vec);
 }
-DDim SDDim(const DDim& x_dim, int k) {
+static DDim SDDim(const DDim& x_dim, int k) {
   // get x_dim and return the ddim of U
   auto x_vec = vectorize(x_dim);
   x_vec[x_vec.size() - 2] = k;

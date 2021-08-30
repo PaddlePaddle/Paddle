@@ -990,6 +990,7 @@ def svd(x, full_matrices=False, name=None):
     if in_dygraph_mode():
         return _C_ops.svd(x, 'full_matrices', full_matrices)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
+    check_type(full_matrices, 'full_matrices', bool, 'svd')
     helper = LayerHelper('svd', **locals())
     u = helper.create_variable_for_type_inference(dtype=x.dtype)
     vh = helper.create_variable_for_type_inference(dtype=x.dtype)

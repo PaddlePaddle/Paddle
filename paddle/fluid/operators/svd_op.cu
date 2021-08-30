@@ -19,7 +19,6 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/operators/cholesky_op.h"
 #include "paddle/fluid/operators/svd_op.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 
@@ -37,11 +36,7 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     Tensor* U = context.Output<Tensor>("U");
     Tensor* VH = context.Output<Tensor>("VH");
     Tensor* S = context.Output<Tensor>("S");
-    const bool full_matrices = !(context.Attr<bool>("full_matrices"));
-
-    VLOG(2) << U->dims()[0] << "  " << U->dims()[1] << std::endl;
-    VLOG(2) << VH->dims()[0] << "  " << VH->dims()[1] << std::endl;
-    VLOG(2) << full_matrices << std::endl;
+    const bool full_matrices = context.Attr<bool>("full_matrices");
 
     auto& dims = x->dims();
     int batch_count = 1;
@@ -66,7 +61,7 @@ class SvdGPUKernel : public framework::OpKernel<T> {
 
     GesvdjBatched(dev_ctx, batch_count, n, m, std::min(m, n),
                   x_tmp.mutable_data<T>(context.GetPlace()), vh_data, u_data,
-                  s_data, info_ptr, full_matrices);
+                  s_data, info_ptr, !full_matrices);
 
     framework::DDim UT_dim = U->dims();
     std::swap(UT_dim[rank - 1], UT_dim[rank - 2]);  // Get the dim of UT_dim
@@ -74,7 +69,7 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     auto dito =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  T>(context);
-    auto tmp_U = dito.transpose(*U);
+    auto tmp_U = dito.Transpose(*U);
     U->ShareDataWith(tmp_U);  // U becomse UT, aka VT
   }
   void GesvdjBatched(const platform::CUDADeviceContext& dev_ctx, int batchSize,
