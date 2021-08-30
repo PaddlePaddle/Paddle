@@ -42,7 +42,7 @@ struct DataMappingFunctor {
   /*
     Convert sequences to frames.
 
-    1. Dimesion infomation:
+    1. Dimension infomation:
 
        Sequences                   Frames
     (seq_length, N)  ->  (n_frames, frame_length, N)  // axis = 0
@@ -68,7 +68,7 @@ struct DataMappingFunctor {
                            i % (n_frames_ * frame_length_) % n_frames_;
         ```
 
-      d. Replace `sample_idx`, `f` and `j` in the eqations followed.
+      d. Replace `sample_idx`, `f` and `n` in the eqations followed.
         ```cpp
         src_idx = sample_idx * seq_length_ + n * hop_length_ + f;
         trg_idx =
