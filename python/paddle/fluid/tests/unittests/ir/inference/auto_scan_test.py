@@ -26,6 +26,8 @@ import paddle.inference as paddle_infer
 from typing import Optional, List, Callable, Dict, Any, Set
 from program_config import TensorConfig, OpConfig, ProgramConfig, create_fake_model, create_quant_model
 
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+
 
 class AutoScanTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
@@ -134,4 +136,4 @@ class AutoScanTest(unittest.TestCase):
                         threshold=threshold, tensors=results)
                     self.assert_op_size(trt_engine_num, paddle_op_num)
                 except:
-                    logging.info('error occured, ' + error_msg)
+                    logging.info('ERROR OCCURED: ' + error_msg)

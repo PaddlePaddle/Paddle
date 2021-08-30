@@ -27,8 +27,7 @@ from typing import *
 from program_config import TensorConfig, OpConfig, ProgramConfig
 from auto_scan_test import AutoScanTest
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(filename)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
 class TrtLayerAutoScanTest(AutoScanTest):
@@ -172,8 +171,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
             trt_log_str += 'static_shape '
         trt_log_str += precision_to_str(self.trt_param.precision)
 
-        logging.info('--------- gpu inference ---------')
+        logging.info('    --------- gpu inference ---------')
         yield self.create_program_config(use_trt=False)
-        logging.info('--------- trt ' + trt_log_str + ' inference ---------')
+        logging.info('    --------- trt ' + trt_log_str +
+                     ' inference ---------')
         yield self.create_program_config(
             use_trt=True, precision_mode=self.trt_param.precision)
