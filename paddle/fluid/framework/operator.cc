@@ -462,8 +462,8 @@ void OperatorBase::CheckAllInputOutputSet() const {
 
 void OperatorBase::GenerateTemporaryNames() {
   static std::atomic<size_t> gUniqId(0UL);
-  for (auto it = outputs_.begin(); it != outputs_.end(); ++it) {
-    for (auto& output_name : it.value()) {
+  for (auto& output : outputs_) {
+    for (auto& output_name : output.second) {
       if (output_name == kTempVarName) {
         output_name += type_;
         output_name += "@";
@@ -1106,8 +1106,8 @@ static std::string RuntimeContextDebugString(const RuntimeContext& ctx) {
 }
 
 static pt::OpKernelContext BuildOpKernelContext(
-    const pt::OpKernel& pt_kernel, const RuntimeContext& ctx,
-    const platform::DeviceContext& dev_ctx) {
+    const std::string& op_type, const pt::OpKernel& pt_kernel,
+    const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) {
   VLOG(1) << RuntimeContextDebugString(ctx);
 
   // TODO(chenweihang): now only work for very simple case (sign op),
@@ -1121,23 +1121,56 @@ static pt::OpKernelContext BuildOpKernelContext(
   auto input_defs = pt_kernel.param_def().input_defs();
   auto output_defs = pt_kernel.param_def().output_defs();
 
-  size_t i = 0;
-  for (auto& var_pair : ctx.inputs) {
+  // TODO(chenweihang): use ordered_map for VariableNameMap and VariableValueMap
+  // If we the VariableValueMap are ordered, we can get tensor by iter the map,
+  // and its order is same as OpProto, like follow
+  //
+  // size_t i = 0;
+  // for (auto& var_pair : ctx.inputs) {
+  //   // TODO(chenweihang): deal with diff param in vector
+  //   auto in_def = input_defs.at(i);
+  //   for (auto* var : var_pair.second) {
+  //     const auto& tensor = var->Get<LoDTensor>();
+  //     auto pt_in = MakeTensorImpl<pt::DenseTensor>(tensor, in_def.backend,
+  //                                                  in_def.dtype,
+  //                                                  in_def.layout);
+  //     op_kernel_ctx.EmplaceBackInput(pt_in);
+  //   }
+  //   ++i;
+  // }
+  // // ordered_map access mutable value need iter
+  // i = 0;
+  // for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); ++it) {
+  //   auto out_def = output_defs.at(i);
+  //   for (auto* var : it.value()) {
+  //     auto* tensor = var->GetMutable<LoDTensor>();
+  //     // mutable_data before run kernel, to avoid share output form
+  //     // OpKernelContext to original tensor
+  //     tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
+  //                          pt::TransToProtoVarType(out_def.dtype));
+  //     auto pt_out = MakeTensorImpl<pt::DenseTensor>(
+  //         *tensor, out_def.backend, out_def.dtype, out_def.layout);
+  //     op_kernel_ctx.EmplaceBackOutput(pt_out);
+  //   }
+  //   ++i;
+  // }
+
+  auto& op_proto = OpInfoMap::Instance().Get(op_type).proto_;
+  for (int i = 0; i < op_proto->inputs().size(); ++i) {
     // TODO(chenweihang): deal with diff param in vector
+    auto in_name = op_proto->inputs()[i].name();
     auto in_def = input_defs.at(i);
-    for (auto* var : var_pair.second) {
+    for (auto* var : ctx.inputs.at(in_name)) {
       const auto& tensor = var->Get<LoDTensor>();
       auto pt_in = MakeTensorImpl<pt::DenseTensor>(tensor, in_def.backend,
                                                    in_def.dtype, in_def.layout);
       op_kernel_ctx.EmplaceBackInput(pt_in);
     }
-    ++i;
   }
-  // ordered_map access mutable value need iter
-  i = 0;
-  for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); ++it) {
+  for (int i = 0; i < op_proto->outputs().size(); ++i) {
+    auto out_name = op_proto->outputs()[i].name();
     auto out_def = output_defs.at(i);
-    for (auto* var : it.value()) {
+    for (auto* var : ctx.outputs.at(out_name)) {
       auto* tensor = var->GetMutable<LoDTensor>();
       // mutable_data before run kernel, to avoid share output form
       // OpKernelContext to original tensor
@@ -1147,7 +1180,6 @@ static pt::OpKernelContext BuildOpKernelContext(
           *tensor, out_def.backend, out_def.dtype, out_def.layout);
       op_kernel_ctx.EmplaceBackOutput(pt_out);
     }
-    ++i;
   }
   // TODO(chenweihang): append attrs
   return op_kernel_ctx;
@@ -1241,7 +1273,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     if (run_pt_kernel_) {
       // TODO(chenweihang): here will intrduce copy
       auto op_kernel_ctx =
-          BuildOpKernelContext(*pt_kernel_, *runtime_ctx, *dev_ctx);
+          BuildOpKernelContext(Type(), *pt_kernel_, *runtime_ctx, *dev_ctx);
       (*pt_kernel_)(&op_kernel_ctx);
       // need share output into fluid tensor
 

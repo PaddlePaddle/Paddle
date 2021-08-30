@@ -650,16 +650,16 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
 
     // step 3. Insert memcpy_op if needed
     VariableValueMap& ins_map_temp = runtime_context.inputs;
-    for (auto it = ins_map_temp.begin(); it != ins_map_temp.end(); ++it) {
-      for (size_t i = 0; i < it.value().size(); ++i) {
-        auto var = it.value()[i];
+    for (auto& var_name_item : ins_map_temp) {
+      for (size_t i = 0; i < var_name_item.second.size(); ++i) {
+        auto var = var_name_item.second[i];
         auto tensor_in = static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
         if (!tensor_in->IsInitialized()) {
           continue;
         }
         auto kernel_type_for_var =
             static_cast<const framework::OperatorWithKernel*>(op_base)
-                ->GetKernelTypeForVar(it->first, *tensor_in,
+                ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                       expected_kernel_key);
         if (!platform::is_same_place(kernel_type_for_var.place_,
                                      expected_kernel_key.place_)) {
@@ -679,7 +679,7 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
           var_scope->vec_meta_info_.push_back(info);
 
           VariableNameMap copy_in_map;
-          auto x_iter = inputs_names.find(it->first);
+          auto x_iter = inputs_names.find(var_name_item.first);
           copy_in_map["X"] = {x_iter->second[i]};
           VariableNameMap copy_out_map;
           copy_out_map["Out"] = {new_var_name};
@@ -690,11 +690,11 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
                   : is_gpu_place(expected_kernel_key.place_) ? 1 : -1;
 
           std::map<std::string, std::vector<int>> copy_ins_name2id;
-          copy_ins_name2id["X"] = ins_name2id[it->first];
+          copy_ins_name2id["X"] = ins_name2id[var_name_item.first];
           std::map<std::string, std::vector<int>> copy_out_name2id;
           copy_out_name2id["Out"] = {var_scope->name2id[new_var_name]};
 
-          op_func_node.input_index[it->first][i] =
+          op_func_node.input_index[var_name_item.first][i] =
               var_scope->name2id[new_var_name];
 
           VariableValueMap copy_ins_value_map;
@@ -748,7 +748,7 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
           op_list->push_back(copy_op);
           vec_func_list->push_back(copy_op_func_node);
 
-          it.value()[i] = v;
+          var_name_item.second[i] = v;
         }
       }
     }

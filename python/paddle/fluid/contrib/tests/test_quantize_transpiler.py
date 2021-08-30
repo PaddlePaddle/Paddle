@@ -124,13 +124,11 @@ class TestQuantizeTranspiler(unittest.TestCase):
                         self.assertTrue(
                             arg_name.endswith('.quantized.dequantized'))
                         if arg_name not in quantized_ops:
-                            # TODO(chenweihang): Quantization depends on the order of input,
-                            # the ordered_map change the OpDecs.input_arg_names order
-                            # self.assertEqual(block.ops[idx - 2 * i - 1].type,
-                            #                  self.dequant_op_type, "op: %s, arg_name: %s, idx: %d, i: %d" % (op.type, arg_name, idx, i))
-                            # self.assertEqual(block.ops[idx - 2 * i - 2].type,
-                            #                  quant_op_type, "op: %s, arg_name: %s, idx: %d, i: %d" % (op.type, arg_name, idx, i))
-                            quantized_ops[arg_name] = block.ops[idx - 2]
+                            self.assertEqual(block.ops[idx - 2 * i - 1].type,
+                                             self.dequant_op_type)
+                            self.assertEqual(block.ops[idx - 2 * i - 2].type,
+                                             quant_op_type)
+                            quantized_ops[arg_name] = block.ops[idx - 2 * i - 2]
                         else:
                             op_idx = block.ops.index(quantized_ops[arg_name])
                             self.assertLess(op_idx, idx)
