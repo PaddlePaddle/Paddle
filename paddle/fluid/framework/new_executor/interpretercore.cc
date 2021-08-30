@@ -263,8 +263,7 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    gc_event_.emplace_back(place_,
-                           platform::get_cuda_flags(false, false, false));
+    gc_event_.emplace_back(place_, platform::GenerateDeviceEventFlag());
 
     std::vector<size_t> vec_temp;
     for (auto& item : vec_instruction_[i].output_index_) {
