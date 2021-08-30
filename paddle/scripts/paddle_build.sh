@@ -2361,7 +2361,6 @@ function main() {
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         check_whl_size
-        echo 11111,$?
         ;;
       build_and_check_gpu)
         set +e
