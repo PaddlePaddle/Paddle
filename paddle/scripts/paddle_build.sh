@@ -70,7 +70,6 @@ function init() {
         if [ "$(git branch | grep "^\*" | awk '{print $2}')" != "${BRANCH}" ]; then
             git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_CPP_TEST=ON
         fi
-	export CI_SKIP_CPP_TEST=ON
     fi
 }
 
