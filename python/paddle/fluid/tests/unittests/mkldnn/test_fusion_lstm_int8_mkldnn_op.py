@@ -32,9 +32,8 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         self.act_cell = 'tanh'
         self.act_gate = 'sigmoid'
         self.act_cand = 'tanh'
-        self.use_peepholes = False  # LSTM u8 doesn't support peepholes
+        self.use_peepholes = False # LSTM u8 doesn't support peepholes
         self.use_mkldnn = True
-        self.mkldnn_data_type = "int8"
         self.force_fp32_output = False
         self.error_margin = 1e-5
         self.set_confs()
@@ -48,6 +47,7 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         scale_data = 63.0
         shift_data = 64.0
         x_u8 = np.rint(x_f32 * scale_data + shift_data).astype(np.uint8)
+        #  x_u8 = (x_f32 * scale_data + shift_data).astype(np.uint8)
 
         # WeightX/WeightH data
         wx = np.random.rand(self.IC, 4 * self.OC).astype('float32') * 2 - 1
@@ -55,11 +55,18 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
 
         # Calculating weight scales
         # scales = 127 / max(abs(channel_wise(weightsX + weightsH)))
+        # WeightX data shape in PP: [IC, 3 * OC]
+        # WeightH data shape in PP: [OC, 2 * OC] + [OC, OC]
+        # Scales shape in oneDNN:   [3, OC]
         s8_max = 127.0
 
-        scale_weights = s8_max / np.max(
-            np.abs(np.concatenate(
-                [wx[:, :], wh[:, :]], axis=0)), axis=0)
+        scale_weights = s8_max / np.max(np.abs(
+            np.concatenate(
+                [
+                    wx[:,:], wh[:,:]
+                ],
+                axis=0)),
+                                axis=0)
 
         scale_weights = scale_weights.astype('float')
 
@@ -80,10 +87,13 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             h0 = np.zeros((N, self.OC)).astype('float32')
             c0 = np.zeros((N, self.OC)).astype('float32')
 
-        hidden_f32, c = fusion_lstm(
-            x_f32, self.lod, wx, bx, h0, c0, wh, w_b, w_c, self.is_reverse,
-            ACTIVATION[self.act_gate], ACTIVATION[self.act_cell],
-            ACTIVATION[self.act_cand])
+
+        hidden_f32, c = fusion_lstm(x_f32, self.lod, wx, bx, h0, c0, wh, w_b, w_c,
+                                self.is_reverse, ACTIVATION[self.act_gate],
+                                ACTIVATION[self.act_cell],
+                                ACTIVATION[self.act_cand])
+
+        #hidden = hidden.astype('float32')
 
         self.inputs = {
             'X': (x_u8, self.lod),
@@ -95,7 +105,7 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         if self.has_initial_state:
             self.inputs['H0'] = h0
             self.inputs['C0'] = c0
-
+ 
         if self.force_fp32_output:
             self.error_margin = 1e-1
             self.outputs = {
@@ -103,9 +113,10 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
                 'Cell': (c, self.lod)
             }
         else:
-            self.error_margin = 2
+            self.error_margin = 1
             hidden_u8 = np.rint(hidden_f32 * scale_data + shift_data).astype(
                 np.uint8)
+            #  hidden_u8 = (hidden_f32 * scale_data + shift_data).astype(np.uint8)
             self.outputs = {
                 'Hidden': (hidden_u8, self.lod),
                 'Cell': (c, self.lod)
@@ -118,7 +129,6 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             'is_reverse': self.is_reverse,
             'use_peepholes': self.use_peepholes,
             'use_mkldnn': self.use_mkldnn,
-            'mkldnn_data_type': self.mkldnn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'Scale_data': scale_data,
             'Shift_data': shift_data,
@@ -128,25 +138,27 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(
-                check_dygraph=False,
-                no_check_set=["Cell"],
-                atol=self.error_margin)
+            self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
 
-class TestFusionLSTMINT8MKLDNNOp2(TestFusionLSTMINT8MKLDNNOp):
-    def set_confs(self):
-        self.force_fp32_output = True
-
-
-class TestFusionLSTMINT8MKLDNNOp4(TestFusionLSTMINT8MKLDNNOp):
-    def set_confs(self):
-        self.is_reverse = True
-
-
-class TestFusionLSTMINT8MKLDNNOp5(TestFusionLSTMINT8MKLDNNOp):
-    def set_confs(self):
-        self.has_initial_state = True
+#class TestFusionLSTMINT8MKLDNNOp2(TestFusionLSTMINT8MKLDNNOp):
+#    def set_confs(self):
+#        self.force_fp32_output = False
+#
+#
+#class TestFusionLSTMINT8MKLDNNOp3(TestFusionLSTMINT8MKLDNNOp):
+#    def set_confs(self):
+#        self.origin_mode = False
+#
+#
+#class TestFusionLSTMINT8MKLDNNOp4(TestFusionLSTMINT8MKLDNNOp):
+#    def set_confs(self):
+#        self.with_bias = False
+#
+#
+#class TestFusionLSTMINT8MKLDNNOp5(TestFusionLSTMINT8MKLDNNOp):
+#    def set_confs(self):
+#        self.has_initial_state = False
 
 
 if __name__ == "__main__":
