@@ -104,7 +104,7 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
       Tensor tmp_dy;
       tmp_dy.mutable_data<T>(dout_dims, place);
 
-      // dx = dout * y * std::pow(x, y - 1);
+      // dx = dout * y * pow(x, y - 1);
       Tensor PowGrad_dx_temp1(dout->type());
       PowGrad_dx_temp1.mutable_data<T>(dout->dims(), place);
       const auto& runner_PowGrad_dx_temp1 =
@@ -133,7 +133,7 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
           "Mul", {PowGrad_dx_temp1, PowGrad_dx_temp2}, {tmp_dx}, {});
       runner_dx.Run(stream);
 
-      // dy = dout * std::log(x) * std::pow(x, y)
+      // dy = dout * log(x) * pow(x, y)
       Tensor PowGrad_dy_temp1(transformed_x.type());
       PowGrad_dy_temp1.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_PowGrad_dy_temp1 = NpuOpRunner(
@@ -214,7 +214,7 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
       Tensor tmp_dx;
       tmp_dx.mutable_data<T>(dout_dims, place);
 
-      // dx = dout * y * std::pow(x, y - 1);
+      // dx = dout * y * pow(x, y - 1);
       Tensor PowGrad_dx_temp1(dout->type());
       PowGrad_dx_temp1.mutable_data<T>(dout->dims(), place);
       const auto& runner_PowGrad_dx_temp1 =
@@ -272,7 +272,7 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
       Tensor tmp_dy;
       tmp_dy.mutable_data<T>(dout_dims, place);
 
-      // dy = dout * std::log(x) * std::pow(x, y)
+      // dy = dout * log(x) * pow(x, y)
       Tensor PowGrad_dy_temp1(transformed_x.type());
       PowGrad_dy_temp1.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_PowGrad_dy_temp1 = NpuOpRunner(
@@ -327,7 +327,7 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
-          "Do not support all outputs to be empty."));
+          "Not support all outputs to be empty."));
     }
   }
 };
