@@ -427,50 +427,51 @@ class DataParallel(layers.Layer):
 
     Examples:
         .. code-block:: python
-        
-            # required: distributed
-            import paddle
-            import paddle.nn as nn
-            import paddle.optimizer as opt
-            import paddle.distributed as dist
+            :name: dp_example1
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super(LinearNet, self).__init__()
-                    self._linear1 = nn.Linear(10, 10)
-                    self._linear2 = nn.Linear(10, 1)
+                # required: distributed
+                import paddle
+                import paddle.nn as nn
+                import paddle.optimizer as opt
+                import paddle.distributed as dist
+
+                class LinearNet(nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__()
+                        self._linear1 = nn.Linear(10, 10)
+                        self._linear2 = nn.Linear(10, 1)
+                        
+                    def forward(self, x):
+                        return self._linear2(self._linear1(x))
+
+                def train():
+                    # 1. initialize parallel environment
+                    dist.init_parallel_env()
+
+                    # 2. create data parallel layer & optimizer
+                    layer = LinearNet()
+                    dp_layer = paddle.DataParallel(layer)
+
+                    loss_fn = nn.MSELoss()
+                    adam = opt.Adam(
+                        learning_rate=0.001, parameters=dp_layer.parameters())
+
+                    # 3. run layer
+                    inputs = paddle.randn([10, 10], 'float32')
+                    outputs = dp_layer(inputs)
+                    labels = paddle.randn([10, 1], 'float32')
+                    loss = loss_fn(outputs, labels)
                     
-                def forward(self, x):
-                    return self._linear2(self._linear1(x))
+                    loss.backward()
 
-            def train():
-                # 1. initialize parallel environment
-                dist.init_parallel_env()
+                    adam.step()
+                    adam.clear_grad()
 
-                # 2. create data parallel layer & optimizer
-                layer = LinearNet()
-                dp_layer = paddle.DataParallel(layer)
-
-                loss_fn = nn.MSELoss()
-                adam = opt.Adam(
-                    learning_rate=0.001, parameters=dp_layer.parameters())
-
-                # 3. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
-                
-                loss.backward()
-
-                adam.step()
-                adam.clear_grad()
-
-            if __name__ == '__main__':
-                # 1. start by ``paddle.distributed.spawn`` (default)
-                dist.spawn(train, nprocs=2)
-                # 2. start by ``paddle.distributed.launch``
-                # train()
+                if __name__ == '__main__':
+                    # 1. start by ``paddle.distributed.spawn`` (default)
+                    dist.spawn(train, nprocs=2)
+                    # 2. start by ``paddle.distributed.launch``
+                    # train()
         
     .. warning::
         PyLayer is not supported in DataParallel. To solve problems of this kind, 
@@ -480,93 +481,94 @@ class DataParallel(layers.Layer):
     
     Examples:
         .. code-block:: python
-        
-            # required: distributed
-            import random
-            import numpy as np
+            :name: dp_example2
 
-            import paddle
-            from paddle.fluid import core
-            from paddle.fluid import framework
-            from paddle.nn import Linear
-            import paddle.distributed as dist
-            from paddle.autograd import PyLayer
-            from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
+                # required: distributed
+                import random
+                import numpy as np
 
-            def detach_variable(inputs):
-                out = []
-                for inp in inputs:
-                    if not isinstance(inp, core.VarBase):
-                        out.append(inp)
-                        continue
-                    x = inp.detach()
-                    x.stop_gradient = inp.stop_gradient
-                    out.append(x)
-                return tuple(out)
+                import paddle
+                from paddle.fluid import core
+                from paddle.fluid import framework
+                from paddle.nn import Linear
+                import paddle.distributed as dist
+                from paddle.autograd import PyLayer
+                from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
 
-
-            class run_func(PyLayer):
-                @staticmethod
-                def forward(ctx, inputs, run_function):
-                    ctx.run_function = run_function
-                    ctx.save_for_backward(inputs)
-                    with paddle.no_grad():
-                        outputs = run_function(inputs)
-                    return outputs
-
-                @staticmethod
-                def backward(ctx, args):
-                    inputs = ctx.saved_tensor()
-                    tracer = framework._dygraph_tracer()
-                    tracer._has_grad = True
-
-                    detach_inputs = detach_variable(inputs)
-                    outputs = ctx.run_function(*detach_inputs)
-                    paddle.autograd.backward([outputs], [args])
-                    grads = list(inp._grad_ivar() for inp in detach_inputs)
-                    return grads
+                def detach_variable(inputs):
+                    out = []
+                    for inp in inputs:
+                        if not isinstance(inp, core.VarBase):
+                            out.append(inp)
+                            continue
+                        x = inp.detach()
+                        x.stop_gradient = inp.stop_gradient
+                        out.append(x)
+                    return tuple(out)
 
 
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self,
-                            input_size=10):
-                    super(SimpleNet, self).__init__()
-                    self.runfunc0 = Linear(input_size, input_size, bias_attr=False)
-                    self.runfunc1 = Linear(input_size, input_size, bias_attr=False)
-                    self.runfunc2 = Linear(input_size, 1, bias_attr=False)
+                class run_func(PyLayer):
+                    @staticmethod
+                    def forward(ctx, inputs, run_function):
+                        ctx.run_function = run_function
+                        ctx.save_for_backward(inputs)
+                        with paddle.no_grad():
+                            outputs = run_function(inputs)
+                        return outputs
 
-                def forward(self, inputs):
-                    inputs = run_func.apply(inputs, run_function=self.runfunc0)
-                    inputs = run_func.apply(inputs, run_function=self.runfunc1)
-                    inputs = run_func.apply(inputs, run_function=self.runfunc2)
-                    return inputs
+                    @staticmethod
+                    def backward(ctx, args):
+                        inputs = ctx.saved_tensor()
+                        tracer = framework._dygraph_tracer()
+                        tracer._has_grad = True
+
+                        detach_inputs = detach_variable(inputs)
+                        outputs = ctx.run_function(*detach_inputs)
+                        paddle.autograd.backward([outputs], [args])
+                        grads = list(inp._grad_ivar() for inp in detach_inputs)
+                        return grads
 
 
-            if __name__ == '__main__':
-                dist.init_parallel_env()
-                rank_id = dist.get_rank()
-                np.random.seed(1024 + rank_id)
-                paddle.seed(1024 + rank_id)
+                class SimpleNet(paddle.nn.Layer):
+                    def __init__(self,
+                                input_size=10):
+                        super(SimpleNet, self).__init__()
+                        self.runfunc0 = Linear(input_size, input_size, bias_attr=False)
+                        self.runfunc1 = Linear(input_size, input_size, bias_attr=False)
+                        self.runfunc2 = Linear(input_size, 1, bias_attr=False)
 
-                batch_size, input_size = 1, 10
-                model = SimpleNet(input_size)
-                model = paddle.DataParallel(model, find_unused_parameters=True)
-                loss_fn = paddle.nn.MSELoss(reduction='mean')
-                opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+                    def forward(self, inputs):
+                        inputs = run_func.apply(inputs, run_function=self.runfunc0)
+                        inputs = run_func.apply(inputs, run_function=self.runfunc1)
+                        inputs = run_func.apply(inputs, run_function=self.runfunc2)
+                        return inputs
 
-                for step in range(10):
-                    x_data = np.random.randn(batch_size, input_size).astype(np.float32)
-                    x = paddle.to_tensor(x_data)
-                    x.stop_gradient = False
-                    with model.no_sync():
-                        y_pred = model(x)
-                        loss = y_pred.mean()
-                        loss.backward()
 
-                    fused_allreduce_gradients(list(model.parameters()), None)
+                if __name__ == '__main__':
+                    dist.init_parallel_env()
+                    rank_id = dist.get_rank()
+                    np.random.seed(1024 + rank_id)
+                    paddle.seed(1024 + rank_id)
 
-                    opt.step()
-                    opt.clear_grad()
+                    batch_size, input_size = 1, 10
+                    model = SimpleNet(input_size)
+                    model = paddle.DataParallel(model, find_unused_parameters=True)
+                    loss_fn = paddle.nn.MSELoss(reduction='mean')
+                    opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+
+                    for step in range(10):
+                        x_data = np.random.randn(batch_size, input_size).astype(np.float32)
+                        x = paddle.to_tensor(x_data)
+                        x.stop_gradient = False
+                        with model.no_sync():
+                            y_pred = model(x)
+                            loss = y_pred.mean()
+                            loss.backward()
+
+                        fused_allreduce_gradients(list(model.parameters()), None)
+
+                        opt.step()
+                        opt.clear_grad()
 
     """
 
