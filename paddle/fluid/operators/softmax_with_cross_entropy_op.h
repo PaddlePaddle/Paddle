@@ -61,7 +61,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(
           n, 0, platform::errors::InvalidArgument(
                     "The size of axis should be larger than 0, but received "
-                    "axis size is %d.",
+                    "SizeToAxis of softmax is %d.",
                     n));
 
       const int d = SizeFromAxis(axis, softmax->dims());
@@ -110,7 +110,7 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(
         n, 0, platform::errors::InvalidArgument(
                   "The size of axis should be larger than 0, but received "
-                  "axis size is %d.",
+                  "SizeToAxis of logits is %d.",
                   n));
 
     const int d = SizeFromAxis(axis, logits->dims());
@@ -162,7 +162,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(
         n, 0, platform::errors::InvalidArgument(
                   "The size of axis should be larger than 0, but received "
-                  "axis size is %d.",
+                  "SizeToAxis of logit_grad is %d.",
                   n));
 
     const int d = SizeFromAxis(axis, logit_grad->dims());
