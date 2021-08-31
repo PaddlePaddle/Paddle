@@ -190,11 +190,16 @@ CPUDeviceContext::CPUDeviceContext() {
 
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
-  // Eigen::ThreadPoolInterface* threadpool =
-  //       eigen_worker_threads_.workers->AsEigenThreadPool();
   std::cout << ">>>>>>>>>>>>>1>>>\n";
-  Eigen::ThreadPool pool(20 /*number of threads*/);
+  Eigen::ThreadPool pool(20 /* number of threads in pool */);
+  //   // Create the Eigen ThreadPoolDevice.
   pool_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20));
+  // // pool_device_ = new Eigen::ThreadPoolDevice(&pool, 20);
+  // Eigen::ThreadPoolDevice* d = pool_device_.get();
+  // for(int i= 1; i <= d->numThreads(); ++i){
+  //   eigen_cpu_devices_.push_back(new Eigen::ThreadPoolDevice(d->getPool(), i,
+  //   nullptr));
+  // }
 }
 
 Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
@@ -202,8 +207,12 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 }
 
 Eigen::ThreadPoolDevice* CPUDeviceContext::pool_device() const {
-  std::cout << ">>>>>>>2>>>>>>>>>\n";
   return pool_device_.get();
+  // std::cout << ">>>>>>>2>>>>>>>>>\n";
+  // const int parallelism = std::max<int>(
+  //     1,
+  //     std::min<int>(10,eigen_cpu_devices_.size()));
+  // return eigen_cpu_devices_[parallelism - 1];
 }
 
 Place CPUDeviceContext::GetPlace() const { return place_; }

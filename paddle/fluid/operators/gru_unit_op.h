@@ -40,10 +40,10 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     } else if (act_type == tanh) {
       TanhFunctor<T>()(d, x, y);
     } else if (act_type == relu) {
-      if (place == platform::CPUPlace())
-        ReluCPUFunctor<T>()(d, x, y);
-      else
-        ReluCUDAFunctor<T>()(d, x, y);
+      // if (place == platform::CPUPlace())
+      //   ReluCPUFunctor<T>()(d, x, y);
+      // else
+      ReluCUDAFunctor<T>()(d, x, y);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported activation type, only supports identity, sigmoid, tanh "
@@ -138,8 +138,8 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
       SigmoidGradFunctor<T>()(d, x, y, dy, dx);
     else if (act_type == tanh)
       TanhGradFunctor<T>()(d, x, y, dy, dx);
-    else if (act_type == relu)
-      ReluGradFunctor<T>()(d, x, y, dy, dx);
+    // else if (act_type == relu)
+    //   ReluGradFunctor<T>()(d, x, y, dy, dx);
     else
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported activation type, only supports identity, sigmoid, tanh "
