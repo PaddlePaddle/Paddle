@@ -103,8 +103,8 @@ class InterpreterProfiler {
 
   void TotalCUDAAllocatedMemorySize(const platform::Place& place) {
     if (platform::is_gpu_place(place)) {
-      auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, place);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, place);
       cost_info_.device_total_memory_bytes =
           platform::RecordedCudaMallocSize(cuda_place.device);
 #endif
