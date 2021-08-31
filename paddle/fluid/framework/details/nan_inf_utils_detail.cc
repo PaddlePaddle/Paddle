@@ -128,8 +128,10 @@ static void InitWhiteListFormEnv() {
 
 template <typename T>
 static void PrintNanInf(const T* value, const size_t numel, int print_num,
-                        const std::string& op_type,
-                        const std::string& var_name) {
+                        const std::string& op_type, const std::string& var_name,
+                        bool abort = true) {
+  T min_value = std::numeric_limits<T>::max();
+  T max_value = std::numeric_limits<T>::min();
   size_t nan_count, inf_count, num_count;
   nan_count = inf_count = num_count = 0;
 
@@ -142,6 +144,8 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
       count = inf_count++;
     } else {
       count = num_count++;
+      min_value = std::min(min_value, value[i]);
+      max_value = std::max(max_value, value[i]);
     }
 
     if (count < static_cast<size_t>(print_num)) {
@@ -149,12 +153,17 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
              static_cast<uint64_t>(i), static_cast<float>(value[i]));
     }
   }
-  printf("In cpu, there has %lu,%lu,%lu nan,inf,num\n",
-         static_cast<uint64_t>(nan_count), static_cast<uint64_t>(inf_count),
-         static_cast<uint64_t>(num_count));
-  PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
-      op_type));
+  printf(
+      "In cpu, there has %lu,%lu,%lu nan,inf,num. "
+      "And in num, min_value is %f, max_value is %f\n",
+      static_cast<uint64_t>(nan_count), static_cast<uint64_t>(inf_count),
+      static_cast<uint64_t>(num_count), static_cast<double>(min_value),
+      static_cast<double>(max_value));
+  if (abort) {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
+        op_type));
+  }
 }
 
 // openmp 4.0, reduction with fp16
@@ -407,6 +416,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 
 #ifdef PADDLE_WITH_ASCEND_CL
 using NpuOpRunner = paddle::operators::NpuOpRunner;
+
 constexpr int FLOAT_STATUS_SIZE = 8;
 
 static framework::Tensor& npu_float_status() {
@@ -432,9 +442,71 @@ void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
   NpuOpRunner("NPUClearFloatStatus", {tmp}, {flag}).Run(stream);
 }
 
-void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
-                           const framework::Scope& scope,
-                           const platform::Place& place) {
+void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
+                     const framework::Variable* var,
+                     const platform::Place& place) {
+  const Tensor* tensor{nullptr};
+  if (var->IsType<framework::LoDTensor>()) {
+    tensor = &var->Get<framework::LoDTensor>();
+  } else if (var->IsType<framework::SelectedRows>()) {
+    tensor = &var->Get<framework::SelectedRows>().value();
+  } else {
+    VLOG(10) << var_name << " var_name need not to check";
+    return;
+  }
+
+  if ((tensor->type() != proto::VarType::FP32) &&
+      (tensor->type() != proto::VarType::FP16)) {
+    return;
+  }
+
+  if (tensor->memory_size() == 0) {
+    VLOG(10) << var_name << " var_name need not to check, size == 0";
+    return;
+  }
+
+  VLOG(10) << "begin check " << op_type << " var_name:" << var_name
+           << ", place:" << tensor->place() << ", numel:" << tensor->numel();
+
+  framework::Tensor cpu_tensor;
+  cpu_tensor.Resize(tensor->dims());
+  cpu_tensor.mutable_data(platform::CPUPlace(), tensor->type());
+  framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+
+  LOG(WARNING) << "print [" << var_name << "] tensor info:";
+  // use env strategy control in future, -1=print_all.
+  int print_num = 3;
+  if (tensor->type() == proto::VarType::FP32) {
+    const float* value = cpu_tensor.data<float>();
+    PrintNanInf(value, tensor->numel(), print_num, op_type, var_name, false);
+  } else if (tensor->type() == proto::VarType::FP16) {
+    const paddle::platform::float16* value =
+        cpu_tensor.data<paddle::platform::float16>();
+    PrintNanInf(value, tensor->numel(), print_num, op_type, var_name, false);
+  }
+}
+
+void PrintNPUOpValueInfo(const framework::OperatorBase& op,
+                         const framework::Scope& scope,
+                         const platform::Place& place) {
+  LOG(WARNING) << "There are `nan` or `inf` in operator (" << op.Type()
+               << "), here we print some tensor value info of this op.";
+  for (auto& vname : op.InputVars()) {
+    auto* var = scope.FindVar(vname);
+    if (var == nullptr) continue;
+    PrintNpuVarInfo(op.Type(), vname, var, place);
+  }
+
+  for (auto& vname : op.OutputVars(true)) {
+    auto* var = scope.FindVar(vname);
+    if (var == nullptr) continue;
+    PrintNpuVarInfo(op.Type(), vname, var, place);
+  }
+}
+
+static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
+                                  const framework::Scope& scope,
+                                  const platform::Place& place) {
   if (!platform::is_npu_place(place)) return;
 
   auto* dev_ctx = reinterpret_cast<platform::NPUDeviceContext*>(
@@ -458,6 +530,9 @@ void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
   for (int i = 0; i < FLOAT_STATUS_SIZE; ++i) {
     sum += cpu_data[i];
   }
+
+  if (sum >= 1.0) PrintNPUOpValueInfo(op, scope, place);
+
   PADDLE_ENFORCE_LT(
       sum, 1.0, platform::errors::PreconditionNotMet(
                     "Operator %s contains Nan/Inf.", op.DebugStringEx(&scope)));
