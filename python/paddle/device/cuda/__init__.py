@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid import core
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 from .streams import Stream  # noqa: F401
 from .streams import Event  # noqa: F401
@@ -23,6 +24,7 @@ __all__ = [
     'current_stream',
     'synchronize',
     'device_count',
+    'stream_guard',
 ]
 
 
@@ -103,3 +105,12 @@ def device_count():
         core, 'get_cuda_device_count') else 0
 
     return num_gpus
+
+
+@signature_safe_contextmanager
+def stream_guard(stream):
+    pre_stream = set_current_stream(stream)
+    try:
+        yield
+    finally:
+        stream = set_current_stream(pre_stream)
