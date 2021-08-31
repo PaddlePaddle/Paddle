@@ -227,10 +227,6 @@ class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
         self.trt_param.precision == paddle_infer.PrecisionType.Half
         self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
 
-    def test_check_int8_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Int8
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-1)
-
     def test_dynamic_shape_fp32_check_output(self):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
@@ -244,14 +240,6 @@ class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
         self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
         self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
         self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
-
-    def test_dynamic_shape_int8_check_output(self):
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-1)
-
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         input_data = TensorConfig(shape=[-1, 3, 64, 64])
@@ -321,10 +309,6 @@ class TrtConvertBilinearInterpV2Test3(TrtLayerAutoScanTest):
         self.trt_param.precision == paddle_infer.PrecisionType.Half
         self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
 
-    def test_check_int8_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Int8
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-1)
-
     def test_dynamic_shape_fp32_check_output(self):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
@@ -338,13 +322,6 @@ class TrtConvertBilinearInterpV2Test3(TrtLayerAutoScanTest):
         self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
         self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
         self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
-
-    def test_dynamic_shape_int8_check_output(self):
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-1)
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         input_data = TensorConfig(shape=[-1, 3, 64, 64])
