@@ -118,9 +118,9 @@ class Tracer {
   bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
-  bool has_grad_{true};
   bool enable_autocast_{false};
   GarbageCollectorMap gcs_;
+  static thread_local bool has_grad_;
 };
 
 // To access static variable current_tracer

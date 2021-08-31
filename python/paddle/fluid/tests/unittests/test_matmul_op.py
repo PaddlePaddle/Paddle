@@ -207,8 +207,8 @@ for dim_X in (1, 2, 3):
 
 
 # Test case more batch_size and N, M, K
-def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y,
-                               batch_size):
+def generate_compatible_shapes_batch(dim_X, dim_Y, transpose_X, transpose_Y,
+                                     batch_size):
     BATCH_SIZE = 2
     M = 3
     N = 4
@@ -243,7 +243,7 @@ def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y,
 
 
 # Test case n-dim
-def generate_compatible_shapes(dim, transpose_X, transpose_Y):
+def generate_compatible_shapes_ndim(dim, transpose_X, transpose_Y):
     M = 2
     N = 4
     K = 3
@@ -270,8 +270,8 @@ for dim in [4]:
             test_name = (
                 'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
                     dim, dim, transpose_X, transpose_Y))
-            shape_X, shape_Y = generate_compatible_shapes(dim, transpose_X,
-                                                          transpose_Y)
+            shape_X, shape_Y = generate_compatible_shapes_ndim(dim, transpose_X,
+                                                               transpose_Y)
             globals()[test_name] = type(test_name, (Generator, OpTest), {
                 'shape_X': shape_X,
                 'shape_Y': shape_Y,

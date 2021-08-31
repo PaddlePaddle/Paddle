@@ -141,7 +141,7 @@ if(NOT APPLE AND NOT WIN32 AND (WITH_GPU OR WITH_ROCM))
 endif()
 cc_library(build_strategy SRCS build_strategy.cc DEPS pass_builder ${IR_PASS_DEPS})
 cc_test(build_strategy_test SRCS build_strategy_test.cc
-        DEPS build_strategy op_registry op_proto_maker graph)
+        DEPS build_strategy op_registry op_proto_maker graph string_helper)
 
 if (WITH_MKLDNN)
   target_link_libraries(build_strategy mkldnn_placement_pass)

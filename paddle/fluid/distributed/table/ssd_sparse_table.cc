@@ -310,7 +310,7 @@ int64_t SSDSparseTable::LoadFromText(
 
   while (std::getline(file, line)) {
     auto values = paddle::string::split_string<std::string>(line, "\t");
-    auto id = lexical_cast<uint64_t>(values[0]);
+    auto id = std::stoull(values[0]);
 
     if (id % pserver_num != pserver_id) {
       VLOG(3) << "will not load " << values[0] << " from " << valuepath
@@ -329,10 +329,9 @@ int64_t SSDSparseTable::LoadFromText(
     VALUE* value_instant = block->GetValue(id);
 
     if (values.size() == 5) {
-      value_instant->count_ = lexical_cast<int>(values[1]);
-      value_instant->unseen_days_ = lexical_cast<int>(values[2]);
-      value_instant->is_entry_ =
-          static_cast<bool>(lexical_cast<int>(values[3]));
+      value_instant->count_ = std::stoi(values[1]);
+      value_instant->unseen_days_ = std::stoi(values[2]);
+      value_instant->is_entry_ = static_cast<bool>(std::stoi(values[3]));
     }
 
     std::vector<float*> block_values = block->Get(id, meta.names, meta.dims);

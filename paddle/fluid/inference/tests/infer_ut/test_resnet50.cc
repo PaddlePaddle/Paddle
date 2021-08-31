@@ -127,6 +127,78 @@ TEST(test_resnet50, serial_diff_batch_trt_fp32) {
   std::cout << "finish test" << std::endl;
 }
 
+TEST(test_resnet50, multi_thread4_trt_fp32_bz2) {
+  int thread_num = 4;
+  // init input data
+  std::map<std::string, paddle::test::Record> my_input_data_map;
+  my_input_data_map["inputs"] = PrepareInput(2);
+  // init output data
+  std::map<std::string, paddle::test::Record> infer_output_data,
+      truth_output_data;
+  // prepare groudtruth config
+  paddle_infer::Config config, config_no_ir;
+  config_no_ir.SetModel(FLAGS_modeldir + "/inference.pdmodel",
+                        FLAGS_modeldir + "/inference.pdiparams");
+  config_no_ir.SwitchIrOptim(false);
+  // prepare inference config
+  config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
+                  FLAGS_modeldir + "/inference.pdiparams");
+  config.EnableUseGpu(100, 0);
+  config.EnableTensorRtEngine(
+      1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
+  // get groudtruth by disbale ir
+  paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
+  SingleThreadPrediction(pred_pool_no_ir.Retrive(0), &my_input_data_map,
+                         &truth_output_data, 1);
+
+  // get infer results from multi threads
+  std::vector<std::thread> threads;
+  services::PredictorPool pred_pool(config, thread_num);
+  for (int i = 0; i < thread_num; ++i) {
+    threads.emplace_back(paddle::test::SingleThreadPrediction,
+                         pred_pool.Retrive(i), &my_input_data_map,
+                         &infer_output_data, 2);
+  }
+
+  // thread join & check outputs
+  for (int i = 0; i < thread_num; ++i) {
+    LOG(INFO) << "join tid : " << i;
+    threads[i].join();
+    CompareRecord(&truth_output_data, &infer_output_data);
+  }
+
+  std::cout << "finish multi-thread test" << std::endl;
+}
+
+TEST(test_resnet50, trt_int8_bz2) {
+  // init input data
+  std::map<std::string, paddle::test::Record> my_input_data_map;
+  my_input_data_map["inputs"] = PrepareInput(2);
+  // init output data
+  std::map<std::string, paddle::test::Record> infer_output_data,
+      truth_output_data;
+  // prepare inference config
+  paddle_infer::Config config;
+  config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
+                  FLAGS_modeldir + "/inference.pdiparams");
+  config.EnableUseGpu(100, 0);
+  config.EnableTensorRtEngine(1 << 20, 2, 3, paddle_infer::PrecisionType::kInt8,
+                              true, true);
+
+  // get first time prediction int8 results
+  paddle_infer::services::PredictorPool pred_pool(config, 1);
+  SingleThreadPrediction(pred_pool.Retrive(0), &my_input_data_map,
+                         &truth_output_data, 1);
+
+  // get repeat 5 times prediction int8 results
+  SingleThreadPrediction(pred_pool.Retrive(0), &my_input_data_map,
+                         &infer_output_data, 5);
+
+  // check outputs
+  CompareRecord(&truth_output_data, &infer_output_data);
+  std::cout << "finish test" << std::endl;
+}
+
 }  // namespace paddle_infer
 
 int main(int argc, char** argv) {

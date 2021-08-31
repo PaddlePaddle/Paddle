@@ -72,8 +72,8 @@ class NCCLCommContext {
     return comm_ctx;
   }
 
-  NCCLComm* CreateNCCLComm(ncclUniqueId* nccl_id, int nranks, int rank,
-                           int dev_id, int ring_id = 0);
+  NCCLComm* CreateComm(ncclUniqueId* nccl_id, int nranks, int rank, int dev_id,
+                       int ring_id = 0);
 
   void CreateAllNCCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
 
@@ -274,8 +274,8 @@ class BKCLCommContext {
     return comm_ctx;
   }
 
-  BKCLComm* CreateBKCLComm(BKCLUniqueId* bkcl_id, int nranks, int rank,
-                           int dev_id, int ring_id = 0);
+  BKCLComm* CreateComm(BKCLUniqueId* bkcl_id, int nranks, int rank, int dev_id,
+                       int ring_id = 0);
 
   void CreateAllBKCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
 

@@ -37,6 +37,9 @@ class Command(object):
             return True
         return False
 
+    def clean(self):
+        self.etcd.delete_prefix(self.prefix)
+
     def close(self):
         self.etcd.close()
 
@@ -53,13 +56,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
-    # compatible with kuberntes service discovery
-    if not server and os.getenv(
-            'PADDLE_ELASTIC_ETCD_SERVICE_HOST') and os.getenv(
-                'PADDLE_ELASTIC_ETCD_SERVICE_PORT'):
-        server = '{}:{}'.format(
-            os.getenv('PADDLE_ELASTIC_ETCD_SERVICE_HOST'),
-            os.getenv('PADDLE_ELASTIC_ETCD_SERVICE_PORT'))
     name = args.job_id or os.getenv('PADDLE_ELASTIC_JOB_ID')
 
     np = args.np or int(os.getenv('PADDLE_ELASTIC_NP', 0))
@@ -68,6 +64,9 @@ if __name__ == '__main__':
 
     if args.action == "scale":
         cmd.scale_np(np)
+
+    if args.action == "clean":
+        cmd.clean()
 
     print("action {} done".format(args.action))
 

@@ -120,6 +120,7 @@ class MemEvent {
 
 class CudaEvent {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
  public:
   CudaEvent() {
 #ifdef PADDLE_WITH_HIP
@@ -129,7 +130,7 @@ class CudaEvent {
 #endif
   }
 
-  CudaEvent(unsigned int flags) : flags_(flags) {
+  explicit CudaEvent(unsigned int flags) : flags_(flags) {
 #ifdef PADDLE_WITH_HIP
     hipEventCreateWithFlags(&event_, flags_);
 #else
@@ -137,7 +138,15 @@ class CudaEvent {
 #endif
   }
 
-  void Record(paddle::platform::stream::CUDAStream& stream) {
+  ~CudaEvent() {
+#ifdef PADDLE_WITH_HIP
+    hipEventDestroy(event_);
+#else
+    cudaEventDestroy(event_);
+#endif
+  }
+
+  void Record(const paddle::platform::stream::CUDAStream& stream) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event_, stream.raw_stream()));
 #else
@@ -185,31 +194,6 @@ class CudaEvent {
   gpuEvent_t event_;
 #endif
 };
-
-static unsigned int get_cuda_flags(bool enable_timing, bool blocking,
-                                   bool interprocess) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-#ifdef PADDLE_WITH_HIP
-  unsigned int flags =
-      (blocking ? hipEventBlockingSync : hipEventDefault) |
-      (enable_timing ? hipEventDefault : hipEventDisableTiming) |
-      (interprocess ? hipEventInterprocess : hipEventDefault);
-  return flags;
-#else
-  unsigned int flags =
-      (blocking ? cudaEventBlockingSync : cudaEventDefault) |
-      (enable_timing ? cudaEventDefault : cudaEventDisableTiming) |
-      (interprocess ? cudaEventInterprocess : cudaEventDefault);
-  return flags;
-#endif
-
-#else
-  PADDLE_THROW(platform::errors::Unavailable(
-      "Paddle is not compiled with CUDA. Cannot get the cuda event flags."));
-  return 0;
-#endif
-}
 
 }  // namespace platform
 }  // namespace paddle

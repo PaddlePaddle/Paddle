@@ -34,7 +34,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.set_strategy(strategy, 'sharding')
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
         parameters = [
-            x.name for x in train_prog.list_vars() if x.persistable == True
+            x.name for x in train_prog.list_vars() if x.persistable is True
         ]
         ops = [op.type for op in avg_cost.block.ops]
         vars = [x.name for x in train_prog.list_vars()]
@@ -264,8 +264,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'square',
-            'reduce_sum', 'square', 'reduce_sum', 'square', 'reduce_sum', 'sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
+            'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm', 'sum',
             'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
             'elementwise_div', 'elementwise_mul', 'elementwise_mul',
             'elementwise_mul', 'momentum', 'momentum', 'momentum'
@@ -292,7 +292,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         ])
 
 
-class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
+class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
         os.environ[
@@ -303,7 +303,7 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
         self.sharding_ring_id = 1
         self.dp_ring_id = 2
         self.global_ring_id = 3
-        self.pp_ring_id = 20
+        self.pp_pair_ring_id = 20
 
     def test_sharding_with_mp(self):
         # NOTE(JZ-LIANG) MP parallelism need user to build model with MP API
@@ -336,7 +336,7 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
             if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "nccl_id_1":
+                    0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -345,7 +345,7 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
             if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "nccl_id_2":
+                    0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -366,6 +366,8 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
             "gradient_merge_acc_step": 1,
             "mp_degree": 1
         }
+
+        strategy.fuse_all_reduce_ops = False
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
         startup_prog_ops = startup_prog.global_block().ops
         main_prog_ops = train_prog.global_block().ops
@@ -381,7 +383,7 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
             if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "nccl_id_1":
+                    0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -390,7 +392,7 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
             if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "nccl_id_2":
+                    0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
 
@@ -450,7 +452,7 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
             if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "nccl_id_1":
+                    0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -459,7 +461,7 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
             if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "nccl_id_2":
+                    0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
 
@@ -530,12 +532,8 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
             'fill_constant', 'uniform_random', 'fill_constant',
             'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
-            'c_gen_nccl_id', 'c_comm_init', 'fill_constant', 'c_allreduce_sum',
-            'c_sync_calc_stream', 'c_gen_nccl_id', 'c_comm_init',
-            'fill_constant', 'c_allreduce_sum', 'c_sync_calc_stream',
-            'c_gen_nccl_id', 'c_comm_init', 'fill_constant', 'c_allreduce_sum',
-            'c_sync_calc_stream', 'c_gen_nccl_id', 'c_comm_init',
-            'fill_constant', 'c_allreduce_sum', 'c_sync_calc_stream'
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init'
         ])
 
         self.assertEqual(main_prog_op_types, [
@@ -554,9 +552,9 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
             'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
-            'c_sync_comm_stream', 'fill_constant', 'sum', 'fill_constant',
+            'fill_constant', 'sum', 'fill_constant', 'sum', 'fill_constant',
             'sum', 'fill_constant', 'sum', 'fill_constant', 'sum',
-            'fill_constant', 'sum', 'momentum', 'momentum', 'momentum',
+            'c_sync_comm_stream', 'momentum', 'momentum', 'momentum',
             'momentum', 'momentum'
         ])
 
@@ -566,13 +564,13 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
             if op.type == "c_comm_init"
         ]
         self.assertIn(self.sharding_ring_id, created_ring_ids)
-        self.assertIn(self.pp_ring_id, created_ring_ids)
+        self.assertIn(self.pp_pair_ring_id, created_ring_ids)
 
         # check correctness of pp group
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
             if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "nccl_id_1":
+                    0] == "comm_id_0":
                 sharding_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
@@ -581,7 +579,7 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
         sharding_group_waiting_port = None
         for op in startup_prog_ops:
             if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
-                    0] == "nccl_id_2":
+                    0] == "comm_id_1":
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
 
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
@@ -615,6 +613,625 @@ class TestFleetMetaOptimizer_V1(TestFleetMetaOptimizer):
         for op in main_prog_ops:
             if op.type == 'c_allreduce_sum':
                 assert 'FusedOutput' in op.input_arg_names[0]
+
+    def test_hybrid_with_mp_pp_amp_gclip(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.pp_net(train_prog, startup_prog)
+        self.set_strategy(strategy, 'amp')
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_degree": 1,
+            "mp_degree": 2,
+            "pp_degree": 2,
+            "dp_degree": 1,
+        }
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "schedule_mode": "1F1B",
+            "micro_batch_size": 2,
+            "accumulate_steps": 4,
+        }
+        clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        self.optimizer(
+            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        train_prog = train_prog._pipeline_opt['section_program']
+        startup_prog = startup_prog._pipeline_opt['startup_program']
+
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check program
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+        main_prog_op_types = [op.type for op in main_prog_ops]
+
+        # ring: mp, pp_group, pp_pair, pp_pair
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init'
+        ])
+
+        # pp + mp, partial send recv
+        self.assertIn('partial_recv', main_prog_op_types)
+        self.assertIn('partial_allgather', main_prog_op_types)
+        self.assertIn('partial_send', main_prog_op_types)
+
+        # amp check_finite_and_unscale, allreduce(mp)->allreduce(pp)
+        self.assertEqual(main_prog_op_types.count('c_allreduce_max'), 2)
+
+        # global gradient clip, allreduce(mp)->allreduce(pp)
+        self.assertEqual(main_prog_op_types.count('c_allreduce_sum'), 2)
+
+        # should has ring id for pp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(self.mp_ring_id, created_ring_ids)
+        self.assertIn(self.pp_pair_ring_id, created_ring_ids)
+
+        # check correctness of pp group
+        sharding_group_waiting_port = None
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_0":
+                mp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(mp_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of sharding group
+        sharding_group_waiting_port = None
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_1":
+                pp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
+
+    def test_hybrid_with_pp_dp_amp_fp16allreduce(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.pp_net(train_prog, startup_prog)
+        strategy.amp = True
+        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_degree": 1,
+            "mp_degree": 1,
+            "pp_degree": 2,
+            "dp_degree": 2,
+        }
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "schedule_mode": "1F1B",
+            "micro_batch_size": 2,
+            "accumulate_steps": 4,
+        }
+        strategy.fp16_allreduce = True
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        train_prog = train_prog._pipeline_opt['section_program']
+        startup_prog = startup_prog._pipeline_opt['startup_program']
+
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check program
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+        main_prog_op_types = [op.type for op in main_prog_ops]
+
+        # ring: mp, pp_group, pp_pair, pp_pair
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_sync_comm_stream'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'cast', 'mul', 'cast', 'elementwise_add', 'tanh', 'cast',
+            'mul', 'cast', 'elementwise_add', 'tanh', 'cast', 'mul', 'cast',
+            'elementwise_add', 'tanh', 'cast', 'mul', 'cast', 'elementwise_add',
+            'softmax', 'cross_entropy2', 'mean', 'elementwise_mul',
+            'fill_constant', 'scale', 'scale', 'elementwise_mul_grad',
+            'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
+            'elementwise_add_grad', 'cast', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
+            'fill_constant', 'cast', 'sum', 'fill_constant', 'sum',
+            'fill_constant', 'sum', 'fill_constant', 'sum', 'fill_constant',
+            'sum', 'fill_constant', 'sum', 'fill_constant', 'sum',
+            'fill_constant', 'sum', 'coalesce_tensor', 'c_allreduce_sum',
+            'cast', 'cast', 'cast', 'cast', 'cast', 'cast', 'cast', 'cast',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
+            'momentum', 'momentum', 'momentum', 'momentum', 'momentum',
+            'momentum', 'momentum'
+        ])
+
+        # amp check_finite_and_unscale, allreduce(pp)
+        self.assertEqual(main_prog_op_types.count('c_allreduce_max'), 1)
+
+        # should has ring id for pp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(self.pp_pair_ring_id, created_ring_ids)
+        self.assertIn(self.dp_ring_id, created_ring_ids)
+
+        # check correctness of pp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_0":
+                pp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of dp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_3":
+                dp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
+
+    def test_hybrid_with_sharding_pp_amp_fp16allreduce_in_optimize(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.pp_net(train_prog, startup_prog)
+        strategy.amp = True
+        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "segment_broadcast_MB": 0.1,
+            "sharding_degree": 2,
+            "mp_degree": 1,
+            "pp_degree": 2,
+            "dp_degree": 1,
+            'pp_allreduce_in_optimize': True,
+        }
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "schedule_mode": "1F1B",
+            "micro_batch_size": 2,
+            "accumulate_steps": 4,
+        }
+        strategy.fp16_allreduce = True
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        train_prog = train_prog._pipeline_opt['section_program']
+        startup_prog = startup_prog._pipeline_opt['startup_program']
+
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check program
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+        main_prog_op_types = [op.type for op in main_prog_ops]
+
+        # ring: sharding, pp_group, pp_pair, pp_pair
+        self.assertEqual(startup_prog_op_types, [
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id',
+            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init'
+        ])
+
+        # FIXME(wangxi): some bug in sharding+pp with pp_allreduce_in_optimize
+        # self.assertEqual(main_prog_op_types, [])
+
+        # amp check_finite_and_unscale, allreduce(pp)
+        self.assertEqual(main_prog_op_types.count('c_allreduce_max'), 2)
+
+        # should has ring id for pp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(self.sharding_ring_id, created_ring_ids)
+        self.assertIn(self.pp_pair_ring_id, created_ring_ids)
+
+        # check correctness of sharding group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_0":
+                sharding_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of pp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_1":
+                pp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36002'])
+
+    def test_hybrid_with_pp_dp_amp_fp16allreduce_optimize_cast(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.pp_net(train_prog, startup_prog)
+        strategy.amp = True
+        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_degree": 1,
+            "mp_degree": 1,
+            "pp_degree": 2,
+            "dp_degree": 2,
+            "optimize_cast": True,
+        }
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "schedule_mode": "1F1B",
+            "micro_batch_size": 2,
+            "accumulate_steps": 4,
+        }
+        strategy.fp16_allreduce = True
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        train_prog = train_prog._pipeline_opt['section_program']
+        startup_prog = startup_prog._pipeline_opt['startup_program']
+
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check program
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+        main_prog_op_types = [op.type for op in main_prog_ops]
+
+        # ring: mp, pp_group, pp_pair, pp_pair
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'cast', 'fill_constant', 'cast', 'uniform_random',
+            'cast', 'fill_constant', 'cast', 'uniform_random', 'cast',
+            'fill_constant', 'cast', 'uniform_random', 'cast', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_sync_comm_stream'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'cast', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
+            'elementwise_mul', 'fill_constant', 'scale', 'scale',
+            'elementwise_mul_grad', 'mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'cast', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
+            'fill_constant', 'cast', 'sum', 'fill_constant', 'sum',
+            'fill_constant', 'sum', 'fill_constant', 'sum', 'fill_constant',
+            'sum', 'fill_constant', 'sum', 'fill_constant', 'sum',
+            'fill_constant', 'sum', 'coalesce_tensor', 'c_allreduce_sum',
+            'cast', 'cast', 'cast', 'cast', 'cast', 'cast', 'cast', 'cast',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
+            'cast', 'momentum', 'cast', 'momentum', 'cast', 'momentum', 'cast',
+            'momentum', 'cast', 'momentum', 'cast', 'momentum', 'momentum',
+            'cast'
+        ])
+
+        # amp check_finite_and_unscale, allreduce(pp)
+        self.assertEqual(main_prog_op_types.count('c_allreduce_max'), 1)
+
+        # should has ring id for pp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(self.pp_pair_ring_id, created_ring_ids)
+        self.assertIn(self.dp_ring_id, created_ring_ids)
+
+        # check correctness of pp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_0":
+                pp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of dp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_3":
+                dp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
+
+    def test_hybrid_with_pp_dp_amp_fp16allreduce_optimize_offload(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.pp_net(train_prog, startup_prog)
+        strategy.amp = True
+        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_degree": 1,
+            "mp_degree": 1,
+            "pp_degree": 2,
+            "dp_degree": 2,
+            "optimize_offload": True,
+        }
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "schedule_mode": "1F1B",
+            "micro_batch_size": 2,
+            "accumulate_steps": 4,
+        }
+        strategy.fp16_allreduce = True
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        train_prog = train_prog._pipeline_opt['section_program']
+        startup_prog = startup_prog._pipeline_opt['startup_program']
+
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check program
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+        main_prog_op_types = [op.type for op in main_prog_ops]
+
+        # ring: mp, pp_group, pp_pair, pp_pair
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'cast', 'memcpy', 'fill_constant', 'cast',
+            'memcpy', 'uniform_random', 'cast', 'memcpy', 'fill_constant',
+            'cast', 'memcpy', 'uniform_random', 'cast', 'memcpy',
+            'fill_constant', 'cast', 'memcpy', 'uniform_random', 'cast',
+            'memcpy', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_sync_comm_stream'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'cast', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
+            'elementwise_mul', 'fill_constant', 'scale', 'scale',
+            'elementwise_mul_grad', 'mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'cast', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
+            'fill_constant', 'cast', 'sum', 'fill_constant', 'sum',
+            'fill_constant', 'sum', 'fill_constant', 'sum', 'fill_constant',
+            'sum', 'fill_constant', 'sum', 'fill_constant', 'sum',
+            'fill_constant', 'sum', 'coalesce_tensor', 'c_allreduce_sum',
+            'cast', 'cast', 'cast', 'cast', 'cast', 'cast', 'cast', 'cast',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'memcpy',
+            'momentum', 'cast', 'memcpy', 'memcpy', 'momentum', 'cast',
+            'memcpy', 'memcpy', 'momentum', 'cast', 'memcpy', 'memcpy',
+            'momentum', 'cast', 'memcpy', 'memcpy', 'momentum', 'cast',
+            'memcpy', 'memcpy', 'momentum', 'cast', 'memcpy', 'momentum',
+            'memcpy', 'momentum', 'cast', 'memcpy'
+        ])
+
+        # amp check_finite_and_unscale, allreduce(pp)
+        self.assertEqual(main_prog_op_types.count('c_allreduce_max'), 1)
+
+        # should has ring id for pp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(self.pp_pair_ring_id, created_ring_ids)
+        self.assertIn(self.dp_ring_id, created_ring_ids)
+
+        # check correctness of pp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_0":
+                pp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of dp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_3":
+                dp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
+
+    def test_hybrid_with_pp_dp_amp_fp16allreduce_optimize_cast_with_gradient_fuse(
+            self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.pp_net(train_prog, startup_prog)
+        strategy.amp = True
+        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_degree": 1,
+            "mp_degree": 1,
+            "pp_degree": 2,
+            "dp_degree": 2,
+            "optimize_cast": True,
+        }
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "schedule_mode": "1F1B",
+            "micro_batch_size": 2,
+            "accumulate_steps": 4,
+        }
+        strategy.fp16_allreduce = True
+        strategy.fuse_grad_merge = True
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        train_prog = train_prog._pipeline_opt['section_program']
+        startup_prog = startup_prog._pipeline_opt['startup_program']
+
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check program
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+        main_prog_op_types = [op.type for op in main_prog_ops]
+
+        # ring: mp, pp_group, pp_pair, pp_pair
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'cast', 'fill_constant', 'cast', 'uniform_random',
+            'cast', 'fill_constant', 'cast', 'uniform_random', 'cast',
+            'fill_constant', 'cast', 'uniform_random', 'cast', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_sync_comm_stream'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'cast', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
+            'elementwise_mul', 'coalesce_tensor', 'coalesce_tensor',
+            'coalesce_tensor', 'coalesce_tensor', 'fill_constant', 'scale',
+            'scale', 'elementwise_mul_grad', 'mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'cast', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
+            'sum', 'cast', 'sum', 'c_allreduce_sum', 'c_allreduce_sum', 'cast',
+            'cast', 'cast', 'cast', 'cast', 'cast', 'cast', 'cast',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
+            'cast', 'momentum', 'cast', 'momentum', 'cast', 'momentum', 'cast',
+            'momentum', 'cast', 'momentum', 'cast', 'momentum', 'momentum',
+            'cast'
+        ])
+
+        # amp check_finite_and_unscale, allreduce(pp)
+        self.assertEqual(main_prog_op_types.count('c_allreduce_max'), 1)
+
+        # should has ring id for pp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(self.pp_pair_ring_id, created_ring_ids)
+        self.assertIn(self.dp_ring_id, created_ring_ids)
+
+        # check correctness of pp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_0":
+                pp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of dp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_3":
+                dp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
+
+    def test_hybrid_with_pp_dp_amp_with_gradient_fuse(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.pp_net(train_prog, startup_prog)
+        strategy.amp = True
+        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_degree": 1,
+            "mp_degree": 1,
+            "pp_degree": 2,
+            "dp_degree": 2,
+        }
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "schedule_mode": "1F1B",
+            "micro_batch_size": 2,
+            "accumulate_steps": 4,
+        }
+        strategy.fuse_grad_merge = True
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        train_prog = train_prog._pipeline_opt['section_program']
+        startup_prog = startup_prog._pipeline_opt['startup_program']
+
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check program
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+        main_prog_op_types = [op.type for op in main_prog_ops]
+
+        # ring: mp, pp_group, pp_pair, pp_pair
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_sync_comm_stream'
+        ])
+
+        self.assertEqual(main_prog_op_types, [
+            'recv_v2', 'cast', 'mul', 'cast', 'elementwise_add', 'tanh', 'cast',
+            'mul', 'cast', 'elementwise_add', 'tanh', 'cast', 'mul', 'cast',
+            'elementwise_add', 'tanh', 'cast', 'mul', 'cast', 'elementwise_add',
+            'softmax', 'cross_entropy2', 'mean', 'elementwise_mul',
+            'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
+            'coalesce_tensor', 'fill_constant', 'scale', 'scale',
+            'elementwise_mul_grad', 'mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'cast', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
+            'cast', 'sum', 'sum', 'c_allreduce_sum', 'c_allreduce_sum',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
+            'momentum', 'momentum', 'momentum', 'momentum', 'momentum',
+            'momentum', 'momentum'
+        ])
+
+        # amp check_finite_and_unscale, allreduce(pp)
+        self.assertEqual(main_prog_op_types.count('c_allreduce_max'), 1)
+
+        # should has ring id for pp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(self.pp_pair_ring_id, created_ring_ids)
+        self.assertIn(self.dp_ring_id, created_ring_ids)
+
+        # check correctness of pp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_0":
+                pp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(pp_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of dp group
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "comm_id_3":
+                dp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
 
 
 if __name__ == "__main__":
