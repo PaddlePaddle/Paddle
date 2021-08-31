@@ -2361,6 +2361,7 @@ function main() {
         check_whl_size
         ;;
       build_and_check_gpu)
+        set +e
         check_style_info=$(check_style)
         check_style_code=$?
         example_info_gpu=""
