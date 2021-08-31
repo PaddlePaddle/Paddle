@@ -63,9 +63,9 @@ class BilinearInterpolateOpConverter : public OpConverter {
           nvinfer1::ResizeCoordinateTransformation::kASYMMETRIC);
     }
 #else
-    PADDLE_THROW(
-        platform::errors::Fatal("bilinear_interp TRT converter is only supported on TRT "
-                                "8.0.1 or higher version."));
+    PADDLE_THROW(platform::errors::Fatal(
+        "bilinear_interp TRT converter is only supported on TRT "
+        "8.0.1 or higher version."));
 #endif
 
     auto in_dim = input->getDimensions();
