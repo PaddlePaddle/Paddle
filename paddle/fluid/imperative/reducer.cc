@@ -461,7 +461,7 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
                 "manually implement 'all_reduce' before model optimization. "
                 "There is an example showing specific implemetation processing "
                 "in offical docs: https://www.paddlepaddle.org.cn/documentation"
-                "/docs/api/paddle/DataParallel_cn.html"));    
+                "/docs/api/paddle/DataParallel_cn.html"));
       }
       ++node_deps_[grad_pending_node.get()];
       if (visited.count(grad_pending_node.get()) == 0) {
