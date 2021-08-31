@@ -23,10 +23,8 @@ void *cusparse_dso_handle;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
+#ifdef CUSPARSE_ROUTINE_EACH
 CUSPARSE_ROUTINE_EACH(DEFINE_WRAP);
-
-#ifdef CUSPARSE_ROUTINE_EACH_R1
-CUSPARSE_ROUTINE_EACH_R1(DEFINE_WRAP);
 #endif
 }  // namespace dynload
 }  // namespace platform

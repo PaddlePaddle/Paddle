@@ -181,6 +181,8 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
 }
 
 using Tensor = framework::Tensor;
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
 /*
 input: sparse C in CSR format (num_rows,num_rows)
 output: sparse C after softmax operation
@@ -327,11 +329,13 @@ void Dot_dsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
   platform::dynload::cusparseDestroy(handle);
   cudaFree(dBuffer);
 }
+#endif
 
 template <typename DeviceContext, typename T>
 class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     auto query = ins[0];
@@ -380,6 +384,7 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
       Dot_dsd<DeviceContext, T>(dev_ctx, offset, columns, &B_value, value,
                                 output, N, M);
     }
+#endif
   }
 };
 
