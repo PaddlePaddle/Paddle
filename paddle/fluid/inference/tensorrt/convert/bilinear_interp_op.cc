@@ -53,21 +53,21 @@ class BilinearInterpolateOpConverter : public OpConverter {
 
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Resize, *input);
     layer->setResizeMode(nvinfer1::ResizeMode::kLINEAR);
-    if (align_mode == 0 && !align_corners) {
+
 #if IS_TRT_VERSION_GE(8016)
+    if (align_mode == 0 && !align_corners) {
       layer->setCoordinateTransformation(
           nvinfer1::ResizeCoordinateTransformation::kHALF_PIXEL);
-#else
-      layer->setAlignCorners(false);
-#endif
     } else {
-#if IS_TRT_VERSION_GE(8016)
       layer->setCoordinateTransformation(
           nvinfer1::ResizeCoordinateTransformation::kASYMMETRIC);
-#else
-      layer->setAlignCorners(true);
-#endif
     }
+#else
+    PADDLE_THROW(
+        platform::errors::Fatal("bilinear_interp TRT converter is only supported on TRT "
+                                "8.0.1 or higher version."));
+#endif
+
     auto in_dim = input->getDimensions();
 
     float scale_w = -1;

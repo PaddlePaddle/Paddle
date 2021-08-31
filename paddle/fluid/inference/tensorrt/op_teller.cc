@@ -58,6 +58,11 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
 #endif
+
+#if IS_TRT_VERSION_GE(8016)
+    teller_set.insert("bilinear_interp");
+    teller_set.insert("bilinear_interp_v2");
+#endif
   }
 
   bool operator()(const std::string& op_type, const framework::OpDesc& desc,
@@ -131,8 +136,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "roi_align",
       "affine_channel",
       "nearest_interp",
-      "bilinear_interp",
-      "bilinear_interp_v2",
       "anchor_generator",
       "reduce_sum",
       "reduce_mean",
