@@ -214,7 +214,7 @@ class TestSvdNormalMatrixBig(TestSvdOp):
         pass
 
 
-class TestSvdNormalMatrixBig(TestSvdOp):
+class TestSvdNormalMatrixBig2(TestSvdOp):
     def generate_input(self):
         """ big matrix SVD. 
         """
