@@ -64,8 +64,8 @@ class FrameOp : public framework::OperatorWithKernel {
       output_shape.push_back(n_frames);
     }
 
-    VLOG(0) << "[FrameOp][InferShape]: "
-            << framework::make_ddim(output_shape).to_str();
+    // VLOG(0) << "[FrameOp][InferShape]: "
+    //         << framework::make_ddim(output_shape).to_str();
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   }
 
@@ -112,7 +112,7 @@ class FrameOpGrad : public framework::OperatorWithKernel {
                    "Out@GRAD", "frame_grad");
     auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      VLOG(0) << "[FrameOpGrad][InferShape]: " << x_dims.to_str();
+      // VLOG(0) << "[FrameOpGrad][InferShape]: " << x_dims.to_str();
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     }
   }
@@ -151,21 +151,13 @@ REGISTER_OPERATOR(frame, ops::FrameOp, ops::FrameOpMaker,
 REGISTER_OPERATOR(frame_grad, ops::FrameOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    frame, ops::FrameKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FrameKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FrameKernel<paddle::platform::CPUDeviceContext, int>,
+    frame, ops::FrameKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FrameKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FrameKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<float>>,
-    ops::FrameKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<double>>);
+    ops::FrameKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::FrameKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
-    frame_grad, ops::FrameGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int>,
+    frame_grad, ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>);
+    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, double>);

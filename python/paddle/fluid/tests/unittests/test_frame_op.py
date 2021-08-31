@@ -25,8 +25,7 @@ class TestFrameOp(OpTest):
         self.op_type = "frame"
         self.shape, self.type, self.attrs = self.initTestCase()
         self.inputs = {
-            'X': np.random.randint(
-                low=-1e3, high=1e3, size=self.shape).astype(self.type),
+            'X': np.random.random(size=self.shape).astype(self.type),
         }
         self.outputs = {
             'Out': librosa.util.frame(
@@ -35,7 +34,7 @@ class TestFrameOp(OpTest):
 
     def initTestCase(self):
         input_shape = (150, )
-        input_type = 'int32'
+        input_type = 'float64'
         attrs = {
             'frame_length': 50,
             'hop_length': 15,
@@ -48,11 +47,16 @@ class TestFrameOp(OpTest):
         self.check_output()
         paddle.disable_static()
 
+    def test_check_grad_normal(self):
+        paddle.enable_static()
+        self.check_grad(['X'], 'Out')
+        paddle.disable_static()
+
 
 class TestCase1(TestFrameOp):
     def initTestCase(self):
         input_shape = (150, )
-        input_type = 'int32'
+        input_type = 'float64'
         attrs = {
             'frame_length': 50,
             'hop_length': 15,
@@ -64,7 +68,7 @@ class TestCase1(TestFrameOp):
 class TestCase2(TestFrameOp):
     def initTestCase(self):
         input_shape = (8, 150)
-        input_type = 'int32'
+        input_type = 'float64'
         attrs = {
             'frame_length': 50,
             'hop_length': 15,
@@ -76,7 +80,7 @@ class TestCase2(TestFrameOp):
 class TestCase3(TestFrameOp):
     def initTestCase(self):
         input_shape = (150, 8)
-        input_type = 'int32'
+        input_type = 'float64'
         attrs = {
             'frame_length': 50,
             'hop_length': 15,

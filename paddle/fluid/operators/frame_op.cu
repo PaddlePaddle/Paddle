@@ -17,22 +17,18 @@
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    frame, ops::FrameKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FrameKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FrameKernel<paddle::platform::CUDADeviceContext, int>,
+    frame, ops::FrameKernel<paddle::platform::CUDADeviceContext, int32_t>,
     ops::FrameKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::FrameKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::FrameKernel<paddle::platform::CUDADeviceContext, double>,
     ops::FrameKernel<paddle::platform::CUDADeviceContext,
-                     paddle::platform::complex<float>>,
-    ops::FrameKernel<paddle::platform::CUDADeviceContext,
-                     paddle::platform::complex<double>>);
+                     paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     frame_grad,
+    ops::FrameGradKernel<paddle::platform::CUDADeviceContext, int32_t>,
+    ops::FrameGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::FrameGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FrameGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FrameGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FrameGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::FrameGradKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::FrameGradKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::complex<double>>);
+                         paddle::platform::float16>);
