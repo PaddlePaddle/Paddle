@@ -78,6 +78,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   use_cvm_ = desc.use_cvm();
   // for sparse value accessor, embedding only
   no_cvm_ = desc.no_cvm();
+  dump_prob_ = desc.dump_prob();
   scale_sparse_gradient_with_batch_size_ =
       desc.scale_sparse_gradient_with_batch_size();
   scale_datanorm_ = desc.scale_datanorm();
@@ -1015,7 +1016,9 @@ void DownpourWorker::TrainFiles() {
       }
       // #pragma omp parallel for
       for (size_t i = 0; i < ars.size(); i++) {
-        if (ars[i].length() == 0) {
+        srand((unsigned)time(NULL));
+        float random_prob = (float)rand() / RAND_MAX;  // NOLINT
+        if (ars[i].length() == 0 || random_prob >= dump_prob_) {
           continue;
         }
         writer_ << ars[i];

@@ -78,6 +78,8 @@ class TrainerFactory(object):
                     trainer._set_targets(opt_info["targets"])
                 if opt_info.get("dump_interval") is not None:
                     trainer._set_dump_interval(opt_info["dump_interval"])
+                if opt_info.get("dump_prob") is not None:
+                    trainer._set_dump_prob(opt_info["dump_prob"])
                 if opt_info.get("pn_targets") is not None:
                     trainer._set_pn_targets(opt_info["pn_targets"])
                 if opt_info.get("pn_labels") is not None:

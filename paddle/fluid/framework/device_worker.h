@@ -155,6 +155,7 @@ class DeviceWorker {
   bool no_cvm_;
   TrainerContextInterface* trainer_context_ = nullptr;
   bool scale_sparse_gradient_with_batch_size_;
+  float dump_prob_;
   std::vector<std::string> all_param_;
 };
 

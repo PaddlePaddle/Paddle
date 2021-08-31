@@ -144,6 +144,9 @@ class TrainerDesc(object):
     def _set_dump_interval(self, dump_interval):
         self.proto_desc.dump_interval = dump_interval
 
+    def _set_dump_prob(self, dump_prob):
+        self.proto_desc.dump_prob = dump_prob
+
     def _set_pn_targets(self, targets):
         for key in targets:
             target = self.proto_desc.pn_targets.add()

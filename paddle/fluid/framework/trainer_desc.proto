@@ -64,6 +64,7 @@ message TrainerDesc {
   repeated string tag_names = 33;
   optional string resctype_name = 34;
   repeated int64 resctypes = 35;
+  optional float dump_prob = 36 [ default = 1.0 ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
