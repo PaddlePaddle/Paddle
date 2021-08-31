@@ -16,35 +16,30 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
 using ::paddle::platform::kCUDA;
 using ::paddle::platform::kCPU;
-USE_EVENT(kCUDA);
-USE_EVENT_WAIT(kCUDA, kCUDA)
-USE_EVENT_WAIT(kCPU, kCUDA)
+
+using paddle::platform::DeviceEvent;
+using paddle::platform::DeviceContextPool;
+
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
 
 TEST(DeviceEvent, CUDA) {
   VLOG(1) << "In Test";
   using paddle::platform::CUDAPlace;
-  using paddle::platform::DeviceOption;
-  using paddle::platform::DeviceEvent;
-  using paddle::platform::DeviceContextPool;
-  using paddle::platform::DeviceType;
 
   auto& pool = DeviceContextPool::Instance();
   auto place = CUDAPlace(0);
   auto* context =
       static_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
-  int device_type = static_cast<int>(DeviceType::CUDA);
-  DeviceOption dev_opt(device_type, place.device);
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator
-  DeviceEvent event(dev_opt);
+  DeviceEvent event(place);
   ASSERT_NE(event.GetEvent().get(), nullptr);
   // case 2. test for event_recorder
-  event.Record(place, context);
+  event.Record(context);
   bool status = event.Query();
   ASSERT_EQ(status, false);
   // case 3. test for event_finisher
@@ -59,7 +54,7 @@ TEST(DeviceEvent, CUDA) {
   cudaMalloc(reinterpret_cast<void**>(&dst_fp32), size);
   cudaMemcpyAsync(dst_fp32, src_fp32, size, cudaMemcpyHostToDevice,
                   context->stream());
-  event.Record(place, context);  // step 1. record it
+  event.Record(context);  // step 1. record it
   status = event.Query();
   ASSERT_EQ(status, false);
 
@@ -76,3 +71,17 @@ TEST(DeviceEvent, CUDA) {
   cudaFreeHost(src_fp32);
 }
 #endif
+
+TEST(DeviceEvent, CPU) {
+  using paddle::platform::CPUPlace;
+  auto place = CPUPlace();
+  DeviceEvent event(place);
+  auto& pool = DeviceContextPool::Instance();
+  auto* context = pool.Get(place);
+
+  // TODO(Aurelius84): All DeviceContext should has Record/Wait
+  event.Record(context);
+  event.SetFininshed();
+  bool status = event.Query();
+  ASSERT_EQ(status, true);
+}

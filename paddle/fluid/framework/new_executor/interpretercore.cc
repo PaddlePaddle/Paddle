@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
-#include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_gc_helper.h"
-
-#if defined(PADDLE_WITH_CUDA)
-using ::paddle::platform::kCUDA;
-USE_EVENT(kCUDA);
-#endif
 
 #include <unordered_set>
+
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_gc_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -74,27 +70,26 @@ std::vector<size_t> ParseEventVarIds(const Instruction& cur_instr,
 }
 
 void AssociateInputWithEvents(
-    const std::vector<size_t>& new_event_var_id, Instruction* next_instr,
-    std::map<size_t, std::shared_ptr<platform::CudaEvent>>* var_id2event,
+    const platform::Place& place, const std::vector<size_t>& new_event_var_id,
+    Instruction* next_instr,
+    std::map<size_t, std::shared_ptr<platform::DeviceEvent>>* var_id2event,
     bool is_sync) {
-#ifdef PADDLE_WITH_CUDA
   for (auto var_id : new_event_var_id) {
     if (var_id2event->count(var_id) == 0) {
-      auto cuda_event = std::make_shared<platform::CudaEvent>(
-          platform::get_cuda_flags(false, false, false));
-      var_id2event->emplace(var_id, std::move(cuda_event));
+      auto device_event = std::make_shared<platform::DeviceEvent>(
+          place, platform::GenerateDeviceEventFlag());
+      var_id2event->emplace(var_id, std::move(device_event));
     }
     // Add events for next_instr.inputs
     next_instr->intput_events_.emplace_back(var_id, var_id2event->at(var_id),
                                             is_sync);
   }
-#endif
 }
 
 void ParseDirectAndEventRunOps(
-    const std::vector<OpFuncNode>& op_func_nodes,
+    const platform::Place& place, const std::vector<OpFuncNode>& op_func_nodes,
     const std::vector<size_t>& downstream_ops, size_t op_index,
-    std::map<size_t, std::shared_ptr<platform::CudaEvent>>* var_id2event,
+    std::map<size_t, std::shared_ptr<platform::DeviceEvent>>* var_id2event,
     std::vector<Instruction>* instructions) {
   auto& op_func_type = op_func_nodes[op_index].type_;
   auto& cur_instr = instructions->at(op_index);
@@ -119,8 +114,8 @@ void ParseDirectAndEventRunOps(
 
       bool is_sync =
           (op_func_nodes[next_op_id].type_ == OpFuncType::kQueueSync);
-      AssociateInputWithEvents(new_event_var_ids, &next_instr, var_id2event,
-                               is_sync);
+      AssociateInputWithEvents(place, new_event_var_ids, &next_instr,
+                               var_id2event, is_sync);
 
       if (is_sync) {  // GPU -> CPU
         next_instruction.synchronize_run_.emplace_back(next_op_id);
@@ -128,7 +123,6 @@ void ParseDirectAndEventRunOps(
         next_instruction.event_wait_run_.emplace_back(next_op_id);
       }
     }
-#ifdef PADDLE_WITH_CUDA
     // Create events for these cross-stream vars
     VLOG(3) << cur_instr.kernel_func_.operator_base_->Type()
             << " event_var_ids.size: " << event_var_ids.size();
@@ -136,7 +130,6 @@ void ParseDirectAndEventRunOps(
       cur_instr.output_events_.emplace_back(var_id, var_id2event->at(var_id),
                                             false /*not used*/);
     }
-#endif
   }
 }
 }  // namespace
@@ -263,12 +256,10 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-#if defined(PADDLE_WITH_CUDA)
-    int device_type = static_cast<int>(paddle::platform::DeviceType::CUDA);
-    paddle::platform::DeviceOption dev_opt(
-        device_type, BOOST_GET_CONST(platform::CUDAPlace, place_).device);
-    gc_event_.emplace_back(dev_opt);
-#endif
+    // int device_type = static_cast<int>(paddle::platform::DeviceType::CUDA);
+    // paddle::platform::DeviceOption dev_opt(
+    //     device_type, BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+    gc_event_.emplace_back(place_);
 
     std::vector<size_t> vec_temp;
     for (auto& item : vec_instruction_[i].output_index_) {
@@ -287,8 +278,8 @@ void InterpreterCore::Convert() {
       }
     }
 
-    ParseDirectAndEventRunOps(vec_func_list_, filter_next, i, &var_id2event_,
-                              &vec_instruction_);
+    ParseDirectAndEventRunOps(place_, vec_func_list_, filter_next, i,
+                              &var_id2event_, &vec_instruction_);
 
     // checkout ouput
     for (auto& item : vec_instruction_[i].output_index_) {
@@ -466,7 +457,7 @@ void InterpreterCore::CheckGC(size_t instr_id,
 #if defined(PADDLE_WITH_CUDA)
       auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
           platform::DeviceContextPool::Instance().Get(place));
-      gc_event_[instr_id].Record(place, dev_ctx);
+      gc_event_[instr_id].Record(dev_ctx);
       gc_queue_->AddTask(
           [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
             while (!event->Query()) {
@@ -483,7 +474,7 @@ void InterpreterCore::CheckGC(size_t instr_id,
 #if defined(PADDLE_WITH_CUDA)
       auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
           platform::DeviceContextPool::Instance().Get(place));
-      gc_event_[instr_id].Record(place, dev_ctx);
+      gc_event_[instr_id].Record(dev_ctx);
       gc_queue_->AddTask(
           [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
             while (!event->Query()) {
@@ -857,34 +848,23 @@ void InterpreterCore::RecordEventInstruction(const Instruction& instruction,
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place_)) return;
 
-#ifdef PADDLE_WITH_CUDA
-  const platform::CUDADeviceContext* dev_ctx =
-      reinterpret_cast<const platform::CUDADeviceContext*>(
-          instruction.dev_ctx_);
   for (auto& event : instruction.output_events_) {
     VLOG(3) << "Record event in out_var_id: " << event.var_id_;
-    event.event_->Record(*(dev_ctx->context()->Stream()));
+    event.event_->Record(instruction.dev_ctx_);
   }
-#endif
 }
 
 void InterpreterCore::WaitOrSync(const std::vector<EventInter>& events,
                                  const platform::DeviceContext* dev_ctx) {
-#ifdef PADDLE_WITH_CUDA
-  auto* cuda_dev_ctx =
-      reinterpret_cast<const platform::CUDADeviceContext*>(dev_ctx);
-
-  for (auto& event : events) {
-    if (event.is_sync_) {
-      VLOG(3) << "host sync wait in_var_id " << event.var_id_;
-      event.event_->Synchronize();
+  for (auto& event_iter : events) {
+    if (event_iter.is_sync_) {
+      VLOG(3) << "host sync wait in_var_id " << event_iter.var_id_;
+      event_iter.event_->Wait(platform::kCPU, dev_ctx);
     } else {
-      VLOG(3) << "stream async wait in_var_id " << event.var_id_;
-      cuda_dev_ctx->context()->Stream()->WaitEvent(
-          event.event_->GetRawCudaEvent());
+      VLOG(3) << "stream async wait in_var_id " << event_iter.var_id_;
+      event_iter.event_->Wait(platform::kCUDA, dev_ctx);
     }
   }
-#endif
 }
 
 void InterpreterCore::StreamWaitEventOrSync(const Instruction& instruction) {

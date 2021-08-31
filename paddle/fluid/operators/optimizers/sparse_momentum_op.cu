@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device_event.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/optimizers/sparse_momentum_op.h"
+#include "paddle/fluid/platform/float16.h"
 
-namespace paddle {
-namespace platform {
-
-EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];
-EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];
-EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];
-EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];
-EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
-
-}  // namespace platform
-}  // namespace paddle
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(
+    sparse_momentum,
+    ops::SparseMomentumOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SparseMomentumOpKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SparseMomentumOpKernel<paddle::platform::CUDADeviceContext,
+                                paddle::platform::float16>);
