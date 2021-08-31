@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/top/cuda/math.h"
 
+#include "paddle/top/module/scale.h"
+#include "paddle/top/module/sign.h"
+
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
@@ -48,6 +51,11 @@ struct DivideFunctor {
  */
 
 template <typename T>
+void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  module::Sign<CUDAContext, T>(dev_ctx, x, out);
+}
+
+template <typename T>
 void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   auto size_prob = x.numel();
   const T* x_data = x.data<T>();
@@ -76,18 +84,30 @@ void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   PADDLE_ENFORCE_CUDA_SUCCESS(err);
 }
 
-template void Mean<float>(const CUDAContext& dev_ctx,
-                          const DenseTensor& x,
-                          DenseTensor* out);
-template void Mean<double>(const CUDAContext& dev_ctx,
-                           const DenseTensor& x,
-                           DenseTensor* out);
-template void Mean<paddle::platform::float16>(const CUDAContext& dev_ctx,
-                                              const DenseTensor& x,
-                                              DenseTensor* out);
+template <typename T>
+void Scale(const CUDAContext& dev_ctx,
+           const DenseTensor& x,
+           float scale,
+           float bias,
+           bool bias_after_scale,
+           DenseTensor* out) {
+  module::Scale<CUDAContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
+}
 
 }  // namespace pt
 
 using float16 = paddle::platform::float16;
 PT_REGISTER_KERNEL_3T(sign, CUDA, NCHW, pt::Sign, float, double, float16);
-// PT_REGISTER_KERNEL_2T(sign, CUDA, NCHW, pt::Sign, float, double);
+PT_REGISTER_KERNEL_3T(mean, CUDA, NCHW, pt::Mean, float, double, float16);
+PT_REGISTER_KERNEL_8T(scale,
+                      CUDA,
+                      NCHW,
+                      pt::Scale,
+                      float,
+                      double,
+                      float16,
+                      uint8_t,
+                      int8_t,
+                      int16_t,
+                      int,
+                      int64_t);

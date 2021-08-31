@@ -14,60 +14,7 @@ limitations under the License. */
 
 #include "paddle/top/mkldnn/math.h"
 
-#include "paddle/top/mkldnn/base.h"
-
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/float16.h"
 
-namespace pt {
-
-using MKLDNNDContext = paddle::platform::MKLDNNDeviceContext;
-
-template <typename T>
-void Scale(const MKLDNNDContext& dev_ctx,
-           const MKLDNNDenseTensor& x,
-           float scale,
-           float bias,
-           bool bias_after_scale,
-           MKLDNNDenseTensor* out) {
-  const auto mkldnn_engine = dev_ctx.GetEngine();
-
-  ScaleMKLDNNHandler<T> handler(mkldnn_engine,
-                                x,
-                                /*alpha=*/scale,
-                                /*beta=*/bias,
-                                bias_after_scale);
-
-  bool is_inplaced = x.allocation() && x.allocation() == out->allocation();
-
-  auto src_memory_p = handler.AcquireSrcMemory(&x);
-  auto dst_memory_p =
-      is_inplaced ? src_memory_p : handler.AcquireDstMemory(out);
-  auto activation_p = handler.AcquireForwardPrimitive();
-
-  auto& astream = MKLDNNDContext::tls().get_stream();
-  activation_p->execute(
-      astream,
-      {{MKLDNN_ARG_FROM, *src_memory_p}, {MKLDNN_ARG_TO, *dst_memory_p}});
-  astream.wait();
-
-  out->mutable_meta()->layout = DataLayout::kMKLDNN;
-  // TODO(chenweihang): format is also meta info, how to deal with here?
-  out->set_format(paddle::platform::GetMKLDNNFormat(*dst_memory_p));
-}
-
-template void Scale<float>(const MKLDNNDContext& dev_ctx,
-                           const MKLDNNDenseTensor& x,
-                           float scale,
-                           float bias,
-                           bool bias_after_scale,
-                           MKLDNNDenseTensor* out);
-
-template void Scale<paddle::platform::float16>(const MKLDNNDContext& dev_ctx,
-                                               const MKLDNNDenseTensor& x,
-                                               float scale,
-                                               float bias,
-                                               bool bias_after_scale,
-                                               MKLDNNDenseTensor* out);
-
-}  // namespace pt
+namespace pt {}  // namespace pt

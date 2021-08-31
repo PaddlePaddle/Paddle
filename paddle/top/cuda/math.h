@@ -18,8 +18,6 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include "paddle/top/core/dense_tensor.h"
-#include "paddle/top/module/scale.h"
-#include "paddle/top/module/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -29,15 +27,8 @@ namespace pt {
 using CUDAContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
-void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  module::Sign<CUDAContext, T>(dev_ctx, x, out);
-}
+void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
-// TODO(chenweihang): Perhaps the Kernel call should not be implemented by
-// calling functions, but by finding the Kernel call method from the global
-// KernelMap. For a kernel like cuda, if you have to call functions through
-// include header files, there will be many more function declarations and
-// redundant function call
 template <typename T>
 void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
@@ -47,9 +38,7 @@ void Scale(const CUDAContext& dev_ctx,
            float scale,
            float bias,
            bool bias_after_scale,
-           DenseTensor* out) {
-  module::Scale<CUDAContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
-}
+           DenseTensor* out);
 
 }  // namespace pt
 

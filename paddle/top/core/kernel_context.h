@@ -21,6 +21,7 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace pt {
 
@@ -55,6 +56,8 @@ class OpKernelContext {
     outputs_.emplace_back(output);
   }
 
+  void EmplaceBackAttr(paddle::any attr) { attrs_.emplace_back(attr); }
+
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
@@ -63,6 +66,16 @@ class OpKernelContext {
   template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {
     return static_cast<TensorType*>(outputs_.at(idx).get());
+  }
+
+  template <typename AttrType>
+  AttrType AttrAt(size_t idx) const {
+    try {
+      return paddle::any_cast<AttrType>(attrs_.at(idx));
+    } catch (paddle::bad_any_cast&) {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Attribute cast error in Op Kernel Context."));
+    }
   }
 
  private:

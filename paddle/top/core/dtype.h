@@ -17,6 +17,7 @@ limitations under the License. */
 #include <ostream>
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -25,6 +26,7 @@ namespace pt {
 using complex64 = paddle::platform::complex<float>;
 using complex128 = paddle::platform::complex<double>;
 using float16 = paddle::platform::float16;
+using bfloat16 = paddle::platform::bfloat16;
 
 /**
  * [ Why need new data type? ]
@@ -47,6 +49,7 @@ enum class DataType {
   kINT16,
   kINT32,
   kINT64,
+  kBFLOAT16,
   kFLOAT16,
   kFLOAT32,
   kFLOAT64,
@@ -64,6 +67,7 @@ std::ostream& operator<<(std::ostream& os, DataType dtype);
   _(int16_t, DataType::kINT16)       \
   _(int, DataType::kINT32)           \
   _(int64_t, DataType::kINT64)       \
+  _(bfloat16, DataType::kBFLOAT16)   \
   _(float16, DataType::kFLOAT16)     \
   _(float, DataType::kFLOAT32)       \
   _(double, DataType::kFLOAT64)      \

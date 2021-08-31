@@ -13,4 +13,4 @@ cc_library(dense_tensor SRCS dense_tensor.cc DEPS enforce data_type ddim allocat
 cc_library(selected_rows_tensor SRCS selected_rows.cc DEPS dense_tensor)
 
 cc_library(kernel_factory SRCS kernel_factory.cc DEPS enforce backend dtype layout)
-cc_library(kernel_context SRCS kernel_context.cc DEPS device_context)
+cc_library(kernel_context SRCS kernel_context.cc DEPS enforce device_context)

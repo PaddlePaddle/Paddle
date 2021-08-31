@@ -67,21 +67,23 @@ class OpKernelRegistrar {
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
-#define PT_REGISTER_STANDARD_KERNEL(                                      \
+#define PT_REGISTER_KERNEL_STANDARD(                                      \
     op_name, backend, layout, dtype, kernel_fn)                           \
+  template decltype(kernel_fn) kernel_fn;                                 \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
       __reg_pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__,  \
-      "PT_REGISTER_STANDARD_KERNEL must be called in global namespace."); \
+      "PT_REGISTER_KERNEL_STANDARD must be called in global namespace."); \
   static ::pt::OpKernelRegistrar                                          \
       __pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__ =     \
           ::pt::OpKernelRegistrar(#op_name,                               \
                                   BACKEND(backend),                       \
                                   DATALAYOUT(layout),                     \
                                   DATATYPE(dtype),                        \
-                                  kernel_fn)
+                                  PT_KERNEL(kernel_fn))
 
 #define PT_REGISTER_KERNEL_AUTO_SPECIALIZE(                               \
     op_name, backend, layout, meta_kernel_fn, dtype)                      \
+  template decltype(meta_kernel_fn<dtype>) meta_kernel_fn<dtype>;         \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
       __reg_pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__,  \
       "PT_REGISTER_KERNEL_AUTO_SPECIALIZE must be called in global "      \
@@ -107,7 +109,7 @@ class OpKernelRegistrar {
  * In most cases, the backend, dtype and layout of Op's input and output
  * are the same as OpKernel itself. In order to simplify the registration
  * writing, we provide the following simple kernel registration macro.
- * If it is an special case, please use PT_REGISTER_STANDARD_KERNEL
+ * If it is an special case, please use PT_REGISTER_KERNEL_STANDARD
  */
 // TODO(chenweihang): only work for single input and output now.
 // can we use function traits here to parse the input and output type?

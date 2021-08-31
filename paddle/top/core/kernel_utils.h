@@ -64,6 +64,24 @@ using XPUContext = paddle::platform::XPUDeviceContext;
     }                                                                        \
   }
 
+#define PT_SPECIALIZE_OpKernelCallHelper_FOR_ATTRIBUTE(attr_type)         \
+  template <typename... Tail>                                             \
+  struct OpKernelCallHelper<attr_type, Tail...> {                         \
+    template <int dev_ctx_idx,                                            \
+              int in_idx,                                                 \
+              int attr_idx,                                               \
+              int out_idx,                                                \
+              typename... PreviousArgs>                                   \
+    static void Compute(OpKernelContext* ctx, PreviousArgs&... pargs) {   \
+      static_assert(out_idx == 0,                                         \
+                    "Kernel's Attributes should appear before Outputs."); \
+      attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                   \
+      OpKernelCallHelper<Tail...>::                                       \
+          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
+              ctx, pargs..., arg);                                        \
+    }                                                                     \
+  }
+
 template <typename T>
 struct TypeTag {};
 
@@ -116,6 +134,9 @@ struct OpKernelImpl<Return (*)(Args...), kernel_fn> {
   };
 
   /* Attribute Helpers */
+
+  PT_SPECIALIZE_OpKernelCallHelper_FOR_ATTRIBUTE(bool);
+  PT_SPECIALIZE_OpKernelCallHelper_FOR_ATTRIBUTE(float);
 
   /* Output Helpers */
 
