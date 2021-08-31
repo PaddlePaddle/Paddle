@@ -197,15 +197,13 @@ static inline framework::Tensor MultiDotMatChainOrder(
     const std::vector<framework::DDim>& ins_dims, const bool save_result,
     std::vector<framework::Tensor>* results) {
   auto order = GetOrder(ins, ins_dims);
-  auto n = ins.size();
-  return MatChainMul<DeviceContext, T>(ctx, ins, ins_dims, order, 0, n - 1,
-                                       save_result, results);
+  return MatChainMul<DeviceContext, T>(ctx, ins, ins_dims, order, 0,
+                                       ins.size() - 1, save_result, results);
 }
 
 inline void GetDims(const std::vector<const framework::Tensor*>& ins,
                     std::vector<framework::DDim>* ins_dims) {
   const auto n = ins.size();
-  std::vector<framework::Tensor> real_ins;
   for (size_t i = 0; i < n; i++) {
     (*ins_dims)[i] = ins[i]->dims();
     if (i == 0 && (*ins_dims)[i].size() == 1) {
@@ -260,16 +258,12 @@ class MultiDotOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto inputs = ctx.MultiInput<Tensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
-    bool flag = 1;
     for (auto* input : inputs) {
-      if (!input->IsInitialized() || input->numel() == 0) {
-        flag = 0;
+      if (!input->IsInitialized()) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The inputs of multi_dot OP are Empty!"));
         break;
       }
-    }
-    if (flag == 0) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "All Inputs of multi_dot OP are Empty!"));
     }
     input_data_type = inputs[0]->type();
 
@@ -407,7 +401,6 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(b_dim, 0, true);
     T alpha = static_cast<T>(1.0);
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
-
     blas.MatMul(A, mat_dim_a, dout, mat_dim_dout, alpha, dB, T(0));
     blas.MatMul(dout, mat_dim_dout, B, mat_dim_b, alpha, dA, T(0));
   }
@@ -522,10 +515,8 @@ class MultiDotGradKernel : public framework::OpKernel<T> {
       const auto Ka = ins_dims[0][1];
       const auto Nb = ins_dims[1][1];
       const auto Nc = ins_dims[2][1];
-      const uint64_t cost1 =
-          Ma * Nb * (Ka + Nc);  // Ma * Ka * Nb + Ma * Nb * Nc;
-      const uint64_t cost2 =
-          Ka * Nc * (Nb + Ma);  // Ka * Nb * Nc + Ma * Ka * Nc;
+      const uint64_t cost1 = Ma * Nb * (Ka + Nc);
+      const uint64_t cost2 = Ka * Nc * (Nb + Ma);
       auto mat_dim_a = math::CreateMatrixDescriptor(ins_dims[0], 0, false);
       auto mat_dim_b = math::CreateMatrixDescriptor(ins_dims[1], 0, false);
       auto mat_dim_c = math::CreateMatrixDescriptor(ins_dims[2], 0, false);

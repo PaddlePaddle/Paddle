@@ -190,10 +190,6 @@ class TestMultiDotOpFirstAndLast1D(TestMultiDotOp):
         self.inputs = {'X': [('x0', self.A), ('x1', self.B)]}
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
-    def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-
 
 class TestMultiDotOp3MatFirstAndLast1D(TestMultiDotOp):
     def get_inputs_and_outputs(self):
