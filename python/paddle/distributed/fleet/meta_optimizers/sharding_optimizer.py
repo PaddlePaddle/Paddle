@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import unique_name, core
+from paddle.utils import unique_name
+from paddle.fluid import core
 import paddle.fluid as fluid
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
 from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op, is_update_op
@@ -25,8 +26,8 @@ from paddle.distributed.fleet.meta_optimizers.sharding.gradient_clip_helper impo
 from .sharding.offload_helper import OffloadHelper
 from paddle.distributed.fleet.meta_optimizers.sharding.prune import ProgramDeps
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-from paddle.fluid import layers
+from paddle.static import Program, name_scope, default_main_program, default_startup_program, device_guard
+from paddle.static import Variable
 
 import logging
 logger = logging.getLogger(__name__)
@@ -475,7 +476,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._dump_program_for_debug()
 
         # GPU need to wait server ready, GPU and NPU is Layered connection
-        if not core.is_compiled_with_npu():
+        if not paddle.device.is_compiled_with_npu():
             self._wait()
         return optimize_ops, params_grads
 
@@ -575,7 +576,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             False,
             sync=False)
 
-        if core.is_compiled_with_npu():
+        if paddle.device.is_compiled_with_npu():
             self._init_npu_pipeline_comm(startup_block)
             return
 
@@ -1383,7 +1384,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _create_gm_cond(self, main_block):
         # Add const var
-        acc_step_var = layers.create_global_var(
+        acc_step_var = paddle.static.create_global_var(
             name="gradient_merge_acc_step",
             shape=[1],
             value=int(self._gradient_merge_acc_step),
@@ -1391,7 +1392,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             persistable=True,
             force_cpu=True)
 
-        zero_var = layers.create_global_var(
+        zero_var = paddle.static.create_global_var(
             name="gradient_merge_zero",
             shape=[1],
             value=int(0),
@@ -1400,7 +1401,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             force_cpu=True)
 
         # Add step var & cond var
-        current_step_var = layers.create_global_var(
+        current_step_var = paddle.static.create_global_var(
             name="gradient_merge_current_step",
             shape=[1],
             value=int(0),
@@ -1408,7 +1409,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             persistable=True,
             force_cpu=True)
 
-        cond_var = layers.create_global_var(
+        cond_var = paddle.static.create_global_var(
             name="gradient_merge_cond",
             shape=[1],
             value=bool(0),

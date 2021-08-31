@@ -16,12 +16,12 @@ from __future__ import print_function
 import sys
 import paddle
 from paddle.optimizer import Optimizer
-from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.nn import ClipGradByGlobalNorm
 from ...utils.hybrid_parallel_util import fused_allreduce_gradients, sharding_reduce_gradients
 from ...base.topology import ParallelMode
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid import framework
-from paddle.fluid.framework import Variable
+from paddle.static import Variable
 from ...utils.log_util import logger
 from paddle.fluid import core
 from paddle.fluid import layers
@@ -47,24 +47,24 @@ class HybridParallelClipGrad:
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
-            square = layers.square(merge_grad)
-            sum_square = layers.reduce_sum(square)
+            square = paddle.square(merge_grad)
+            sum_square = paddle.sum(square)
             sum_square_list.append(sum_square)
 
         # all parameters have been filterd out
         if len(sum_square_list) == 0:
             return params_grads
 
-        global_norm_var = layers.concat(sum_square_list)
-        global_norm_var = layers.reduce_sum(global_norm_var)
+        global_norm_var = paddle.concat(sum_square_list)
+        global_norm_var = paddle.sum(global_norm_var)
         # add all reduce to get global norm in world size
         paddle.distributed.all_reduce(global_norm_var,
                                       self._hcg.get_check_parallel_group())
-        global_norm_var = layers.sqrt(global_norm_var)
+        global_norm_var = paddle.sqrt(global_norm_var)
 
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
-        clip_var = layers.elementwise_div(
+        clip_var = paddle.divide(
             x=max_global_norm,
             y=layers.elementwise_max(
                 x=global_norm_var, y=max_global_norm))
@@ -74,7 +74,7 @@ class HybridParallelClipGrad:
             if getattr(p, 'need_clip', True) is False:
                 params_and_grads.append((p, g))
                 continue
-            new_grad = layers.elementwise_mul(x=g, y=clip_var)
+            new_grad = paddle.multiply(x=g, y=clip_var)
             params_and_grads.append((p, new_grad))
 
         return params_and_grads

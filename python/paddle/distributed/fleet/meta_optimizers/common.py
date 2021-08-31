@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 import os
-
+import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core, unique_name
+from paddle.fluid import core
+from paddle.utils import unique_name
 from ..base.private_helper_function import wait_server_ready
 
 __all__ = []
@@ -58,7 +59,7 @@ class CollectiveHelper(object):
     def update_startup_program(self, startup_program=None):
         self.startup_program = startup_program
         if startup_program is None:
-            self.startup_program = fluid.default_startup_program()
+            self.startup_program = paddle.static.default_startup_program()
 
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker._worker_index()]
@@ -130,7 +131,7 @@ class CollectiveHelper(object):
             name=unique_name.generate('comm_id'),
             persistable=True,
             type=core.VarDesc.VarType.RAW)
-        if core.is_compiled_with_cuda():
+        if paddle.device.is_compiled_with_cuda():
             block.append_op(
                 type='c_gen_nccl_id',
                 inputs={},
@@ -152,7 +153,7 @@ class CollectiveHelper(object):
                     'ring_id': ring_id,
                     OP_ROLE_KEY: OpRole.Forward
                 })
-        elif core.is_compiled_with_xpu():
+        elif paddle.device.is_compiled_with_xpu():
             block.append_op(
                 type='c_gen_bkcl_id',
                 inputs={},
@@ -174,7 +175,7 @@ class CollectiveHelper(object):
                     'ring_id': ring_id,
                     OP_ROLE_KEY: OpRole.Forward
                 })
-        elif core.is_compiled_with_npu():
+        elif paddle.device.is_compiled_with_npu():
             block.append_op(
                 type='c_gen_hccl_id',
                 inputs={},

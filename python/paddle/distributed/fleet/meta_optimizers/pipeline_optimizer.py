@@ -16,7 +16,8 @@ from __future__ import division
 import os
 
 import paddle.fluid as fluid
-from paddle.fluid import core, unique_name
+from paddle.fluid import core
+from paddle.utils import unique_name
 from ..base.private_helper_function import wait_server_ready
 from paddle.fluid.optimizer import PipelineOptimizer as PO
 from .meta_optimizer_base import MetaOptimizerBase
@@ -171,7 +172,7 @@ class PipelineOptimizer(MetaOptimizerBase):
 
         self.wrapped_opt = PO(self.inner_opt,
                               num_microbatches=self.num_microbatches)
-        orig_startup_program = startup_program if startup_program else fluid.default_startup_program(
+        orig_startup_program = startup_program if startup_program else paddle.static.default_startup_program(
         )
         block = loss.block
         program = block.program

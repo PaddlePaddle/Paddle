@@ -15,13 +15,15 @@
 import warnings
 
 import os
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import Program
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.executor import Executor
-from paddle.fluid.parallel_executor import ParallelExecutor
-from paddle.fluid.framework import Variable, Parameter
+from paddle.static import Program
+from paddle.static import CompiledProgram
+from paddle.static import Executor
+from paddle.static import ParallelExecutor
+from paddle.static import Variable
+from paddle.fluid.framework import Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
 
@@ -562,7 +564,8 @@ class TheOnePSRuntime(RuntimeBase):
             trainer_config.mode, kwargs,
             trainer_config.get_communicator_flags())
         self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
-                                         string_hosts, fluid.global_scope())
+                                         string_hosts,
+                                         paddle.static.global_scope())
 
         dist_strategy = self.context["valid_strategy"]
 
@@ -602,11 +605,11 @@ class TheOnePSRuntime(RuntimeBase):
     def _push_sparse_param(self,
                            var_name,
                            table_id=-1,
-                           scope=fluid.global_scope()):
+                           scope=paddle.static.global_scope()):
         self._communicator.push_sparse_param(var_name, table_id, scope)
 
     def _get_executor(self):
-        executor = fluid.Executor(fluid.CPUPlace())
+        executor = paddle.static.Executor(paddle.CPUPlace())
         if self.role_maker._is_heter_parameter_server_mode:
             heter_worker_device_guard = self.context[
                 "valid_strategy"].a_sync_configs[
@@ -617,11 +620,11 @@ class TheOnePSRuntime(RuntimeBase):
             if self.role_maker._is_heter_worker():
                 if heter_worker_device_guard == "GPU":
                     executor = Executor(
-                        fluid.CUDAPlace(
+                        paddle.CUDAPlace(
                             int(os.getenv("FLAGS_selected_gpus", "0"))))
                 elif heter_worker_device_guard == "XPU":
                     executor = Executor(
-                        fluid.XPUPlace(
+                        paddle.XPUPlace(
                             int(os.getenv("FLAGS_selected_xpus", "0"))))
         return executor
 
@@ -885,12 +888,12 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_heter_worker(self):
         executor = self._get_executor()
-        executor.run(fluid.default_startup_program())
+        executor.run(paddle.static.default_startup_program())
         self._init_worker()
 
     def _run_heter_worker(self):
         executor = self._get_executor()
-        executor.run(fluid.default_main_program())
+        executor.run(paddle.static.default_main_program())
 
     def _stop_worker(self):
         self._communicator.stop()

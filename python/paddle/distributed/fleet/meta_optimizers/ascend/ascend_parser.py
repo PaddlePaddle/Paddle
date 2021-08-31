@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.core as core
 import numpy as np

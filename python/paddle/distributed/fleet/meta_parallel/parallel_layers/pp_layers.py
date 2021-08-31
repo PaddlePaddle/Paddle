@@ -21,7 +21,7 @@ import random
 from functools import partial
 
 import paddle
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 from ...utils.log_util import logger, layer_to_str
 from ..pp_utils.utils import _hp_recompute, _initialize_recompute_setting
 

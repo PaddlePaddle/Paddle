@@ -18,8 +18,8 @@ import collections
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid import core, unique_name
-from paddle.fluid.dygraph import Layer, LayerList
+from paddle.utils import unique_name
+from paddle.nn import Layer, LayerList
 from ..base.private_helper_function import wait_server_ready
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_loss_grad_op, is_backward_op, is_optimizer_op
@@ -111,7 +111,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         self.rank = self.role_maker._worker_index()
         self.nranks = self.role_maker._worker_num()
         if startup_program is None:
-            startup_program = fluid.default_startup_program()
+            startup_program = paddle.static.default_startup_program()
         self.startup_program = startup_program
 
         block = loss.block

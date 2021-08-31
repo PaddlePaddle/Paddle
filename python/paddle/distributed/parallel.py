@@ -28,6 +28,8 @@ from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
+from paddle.device import is_compiled_with_cuda
+from paddle.device import is_compiled_with_xpu
 
 __all__ = []
 
@@ -122,7 +124,7 @@ def init_parallel_env():
         return
 
     # 1. gpu xpu check, must be gpu or xpu
-    if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
+    if not is_compiled_with_cuda() and not is_compiled_with_xpu():
         raise NotImplementedError(
             "Cannot initialize parallel environment in CPU-only version, now only "
             "supports initializing the GPU and XPU parallel environment. Please recompile "
@@ -136,9 +138,9 @@ def init_parallel_env():
                              "environment variable %s is needed, but not set." %
                              var_name)
 
-    if core.is_compiled_with_cuda():
+    if is_compiled_with_cuda():
         _check_var_exists("FLAGS_selected_gpus")
-    elif core.is_compiled_with_xpu():
+    elif is_compiled_with_xpu():
         _check_var_exists('FLAGS_selected_xpus')
 
     _check_var_exists("PADDLE_TRAINER_ID")
@@ -180,17 +182,17 @@ def init_parallel_env():
     # directly, if they want to switch default place,
     # they need to call a function to change default place,
     # here just set correctly place to users
-    if core.is_compiled_with_cuda():
+    if is_compiled_with_cuda():
         place = core.CUDAPlace(parallel_env.device_id)
-    elif core.is_compiled_with_xpu():
+    elif is_compiled_with_xpu():
         place = core.XPUPlace(parallel_env.device_id)
     _set_expected_place(place)
 
     # init nccl or bkcl context
-    if core.is_compiled_with_cuda():
+    if is_compiled_with_cuda():
         parallel_helper._set_parallel_ctx(
             core.NCCLParallelContext(strategy, place))
-    elif core.is_compiled_with_xpu():
+    elif is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place))
 

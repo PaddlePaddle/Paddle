@@ -15,7 +15,7 @@ from __future__ import print_function
 from __future__ import division
 
 import paddle.fluid as fluid
-from paddle.fluid import core, unique_name
+from paddle.utils import unique_name
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 
@@ -142,7 +142,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         self.current_endpoint = self.endpoints[self.role_maker._worker_index()]
         self.startup_program = startup_program
         if startup_program is None:
-            self.startup_program = fluid.default_startup_program()
+            self.startup_program = paddle.static.default_startup_program()
 
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, self.startup_program, parameter_list, no_grad_set)

@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle.fluid import core, framework, unique_name
+from paddle.fluid import core, framework
+from paddle.utils import unique_name
 from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
