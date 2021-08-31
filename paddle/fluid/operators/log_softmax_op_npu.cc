@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/log_softmax_op.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 namespace paddle {
 namespace operators {
@@ -43,9 +42,4 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
     log_softmax,
-    ops::LogSoftmaxNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::LogSoftmaxNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    // ops::LogSoftmaxNPUKernel<paddle::platform::NPUDeviceContext, int>, //
-    // used to debug
-    ops::LogSoftmaxNPUKernel<paddle::platform::NPUDeviceContext,
-                             paddle::platform::float16>);
+    ops::LogSoftmaxNPUKernel<paddle::platform::NPUDeviceContext, float>);

@@ -22,25 +22,9 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.nn.functional as F
+from test_log_softmax import ref_log_softmax, test_log_softmax
 paddle.enable_static()
 np.random.seed(10)
-
-
-def ref_log_softmax(x):
-    shiftx = (x - np.max(x))
-    out = shiftx - np.log(np.exp(shiftx).sum())
-    return out
-
-
-def ref_log_softmax_grad(x, axis):
-    if axis < 0:
-        axis += len(x.shape)
-    out = np.apply_along_axis(ref_log_softmax, axis, x)
-    axis_dim = x.shape[axis]
-    dout = np.full_like(x, fill_value=1. / x.size)
-    dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
-        axis_dim, axis=axis)
-    return dx
 
 
 class TestLogSoftmaxNPUOp(OpTest):
