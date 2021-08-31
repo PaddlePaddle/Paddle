@@ -102,14 +102,13 @@ class InterpreterProfiler {
   }
 
   void TotalCUDAAllocatedMemorySize(const platform::Place& place) {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "Only support CUDAPlace, but receive %s.", place));
-    auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, place);
+    if (platform::is_gpu_place(place)) {
+      auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, place);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    cost_info_.device_total_memory_bytes =
-        platform::RecordedCudaMallocSize(cuda_place.device);
+      cost_info_.device_total_memory_bytes =
+          platform::RecordedCudaMallocSize(cuda_place.device);
 #endif
+    }
   }
 
   const CostInfo& GetCostInfo() const { return cost_info_; }
