@@ -60,6 +60,11 @@ def current_stream(device=None):
     return core._get_current_stream(device_id)
 
 
+def set_current_stream(stream):
+
+    return core._set_current_stream(stream)
+
+
 def synchronize(device=None):
     '''
     Wait for the compute on the given CUDA device to finish.
