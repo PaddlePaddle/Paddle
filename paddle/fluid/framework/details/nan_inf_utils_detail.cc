@@ -15,6 +15,11 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/operators/npu_op_runner.h"
+#endif
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -400,6 +405,65 @@ void CheckVarHasNanOrInf(const std::string& op_type,
   CheckVarHasNanOrInf(op_type, var_name, var, place);
 }
 
+#ifdef PADDLE_WITH_ASCEND_CL
+using NpuOpRunner = paddle::operators::NpuOpRunner;
+constexpr int FLOAT_STATUS_SIZE = 8;
+
+static framework::Tensor& npu_float_status() {
+  static framework::Tensor float_status;
+  return float_status;
+}
+
+void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
+                                 const framework::Scope& scope,
+                                 const platform::Place& place) {
+  if (!platform::is_npu_place(place)) return;
+
+  auto* dev_ctx = reinterpret_cast<platform::NPUDeviceContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
+  auto stream = dev_ctx->stream();
+
+  auto& flag = npu_float_status();
+  flag.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
+  NpuOpRunner("NPUAllocFloatStatus", {}, {flag}).Run(stream);
+
+  framework::Tensor tmp;
+  tmp.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
+  NpuOpRunner("NPUClearFloatStatus", {tmp}, {flag}).Run(stream);
+}
+
+void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
+                           const framework::Scope& scope,
+                           const platform::Place& place) {
+  if (!platform::is_npu_place(place)) return;
+
+  auto* dev_ctx = reinterpret_cast<platform::NPUDeviceContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
+  auto stream = dev_ctx->stream();
+
+  auto& flag = npu_float_status();
+  Tensor tmp;
+  tmp.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
+  // NPUGetFloatStatus updates data on input in-place.
+  // tmp is only placeholder.
+  NpuOpRunner("NPUGetFloatStatus", {flag}, {tmp}).Run(stream);
+
+  framework::Tensor cpu_tensor;
+  auto cpu_place = platform::CPUPlace();
+  float* cpu_data = static_cast<float*>(
+      cpu_tensor.mutable_data<float>({FLOAT_STATUS_SIZE}, cpu_place));
+
+  framework::TensorCopySync(flag, cpu_place, &cpu_tensor);
+  float sum = 0.0;
+  for (int i = 0; i < FLOAT_STATUS_SIZE; ++i) {
+    sum += cpu_data[i];
+  }
+  PADDLE_ENFORCE_LT(
+      sum, 1.0, platform::errors::PreconditionNotMet(
+                    "Operator %s contains Nan/Inf.", op.DebugStringEx(&scope)));
+}
+#endif
+
 bool IsSkipOp(const framework::OperatorBase& op) {
   if (op_type_nan_inf_white_list().count(op.Type()) != 0) return true;
 
@@ -421,6 +485,13 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 
   if (IsSkipOp(op)) return;
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (platform::is_npu_place(place)) {
+    NPUCheckOpHasNanOrInf(op, exec_scope, place);
+    return;
+  }
+#endif
 
   if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
     // NOTE. vname may destruct in the end of this func.
