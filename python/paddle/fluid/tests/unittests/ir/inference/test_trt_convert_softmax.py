@@ -19,7 +19,7 @@ import paddle.inference as paddle_infer
 import unittest
 
 
-class TrtConvertScaleTest(TrtLayerAutoScanTest):
+class TrtConvertSoftmaxTest(TrtLayerAutoScanTest):
     def setUp(self):
         self.ops_config = [{
             "op_type": "softmax",
@@ -80,7 +80,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
         self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-2)
 
 
-class DynamicTrtConvertScaleTest(TrtLayerAutoScanTest):
+class DynamicTrtConvertSoftmaxTest(TrtLayerAutoScanTest):
     def setUp(self):
         self.ops_config = [{
             "op_type": "softmax",
