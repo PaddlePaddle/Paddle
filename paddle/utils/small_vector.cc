@@ -10,49 +10,46 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "SmallVector.h"
+#include "small_vector.h"
 #include <cstdint>
 #include <stdexcept>
 using namespace paddle;
 
 inline void *safe_malloc(size_t Sz) {
-   void *Result = std::malloc(Sz);
-   if (Result == nullptr) {
-     // It is implementation-defined whether allocation occurs if the space
-     // requested is zero (ISO/IEC 9899:2018 7.22.3). Retry, requesting
-     // non-zero, if the space requested was zero.
-     if (Sz == 0)
-       return safe_malloc(1);
-     throw std::bad_alloc();
-   }
-   return Result;
- }
+  void *Result = std::malloc(Sz);
+  if (Result == nullptr) {
+    // It is implementation-defined whether allocation occurs if the space
+    // requested is zero (ISO/IEC 9899:2018 7.22.3). Retry, requesting
+    // non-zero, if the space requested was zero.
+    if (Sz == 0) return safe_malloc(1);
+    throw std::bad_alloc();
+  }
+  return Result;
+}
 
- inline void *safe_calloc(size_t Count, size_t Sz) {
-   void *Result = std::calloc(Count, Sz);
-   if (Result == nullptr) {
-     // It is implementation-defined whether allocation occurs if the space
-     // requested is zero (ISO/IEC 9899:2018 7.22.3). Retry, requesting
-     // non-zero, if the space requested was zero.
-     if (Count == 0 || Sz == 0)
-       return safe_malloc(1);
-     throw std::bad_alloc();
-   }
-   return Result;
- }
-  
- inline void *safe_realloc(void *Ptr, size_t Sz) {
-   void *Result = std::realloc(Ptr, Sz);
-   if (Result == nullptr) {
-     // It is implementation-defined whether allocation occurs if the space
-     // requested is zero (ISO/IEC 9899:2018 7.22.3). Retry, requesting
-     // non-zero, if the space requested was zero.
-     if (Sz == 0)
-       return safe_malloc(1);
-     throw std::bad_alloc();
-   }
-   return Result;
- }
+inline void *safe_calloc(size_t Count, size_t Sz) {
+  void *Result = std::calloc(Count, Sz);
+  if (Result == nullptr) {
+    // It is implementation-defined whether allocation occurs if the space
+    // requested is zero (ISO/IEC 9899:2018 7.22.3). Retry, requesting
+    // non-zero, if the space requested was zero.
+    if (Count == 0 || Sz == 0) return safe_malloc(1);
+    throw std::bad_alloc();
+  }
+  return Result;
+}
+
+inline void *safe_realloc(void *Ptr, size_t Sz) {
+  void *Result = std::realloc(Ptr, Sz);
+  if (Result == nullptr) {
+    // It is implementation-defined whether allocation occurs if the space
+    // requested is zero (ISO/IEC 9899:2018 7.22.3). Retry, requesting
+    // non-zero, if the space requested was zero.
+    if (Sz == 0) return safe_malloc(1);
+    throw std::bad_alloc();
+  }
+  return Result;
+}
 
 // Check that no bytes are wasted and everything is well-aligned.
 namespace {
@@ -110,25 +107,24 @@ static size_t getNewCapacity(size_t MinSize, size_t TSize, size_t OldCapacity) {
 
   // Ensure we can fit the new capacity.
   // This is only going to be applicable when the capacity is 32 bit.
-  if (MinSize > MaxSize)
-    report_size_overflow(MinSize, MaxSize);
+  if (MinSize > MaxSize) report_size_overflow(MinSize, MaxSize);
 
   // Ensure we can meet the guarantee of space for at least one more element.
   // The above check alone will not catch the case where grow is called with a
   // default MinSize of 0, but the current capacity cannot be increased.
   // This is only going to be applicable when the capacity is 32 bit.
-  if (OldCapacity == MaxSize)
-    report_at_maximum_capacity(MaxSize);
+  if (OldCapacity == MaxSize) report_at_maximum_capacity(MaxSize);
 
   // In theory 2*capacity can overflow if the capacity is 64 bit, but the
   // original capacity would never be large enough for this to be a problem.
-  size_t NewCapacity = 2 * OldCapacity + 1; // Always grow.
+  size_t NewCapacity = 2 * OldCapacity + 1;  // Always grow.
   return std::min(std::max(NewCapacity, MinSize), MaxSize);
 }
 
 // Note: Moving this function into the header may cause performance regression.
 template <class Size_T>
-void *SmallVectorBase<Size_T>::mallocForGrow(size_t MinSize, size_t TSize,
+void *SmallVectorBase<Size_T>::mallocForGrow(size_t MinSize,
+                                             size_t TSize,
                                              size_t &NewCapacity) {
   NewCapacity = getNewCapacity<Size_T>(MinSize, TSize, this->capacity());
   return safe_malloc(NewCapacity * TSize);
@@ -136,7 +132,8 @@ void *SmallVectorBase<Size_T>::mallocForGrow(size_t MinSize, size_t TSize,
 
 // Note: Moving this function into the header may cause performance regression.
 template <class Size_T>
-void SmallVectorBase<Size_T>::grow_pod(void *FirstEl, size_t MinSize,
+void SmallVectorBase<Size_T>::grow_pod(void *FirstEl,
+                                       size_t MinSize,
                                        size_t TSize) {
   size_t NewCapacity = getNewCapacity<Size_T>(MinSize, TSize, this->capacity());
   void *NewElts;
