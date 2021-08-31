@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import paddle
 from op_test import OpTest
 
 
@@ -67,6 +68,25 @@ class TestFlattenOpSixDims(TestFlattenOp):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4
         self.new_shape = (36, 16)
+
+
+class TestStaticFlattenPythonAPI(unittest.TestCase):
+    def execute_api(self, x, axis=1):
+        return fluid.layers.flatten(x, axis=axis)
+
+    def test_static_api(self):
+        paddle.enable_static()
+        np_x = np.random.rand(2, 3, 4, 4).astype('float32')
+
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
+            x = paddle.static.data(
+                name="x", shape=[-1, 3, -1, -1], dtype='float32')
+            out = self.execute_api(x, axis=2)
+
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
+        fetch_out = exe.run(main_prog, feed={"x": np_x}, fetch_list=[out])
+        self.assertTrue((6, 16) == fetch_out[0].shape)
 
 
 class TestFlatten2OpError(unittest.TestCase):
