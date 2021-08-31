@@ -2019,20 +2019,3 @@ def sigmoid_focal_loss(logit,
         loss = paddle.sum(loss, name=name)
 
     return loss
-
-
-if __name__ == "__main__":
-    input_arr = np.array([], dtype=np.float32)
-    input = paddle.to_tensor(np.reshape(input_arr, (0, 0)), dtype='float32')
-
-    label = paddle.to_tensor([], dtype='float32')
-
-    weight = paddle.to_tensor([], dtype='float32')
-
-    result = cross_entropy(
-        input,
-        label,
-        weight=weight,
-        ignore_index=-100,
-        soft_label=False,
-        axis=-1)
