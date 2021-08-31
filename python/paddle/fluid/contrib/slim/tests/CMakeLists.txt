@@ -246,11 +246,10 @@ if(LINUX AND WITH_MKLDNN)
 	set(QUANT2_GRU_OPS_TO_QUANTIZE "multi_gru")
 
 	# Quant2 LSTM
-	set(QUANT2_LSTM_MODEL_ARCHIVE "LSTM_quant.tar.gz")
-	set(QUANT2_LSTM_MODEL_DIR "${QUANT_INSTALL_DIR}/LSTM_quant2")
-	download_quant_model(${QUANT2_LSTM_MODEL_DIR} ${QUANT2_LSTM_MODEL_ARCHIVE})
+	set(QUANT2_LSTM_MODEL_ARCHIVE "lstm_quant.tar.gz")
+	set(QUANT2_LSTM_MODEL_DIR "${QUANT_INSTALL_DIR}/lstm_quant2")
+	download_quant_model(${QUANT2_LSTM_MODEL_DIR} ${QUANT2_LSTM_MODEL_ARCHIVE} 40a693803b12ee9e251258f32559abcb)
 	set(QUANT2_LSTM_OPS_TO_QUANTIZE "fusion_lstm")
-
 
 	### Save FP32 model or INT8 model from Quant model
         
