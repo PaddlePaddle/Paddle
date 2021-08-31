@@ -85,6 +85,23 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       auto y_dims = ctx->GetInputDim("Y");
       int max_dim = std::max(x_dims.size(), y_dims.size());
       int axis = ctx->Attrs().Get<int>("axis");
+      if (x_dims.size() == y_dims.size()) {
+        for (int i = 0; i < x_dims.size(); i++) {
+          PADDLE_ENFORCE_EQ(
+              x_dims[i], y_dims[i],
+              platform::errors::InvalidArgument(
+                  "the size of tensor X (%s) must be equal to the size of "
+                  "tensor Y (%s) at axis %s while the dimension of tensor X is "
+                  "equal to the dimension of tensor Y",
+                  x_dims[i], y_dims[i], i));
+        }
+        PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0), true,
+                          platform::errors::InvalidArgument(
+                              "axis should be -1 or 0 while the dimension of "
+                              "tensor X (%s) is equal to the dimension of "
+                              "tensor Y (%s), but received axis: %s",
+                              x_dims.size(), y_dims.size(), axis));
+      }
       PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim), true,
                         platform::errors::InvalidArgument(
                             "The axis range must be [%s, %s), but axis is %s. "
