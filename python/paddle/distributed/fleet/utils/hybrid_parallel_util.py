@@ -48,7 +48,7 @@ def _apply_collective_grads(parameters, comm_group):
         if comm_group is None:
             # support for DataParallel
             div_factor = paddle.to_tensor(
-            dist.get_world_size(), dtype=coalesced_grad.dtype)
+                dist.get_world_size(), dtype=coalesced_grad.dtype)
         else:
             div_factor = paddle.to_tensor(
                 comm_group.nranks, dtype=coalesced_grad.dtype)
