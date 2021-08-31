@@ -31,7 +31,7 @@ DISABLE_ERROR_ENV_NAME = "TRANSLATOR_DISABLE_NEW_ERROR"
 DEFAULT_DISABLE_NEW_ERROR = 0
 
 SOURCE_CODE_RANGE = 5
-BLANK_COUNT_BDFORE_FILE_STR = 4
+BLANK_COUNT_BEFORE_FILE_STR = 4
 
 
 def attach_error_data(error, in_runtime=False):
@@ -87,7 +87,7 @@ class TraceBackFrame(OriginInfo):
     def formated_message(self):
         # self.source_code may be empty in some functions.
         # For example, decorator generated function
-        return ' ' * BLANK_COUNT_BDFORE_FILE_STR + 'File "{}", line {}, in {}\n\t{}'.format(
+        return ' ' * BLANK_COUNT_BEFORE_FILE_STR + 'File "{}", line {}, in {}\n\t{}'.format(
             self.location.filepath, self.location.lineno, self.function_name,
             self.source_code.lstrip()
             if isinstance(self.source_code, str) else self.source_code)
@@ -120,11 +120,11 @@ class TraceBackFrameRange(OriginInfo):
         min_black_count = min(blank_count)
         for i in range(len(self.source_code)):
             self.source_code[i] = ' ' * (blank_count[i] - min_black_count +
-                                         BLANK_COUNT_BDFORE_FILE_STR * 2
+                                         BLANK_COUNT_BEFORE_FILE_STR * 2
                                          ) + self.source_code[i]
 
     def formated_message(self):
-        msg = ' ' * BLANK_COUNT_BDFORE_FILE_STR + 'File "{}", line {}, in {}\n'.format(
+        msg = ' ' * BLANK_COUNT_BEFORE_FILE_STR + 'File "{}", line {}, in {}\n'.format(
             self.location.filepath, self.location.lineno, self.function_name)
         # add empty line after range code
         return msg + '\n'.join(self.source_code) + '\n'
@@ -195,7 +195,7 @@ class ErrorData(object):
         format_exception = traceback.format_exception_only(self.error_type,
                                                            self.error_value)
         error_message = [
-            " " * BLANK_COUNT_BDFORE_FILE_STR + line
+            " " * BLANK_COUNT_BEFORE_FILE_STR + line
             for line in format_exception
         ]
         message_lines.extend(error_message)
