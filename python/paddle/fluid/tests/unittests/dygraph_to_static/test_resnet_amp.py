@@ -24,7 +24,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
-from test_resnet import ResNet, reader_decorator, optimizer_setting, SEED
+from test_resnet import ResNet, optimizer_setting, SEED
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
@@ -47,14 +47,6 @@ def train(to_static, build_strategy=None):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
-        train_reader = paddle.batch(
-            reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
-            batch_size=batch_size,
-            drop_last=True)
-        data_loader = fluid.io.DataLoader.from_generator(
-            capacity=5, iterable=True)
-        data_loader.set_sample_list_generator(train_reader)
-
         resnet = ResNet()
         if to_static:
             resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
@@ -67,17 +59,24 @@ def train(to_static, build_strategy=None):
             total_acc5 = 0.0
             total_sample = 0
 
-            for batch_id, data in enumerate(data_loader()):
+            for batch_id in range(100):
                 start_time = time.time()
-                img, label = data
+                img = paddle.to_tensor(
+                    np.random.random([batch_size, 3, 224, 224]).astype(
+                        'float32'))
+                label = paddle.to_tensor(
+                    np.random.randint(
+                        0, 100, [batch_size, 1], dtype='int64'))
+                img.stop_gradient = True
+                label.stop_gradient = True
 
                 with paddle.amp.auto_cast():
                     pred = resnet(img)
-                    # NOTE(Aurelius84): The followding cross_entropy seems to bring out a
+                    # FIXME(Aurelius84): The followding cross_entropy seems to bring out a
                     # precision problem, need to figure out the underlying reason.
                     # If we remove it, the loss between dygraph and dy2stat is exactly same.
                     loss = fluid.layers.cross_entropy(input=pred, label=label)
-                avg_loss = fluid.layers.mean(x=loss)
+                avg_loss = fluid.layers.mean(x=pred)
                 acc_top1 = fluid.layers.accuracy(input=pred, label=label, k=1)
                 acc_top5 = fluid.layers.accuracy(input=pred, label=label, k=5)
 
@@ -97,7 +96,6 @@ def train(to_static, build_strategy=None):
                         ( epoch, batch_id, total_loss.numpy() / total_sample, \
                             total_acc1.numpy() / total_sample, total_acc5.numpy() / total_sample, end_time-start_time))
                 if batch_id == 10:
-                    data_loader._reset()
                     break
 
     return total_loss.numpy()
@@ -112,8 +110,7 @@ class TestResnet(unittest.TestCase):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
         self.assertTrue(
-            np.allclose(
-                static_loss, dygraph_loss, atol=1e-1),
+            np.allclose(static_loss, dygraph_loss),
             msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
                                                              dygraph_loss))
 
