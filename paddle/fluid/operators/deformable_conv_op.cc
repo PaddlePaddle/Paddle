@@ -41,6 +41,12 @@ class DeformableConvOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) The output. "
               "The shape of the output tensor is "
               "[N, num_filters, out_height, out_width]].");
+#ifdef PADDLE_WITH_ASCEND_CL
+    AddOutput("OffsetOut",
+              "(Tensor) The offset output. "
+              "The shape of the offset output tensor is "
+              "[N, 3 * kernel_h * kernel_w, out_height, out_width]].");
+#endif
     AddAttr<std::vector<int>>("strides",
                               "(vector<int> default:{1, 1}), the "
                               "strides(h_stride, w_stride) of "
@@ -117,6 +123,10 @@ class DeformableConvOp : public framework::OperatorWithKernel {
                    "deformable_conv");
     OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output",
                    "deformable_conv");
+#ifdef PADDLE_WITH_ASCEND_CL
+    OP_INOUT_CHECK(ctx->HasOutput("OffsetOut"), "OffsetOut", "OffsetOut",
+                   "deformable_conv");
+#endif
 
     auto in_dims = ctx->GetInputDim("Input");
     auto filter_dims = ctx->GetInputDim("Filter");
@@ -258,7 +268,13 @@ class DeformableConvOp : public framework::OperatorWithKernel {
                             deformable_groups));
     }
 
+    
+
     ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+#ifdef PADDLE_WITH_ASCEND_CL
+    std::vector<int64_t> offset_out_shape({in_dims[0], in_dims[1], offset_dims[2] * filter_dims[2], offset_dims[3] * filter_dims[3]});
+    ctx->SetOutputDim("OffsetOut", framework::make_ddim(offset_out_shape));
+#endif
   }
 
  protected:
@@ -283,6 +299,9 @@ class DeformableConvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Offset", this->Input("Offset"));
     op->SetInput("Mask", this->Input("Mask"));
     op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
+#ifdef PADDLE_WITH_ASCEND_CL
+    op->SetInput("OffsetOut", this->Output("OffsetOut"));
+#endif
 
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
