@@ -42,7 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/new_exec.h"
+#include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -524,6 +524,12 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("from_dlpack", [](py::capsule *dltensor) {
     DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
         PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
+
+    PADDLE_ENFORCE_NOT_NULL(
+        dmt, platform::errors::InvalidArgument(
+                 "from_dlpack received an invalid capsule. "
+                 "Note that a DLPack tensor can be consumed only once."));
+
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
     framework::Tensor tensor;
@@ -1945,32 +1951,31 @@ All parameter, weight, gradient are variables in Paddle.
                  fetch_vars);
       });
 
-  py::class_<framework::InterpreterCore>(m, "InterpreterCore")
+  py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
       .def(py::init<const platform::Place &, const ProgramDesc &,
                     const ProgramDesc &, Scope *>())
       .def("run",
-           [](InterpreterCore &self,
+           [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict,
-              std::vector<std::string> vec_fetch_name) {
-             pybind11::gil_scoped_release release;
-             std::vector<framework::Tensor> vec_tensor;
-             std::vector<std::string> vec_name;
+              std::vector<std::string> fetch_names) {
+             std::vector<framework::Tensor> feed_tensors;
+             std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
                framework::LoDTensor t;
                SetTensorFromPyArray<platform::CPUPlace>(
                    &t, item.second, platform::CPUPlace(), false);
-               vec_name.push_back(item.first);
-               vec_tensor.push_back(t);
+               feed_names.push_back(item.first);
+               feed_tensors.push_back(t);
              }
 
-             std::vector<framework::Tensor> vec_out;
-             self.run(vec_name, vec_tensor, vec_fetch_name, &vec_out);
-             std::vector<py::array> vec_ret;
-             for (size_t i = 0; i < vec_out.size(); ++i) {
-               vec_ret.push_back(TensorToPyArray(vec_out[i], true));
+             paddle::framework::FetchList ret;
+             {
+               pybind11::gil_scoped_release release;
+               ret = self.Run(feed_names, feed_tensors, fetch_names);
              }
-             return vec_ret;
+
+             return py::cast(std::move(ret));
            });
 
   m.def("init_gflags", framework::InitGflags);

@@ -25,6 +25,7 @@ add_subdirectory(ir)
 add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
+add_subdirectory(new_executor)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
@@ -446,3 +447,5 @@ cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 if(WITH_TESTING AND TEST selected_rows_test)
   set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
 endif()
+
+cc_test(scope_guard_test SRCS scope_guard_test.cc)
