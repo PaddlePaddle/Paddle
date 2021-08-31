@@ -69,7 +69,8 @@ def start_local_trainers(cluster,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-            "PADDLE_PARALLEL_CPU": "1",
+            "PADDLE_DISTRI_BACKEND":
+            "gloo",  # make init_parallel_env get 'gloo' argument.
         }
 
         current_env.update(proc_env)

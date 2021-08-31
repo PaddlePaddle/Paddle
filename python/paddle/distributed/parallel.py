@@ -55,12 +55,44 @@ def _start_kv_server(port, http_server_d, size):
     http_server.stop()
 
 
-def init_parallel_env():
+def _check_backend(backend):
+    if backend not in ['nccl', 'gloo', 'bkcl', 'auto']:
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "backend argument can only be one of 'nccl', 'gloo', 'bkcl', 'auto', but got %s"
+            % backend)
+
+    if backend == 'nccl' and not core.is_compiled_with_cuda():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with cuda but you assign 'nccl' as backend."
+        )
+
+    if backend == 'bkcl' and not core.is_compiled_with_xpu():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
+        )
+
+    if backend in ['auto', 'nccl', 'bkcl'] and (core.is_compiled_with_cuda() or
+                                                core.is_compiled_with_xpu()):
+        # passes 'auto' and can use cuda or xpu, use the default logics. so return False
+        return False
+    else:
+        return True
+
+
+def init_parallel_env(backend='auto'):
     """
     Initialize parallel training environment in dynamic graph mode.
 
     .. note::
         Now initialize both `NCCL` and `GLOO` contexts for communication.
+
+    Args:
+        backend (string): A string represents the backend used by DataParallel,
+            should be one of 'gloo'(for cpu), 'nccl'(for cuda), 'bkcl'(for xpu), 'auto'(auto detect).
+            The auto detection prefer 'nccl', 'bkcl' than 'gloo'.
 
     Returns:
         None
@@ -122,13 +154,12 @@ def init_parallel_env():
         return
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to 
     #                 enable cpu only gloo prarllel training)
-    is_cpu_only = os.environ.get('PADDLE_PARALLEL_CPU', False)
+    is_cpu_only = _check_backend(backend)
     # 1. gpu xpu check, must be gpu or xpu, 
     if not (is_cpu_only or core.is_compiled_with_cuda() or
             core.is_compiled_with_xpu()):
         raise NotImplementedError(
-            "If you want to use CPU-only version, please add PADDLE_PARALLEL_CPU in you environ vairable"
-        )
+            "If you want to use CPU-only version, please use 'gloo' as backend")
 
     # 2. check env
     def _check_var_exists(var_name):
@@ -188,11 +219,6 @@ def init_parallel_env():
         place = core.CUDAPlace(parallel_env.device_id)
     elif core.is_compiled_with_xpu():
         place = core.XPUPlace(parallel_env.device_id)
-    else:
-        raise NotImplementedError(
-            "If you want to use CPU-only version, please add PADDLE_PARALLEL_CPU in you environ vairable"
-            "If you want to use CUDA / XPU distributed version, please remove PADDLE_PARALLEL_CPU."
-        )
 
     _set_expected_place(place)
     # init nccl or bkcl context
