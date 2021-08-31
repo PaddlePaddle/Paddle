@@ -248,7 +248,7 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out, const T* in,
  * true
  */
 template <typename T, int NX, int NY, int BlockSize, class OpFunc,
-          ReduceMode Mode>
+          details::ReduceMode Mode>
 __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
                                        bool reduce_last_dim) {
   int block_index = blockDim.y;
