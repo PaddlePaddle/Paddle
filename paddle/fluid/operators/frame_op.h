@@ -233,21 +233,22 @@ template <typename DeviceContext, typename T>
 class FrameKernel : public framework::OpKernel<T> {
  public:
   /*
-    This kernel requires input dims in [1, +∞). The main steps
-    as follow:
+    Frame kernel slice frames from input sequences. The main steps as follow:
 
       - Case 1 - input dims == 1:
-        - axis is -1: Call a FrameFunctor to compute it directly.
-        - axis is  0: Transpose both output firstly, and then it falls
-          into case axis is -1. Finally, it restores the dims of output tensor.
+        - axis is -1: Call a FrameFunctor to compute directly.
+        - axis is  0: Transpose output firstly, and then it falls into
+                      case axis is -1. Finally, it restores the dims of
+                      output tensor.
 
       - Case 2 - input dims == 2:
-        - axis is -1: Call a FrameFunctor to compute it directly.
+        - axis is -1: Call a FrameFunctor to compute directly.
         - axis is  0: Transpose both input and output firstly, and then it falls
-          into case axis is -1. Finally, it restores the dims of output tensor.
+                      into case axis is -1. Finally, it restores the dims of
+                      output tensor.
 
       - Case 3 - input dims > 2:
-        Flatten the input and output dims to 2D and 3D respectively so that it
+        Flatten the input and output to 2D and 3D respectively so that it
         falls into Case 2. Finally, it restores the dims of output tensor.
   */
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -353,8 +354,27 @@ class FrameKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class FrameGradKernel : public framework::OpKernel<T> {
  public:
+  /*
+    Frame gradient kernel accumulate gradient `d_x` from `d_out`. The
+    main steps as follow:
+
+      - Case 1 - d_x dims == 1:
+        - axis is -1: Call a FrameFunctor to compute directly. Notes that
+                      `is_grad` is set to true to select gradient data functor.
+        - axis is  0: Transpose `d_out` firstly, and then it falls into
+                      case axis is -1.
+
+      - Case 2 - d_x dims == 2:
+        - axis is -1: Call a FrameFunctor to compute directly.
+        - axis is  0: Transpose both `d_x` and `d_out` firstly, and then it
+                      falls into case axis is -1. Finally, it restores the
+                      dims of `d_x`.
+
+      - Case 3 - d_x dims > 2:
+        Flatten the `d_x` and `d_out` to 2D and 3D respectively so that it
+        falls into Case 2. Finally, it restores the dims of `d_x` tensor.
+  */
   void Compute(const framework::ExecutionContext& ctx) const {
-    // const framework::Tensor* x = ctx.Input<framework::Tensor>("X");
     const framework::Tensor* d_out =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     framework::Tensor* d_x =
