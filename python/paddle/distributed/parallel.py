@@ -100,6 +100,7 @@ def init_parallel_env(backend='auto'):
     Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
             import paddle.nn as nn
             import paddle.optimizer as opt
