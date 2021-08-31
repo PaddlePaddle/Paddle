@@ -95,6 +95,10 @@ class TrainerFactory(object):
                     trainer._set_use_cvm(opt_info["use_cvm"])
                 if opt_info.get("no_cvm") is not None:
                     trainer._set_no_cvm(opt_info["no_cvm"])
+                if opt_info.get(
+                        "scale_sparse_gradient_with_batch_size") is not None:
+                    trainer._set_scale_sparse_grad_with_batch_size(opt_info[
+                        "scale_sparse_gradient_with_batch_size"])
                 if opt_info.get("scale_datanorm") is not None:
                     trainer._set_scale_datanorm(opt_info["scale_datanorm"])
                 if opt_info.get("adjust_ins_weight") is not None:

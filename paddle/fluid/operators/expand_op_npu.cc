@@ -39,7 +39,26 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED, rank));
-    switch (rank) { REP_EXPAND_TEMPLATE(MAX_RANK_SUPPORTED) }
+    switch (rank) {
+      case 1:
+        Expand<1>(context);
+        break;
+      case 2:
+        Expand<2>(context);
+        break;
+      case 3:
+        Expand<3>(context);
+        break;
+      case 4:
+        Expand<4>(context);
+        break;
+      case 5:
+        Expand<5>(context);
+        break;
+      case 6:
+        Expand<6>(context);
+        break;
+    }
   }
 
  protected:

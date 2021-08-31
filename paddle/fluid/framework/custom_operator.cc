@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/any.h"
 
 namespace paddle {
 namespace framework {
@@ -149,7 +150,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     }
   }
 
-  std::vector<boost::any> custom_attrs;
+  std::vector<paddle::any> custom_attrs;
   for (auto& attr_str : attrs) {
     auto attr_name_and_type = detail::ParseAttrStr(attr_str);
     auto attr_name = attr_name_and_type[0];
@@ -516,6 +517,12 @@ void RegisterOperatorWithMetaInfo(
   auto& base_op_meta = op_meta_infos.front();
 
   auto op_name = OpMetaInfoHelper::GetOpName(base_op_meta);
+
+  if (OpInfoMap::Instance().Has(op_name)) {
+    LOG(WARNING) << "Operator (" << op_name << ")has been registered.";
+    return;
+  }
+
   auto& op_inputs = OpMetaInfoHelper::GetInputs(base_op_meta);
   auto& op_outputs = OpMetaInfoHelper::GetOutputs(base_op_meta);
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(base_op_meta);
@@ -605,7 +612,7 @@ void RegisterOperatorWithMetaInfo(
         }
       }
 
-      std::vector<boost::any> custom_attrs;
+      std::vector<paddle::any> custom_attrs;
       for (auto& attr_str : op_attrs) {
         auto attr_name_and_type = detail::ParseAttrStr(attr_str);
         auto attr_name = attr_name_and_type[0];
@@ -866,7 +873,7 @@ void RegisterOperatorWithMetaInfoMap(
 // load op api
 void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   void* handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
-
+  VLOG(1) << "load custom_op lib: " << dso_name;
   typedef OpMetaInfoMap& get_op_meta_info_map_t();
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");

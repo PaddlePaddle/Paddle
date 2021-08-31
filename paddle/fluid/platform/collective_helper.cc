@@ -72,8 +72,8 @@ class NCCLCommImpl : public NCCLComm {
   std::shared_ptr<platform::CudaEventObject> comm_event_;
 };
 
-NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
-                                          int rank, int dev_id, int ring_id) {
+NCCLComm* NCCLCommContext::CreateComm(ncclUniqueId* nccl_id, int nranks,
+                                      int rank, int dev_id, int ring_id) {
   PADDLE_ENFORCE_NOT_NULL(nccl_id,
                           platform::errors::InvalidArgument(
                               "The nccl unique id should not be null."));
@@ -225,8 +225,8 @@ class BKCLCommImpl : public BKCLComm {
   std::unique_ptr<XPUDeviceContext> dev_ctx_;
 };
 
-BKCLComm* BKCLCommContext::CreateBKCLComm(BKCLUniqueId* bkcl_id, int nranks,
-                                          int rank, int dev_id, int ring_id) {
+BKCLComm* BKCLCommContext::CreateComm(BKCLUniqueId* bkcl_id, int nranks,
+                                      int rank, int dev_id, int ring_id) {
   PADDLE_ENFORCE_NOT_NULL(bkcl_id,
                           platform::errors::InvalidArgument(
                               "The bkcl unique id should not be null."));

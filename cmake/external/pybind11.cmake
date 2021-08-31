@@ -39,6 +39,7 @@ ExternalProject_Add(
         # to be modified without triggering incremental compilation, and the
         # third-party library version changes cannot be incorporated.
         # reference: https://cmake.org/cmake/help/latest/module/ExternalProject.html
+        UPDATE_COMMAND    ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
         INSTALL_COMMAND   ""

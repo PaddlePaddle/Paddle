@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from paddle.fluid import core
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 from .streams import Stream  # noqa: F401
 from .streams import Event  # noqa: F401
@@ -24,14 +23,12 @@ __all__ = [
     'current_stream',
     'synchronize',
     'device_count',
-    'stream_guard',
 ]
 
 
 def current_stream(device=None):
     '''
     Return the current CUDA stream by the device.
-
     Parameters:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from. 
         If device is None, the device is the current device. Default: None.
@@ -41,16 +38,11 @@ def current_stream(device=None):
     
     Examples:
         .. code-block:: python
-
             # required: gpu
             import paddle
-
             s1 = paddle.device.cuda.current_stream()
-
             s2 = paddle.device.cuda.current_stream(0)
-
             s3 = paddle.device.cuda.current_stream(paddle.CUDAPlace(0))
-
     '''
 
     device_id = -1
@@ -66,29 +58,20 @@ def current_stream(device=None):
     return core._get_current_stream(device_id)
 
 
-def set_current_stream(stream):
-
-    return core._set_current_stream(stream)
-
-
 def synchronize(device=None):
     '''
     Wait for the compute on the given CUDA device to finish.
-
     Parameters:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
         If device is None, the device is the current device. Default: None.
     
     Examples:
         .. code-block:: python
-
             # required: gpu
             import paddle
-
             paddle.device.cuda.synchronize()
             paddle.device.cuda.synchronize(0)
             paddle.device.cuda.synchronize(paddle.CUDAPlace(0))
-
     '''
 
     device_id = -1
@@ -110,26 +93,13 @@ def device_count():
     
     Returns:
         int: the number of GPUs available.
-
     Examples:
         .. code-block:: python
-
             import paddle
-
             paddle.device.cuda.device_count()
-
     '''
 
     num_gpus = core.get_cuda_device_count() if hasattr(
         core, 'get_cuda_device_count') else 0
 
     return num_gpus
-
-
-@signature_safe_contextmanager
-def stream_guard(stream):
-    pre_stream = set_current_stream(stream)
-    try:
-        yield
-    finally:
-        stream = set_current_stream(pre_stream)

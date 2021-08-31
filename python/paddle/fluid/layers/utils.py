@@ -78,6 +78,15 @@ def is_sequence(seq):
             not isinstance(seq, six.string_types))
 
 
+def _hash_with_id(*args):
+    """
+    Return int hash value calculated by id(arg) or tuple(id1,id2, ...).
+    """
+    assert len(args) > 0
+    info = tuple([id(v) for v in args])
+    return hash(info) & 0xfffffff
+
+
 def _sorted(dict_):
     """
     Returns a sorted list of the dict keys, with error if keys not sortable.

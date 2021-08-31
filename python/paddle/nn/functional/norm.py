@@ -19,8 +19,8 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, core
 from ...framework import create_parameter
-from ...fluid.initializer import Constant
-from ...fluid.param_attr import ParamAttr
+from ..initializer import Constant
+from ...framework import ParamAttr
 from ...fluid import core, dygraph_utils
 import numbers
 from paddle import _C_ops
@@ -34,12 +34,12 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     .. math::
 
-        y = \\frac{x}{ \\max\\left( \\lvert \\lvert x \\rvert \\rvert_p, epsilon\\right) }
+        y = \frac{x}{ \max\left( \lvert \lvert x \rvert \rvert_p, epsilon\right) }
     
     .. math::
-        \\lvert \\lvert x \\rvert \\rvert_p = \\left( \\sum_i {\\lvert x_i \\rvert^p}  \\right)^{1/p}
+        \lvert \lvert x \rvert \rvert_p = \left( \sum_i {\lvert x_i \rvert^p}  \right)^{1/p}
 
-    where, :math:`\\sum_i{\\lvert x_i \\rvert^p}` is calculated along the ``axis`` dimension.
+    where, :math:`\sum_i{\lvert x_i \rvert^p}` is calculated along the ``axis`` dimension.
 
 
     Parameters:
@@ -104,8 +104,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
     eps = out.block.create_var(dtype=out.dtype)
     paddle.fluid.layers.fill_constant([1], out.dtype, epsilon, out=eps)
-    return paddle.fluid.layers.elementwise_div(
-        x, paddle.maximum(out, eps), name=name)
+    return paddle.divide(x, paddle.maximum(out, eps), name=name)
 
 
 def batch_norm(x,
@@ -433,7 +432,7 @@ def local_response_norm(x,
 
         .. math::
 
-            Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + size/2)}_{j = \\max(0, i - size/2)}(Input(j, x, y))^2\\right)^{\\beta}
+            Output(i, x, y) = Input(i, x, y) / \left(k + \alpha \sum\limits^{\min(C-1, i + size/2)}_{j = \max(0, i - size/2)}(Input(j, x, y))^2\right)^{\beta}
 
         In the above equation:
 
@@ -487,6 +486,12 @@ def local_response_norm(x,
         raise ValueError(
             'Expected 3D or higher dimensionality input, but got {} dimensions'.
             format(dim))
+
+    for i, sz in enumerate(sizes):
+        if not sz > 0:
+            raise ValueError("Expected every dim's size to be larger than 0, "
+                             "but the size of the {}-th dim is {}".format(i,
+                                                                          sz))
 
     channel_last = True if data_format[-1] == "C" else False
 

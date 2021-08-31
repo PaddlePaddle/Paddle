@@ -96,6 +96,15 @@ class TestDistRunnerBase(object):
             current_endpoint=current_endpoint)
         return t
 
+    @staticmethod
+    def get_lr_scheduler(program):
+        lr_sheduler = None
+        if hasattr(program, 'lr_sheduler'):
+            from paddle.optimizer.lr import LRScheduler
+            lr_sheduler = program.lr_sheduler
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
+        return lr_sheduler
+
     def run_pserver(self, args):
         self.lr = args.lr
         self.get_model(batch_size=args.batch_size)
@@ -139,45 +148,21 @@ class TestDistRunnerBase(object):
         data_loader.start()
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
+
+        main_program = fluid.default_main_program()
+        lr_sheduler = self.get_lr_scheduler(main_program)
         for i in six.moves.xrange(RUN_STEP):
-            loss = exe.run(fluid.default_main_program(), fetch_list=[avg_cost])
+            loss = exe.run(main_program, fetch_list=[avg_cost])
             loss = loss[0] if loss else None
             out_losses.append(loss)
             print_to_err(type(self).__name__, "run step %d finished" % i)
+            if lr_sheduler is not None:
+                lr_sheduler.step()
+
         data_loader.reset()
         print_to_err(type(self).__name__, "trainer run finished")
 
         sys.stdout.buffer.write(pickle.dumps(out_losses))
-
-        if args.save_model:
-            model_save_dir = "/tmp"
-            if fleet.worker_index() == 0:
-                model_save_dir_fluid = os.path.join(model_save_dir,
-                                                    "fluid_persistables")
-                model_save_dir_fleet = os.path.join(model_save_dir,
-                                                    "fleet_persistables")
-                infer_save_dir_fluid = os.path.join(model_save_dir,
-                                                    "fluid_infer")
-                infer_save_dir_fleet = os.path.join(model_save_dir,
-                                                    "fleet_infer")
-            else:
-                model_save_dir_fluid = os.path.join(model_save_dir,
-                                                    "fluid_persistables_2")
-                model_save_dir_fleet = os.path.join(model_save_dir,
-                                                    "fleet_persistables_2")
-                infer_save_dir_fluid = os.path.join(model_save_dir,
-                                                    "fluid_infer_2")
-                infer_save_dir_fleet = os.path.join(model_save_dir,
-                                                    "fleet_infer_2")
-            fluid.io.save_persistables(exe, model_save_dir_fluid,
-                                       fleet._origin_program)
-            fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
-            feeded_var_names = [var.name for var in feed_var_list]
-            fluid.io.save_inference_model(infer_save_dir_fluid,
-                                          feeded_var_names, [avg_cost], exe,
-                                          fleet._origin_program)
-            fleet.save_inference_model(exe, infer_save_dir_fleet,
-                                       feeded_var_names, [avg_cost])
 
     def run_use_fleet_api_20_trainer(self, args):
         """
@@ -494,6 +479,7 @@ class TestDistRunnerBase(object):
             else:
                 return origin_batch
 
+        lr_scheduler = self.get_lr_scheduler(trainer_prog)
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
         for i in six.moves.xrange(RUN_STEP):
@@ -502,6 +488,9 @@ class TestDistRunnerBase(object):
                             feed=feeder.feed(get_data()))
             out_losses.append(loss[0])
             print_to_err(type(self).__name__, "run step %d finished" % i)
+            if lr_scheduler is not None:
+                lr_scheduler.step()
+
         print_to_err(type(self).__name__, "trainer run finished")
 
         print_to_out(out_losses)

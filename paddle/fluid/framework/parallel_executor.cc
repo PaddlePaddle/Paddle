@@ -104,6 +104,13 @@ class ParallelExecutorPrivate {
 
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
 
+  void ApplyFixOpRunOrderPass(ir::Graph *graph) {
+    if (build_strategy_.fix_op_run_order_) {
+      auto pass = ir::PassRegistry::Instance().Get("fix_op_run_order_pass");
+      pass->Apply(graph);
+    }
+  }
+
   /**
    * NOTE(zengjinle): the fed variables of users should not be reused,
    * because users may feed them into another network. Changing the fed
@@ -1462,6 +1469,10 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
     auto possible_inference_graphs =
         details::TrySeparateToMultipleSingleDeviceGraphs(graph);
     if (!possible_inference_graphs.empty()) {
+      for (auto &g : possible_inference_graphs) {
+        member_->ApplyFixOpRunOrderPass(g.get());
+      }
+
       VLOG(5) << "Use ParallelSSAGraphExecutor in inference phase";
       auto *pg_exe = new details::ParallelSSAGraphExecutor(
           exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
@@ -1474,6 +1485,9 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
       member_->executor_.reset(pg_exe);
       member_->inference_executor_ = pg_exe;
     } else {
+      if (member_->places_.size() == 1) {
+        member_->ApplyFixOpRunOrderPass(graph);
+      }
       LOG_IF(WARNING, details::HasKeepLastReadOp(*graph))
           << "drop_last=False for DataLoader is not supported in training "
              "network. It is automatically turned to drop_last=True.";
@@ -1560,3 +1574,4 @@ USE_PASS(eager_deletion_pass);
 USE_PASS(buffer_shared_inplace_pass);
 USE_PASS(buffer_shared_cross_op_memory_reuse_pass);
 USE_PASS(inplace_addto_op_pass);
+USE_PASS(fix_op_run_order_pass);

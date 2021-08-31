@@ -632,14 +632,13 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     nranks = _get_global_group().nranks if group is None else group.nranks
 
-    op_type = 'c_allgather'
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-
     if in_dygraph_mode():
-        _C_ops.c_allgather(tensor, out, 'use_calc_stream', use_calc_stream,
-                           'ring_id', ring_id, 'nranks', nranks)
+        out = _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
+                                 'ring_id', ring_id, 'nranks', nranks)
     else:
+        op_type = 'c_allgather'
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
         if not isinstance(tensor_list, list):
             raise ValueError("The type of 'tensor_list' for all_gather "
                              "should be list.")
@@ -1079,6 +1078,19 @@ def _linear(x, weight, bias=None, name=None):
         return res
 
 
+def _set_var_distributed(var):
+    if var is None:
+        return
+
+    var.is_distributed = True
+
+    # NOTE: use current_block and find_var_recursive to support while_loop
+    startup_block = paddle.static.default_startup_program().current_block()
+    main_block = paddle.static.default_main_program().current_block()
+    startup_block._find_var_recursive(var.name).is_distributed = True
+    main_block._find_var_recursive(var.name).is_distributed = True
+
+
 def _parallel_linear(x,
                      num_rows,
                      num_cols,
@@ -1096,7 +1108,7 @@ def _parallel_linear(x,
 
     axis the dimension of the parameter of linear layer. 
     axis = 0: the row dimension
-    axid = 1: the col dimension
+    axis = 1: the col dimension
     
     """
     if group is not None and not group.is_member():
@@ -1109,40 +1121,35 @@ def _parallel_linear(x,
     else:
         x = _c_identity(x, group=group)
 
-    if core.is_compiled_with_npu():
-        linear = _Linear(
-            num_rows,
-            num_cols,
-            weight_attr=param_attr,
-            bias_attr=bias_attr,
-            name=name)
-    else:
-        linear = paddle.nn.Linear(
-            num_rows,
-            num_cols,
-            weight_attr=param_attr,
-            bias_attr=bias_attr,
-            name=name)
+    linear = paddle.nn.Linear(
+        num_rows,
+        num_cols,
+        weight_attr=param_attr,
+        bias_attr=bias_attr,
+        name=name)
 
-    linear_out = linear(x)
-    startup_block = paddle.static.default_startup_program().current_block()
-    main_block = paddle.static.default_main_program().current_block()
-    startup_block._find_var_recursive(linear.weight.name).is_distributed = True
-    main_block._find_var_recursive(linear.weight.name).is_distributed = True
+    # NOTE: npu linear function use matmul_v2 but linear use matmul
+    linear_function = _linear if core.is_compiled_with_npu()\
+        else paddle.nn.functional.linear
+    linear_out = linear_function(
+        x,
+        linear.weight,
+        # NOTE(wangxi): row split, bias need add after allreduce
+        None if axis == 0 else linear.bias,
+        linear.name)
 
+    _set_var_distributed(linear.weight)
     # set is_distributed for splited bias
     # if a linear layer is splited by row, each rank would hold a complete bias and they should be the same in each rank.
     # if a linear layer is splited by col, the bias would also be split into each rank as its weight
     if axis == 1 and linear._bias_attr != False:
-        startup_block._find_var_recursive(
-            linear.bias.name).is_distributed = True
-        main_block._find_var_recursive(linear.bias.name).is_distributed = True
+        _set_var_distributed(linear.bias)
 
     if not gather_out: return linear_out
 
-    op_type = 'c_allreduce_sum' if axis == 0 else 'c_concat'
     out_shape = list(linear_out.shape)
     out_shape[0] *= 1 if axis == 0 else nranks
+    main_block = paddle.static.default_main_program().current_block()
     out = main_block.create_var(
         shape=out_shape,
         dtype=linear_out.dtype,
@@ -1161,6 +1168,8 @@ def _parallel_linear(x,
                 'use_calc_stream': True,
                 'use_model_parallel': True
             })
+        if linear.bias is not None:
+            out = out + linear.bias
     else:
         main_block.append_op(
             type='c_concat',
@@ -1342,19 +1351,20 @@ def split(x,
     Examples:
         .. code-block:: python
 
+            # required: distributed
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed.fleet as fleet
 
-            # required: gpu
-
+            paddle.enable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
+            fleet.init(is_collective=True)
             data = paddle.randint(0, 8, shape=[10,4])
             emb_out = paddle.distributed.split(
                 data,
                 (8, 8),
                 operation="embedding",
                 num_partitions=2)
+
     """
     assert isinstance(size, (list, tuple)), (
         "The type of size for "
@@ -1456,6 +1466,7 @@ def split(x,
 def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     """
     Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
+    
     Args:
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
@@ -1463,14 +1474,18 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             data type of the input Tensors.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
+    
     Returns:
         None.
+    
     Examples:
         .. code-block:: python
+
             # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
+            
             init_parallel_env()
             out_tensor_list = []
             if paddle.distributed.ParallelEnv().rank == 0:
@@ -1519,7 +1534,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             inputs={'X': [temp]},
             outputs={'Out': [out]},
             attrs={
-                'ring_id': group,
+                'ring_id': ring_id,
                 'use_calc_stream': use_calc_stream,
             })
     out_tensor_list.extend(paddle.split(out, nranks, 0))
@@ -1535,14 +1550,17 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         dst (int): The destination rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+    
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+
             # required: distributed
             import paddle
             from paddle.distributed import init_parallel_env
+
             init_parallel_env()
             if paddle.distributed.ParallelEnv().rank == 0:
                 data = paddle.to_tensor([7, 8, 9])
@@ -1585,14 +1603,17 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+    
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+
             # required: distributed
             import paddle
             from paddle.distributed import init_parallel_env
+
             init_parallel_env()
             if paddle.distributed.ParallelEnv().rank == 0:
                 data = paddle.to_tensor([7, 8, 9])

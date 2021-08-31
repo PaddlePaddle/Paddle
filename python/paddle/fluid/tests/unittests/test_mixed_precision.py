@@ -47,6 +47,9 @@ class SimpleNet(nn.Layer):
 
 
 class AMPTest(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+
     def net(self):
         input_size = 4096
         output_size = 4096
@@ -82,7 +85,8 @@ class AMPTest(unittest.TestCase):
             fetch_list = [
                 loss, weight, moment1, beta_pow1, 'find_infinite_scale.tmp_0'
             ]
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+
+            exe = paddle.static.Executor(self.place)
 
             train_data = [
                 np.random.rand(batch_size, input_size).astype(np.float32)
