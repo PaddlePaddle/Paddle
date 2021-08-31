@@ -42,7 +42,7 @@ class PipelineParallel(MetaParallelBase):
         self.accumulate_steps = self._strategy.pipeline_configs[
             'accumulate_steps']
 
-        self._using_cache = self._strategy.pipeline_configs['cache_send_recv']
+        self._using_cache = self._strategy.pipeline_configs['p2p_cache_shape']
 
         self.num_stages = self._hcg.get_pipe_parallel_world_size()
         self.stage_id = self._hcg.get_stage_id()
@@ -89,6 +89,7 @@ class PipelineParallel(MetaParallelBase):
         self.lr_scheduler = lr_scheduler
         self.scaler = scaler
         self.data = data
+        self._compute_loss = True
 
         self._layers.train()
 
@@ -155,16 +156,23 @@ class PipelineParallel(MetaParallelBase):
 
         self._layers.allreduce_shared_weight_gradients()
 
-        self.train_loss = self._reduce_final_loss()
+        self.train_loss = self._broadcast_final_loss()
 
         # optimizer
         self._optimizer_step()
         return self.train_loss
 
     def eval_batch(self, data, compute_loss=False):
-
         self._layers.eval()
         self._compute_loss = compute_loss
+
+        # save data for eval
+        self.data = data
+        # store data id for micro_batch
+        self.micro_batch_id = 0
+
+        # store total loss of entire batch
+        self.total_loss = None
 
         startup_steps = (self.num_stages - self.stage_id - 1)
         startup_steps = min(startup_steps, self.accumulate_steps)
@@ -189,7 +197,6 @@ class PipelineParallel(MetaParallelBase):
             last_iter = (i == (steady_steps - 1))
 
             output_tensor = self._forward_step(input_tensor)
-
             p2p.send_forward(output_tensor)
 
             input_buffers.append(input_tensor)
@@ -198,7 +205,7 @@ class PipelineParallel(MetaParallelBase):
             if not last_iter:
                 input_tensor = p2p.recv_forward()
 
-        return output_buffers
+        return self.total_loss if self._compute_loss else output_buffers
 
     def _forward_step(self, input_tensor):
         if self.stage_id == 0:
@@ -208,7 +215,8 @@ class PipelineParallel(MetaParallelBase):
 
         if self.is_last_stage:
             # train calculate loss for train
-            if self._compute_loss and self._layers._loss_fn is not None:
+            if self._compute_loss:
+                assert self._layers._loss_fn is not None, "loss function should exist to compute loss"
                 labels = self._load_micro_batch(self.micro_batch_id)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
                 assert isinstance(
@@ -290,7 +298,7 @@ class PipelineParallel(MetaParallelBase):
             # No data input is required for other stages
             inputs = None
 
-    def _reduce_final_loss(self):
+    def _broadcast_final_loss(self):
         if self.is_last_stage:
             assert self.total_loss is not None, "train_batch() in last stage should obtain vaild loss"
             loss = self.total_loss.detach()
