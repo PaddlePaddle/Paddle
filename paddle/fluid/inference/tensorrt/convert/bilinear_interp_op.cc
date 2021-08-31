@@ -47,9 +47,27 @@ class BilinearInterpolateOpConverter : public OpConverter {
     auto input_names = op_desc.Input("X");
     auto out_h = BOOST_GET_CONST(int, op_desc.GetAttr("out_h"));
     auto out_w = BOOST_GET_CONST(int, op_desc.GetAttr("out_w"));
+    bool align_corners =
+        BOOST_GET_CONST(bool, op_desc.GetAttr("align_corners"));
+    auto align_mode = BOOST_GET_CONST(int, op_desc.GetAttr("align_mode"));
+
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Resize, *input);
-    layer->setAlignCorners(true);
     layer->setResizeMode(nvinfer1::ResizeMode::kLINEAR);
+    if (align_mode == 0 && !align_corners) {
+#if IS_TRT_VERSION_GE(8016)
+      layer->setCoordinateTransformation(
+          nvinfer1::ResizeCoordinateTransformation::kHALF_PIXEL);
+#else
+      layer->setAlignCorners(false);
+#endif
+    } else {
+#if IS_TRT_VERSION_GE(8016)
+      layer->setCoordinateTransformation(
+          nvinfer1::ResizeCoordinateTransformation::kASYMMETRIC);
+#else
+      layer->setAlignCorners(true);
+#endif
+    }
     auto in_dim = input->getDimensions();
 
     float scale_w = -1;
