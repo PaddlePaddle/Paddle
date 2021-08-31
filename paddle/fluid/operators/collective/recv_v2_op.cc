@@ -50,7 +50,7 @@ class RecvOpV2 : public framework::OperatorWithKernel {
     }
 
     if (ctx->GetOutputsVarType("Out").front() ==
-        framework::proto::VarType::LOD_TENSOR_ARRAY) {
+        framework::proto::VarType::LOD_TENSOR) {
       ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
     }
   }
