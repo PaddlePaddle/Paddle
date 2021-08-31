@@ -182,10 +182,7 @@ class TestDistPPTraning(unittest.TestCase):
             loss = model.train_batch([x, x], optimizer, scheduler)
 
             # TODO(shenliang03) add utest for loss
-            if pp_id == 1:
-                # no use dropout, so can compare loss
-                print("train loss: ", loss.numpy(), "evaluate loss: ",
-                      e_loss.numpy())
+            if pp_id != 0:
                 np.testing.assert_allclose(loss.numpy(), e_loss.numpy())
 
 
