@@ -61,7 +61,7 @@ void Dropout(const std::vector<T> &x, const framework::DDim &x_dim,
   }
 
   if (is_test) {
-    attrs.insert({"is_test", 1});
+    attrs.insert({"is_test", true});
   }
 
   auto op = framework::OpRegistry::CreateOp(
@@ -100,7 +100,7 @@ void DropoutGrad(std::vector<T> *dx, const framework::DDim &x_dim,
 
   framework::AttributeMap attrs;
   attrs.insert({"dropout_prob", dropout_prob});
-  attrs.insert({"is_test", 0});
+  attrs.insert({"is_test", false});
   if (is_upscale_in_train) {
     attrs.insert({"dropout_implementation", std::string("upscale_in_train")});
   } else {
