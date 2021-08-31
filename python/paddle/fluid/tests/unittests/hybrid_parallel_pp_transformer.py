@@ -180,9 +180,8 @@ class TestDistPPTraning(unittest.TestCase):
 
             e_loss = model.eval_batch([x, x], True)
             loss = model.train_batch([x, x], optimizer, scheduler)
-            # TODO(shenliang03) add utest for loss
 
-            print("loss: ", loss.numpy())
+            # TODO(shenliang03) add utest for loss
             if pp_id == 1:
                 # no use dropout, so can compare loss
                 print("train loss: ", loss.numpy(), "evaluate loss: ",
