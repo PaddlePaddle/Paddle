@@ -33,7 +33,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
                 "shape": [[1, 6, 8], [1, 2, 4, 6]]
             }
         }]
-        self.batch_size_set = [1, 1, 1]
+        self.batch_size_set = [1]
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         input_data = TensorConfig(shape=[1, 48])
@@ -79,7 +79,7 @@ class TrtConvertDynamicReshapeTest(TrtLayerAutoScanTest):
                 "shape": [[2, 24], [6, 8]]
             }
         }]
-        self.batch_size_set = [1, 1, 1]
+        self.batch_size_set = [1]
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         input_data = TensorConfig(shape=[1, 12, 4])
@@ -117,7 +117,7 @@ class TrtConvertReshapeInputShapeTest(TrtLayerAutoScanTest):
                 "shape": [[1, 48]]
             }
         }]
-        self.batch_size_set = [1, 1, 1]
+        self.batch_size_set = [1]
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         input_data = TensorConfig(shape=[1, 2, 4, 6])
@@ -168,7 +168,7 @@ class TrtConvertReshapeInputShapeTensorTest(TrtLayerAutoScanTest):
                 "shape": [[1, 48]]
             }
         }]
-        self.batch_size_set = [1, 1, 1]
+        self.batch_size_set = [1]
 
     def update_program_input_and_weight_with_attr(self, op_attr_list):
         input_data = TensorConfig(shape=[1, 2, 4, 6])
