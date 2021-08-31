@@ -215,7 +215,7 @@ class TestDistBase(unittest.TestCase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
-            "GLOG_v": "0",
+            "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1"
         }
         required_envs.update(need_envs)
@@ -301,10 +301,13 @@ class TestDistBase(unittest.TestCase):
                 np.allclose(
                     tr1_out, need_result2, rtol=1e-05, atol=1e-05))
         elif col_type == "sendrecv_array":
-            need_result1 = np.array([[0, 1, 2], [3, 4, 5]])
-            print("tr1_out:", tr1_out)
+            need_result1 = np.array([[0, 1, 2]])
+            need_result2 = np.array([[3, 4, 5]])
             self.assertTrue(
                 np.allclose(
-                    tr1_out, need_result1, rtol=1e-05, atol=1e-05))
+                    tr1_out[0][0], need_result1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out[0][1], need_result2, rtol=1e-05, atol=1e-05))
         else:
             pass

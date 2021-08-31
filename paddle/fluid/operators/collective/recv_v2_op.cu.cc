@@ -64,7 +64,6 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     auto *out_var = ctx.OutputVar("Out");
     if (out_var->IsType<framework::LoDTensorArray>()) {
       auto out_array = out_var->GetMutable<framework::LoDTensorArray>();
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
       for (size_t idx = 0; idx < out_array->size(); ++idx) {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto out_dims = framework::make_ddim(out_shape);
@@ -76,7 +75,6 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "rank " << comm->rank() << " recv "
                 << framework::product(out_dims) << " from " << peer;
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
       return;
     }
 

@@ -57,7 +57,6 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     auto* x_var = ctx.InputVar("X");
     if (x_var->IsType<framework::LoDTensorArray>()) {
       auto& x_array = x_var->Get<framework::LoDTensorArray>();
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
       for (size_t idx = 0; idx < x_array.size(); idx++) {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto& x = x_array.at(idx);
@@ -68,7 +67,6 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "rank " << comm->rank() << " send "
                 << framework::product(x.dims()) << " to " << peer;
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
       return;
     }
     auto x = ctx.Input<framework::LoDTensor>("X");
