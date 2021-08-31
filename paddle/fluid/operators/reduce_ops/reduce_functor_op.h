@@ -24,9 +24,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+namespace kpds = paddle::operators::kernel_primitives;
+
 template <typename Tx, typename Ty = Tx>
 struct CustomMin {
-  using Transformer = detail::IdentityFunctor<Tx>;
+  using Transformer = kpds::IdentityFunctor<Tx>;
 
   inline Ty initial() {
     return static_cast<Ty>(std::numeric_limits<Ty>::max());
@@ -39,7 +41,7 @@ struct CustomMin {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMax {
-  using Transformer = detail::IdentityFunctor<Tx>;
+  using Transformer = kpds::IdentityFunctor<Tx>;
 
   inline Ty initial() {
     return static_cast<Ty>(std::numeric_limits<Ty>::lowest());
@@ -53,7 +55,7 @@ struct CustomMax {
 // for cub::Reduce
 template <typename Tx, typename Ty = Tx>
 struct CustomSum {
-  using Transformer = detail::IdentityFunctor<Tx, Ty>;
+  using Transformer = kpds::IdentityFunctor<Tx, Ty>;
 
   inline Ty initial() { return static_cast<Ty>(0.0f); }
 
@@ -64,7 +66,7 @@ struct CustomSum {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMean {
-  using Transformer = detail::DivideFunctor<Tx>;
+  using Transformer = kpds::DivideFunctor<Tx>;
 
   inline Ty initial() { return static_cast<Ty>(0.0f); }
 
@@ -75,7 +77,7 @@ struct CustomMean {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMul {
-  using Transformer = detail::IdentityFunctor<Tx>;
+  using Transformer = kpds::IdentityFunctor<Tx>;
 
   inline Ty initial() { return static_cast<Ty>(1.0f); }
 
@@ -86,7 +88,7 @@ struct CustomMul {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomLogicalOr {
-  using Transformer = detail::IdentityFunctor<Tx>;
+  using Transformer = kpds::IdentityFunctor<Tx>;
 
   inline Ty initial() { return static_cast<Ty>(false); }
 
@@ -97,7 +99,7 @@ struct CustomLogicalOr {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomLogicalAnd {
-  using Transformer = detail::IdentityFunctor<Tx>;
+  using Transformer = kpds::IdentityFunctor<Tx>;
 
   inline Ty initial() { return static_cast<Ty>(true); }
 
