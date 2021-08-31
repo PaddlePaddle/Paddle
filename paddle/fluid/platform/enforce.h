@@ -855,10 +855,8 @@ inline bool is_error(CUresult e) { return e != CUDA_SUCCESS; }
 
 inline std::string build_nvidia_error_msg(CUresult e) {
   std::ostringstream sout;
-  const char* msg;
-  dynload::cuGetErrorString(e, &msg);
-  sout << "CU Driver error(" << e << "), " << msg << ". "
-       << GetExternalErrorMsg(e);
+  sout << "CU Driver error(" << e << "), " << cudaGetErrorString((cudaError_t)e)
+       << ". " << GetExternalErrorMsg(e);
   return sout.str();
 }
 
