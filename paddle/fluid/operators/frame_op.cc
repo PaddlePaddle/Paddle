@@ -154,10 +154,18 @@ REGISTER_OP_CPU_KERNEL(
     frame, ops::FrameKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FrameKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FrameKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FrameKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::FrameKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::FrameKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::complex<float>>,
+    ops::FrameKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     frame_grad, ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FrameGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::FrameGradKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex<float>>,
+    ops::FrameGradKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex<double>>);

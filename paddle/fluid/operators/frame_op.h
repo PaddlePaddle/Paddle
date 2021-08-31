@@ -28,10 +28,10 @@ using Tensor = framework::Tensor;
 
 template <typename T>
 struct DataMappingFunctor {
-  DataMappingFunctor(const T* input, T* output, size_t seq_length,
-                     size_t frame_length, size_t n_frames, size_t hop_length)
-      : input_(input),
-        output_(output),
+  DataMappingFunctor(const T* x, T* out, size_t seq_length, size_t frame_length,
+                     size_t n_frames, size_t hop_length)
+      : x_(x),
+        out_(out),
         seq_length_(seq_length),
         frame_length_(frame_length),
         n_frames_(n_frames),
@@ -67,7 +67,7 @@ struct DataMappingFunctor {
         ```cpp
         src_idx = sample_idx * seq_length_ + n * hop_length_ + f;
         trg_idx = sample_idx * n_frames_ * frame_length_ + f * n_frames_ + n;
-        output_[trg_idx] = input_[src_idx];
+        out_[trg_idx] = x_[src_idx];
         ```
 
       e. Result can be deduced shown in the function body below.
@@ -81,11 +81,11 @@ struct DataMappingFunctor {
     trg_idx = i / (n_frames_ * frame_length_) * n_frames_ * frame_length_ +
               i % (n_frames_ * frame_length_) / n_frames_ * n_frames_ +
               i % (n_frames_ * frame_length_) % n_frames_;
-    output_[trg_idx] = input_[src_idx];
+    out_[trg_idx] = x_[src_idx];
   }
 
-  const T* input_;
-  T* output_;
+  const T* x_;
+  T* out_;
   size_t seq_length_;
   size_t frame_length_;
   size_t n_frames_;
@@ -94,40 +94,67 @@ struct DataMappingFunctor {
 
 template <typename T>
 struct DataMappingGradFunctor {
-  DataMappingGradFunctor(const T* dOut, T* dX, size_t seq_length,
+  DataMappingGradFunctor(const T* d_out, T* d_x, size_t seq_length,
                          size_t frame_length, size_t n_frames,
                          size_t hop_length)
-      : dOut_(dOut),
-        dX_(dX),
+      : d_out_(d_out),
+        d_x_(d_x),
         seq_length_(seq_length),
         frame_length_(frame_length),
         n_frames_(n_frames),
         hop_length_(hop_length) {}
 
-  //           dOut                          dX
-  // (N, frame_length, n_frames)  ->  (N, seq_length)
+  /*
+    Accumulate output gradient d_out to d_x.
+
+    1. Dimension infomation:
+
+              d_out                        d_x
+    (N, frame_length, n_frames)  ->  (N, seq_length)
+
+    2. Using a sliding window to find source indices from `d_out` according to
+       `i`:
+
+      a. Notion
+        - `i` stands for the flattened index of `d_x`.
+        - `seq_i` stands for a relative index of a `d_x` sample.
+        - `left`: Starting index of a frame window.
+        - `right`: Ending index of a frame window.
+
+      b. Sample idx
+        ```cpp
+        sample_idx = i / seq_length_;
+        ```
+
+      c. Slides a window with length of `frame_length` to find `f` and `n`.
+        - `n`: The idx of num_frames_, increases in each hop.
+        - `f`: The idx of frame_lengths_, relative idx from left of a sliding
+               window.
+
+      d. Accumulate all grads from d_out.
+        ```cpp
+        d_x_[i] +=
+            d_out_[sample_idx * frame_length_ * n_frames_ + f * n_frames_ + n];
+        ```
+  */
   HOSTDEVICE void operator()(size_t i) const {
     size_t sample_idx = i / seq_length_;
-    size_t seq_i =
-        i % seq_length_;  // Convert to a relative idx of a seq sample.
+    size_t seq_i = i % seq_length_;
 
     // Sliding window
     size_t left =
         0;  // TODO(chenxiaojie06): Compute the start point instead of 0.
     size_t right = frame_length_ - 1;
 
-    size_t n = 0;  // The idx of num_frames_, increases in each hop.
-    size_t f;  // The idx of frame_lengths_, relative idx from left of a sliding
-               // window.
-    dX_[i] = 0;  // Init dX_[i] to 0, and a while loop followed to sum all grads
-                 // from dOut_.
+    size_t n = 0;
+    size_t f;
+    d_x_[i] = 0;  // Init d_x_[i] to 0, and a while loop followed to sum up all
+                  // grads from d_out_.
     while (left <= seq_i && right < seq_length_) {
-      if (seq_i <= right) {  // Assure i locates in [left, right].
-        // Relative idx from left, and it means the idx of frame dimension.
+      if (seq_i <= right) {  // Assure seq_i locates in [left, right].
         f = seq_i - left;
-        // Accumulate all grads from dOut.
-        dX_[i] +=
-            dOut_[sample_idx * frame_length_ * n_frames_ + f * n_frames_ + n];
+        d_x_[i] +=
+            d_out_[sample_idx * frame_length_ * n_frames_ + f * n_frames_ + n];
       }
       // Next frame.
       left += hop_length_;
@@ -136,8 +163,8 @@ struct DataMappingGradFunctor {
     }
   }
 
-  const T* dOut_;
-  T* dX_;
+  const T* d_out_;
+  T* d_x_;
   size_t seq_length_;
   size_t frame_length_;
   size_t n_frames_;
