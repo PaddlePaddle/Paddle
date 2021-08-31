@@ -20,6 +20,9 @@ __all__ = []
 
 MODEL_PARALLEL_RNG = 'model_parallel_rng'
 
+# This file is inspired by Megatron to control random states for MP:
+# https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/mpu/random.py
+
 
 class RNGStatesTracker:
     """
@@ -45,6 +48,15 @@ class RNGStatesTracker:
         paddle.seed(seed)
         self.states_[name] = paddle.get_cuda_rng_state()
         paddle.set_cuda_rng_state(orig_rng_state)
+
+    def get_states_tracker(self):
+        states = {}
+        for name in self.states_:
+            states[name] = self.states_[name]
+        return states
+
+    def set_states_tracker(self, states):
+        self.states_ = states
 
     @contextlib.contextmanager
     def rng_state(self, name=MODEL_PARALLEL_RNG):

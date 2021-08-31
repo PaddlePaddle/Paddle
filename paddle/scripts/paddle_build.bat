@@ -161,13 +161,23 @@ if "%WITH_SCCACHE%"=="ON" (
     del D:\sccache\sccache_log.txt
     cmd /C sccache -V || call :install_sccache
     sccache --stop-server 2> NUL
+
+    :: Localy storage on windows
     if not exist D:\sccache mkdir D:\sccache
     set SCCACHE_DIR=D:\sccache\.cache
-    :: sccache will shut down if a source file takes more than 10 mins to compile
+    
+    :: Sccache will shut down if a source file takes more than 10 mins to compile
     set SCCACHE_IDLE_TIMEOUT=0
-    set SCCACHE_CACHE_SIZE=30G
+    set SCCACHE_CACHE_SIZE=100G
     set SCCACHE_ERROR_LOG=D:\sccache\sccache_log.txt
     set SCCACHE_LOG=quiet
+
+    :: Distributed storage on windows
+    set SCCACHE_ENDPOINT=s3.bj.bcebos.com
+    set SCCACHE_BUCKET=paddle-windows
+    set SCCACHE_S3_KEY_PREFIX=sccache/
+    set SCCACHE_S3_USE_SSL=true
+
     sccache --start-server
     sccache -z
     goto :CASE_%1
@@ -261,6 +271,7 @@ if %errorlevel% NEQ 0 exit /b 1
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_inference || goto test_inference_error
+call :test_inference_ut || goto test_inference_ut_error
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
 goto:success
@@ -726,6 +737,23 @@ echo git checkout -f origin_pr >>  check_change_of_unittest.sh
 goto:eof
 
 :check_change_of_unittest_error
+exit /b 1
+
+rem ---------------------------------------------------------------------------------------------
+:test_inference_ut
+@ECHO OFF
+echo    ========================================
+echo    Step 7. Testing fluid library with infer_ut for inference ...
+echo    ========================================
+
+cd %work_dir%\paddle\fluid\inference\tests\infer_ut
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %MSVC_STATIC_CRT%
+goto:eof
+
+:test_inference_ut_error
+::echo 1 > %cache_dir%\error_code.txt
+::type %cache_dir%\error_code.txt
+echo Testing fluid library with infer_ut for inference failed!
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------

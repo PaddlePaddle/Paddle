@@ -15,11 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <string>
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -137,6 +140,28 @@ class VarDesc {
     desc_.set_need_check_feed(need_check_feed);
   }
 
+  bool HasAttr(const std::string &name) const {
+    return attrs_.find(name) != attrs_.end();
+  }
+
+  std::vector<std::string> AttrNames() const;
+
+  void SetAttr(const std::string &name, const Attribute &v);
+  void RemoveAttr(const std::string &name);
+
+  Attribute GetAttr(const std::string &name) const;
+
+  // This thread-safe implementation seems to be redudent since the neural
+  // networks are usually constructed in a single thread.
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    return ++uid;
+  }
+
+  // Note: the identity only used as a key for referring to its
+  // distributed attribute now.
+  uint64_t Id() { return id_; }
+
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;
@@ -144,6 +169,8 @@ class VarDesc {
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
   proto::VarDesc desc_;
+  AttributeMap attrs_;
+  uint64_t id_ = GenerateId();
 };
 
 bool operator==(const VarDesc &left, const VarDesc &right);

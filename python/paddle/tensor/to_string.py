@@ -101,14 +101,14 @@ def _to_sumary(var):
         return var
     elif len(var.shape) == 1:
         if var.shape[0] > 2 * edgeitems:
-            return np.concatenate([var[:edgeitems], var[-edgeitems:]])
+            return np.concatenate([var[:edgeitems], var[(-1 * edgeitems):]])
         else:
             return var
     else:
         # recursively handle all dimensions
         if var.shape[0] > 2 * edgeitems:
             begin = [x for x in var[:edgeitems]]
-            end = [x for x in var[-edgeitems:]]
+            end = [x for x in var[(-1 * edgeitems):]]
             return np.stack([_to_sumary(x) for x in (begin + end)])
         else:
             return np.stack([_to_sumary(x) for x in var])
@@ -162,10 +162,10 @@ def _format_tensor(var, sumary, indent=0, max_width=0, signed=False):
         if sumary and var.shape[0] > 2 * edgeitems:
             items = [
                 _format_item(item, max_width, signed)
-                for item in list(var)[:DEFAULT_PRINT_OPTIONS.edgeitems]
+                for item in list(var)[:edgeitems]
             ] + ['...'] + [
                 _format_item(item, max_width, signed)
-                for item in list(var)[-DEFAULT_PRINT_OPTIONS.edgeitems:]
+                for item in list(var)[(-1 * edgeitems):]
             ]
         else:
             items = [
@@ -181,7 +181,7 @@ def _format_tensor(var, sumary, indent=0, max_width=0, signed=False):
                 for x in var[:edgeitems]
             ] + ['...'] + [
                 _format_tensor(x, sumary, indent + 1, max_width, signed)
-                for x in var[-edgeitems:]
+                for x in var[(-1 * edgeitems):]
             ]
         else:
             vars = [

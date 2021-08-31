@@ -689,18 +689,18 @@ function get_precision_ut_mac() {
         on_precision=1
         re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
         UT_list_prec_1='ut_list_prec2'
-        for case in $UT_list; do
-            flag=$(echo $case|grep -oE $re)
+        for ut_case in $UT_list; do
+            flag=$(echo $ut_case|grep -oE $re)
             if [ -n "$flag" ];then
                 if [ -z "$UT_list_prec" ];then
-                    UT_list_prec="^$case$"
+                    UT_list_prec="^$ut_case$"
                 elif [[ "${#UT_list_prec}" -gt 10000 ]];then
-                    UT_list_prec_1="$UT_list_prec_1|^$case$"
+                    UT_list_prec_1="$UT_list_prec_1|^$ut_case$"
                 else
-                    UT_list_prec="$UT_list_prec|^$case$"
+                    UT_list_prec="$UT_list_prec|^$ut_case$"
                 fi
             else
-                echo ${case} "won't run in PRECISION_TEST mode."
+                echo ${ut_case} "won't run in PRECISION_TEST mode."
             fi
         done
     fi
@@ -722,6 +722,32 @@ function fetch_upstream_develop_if_not_exist() {
     fi
 }
 
+function check_whl_size() {
+    if [ ! "${pr_whl_size}" ];then
+        echo "pr whl size not found "         
+        exit 1
+    fi
+
+    set +x
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    echo "dev_whl_size: ${dev_whl_size}"
+
+    whldiffSize=`echo $(($pr_whl_size - $dev_whl_size))`
+    if [ ${whldiffSize} -gt 10 ]; then
+       approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22334008 22361972`
+       echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+       if [ "${APPROVALS}" == "FALSE" ]; then
+           echo "=========================================================================================="
+           echo "This PR make the release paddlepaddle whl size growth exceeds 10 M."
+           echo "Then you must have one RD (jim19930609 (Recommend) or JiabinYang) approval for this PR\n"
+           echo "=========================================================================================="
+           exit 6
+       fi
+    fi
+    set -x
+}
+
 function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
@@ -730,6 +756,9 @@ function generate_upstream_develop_api_spec() {
     cmake_gen $1
     build $2
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    echo "pr_whl_size: ${pr_whl_size}"
+    
 
     git checkout $cur_branch
     generate_api_spec "$1" "DEV"
@@ -1030,6 +1059,7 @@ function get_quickly_disable_ut() {
 
 function card_test() {
     set -m
+
     case_count $1 $2
     ut_startTime_s=`date +%s` 
 
@@ -1098,10 +1128,8 @@ function card_test() {
     ut_endTime_s=`date +%s`
     if (( $2 == -1 )); then
         echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
         echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        echo "ipipe_log_param_${2}_Cards_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
     set +m
 }
@@ -1152,16 +1180,19 @@ set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         # Note(zhouwei): Parallel runs are relative to 'CTEST_PARALLEL_LEVEL', e.g: '4 job each time' means 4*CTEST_PARALLEL_LEVEL
-        single_card_tests_high_parallel='^job$'     # cases list which would run the most job each time with single GPU
-        single_card_tests_two_parallel='^job$'      # cases list which would run 2 job each time with single GPU
-        single_card_tests_non_parallel='^job$'      # cases list which would run 1 job each time with single GPU
-        single_card_tests='^job$'                   # all cases list which would take single GPU
+        single_card_tests_high_parallel='^job$'             # cases list which would run 24 job each time with single GPU
+        single_card_tests_secondary_high_parallel='^job$'   # cases list which would run 15 job each time with single GPU
+        single_card_tests_third_high_parallel='^job$'       # cases list which would run 12 job each time with single GPU
+        single_card_tests_medium_parallel='^job$'           # cases list which would run 7 job each time with single GPU
+        single_card_tests_non_parallel='^job$'              # cases list which would run 2 job each time with single GPU
+        single_card_tests='^job$'                           # all cases list which would take single GPU
         
-        multiple_card_tests_two_parallel='^job$'    # cases list which would run 2 job each time with multiple GPUs, most cases would be two GPUs
-        multiple_card_tests_non_parallel='^job$'    # cases list which would run 1 job each time with multiple GPUs, most cases would be two GPUs
+        multiple_card_tests_medium_parallel='^job$'         # cases list which would run 4 job each time with multiple GPUs, most cases would be two GPUs
+        multiple_card_tests_non_parallel='^job$'            # cases list which would run 2 job each time with multiple GPUs, most cases would be two GPUs
         
-        exclusive_tests_two_parallel='^job$'        # cases list which would run 2 job exclusively(with all GPUs)
-        exclusive_tests_non_parallel='^job$'        # cases list which would run 1 job exclusively(with all GPUs)
+        exclusive_tests_high_parallel='^job$'               # cases list which would run 5 job exclusively(with all GPUs)
+        exclusive_tests_medium_parallel='^job$'             # cases list which would run 3 job exclusively(with all GPUs)
+        exclusive_tests_non_parallel='^job$'                # cases list which would run 2 job exclusively(with all GPUs)
         
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
@@ -1171,9 +1202,11 @@ set +x
         UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
         output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
         cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
-        tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
-        two_parallel_job=$(echo $output | cut -d ";" -f 3)
-        non_parallel_job=$(echo $output | cut -d ";" -f 4)
+        secondary_cpu_parallel_job=$(echo $output | cut -d ";" -f 2)
+        third_cpu_parallel_job=$(echo $output | cut -d ";" -f 3)
+        tetrad_parallel_job=$(echo $output | cut -d ";" -f 4)
+        two_parallel_job=$(echo $output | cut -d ";" -f 5)
+        non_parallel_job=$(echo $output | cut -d ";" -f 6)
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -1215,22 +1248,28 @@ set +x
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
-                        exclusive_tests_two_parallel="$exclusive_tests_two_parallel|^$testcase$"
+                    if [[ $(echo $cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        exclusive_tests_high_parallel="$exclusive_tests_high_parallel|^$testcase$"
+                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        exclusive_tests_medium_parallel="$exclusive_tests_medium_parallel|^$testcase$"
                     else
                         exclusive_tests_non_parallel="$exclusive_tests_non_parallel|^$testcase$"
                     fi
                 elif [[ "$is_multicard" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
-                        multiple_card_tests_two_parallel="$multiple_card_tests_two_parallel|^$testcase$"
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        multiple_card_tests_medium_parallel="$multiple_card_tests_medium_parallel|^$testcase$"
                     else
                         multiple_card_tests_non_parallel="$multiple_card_tests_non_parallel|^$testcase$"
                     fi
                 else
                     if [[ $(echo $cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_high_parallel="$single_card_tests_high_parallel|^$testcase$"
+                    elif [[ $(echo $secondary_cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_secondary_high_parallel="$single_card_tests_secondary_high_parallel|^$testcase$"
+                    elif [[ $(echo $third_cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
+                        single_card_tests_third_high_parallel="$single_card_tests_third_high_parallel|^$testcase$"           
                     elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
-                        single_card_tests_two_parallel="$single_card_tests_two_parallel|^$testcase$"
+                        single_card_tests_medium_parallel="$single_card_tests_medium_parallel|^$testcase$"
                     else
                         single_card_tests_non_parallel="$single_card_tests_non_parallel|^$testcase$"
                     fi
@@ -1242,24 +1281,42 @@ set +x
                 matchstr=''
                 testcase=''
         done <<< "$test_cases";
+        
+        ut_actual_total_startTime_s=`date +%s`
 
-        card_test "$single_card_tests_high_parallel" 1 6        # run cases the most each time with single GPU
-        card_test "$single_card_tests_two_parallel" 1 2         # run cases 2 job each time with single GPU
-        card_test "$single_card_tests_non_parallel" 1           # run cases 1 job each time with single GPU
-        
-        card_test "$multiple_card_tests_two_parallel" 2 2       # run cases 2 job each time with two GPUs
-        card_test "$multiple_card_tests_non_parallel" 2         # run cases 1 job each time with two GPUs
-        
-        card_test "$exclusive_tests_two_parallel" -1 2          # run cases exclusively, in this cases would be run with 2/4/8 GPUs
-        card_test "$exclusive_tests_non_parallel" -1            # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        single_ut_startTime_s=`date +%s`
+        card_test "$single_card_tests_high_parallel" 1 24               # run cases 24 job each time with single GPU
+        card_test "$single_card_tests_secondary_high_parallel" 1 15     # run cases 15 job each time with single GPU
+        card_test "$single_card_tests_third_high_parallel" 1 12         # run cases 12 job each time with single GPU
+        card_test "$single_card_tests_medium_parallel" 1 7              # run cases 7 job each time with single GPU
+        card_test "$single_card_tests_non_parallel" 1 2                 # run cases 2 job each time with single GPU
+        single_ut_endTime_s=`date +%s`
+
+        multi_ut_startTime_s=`date +%s`
+        card_test "$multiple_card_tests_medium_parallel" 2 4            # run cases 2 job each time with two GPUs
+        card_test "$multiple_card_tests_non_parallel" 2 2               # run cases 1 job each time with two GPUs
+        multi_ut_endTime_s=`date +%s`
+
+        exclu_ut_startTime_s=`date +%s`
+        card_test "$exclusive_tests_high_parallel" -1 5                 # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test "$exclusive_tests_medium_parallel" -1 3                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test "$exclusive_tests_non_parallel" -1 2                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        exclu_ut_endTime_s=`date +%s`
+
+        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $exclu_ut_endTime_s - $exclu_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
         retry_unittests_record=''
-        retry_time=3
-        exec_time_array=('first' 'second' 'third')
+        retry_time=4
+        exec_time_array=('first' 'second' 'third' 'fourth')
+        parallel_failed_tests_exec_retry_threshold=80
         exec_retry_threshold=10
         is_retry_execuate=0
+        rerun_ut_startTime_s=`date +%s`
         if [ -n "$failed_test_lists" ];then
             if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
                 bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
@@ -1268,14 +1325,30 @@ set +x
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
             read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
-            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
-                while ( [ $exec_times -lt $retry_time ] )
-                    do
+            while ( [ $exec_times -lt $retry_time ] )
+                do
+                    if [[ "${exec_times}" == "0" ]] ;then
+                        if [ $need_retry_ut_count -lt $parallel_failed_tests_exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    elif [[ "${exec_times}" == "1" ]] ;then
+                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_arr=(${need_retry_ut_str})
+                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    fi
+                    if [[ "$is_retry_execuate" == "0" ]];then
                         set +e
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
                         set -e
-                        if [[ "${exec_times}" == "1" ]];then
+                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "3" ]];then
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
@@ -1286,11 +1359,9 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${retry_unittests}"
-                            
+                        echo "${retry_unittests}"                    
                         for line in ${retry_unittests[@]} ;
                             do
-
                                 read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
                                 read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
                                 read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
@@ -1318,7 +1389,7 @@ set +x
                             done
 
                         if [[ "$one_card_retry" != "" ]]; then
-                            card_test "$one_card_retry" 1
+                            card_test "$one_card_retry" 1 4
                         fi
 
                         if [[ "$multiple_card_retry" != "" ]]; then
@@ -1328,21 +1399,22 @@ set +x
                         if [[ "$exclusive_retry" != "" ]]; then
                             card_test "$exclusive_retry" -1
                         fi
-                        
                         exec_times=$[$exec_times+1]
                         failed_test_lists=''
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         one_card_retry=''
                         multiple_card_retry=''
-                        exclusive_retry=''
-                    done
-            else 
-                # There are more than 10 failed unit tests, so no unit test retry
-                is_retry_execuate=1
-            fi
+                        exclusive_retry='' 
+                    fi 
+                done
         fi
 
+        rerun_ut_endTime_s=`date +%s`
+        
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        ut_actual_total_endTime_s=`date +%s`
+        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
         fi
@@ -1351,7 +1423,20 @@ set -ex
 }
 
 function show_ut_retry_result() {
-    if [[ "$is_retry_execuate" != "0" ]];then
+    if [ "$SYSTEM" == "Darwin" ]; then
+        exec_retry_threshold_count=10
+    else
+        exec_retry_threshold_count=80
+    fi
+    if [[ "$is_retry_execuate" != "0" ]]  && [[ "${exec_times}" == "0" ]] ;then
+        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        echo "========================================="
+        echo "There are more than ${exec_retry_threshold_count} failed unit tests in parallel test, so no unit test retry!!!"
+        echo "========================================="
+        echo "The following tests FAILED: "
+        echo "${failed_test_lists_ult}"
+        exit 8;
+    elif [[ "$is_retry_execuate" != "0" ]] && [[ "${exec_times}" == "1" ]];then
         failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
         echo "========================================="
         echo "There are more than 10 failed unit tests, so no unit test retry!!!"
@@ -1640,16 +1725,22 @@ set +x
                 single_card_tests="$single_card_tests|^$testcase$"
             fi
         done <<< "$test_cases";
-        card_test "$single_card_tests" 1
+
+        ut_actual_total_startTime_s=`date +%s`
+
+        card_test "$single_card_tests" 1 # run cases 1 job each time with single GPU
         collect_failed_tests
+
         # add unit test retry for NPU
         rm -f $tmp_dir/*
         exec_times=0
         retry_unittests_record=''
-        retry_time=3
-        exec_time_array=('first' 'second' 'third')
+        retry_time=4
+        exec_time_array=('first' 'second' 'third' 'fourth')
+        parallel_failed_tests_exec_retry_threshold=80
         exec_retry_threshold=10
         is_retry_execuate=0
+        rerun_ut_startTime_s=`date +%s`
         if [ -n "$failed_test_lists" ];then
             if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
                 bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
@@ -1658,14 +1749,30 @@ set +x
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
             read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
-            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
-                while ( [ $exec_times -lt $retry_time ] )
-                    do
+            while ( [ $exec_times -lt $retry_time ] )
+                do
+                    if [[ "${exec_times}" == "0" ]] ;then
+                        if [ $need_retry_ut_count -lt $parallel_failed_tests_exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    elif [[ "${exec_times}" == "1" ]] ;then
+                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_arr=(${need_retry_ut_str})
+                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    fi
+                    if [[ "$is_retry_execuate" == "0" ]];then
                         set +e
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
                         set -e
-                        if [[ "${exec_times}" == "1" ]];then
+                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "3" ]];then
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
@@ -1676,11 +1783,11 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${retry_unittests}"
-                            
+                        echo "${retry_unittests}"                    
                         for line in ${retry_unittests[@]} ;
                             do
                                 read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
+
                                 if [[ "$tmp_one_tmp" != ""  ]]; then
                                     if [[ "$one_card_retry" == "" ]]; then
                                         one_card_retry="^$line$"
@@ -1688,23 +1795,26 @@ set +x
                                         one_card_retry="$one_card_retry|^$line$"
                                     fi
                                 fi
+
                             done
 
                         if [[ "$one_card_retry" != "" ]]; then
-                            card_test "$one_card_retry" 1
+                            card_test "$one_card_retry" 1 # run cases 1 job each time with single GPU
                         fi
-
                         exec_times=$[$exec_times+1]
                         failed_test_lists=''
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         one_card_retry=''
-                    done
-            else 
-                # There are more than 10 failed unit tests, so no unit test retry
-                is_retry_execuate=1
-            fi
+                    fi 
+                done
         fi
+
+        rerun_ut_endTime_s=`date +%s`
+        
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        ut_actual_total_endTime_s=`date +%s`
+        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
         fi
@@ -2021,20 +2131,25 @@ function test_fluid_lib() {
     Testing fluid library for inference ...
     ========================================
 EOF
-    fluid_startTime_s=`date +%s`
+    demo_ci_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
     DEMO_EXIT_CODE=$?
     ./clean.sh
+    demo_ci_endTime_s=`date +%s`
+    echo "demo_ci tests Total time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s"
+    echo "ipipe_log_param_Demo_Ci_Tests_Total_Time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+
+    infer_ut_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_ROOT_DIR:-/usr}
     TEST_EXIT_CODE=$?
-    fluid_endTime_s=`date +%s`
-    echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
-    echo "ipipe_log_param_Test_Fluid_Lib_Total_Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt     
+    infer_ut_endTime_s=`date +%s`
+    echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"
+    echo "ipipe_log_param_Infer_Ut_Tests_Total_Time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt  
     if [[ "$DEMO_EXIT_CODE" != "0" || "$TEST_EXIT_CODE" != "0" ]]; then
         exit 8;
     fi
@@ -2234,6 +2349,31 @@ function main() {
         example_code=$?
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
+        check_whl_size
+        ;;
+      build_and_check_cpu)
+        set +e
+        check_style_info=$(check_style)
+        check_style_code=$?
+        find_temporary_files
+        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        check_sequence_op_unittest
+        generate_api_spec ${PYTHON_ABI:-""} "PR"
+        check_whl_size
+        ;;
+      build_and_check_gpu)
+        set +e
+        example_info_gpu=""
+        example_code_gpu=0
+        if [ "${WITH_GPU}" == "ON" ] ; then
+            example_info_gpu=$(exec_samplecode_test gpu)
+            example_code_gpu=$?
+        fi
+        example_info=$(exec_samplecode_test cpu)
+        example_code=$?
+        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        assert_api_spec_approvals
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
@@ -2335,6 +2475,11 @@ function main() {
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
         python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         gen_fluid_lib ${parallel_number}
+        ;;
+      gpu_inference)
+        test_fluid_lib
+        test_go_inference_api
+        check_approvals_of_unittest 3
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}

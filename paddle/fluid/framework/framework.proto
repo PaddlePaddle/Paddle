@@ -38,6 +38,13 @@ enum AttrType {
   FLOAT64S = 12;
 }
 
+message ProcessMeshDesc {
+  required int32 id = 1;
+  required int32 parent_id = 2;
+  repeated int32 topology = 3;
+  repeated int32 process_group = 4;
+};
+
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
 message OpDesc {
@@ -83,6 +90,8 @@ message OpProto {
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
     optional bool dispensable = 5 [ default = false ];
+    optional bool extra = 6 [ default = false ];
+    optional bool quant = 7 [ default = false ];
   }
 
   // AttrProto describes the C++ type Attribute.
@@ -94,6 +103,8 @@ message OpProto {
     // language binding has responsibility to fill that
     // attribute. End-User should not set that attribute.
     optional bool generated = 4 [ default = false ];
+    optional bool extra = 5 [ default = false ];
+    optional bool quant = 6 [ default = false ];
   }
 
   required string type = 1;
@@ -167,6 +178,15 @@ message VarType {
 }
 
 message VarDesc {
+
+  message Attr {
+    required string name = 1;
+    required AttrType type = 2;
+    optional int32 i = 3;
+    optional string s = 4;
+    repeated int32 ints = 5;
+  };
+
   required string name = 1;
   required VarType type = 2;
   optional bool persistable = 3 [ default = false ];
@@ -175,6 +195,7 @@ message VarDesc {
   optional bool need_check_feed = 4 [ default = false ];
   optional bool is_parameter = 5 [ default = false ];
   optional bool stop_gradient = 6 [ default = false ];
+  repeated Attr attrs = 7;
 }
 
 message BlockDesc {

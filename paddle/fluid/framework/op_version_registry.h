@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_version_proto.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/none.h"
 
 namespace paddle {
 namespace framework {
@@ -42,7 +43,7 @@ using OpAttrVariantT =
                    std::vector<int32_t>,     /* AttrType::INTS */
                    std::vector<int64_t>,     /* AttrType::LONGS */
                    std::vector<std::string>, /* AttrType::STRINGS */
-                   boost::none_t             /* None */
+                   paddle::none_t            /* None */
                    >;
 
 struct OpUpdateInfo {
@@ -51,7 +52,7 @@ struct OpUpdateInfo {
 
 struct OpAttrInfo : OpUpdateInfo {
   OpAttrInfo(const std::string& name, const std::string& remark,
-             const OpAttrVariantT& default_value = boost::none)
+             const OpAttrVariantT& default_value = paddle::none)
       : name_{name}, default_value_{default_value}, remark_{remark} {}
 
   const std::string& name() const { return name_; }
