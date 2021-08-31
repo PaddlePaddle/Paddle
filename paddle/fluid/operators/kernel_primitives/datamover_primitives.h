@@ -20,9 +20,6 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #endif
-#include <math.h>
-#include <iostream>
-#include <vector>
 
 namespace paddle {
 namespace operators {

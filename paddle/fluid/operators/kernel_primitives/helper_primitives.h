@@ -19,26 +19,18 @@ namespace operators {
 namespace kernel_primitives {
 namespace details {
 
-static __device__ __forceinline__ platform::float16 exp_on_device(
+static __device__ __forceinline__ platform::float16 ExpFunctor(
     platform::float16 x) {
   return ::Eigen::numext::exp(x);
 }
-static __device__ __forceinline__ float exp_on_device(float x) {
-  return expf(x);
-}
-static __device__ __forceinline__ double exp_on_device(double x) {
-  return exp(x);
-}
-static __device__ __forceinline__ platform::float16 log_on_device(
+static __device__ __forceinline__ float ExpFunctor(float x) { return expf(x); }
+static __device__ __forceinline__ double ExpFunctor(double x) { return exp(x); }
+static __device__ __forceinline__ platform::float16 LogFunctor(
     platform::float16 x) {
   return ::Eigen::numext::log(x);
 }
-static __device__ __forceinline__ float log_on_device(float x) {
-  return logf(x);
-}
-static __device__ __forceinline__ double log_on_device(double x) {
-  return log(x);
-}
+static __device__ __forceinline__ float LogFunctor(float x) { return logf(x); }
+static __device__ __forceinline__ double LogFunctor(double x) { return log(x); }
 
 }  // namespace details
 /*************************** Compute Functor****************************/
@@ -48,11 +40,11 @@ struct ExpLogitTransformer {
   HOSTDEVICE explicit inline ExpLogitTransformer(int n) {}
 
   HOSTDEVICE inline Ty operator()(const Tx* x) const {
-    return static_cast<Ty>(details::exp_on_device(x[0]));
+    return static_cast<Ty>(details::ExpFunctor(x[0]));
   }
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(details::exp_on_device(x));
+    return static_cast<Ty>(details::ExpFunctor(x));
   }
 };
 

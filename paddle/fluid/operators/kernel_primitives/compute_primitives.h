@@ -21,7 +21,7 @@
 #include <hip/hip_fp16.h>
 #endif
 
-#include <algorithm>
+// #include <algorithm>
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -80,6 +80,10 @@ __device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
  *   \    \    /     /        ---->3. Load the result above from shared memory
  *        res                         to warp0 and process the second WarpReduce
  */
+
+/**
+ * @brief BlockXReduce reduce along blockDim.x
+ */
 template <typename T, typename ReduceOp>
 __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
   __syncthreads();
@@ -109,6 +113,9 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
   return val;
 }
 
+/**
+ * @brief BlockYReduce reduce along blockDim.y
+ */
 template <typename T, typename ReduceOp>
 __device__ __forceinline__ T BlockYReduce(T val, ReduceOp reducer) {
   __shared__ T shared_memory[details::kMaxThread];
@@ -223,28 +230,36 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out, const T* in,
 }
 
 /**
- * @brief reduce function, in's shape size is [NX, NY]. If ReduceMode ==
- * kLocalMode then reduce NX, the shape of out is [NY, 1], if ReduceMode ==
- * kGlobalMode reduce between different threads
- * @param：
+ * @brief reduce function, in's shape size is [NX, NY].
+ * If ReduceMode == kLocalMode then reduce NX, the shape of out is [NY, 1],
+ * if ReduceMode == kGlobalMode then reduce between different threads, the
+ * shape of out is [NY, NX]. If reduce_last_dim is false and reduce_num was
+ * split, BlockYReduce will be called. If reduce_last_dim is true and
+ * reduce_num was split, BlockXReduce will be called
+ * @typename：
  * T: data type of in
  * NX: the cols of in
  * NY: the rows of in
  * BlockSize: the config of this device
+ * OpFunc: reduce functor, eg: CustomSum, CustomMean in reduce_functor_op.h
+ * @param:
+ * reducer: reduce functor, eg: CustomSum<T>()
+ * reduce_last_dim: if in's last dim need to be reduce then reduce_last_dim =
+ * true
  */
 template <typename T, int NX, int NY, int BlockSize, class OpFunc,
-          int ReduceMode>
+          ReduceMode Mode>
 __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
                                        bool reduce_last_dim) {
   int block_index = blockDim.y;
 
-  if (ReduceMode == details::ReduceMode::kGlobalMode) {
+  if (Mode == details::ReduceMode::kGlobalMode) {
     bool block_reduce_y = (!reduce_last_dim) && (block_index > 1);
     // when reduce is not required for the last dim, and reduce num has been
     // split into multiple threads
     if (block_reduce_y) {
 #pragma unroll
-      for (int i = 0; i < NY * NX; i++) {
+      for (int i = 0; i < NY * NX; i++) {  // reduce along blockdim.y
         out[i] = details::BlockYReduce<T, OpFunc>(out[i], reducer);
       }
     }
@@ -252,7 +267,7 @@ __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
     // when last dimension need to be reduced
     if (reduce_last_dim) {
 #pragma unroll
-      for (int i = 0; i < NY * NX; i++) {
+      for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.x
         out[i] = details::BlockXReduce<T, OpFunc>(out[i], reducer);
       }
     }
