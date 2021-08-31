@@ -10977,7 +10977,7 @@ def slice(input, axes, starts, ends):
         ends_tensor = None
 
         if isinstance(axes, (list, tuple)):
-            axes = axes if isinstance(axes, list) else list(axes)
+            axes = list(axes)
             if len(axes) == 0:
                 raise ValueError(
                     "Input axes should not be an empty list/tuple.")
