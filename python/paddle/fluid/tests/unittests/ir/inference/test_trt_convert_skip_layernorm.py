@@ -19,7 +19,7 @@ import paddle.inference as paddle_infer
 import unittest
 
 
-class TrtConvertScaleTest(TrtLayerAutoScanTest):
+class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
     def setUp(self):
         self.ops_config = [{
             "op_type": "skip_layernorm",
