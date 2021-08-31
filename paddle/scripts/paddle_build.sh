@@ -2353,8 +2353,6 @@ function main() {
         ;;
       build_and_check_cpu)
         set +e
-        check_style_info=$(check_style)
-        check_style_code=$?
         find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -2364,6 +2362,8 @@ function main() {
         ;;
       build_and_check_gpu)
         set +e
+        check_style_info=$(check_style)
+        check_style_code=$?
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
