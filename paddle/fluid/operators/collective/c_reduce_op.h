@@ -336,7 +336,8 @@ class CReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
 #if defined(PADDLE_WITH_ASCEND_CL)
     AddAttr<std::string>("tag", "(string default tag) tag for reduce.")
-        .SetDefault("tag");
+        .SetDefault("tag")
+        .AsExtra();
 #endif
     AddAttr<int>("root_id", "(int default 0) root id.").SetDefault(0);
     AddAttr<bool>(

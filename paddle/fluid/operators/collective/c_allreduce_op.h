@@ -405,7 +405,8 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
 #if defined(PADDLE_WITH_ASCEND_CL)
     AddAttr<std::string>("tag", "(string default tag) tag for all reduce.")
-        .SetDefault("tag");
+        .SetDefault("tag")
+        .AsExtra();
 #endif
     AddAttr<bool>(
         "use_calc_stream",
