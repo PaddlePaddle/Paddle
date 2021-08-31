@@ -121,7 +121,8 @@ class TestSearchSortedAPI(unittest.TestCase):
             sorted_sequence = paddle.to_tensor(self.sorted_sequence)
             values = paddle.to_tensor(self.values)
             out = paddle.searchsorted(sorted_sequence, values, right=True)
-            out_ref = np.searchsorted(self.sorted_sequence, self.values)
+            out_ref = np.searchsorted(
+                self.sorted_sequence, self.values, side='right')
             self.assertEqual(np.allclose(out_ref, out.numpy()), True)
             paddle.enable_static()
 
