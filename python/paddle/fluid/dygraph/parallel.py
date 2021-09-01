@@ -382,6 +382,12 @@ def sync_params_buffers(model,
 
 class DataParallel(layers.Layer):
     """
+    .. warning::
+        PyLayer is not supported in DataParallel. To solve problems of this kind, 
+        it's recommended to skip gradient synchronization among multiple cards by 'no_sync', 
+        and manually implement 'all_reduce' before model optimization. There is an example 
+        showing specific implemetation processing.
+
     Run the dygraph module with data parallelism.
 
     Currently, DataParallel class only supports to run the dynamic graph
@@ -473,15 +479,9 @@ class DataParallel(layers.Layer):
                     dist.spawn(train, nprocs=2)
                     # 2. start by ``paddle.distributed.launch``
                     # train()
-        
-    .. warning::
-        PyLayer is not supported in DataParallel. To solve problems of this kind, 
-        it's recommended to skip gradient synchronization among multiple cards by 'no_sync', 
-        and manually implement 'all_reduce' before model optimization. There is an example 
-        showing specific implemetation processing.
-    
+   
     Examples 2:
-    
+
         .. code-block:: python
             :name: dp_example2
 
