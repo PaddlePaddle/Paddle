@@ -13,13 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gather_nd_op.h"
-#include <memory>
-#include <string>
-#include <vector>
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/kron_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/platform/npu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -37,7 +31,7 @@ class GatherNdNPUKernel : public framework::OpKernel<T> {
     if (x->numel() == 0) return;
 
     if (index->numel() == 0) {
-      *out = *x;
+      framework::TensorCopy(*x, ctx.GetPlace(), ctx.device_context(), out);
       return;
     }
 
@@ -72,12 +66,13 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *p = dx->mutable_data<T>(ctx.GetPlace());
 
+    if (dx->numel() == 0) return;
+
     if (index->numel() == 0) {
-      *dx = *dout;
+      framework::TensorCopy(*dout, ctx.GetPlace(), ctx.device_context(), dx);
       return;
     }
 
-    // step1: Unsqueeze index
     framework::Tensor tmp_tensor(index->type());
     framework::Tensor tmp_tensor2(dout->type());
     const auto index_dims = index->dims();
@@ -116,10 +111,10 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     gather_nd, ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext,
                                       paddle::platform::float16>,
-    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, bool>);
+    ops::GatherNdNPUKernel<paddle::platform::NPUDeviceContext, float>);
 
 REGISTER_OP_NPU_KERNEL(
     gather_nd_grad,
+    ops::GatherNdGradNPUKernel<paddle::platform::NPUDeviceContext,
+                               paddle::platform::float16>,
     ops::GatherNdGradNPUKernel<paddle::platform::NPUDeviceContext, float>);

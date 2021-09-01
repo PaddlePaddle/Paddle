@@ -61,7 +61,10 @@ def test_class1(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, ['X'], 'Out')
+            if typename == "float16":
+                self.__class__.no_need_check_grad = True
+            else:
+                self.check_grad_with_place(self.place, ['X'], 'Out')
 
     cls_name = "{0}_{1}_1".format(op_type, typename)
     TestGatherNdOpWithEmptyIndex.__name__ = cls_name
@@ -85,7 +88,10 @@ def test_class2(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, ['X'], 'Out')
+            if typename == "float16":
+                self.__class__.no_need_check_grad = True
+            else:
+                self.check_grad_with_place(self.place, ['X'], 'Out')
 
     cls_name = "{0}_{1}_2".format(op_type, typename)
     TestGatherNdOpWithIndex1.__name__ = cls_name
@@ -114,8 +120,11 @@ def test_class3(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(
-                self.place, ['X'], 'Out', user_defined_grads=[self.x_grad])
+            if typename == "float16":
+                self.__class__.no_need_check_grad = True
+            else:
+                self.check_grad_with_place(
+                    self.place, ['X'], 'Out', user_defined_grads=[self.x_grad])
 
     cls_name = "{0}_{1}_3".format(op_type, typename)
     TestGatherNdOpWithLowIndex.__name__ = cls_name
@@ -144,7 +153,10 @@ def test_class4(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, ['X'], 'Out')
+            if typename == "float16":
+                self.__class__.no_need_check_grad = True
+            else:
+                self.check_grad_with_place(self.place, ['X'], 'Out')
 
     cls_name = "{0}_{1}_4".format(op_type, typename)
     TestGatherNdOpIndex1.__name__ = cls_name
@@ -172,7 +184,10 @@ def test_class5(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, ['X'], 'Out')
+            if typename == "float16":
+                self.__class__.no_need_check_grad = True
+            else:
+                self.check_grad_with_place(self.place, ['X'], 'Out')
 
     cls_name = "{0}_{1}_5".format(op_type, typename)
     TestGatherNdOpWithSameIndexAsX.__name__ = cls_name
@@ -202,7 +217,10 @@ def test_class6(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, ['X'], 'Out')
+            if typename == "float16":
+                self.__class__.no_need_check_grad = True
+            else:
+                self.check_grad_with_place(self.place, ['X'], 'Out')
 
     cls_name = "{0}_{1}_6".format(op_type, typename)
     TestGatherNdOpWithHighRankSame.__name__ = cls_name
@@ -234,7 +252,10 @@ def test_class7(op_type, typename):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(self.place, ['X'], 'Out')
+            if typename == "float16":
+                self.__class__.no_need_check_grad = True
+            else:
+                self.check_grad_with_place(self.place, ['X'], 'Out')
 
     cls_name = "{0}_{1}_7".format(op_type, typename)
     TestGatherNdOpWithHighRankDiff.__name__ = cls_name
@@ -255,7 +276,7 @@ class TestGatherNdAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-for _typename in {'float32'}:
+for _typename in {'float16', 'float32'}:
     test_class1('gather_nd', _typename)
     test_class2('gather_nd', _typename)
     test_class3('gather_nd', _typename)
