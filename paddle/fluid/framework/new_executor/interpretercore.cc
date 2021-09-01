@@ -353,6 +353,9 @@ void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
 }
 
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+  VLOG(3) << "RunInstruction:  "
+          << instr_node.kernel_func_.operator_base_->Type();
+
   static_cast<const framework::OperatorWithKernel*>(
       instr_node.kernel_func_.operator_base_)
       ->InferShape(instr_node.infershape_ctx_.get());
@@ -391,7 +394,7 @@ InterpreterCore::PrepareAtomicVarRef() {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr, const VariableScope& var_scope,
-    const platform::Place& place) {
+    const platform::Place& place, bool is_dry_run) {
   auto working_dependecy_count = PrepareAtomicDeps();
   auto working_var_ref = PrepareAtomicVarRef();
   std::atomic<size_t> op_run_number{0};
@@ -400,14 +403,14 @@ void InterpreterCore::ExecuteInstructionList(
     if (dependecy_count_[i] == 0) {
       VLOG(3) << i << " is ready";
       if (vec_instr[i].type_ == OpFuncType::kQueueAsync) {
-        aync_thread_pool_->AddTask([&, i]() {
+        aync_thread_pool_->AddTask([&, i, is_dry_run]() {
           RunInstructionAsync(i, working_dependecy_count, working_var_ref,
-                              var_scope, place, &op_run_number);
+                              var_scope, place, &op_run_number, is_dry_run);
         });
       } else {
-        sync_thread_pool_->AddTask([&, i]() {
+        sync_thread_pool_->AddTask([&, i, is_dry_run]() {
           RunInstructionAsync(i, working_dependecy_count, working_var_ref,
-                              var_scope, place, &op_run_number);
+                              var_scope, place, &op_run_number, is_dry_run);
         });
       }
     }
@@ -434,7 +437,7 @@ void InterpreterCore::RunInstructionAsync(
     std::vector<std::unique_ptr<std::atomic<size_t>>>& working_dependecy_count,
     std::vector<std::unique_ptr<std::atomic<size_t>>>& working_var_ref,
     const VariableScope& var_scope, const platform::Place& place,
-    std::atomic<size_t>* op_run_number) {
+    std::atomic<size_t>* op_run_number, bool is_dry_run) {
   VLOG(3) << "start to run : " << instr_id;
   auto& instr_node = vec_instruction_[instr_id];
   // step1 : stream_wait (non-block host) or sync (block host)
@@ -446,6 +449,10 @@ void InterpreterCore::RunInstructionAsync(
           << op_run_number->load(std::memory_order_acquire);
   // step3: insert event for out_vars if needed
   RecordEventInstruction(instr_node);
+  
+  if (is_dry_run) {
+      profiler_.ParseMemoryInfo(var_scope.var_list);
+  }
 
   // step4: update working_queue
   auto& next_instr = instr_node.next_instruction_.all_next_ops_;
@@ -455,14 +462,14 @@ void InterpreterCore::RunInstructionAsync(
     if (working_dependecy_count[next_i]->load() == 0) {
       VLOG(3) << next_i << " is ready in task";
       if (vec_instruction_[next_i].type_ == OpFuncType::kQueueAsync) {
-        aync_thread_pool_->AddTask([&, next_i, op_run_number]() {
+        aync_thread_pool_->AddTask([&, next_i, op_run_number, is_dry_run]() {
           RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
-                              var_scope, place, op_run_number);
+                              var_scope, place, op_run_number, is_dry_run);
         });
       } else {
-        sync_thread_pool_->AddTask([&, next_i, op_run_number]() {
+        sync_thread_pool_->AddTask([&, next_i, op_run_number, is_dry_run]() {
           RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
-                              var_scope, place, op_run_number);
+                              var_scope, place, op_run_number, is_dry_run);
         });
       }
     }
@@ -887,6 +894,48 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
 
     VLOG(3) << "run " << op_base->Type() << " done.";
   }
+}
+void InterpreterCore::Prepare(
+    const std::vector<framework::Tensor>& feed_tensors) {
+  auto FeedInput = [&] {
+    for (size_t i = 0; i < feed_names_.size(); ++i) {
+      auto it = global_scope_->name2id.find(feed_names_[i]);
+      assert(it != global_scope_->name2id.end());
+
+      auto feed_tensor = global_scope_->var_list[it->second]
+                             ->GetMutable<framework::LoDTensor>();
+      feed_tensor->ShareDataWith(feed_tensors[i]);
+    }
+  };
+
+  if (is_build_ == false) {
+    BuildVariableScope(main_program_, global_scope_);
+    FeedInput();
+    BuildOpFuncList(place_, main_program_, &op_list_, &vec_func_list_,
+                    global_scope_);
+    is_build_ = true;
+    // convert vec func_list to graph
+    Convert();
+  }
+  // NOTE: Because feed_tensor will be GC after BuildOpFuncList, so we should
+  // call
+  // FeedInput again.
+  FeedInput();
+}
+
+const CostInfo& InterpreterCore::DryRun(
+    const std::vector<framework::Tensor>& feed_tensors) {
+  Prepare(feed_tensors);
+  // DryRun may be called many times.
+  profiler_.Reset();
+  profiler_.Start();
+  ExecuteInstructionList(vec_instruction_, *global_scope_, place_,
+                         /*is_dry_run=*/true);
+  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+
+  profiler_.Pause();
+  profiler_.TotalCUDAAllocatedMemorySize(place_);
+  return profiler_.GetCostInfo();
 }
 
 platform::DeviceContext* InterpreterCore::ParseDeviceContextForInstruction(
