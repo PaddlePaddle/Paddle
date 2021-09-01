@@ -61,12 +61,12 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         self.program_outputs = ["relu_output_data"]
 
     def test_check_fp32_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Float32
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
         # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
         self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-5)
 
     def test_check_fp16_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Half
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
         self.run_test(trt_engine_num=1, paddle_op_num=2, threshold=1e-2)
 
     def test_dynamic_shape_fp32_check_output(self):

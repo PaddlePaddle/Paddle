@@ -499,7 +499,7 @@ class RecordedCudaMallocHelper {
    */
   gpuError_t Malloc(void **ptr, size_t size) {
     LockGuardPtr<std::mutex> lock(mtx_);
-    if (UNLIKELY(NeedRecord() && cur_size_ + size > limit_size_)) {
+    if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
 #ifdef PADDLE_WITH_HIP
       return hipErrorOutOfMemory;
 #else
@@ -514,9 +514,7 @@ class RecordedCudaMallocHelper {
     auto result = cudaMalloc(ptr, size);
 #endif
     if (result == gpuSuccess) {
-      if (NeedRecord()) {
-        cur_size_ += size;
-      }
+      cur_size_.fetch_add(size);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       return gpuSuccess;
     } else {
@@ -551,10 +549,7 @@ class RecordedCudaMallocHelper {
     if (err != cudaErrorCudartUnloading) {
 #endif
       PADDLE_ENFORCE_CUDA_SUCCESS(err);
-      if (NeedRecord()) {
-        std::lock_guard<std::mutex> guard(*mtx_);
-        cur_size_ -= size;
-      }
+      cur_size_.fetch_sub(size);
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
 #ifdef PADDLE_WITH_HIP
@@ -582,7 +577,7 @@ class RecordedCudaMallocHelper {
 
     if (NeedRecord()) {
       std::lock_guard<std::mutex> guard(*mtx_);
-      *avail = std::min(*actual_avail, limit_size_ - cur_size_);
+      *avail = std::min(*actual_avail, limit_size_ - cur_size_.load());
       *total = std::min(*actual_total, limit_size_);
       return *total < *actual_total;
     } else {
@@ -594,17 +589,14 @@ class RecordedCudaMallocHelper {
 
   inline bool NeedRecord() const { return limit_size_ != 0; }
 
-  uint64_t RecordedSize() const {
-    LockGuardPtr<std::mutex> lock(mtx_);
-    return NeedRecord() ? cur_size_ : 0;
-  }
+  uint64_t RecordedSize() const { return cur_size_.load(); }
 
   uint64_t LimitSize() const { return limit_size_; }
 
  private:
   const int dev_id_;
   const uint64_t limit_size_;
-  uint64_t cur_size_{0};
+  std::atomic<uint64_t> cur_size_{0};
 
   mutable std::unique_ptr<std::mutex> mtx_;
 

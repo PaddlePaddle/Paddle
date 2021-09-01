@@ -1445,7 +1445,7 @@ function show_ut_retry_result() {
         echo "${failed_test_lists_ult}"
         exit 8;
     else
-        read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+        retry_unittests_ut_name=$(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
         retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
@@ -2353,18 +2353,17 @@ function main() {
         ;;
       build_and_check_cpu)
         set +e
-        check_style_info=$(check_style)
-        check_style_code=$?
         find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         check_whl_size
-        echo 11111,$?
         ;;
       build_and_check_gpu)
         set +e
+        check_style_info=$(check_style)
+        check_style_code=$?
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
