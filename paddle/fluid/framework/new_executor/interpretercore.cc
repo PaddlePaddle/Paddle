@@ -15,6 +15,7 @@
 #if !defined(_WIN32)
 #include <sched.h>
 #else
+#define NOMINMAX
 #include <windows.h>
 #endif  // !_WIN32
 
@@ -460,6 +461,7 @@ void InterpreterCore::CheckGC(size_t instr_id,
     if (max_memory_size_ <= 1) {
       gc_event_[instr_id].Record(
           platform::DeviceContextPool::Instance().Get(place));
+      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
       gc_queue_->AddTask(
           [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
             while (!event->Query()) {
