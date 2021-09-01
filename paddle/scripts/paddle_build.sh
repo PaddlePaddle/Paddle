@@ -1704,8 +1704,8 @@ set -x
 function parallel_test_base_npu() {
     # skipping if no NPU related files changed
     if [ ${SKIL_NPU_TEST:-ON} == "ON" ] ; then
-        npu_cc_changes=$(git diff --name-only ${BRANCH} | grep "op_npu.cc" || true)
-        npu_py_changes=$(git diff --name-only ${BRANCH} | grep "op_npu.py" || true)
+        npu_cc_changes=$(git diff --name-only upstream/${BRANCH} | grep "op_npu.cc" || true)
+        npu_py_changes=$(git diff --name-only upstream/${BRANCH} | grep "op_npu.py" || true)
         if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] ; then
             echo "Files changes as following:"
             git diff --name-only ${BRANCH}
