@@ -840,7 +840,16 @@ template <typename Ti, typename To>
 struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {}
+                  FFTNormMode normalization, bool forward) {
+    auto input = x;
+    if (axes->dims() > 1) {
+      auto c2c_dims = axes.slice(0, axes->dims() - 1);
+      input = FFTC2CFunctor(ctx, x, out, c2c_dims, normalization, forward);
+      axes = axes.slice(axes->dims() - 1);
+    }
+    exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, input, out, axes,
+                                                 normalization, forward);
+  }
 };
 
 #elif defined(PADDLE_WITH_POCKETFFT)

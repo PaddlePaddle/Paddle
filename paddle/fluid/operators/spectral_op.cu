@@ -278,7 +278,7 @@ struct KeyHash {
       value ^= ptr[i];
       value *= 0x01000193;
     }
-    return (size_t)value;
+    return static_cast<size_t>(value);
   }
 };
 
@@ -689,6 +689,19 @@ void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
 
 }  // anonymous namespace
 
+// Use the optimized path to perform single R2C or C2R if transformation dim is
+// supported by cuFFT
+bool use_optimized_cufft_path(const std::vector<int64_t>& axes) {
+  // For performance reason, when axes starts with (0, 1), do not use the
+  // optimized path.
+  if (axes.size() > kMaxCUFFTNdim ||
+      (axes.size() >= 2 && axes[0] == 0 && axes[1] == 1)) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
 template <typename Ti, typename To>
 struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
   void operator()(const platform::CUDADeviceContext& ctx, const Tensor* X,
@@ -730,6 +743,33 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
   }
 };
 
+template <typename T>
+struct FFTC2RFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& ctx, const Tensor* X,
+                  Tensor* out, const std::vector<int64_t>& axes,
+                  FFTNormMode normalization, bool forward) {
+    framework::Tensor* p_out = out;
+    std::vector<int64_t> in_dims = framework::vectorize(X->dims());
+    std::vector<int64_t> out_dims(in_dims.begin(), in_dims.end());
+    out_dims[axes.size() - 1] = (out->dims()).value_or(X->dims());
+    // framework::slice_ddim(axes->dims(),0, axes.size()-1)
+
+    if (use_optimized_cufft_path(axes)) {
+      framework::Tensor temp_tensor;
+      exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, p_out, temp_tensor,
+                                                    out_dims, axes, forward);
+    } else {
+      temp_tensor = FFTC2CFunctor(ctx, X, out, axes.assign(0, axes->dims() - 1),
+                                  FFTNormMode::none, forward);
+
+      exec_fft<platform::CUDADeviceContext, Ti, To>(
+          ctx, p_out, temp_tensor, out_dims, axes.size() - 1, forward);
+    }
+    exec_normalization<platform::CUDADeviceContext, To>(
+        ctx, p_out, out, normalization, out_dims, axes);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -742,3 +782,12 @@ REGISTER_OP_CUDA_KERNEL(
     fft_c2c_grad,
     ops::FFTC2CGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTC2CGradKernel<paddle::platform::CUDADeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
+    fft_c2r, ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
+    fft_c2r_grad,
+    ops::FFTC2RGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::FFTC2RGradKernel<paddle::platform::CUDADeviceContext, double>);
