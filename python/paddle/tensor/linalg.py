@@ -603,7 +603,7 @@ def cond(x, p=None, name=None):
                 })
         return out
 
-    def frobenius_norm(input, porder=2, axis=[-1, -2]):
+    def frobenius_norm(input, porder=2, axis=[-1]):
         """
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
@@ -613,14 +613,18 @@ def cond(x, p=None, name=None):
 
         if in_dygraph_mode():
             pow_out = _C_ops.pow(input, 'factor', porder)
-            sum_out = _C_ops.reduce_sum(pow_out, 'dim', axis, 'keepdim',
+            sum_out_1 = _C_ops.reduce_sum(pow_out, 'dim', axis, 'keepdim',
                                         keepdim, 'reduce_all', reduce_all)
-            return _C_ops.pow(sum_out, 'factor', float(1. / porder))
+            sum_out_2 = _C_ops.reduce_sum(sum_out_1, 'dim', axis, 'keepdim',
+                                        keepdim, 'reduce_all', reduce_all)
+            return _C_ops.pow(sum_out_2, 'factor', float(1. / porder))
 
         block = LayerHelper('norm', **locals())
         pow_out = block.create_variable_for_type_inference(
             dtype=block.input_dtype())
-        sum_out = block.create_variable_for_type_inference(
+        sum_out_1 = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        sum_out_2 = block.create_variable_for_type_inference(
             dtype=block.input_dtype())
         out = block.create_variable_for_type_inference(
             dtype=block.input_dtype())
@@ -632,14 +636,20 @@ def cond(x, p=None, name=None):
         block.append_op(
             type='reduce_sum',
             inputs={'X': pow_out},
-            outputs={'Out': sum_out},
-            attrs={
-                'dim': axis,
-                'keep_dim': keepdim,
-                'reduce_all': reduce_all})
+            outputs={'Out': sum_out_1},
+            attrs={'dim': axis,
+                   'keep_dim': keepdim,
+                   'reduce_all': reduce_all})
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': sum_out_1},
+            outputs={'Out': sum_out_2},
+            attrs={'dim': axis,
+                   'keep_dim': keepdim,
+                   'reduce_all': reduce_all})
         block.append_op(
             type='pow',
-            inputs={'X': sum_out},
+            inputs={'X': sum_out_2},
             outputs={'Out': out},
             attrs={'factor': float(1. / porder)})
         return out
@@ -700,11 +710,9 @@ def cond(x, p=None, name=None):
                 type='reduce_sum',
                 inputs={'X': s},
                 outputs={'Out': out},
-                attrs={
-                    'dim': axis,
-                    'keep_dim': keepdim,
-                    'reduce_all': reduce_all
-                })
+                attrs={'dim': axis,
+                       'keep_dim': keepdim,
+                       'reduce_all': reduce_all})
             return out
         max_out = block.create_variable_for_type_inference(
             dtype=block.input_dtype())
@@ -714,18 +722,16 @@ def cond(x, p=None, name=None):
             type='reduce_max',
             inputs={'X': s},
             outputs={'Out': max_out},
-            attrs={
-                'dim': axis,
-                'keep_dim': keepdim,
-                'reduce_all': reduce_all})
+            attrs={'dim': axis,
+                   'keep_dim': keepdim,
+                   'reduce_all': reduce_all})
         block.append_op(
             type='reduce_min',
             inputs={'X': s},
             outputs={'Out': min_out},
-            attrs={
-                'dim': axis,
-                'keep_dim': keepdim,
-                'reduce_all': reduce_all})
+            attrs={'dim': axis,
+                   'keep_dim': keepdim,
+                   'reduce_all': reduce_all})
         if porder == 2:
             block.append_op(
                 type='elementwise_div',
@@ -760,20 +766,22 @@ def cond(x, p=None, name=None):
             if p == "nuc":
                 return svd_norm(x, p) * svd_norm(x_inv, p)
             if p in (1, -1):
-                return matrix_norm(x, porder=p, axis=[-2]) * matrix_norm(
+                return matrix_norm(
+                    x, porder=p, axis=[-2]) * matrix_norm(
                         x_inv, porder=p, axis=[-2])
             if p in (np.inf, -np.inf):
-                return matrix_norm(x, porder=p, axis=[-1]) * matrix_norm(
+                return matrix_norm(
+                    x, porder=p, axis=[-1]) * matrix_norm(
                         x_inv, porder=p, axis=[-1])
         else:
-            raise ValueError("only support p is {} when input is a ".format(
-                p) + "square matrix or batches of square matrices")
+            raise ValueError("only support p is {} when input is a ".format(p) +
+                             "square matrix or batches of square matrices")
     elif p in (2, -2):
         return svd_norm(x, porder=p)
     else:
         raise ValueError(
-            "unsupported {} for p, only supporting ('fro', 'nuc', ".format(
-                p) + "1, -1, 2, -2, inf, -inf) or none")
+            "unsupported {} for p, only supporting ('fro', 'nuc', ".format(p) +
+            "1, -1, 2, -2, inf, -inf) or none")
 
 
 def dot(x, y, name=None):
