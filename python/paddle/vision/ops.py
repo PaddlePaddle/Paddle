@@ -29,7 +29,9 @@ __all__ = [ #noqa
     'deform_conv2d',
     'DeformConv2D',
     'read_file',
-    'decode_jpeg'
+    'decode_jpeg',
+    'psroi_pool',
+    'PSRoIPool',
 ]
 
 
@@ -897,3 +899,97 @@ def decode_jpeg(x, mode='unchanged', name=None):
         type="decode_jpeg", inputs=inputs, attrs=attrs, outputs={"Out": out})
 
     return out
+
+
+def psroi_pool(input,
+               boxes,
+               boxes_num,
+               output_size,
+               spatial_scale=1.0,
+               name=None):
+    """
+    Position sensitive region of interest pooling (also known as PSROIPooling) is to perform
+    position-sensitive average pooling on regions of interest specified by input, takes as 
+    input N position-sensitive score maps and a list of num_rois regions of interest. 
+
+    PSROIPooling for R-FCN. Please refer to https://arxiv.org/abs/1605.06409 for more details.
+
+    Parameters:
+        input (Tensor): Input features with shape (N, C, H, W).
+        boxes (Tensor): Box coordinates of ROIs (Regions of Interest) to pool over. It should be
+                         a 2-D Tensor with shape (num_rois, 4). Given as [[x1, y1, x2, y2], ...], 
+                         (x1, y1) is the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates.
+        boxes_num (Tensor): The number of boxes contained in each picture in the batch.
+        output_size (int|Tuple(int, int))  The pooled output size(h, w), data type 
+                               is int32. If int, h and w are both equal to output_size.
+        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        The pooled ROIs, which is a 4-D tensor with shape (num_rois, output_channels, pooled_h, pooled_w).
+        The output_channels equal to C / (pooled_h * pooled_w), where C is the channels of input.
+
+    Return Type:
+        Tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.uniform([2, 490, 28, 28], dtype='float32')
+            boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
+            boxes_num = paddle.to_tensor([1, 2], dtype='int32')
+            pool_out = paddle.vision.ops.psroi_pool(x, boxes, boxes_num, 7, 1.0)
+    """
+
+    check_type(output_size, 'output_size', (int, tuple, list), 'psroi_pool')
+    if isinstance(output_size, int):
+        output_size = (output_size, output_size)
+    pooled_height, pooled_width = output_size
+    assert (len(input.shape) == 4,
+            "Input features with shape should be (N, C, H, W)")
+    output_channels = int(input.shape[1] / (pooled_height * pooled_width))
+    if in_dygraph_mode():
+        return core.ops.psroi_pool(input, boxes, boxes_num, "output_channels",
+                                   output_channels, "spatial_scale",
+                                   spatial_scale, "pooled_height",
+                                   pooled_height, "pooled_width", pooled_width)
+
+    helper = LayerHelper('psroi_pool', **locals())
+    # check attrs
+    if not isinstance(output_channels, int):
+        raise TypeError("output_channels must be int type")
+    if not isinstance(spatial_scale, float):
+        raise TypeError("spatial_scale must be float type")
+    if not isinstance(pooled_height, int):
+        raise TypeError("pooled_height must be int type")
+    if not isinstance(pooled_width, int):
+        raise TypeError("pooled_width must be int type")
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='psroi_pool',
+        inputs={'X': input,
+                'ROIs': boxes},
+        outputs={'Out': out},
+        attrs={
+            'output_channels': output_channels,
+            'spatial_scale': spatial_scale,
+            'pooled_height': pooled_height,
+            'pooled_width': pooled_width
+        })
+    return out
+
+
+class PSRoIPool(Layer):
+    def __init__(self, output_size, spatial_scale=1.0):
+        super(PSRoIPool, self).__init__()
+        self.output_size = output_size
+        self.spatial_scale = spatial_scale
+
+    def forward(self, input, boxes, boxes_num):
+        return psroi_pool(input, boxes, boxes_num, self.output_size,
+                          self.spatial_scale)

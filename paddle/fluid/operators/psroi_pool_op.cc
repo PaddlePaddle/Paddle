@@ -25,22 +25,26 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "Tensor, "
+             "(Tensor), "
              "the input of PSROIPoolOp. "
              "The format of input tensor is NCHW. Where N is the batch size, "
              "C is the number of input channels, "
              "H is the height of the input feature map, and "
              "W is the width. The data type can be float32 or float64");
     AddInput("ROIs",
-             "LoDTensor, "
+             "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
              "should be a 2-D LoDTensor of shape (num_rois, 4) "
              "given as [(x1, y1, x2, y2), ...]. "
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
              "The roi batch index can be calculated from LoD.");
+    AddInput("RoisNum",
+             "(Tensor), "
+             "The number of RoIs in each image.")
+        .AsDispensable();
     AddOutput("Out",
-              "Tensor, "
+              "(Tensor), "
               "the output of PSROIPoolOp is a 4-D Tensor with shape "
               "(num_rois, output_channels, pooled_h, pooled_w). "
               "The data type is the same as `x` ");
@@ -65,8 +69,6 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                  "the pooled output width.")
         .SetDefault(1);
     AddComment(R"Doc(
-**PSROIPool Operator,** `rois` **of this op should be a LoDTensor**
-
 Position sensitive region of interest pooling (also known as PSROIPooling) is to perform
 position-sensitive average pooling on regions of interest specified by input, takes as 
 input N position-sensitive score maps and a list of num_rois regions of interest. 
@@ -106,7 +108,14 @@ class PSROIPoolOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
             "given as [(x1, y1, x2, y2), ...]"));
-
+    if (ctx->HasInput("RoisNum")) {
+      auto rois_num_dims = ctx->GetInputDim("RoisNum");
+      PADDLE_ENFORCE_EQ(rois_num_dims.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The second dimension of RoisNum should "
+                            "be 1, but received dimension is %d",
+                            rois_num_dims.size()));
+    }
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
     int output_channels = ctx->Attrs().Get<int>("output_channels");
@@ -184,6 +193,7 @@ class PSROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("psroi_pool_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("RoisNum", this->Input("RoisNum"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
