@@ -684,7 +684,7 @@ class TestConv2DTransposeOpException(unittest.TestCase):
 
 class TestConv2DTransposeRepr(unittest.TestCase):
     def test_case(self):
-        paddle.disable_static()
+        paddle.disable_static(paddle.NPUPlace(0))
         x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
         conv = nn.Conv2DTranspose(4, 6, (3, 3), output_padding=1, stride=2)
         print(conv)
