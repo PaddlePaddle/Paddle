@@ -911,41 +911,34 @@ class BinaryMKLDNNHandler
 
 template <typename T>
 class BroadcastDataMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::binary> {
+    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   BroadcastDataMKLDNNHandler(const dnnl::algorithm algo,
-                             const MKLDNNDeviceContext& dev_ctx,
                              const mkldnn::engine engine,
                              platform::Place cpu_place, const Tensor* out,
                              const Tensor* x, float scale_x, float scale_y,
-                             const std::string& uniq_name,
                              const std::vector<int64_t>& input_dims)
-      : platform::MKLDNNHandlerT<T, dnnl::binary>(
-            dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
-                                uniq_name)) {
-    if (!this->isCached()) {
-      PADDLE_ENFORCE_EQ(
-          x->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-      PADDLE_ENFORCE_NE(
-          x->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for X tensor."));
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
+    PADDLE_ENFORCE_EQ(
+        x->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+    PADDLE_ENFORCE_NE(
+        x->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
-      const auto src0_tz = framework::vectorize(out->dims());
+    const auto src0_tz = framework::vectorize(out->dims());
 
-      const auto src0_md = dnnl::memory::desc(
-          src0_tz, platform::MKLDNNGetDataType<T>(), out->format());
-      const auto src1_md = dnnl::memory::desc(
-          input_dims, platform::MKLDNNGetDataType<T>(), out->format());
+    const auto src0_md = dnnl::memory::desc(
+        src0_tz, platform::MKLDNNGetDataType<T>(), out->format());
+    const auto src1_md = dnnl::memory::desc(
+        input_dims, platform::MKLDNNGetDataType<T>(), out->format());
 
-      dnnl::primitive_attr attributes;
-      attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
-      attributes.set_scales(DNNL_ARG_SRC_1, 0, {scale_y});
+    dnnl::primitive_attr attributes;
+    attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
+    attributes.set_scales(DNNL_ARG_SRC_1, 0, {scale_y});
 
-      this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md,
-                                              src1_md, src0_md);
-    }
+    this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
+                                            src0_md);
   }
 
   template <typename T_out = T>
@@ -954,43 +947,35 @@ class BroadcastDataMKLDNNHandler
         this->place_, this->fwd_pd_->dst_desc().get_size());
     ;
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
 
 template <typename T>
 class ReductionMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::reduction> {
+    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction> {
  public:
   ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
-                         const float eps, const MKLDNNDeviceContext& dev_ctx,
-                         const mkldnn::engine engine, platform::Place cpu_place,
-                         const Tensor* x, const Tensor* y,
-                         const std::string& uniq_name,
-                         std::vector<int64_t> y_tz)
-      : platform::MKLDNNHandlerT<T, dnnl::reduction>(
-            dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
-                                uniq_name,
-                                (std::to_string(static_cast<int>(algo))))) {
-    if (!this->isCached()) {
-      PADDLE_ENFORCE_EQ(
-          x->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-      PADDLE_ENFORCE_NE(
-          x->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for X tensor."));
+                         const float eps, const mkldnn::engine engine,
+                         platform::Place cpu_place, const Tensor* x,
+                         const Tensor* y, std::vector<int64_t> y_tz)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction>(engine,
+                                                              cpu_place) {
+    PADDLE_ENFORCE_EQ(
+        x->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+    PADDLE_ENFORCE_NE(
+        x->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
-      const auto x_tz = framework::vectorize(x->dims());
+    const auto x_tz = framework::vectorize(x->dims());
 
-      const auto x_md = dnnl::memory::desc(
-          x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-      const auto y_md =
-          memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
+    const auto x_md =
+        dnnl::memory::desc(x_tz, platform::MKLDNNGetDataType<T>(), x->format());
+    const auto y_md =
+        memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
 
-      this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
-    }
+    this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
   }
 };
 
