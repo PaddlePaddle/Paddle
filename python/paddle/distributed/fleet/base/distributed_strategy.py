@@ -888,9 +888,6 @@ class DistributedStrategy(object):
             pp_allreduce_in_optimize(bool, optional): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on. 
             This configuration will affect the communication speed of Hybrid parallelism training depeneded on network topology. this strategy is experimental by now..  Default is False.
 
-            optimize_cast(bool, optional): [Hybrid parallelism ONLY] Move the cast op of AMP which cast fp32 param to fp16 param to optimizer. optimize_cast will persist fp16 param, it
-            will take more memory, but will be faster, trade space for time. Recommend to turn on only when using pipeline or gradient_merge_acc_step large.
-
 
         Examples:
 
