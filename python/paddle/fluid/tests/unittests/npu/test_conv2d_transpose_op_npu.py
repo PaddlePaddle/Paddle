@@ -72,7 +72,6 @@ class TestConv2DTransposeOp(OpTest):
 
         if len(self.output_padding) > 0:
             self.attrs['output_padding'] = self.output_padding
-
         output = conv2dtranspose_forward_naive(input_, filter_,
                                                self.attrs).astype(self.dtype)
 
@@ -495,22 +494,10 @@ class TestWithEvenUpsample_NHWC_FP32(TestConv2DTransposeOp):
         self.input_size = [2, 7, 7, 3]  # NHWC
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 5, 5]
+        self.data_format = 'NHWC'
 
     def init_dtype(self):
         self.dtype = np.float32
-
-
-class TestWithEvenUpsample_NHWC(TestConv2DTransposeOp):
-    def init_test_case(self):
-        self.pad = [2, 2]
-        self.stride = [2, 2]
-        self.groups = 1
-        self.dilations = [1, 1]
-        self.output_size = [14, 14]
-        self.input_size = [2, 7, 7, 3]  # NHWC
-        f_c = self.input_size[-1]
-        self.filter_size = [f_c, 6, 5, 5]
-        self.data_format = 'NHWC'
 
 
 class TestWithEvenUpsample_NHWC(TestConv2DTransposeOp):
