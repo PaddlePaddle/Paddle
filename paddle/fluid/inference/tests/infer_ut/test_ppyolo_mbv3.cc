@@ -101,7 +101,7 @@ TEST(test_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
   std::cout << "finish multi-thread test" << std::endl;
 }
 
-TEST(DISABLED_test_ppyolo_mbv3, multi_thread4_mkl_bz2) {
+TEST(test_ppyolo_mbv3, multi_thread4_mkl_bz2) {
   // TODO(OliverLPH): mkldnn multi thread will fail
   int thread_num = 4;
   // init input data

@@ -19,30 +19,33 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class ElementwiseDivXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwise<T>(ctx, xpu::div<T>);
+    XPUElementwise<T, XPUType>(ctx, xpu::broadcast_div<XPUType>);
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class ElementwiseDivGradXPUKernel : public ElemwiseGradKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
-    XPUElementwiseGrad<T>(ctx, xpu::div_grad<T>, true);
+    XPUElementwiseGrad<T, XPUType>(ctx, xpu::broadcast_div_grad<XPUType>, true);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
+REGISTER_OP_XPU_KERNEL(elementwise_div, ops::ElementwiseDivXPUKernel<float>,
+                       ops::ElementwiseDivXPUKernel<paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
-    elementwise_div,
-    ops::ElementwiseDivXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(elementwise_div_grad,
-                       ops::ElementwiseDivGradXPUKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+    elementwise_div_grad, ops::ElementwiseDivGradXPUKernel<float>,
+    ops::ElementwiseDivGradXPUKernel<paddle::platform::float16>);
 #endif
