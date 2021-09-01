@@ -21,9 +21,26 @@ namespace platform {
 
 // Aligned vector generates vectorized load/store on CUDA.
 template <typename T, int Size>
-struct alignas(sizeof(T) * Size) CudaAlignedVector {
+struct alignas(sizeof(T) * Size) AlignedVector {
   T val[Size];
+
+  HOSTDEVICE inline const T& operator[](int i) const { return val[i]; }
+  HOSTDEVICE inline T& operator[](int i) { return val[i]; }
 };
+
+template <typename T, int Size>
+HOSTDEVICE inline void Load(const T* addr, AlignedVector<T, Size>* vec) {
+  const AlignedVector<T, Size>* addr_vec =
+      reinterpret_cast<const AlignedVector<T, Size>*>(addr);
+  *vec = *addr_vec;
+}
+
+template <typename T, int Size>
+HOSTDEVICE inline void Store(const AlignedVector<T, Size>& vec, T* addr) {
+  AlignedVector<T, Size>* addr_vec =
+      reinterpret_cast<AlignedVector<T, Size>*>(addr);
+  *addr_vec = vec;
+}
 
 /*
 * Only the address of input data is the multiplier of 1,2,4, vectorized load
@@ -32,7 +49,7 @@ struct alignas(sizeof(T) * Size) CudaAlignedVector {
 * shall be determined under both former constraints.
 */
 template <typename T>
-int GetVectorizedSize(const T *pointer) {
+int GetVectorizedSize(const T* pointer) {
   constexpr int max_load_bits = 128;
   int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
