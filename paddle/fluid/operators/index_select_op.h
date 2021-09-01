@@ -25,15 +25,33 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 
-template <typename DeviceContext, typename T, typename IndexT = int, size_t D>
+template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
                       const LoDTensor& input, const LoDTensor& index,
                       LoDTensor* output, int dim) {
   auto input_dim = input.dims();
+  auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
   auto index_size = index.dims()[0];
-  const IndexT* index_data = index.data<IndexT>();
+
+  LoDTensor index_cpu_copy;
+  if (!platform::is_cpu_place(index.place())) {
+    framework::TensorCopySync(index, platform::CPUPlace(), &index_cpu_copy);
+  }
+  const IndexT* index_data = platform::is_cpu_place(index.place())
+                                 ? index.data<IndexT>()
+                                 : index_cpu_copy.data<IndexT>();
   output->mutable_data<T>(context.GetPlace());
+
+  auto slice_size = 1;
+  for (auto i = dim + 1; i < input_dim_size; i++) {
+    slice_size *= input_dim[i];
+  }
+
+  auto outer_nums = 1;
+  for (auto i = 0; i < dim; i++) {
+    outer_nums *= input_dim[i];
+  }
 
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
@@ -51,18 +69,25 @@ void IndexSelectInner(const framework::ExecutionContext& context,
             "value.",
             input_dim[dim], index_data[i]));
   }
+  VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
+          << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  auto input_tensor = framework::EigenTensor<T, D>::From(input);
-  auto output_tensor = framework::EigenTensor<T, D>::From(*output, output_dim);
+  LoDTensor input_copy = input;
+  input_copy.Resize(
+      framework::make_ddim({outer_nums, input_dim[dim], slice_size}));
+  output->Resize(framework::make_ddim({outer_nums, index_size, slice_size}));
+
+  auto input_tensor = framework::EigenTensor<T, 3>::From(input_copy);
+  auto output_tensor = framework::EigenTensor<T, 3>::From(*output);
+
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
 
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
-    auto output_t = output_tensor.chip(j, dim);
-    output_t.device(place) = input_tensor.chip(index_value, dim);
+    auto output_t = output_tensor.chip(j, 1);
+    output_t.device(place) = input_tensor.chip(index_value, 1);
   }
-
   output->Resize(output_dim);
 }
 
@@ -75,9 +100,8 @@ class IndexSelectKernel : public framework::OpKernel<T> {
     auto* output = context.Output<framework::LoDTensor>("Out");
 
     int dim = context.Attr<int>("dim");
-    int dimension = inputs->dims().size();
     if (dim < 0) {
-      dim += dimension;
+      dim += inputs.dims().size();
     }
     const auto& index_type = index->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
@@ -92,30 +116,12 @@ class IndexSelectKernel : public framework::OpKernel<T> {
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
 
-#define SWITCH_DIMENSION(rank)                                                \
-  case rank:                                                                  \
-    if (index_type == framework::proto::VarType::INT32) {                     \
-      IndexSelectInner<DeviceContext, T, int, rank>(context, *inputs, *index, \
-                                                    output, dim);             \
-    } else if (index_type == framework::proto::VarType::INT64) {              \
-      IndexSelectInner<DeviceContext, T, int64_t, rank>(context, *inputs,     \
-                                                        *index, output, dim); \
-    }                                                                         \
-    break;
-
-    switch (dimension) {
-      SWITCH_DIMENSION(1);
-      SWITCH_DIMENSION(2);
-      SWITCH_DIMENSION(3);
-      SWITCH_DIMENSION(4);
-      SWITCH_DIMENSION(5);
-      SWITCH_DIMENSION(6);
-      default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "index_select operator doesn't supports tensors whose dimension "
-            "are "
-            "greater "
-            "than 6."));
+    if (index_type == framework::proto::VarType::INT32) {
+      IndexSelectInner<DeviceContext, T, int>(context, *inputs, *index, output,
+                                              dim);
+    } else if (index_type == framework::proto::VarType::INT64) {
+      IndexSelectInner<DeviceContext, T, int64_t>(context, *inputs, *index,
+                                                  output, dim);
     }
   }
 };
