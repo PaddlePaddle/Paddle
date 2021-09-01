@@ -107,7 +107,7 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
     int num_outputs = im_channels * col_height * col_width;
     int num_thread = 1024;
 #ifdef WITH_NV_JETSON
-    ChangeThreadNum(context, &num_thread);
+    platform::ChangeThreadNum(context, &num_thread);
 #endif
     int blocks = (num_outputs + num_thread - 1) / num_thread;
     int block_x = 512;
@@ -235,7 +235,7 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
 
     int num_thread = 1024;
 #ifdef WITH_NV_JETSON
-    ChangeThreadNum(context, &num_thread);
+    platform::ChangeThreadNum(context, &num_thread);
 #endif
     size_t blocks = (num_kernels + num_thread - 1) / num_thread;
     size_t block_x = 512;

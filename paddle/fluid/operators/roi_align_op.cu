@@ -26,7 +26,7 @@ using LoDTensor = framework::LoDTensor;
 
 #ifdef WITH_NV_JETSON
 int num_thread = 512;
-ChangeThreadNum(context, &num_thread, 256);
+platform::ChangeThreadNum(context, &num_thread, 256);
 static constexpr int kNumCUDAThreads = num_thread;
 #else
 static constexpr int kNumCUDAThreads = 512;

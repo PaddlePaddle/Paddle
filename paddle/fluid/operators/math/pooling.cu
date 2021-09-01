@@ -257,7 +257,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   int nthreads = batch_size * output_channels * output_height * output_width;
   int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-  ChangeThreadNum(context, &thread_num);
+  platform::ChangeThreadNum(context, &thread_num);
 #endif
   int blocks = (nthreads + thread_num - 1) / thread_num;
   dim3 threads(thread_num, 1);
@@ -305,7 +305,7 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     int nthreads = batch_size * output_channels * output_height * output_width;
     int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-    ChangeThreadNum(context, &thread_num);
+    platform::ChangeThreadNum(context, &thread_num);
 #endif
     int blocks = (nthreads + thread_num - 1) / thread_num;
     dim3 threads(thread_num, 1);
@@ -351,7 +351,7 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     int nthreads = batch_size * output_channels * output_height * output_width;
     int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-    ChangeThreadNum(context, &thread_num);
+    platform::ChangeThreadNum(context, &thread_num);
 #endif
     int blocks = (nthreads + thread_num - 1) / thread_num;
     dim3 threads(thread_num, 1);
@@ -924,7 +924,7 @@ class Pool3dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
                    output_width;
     int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-    ChangeThreadNum(context, &thread_num);
+    platform::ChangeThreadNum(context, &thread_num);
 #endif
     int blocks = (nthreads + thread_num - 1) / thread_num;
     dim3 threads(thread_num, 1);
@@ -979,7 +979,7 @@ class Pool3dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
                    output_width;
     int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-    ChangeThreadNum(context, &thread_num);
+    platform::ChangeThreadNum(context, &thread_num);
 #endif
     int blocks = (nthreads + thread_num - 1) / thread_num;
     dim3 threads(thread_num, 1);
@@ -1398,7 +1398,7 @@ class MaxPool2dWithIndexFunctor<platform::CUDADeviceContext, T1, T2> {
     int nthreads = batch_size * output_channels * output_height * output_width;
     int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-    ChangeThreadNum(context, &thread_num);
+    platform::ChangeThreadNum(context, &thread_num);
 #endif
 
     int blocks = (nthreads + thread_num - 1) / thread_num;
@@ -1638,7 +1638,7 @@ class MaxPool3dWithIndexFunctor<platform::CUDADeviceContext, T1, T2> {
                    output_width;
     int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-    ChangeThreadNum(context, &thread_num);
+    platform::ChangeThreadNum(context, &thread_num);
 #endif
 
     int blocks = (nthreads + thread_num - 1) / thread_num;

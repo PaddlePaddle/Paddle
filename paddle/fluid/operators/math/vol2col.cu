@@ -155,7 +155,7 @@ class Vol2ColFunctor<platform::CUDADeviceContext, T> {
 
     int max_threads = 1024;
 #ifdef WITH_NV_JETSON
-    ChangeThreadNum(context, &max_threads);
+    platform::ChangeThreadNum(context, &max_threads);
 #endif
 
     const int threads = max_threads;
@@ -322,7 +322,7 @@ class Col2VolFunctor<platform::CUDADeviceContext, T> {
 
     int max_threads = 1024;
 #ifdef WITH_NV_JETSON
-    ChangeThreadNum(context, &max_threads);
+    platform::ChangeThreadNum(context, &max_threads);
 #endif
 
     const int threads = max_threads;
