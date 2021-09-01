@@ -96,7 +96,7 @@ class InterpreterCore {
                                working_var_ref,  // NOLINT
                            const VariableScope& var_scope,
                            const platform::Place& place,
-                           std::atomic<size_t>* op_run_number);
+                           std::atomic<size_t>* op_run_number, bool is_dry_run);
 
   const platform::Place& place_;
   ProgramDesc main_program_;

@@ -449,9 +449,9 @@ void InterpreterCore::RunInstructionAsync(
           << op_run_number->load(std::memory_order_acquire);
   // step3: insert event for out_vars if needed
   RecordEventInstruction(instr_node);
-  
+
   if (is_dry_run) {
-      profiler_.ParseMemoryInfo(var_scope.var_list);
+    profiler_.ParseMemoryInfo(var_scope.var_list);
   }
 
   // step4: update working_queue
