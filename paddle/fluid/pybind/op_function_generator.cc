@@ -54,6 +54,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"gather", {"X", "Index", "Axis"}},
     {"roi_pool", {"X", "ROIs", "RoisNum"}},
     {"roi_align", {"X", "ROIs", "RoisNum"}},
+    {"psroi_pool", {"X", "ROIs", "RoisNum"}},
     {"collect_fpn_proposals",
      {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
     {"distribute_fpn_proposals", {"FpnRois", "RoisNum"}},
