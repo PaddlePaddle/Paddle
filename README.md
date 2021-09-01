@@ -20,7 +20,7 @@ PaddlePaddle is originated from industrial practices with dedication and commitm
 
 
 ## Installation
-abc
+abcad
 ### Latest PaddlePaddle Release: [v2.1](https://github.com/PaddlePaddle/Paddle/tree/release/2.1)
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
