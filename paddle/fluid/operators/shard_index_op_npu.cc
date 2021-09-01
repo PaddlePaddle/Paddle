@@ -63,52 +63,41 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     out->set_lod(in->lod());
     out->mutable_data<T>(place);
 
-    Tensor tmp(in->type());
-    tmp.mutable_data<T>(framework::DDim({1}), place);
-    FillNpuTensorWithConstant(&tmp, shard_size);
+    Tensor shard_size_tensor(in->type());
+    shard_size_tensor.mutable_data<T>(framework::DDim({1}), place);
+    FillNpuTensorWithConstant(&shard_size_tensor, shard_size);
 
-    Tensor condition(framework::proto::VarType::BOOL);
-    condition.mutable_data<bool>(in->dims(), place);
+    Tensor id_matched(framework::proto::VarType::BOOL);
+    id_matched.mutable_data<bool>(in->dims(), place);
 
-    Tensor tmp2(in->type());
-    tmp2.mutable_data<T>(in->dims(), place);
+    Tensor sharded_index(in->type());
+    sharded_index.mutable_data<T>(in->dims(), place);
 
-    Tensor tmp3(in->type());
-    tmp3.mutable_data<T>(in->dims(), place);
+    Tensor sharding_id(in->type());
+    sharding_id.mutable_data<T>(in->dims(), place);
+
+    Tensor shard_id_tensor(framework::proto::VarType::INT32);
+    shard_id_tensor.mutable_data<int>(framework::DDim({1}), place);
+    FillNpuTensorWithConstant(&shard_id_tensor, shard_id);
+
+    Tensor ignore_tensor(in->type());
+    ignore_tensor.mutable_data<T>(in->dims(), place);
+    FillNpuTensorWithConstant(&ignore_tensor, ignore_value);
+    ignore_tensor.Resize(in->dims());
 
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    NpuOpRunner runner;
-    runner.AddInputs({*in, tmp});
-    runner.AddOutputs({tmp2});
-    runner.SetType("Mod");
-    runner.Run(stream);
-
-    NpuOpRunner runner1;
-    runner1.AddInputs({*in, tmp});
-    runner1.AddOutputs({tmp3});
-    runner1.SetType("FloorDiv");
-    runner1.Run(stream);
-
-    FillNpuTensorWithConstant(&tmp, shard_id);
-    NpuOpRunner runner2;
-    runner2.AddInputs({tmp3, tmp});
-    runner2.AddOutputs({condition});
-    runner2.SetType("Equal");
-    runner2.Run(stream);
-
-    Tensor tmp4(in->type());
-    tmp4.mutable_data<T>(in->dims(), place);
-    FillNpuTensorWithConstant(&tmp4, ignore_value);
-    tmp4.Resize(in->dims());
-
-    NpuOpRunner runner3;
-    runner3.AddInputs({condition, tmp2, tmp4});
-    runner3.AddOutputs({*out});
-    runner3.SetType("Select");
-    runner3.Run(stream);
+    NpuOpRunner("Mod", {*in, shard_size_tensor}, {sharded_index}, {})
+        .Run(stream);
+    NpuOpRunner("FloorDiv", {*in, shard_size_tensor}, {sharding_id}, {})
+        .Run(stream);
+    NpuOpRunner("Equal", {sharding_id, shard_id_tensor}, {id_matched}, {})
+        .Run(stream);
+    NpuOpRunner("Select", {id_matched, sharded_index, ignore_tensor}, {*out},
+                {})
+        .Run(stream);
   }
 };
 }  // namespace operators
