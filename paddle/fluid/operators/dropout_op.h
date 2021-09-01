@@ -21,16 +21,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
-
-// aligned vector generates vectorized load/store on CUDA
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) AlignedVector {
-  T val[Size];
-};
 
 template <typename T>
 inline int VectorizedSize(const T* pointer) {

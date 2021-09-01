@@ -102,11 +102,11 @@ int GetVectorizedSizeImpl(const T* pointer) {
   int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
   constexpr int vec8 =
-      std::alignment_of<platform::CudaAlignedVector<T, 8>>::value;  // NOLINT
+      std::alignment_of<platform::AlignedVector<T, 8>>::value;  // NOLINT
   constexpr int vec4 =
-      std::alignment_of<platform::CudaAlignedVector<T, 4>>::value;  // NOLINT
+      std::alignment_of<platform::AlignedVector<T, 4>>::value;  // NOLINT
   constexpr int vec2 =
-      std::alignment_of<platform::CudaAlignedVector<T, 2>>::value;  // NOLINT
+      std::alignment_of<platform::AlignedVector<T, 2>>::value;  // NOLINT
   if (address % vec8 == 0) {
     // Note: this line can change from 4 to 8 if it can improve the performance.
     return std::min(4, valid_vec_size);
