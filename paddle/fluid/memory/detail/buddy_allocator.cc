@@ -31,9 +31,10 @@ namespace detail {
 
 BuddyAllocator::BuddyAllocator(
     std::unique_ptr<SystemAllocator> system_allocator, size_t min_chunk_size,
-    size_t max_chunk_size)
+    size_t max_chunk_size, size_t extra_padding_size)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
+      extra_padding_size_(extra_padding_size),
       cache_(system_allocator->UseGpu()),
       system_allocator_(std::move(system_allocator)) {}
 
@@ -53,12 +54,6 @@ BuddyAllocator::~BuddyAllocator() {
 }
 
 inline size_t align(size_t size, size_t alignment) {
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (dynamic_cast<NPUAllocator>(system_allocator_)) {
-    VLOG(10) << "add extra 32 bytes for npu memory slot";
-    size += 32;
-  }
-#endif
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);
 }
@@ -66,7 +61,8 @@ inline size_t align(size_t size, size_t alignment) {
 void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // adjust allocation alignment
   size_t size =
-      align(unaligned_size + sizeof(MemoryBlock::Desc), min_chunk_size_);
+      align(unaligned_size + sizeof(MemoryBlock::Desc) + extra_padding_size_,
+            min_chunk_size_);
 
   // acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
