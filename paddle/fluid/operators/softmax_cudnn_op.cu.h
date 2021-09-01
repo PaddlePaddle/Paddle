@@ -368,12 +368,11 @@ __global__ void WarpSoftmaxBackward(T* dst, const T* grad, const T* src,
   }
 }
 
-#define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, AccT)                         \
-  case Log2Elements:                                                          \
-    WarpSoftmaxForward<                                                       \
-        T, VecT, AccT, Log2Elements,                                          \
-        LogMode><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>( \
-        dst, src, batch_size, stride, element_count);                         \
+#define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, AccT)                      \
+  case Log2Elements:                                                       \
+    WarpSoftmaxForward<T, VecT, AccT, Log2Elements,                        \
+                       LogMode><<<blocks, threads, 0, dev_ctx.stream()>>>( \
+        dst, src, batch_size, stride, element_count);                      \
     break;
 
 /*
@@ -381,8 +380,8 @@ __global__ void WarpSoftmaxBackward(T* dst, const T* grad, const T* src,
 */
 template <typename T, typename VecT, bool LogMode>
 void SwitchWarpSoftmaxForward(const int blocks, const dim3 threads,
-                              const framework::ExecutionContext& ctx, T* dst,
-                              const T* src, const int batch_size,
+                              const platform::CUDADeviceContext& dev_ctx,
+                              T* dst, const T* src, const int batch_size,
                               const int stride, const int element_count,
                               int Log2Elements) {
   using AccT = typename details::MPTypeTrait<T>::Type;
@@ -402,12 +401,11 @@ void SwitchWarpSoftmaxForward(const int blocks, const dim3 threads,
   }
 }
 
-#define SOFTMAX_WARP_BACKWARD_CASE(Log2Elements, AccT)                        \
-  case Log2Elements:                                                          \
-    WarpSoftmaxBackward<                                                      \
-        T, VecT, AccT, Log2Elements,                                          \
-        LogMode><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>( \
-        dst, grad, src, batch_size, stride, element_count);                   \
+#define SOFTMAX_WARP_BACKWARD_CASE(Log2Elements, AccT)                      \
+  case Log2Elements:                                                        \
+    WarpSoftmaxBackward<T, VecT, AccT, Log2Elements,                        \
+                        LogMode><<<blocks, threads, 0, dev_ctx.stream()>>>( \
+        dst, grad, src, batch_size, stride, element_count);                 \
     break;
 
 /*
@@ -415,8 +413,8 @@ Wrapper of softmax backward with template instantiation on size of input.
 */
 template <typename T, typename VecT, bool LogMode>
 void SwitchWarpSoftmaxBackward(const int blocks, const dim3 threads,
-                               const framework::ExecutionContext& ctx, T* dst,
-                               const T* grad, const T* src,
+                               const platform::CUDADeviceContext& dev_ctx,
+                               T* dst, const T* grad, const T* src,
                                const int batch_size, const int stride,
                                const int element_count, int Log2Elements) {
   using AccT = typename details::MPTypeTrait<T>::Type;
@@ -440,7 +438,7 @@ void SwitchWarpSoftmaxBackward(const int blocks, const dim3 threads,
 #undef SOFTMAX_WARP_BACKWARD_CASE
 
 template <typename T, bool LogMode = false>
-void SoftmaxForwardCUDAKernelDriver(const framework::ExecutionContext& ctx,
+void SoftmaxForwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                                     const Tensor& x, const int input_axis,
                                     Tensor* out) {
   auto* out_data = out->data<T>();
@@ -473,14 +471,17 @@ void SoftmaxForwardCUDAKernelDriver(const framework::ExecutionContext& ctx,
     using T4 = typename VecT4<T>::Type;
     using T2 = typename VecT2<T>::Type;
     if (dim % 4 == 0) {
-      SwitchWarpSoftmaxForward<T, T4, LogMode>(
-          blocks, threads, ctx, out_data, x.data<T>(), N, dim, dim, kDimLog2);
+      SwitchWarpSoftmaxForward<T, T4, LogMode>(blocks, threads, dev_ctx,
+                                               out_data, x.data<T>(), N, dim,
+                                               dim, kDimLog2);
     } else if (dim % 2 == 0) {
-      SwitchWarpSoftmaxForward<T, T2, LogMode>(
-          blocks, threads, ctx, out_data, x.data<T>(), N, dim, dim, kDimLog2);
+      SwitchWarpSoftmaxForward<T, T2, LogMode>(blocks, threads, dev_ctx,
+                                               out_data, x.data<T>(), N, dim,
+                                               dim, kDimLog2);
     } else {
-      SwitchWarpSoftmaxForward<T, T, LogMode>(
-          blocks, threads, ctx, out_data, x.data<T>(), N, dim, dim, kDimLog2);
+      SwitchWarpSoftmaxForward<T, T, LogMode>(blocks, threads, dev_ctx,
+                                              out_data, x.data<T>(), N, dim,
+                                              dim, kDimLog2);
     }
   } else {
     ScopedTensorDescriptor desc;
@@ -492,7 +493,6 @@ void SoftmaxForwardCUDAKernelDriver(const framework::ExecutionContext& ctx,
     cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
 #endif
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
 
 #ifdef PADDLE_WITH_HIP
@@ -528,7 +528,7 @@ void SoftmaxForwardCUDAKernelDriver(const framework::ExecutionContext& ctx,
 }
 
 template <typename T, bool LogMode = false>
-void SoftmaxBackwardCUDAKernelDriver(const framework::ExecutionContext& ctx,
+void SoftmaxBackwardCUDAKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                                      const Tensor& out, const Tensor& dout,
                                      const int input_axis, Tensor* dx) {
   auto* dx_data = dx->data<T>();
@@ -559,17 +559,17 @@ void SoftmaxBackwardCUDAKernelDriver(const framework::ExecutionContext& ctx,
     using T4 = typename VecT4<T>::Type;
     using T2 = typename VecT2<T>::Type;
     if (dim % 4 == 0) {
-      SwitchWarpSoftmaxBackward<T, T4, LogMode>(blocks, threads, ctx, dx_data,
-                                                dout.data<T>(), out.data<T>(),
-                                                N, dim, dim, kDimLog2);
+      SwitchWarpSoftmaxBackward<T, T4, LogMode>(
+          blocks, threads, dev_ctx, dx_data, dout.data<T>(), out.data<T>(), N,
+          dim, dim, kDimLog2);
     } else if (dim % 2 == 0) {
-      SwitchWarpSoftmaxBackward<T, T2, LogMode>(blocks, threads, ctx, dx_data,
-                                                dout.data<T>(), out.data<T>(),
-                                                N, dim, dim, kDimLog2);
+      SwitchWarpSoftmaxBackward<T, T2, LogMode>(
+          blocks, threads, dev_ctx, dx_data, dout.data<T>(), out.data<T>(), N,
+          dim, dim, kDimLog2);
     } else {
-      SwitchWarpSoftmaxBackward<T, T, LogMode>(blocks, threads, ctx, dx_data,
-                                               dout.data<T>(), out.data<T>(), N,
-                                               dim, dim, kDimLog2);
+      SwitchWarpSoftmaxBackward<T, T, LogMode>(
+          blocks, threads, dev_ctx, dx_data, dout.data<T>(), out.data<T>(), N,
+          dim, dim, kDimLog2);
     }
   } else {
     ScopedTensorDescriptor desc;
@@ -581,7 +581,6 @@ void SoftmaxBackwardCUDAKernelDriver(const framework::ExecutionContext& ctx,
     cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
 #endif
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
 
 #ifdef PADDLE_WITH_HIP

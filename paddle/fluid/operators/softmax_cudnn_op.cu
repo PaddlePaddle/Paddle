@@ -27,7 +27,8 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
 
     int input_axis = ctx.Attr<int>("axis");
-    SoftmaxForwardCUDAKernelDriver<T>(ctx, *x, input_axis, out);
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    SoftmaxForwardCUDAKernelDriver<T>(dev_ctx, *x, input_axis, out);
   }
 };
 
@@ -42,7 +43,8 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
     // auto* dx_data = dx->data<T>();
 
     int input_axis = ctx.Attr<int>("axis");
-    SoftmaxBackwardCUDAKernelDriver<T>(ctx, *out, *dout, input_axis, dx);
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx, *out, *dout, input_axis, dx);
   }
 };
 
