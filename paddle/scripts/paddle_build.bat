@@ -368,10 +368,35 @@ echo echo ${md5_content}^>md5.txt >> cache.sh
 set /p md5=< md5.txt
 if "%WITH_GPU%"=="ON" (
     set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party_GPU
+    set sub_dir=third_party_GPU
 ) else (
     set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party
+    set sub_dir=third_party
 )
+
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
+set BCE_FILE=%cache_dir%/bce-python-sdk-0.8.33/BosClient.py
+set FILE_PUSH=OFF
+
+if not exist %THIRD_PARTY_PATH% (
+    echo Downloading third party from bce
+    if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
+    cd %THIRD_PARTY_HOME%
+
+    python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/%sub_dir%/%md5%.tar.gz')" 1>nul 2>nul
+    if !ERRORLEVEL! EQU 0 (
+        tar -xf %THIRD_PARTY_HOME%/%md5%.tar.gz 
+    ) 
+    if not exist %THIRD_PARTY_PATH% (
+        echo Download third party failed
+        set FILE_PUSH=ON
+    ) else (
+        echo Download third party successfully
+    )
+    cd %work_dir%/%BUILD_DIR%
+) else (
+    echo Get reusable third_party cache
+)
 
 :cmake_impl
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
@@ -399,7 +424,7 @@ rem ----------------------------------------------------------------------------
 :build
 @ECHO OFF
 echo    ========================================
-echo    Step 2. Buile Paddle ...
+echo    Step 2. Build Paddle ...
 echo    ========================================
 
 for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
@@ -482,6 +507,31 @@ if %ERRORLEVEL% NEQ 0 (
         echo Build Paddle failed, will retry!
         goto :build_paddle
     )
+)
+
+if %FILE_PUSH%==ON (
+    echo Push third_party to bce
+    if not exist %cache_dir%/bce-python-sdk-0.8.33 (
+        echo There is not bce in this PC, will install bce.
+        cd %cache_dir%
+        echo Download package from https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz
+        %PYTHON_ROOT%/python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
+        %PYTHON_ROOT%/python.exe -c "import shutil;shutil.unpack_archive('bce-python-sdk-0.8.33.tar.gz', extract_dir='./',format='gztar')"
+        cd %cache_dir%/bce-python-sdk-0.8.33
+        python setup.py install 1>nul 2>nul
+    )
+    if !errorlevel! EQU 0 (
+        echo Install bce successfully, pushing third_party to bce now
+        tar -zcf %THIRD_PARTY_HOME%/%md5%.tar.gz -C %THIRD_PARTY_HOME%/ %md5%
+        cd %cache_dir%
+        %PYTHON_ROOT%/python.exe %BCE_FILE% %sub_dir%/%md5%.tar.gz 1>nul 2>nul
+    ) 
+    if !errorlevel! EQU 0 (
+        echo Push new third party to bce successfully
+    ) else (
+        echo Push new third party to bce failed
+    )
+    del %sub_dir%/%md5%.tar.gz
 )
 
 echo Build Paddle successfully!
