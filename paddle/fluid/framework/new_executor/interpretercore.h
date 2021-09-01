@@ -26,6 +26,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 
 namespace paddle {
@@ -72,7 +73,7 @@ class InterpreterCore {
   void Prepare(const std::vector<framework::Tensor>& feed_tensors);
 
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
-               AtomicVectorSizeT& working_var_ref);  // NOLINT
+               AtomicVectorSizeT* working_var_ref);
 
   platform::DeviceContext* ParseDeviceContextForInstruction(
       const OpFuncNode& op_func_node, const OperatorBase& op_base);
@@ -86,11 +87,10 @@ class InterpreterCore {
 
   AtomicVectorSizeT PrepareAtomicDeps();
   AtomicVectorSizeT PrepareAtomicVarRef();
-  void RunInstructionAsync(
-      size_t instr_id,
-      AtomicVectorSizeT& working_dependecy_count,  // NOLINT
-      AtomicVectorSizeT& working_var_ref,          // NOLINT
-      std::atomic<size_t>* op_run_number, bool is_dry_run);
+  void RunInstructionAsync(size_t instr_id,
+                           AtomicVectorSizeT* working_dependecy_count,
+                           AtomicVectorSizeT* working_var_ref,
+                           std::atomic<size_t>* op_run_number, bool is_dry_run);
 
   const platform::Place& place_;
   ProgramDesc main_program_;
@@ -123,6 +123,7 @@ class InterpreterCore {
   std::unique_ptr<WorkQueue> sync_thread_pool_;
 
   platform::DeviceContextPool fetch_context_pool_;
+  memory::SpinLock spinlock_;  // for gc with multi-thread
 };
 }  // namespace framework
 }  // namespace paddle

@@ -260,9 +260,6 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    // int device_type = static_cast<int>(paddle::platform::DeviceType::CUDA);
-    // paddle::platform::DeviceOption dev_opt(
-    //     device_type, BOOST_GET_CONST(platform::CUDAPlace, place_).device);
     gc_event_.emplace_back(place_);
 
     std::vector<size_t> vec_temp;
@@ -384,7 +381,6 @@ AtomicVectorSizeT InterpreterCore::PrepareAtomicVarRef() {
   for (size_t i = 0; i < vec_meta_info_.size(); ++i) {
     working_var_ref[i] =
         std::make_unique<std::atomic<size_t>>(vec_meta_info_[i].var_ref_count_);
-    VLOG(3) << "var_id " << i << " ref: " << vec_meta_info_[i].var_ref_count_;
   }
   return std::move(working_var_ref);
 }
@@ -397,15 +393,14 @@ void InterpreterCore::ExecuteInstructionList(
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      VLOG(3) << i << " is ready";
       if (vec_instr[i].type_ == OpFuncType::kQueueAsync) {
         aync_thread_pool_->AddTask([&, i, is_dry_run]() {
-          RunInstructionAsync(i, working_dependecy_count, working_var_ref,
+          RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
                               &op_run_number, is_dry_run);
         });
       } else {
         sync_thread_pool_->AddTask([&, i, is_dry_run]() {
-          RunInstructionAsync(i, working_dependecy_count, working_var_ref,
+          RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
                               &op_run_number, is_dry_run);
         });
       }
@@ -433,19 +428,15 @@ void InterpreterCore::ExecuteInstructionList(
 }
 
 void InterpreterCore::RunInstructionAsync(
-    size_t instr_id, AtomicVectorSizeT& working_dependecy_count,
-    AtomicVectorSizeT& working_var_ref, std::atomic<size_t>* op_run_number,
+    size_t instr_id, AtomicVectorSizeT* working_dependecy_count,
+    AtomicVectorSizeT* working_var_ref, std::atomic<size_t>* op_run_number,
     bool is_dry_run) {
-  VLOG(3) << "start to run : " << instr_id;
+  VLOG(3) << "Start to run instr_id: " << instr_id;
   auto& instr_node = vec_instruction_[instr_id];
-  // step1 : stream_wait (non-block host) or sync (block host)
   StreamWaitEventOrSync(instr_node);
-  // step2: run instruction
   RunInstruction(instr_node);
-  op_run_number->fetch_add(1);
-  VLOG(3) << "end to run : " << instr_id << " " << op_run_number->load();
-  // step3: insert event for out_vars if needed
   RecordEventInstruction(instr_node);
+  op_run_number->fetch_add(1);
 
   if (is_dry_run) {
     profiler_.ParseMemoryInfo(global_scope_->var_list);
@@ -455,16 +446,15 @@ void InterpreterCore::RunInstructionAsync(
   auto& next_instr = instr_node.next_instruction_.all_next_ops_;
 
   for (auto next_i : next_instr) {
-    working_dependecy_count[next_i]->fetch_sub(1);
-    if (working_dependecy_count[next_i]->load() == 0) {
-      VLOG(3) << next_i << " is ready in task";
+    working_dependecy_count->at(next_i)->fetch_sub(1);
+    if (working_dependecy_count->at(next_i)->load() == 0) {
       if (vec_instruction_[next_i].type_ == OpFuncType::kQueueAsync) {
-        aync_thread_pool_->AddTask([&, next_i, op_run_number, is_dry_run]() {
+        aync_thread_pool_->AddTask([=]() {
           RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
                               op_run_number, is_dry_run);
         });
       } else {
-        sync_thread_pool_->AddTask([&, next_i, op_run_number, is_dry_run]() {
+        sync_thread_pool_->AddTask([=]() {
           RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
                               op_run_number, is_dry_run);
         });
@@ -477,17 +467,17 @@ void InterpreterCore::RunInstructionAsync(
 
 void InterpreterCore::CheckGC(size_t instr_id,
                               const std::vector<size_t>& gc_check_list,
-                              AtomicVectorSizeT& working_var_ref) {
+                              AtomicVectorSizeT* working_var_ref) {
   auto& var_scope = *global_scope_;
 
   for (auto var_id : gc_check_list) {
-    working_var_ref[var_id]->fetch_sub(1);
-    VLOG(3) << "var_id " << var_id
-            << " ref_count: " << working_var_ref[var_id]->load();
+    working_var_ref->at(var_id)->fetch_sub(1);
     if (var_scope.vec_meta_info_[var_id].vardesc_ &&
         !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
-        working_var_ref[var_id]->load() == 0) {
+        working_var_ref->at(var_id)->load() == 0) {
       Variable* var = var_scope.var_list[var_id];
+      // NOTE(Aurelius84): std::deque is not thread-safe
+      std::lock_guard<memory::SpinLock> guard(spinlock_);
       if (var->IsType<LoDTensor>()) {
         garbages_->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
@@ -605,8 +595,6 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
 
   std::vector<OperatorBase*> ops;
   for (auto& op : global_block.AllOps()) {
-    VLOG(3) << "Build OpFuncNode from : " << op->Type();
-
     auto& info = OpInfoMap::Instance().Get(op->Type());
 
     const VariableNameMap& inputs_names = op->Inputs();
@@ -626,8 +614,7 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
 
   size_t ops_index = 0;
   for (auto& op : global_block.AllOps()) {
-    VLOG(3) << op->Type();
-    // << op->Type() << endl;
+    VLOG(3) << "Build OpFuncNode from : " << op->Type();
 
     auto op_base = ops[ops_index++];
 
