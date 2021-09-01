@@ -40,13 +40,49 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("npu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
-    NpuOpRunner runner;
-    runner.SetType("GatherV2")
-        .AddInput(*table_t)
-        .AddInput(*ids_t)
-        .AddInput(std::vector<int32_t>{0})
-        .AddOutput(*output_t);
-    runner.Run();
+    // FIXME(baiyangfan) Fix padding_idx grad bugs.
+    if (ctx.Attr<int64_t>("padding_idx") > 0) {
+      PADDLE_ENFORCE_EQ(table_t->dims().size(), 2,
+                        platform::errors::InvalidArgument(
+                            "npu only accept the dims of table_t == 2"));
+      framework::LoDTensor tensor_tmp;
+      auto tmp_shape = framework::make_ddim({1, table_t->dims()[1]});
+      tensor_tmp.mutable_data<T>(tmp_shape, ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(0.0));
+
+      auto stream =
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+      std::vector<framework::Tensor> inputs = {*table_t, tensor_tmp};
+      std::vector<std::string> names = {"x_w", "tmp_w"};
+      auto out_shape =
+          framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
+      framework::Tensor table_t_tmp;
+      table_t_tmp.mutable_data<T>(out_shape, ctx.GetPlace());
+      NpuOpRunner runner_concat{
+          "ConcatD",
+          {inputs},
+          {table_t_tmp},
+          {{"concat_dim", 0}, {"N", static_cast<int>(inputs.size())}}};
+      runner_concat.AddInputNames(names);
+      runner_concat.Run(stream);
+
+      NpuOpRunner runner;
+      runner.SetType("GatherV2")
+          .AddInput(table_t_tmp)
+          .AddInput(*ids_t)
+          .AddInput(std::vector<int32_t>{0})
+          .AddOutput(*output_t);
+      runner.Run();
+    } else {
+      NpuOpRunner runner;
+      runner.SetType("GatherV2")
+          .AddInput(*table_t)
+          .AddInput(*ids_t)
+          .AddInput(std::vector<int32_t>{0})
+          .AddOutput(*output_t);
+      runner.Run();
+    }
   }
 };
 
@@ -82,17 +118,71 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
     }
     */
 
-    const auto &runner_zeros =
-        NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
-    runner_zeros.Run(stream);
+    if (ctx.Attr<int64_t>("padding_idx") > 0) {
+      framework::LoDTensor tensor_tmp;
+      auto tmp_shape = framework::make_ddim({1, table_grad_t->dims()[1]});
+      tensor_tmp.mutable_data<T>(tmp_shape, ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(0.0));
 
-    // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
-    // can be different tensor, but in cann 20.2+, it does inplace operation.
-    // Thus, the first input and output should be same tensor.
-    const auto &runner_scatter =
-        NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
-                    {*table_grad_t}, {{"use_locking", true}});
-    runner_scatter.Run(stream);
+      std::vector<framework::Tensor> inputs = {*table_grad_t, tensor_tmp};
+      std::vector<std::string> names = {"x_w_grad", "tmp_w_grad"};
+      auto out_shape = framework::make_ddim(
+          {table_grad_t->dims()[0] + 1, table_grad_t->dims()[1]});
+      framework::Tensor table_t_tmp;
+      table_t_tmp.mutable_data<T>(out_shape, ctx.GetPlace());
+      NpuOpRunner runner_concat{
+          "ConcatD",
+          {inputs},
+          {table_t_tmp},
+          {{"concat_dim", 0}, {"N", static_cast<int>(inputs.size())}}};
+      runner_concat.AddInputNames(names);
+      runner_concat.Run(stream);
+
+      const auto &runner_zeros =
+          NpuOpRunner("ZerosLike", {table_t_tmp}, {table_t_tmp});
+      runner_zeros.Run(stream);
+
+      // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
+      // can be different tensor, but in cann 20.2+, it does inplace operation.
+      // Thus, the first input and output should be same tensor.
+      const auto &runner_scatter =
+          NpuOpRunner("ScatterAdd", {table_t_tmp, *ids_t, *output_grad_t},
+                      {table_t_tmp}, {{"use_locking", true}});
+      runner_scatter.Run(stream);
+
+      framework::Tensor out1;
+      framework::Tensor out2;
+      auto out_shape1 = framework::make_ddim(
+          {table_t_tmp.dims()[0] - 1, table_t_tmp.dims()[1]});
+      auto out_shape2 = framework::make_ddim({1, table_t_tmp.dims()[1]});
+      out1.mutable_data<T>(out_shape1, ctx.GetPlace());
+      out2.mutable_data<T>(out_shape2, ctx.GetPlace());
+      std::vector<framework::Tensor> outputs = {out1, out2};
+      std::vector<int> sections = {static_cast<int>(table_t_tmp.dims()[0] - 1),
+                                   1};
+      framework::NPUAttributeMap attr_input = {
+          {"size_splits", sections},
+          {"split_dim", 0},
+          {"num_split", static_cast<int32_t>(sections.size())}};
+      NpuOpRunner runner_split;
+      runner_split.SetType("SplitVD")
+          .AddInput(table_t_tmp)
+          .AddOutputs(outputs)
+          .AddAttrs(attr_input);
+      runner_split.Run(stream);
+      table_grad_t->ShareDataWith(out1);
+    } else {
+      const auto &runner_zeros =
+          NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
+      runner_zeros.Run(stream);
+      // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
+      // can be different tensor, but in cann 20.2+, it does inplace operation.
+      // Thus, the first input and output should be same tensor.
+      const auto &runner_scatter =
+          NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
+                      {*table_grad_t}, {{"use_locking", true}});
+      runner_scatter.Run(stream);
+    }
   }
 };
 }  // namespace operators
