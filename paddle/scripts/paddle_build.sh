@@ -1706,7 +1706,7 @@ function parallel_test_base_npu() {
     if [ ${SKIL_NPU_TEST:-ON} == "ON" ] ; then
         npu_cc_changes=$(git diff --name-only ${BRANCH} | grep "op_npu.cc" || true)
         npu_py_changes=$(git diff --name-only ${BRANCH} | grep "op_npu.py" || true)
-        if [ "${npu_cc_changes}" ] && [ "${npu_py_changes}" ] ; then
+        if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] ; then
             echo "Files changes as following:"
             git diff --name-only ${BRANCH}
             echo "NO NPU operators files changed, skip NPU unit tests!"
