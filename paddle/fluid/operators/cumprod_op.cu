@@ -16,7 +16,9 @@
 
 #include <thrust/transform.h>
 #include "paddle/fluid/operators/cumprod_op.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/inclusive_scan.h"
+#include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -165,9 +167,7 @@ e.g. x = [1, 4, 5, 0, 2, 3, 0];
     x_filled_one = [1, 1, 1, 1, 2, 3, 0];
 thus, we can use cumprod(x_filled_one[x[j]]) to calculate the result of
 prod{i<w<j}(xw).
-
 Then, we will show more detailed implement method.
-
 for (int i = 0; i < numel; i++) {
     if (zero_mask[i] == 0) {       //case i < k
         dx[i] = R[i] / x[i];
@@ -178,7 +178,6 @@ for (int i = 0; i < numel; i++) {
             dx[i] = 1;
             zero_index = i;
             x_filled_one[i] = 1;
-
         } else {
             if (zero_mask[i-1] == 0) {    //case i = k
                 dx[i] = y[i-1];
@@ -190,10 +189,8 @@ for (int i = 0; i < numel; i++) {
                 x_filled_one[i] = x[i];
             }
         }
-
     }
 }
-
 T = reversed_cumsum(dy[j]*cumprod(x_filled_one[x[j]]));
 if (zero_index != -1) {
     dx[zero_index] *= T[zero_index];
@@ -216,14 +213,45 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
     if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
 
     size_t numel = outer_dim * mid_dim * inner_dim;
+    size_t numel_x = x->numel();
+    size_t numel_y = y->numel();
 
     const auto *x_data = x->data<T>();
     const auto *y_data = y->data<T>();
     const auto *dy_data = dy->data<T>();
+
     auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
     const auto &dev_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
     auto *dx_data = dx->mutable_data<T>(place);
+
+    // deal with complex
+    const T *x_data_deal;
+    const T *y_data_deal;
+    memory::AllocationPtr x_conj;
+    memory::AllocationPtr y_conj;
+    if (framework::IsComplex<T>::value) {
+      x_conj = memory::Alloc(place, numel_x * sizeof(T));
+      auto *x_data_conj = reinterpret_cast<T *>(x_conj->ptr());
+      y_conj = memory::Alloc(place, numel_y * sizeof(T));
+      auto *y_data_conj = reinterpret_cast<T *>(y_conj->ptr());
+
+      platform::ForRange<platform::CUDADeviceContext> for_range_x(dev_ctx,
+                                                                  numel_x);
+      math::ConjFunctor<T> functor_x(x_data, numel_x, x_data_conj);
+      for_range_x(functor_x);
+
+      platform::ForRange<platform::CUDADeviceContext> for_range_y(dev_ctx,
+                                                                  numel_y);
+      math::ConjFunctor<T> functor_y(y_data, numel_y, y_data_conj);
+      for_range_y(functor_y);
+
+      x_data_deal = x_data_conj;
+      y_data_deal = y_data_conj;
+    } else {
+      x_data_deal = x_data;
+      y_data_deal = y_data;
+    }
 
 // Step 1: find cummax-ed zero mask of x
 #ifdef PADDLE_WITH_CUDA
@@ -236,8 +264,8 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *zero_mask_without_cummax_data =
         reinterpret_cast<uint8_t *>(zero_mask_without_cummax->ptr());
     thrust::transform(
-        exec_policy, thrust::device_pointer_cast(x_data),
-        thrust::device_pointer_cast(x_data) + numel,
+        exec_policy, thrust::device_pointer_cast(x_data_deal),
+        thrust::device_pointer_cast(x_data_deal) + numel,
         thrust::device_pointer_cast(zero_mask_without_cummax_data),
         IsZeroFunctor<T>());
 
@@ -254,7 +282,7 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *dy_mul_y_data = reinterpret_cast<T *>(dy_mul_y->ptr());
     thrust::transform(exec_policy, thrust::device_pointer_cast(dy_data),
                       thrust::device_pointer_cast(dy_data) + numel,
-                      thrust::device_pointer_cast(y_data),
+                      thrust::device_pointer_cast(y_data_deal),
                       thrust::device_pointer_cast(dy_mul_y_data),
                       MultiplyFunctor<T>());
 
@@ -280,8 +308,8 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *x_filled_one_data = dy_mul_y_data;  // reuse former allocated memory
     platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx, numel);
     CumprodGradFunctorExceptFirstZero<T> functor_except_first_zero(
-        x_data, y_data, dy_mul_y_reversed_cumsum_data, zero_mask_data, mid_dim,
-        inner_dim, dx_data, first_zero_idx_data, x_filled_one_data);
+        x_data_deal, y_data_deal, dy_mul_y_reversed_cumsum_data, zero_mask_data,
+        mid_dim, inner_dim, dx_data, first_zero_idx_data, x_filled_one_data);
     for_range(functor_except_first_zero);
 
     // Step 4: calculate cumprod of x_filled_one
