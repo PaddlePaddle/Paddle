@@ -120,6 +120,22 @@ class TestElementwisePow(OpTest):
         self.check_grad_with_place(
             self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy])
 
+    def test_check_grad_ingore_x(self):
+        _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place, ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[dy])
+
+    def test_check_grad_ingore_y(self):
+        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place, ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            user_defined_grads=[dx])
+
 
 class TestElementwisePowFp16(TestElementwisePow):
     def init_input_output(self):
@@ -174,6 +190,22 @@ class TestElementwisePowOp_broadcast_0(TestElementwisePow):
         self.check_grad_with_place(
             self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy])
 
+    def test_check_grad_ingore_x(self):
+        _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place, ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[dy])
+
+    def test_check_grad_ingore_y(self):
+        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place, ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            user_defined_grads=[dx])
+
 
 class TestElementwisePowOp_broadcast_1(TestElementwisePow):
     def init_axis(self):
@@ -192,6 +224,22 @@ class TestElementwisePowOp_broadcast_1(TestElementwisePow):
         self.check_grad_with_place(
             self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy])
 
+    def test_check_grad_ingore_x(self):
+        _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place, ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[dy])
+
+    def test_check_grad_ingore_y(self):
+        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place, ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            user_defined_grads=[dx])
+
 
 class TestElementwisePowOp_broadcast_2(TestElementwisePow):
     def init_axis(self):
@@ -209,6 +257,22 @@ class TestElementwisePowOp_broadcast_2(TestElementwisePow):
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
         self.check_grad_with_place(
             self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy])
+
+    def test_check_grad_ingore_x(self):
+        _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place, ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[dy])
+
+    def test_check_grad_ingore_y(self):
+        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place, ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            user_defined_grads=[dx])
 
 
 class TestElementwisePowNet(unittest.TestCase):
