@@ -500,7 +500,7 @@ class TestWithEvenUpsample_NHWC_FP32(TestConv2DTransposeOp):
         self.dtype = np.float32
 
 
-class TestWithEvenUpsample_NHWC_FP32(TestConv2DTransposeOp):
+class TestWithEvenUpsample_NHWC(TestConv2DTransposeOp):
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [2, 2]
@@ -511,9 +511,6 @@ class TestWithEvenUpsample_NHWC_FP32(TestConv2DTransposeOp):
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 5, 5]
         self.data_format = 'NHWC'
-
-    def init_dtype(self):
-        self.dtype = np.float32
 
 
 class TestWithEvenUpsample_NHWC(TestConv2DTransposeOp):
