@@ -265,6 +265,7 @@ class PSGPUTrainer : public TrainerBase {
   }
   virtual std::string GetDumpPath(int tid) { return ""; }
   virtual void InitDumpEnv() {}
+  virtual void MergeDenseParam();
 
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
@@ -274,6 +275,7 @@ class PSGPUTrainer : public TrainerBase {
   DownpourWorkerParameter param_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
   std::vector<std::string> need_merge_var_names_;
+  std::vector<std::string> trainable_param_;
   float scale_datanorm_;
   paddle::platform::Place place_;
   ProgramDesc program_;
