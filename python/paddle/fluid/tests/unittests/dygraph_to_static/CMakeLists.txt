@@ -36,4 +36,3 @@ if(NOT WIN32)
     set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
     #set_tests_properties(test_resnet PROPERTIES TIMEOUT 120)
 endif()
-
