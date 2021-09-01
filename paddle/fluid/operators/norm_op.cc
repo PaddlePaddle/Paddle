@@ -88,8 +88,11 @@ class NormOpGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+#ifndef PADDLE_WITH_ASCEND_CL
     op->SetInput("Norm", this->Output("Norm"));
+#else
     op->SetInput("Out", this->Output("Out"));
+#endif
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
