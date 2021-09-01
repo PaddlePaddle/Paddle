@@ -22,6 +22,7 @@ import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
+from . import fuse_utils
 from . import utils
 from . import ptq_hooks
 from . import ptq_config
@@ -55,7 +56,7 @@ class ImperativePTQ(object):
 
         self._quant_config = quant_config
 
-    def quantize(self, model, inplace=False):
+    def quantize(self, model, inplace=False, fuse=False, fuse_list=None):
         """
         Add quant config and hook to the target layer.
 
@@ -63,15 +64,23 @@ class ImperativePTQ(object):
             model(paddle.nn.Layer): The model to be quantized.
             inplace(bool): Whether apply quantization to the input model.
                            Default: False.
-        Returns:
+            fuse(bool): Whether to fuse layers.
+                        Default: False.
+            fuse_list(list): The layers' names to be fused. For example,
+                "fuse_list = [["conv1", "bn1"], ["conv2", "bn2"]]".
+                A TypeError would be raised if "fuse" was set as
+                True but "fuse_list" was None.
+                Default: None.
+        Return
             quantized_model(paddle.nn.Layer): The quantized model.
         """
         assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
-
         if not inplace:
             model = copy.deepcopy(model)
-
+        if fuse:
+            model.eval()
+            model = fuse_utils.fuse_layers(model, fuse_list)
         for name, layer in model.named_sublayers():
             if PTQRegistry.is_supported_layer(layer) \
                 and utils.is_leaf_layer(layer) \
