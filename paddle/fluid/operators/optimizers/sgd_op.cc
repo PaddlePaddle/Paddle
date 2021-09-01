@@ -77,17 +77,20 @@ class SGDOp : public framework::OperatorWithKernel {
       const auto *param_var = ctx.InputVar("Param");
       const auto *grad_var = ctx.InputVar("Grad");
 
+      // supported cases
       bool dense_param_sparse_grad =
           param_var->IsType<framework::LoDTensor>() &&
           grad_var->IsType<framework::SelectedRows>();
+      bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
+                                  grad_var->IsType<framework::LoDTensor>();
 
-      if (dense_param_sparse_grad)
+      // if (dense_param_sparse_grad)
+      if (dense_param_sparse_grad || dense_param_and_grad)
         return framework::OpKernelType(data_type, ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
     }
 #endif
-
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 

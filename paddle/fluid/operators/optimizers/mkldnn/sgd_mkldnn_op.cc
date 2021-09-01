@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <cstring>
+
 #include "paddle/fluid/operators/mkldnn/axpy_handler.h"
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 
@@ -23,9 +25,27 @@ namespace operators {
 template <typename T>
 class SGDOneDNNKernel : public SGDOpKernel<pplat::CPUDeviceContext, T> {
  protected:
+  void dense_param_and_grad_kernel(
+      const framework::ExecutionContext &ctx) const override {
+    VLOG(4) << "[ONEDNN]: sgd_dense_param_kernel<T, LodTensor>";
+    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    const auto *param = ctx.Input<framework::Tensor>("Param");
+    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
+    const auto *grad = ctx.Input<framework::Tensor>("Grad");
+
+    auto *out_data = param_out->mutable_data<T>(ctx.GetPlace());
+    const T *param_data = param->data<T>();
+    const auto *grad_data = grad->data<T>();
+    const auto *lr = learning_rate->data<T>();
+    // Since denese SGD is not in place operation, first copy params to output
+    // tensor and then update it.
+    std::memcpy(out_data, param_data, param->memory_size());
+    OneDNNAXPYHandler<T>(param_out->numel(), -lr[0])(grad_data, out_data);
+  }
+
   void dense_param_sparse_grad_kernel(
       const framework::ExecutionContext &ctx) const override {
-    VLOG(2) << "[ONEDNN]: sgd_dense_param_kernel<T, SelectedRows>";
+    VLOG(4) << "[ONEDNN]: sgd_dense_param_kernel<T, SelectedRows>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
     const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
