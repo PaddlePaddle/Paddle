@@ -411,7 +411,8 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<bool>(
         "use_model_parallel",
         "(bool default false) use this op with model parallel mode. In model "
