@@ -58,6 +58,21 @@ class NormNPUKernel : public framework::OpKernel<T> {
     CheckAxis(axis, xdim.size());
     if (axis < 0) axis = xdim.size() + axis;
 
+    if (false) {
+      framework::NPUAttributeMap attr_input_norm;
+      attr_input_norm["axis"] = std::vector<int>({axis});
+      attr_input_norm["eps"] = eps;
+      const auto &runner =
+          NpuOpRunner("L2Normalize", {*in_x}, {*out_norm}, attr_input_norm);
+      auto stream =
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+      runner.Run(stream);
+      NpuOpRunner("Div", {*in_x, *out_norm}, {*out_y}, {}).Run(stream);
+
+      return;
+    }
+
     framework::NPUAttributeMap attr_input_norm;
     attr_input_norm["axes"] = std::vector<int>({axis});
     attr_input_norm["p"] = 2;
@@ -81,6 +96,8 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto *x = ctx.Input<Tensor>("X");
+    // auto *norm = ctx.Input<framework::Tensor>("Norm");
+    auto *y = ctx.Input<framework::Tensor>("Out");
     auto *dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
@@ -88,6 +105,27 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
     CheckAxis(axis, xdim.size());
 
     auto place = ctx.GetPlace();
+
+    if (true) {
+      LOG(WARNING) << "!!!!!!!!!!!!!!!!!!!!!!!!!!! here";
+
+      dx->mutable_data<T>(place);
+
+      framework::NPUAttributeMap attr_input_norm;
+      attr_input_norm["dim"] = std::vector<int>({axis});
+      attr_input_norm["eps"] = epsilon;
+      // const auto &runner =
+      //     NpuOpRunner("L2NormalizeGrad", {*x, *norm, *dy}, {*dx},
+      //     attr_input_norm);
+      const auto &runner =
+          NpuOpRunner("L2NormalizeGrad", {*x, *y, *dy}, {*dx}, attr_input_norm);
+      auto stream =
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+      runner.Run(stream);
+
+      return;
+    }
 
     // dx = ( dy/sqrt(sum(x*x)) ) * [1 - x*sum(x) / (sum(x*x) + e)]
     //    = [dy - dy * x * sum(x) / (sum(x*x) + e)] / sqrt(sum(x*x))
