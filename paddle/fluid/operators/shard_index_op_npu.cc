@@ -76,9 +76,19 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     Tensor sharding_id(in->type());
     sharding_id.mutable_data<T>(in->dims(), place);
 
-    Tensor shard_id_tensor(framework::proto::VarType::INT32);
-    shard_id_tensor.mutable_data<int>(framework::DDim({1}), place);
-    FillNpuTensorWithConstant(&shard_id_tensor, shard_id);
+    Tensor shard_id_tensor;
+    if (sizeof(T) == 4) {
+      Tensor shard_id_tensor_int32(framework::proto::VarType::INT32);
+      shard_id_tensor.mutable_data<int>(framework::DDim({1}), place);
+      FillNpuTensorWithConstant(&shard_id_tensor, shard_id);
+      shard_id_tensor.ShareDataWith(shard_id_tensor_int32);
+    } else if (sizeof(T) == 8) {
+      Tensor shard_id_tensor_int64(framework::proto::VarType::INT64);
+      shard_id_tensor.mutable_data<int64_t>(framework::DDim({1}), place);
+      FillNpuTensorWithConstant(&shard_id_tensor,
+                                static_cast<int64_t>(shard_id));
+      shard_id_tensor.ShareDataWith(shard_id_tensor_int64);
+    }
 
     Tensor ignore_tensor(in->type());
     ignore_tensor.mutable_data<T>(in->dims(), place);

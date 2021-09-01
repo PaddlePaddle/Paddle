@@ -29,7 +29,12 @@ paddle.enable_static()
 SEED = 2021
 
 
-def common_setup(self, index_num, nshards, shard_id, ignore_value):
+def common_setup(self,
+                 index_num,
+                 nshards,
+                 shard_id,
+                 ignore_value,
+                 dtype="int32"):
     self.__class__.use_npu = True
     self.__class__.op_type = "shard_index"
 
@@ -37,10 +42,10 @@ def common_setup(self, index_num, nshards, shard_id, ignore_value):
     x_lod = [[i for i in range(10)]]
     N = sum(x_lod[0])
     x = [np.random.randint(0, index_num - 1) for i in range(N)]
-    x = np.array(x).astype('int32').reshape([N, 1])
+    x = np.array(x).astype(dtype).reshape([N, 1])
 
     shard_size = (index_num + nshards - 1) // nshards
-    out = np.zeros(shape=x.shape).astype('int32')
+    out = np.zeros(shape=x.shape).astype(dtype)
     for i in range(N):
         if x[i] // shard_size == shard_id:
             out[i] = x[i] % shard_size
@@ -78,6 +83,11 @@ class TestShardIndexIgnoreValueOp(TestShardIndexShardId0Op):
 class TestShardIndexNotEvenlyDividedOp(TestShardIndexShardId0Op):
     def setUp(self):
         common_setup(self, 15, 2, 1, -1)
+
+
+class TestShardIndexShardId0OpInt64(TestShardIndexShardId0Op):
+    def setUp(self):
+        common_setup(self, 20, 2, 0, -1, "int64")
 
 
 if __name__ == '__main__':
