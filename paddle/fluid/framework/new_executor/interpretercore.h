@@ -122,7 +122,6 @@ class InterpreterCore {
   std::unique_ptr<WorkQueue> aync_thread_pool_;
   std::unique_ptr<WorkQueue> sync_thread_pool_;
 
-  platform::DeviceContextPool fetch_context_pool_;
   memory::SpinLock spinlock_;  // for gc with multi-thread
 };
 }  // namespace framework

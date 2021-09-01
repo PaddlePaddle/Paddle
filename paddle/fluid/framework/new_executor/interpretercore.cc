@@ -407,8 +407,6 @@ void InterpreterCore::ExecuteInstructionList(
     VLOG(3) << op_run_number.load() << " !=" << vec_instr.size();
   }
 
-  fetch_context_pool_.Get(place_)->Wait();
-
   for (size_t i = 0; i < working_var_ref.size(); ++i) {
     if (working_var_ref[i]->load() != 0) {
       std::cerr << " var ref is not zero " << i << " "
