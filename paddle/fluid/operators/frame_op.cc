@@ -25,10 +25,22 @@ class FrameOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "frame");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "frame");
 
-    const auto in_dims = ctx->GetInputDim("X");
     const int frame_length = ctx->Attrs().Get<int>("frame_length");
     const int hop_length = ctx->Attrs().Get<int>("hop_length");
     const int axis = ctx->Attrs().Get<int>("axis");
+
+    const auto x_dims = ctx->GetInputDim("X");
+    const int x_rank = x_dims.size();
+
+    PADDLE_ENFORCE_GT(hop_length, 0,
+                      platform::errors::InvalidArgument(
+                          "Attribute(hop_length) of FrameOp should be greater "
+                          "than 0, but got %s.",
+                          hop_length));
+    PADDLE_ENFORCE_EQ(
+        (axis == 0 || axis == -1), true,
+        platform::errors::InvalidArgument(
+            "Attribute(axis) of FrameOp should 0 or -1, but got %s.", axis));
 
     std::vector<int64_t> output_shape;
     int seq_length;
@@ -38,18 +50,24 @@ class FrameOp : public framework::OperatorWithKernel {
     int end_axis;
 
     if (axis == 0) {
-      seq_length = in_dims[0];
+      seq_length = x_dims[0];
       start_axis = 1;
-      end_axis = in_dims.size() - 1;
+      end_axis = x_rank - 1;
     } else {
-      seq_length = in_dims[in_dims.size() - 1];
+      seq_length = x_dims[x_rank - 1];
       start_axis = 0;
-      end_axis = in_dims.size() - 2;
+      end_axis = x_rank - 2;
     }
 
-    // It won't go into for loop when in_dims.size() == 1U.
+    PADDLE_ENFORCE_LE(frame_length, seq_length,
+                      platform::errors::InvalidArgument(
+                          "Attribute(frame_length) of FrameOp should be less "
+                          "equal than sequence length, but got (%s) > (%s).",
+                          frame_length, seq_length));
+
+    // It won't go into for loop when x_rank == 1U.
     for (int i = start_axis; i <= end_axis; i++) {
-      output_shape.push_back(in_dims[i]);
+      output_shape.push_back(x_dims[i]);
     }
 
     n_frames = 1 + (seq_length - frame_length) / hop_length;
@@ -80,20 +98,18 @@ class FrameOp : public framework::OperatorWithKernel {
 class FrameOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The input tensor of abs op.");
-    AddOutput("Out", "(Tensor), The output tensor of abs op.");
+    AddInput("X", "(Tensor), The input tensor of frame op.");
+    AddOutput("Out", "(Tensor), The output tensor of frame op.");
     AddAttr<int>("frame_length",
                  "Frame Length"
-                 "Other doc of frame length arg...")
-        .SetDefault(1);
+                 "Other doc of frame length arg...");
     AddAttr<int>("hop_length",
                  "Hop Length"
-                 "Other doc of hop length arg...")
-        .SetDefault(1);
+                 "Other doc of hop length arg...");
     AddAttr<int>("axis",
                  "Axis"
                  "Other doc of axis arg...")
-        .SetDefault(0);
+        .SetDefault(-1);
     AddComment(R"DOC(
     Frame Operator.
 
@@ -110,7 +126,7 @@ class FrameOpGrad : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "frame_grad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    "Out@GRAD", "frame_grad");
-    auto x_dims = ctx->GetInputDim("X");
+    const auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       // VLOG(0) << "[FrameOpGrad][InferShape]: " << x_dims.to_str();
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -161,9 +177,7 @@ REGISTER_OP_CPU_KERNEL(
                      paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
-    frame_grad, ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, float>,
+    frame_grad, ops::FrameGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FrameGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::FrameGradKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex<float>>,

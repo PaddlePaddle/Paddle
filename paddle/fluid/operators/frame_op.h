@@ -199,10 +199,9 @@ static inline void TransCompute(const framework::ExecutionContext& ctx,
                                 const Tensor& x, Tensor* out,
                                 const std::vector<int>& perm) {
   int rank = x.dims().size();
-  if (rank <= 1 || rank > 3) {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Input rank should be 2 or 3, but got %d.", rank));
-  }
+  PADDLE_ENFORCE_EQ((rank == 2 || rank == 3), true,
+                    platform::errors::InvalidArgument(
+                        "Rank of x should be 2 or 3, but got %d.", rank));
 
   if (!out->IsInitialized()) {
     auto dims_vec = framework::vectorize(x.dims());

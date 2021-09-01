@@ -12,12 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import librosa
 import numpy as np
+from numpy.lib.stride_tricks import as_strided
 import paddle
 import unittest
 
 from op_test import OpTest
+
+
+def frame_from_librosa(x, frame_length, hop_length, axis=-1):
+    if axis == -1 and not x.flags["F_CONTIGUOUS"]:
+        x = np.asfortranarray(x)
+    elif axis == 0 and not x.flags["C_CONTIGUOUS"]:
+        x = np.ascontiguousarray(x)
+
+    n_frames = 1 + (x.shape[axis] - frame_length) // hop_length
+    strides = np.asarray(x.strides)
+
+    new_stride = np.prod(strides[strides > 0] // x.itemsize) * x.itemsize
+
+    if axis == -1:
+        shape = list(x.shape)[:-1] + [frame_length, n_frames]
+        strides = list(strides) + [hop_length * new_stride]
+
+    elif axis == 0:
+        shape = [n_frames, frame_length] + list(x.shape)[1:]
+        strides = [hop_length * new_stride] + list(strides)
+
+    else:
+        raise ValueError("Frame axis={} must be either 0 or -1".format(axis))
+
+    return as_strided(x, shape=shape, strides=strides)
 
 
 class TestFrameOp(OpTest):
@@ -28,7 +53,7 @@ class TestFrameOp(OpTest):
             'X': np.random.random(size=self.shape).astype(self.type),
         }
         self.outputs = {
-            'Out': librosa.util.frame(
+            'Out': frame_from_librosa(
                 x=self.inputs['X'], **self.attrs)
         }
 
