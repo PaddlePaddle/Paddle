@@ -32,7 +32,7 @@ class OneDNNAXPYHandler {
   /// @param[in]  n      The number of elements in tensor (assumed 1D tensor)
   /// @param[in]  alpha  The alpha coefficient.
   ///
-  OneDNNAXPYHandler(int n, T alpha);
+  OneDNNAXPYHandler(int64_t n, T alpha);
   ///
   /// @brief      Executes AXPY.
   ///

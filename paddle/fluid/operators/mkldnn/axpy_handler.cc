@@ -116,17 +116,17 @@ static void naive_axpy(int n, T alpha, const T *x, T *y) {
 template <typename T>
 class OneDNNAXPYHandler<T>::Impl {
  public:
-  Impl(int n, T alpha);
+  Impl(int64_t n, T alpha);
   void operator()(const T *x, T *y);
 
  private:
   std::unique_ptr<AXPYHandler<T>> handler_;
-  int n_;
+  int64_t n_;
   T alpha_;
 };
 
 template <typename T>
-OneDNNAXPYHandler<T>::Impl::Impl(int n, T alpha) : n_{n}, alpha_{alpha} {
+OneDNNAXPYHandler<T>::Impl::Impl(int64_t n, T alpha) : n_{n}, alpha_{alpha} {
   auto &pool = plat::DeviceContextPool::Instance();
   auto cpu_place = plat::CPUPlace();
   auto *dev_ctx =
@@ -156,7 +156,7 @@ void OneDNNAXPYHandler<T>::Impl::operator()(const T *x, T *y) {
 }
 
 template <typename T>
-OneDNNAXPYHandler<T>::OneDNNAXPYHandler(int n, T alpha)
+OneDNNAXPYHandler<T>::OneDNNAXPYHandler(int64_t n, T alpha)
     : pimpl_{new Impl{n, alpha}, [](Impl *impl) { delete impl; }} {}
 
 template <typename T>
