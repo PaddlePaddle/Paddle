@@ -3190,6 +3190,10 @@ def instance_norm(input,
         dtype = core.VarDesc.VarType.FP32
 
     input_shape = input.shape
+    if len(input.shape) < 2 or len(input.shape) > 5:
+        raise ValueError(
+            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.
+            format(len(input.shape), input_shape))
     channel_num = input_shape[1]
 
     param_shape = [channel_num]
