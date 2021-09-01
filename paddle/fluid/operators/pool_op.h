@@ -73,6 +73,18 @@ class PoolOpGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
+
+class PoolOpGradGrad : public PoolOp{
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  using PoolOp::InferShape;
+
+ protected:
+  using PoolOp::GetExpectedKernelType;
+  using PoolOp::GetKernelTypeForVar;
+};
+
+
 class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
@@ -356,6 +368,21 @@ class PoolGradKernel : public framework::OpKernel<T> {
     }
   }
 };
+
+
+template <typename DeviceContext, typename T>
+class PoolGradGradKernel : public PoolKernel<DeviceContext, T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    std::string pooling_type = context.Attr<std::string>("pooling_type");
+    if (pooling_type == "max") {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Pool op grad grad only supports avgpool."));
+    }
+    else PoolKernel::Compute(context);
+  }
+};
+
 
 }  // namespace operators
 }  // namespace paddle
