@@ -275,7 +275,7 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
-        .As_Extra();
+        .AsExtra();
     AddAttr<std::string>(
         "data_format",
         "(string, default NCHW) Only used in "
@@ -287,7 +287,7 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false)
-        .As_Extra();
+        .AsExtra();
 
     AddComment(R"DOC(
 Local Response Normalization Operator.
