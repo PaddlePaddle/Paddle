@@ -311,7 +311,7 @@ def conv1d(x,
                              x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "the groups of conv1d should be greater than 0. Received groups: {}".
+            "The groups of conv1d should be greater than 0. Received groups: {}".
             format(groups))
     if num_channels % groups != 0:
         raise ValueError(
@@ -528,7 +528,7 @@ def conv2d(x,
                              x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "the groups of conv2d should be greater than 0. Received groups: {}".
+            "The groups of conv2d should be greater than 0. Received groups: {}".
             format(groups))
     if num_channels % groups != 0:
         raise ValueError(
@@ -738,7 +738,7 @@ def conv1d_transpose(x,
                              x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "the groups of conv1d_transpose should be greater than 0. Received groups: {}".
+            "The groups of conv1d_transpose should be greater than 0. Received groups: {}".
             format(groups))
     if num_channels % groups != 0:
         raise ValueError(
@@ -999,7 +999,7 @@ def conv2d_transpose(x,
                              x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "the groups of conv2d_transpose should be greater than 0. Received groups: {}".
+            "The groups of conv2d_transpose should be greater than 0. Received groups: {}".
             format(groups))
     if num_channels % groups != 0:
         raise ValueError(
@@ -1211,7 +1211,7 @@ def conv3d(x,
             "Received: {}.".format(x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "the groups of conv3d should be greater than 0. Received groups: {}".
+            "The groups of conv3d should be greater than 0. Received groups: {}".
             format(groups))
     if num_channels % groups != 0:
         raise ValueError(
@@ -1410,7 +1410,7 @@ def conv3d_transpose(x,
             "Received: {}.".format(x.shape, num_channels))
     if groups <= 0:
         raise ValueError(
-            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".
+            "The groups of conv3d_transpose should be greater than 0. Received groups: {}".
             format(groups))
     if num_channels % groups != 0:
         raise ValueError(
