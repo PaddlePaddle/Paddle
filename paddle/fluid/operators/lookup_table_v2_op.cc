@@ -81,10 +81,12 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_sparse",
                   "(boolean, default false) "
                   "Sparse update.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<bool>("is_distributed",
                   "(boolean, default false) distributed lookup table.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<int64_t>("padding_idx",
                      "(int64, default -1) "
                      "If the value is -1, it makes no effect to lookup. "
@@ -93,7 +95,7 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(kNoPadding);
 
     // for parameter prefetch
-    AddAttr<bool>("remote_prefetch", "").SetDefault(false);
+    AddAttr<bool>("remote_prefetch", "").SetDefault(false).AsExtra();
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.")
         .SetDefault(0)
         .AsExtra();
