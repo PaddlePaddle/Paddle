@@ -53,6 +53,12 @@ BuddyAllocator::~BuddyAllocator() {
 }
 
 inline size_t align(size_t size, size_t alignment) {
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (dynamic_cast<NPUAllocator>(system_allocator_)) {
+    VLOG(10) << "add extra 32 bytes for npu memory slot";
+    size += 32;
+  }
+#endif
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);
 }
