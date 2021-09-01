@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -63,7 +64,7 @@ struct DataMappingFunctor {
         n = i % (n_frames_ * frame_length_) % n_frames_;
         ```
 
-      d. Replace `sample_idx`, `f` and `n` in the eqations followed.
+      d. Replace `sample_idx`, `f` and `n` in the following eqations:
         ```cpp
         src_idx = sample_idx * seq_length_ + n * hop_length_ + f;
         trg_idx = sample_idx * n_frames_ * frame_length_ + f * n_frames_ + n;
@@ -142,8 +143,8 @@ struct DataMappingGradFunctor {
     size_t seq_i = i % seq_length_;
 
     // Sliding window
-    d_x_[i] = 0;  // Init d_x_[i] to 0, and a while loop followed to sum up all
-                  // grads from d_out_.
+    d_x_[i] = 0;  // Init d_x_[i] to 0, and sums up all
+                  // grads from d_out_ in the while loop.
 
     size_t n = get_start_frame_idx(seq_i);
     size_t f;
@@ -197,7 +198,7 @@ struct FrameFunctor {
                   size_t n_frames, size_t hop_length,
                   bool is_grad = false) const {
     auto numel = output->numel();
-    auto* input_data = input->data<T>();
+    const auto* input_data = input->data<T>();
     auto* output_data = output->data<T>();
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
@@ -214,44 +215,10 @@ struct FrameFunctor {
 };
 
 template <typename DeviceContext, typename T>
-static inline void TransCompute(const framework::ExecutionContext& ctx,
-                                const Tensor& x, Tensor* out,
-                                const std::vector<int>& perm) {
-  int rank = x.dims().size();
-  PADDLE_ENFORCE_EQ((rank == 2 || rank == 3), true,
-                    platform::errors::InvalidArgument(
-                        "Rank of x should be 2 or 3, but got %d.", rank));
-
-  if (!out->IsInitialized()) {
-    auto dims_vec = framework::vectorize(x.dims());
-    for (int i = 0; i < rank; ++i) {
-      dims_vec[i] = x.dims()[perm[i]];
-    }
-    out->Resize(framework::make_ddim(dims_vec));
-    out->mutable_data<T>(ctx.GetPlace());
-  }
-
-  auto& dev_ctx = ctx.device_context<DeviceContext>();
-
-  switch (rank) {
-    case 2:
-      math::Transpose<DeviceContext, T, 2> trans2;
-      trans2(dev_ctx, x, out, perm);
-      break;
-    case 3:
-      math::Transpose<DeviceContext, T, 3> trans3;
-      trans3(dev_ctx, x, out, perm);
-      break;
-    default:
-      break;
-  }
-}
-
-template <typename DeviceContext, typename T>
 class FrameKernel : public framework::OpKernel<T> {
  public:
   /*
-    Frame kernel slice frames from input sequences. The main steps as follow:
+    Frame kernel slices frames from input sequences. The main steps as follows:
 
       - Case 1 - input dims == 1:
         - axis is -1: Call a FrameFunctor to compute directly.
@@ -319,13 +286,36 @@ class FrameKernel : public framework::OpKernel<T> {
     if (axis == 0) {
       if (x_rank == 1U) {
         trans_x = x_;
+
         std::vector<int> perm_out{1, 0};
-        TransCompute<DeviceContext, T>(ctx, *out, &trans_out, perm_out);
+        auto out_dims_vec = framework::vectorize(out->dims());
+        for (int i = 0; i < out->dims().size(); ++i) {
+          out_dims_vec[i] = out->dims()[perm_out[i]];
+        }
+        trans_out.Resize(framework::make_ddim(out_dims_vec));
+        trans_out.mutable_data<T>(ctx.GetPlace());
+        TransCompute<DeviceContext, T>(perm_out.size(), dev_ctx, *out,
+                                       &trans_out, perm_out);
       } else {
         std::vector<int> perm_x{1, 0};
-        TransCompute<DeviceContext, T>(ctx, x_, &trans_x, perm_x);
+        auto x_dims_vec = framework::vectorize(x_.dims());
+        for (int i = 0; i < x_.dims().size(); ++i) {
+          x_dims_vec[i] = x_.dims()[perm_x[i]];
+        }
+        trans_x.Resize(framework::make_ddim(x_dims_vec));
+        trans_x.mutable_data<T>(ctx.GetPlace());
+        TransCompute<DeviceContext, T>(perm_x.size(), dev_ctx, x_, &trans_x,
+                                       perm_x);
+
         std::vector<int> perm_out{2, 1, 0};
-        TransCompute<DeviceContext, T>(ctx, *out, &trans_out, perm_out);
+        auto out_dims_vec = framework::vectorize(out->dims());
+        for (int i = 0; i < out->dims().size(); ++i) {
+          out_dims_vec[i] = out->dims()[perm_out[i]];
+        }
+        trans_out.Resize(framework::make_ddim(out_dims_vec));
+        trans_out.mutable_data<T>(ctx.GetPlace());
+        TransCompute<DeviceContext, T>(perm_out.size(), dev_ctx, *out,
+                                       &trans_out, perm_out);
       }
     } else {
       trans_x = x_;
@@ -340,10 +330,12 @@ class FrameKernel : public framework::OpKernel<T> {
     if (axis == 0) {
       if (x_rank == 1U) {
         std::vector<int> perm_out{1, 0};
-        TransCompute<DeviceContext, T>(ctx, trans_out, out, perm_out);
+        TransCompute<DeviceContext, T>(perm_out.size(), dev_ctx, trans_out, out,
+                                       perm_out);
       } else {
         std::vector<int> perm_out{2, 1, 0};
-        TransCompute<DeviceContext, T>(ctx, trans_out, out, perm_out);
+        TransCompute<DeviceContext, T>(perm_out.size(), dev_ctx, trans_out, out,
+                                       perm_out);
       }
     }
 
@@ -374,7 +366,7 @@ class FrameGradKernel : public framework::OpKernel<T> {
  public:
   /*
     Frame gradient kernel accumulate gradient `d_x` from `d_out`. The
-    main steps as follow:
+    main steps as follows:
 
       - Case 1 - d_x dims == 1:
         - axis is -1: Call a FrameFunctor to compute directly. Notes that
@@ -442,13 +434,36 @@ class FrameGradKernel : public framework::OpKernel<T> {
     if (axis == 0) {
       if (d_x_rank == 1U) {
         trans_d_x = *d_x;
+
         std::vector<int> perm_d_out{1, 0};
-        TransCompute<DeviceContext, T>(ctx, d_out_, &trans_d_out, perm_d_out);
+        auto d_out_dims_vec = framework::vectorize(d_out_.dims());
+        for (int i = 0; i < d_out_.dims().size(); ++i) {
+          d_out_dims_vec[i] = d_out_.dims()[perm_d_out[i]];
+        }
+        trans_d_out.Resize(framework::make_ddim(d_out_dims_vec));
+        trans_d_out.mutable_data<T>(ctx.GetPlace());
+        TransCompute<DeviceContext, T>(perm_d_out.size(), dev_ctx, d_out_,
+                                       &trans_d_out, perm_d_out);
       } else {
         std::vector<int> perm_d_x{1, 0};
-        TransCompute<DeviceContext, T>(ctx, *d_x, &trans_d_x, perm_d_x);
+        auto d_x_dims_vec = framework::vectorize(d_x->dims());
+        for (int i = 0; i < d_x->dims().size(); ++i) {
+          d_x_dims_vec[i] = d_x->dims()[perm_d_x[i]];
+        }
+        trans_d_x.Resize(framework::make_ddim(d_x_dims_vec));
+        trans_d_x.mutable_data<T>(ctx.GetPlace());
+        TransCompute<DeviceContext, T>(perm_d_x.size(), dev_ctx, *d_x,
+                                       &trans_d_x, perm_d_x);
+
         std::vector<int> perm_d_out{2, 1, 0};
-        TransCompute<DeviceContext, T>(ctx, d_out_, &trans_d_out, perm_d_out);
+        auto d_out_dims_vec = framework::vectorize(d_out_.dims());
+        for (int i = 0; i < d_out_.dims().size(); ++i) {
+          d_out_dims_vec[i] = d_out_.dims()[perm_d_out[i]];
+        }
+        trans_d_out.Resize(framework::make_ddim(d_out_dims_vec));
+        trans_d_out.mutable_data<T>(ctx.GetPlace());
+        TransCompute<DeviceContext, T>(perm_d_out.size(), dev_ctx, d_out_,
+                                       &trans_d_out, perm_d_out);
       }
     } else {
       trans_d_x = *d_x;
@@ -463,7 +478,8 @@ class FrameGradKernel : public framework::OpKernel<T> {
     // Transpose output in case axis is 0.
     if (axis == 0 && d_x_rank > 1U) {
       std::vector<int> perm_d_x{1, 0};
-      TransCompute<DeviceContext, T>(ctx, trans_d_x, d_x, perm_d_x);
+      TransCompute<DeviceContext, T>(perm_d_x.size(), dev_ctx, trans_d_x, d_x,
+                                     perm_d_x);
     }
 
     // Restore output dims when the number of dims is larger than 2.
