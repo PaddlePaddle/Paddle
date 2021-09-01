@@ -76,7 +76,7 @@ class TestSearchSortedOp4(TestSearchSorted):
         self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype("float64")
         self.values = np.array(
             [[np.inf, np.inf, np.inf], [3, 6, 9]]).astype("float64")
-        self.side = "left"
+        self.side = "right"
 
 
 class TestSearchSortedAPI(unittest.TestCase):
