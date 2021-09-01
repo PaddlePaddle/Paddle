@@ -28,6 +28,7 @@
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
@@ -286,6 +287,12 @@ py::bytes SerializePDTensorToBytes(PaddleTensor &tensor) {  // NOLINT
   paddle::inference::SerializePDTensorToStream(&ss, tensor);
   return static_cast<py::bytes>(ss.str());
 }
+
+void CopyPaddleInferTensor(paddle_infer::Tensor &dst,
+                           const paddle_infer::Tensor &src) {
+  return paddle_infer::contrib::TensorUtils::CopyTensor(&dst, src);
+}
+
 }  // namespace
 
 void BindInferenceApi(py::module *m) {
@@ -317,6 +324,7 @@ void BindInferenceApi(py::module *m) {
                                            new paddle_infer::Predictor(config));
                                    return std::move(pred);
                                  });
+  m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
   m->def("get_version", &paddle_infer::GetVersion);
