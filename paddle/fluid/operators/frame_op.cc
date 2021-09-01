@@ -82,8 +82,6 @@ class FrameOp : public framework::OperatorWithKernel {
       output_shape.push_back(n_frames);
     }
 
-    // VLOG(0) << "[FrameOp][InferShape]: "
-    //         << framework::make_ddim(output_shape).to_str();
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   }
 
@@ -128,7 +126,6 @@ class FrameOpGrad : public framework::OperatorWithKernel {
                    "Out@GRAD", "frame_grad");
     const auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      // VLOG(0) << "[FrameOpGrad][InferShape]: " << x_dims.to_str();
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     }
   }

@@ -142,24 +142,43 @@ struct DataMappingGradFunctor {
     size_t seq_i = i % seq_length_;
 
     // Sliding window
-    size_t left =
-        0;  // TODO(chenxiaojie06): Compute the start point instead of 0.
-    size_t right = frame_length_ - 1;
-
-    size_t n = 0;
-    size_t f;
     d_x_[i] = 0;  // Init d_x_[i] to 0, and a while loop followed to sum up all
                   // grads from d_out_.
+
+    size_t n = get_start_frame_idx(seq_i);
+    size_t f;
+    size_t left = n * hop_length_;
+    size_t right = left + frame_length_ - 1;
+
     while (left <= seq_i && right < seq_length_) {
-      if (seq_i <= right) {  // Assure seq_i locates in [left, right].
-        f = seq_i - left;
-        d_x_[i] +=
-            d_out_[sample_idx * frame_length_ * n_frames_ + f * n_frames_ + n];
-      }
+      f = seq_i - left;
+      d_x_[i] +=
+          d_out_[sample_idx * frame_length_ * n_frames_ + f * n_frames_ + n];
       // Next frame.
       left += hop_length_;
       right += hop_length_;
       n += 1;
+    }
+  }
+
+  /*
+    Calculate minimum value of frame index `n` to satisfy the inequality:
+
+      seq_i <= right
+      ==> seq_i <= left + frame_length - 1
+      ==> seq_i <= hop_length_ * n + frame_length_ - 1
+  */
+  HOSTDEVICE size_t get_start_frame_idx(size_t seq_i) const {
+    int64_t tmp = seq_i + 1 - frame_length_;
+    if (tmp > 0) {
+      size_t n = tmp / hop_length_;
+      if (tmp % hop_length_ == 0) {
+        return n;
+      } else {
+        return n + 1;
+      }
+    } else {
+      return 0;
     }
   }
 
