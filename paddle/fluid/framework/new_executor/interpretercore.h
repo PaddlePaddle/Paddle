@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -41,6 +42,8 @@ class InterpreterCore {
   paddle::framework::FetchList Run(
       const std::vector<framework::Tensor>& feed_tensors);
 
+  const CostInfo& DryRun(const std::vector<framework::Tensor>& feed_tensors);
+
   static void BuildOpFuncList(const platform::Place& place,
                               const framework::ProgramDesc& pdesc,
                               std::vector<OperatorBase*>* op_list,
@@ -58,13 +61,16 @@ class InterpreterCore {
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
                               const VariableScope& var_scope,
-                              const platform::Place& place);
+                              const platform::Place& place,
+                              bool is_dry_run = false);
 
   std::vector<size_t> MergeVector(const std::vector<size_t>& first,
                                   const std::vector<size_t>& second);
 
   void BuildVariableScope(const framework::ProgramDesc& pdesc,
                           VariableScope* var_scope);
+
+  void Prepare(const std::vector<framework::Tensor>& feed_tensors);
 
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
                const VariableScope& var_scope, const platform::Place& place,
@@ -100,6 +106,7 @@ class InterpreterCore {
   bool is_build_;
 
   std::vector<std::string> feed_names_;
+  InterpreterProfiler profiler_;
   std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
 
   std::vector<paddle::platform::DeviceEvent> gc_event_;
@@ -107,8 +114,6 @@ class InterpreterCore {
   size_t max_memory_size_;
   size_t cur_memory_size_;
   std::unique_ptr<WorkQueue> gc_queue_;
-
-  platform::DeviceContextPool fetch_context_pool_;
 };
 }  // namespace framework
 }  // namespace paddle

@@ -37,7 +37,8 @@ class TensorConfig:
     def __init__(self,
                  shape: [List[int]],
                  dtype: [str]="float32",
-                 data: Optional[np.array]=None):
+                 data: Optional[np.array]=None,
+                 lod: [List[List[int]]]=None):
         '''
         shape: The shape of the tensor.
         dtype: The data type of the tensor.
@@ -46,6 +47,7 @@ class TensorConfig:
         self.shape = shape
         self.dtype = dtype
         self.data = data
+        self.lod = lod
 
 
 class OpConfig:
@@ -186,13 +188,6 @@ def create_quant_model(model,
          params_filename=params)
     graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
 
-    transform_pass = QuantizationTransformPass(
-        scope=scope,
-        place=place,
-        activation_quantize_type=activation_quantize_type,
-        weight_quantize_type=weight_quantize_type)
-    transform_pass.apply(graph)
-
     out_scale_op_list = [
         "conv2d",
         "depthwise_conv2d",
@@ -298,6 +293,13 @@ def create_quant_model(model,
             else:
                 var_names.append(var_name)
         return var_names
+
+    transform_pass = QuantizationTransformPass(
+        scope=scope,
+        place=place,
+        activation_quantize_type=activation_quantize_type,
+        weight_quantize_type=weight_quantize_type)
+    transform_pass.apply(graph)
 
     op_nodes = graph.all_op_nodes()
     for op_node in op_nodes:

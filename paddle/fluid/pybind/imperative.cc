@@ -499,12 +499,12 @@ static void ParseIndexingSlice(
       none_axes->push_back(dim);
     } else if (PyList_Check(slice_item)) {
       *list_select_flag = true;
-      if (size != 1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "When index contains a list, its length is excepted to 1, "
-            "but received %d",
-            size));
-      }
+      PADDLE_ENFORCE_EQ(
+          size, 1,
+          platform::errors::InvalidArgument(
+              "When index contains a list, its length is excepted to 1, "
+              "but received %d",
+              size));
       bool all_bool = true;
       int list_size = PyList_GET_SIZE(slice_item);
       for (int j = 0; j < list_size; ++j) {
@@ -517,12 +517,13 @@ static void ParseIndexingSlice(
         }
       }
       if (all_bool) {
-        if (list_size != shape[0]) {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "The dimension of bool index doesn't match indexed array along "
-              "dimension 0, the target dimension is %d, but received %d.",
-              shape[0], list_size));
-        }
+        PADDLE_ENFORCE_EQ(
+            list_size, shape[0],
+            platform::errors::InvalidArgument(
+                "The dimension of bool index doesn't match indexed array along "
+                "dimension 0, the target dimension is %d, but received %d.",
+                shape[0], list_size));
+
         for (int j = 0; j < list_size; ++j) {
           PyObject *list_item = PyList_GetItem(slice_item, j);
           if (list_item == Py_True) {
@@ -818,7 +819,7 @@ void BindImperative(py::module *m_ptr) {
       .def("__setitem_varbase__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
               py::object &value_obj) {
-             VLOG(4) << "Call __setitem__";
+             VLOG(4) << "Call __setitem_varbase__";
 
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
@@ -871,7 +872,6 @@ void BindImperative(py::module *m_ptr) {
              // TODO(liym27): Try not to call TensorToPyArray because it always
              // copys data to cpu place, which reduces performance.
              if (parse_index && value_is_tensor) {
-               VLOG(4) << "index is integer/slice/ellipsis and value is tensor";
                std::vector<int> axes, starts, ends, steps, decrease_axes,
                    none_axes, infer_flags, list_select_idxs;
                // if index is a list, list_select_flag will be true
@@ -880,6 +880,7 @@ void BindImperative(py::module *m_ptr) {
                                   &steps, &decrease_axes, &none_axes,
                                   &infer_flags, &list_select_idxs,
                                   &list_select_flag);
+
                framework::AttributeMap attrs = {
                    {"axes", axes},
                    {"starts", starts},
