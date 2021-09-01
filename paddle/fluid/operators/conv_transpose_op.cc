@@ -245,7 +245,8 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<bool>("is_test",
                 "(bool, default false) Set to true for inference only, false "
                 "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddInput("Input",
            "(Tensor) The input tensor of convolution transpose operator. "
            "The format of input tensor is NCHW or NHWC. Where N is batch size, "
@@ -263,7 +264,8 @@ void Conv2DTransposeOpMaker::Make() {
            "(Tensor) Bias to be added to each output of filter application."
            "The format of output tensor is X (one-dimensional) of size equal"
            "to the number of output channels. Only used with MKL-DNN.")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is the same as input tensor.");
@@ -298,29 +300,37 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("force_fp32_output",
                 "(bool, default false) Force BF16 kernel output FP32, only "
                 "used in MKL-DNN BF16")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "mkldnn_data_type",
       "(string, default \"float32\"). Data type of mkldnn kernel")
       .SetDefault("float32")
-      .InEnum({"float32", "bfloat16"});
+      .InEnum({"float32", "bfloat16"})
+      .AsExtra();
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>("fuse_activation",
                        "(string, default \"\") Only used in mkldnn kernel")
-      .SetDefault("");
+      .SetDefault("")
+      .AsExtra();
   AddAttr<float>("fuse_alpha",
                  "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f);
+      .SetDefault(0.0f)
+      .AsExtra();
   AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f);
+      .SetDefault(0.0f)
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -340,7 +350,8 @@ void Conv2DTransposeOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardward. This size should be carefully set.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
+      .AsExtra();
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
 
@@ -423,10 +434,12 @@ void Conv3DTransposeOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -446,7 +459,8 @@ void Conv3DTransposeOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardward. This size should be carefully set.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
+      .AsExtra();
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
 
