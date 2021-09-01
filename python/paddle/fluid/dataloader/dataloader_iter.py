@@ -63,14 +63,14 @@ _loader = None
 
 def _clear_loader():
     global _loader
-    if _loader:
+    if _loader is not None:
         try:
             _loader.__del__()
             del _loader
         except:
             pass
 
-CleanupFuncRegistrar.register(_clear_loader, [signal.SIGABRT, signal.SIGSEGV])
+CleanupFuncRegistrar.register(_clear_loader)
 
 class _DataLoaderIterBase(object):
     """
@@ -130,11 +130,13 @@ class _DataLoaderIterBase(object):
 
     def _exit_thread_expectedly(self):
         self._thread_done_event.set()
-        self._blocking_queue.close()
+        if self._blocking_queue:
+            self._blocking_queue.close()
 
     def _exit_thread_unexpectedly(self):
         self._thread_done_event.set()
-        self._blocking_queue.kill()
+        if self._blocking_queue:
+            self._blocking_queue.kill()
 
 
 class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
@@ -201,23 +203,22 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         while not self._thread_done_event.is_set():
             try:
                 indices = next(self._sampler_iter)
+
+                # read data from dataset in mini-batch
+                # with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
+                # read data from dataset in mini-batch
+                batch = self._dataset_fetcher.fetch(indices, self._thread_done_event)
             except StopIteration:
                 self._exit_thread_expectedly()
                 return
 
-            if self._thread_done_event.is_set():
-                break
-
-            with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
-                # read data from dataset in mini-batch
-                batch = self._dataset_fetcher.fetch(indices)
-
-            if self._thread_done_event.is_set():
-                break
+            if batch is None or self._thread_done_event.is_set(): break
 
             # flat batch and record structure infos
             batch, structure = _flatten_batch(batch)
             self._structure_infos.append(structure)
+
+            if self._thread_done_event.is_set(): break
 
             try:
                 # pack as LoDTensorArray
@@ -232,7 +233,11 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
                     array.append(slot)
 
-                if not self._blocking_queue.push(array):
+                if self._thread_done_event.is_set(): break
+
+                try:
+                    self._blocking_queue.push(array)
+                except:
                     self._exit_thread_expectedly()
 
             except:
@@ -240,7 +245,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 six.reraise(*sys.exc_info())
 
         self._exit_thread_expectedly()
-        raise StopIteration
 
     def __next__(self):
         try:
@@ -274,6 +278,17 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def _shutdown_thread(self):
         if self._thread:
             self._thread_done_event.set()
+            # NOTE: we wait for _thread exit for 3 seconds, if
+            #       thread not exit normally, force kill it
+            for _ in range(3):
+                if self._thread.is_alive():
+                    time.sleep(1)
+                else:
+                    break
+            else:
+                if self._thread is not threading.current_thread():
+                    self._thread.join()
+
             self._thread = None
 
     # python2 compatibility
@@ -283,17 +298,15 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def _try_shutdown_all(self):
         if not self._shutdown:
             try:
-                # # NOTE: blocking queue should be closed firstly for
-                # # blocking queue read may hang and _thread_done_event
-                # # cannot be checked
-                # self._shutdown_thread()
                 # # _blocking_queue in keep order mode holds sub-threads
                 # # need to release thread resources on unexpected exit
-                # if self._blocking_queue:
-                #     self._blocking_queue.close()
-                #     self._blocking_queue = None
+                if self._blocking_queue:
+                    self._blocking_queue.close()
+                    self._blocking_queue = None
+                # NOTE: blocking queue should be closed firstly for
+                # blocking queue read may hang and _thread_done_event
+                # cannot be checked
                 self._shutdown_thread()
-                self._blocking_queue.kill()
             finally:
                 self._shutdown = True
 
