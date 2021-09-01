@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
+#include "paddle/fluid/platform/fast_divmod.h"
+
 #ifdef __NVCC__
 #include <cooperative_groups.h>
 #endif
@@ -43,11 +45,10 @@ __device__ __forceinline__ double fma_root(double x, double y, double z) {
 
 #if CUDA_VERSION >= 9000
 template <typename T, typename MT>
-__device__ MT L2NormCalculation(const cooperative_groups::grid_group& cg,
-                                const T* __restrict__ data, MT* tmp_buffer,
-                                int tid, const int repeat_times,
-                                const int grid_stride, const int64_t numel,
-                                const MT rescale_grad = static_cast<MT>(1)) {
+__device__ inline MT L2NormCalculation(
+    const cooperative_groups::grid_group& cg, const T* __restrict__ data,
+    MT* tmp_buffer, int tid, const int repeat_times, const int grid_stride,
+    const int64_t numel, const MT rescale_grad = static_cast<MT>(1)) {
   MT rescale_grad_pow = rescale_grad * rescale_grad;
   __shared__ MT s_buffer;
   s_buffer = static_cast<MT>(0);
@@ -78,6 +79,7 @@ __device__ MT L2NormCalculation(const cooperative_groups::grid_group& cg,
   if (threadIdx.x == 0) {
     tmp_buffer[blockIdx.x] = s_buffer;
   }
+  // Grid sync for completely writring partial result back to gloabl memory
   cg.sync();
   MT val = threadIdx.x < gridDim.x ? tmp_buffer[threadIdx.x] : 0;
   MT result = math::blockReduceSum<MT>(val, FINAL_MASK);
@@ -86,13 +88,76 @@ __device__ MT L2NormCalculation(const cooperative_groups::grid_group& cg,
 #endif
 
 template <typename T, typename MT>
+__device__ inline void LarsUpdateMP(const T* __restrict__ g,
+                                    const MT* __restrict__ v, T* p_out,
+                                    MT* v_out, const MT* __restrict__ master_p,
+                                    MT* __restrict__ master_p_out, const MT mu,
+                                    MT local_lr, const MT lars_weight_decay,
+                                    const MT rescale_grad, const int tid,
+                                    const int grid_stride, const int numel) {
+  // As for multiple-precision, type T and MT cannot be more than fp16 or fp32,
+  // Then, the maximum data IO size could be set to 4.
+  using VecType = platform::CudaAlignedVector<T, 4>;
+  using VecMType = platform::CudaAlignedVector<MT, 4>;
+  int main = numel >> 2;
+  int tail_offset = main << 2;
+
+  const VecType* g_4 = reinterpret_cast<const VecType*>(g);
+  const VecMType* v_4 = reinterpret_cast<const VecMType*>(v);
+  const VecMType* master_p_4 = reinterpret_cast<const VecMType*>(master_p);
+  VecType* p_out_4 = reinterpret_cast<VecType*>(p_out);
+  VecMType* v_out_4 = reinterpret_cast<VecMType*>(v_out);
+  VecMType* master_p_out_4 = reinterpret_cast<VecMType*>(master_p_out);
+
+  for (int i = tid; i < main; i += LARS_BLOCK_SIZE * gridDim.x) {
+    VecType p_out_tmp;
+    VecMType grad_tmp, v_new_tmp, master_p_new_tmp;
+
+    VecType g_tmp = g_4[i];
+    VecMType v_tmp = v_4[i];
+    VecMType p_tmp = master_p_4[i];
+    T* g_data = reinterpret_cast<T*>(&g_tmp);
+    T* p_out_data = reinterpret_cast<T*>(&p_out_tmp);
+    MT* v_data = reinterpret_cast<MT*>(&v_tmp);
+    MT* p_data = reinterpret_cast<MT*>(&p_tmp);
+    MT* grad = reinterpret_cast<MT*>(&grad_tmp);
+    MT* v_new = reinterpret_cast<MT*>(&v_new_tmp);
+    MT* p_new = reinterpret_cast<MT*>(&master_p_new_tmp);
+
+#pragma unroll
+    for (int j = 0; j < 4; ++j) {
+      grad[j] = static_cast<MT>(g_data[j]) * rescale_grad;
+      v_new[j] =
+          fma_root(v_data[j], mu,
+                   local_lr * fma_root(lars_weight_decay, p_data[j], grad[j]));
+      p_new[j] = p_data[j] - v_new[j];
+      p_out_data[j] = static_cast<T>(p_new[j]);
+    }
+    v_out_4[i] = v_new_tmp;
+    p_out_4[i] = p_out_tmp;
+    master_p_out_4[i] = master_p_new_tmp;
+  }
+
+  for (int i = tid + tail_offset; i < numel; i += grid_stride) {
+    MT grad = static_cast<MT>(g[i]) * rescale_grad;
+    MT param = master_p[i];
+    MT v_new =
+        fma_root(v[i], mu, local_lr * fma_root(lars_weight_decay, param, grad));
+    MT p_new = param - v_new;
+    v_out[i] = v_new;
+    p_out[i] = static_cast<T>(p_new);
+    master_p_out[i] = p_new;
+  }
+}
+
+template <typename T, typename MT>
 __global__ void MomentumLarsKernel(
     const T* __restrict__ p, const T* __restrict__ g, const MT* __restrict__ v,
-    const MT* __restrict__ learning_rate, const MT mu, const int64_t numel,
-    const MT lars_coeff, const MT lars_weight_decay, T* p_out, MT* v_out,
-    const MT epsilon, const MT* __restrict__ master_p,
-    MT* __restrict__ master_p_out, const MT rescale_grad, MT* tmp_buffer,
-    MT* tmp_buffer_2) {
+    T* p_out, MT* v_out, const MT* __restrict__ master_p,
+    MT* __restrict__ master_p_out, const MT* __restrict__ learning_rate,
+    MT* __restrict__ tmp_buffer, MT* __restrict__ tmp_buffer_2, const MT mu,
+    const MT lars_coeff, const MT lars_weight_decay, const MT epsilon,
+    const MT rescale_grad, const int64_t numel) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
 #if CUDA_VERSION >= 9000
@@ -115,16 +180,9 @@ __global__ void MomentumLarsKernel(
   }
 
   if (master_p) {
-    for (int i = tid; i < numel; i += grid_stride) {
-      MT grad = static_cast<MT>(g[i]) * rescale_grad;
-      MT param = master_p[i];
-      MT v_new = fma_root(v[i], mu,
-                          local_lr * fma_root(lars_weight_decay, param, grad));
-      MT p_new = param - v_new;
-      v_out[i] = v_new;
-      p_out[i] = static_cast<T>(p_new);
-      master_p_out[i] = p_new;
-    }
+    LarsUpdateMP<T, MT>(g, v, p_out, v_out, master_p, master_p_out, mu,
+                        local_lr, lars_weight_decay, rescale_grad, tid,
+                        grid_stride, numel);
   } else {
     for (int i = tid; i < numel; i += grid_stride) {
       MT grad = static_cast<MT>(g[i]) * rescale_grad;
@@ -214,8 +272,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
       - Launches a device function where thread blocks can cooperate and
         synchronize as they execute.
     */
-    int num_blocks_per_sm = 0;
     // Figure out how many blocks can be active in each sm.
+    int num_blocks_per_sm = 0;
     cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm,
                                                   MomentumLarsKernel<T, MT>,
                                                   LARS_BLOCK_SIZE, sizeof(MT));
@@ -226,24 +284,26 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
                                                                dev_ctx);
     auto* tmp_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
     MT* tmp_buffer_2 = nullptr;
+
+    // Uniform kernel parameter for cudaLaunchCooperativeKernel
     void* cuda_param[] = {
         reinterpret_cast<void*>(&p),
         reinterpret_cast<void*>(&g),
         reinterpret_cast<void*>(&v),
-        reinterpret_cast<void*>(&lr),
-        reinterpret_cast<void*>(&mu),
-        reinterpret_cast<void*>(&numel),
-        reinterpret_cast<void*>(&lars_coeff),
-        reinterpret_cast<void*>(&lars_weight_decay),
         reinterpret_cast<void*>(&p_out),
         reinterpret_cast<void*>(&v_out),
-        reinterpret_cast<void*>(&epsilon),
         reinterpret_cast<void*>(&master_p),
         reinterpret_cast<void*>(&master_p_out),
-        reinterpret_cast<void*>(&rescale_grad),
+        reinterpret_cast<void*>(&lr),
         reinterpret_cast<void*>(&tmp_buffer),
-        reinterpret_cast<void*>(&tmp_buffer_2)};  // Just a placeholder for
-                                                  // uniform kernel parameter.
+        reinterpret_cast<void*>(&tmp_buffer_2),  // Just a placeholder
+        reinterpret_cast<void*>(&mu),
+        reinterpret_cast<void*>(&lars_coeff),
+        reinterpret_cast<void*>(&lars_weight_decay),
+        reinterpret_cast<void*>(&epsilon),
+        reinterpret_cast<void*>(&rescale_grad),
+        reinterpret_cast<void*>(&numel),
+    };
     // Lanuch all sm theads.
     cudaLaunchCooperativeKernel(
         reinterpret_cast<void*>(MomentumLarsKernel<T, MT>), grid_real,
@@ -267,9 +327,9 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
         (eigen_g.template cast<MT>() * rescale_grad).square().sum().sqrt();
 
     MomentumLarsKernel<T, MT><<<grid, LARS_BLOCK_SIZE, 0, dev_ctx.stream()>>>(
-        p, g, v, lr, mu, numel, lars_coeff, lars_weight_decay, p_out, v_out,
-        epsilon, master_p, master_p_out, rescale_grad, p_norm_data,
-        g_norm_data);
+        p, g, v, p_out, v_out, master_p, master_p_out, lr, p_norm_data,
+        g_norm_data, mu, lars_coeff, lars_weight_decay, epsilon, rescale_grad,
+        numel);
 #endif
   }
 };
