@@ -61,6 +61,15 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   return core->Run(feed_tensors);
 }
 
+const CostInfo& StandaloneExecutor::DryRun(
+    const std::vector<std::string>& feed_names,
+    const std::vector<framework::Tensor>& feed_tensors) {
+  auto core = GetInterpreterCore(feed_names, {});
+
+  auto& cost_info = core->DryRun(feed_tensors);
+  return cost_info;
+}
+
 void StandaloneExecutor::BuildVariableOuterScope(
     const framework::ProgramDesc& pdesc, VariableScope* var_scope,
     Scope* outer_scope) {
