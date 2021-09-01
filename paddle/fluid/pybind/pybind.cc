@@ -524,6 +524,12 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("from_dlpack", [](py::capsule *dltensor) {
     DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
         PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
+
+    PADDLE_ENFORCE_NOT_NULL(
+        dmt, platform::errors::InvalidArgument(
+                 "from_dlpack received an invalid capsule. "
+                 "Note that a DLPack tensor can be consumed only once."));
+
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
     framework::Tensor tensor;
@@ -1945,6 +1951,16 @@ All parameter, weight, gradient are variables in Paddle.
                  fetch_vars);
       });
 
+  py::class_<framework::CostInfo>(m, "CostInfo")
+      .def(py::init<>())
+      .def("total_time", [](CostInfo &self) { return self.total_time; })
+      .def("host_memory_bytes",
+           [](CostInfo &self) { return self.host_memory_bytes; })
+      .def("device_memory_bytes",
+           [](CostInfo &self) { return self.device_memory_bytes; })
+      .def("device_total_memory_bytes",
+           [](CostInfo &self) { return self.device_total_memory_bytes; });
+
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
       .def(py::init<const platform::Place &, const ProgramDesc &,
                     const ProgramDesc &, Scope *>())
@@ -1952,7 +1968,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict,
               std::vector<std::string> fetch_names) {
-             pybind11::gil_scoped_release release;
              std::vector<framework::Tensor> feed_tensors;
              std::vector<std::string> feed_names;
 
@@ -1964,13 +1979,33 @@ All parameter, weight, gradient are variables in Paddle.
                feed_tensors.push_back(t);
              }
 
-             std::vector<framework::Tensor> fetch_tensors;
-             self.Run(feed_names, feed_tensors, fetch_names, &fetch_tensors);
-             std::vector<py::array> vec_ret;
-             for (size_t i = 0; i < fetch_tensors.size(); ++i) {
-               vec_ret.push_back(TensorToPyArray(fetch_tensors[i], true));
+             paddle::framework::FetchList ret;
+             {
+               pybind11::gil_scoped_release release;
+               ret = self.Run(feed_names, feed_tensors, fetch_names);
              }
-             return vec_ret;
+             return py::cast(std::move(ret));
+           })
+      .def("dry_run",
+           [](StandaloneExecutor &self,
+              const std::unordered_map<std::string, py::array> &input_dict) {
+             std::vector<framework::Tensor> feed_tensors;
+             std::vector<std::string> feed_names;
+
+             for (auto &item : input_dict) {
+               framework::LoDTensor t;
+               SetTensorFromPyArray<platform::CPUPlace>(
+                   &t, item.second, platform::CPUPlace(), false);
+               feed_names.push_back(item.first);
+               feed_tensors.push_back(t);
+             }
+
+             CostInfo cost_info;
+             {
+               pybind11::gil_scoped_release release;
+               cost_info = self.DryRun(feed_names, feed_tensors);
+             }
+             return cost_info;
            });
 
   m.def("init_gflags", framework::InitGflags);

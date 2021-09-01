@@ -96,9 +96,9 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
           platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(
               paddle::framework::vectorize<int64_t>(output->dims()))));
     } else {
-      platform::ReductionMKLDNNHandler<T> handler(
-          reduction_type, 0.0f, 0.0f, dev_ctx, onednn_engine, ctx.GetPlace(),
-          input, output, ctx.InputName("X"), output_dims);
+      platform::ReductionMKLDNNHandler<T> handler(reduction_type, 0.0f, 0.0f,
+                                                  onednn_engine, ctx.GetPlace(),
+                                                  input, output, output_dims);
 
       auto src_memory_p = handler.AcquireSrcMemory(input);
       auto dst_memory_p = handler.AcquireDstMemory(output);
@@ -137,40 +137,28 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     mkldnn::memory::format_tag x_format_tag;
     auto input_dims =
         CalculateReducedDims(output_dx, input_dy, dims, reduce_all, keep_dim);
+    auto output_dims = framework::vectorize(output_dx->dims());
 
-    if (input_dims != framework::vectorize(output_dx->dims())) {
-      const std::string key_pd =
-          platform::CreateKey(
-              dev_ctx, framework::vectorize(output_dx->dims()),
-              ctx.InputName("X"),
-              (std::to_string(static_cast<int>(reduction_type)))) +
-          "@fwd_pd";
-      std::shared_ptr<dnnl::reduction::primitive_desc> fwd_pd =
-          std::static_pointer_cast<dnnl::reduction::primitive_desc>(
-              dev_ctx.GetBlob(key_pd));
+    if (input_dims != output_dims) {
+      auto input_dy_md = dnnl::memory::desc(
+          framework::vectorize(input_dy->dims()),
+          platform::MKLDNNGetDataType<T>(), input_dy->format());
+      auto input_dy_ex_md = input_dy_md.reshape(input_dims);
+      // TODO(jczaja): once MD is stored in Tensor we no longer need to guess
+      // formats
+      x_format_tag = platform::GetMKLDNNFormat(input_dy_ex_md);
 
-      PADDLE_ENFORCE_NOT_NULL(
-          fwd_pd, platform::errors::Unavailable(
-                      "Forward primitive descriptor is not available in %s op, "
-                      "cannot deduce memory format tag",
-                      ctx.Type()));
-
-      x_format_tag = platform::GetMKLDNNFormat(fwd_pd->src_desc());
-
-      PADDLE_ENFORCE_NE(x_format_tag, mkldnn::memory::format_tag::undef,
-                        platform::errors::InvalidArgument(
-                            "Cannot deduce format tag for %s op", ctx.Type()));
-    } else {  // fwd descriptor not available because reorder was used instead
-              // of reduction
+    } else {
+      // There was no broadcasting then just simple copy is done
+      // same format used for input and output
       x_format_tag = getPlainFormatTag(output_dx);
     }
 
     output_dx->set_format(x_format_tag);
 
     platform::BroadcastDataMKLDNNHandler<T> handler(
-        binary_type, dev_ctx, onednn_engine, ctx.GetPlace(), output_dx,
-        input_dy, scale_x, scale_y,
-        ctx.InputName(framework::GradVarName("Out")), input_dims);
+        binary_type, onednn_engine, ctx.GetPlace(), output_dx, input_dy,
+        scale_x, scale_y, input_dims);
 
     const auto src_memory_p = handler.AcquireSrcMemory(input_dy);
     const auto dst_memory_p = handler.AcquireDstMemory(output_dx);
@@ -184,6 +172,8 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     binary_prim->execute(astream, args);
     astream.wait();
+
+    output_dx->set_layout(framework::DataLayout::kMKLDNN);
   }
 
  protected:
