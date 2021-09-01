@@ -22,7 +22,7 @@ from collections import defaultdict
 
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+from paddle.fluid.framework import Program, Variable, Parameter, name_scope, default_main_program, default_startup_program, device_guard
 
 from . import framework
 from . import layers
@@ -4234,14 +4234,14 @@ class PipelineOptimizer(object):
             self._device = "gpu"
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
-        if not isinstance(optimizer, Optimizer) and not isinstance(
-                optimizer, paddle.optimizer.Optimizer) and not isinstance(
-                    optimizer, paddle.fluid.contrib.mixed_precision.decorator.
-                    OptimizerWithMixedPrecision):
+        valid_optimizers = (Optimizer, paddle.optimizer.Optimizer,
+                            paddle.fluid.contrib.mixed_precision.decorator.
+                            OptimizerWithMixedPrecision)
+        if not isinstance(optimizer, valid_optimizers):
             raise ValueError("The 'optimizer' parameter for "
                              "PipelineOptimizer must be an instance of "
-                             "Optimizer, but the given type is {}.".format(
-                                 type(optimizer)))
+                             "{}, but the given type is {}.".format(
+                                 valid_optimizers, type(optimizer)))
         self._optimizer = optimizer
 
         # Get the original optimizer defined by users, such as SGD
@@ -4538,15 +4538,26 @@ class PipelineOptimizer(object):
         shape and dtype as ref_var, then rename it with the
         name `name`.
         """
-        new_var = block.create_var(
-            name=name,
-            shape=ref_var.shape,
-            dtype=ref_var.dtype if dtype is None else dtype,
-            type=ref_var.type,
-            lod_level=ref_var.lod_level,
-            persistable=ref_var.persistable,
-            is_data=ref_var.is_data,
-            need_check_feed=ref_var.desc.need_check_feed())
+        if isinstance(ref_var, Parameter):
+            new_var = block.create_parameter(
+                name=name,
+                shape=ref_var.shape,
+                dtype=ref_var.dtype if dtype is None else dtype,
+                type=ref_var.type,
+                lod_level=ref_var.lod_level,
+                persistable=ref_var.persistable,
+                is_data=ref_var.is_data,
+                need_check_feed=ref_var.desc.need_check_feed())
+        else:
+            new_var = block.create_var(
+                name=name,
+                shape=ref_var.shape,
+                dtype=ref_var.dtype if dtype is None else dtype,
+                type=ref_var.type,
+                lod_level=ref_var.lod_level,
+                persistable=ref_var.persistable,
+                is_data=ref_var.is_data,
+                need_check_feed=ref_var.desc.need_check_feed())
         new_var.stop_gradient = ref_var.stop_gradient
         return new_var
 
@@ -4774,13 +4785,11 @@ class PipelineOptimizer(object):
                 # skip data var
                 if var.is_data: continue
                 prev_device = None
-                generate_ops = self.output_var_to_op.get(var_name)
-                if generate_ops is None:
+                prev_op = self._find_prev_op(index, var_name)
+                if prev_op is None:
                     if var_name not in self._param_device_map:
                         continue
                     prev_device = self._param_device_map[var_name]
-
-                prev_op = self._find_prev_op(index, var_name)
 
                 if not prev_device:
                     prev_device = prev_op.attr(self._op_device_key) \
