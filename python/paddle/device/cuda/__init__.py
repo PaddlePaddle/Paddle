@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fluid import core
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
@@ -31,6 +32,7 @@ __all__ = [
 def current_stream(device=None):
     '''
     Return the current CUDA stream by the device.
+
     Parameters:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from. 
         If device is None, the device is the current device. Default: None.
@@ -40,11 +42,16 @@ def current_stream(device=None):
     
     Examples:
         .. code-block:: python
+
             # required: gpu
             import paddle
+
             s1 = paddle.device.cuda.current_stream()
+
             s2 = paddle.device.cuda.current_stream(0)
+
             s3 = paddle.device.cuda.current_stream(paddle.CUDAPlace(0))
+
     '''
 
     device_id = -1
@@ -60,25 +67,24 @@ def current_stream(device=None):
     return core._get_current_stream(device_id)
 
 
-def set_current_stream(stream):
-
-    return core._set_current_stream(stream)
-
-
 def synchronize(device=None):
     '''
     Wait for the compute on the given CUDA device to finish.
+
     Parameters:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
         If device is None, the device is the current device. Default: None.
     
     Examples:
         .. code-block:: python
+
             # required: gpu
             import paddle
+
             paddle.device.cuda.synchronize()
             paddle.device.cuda.synchronize(0)
             paddle.device.cuda.synchronize(paddle.CUDAPlace(0))
+
     '''
 
     device_id = -1
@@ -100,10 +106,14 @@ def device_count():
     
     Returns:
         int: the number of GPUs available.
+
     Examples:
         .. code-block:: python
+
             import paddle
+
             paddle.device.cuda.device_count()
+
     '''
 
     num_gpus = core.get_cuda_device_count() if hasattr(
@@ -112,10 +122,59 @@ def device_count():
     return num_gpus
 
 
-@signature_safe_contextmanager
+def _set_current_stream(stream):
+    '''    
+    Set the current stream.
+
+    Parameters:
+        stream(paddle.device.cuda.Stream): The selected stream.
+
+    Returns:
+        CUDAStream: The previous stream.   
+ 
+    '''
+
+    if stream is None:
+        raise ValueError("stream should not be None.")
+    if not isinstance(stream, paddle.device.cuda.Stream):
+        raise ValueError("stream type should be paddle.device.cuda.Stream")
+
+    cur_stream = get_current_stream()
+    if id(stream) == id(cur_stream):
+        return stream
+    return core._set_current_stream(stream)
+
+
 def stream_guard(stream):
-    pre_stream = set_current_stream(stream)
-    try:
+    '''
+    **Notes**:
+        **This API only supports dygraph mode.**
+
+    A context manager that specifies the current stream context by the given stream.
+
+    Parameters:
+        stream(paddle.device.cuda.Stream): the selected stream. 
+        If stream is None, just yield. Default: None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            s = paddle.device.cuda.Stream()
+            data1 = paddle.ones(shape=[20])
+            data2 = paddle.ones(shape=[20])
+            with paddle.device.cuda.stream_guard(s):
+                data3 = data1 + data2
+       
+    '''
+
+    cur_stream = get_current_stream()
+    if stream is None or id(stream) == id(cur_stream):
         yield
-    finally:
-        stream = set_current_stream(pre_stream)
+    else:
+        pre_stream = _set_current_stream(stream)
+        try:
+            yield
+        finally:
+            stream = _set_current_stream(pre_stream)
