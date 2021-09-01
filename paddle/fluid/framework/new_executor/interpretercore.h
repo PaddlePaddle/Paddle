@@ -30,6 +30,7 @@
 
 namespace paddle {
 namespace framework {
+using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 
 class InterpreterCore {
  public:
@@ -60,8 +61,6 @@ class InterpreterCore {
   void RunInstruction(const Instruction& instr_node);
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
-                              const VariableScope& var_scope,
-                              const platform::Place& place,
                               bool is_dry_run = false);
 
   std::vector<size_t> MergeVector(const std::vector<size_t>& first,
@@ -73,9 +72,7 @@ class InterpreterCore {
   void Prepare(const std::vector<framework::Tensor>& feed_tensors);
 
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
-               const VariableScope& var_scope, const platform::Place& place,
-               std::vector<std::unique_ptr<std::atomic<size_t>>>&
-                   working_var_ref);  // NOLINT
+               AtomicVectorSizeT& working_var_ref);  // NOLINT
 
   platform::DeviceContext* ParseDeviceContextForInstruction(
       const OpFuncNode& op_func_node, const OperatorBase& op_base);
@@ -87,16 +84,13 @@ class InterpreterCore {
 
   void StreamWaitEventOrSync(const Instruction& instruction);
 
-  std::vector<std::unique_ptr<std::atomic<size_t>>> PrepareAtomicDeps();
-  std::vector<std::unique_ptr<std::atomic<size_t>>> PrepareAtomicVarRef();
-  void RunInstructionAsync(size_t instr_id,
-                           std::vector<std::unique_ptr<std::atomic<size_t>>>&
-                               working_dependecy_count,
-                           std::vector<std::unique_ptr<std::atomic<size_t>>>&
-                               working_var_ref,  // NOLINT
-                           const VariableScope& var_scope,
-                           const platform::Place& place,
-                           std::atomic<size_t>* op_run_number, bool is_dry_run);
+  AtomicVectorSizeT PrepareAtomicDeps();
+  AtomicVectorSizeT PrepareAtomicVarRef();
+  void RunInstructionAsync(
+      size_t instr_id,
+      AtomicVectorSizeT& working_dependecy_count,  // NOLINT
+      AtomicVectorSizeT& working_var_ref,          // NOLINT
+      std::atomic<size_t>* op_run_number, bool is_dry_run);
 
   const platform::Place& place_;
   ProgramDesc main_program_;
