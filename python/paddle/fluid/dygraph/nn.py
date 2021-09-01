@@ -1151,9 +1151,6 @@ class InstanceNorm(layers.Layer):
 
 class BatchNorm(layers.Layer):
     r"""
-    :alias_main: paddle.nn.BatchNorm
-	:alias: paddle.nn.BatchNorm,paddle.nn.layer.BatchNorm,paddle.nn.layer.norm.BatchNorm
-	:old_api: paddle.fluid.dygraph.BatchNorm
 
     This interface is used to construct a callable object of the ``BatchNorm`` class.
     For more details, refer to code examples.
@@ -1164,16 +1161,16 @@ class BatchNorm(layers.Layer):
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    When use_global_stats = False, the :math:`\\mu_{\\beta}` 
-    and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
+    When use_global_stats = False, the :math:`\mu_{\beta}` 
+    and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &
+        //\ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \mu_{\beta})^2 \qquad &
+        //\ mini-batch\ variance \\
 
     - :math:`x` : mini-batch data
     - :math:`m` : the size of the mini-batch data
@@ -1191,13 +1188,14 @@ class BatchNorm(layers.Layer):
  
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`\\epsilon` : add a smaller value to the variance to prevent division by zero
-    - :math:`\\gamma` : trainable proportional parameter
-    - :math:`\\beta` : trainable deviation parameter
+
+    - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\gamma` : trainable proportional parameter
+    - :math:`\beta` : trainable deviation parameter
 
     Parameters:
         num_channels(int): Indicate the number of channels of the input ``Tensor``.
@@ -3011,9 +3009,9 @@ class SpectralNorm(layers.Layer):
 
     .. math::
 
-        \mathbf{v} := \\frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+        \mathbf{v} := \frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
 
-        \mathbf{u} := \\frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
+        \mathbf{u} := \frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
 
     Step 3:
     Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
@@ -3022,7 +3020,7 @@ class SpectralNorm(layers.Layer):
 
         \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
 
-        \mathbf{W} = \\frac{\mathbf{W}}{\sigma(\mathbf{W})}
+        \mathbf{W} = \frac{\mathbf{W}}{\sigma(\mathbf{W})}
 
 
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
@@ -3064,6 +3062,12 @@ class SpectralNorm(layers.Layer):
         self._dtype = dtype
 
         self._weight_shape = list(weight_shape)
+        assert np.prod(self._weight_shape) > 0,\
+            "Any dimension of `weight_shape` cannot be equal to 0."
+        assert dim < len(self._weight_shape), \
+            ("The input `dim` should be less than the "
+            "length of `weight_shape`, but received dim="
+            "{}".format(dim))
         h = self._weight_shape[self._dim]
         w = np.prod(self._weight_shape) // h
 

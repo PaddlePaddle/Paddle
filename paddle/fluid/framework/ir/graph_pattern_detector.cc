@@ -2251,7 +2251,7 @@ PDNode *patterns::QuantizePlacement::operator()(
   std::unordered_set<std::string> supported_op_types =
       std::unordered_set<std::string>(
           {"concat", "conv2d", "elementwise_add", "fc", "matmul", "pool2d",
-           "prior_box", "relu", "reshape2", "transpose2", "fusion_gru"});
+           "prior_box", "reshape2", "transpose2", "fusion_gru", "multi_gru"});
   if (!quantize_enabled_op_types.empty()) {
     supported_op_types = quantize_enabled_op_types;
   }
@@ -2262,26 +2262,15 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"concat",
-                                       "conv2d",
-                                       "conv2d_transpose",
-                                       "elementwise_add",
-                                       "elementwise_mul",
-                                       "fc",
-                                       "fusion_gru",
-                                       "fusion_lstm",
-                                       "gelu",
-                                       "layer_norm",
-                                       "matmul",
-                                       "matmul_v2",
-                                       "pool2d",
-                                       "prelu",
-                                       "relu",
-                                       "reshape2",
-                                       "softmax",
-                                       "split",
-                                       "sum",
-                                       "transpose2"});
+      std::unordered_set<std::string>(
+          {"concat",          "conv2d",          "conv2d_transpose",
+           "elementwise_add", "elementwise_mul", "fc",
+           "fusion_gru",      "fusion_lstm",     "gelu",
+           "layer_norm",      "matmul",          "matmul_v2",
+           "pool2d",          "prelu",           "relu",
+           "reshape2",        "softmax",         "split",
+           "squeeze",         "squeeze2",        "sum",
+           "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }

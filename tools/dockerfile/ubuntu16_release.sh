@@ -22,7 +22,7 @@ function ref_whl(){
       ref_gpu=gpu-cuda${ref_CUDA_MAJOR}-cudnn${CUDNN_MAJOR}
       install_gpu="_gpu"
   else
-      ref_gpu="cpu-avx"
+      ref_gpu="cpu"
       install_gpu=""
   fi
   
@@ -56,7 +56,7 @@ function ref_whl(){
 
   ref_dev=2.1.0.dev0
   
-  ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}${ref_gcc}"
+  ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}/linux/linux-${ref_gpu}-${ref_mkl}${ref_gcc}-avx"
   
   if [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} == "ON" ]]; then
     ref_paddle37_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp37-cp37m-linux_x86_64.whl
@@ -95,13 +95,6 @@ function install_gcc(){
 }
 
 
-# function install_jupyter() {
-#   if [[ ${WITH_NOTEBOOK} == "ON" ]];then
-#     # install jupyter notebook
-#   fi
-# }
-
-
 function make_dockerfile(){
   sed "s/<baseimg>/${docker_name}/g" tools/dockerfile/Dockerfile.release16 >Dockerfile.tmp
 }
@@ -110,7 +103,6 @@ function make_dockerfile(){
 function main(){
   make_dockerfile
   install_gcc
-  # install_jupyter
   ref_whl
   install_whl
 }

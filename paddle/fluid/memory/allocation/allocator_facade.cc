@@ -33,7 +33,7 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
 #include "paddle/fluid/platform/npu_info.h"
 

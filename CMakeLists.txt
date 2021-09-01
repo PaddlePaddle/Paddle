@@ -130,7 +130,7 @@ if(WIN32)
         # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling,
         # For Visual Studio generators, /MP should be added. 
         # For other generators like Ninja, it is not need to add /MP.
-        if("${CMAKE_GENERATOR}" STREQUAL "Visual Studio" AND NOT WITH_GPU)
+        if(CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT WITH_GPU)
             math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
             set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
         endif()
@@ -222,6 +222,8 @@ option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
+option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
+option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -314,6 +316,17 @@ else()
      endif()
 endif()
 
+if(WITH_DISTRIBUTE)
+    if(LINUX)
+        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+    endif()
+    if(WITH_ASCEND_CL)
+        # disable WITH_PSCORE for NPU before include third_party
+        MESSAGE(WARNING "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
+        set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
+    endif()
+endif()
+
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 include(flags)              # set paddle compile flags
@@ -322,12 +335,6 @@ if(WITH_PROFILER)
     find_package(Gperftools REQUIRED)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
     add_definitions(-DWITH_GPERFTOOLS)
-endif()
-
-if(WITH_DISTRIBUTE)
-    if(LINUX)
-        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
-    endif()
 endif()
 
 include(ccache)             # set ccache for compilation

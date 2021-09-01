@@ -307,6 +307,17 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
 
 
 def terminate_local_procs(procs):
+    # try to terminate process by group, this happend in multiprocess senario in user process
+    if os.name != 'nt':
+        for p in procs:
+            if p.proc.poll() is None:
+                os.killpg(os.getpgid(p.proc.pid), signal.SIGTERM)
+                if p.log_fn:
+                    p.log_fn.close()
+                logger.info("terminate process group gid:{}".format(p.proc.pid))
+
+        time.sleep(1)
+
     for p in procs:
         if p.proc.poll() is None:
             p.proc.terminate()
@@ -583,19 +594,19 @@ def watch_local_trainers(procs, nranks):
     except KeyboardInterrupt:
         logger.warning("KeyboardInterrupt, exit")
         terminate_local_procs(procs)
-        raise
+        return
     except SystemExit:
         logger.error(
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
             format(nranks, error_rank))
         terminate_local_procs(procs)
-        raise
+        return
     except:
         logger.error(
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
             format(nranks, error_rank))
         terminate_local_procs(procs)
-        raise
+        return
 
     return alive
 

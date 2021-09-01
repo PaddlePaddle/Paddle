@@ -75,7 +75,7 @@ void NCCLParallelContext::Init() {
             << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
             << " ring id: " << ring_id;
     // it will assign nccl_comm in CUDADeviceContext within ring_id
-    platform::NCCLCommContext::Instance().CreateNCCLComm(
+    platform::NCCLCommContext::Instance().CreateComm(
         &nccl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, gpu_id,
         ring_id);
 
@@ -108,7 +108,7 @@ void NCCLParallelContext::InitWithRingID(int ring_id) {
           << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
           << " ring id: " << ring_id;
   // it will assign nccl_comm in CUDADeviceContext within ring_id
-  platform::NCCLCommContext::Instance().CreateNCCLComm(
+  platform::NCCLCommContext::Instance().CreateComm(
       &nccl_ids[0], strategy_.nranks_, strategy_.local_rank_, gpu_id, ring_id);
 
   compute_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(

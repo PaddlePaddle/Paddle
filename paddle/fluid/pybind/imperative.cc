@@ -29,6 +29,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
@@ -414,37 +415,45 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
   return 0;
 }
 
-static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
-                               std::vector<int> *slice_axes,
-                               std::vector<int> *slice_starts,
-                               std::vector<int> *slice_ends,
-                               std::vector<int> *slice_strides,
-                               std::vector<int> *decrease_axis,
-                               std::vector<int> *infer_flags) {
-  // We allow indexing by Integers, Slices, and tuples of those
-  // types.
-  // Ellipsis and None are not supported yet.
+static void ParseIndexingSlice(
+    framework::LoDTensor *tensor, PyObject *_index,
+    std::vector<int> *slice_axes, std::vector<int> *slice_starts,
+    std::vector<int> *slice_ends, std::vector<int> *slice_strides,
+    std::vector<int> *decrease_axis, std::vector<int> *none_axes,
+    std::vector<int> *infer_flags, std::vector<int> *list_select_idxs,
+    bool *list_select_flag) {
+  // We allow indexing by Integers, Slices, Ellipsis, None, tuples of those
+  // types, and list of Bool and Integers.
   // wrap to tuple
+
+  // NOTE(zhiqiu): PyTuple_Pack increases refcount.
   PyObject *index = !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
+  DEFINE_PADDLE_SCOPE_GUARD([index, _index]() {
+    if (!PyTuple_Check(_index)) {
+      Py_DECREF(index);
+      VLOG(4) << "Call Py_DECREF";
+    }
+  });
   PADDLE_ENFORCE_EQ(
       tensor->IsInitialized(), true,
       platform::errors::InvalidArgument("tensor has not been initialized"));
   const auto &shape = tensor->dims();
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
-  PADDLE_ENFORCE_EQ(
-      size <= rank, true,
-      platform::errors::InvalidArgument(
-          "too many indices (%d) for tensor of dimension %d", size, rank));
+
+  // specified_dims is the number of dimensions which indexed by Interger,
+  // Slices.
+  int specified_dims = 0;
   for (int dim = 0; dim < size; ++dim) {
     PyObject *slice_item = PyTuple_GetItem(index, dim);
-    PADDLE_ENFORCE_EQ(PyCheckInteger(slice_item) || PySlice_Check(slice_item),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Currently, VarBase.__getitem__() only allows "
-                          "indexing by Integers, Slices, and tuples of "
-                          "these types, but received %s in %dth slice item",
-                          std::string(Py_TYPE(slice_item)->tp_name), dim + 1));
+    if (PyCheckInteger(slice_item) || PySlice_Check(slice_item)) {
+      specified_dims++;
+    }
+  }
+
+  for (int i = 0, dim = 0; i < size; ++i) {
+    PyObject *slice_item = PyTuple_GetItem(index, i);
+
     infer_flags->push_back(1);
     int dim_len = shape[dim];
     if (PyCheckInteger(slice_item)) {
@@ -467,7 +476,8 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
       slice_ends->push_back(start + 1);
       slice_strides->push_back(1);
       decrease_axis->push_back(dim);
-    } else {
+      dim++;
+    } else if (PySlice_Check(slice_item)) {
       // slice item
       Py_ssize_t start, end, step;
       PySliceObject *p = reinterpret_cast<PySliceObject *>(slice_item);
@@ -475,15 +485,81 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
 
       // :: or : or 0:dim_len:1
       if (start == 0 && end == dim_len && step == 1) {
+        dim++;
         continue;
       }
       slice_axes->push_back(dim);
       slice_starts->push_back(start);
       slice_ends->push_back(end);
       slice_strides->push_back(step);
+      dim++;
+    } else if (slice_item == Py_Ellipsis) {
+      dim += rank - specified_dims;
+    } else if (slice_item == Py_None) {
+      none_axes->push_back(dim);
+    } else if (PyList_Check(slice_item)) {
+      *list_select_flag = true;
+      PADDLE_ENFORCE_EQ(
+          size, 1,
+          platform::errors::InvalidArgument(
+              "When index contains a list, its length is excepted to 1, "
+              "but received %d",
+              size));
+      bool all_bool = true;
+      int list_size = PyList_GET_SIZE(slice_item);
+      for (int j = 0; j < list_size; ++j) {
+        PyObject *list_item = PyList_GetItem(slice_item, j);
+        if (PyCheckInteger(list_item)) {
+          all_bool = false;
+        } else if (!PyBool_Check(list_item)) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Only support int or bool in index list."));
+        }
+      }
+      if (all_bool) {
+        PADDLE_ENFORCE_EQ(
+            list_size, shape[0],
+            platform::errors::InvalidArgument(
+                "The dimension of bool index doesn't match indexed array along "
+                "dimension 0, the target dimension is %d, but received %d.",
+                shape[0], list_size));
+
+        for (int j = 0; j < list_size; ++j) {
+          PyObject *list_item = PyList_GetItem(slice_item, j);
+          if (list_item == Py_True) {
+            list_select_idxs->push_back(j);
+          }
+        }
+      } else {
+        for (int j = 0; j < list_size; ++j) {
+          PyObject *list_item = PyList_GetItem(slice_item, j);
+          if (PyCheckInteger(list_item)) {
+            list_select_idxs->push_back(
+                static_cast<int>(PyLong_AsLong(list_item)));
+          } else if (list_item == Py_True) {
+            list_select_idxs->push_back(1);
+          } else {
+            list_select_idxs->push_back(0);
+          }
+        }
+      }
+
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Currently, VarBase.__getitem__() only allows indexing "
+          "by Integers, Slices, Ellipsis, None, tuples of these types "
+          "and list of Bool and Integers, but received "
+          "%s in %dth slice item",
+          std::string(Py_TYPE(slice_item)->tp_name), i + 1));
     }
   }
-  if (!PyTuple_Check(_index)) Py_DecRef(index);
+
+  // valid_index is the number of dimensions exclude None index
+  const int valid_indexs = size - none_axes->size();
+  PADDLE_ENFORCE_EQ(valid_indexs <= rank, true,
+                    platform::errors::InvalidArgument(
+                        "Too many indices (%d) for tensor of dimension %d.",
+                        valid_indexs, rank));
 }
 
 template <typename P>
@@ -740,14 +816,24 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
-      .def("__setitem__",
+      .def("__setitem_varbase__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
               py::object &value_obj) {
+             VLOG(4) << "Call __setitem_varbase__";
+
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
+             // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
+             // https://github.com/python/cpython/blob/24b63c695ae0a95b06379eaadace66735abac1e2/Objects/tupleobject.c#L251
              PyObject *index_ptr = !PyTuple_Check(_index.ptr())
                                        ? PyTuple_Pack(1, _index.ptr())
                                        : _index.ptr();
+             DEFINE_PADDLE_SCOPE_GUARD([index_ptr, &_index]() {
+               if (!PyTuple_Check(_index.ptr())) {
+                 Py_DECREF(index_ptr);
+                 VLOG(4) << "Call Py_DECREF";
+               }
+             });
              // 1. Check argumnets
              // 1.1 Check whether value obj is a tensor.
              bool value_is_tensor = true;
@@ -758,11 +844,24 @@ void BindImperative(py::module *m_ptr) {
                value_is_tensor = false;
              }
 
+             auto is_tensor = [](py::handle var) {
+               if (!var.ptr() || var.ptr() == Py_None) {
+                 return false;
+               }
+               try {
+                 py::cast<std::shared_ptr<imperative::VarBase>>(var);
+                 return true;
+               } catch (py::cast_error &) {
+                 return false;
+               }
+             };
+
              // 1.2 Check whether _index can be parsed.
              const int size = PyTuple_GET_SIZE(index_ptr);
              for (int dim = 0; dim < size; ++dim) {
                PyObject *slice_item = PyTuple_GetItem(index_ptr, dim);
-               if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item))) {
+               if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item) ||
+                     slice_item == Py_Ellipsis || slice_item == Py_None)) {
                  parse_index = false;
                  break;
                }
@@ -774,16 +873,21 @@ void BindImperative(py::module *m_ptr) {
              // copys data to cpu place, which reduces performance.
              if (parse_index && value_is_tensor) {
                std::vector<int> axes, starts, ends, steps, decrease_axes,
-                   infer_flags;
+                   none_axes, infer_flags, list_select_idxs;
+               // if index is a list, list_select_flag will be true
+               bool list_select_flag;
                ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
-                                  &steps, &decrease_axes, &infer_flags);
+                                  &steps, &decrease_axes, &none_axes,
+                                  &infer_flags, &list_select_idxs,
+                                  &list_select_flag);
 
                framework::AttributeMap attrs = {
                    {"axes", axes},
                    {"starts", starts},
                    {"ends", ends},
                    {"steps", steps},
-                   {"decrease_axes", decrease_axes}};
+                   {"decrease_axes", decrease_axes},
+                   {"none_axes", none_axes}};
 
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                imperative::NameVarBaseMap outs = {{"Out", {self}}};
@@ -808,20 +912,43 @@ void BindImperative(py::module *m_ptr) {
                }
              } else {
                auto self_numpy = TensorToPyArray(*self_tensor);
+               VLOG(4) << "parse_index is false";
 
                if (value_is_tensor) {
+                 VLOG(4) << "value is tensor";
                  auto value =
                      value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                  auto value_tensor =
                      value->MutableVar()->GetMutable<framework::LoDTensor>();
                  auto value_numpy = TensorToPyArray(*value_tensor);
-
-                 self_numpy[_index] = value_numpy;
+                 if (is_tensor(_index)) {
+                   VLOG(4) << "index is tensor";
+                   auto index_var =
+                       py::cast<std::shared_ptr<imperative::VarBase>>(_index);
+                   auto index_tensor = index_var->MutableVar()
+                                           ->GetMutable<framework::LoDTensor>();
+                   auto index_numpy = TensorToPyArray(*index_tensor);
+                   self_numpy[index_numpy] = value_numpy;
+                 } else {
+                   VLOG(4) << "index is not tensor";
+                   self_numpy[_index] = value_numpy;
+                 }
                  SetTensorFromPyArray(self_tensor, self_numpy,
                                       self_tensor->place(), true);
                } else {
-                 auto value_numpy = value_obj;
-                 self_numpy[_index] = value_numpy;
+                 VLOG(4) << "value is not tensor";
+                 if (is_tensor(_index)) {
+                   VLOG(4) << "index is tensor";
+                   auto index_var =
+                       py::cast<std::shared_ptr<imperative::VarBase>>(_index);
+                   auto index_tensor = index_var->MutableVar()
+                                           ->GetMutable<framework::LoDTensor>();
+                   auto index_numpy = TensorToPyArray(*index_tensor);
+                   self_numpy[index_numpy] = value_obj;
+                 } else {
+                   VLOG(4) << "index is not tensor";
+                   self_numpy[_index] = value_obj;
+                 }
                  SetTensorFromPyArray(self_tensor, self_numpy,
                                       self_tensor->place(), true);
                }
@@ -833,19 +960,29 @@ void BindImperative(py::module *m_ptr) {
            })
       .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
+             VLOG(4) << "Call _getitem_index_not_tensor";
              std::vector<int> slice_axes, slice_starts, slice_ends,
-                 slice_strides, decrease_axis, infer_flags;
+                 slice_strides, decrease_axis, none_axes, infer_flags,
+                 list_select_idxs;
+             // if index is a list, list_select_flag will be true
+             bool list_select_flag = false;
              auto tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
              ParseIndexingSlice(tensor, _index.ptr(), &slice_axes,
                                 &slice_starts, &slice_ends, &slice_strides,
-                                &decrease_axis, &infer_flags);
+                                &decrease_axis, &none_axes, &infer_flags,
+                                &list_select_idxs, &list_select_flag);
              // release gil and do tracing
              py::gil_scoped_release release;
              const auto &tracer = imperative::GetCurrentTracer();
-             if (slice_axes.empty()) {
-               return self;
-             } else {
+
+             auto out = slice_axes.empty() && !list_select_flag
+                            ? self
+                            : std::shared_ptr<imperative::VarBase>(
+                                  new imperative::VarBase(
+                                      tracer->GenerateUniqueName()));
+
+             if (!slice_axes.empty()) {
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                framework::AttributeMap attrs = {
                    {"axes", slice_axes},
@@ -853,8 +990,6 @@ void BindImperative(py::module *m_ptr) {
                    {"ends", slice_ends},
                    {"infer_flags", infer_flags},
                    {"decrease_axis", decrease_axis}};
-               auto out = std::shared_ptr<imperative::VarBase>(
-                   new imperative::VarBase(tracer->GenerateUniqueName()));
                imperative::NameVarBaseMap outs = {{"Out", {out}}};
                std::string op_type = "slice";
                for (auto stride : slice_strides) {
@@ -866,8 +1001,89 @@ void BindImperative(py::module *m_ptr) {
                  }
                }
                tracer->TraceOp(op_type, ins, outs, std::move(attrs));
-               return out;
              }
+             if (!none_axes.empty()) {
+               // Deal with cases when all axes are decreased.
+               // After slice, the shape of out is [1], which should have been
+               // [], but Paddle doesn't support scalar.
+               // In order to ensure the correctness of the final shape of out,
+               // one dimension of out needs to be decreased.
+               // For example:
+               // # x.shape: (2,3,4)
+               // out = x[0, 1, 1, None] # out.shape : (1)
+               if (static_cast<int>(decrease_axis.size()) ==
+                   tensor->dims().size()) {
+                 none_axes.pop_back();
+               }
+               if (!none_axes.empty()) {
+                 // Deal with cases that decrease_axes is not empty
+                 // For example:
+                 // # x.shape: (2,3,4)
+                 // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+                 for (auto &axis : none_axes) {
+                   int len = 0;
+                   for (int da : decrease_axis) {
+                     if (da < axis) {
+                       len++;
+                     }
+                   }
+                   axis -= len;
+                 }
+
+                 // Deal with cases that there are more than one
+                 // prefix none index, For example:
+                 // [None, None, :, :, None]
+                 // the none_axes int the return of ParseIndexingSlice is:
+                 // [0,    0,          2   ]
+                 // according to the interface of "unsqueeze2",
+                 // we should convert it to:
+                 // [0,    0,          4   ]
+                 int prefix_zero_cnt = 0;
+                 for (const auto &axis : none_axes) {
+                   if (axis == 0) {
+                     prefix_zero_cnt++;
+                   } else {
+                     break;
+                   }
+                 }
+                 if (prefix_zero_cnt > 0) {
+                   int none_axes_num = static_cast<int>(none_axes.size());
+                   for (int i = prefix_zero_cnt; i < none_axes_num; ++i) {
+                     none_axes[i] += prefix_zero_cnt;
+                   }
+                 }
+
+                 imperative::NameVarBaseMap ins = {{"X", {out}}};
+                 framework::AttributeMap attrs = {{"axes", none_axes}};
+                 auto new_out = std::shared_ptr<imperative::VarBase>(
+                     new imperative::VarBase(tracer->GenerateUniqueName()));
+                 auto out_xshape = std::shared_ptr<imperative::VarBase>(
+                     new imperative::VarBase(tracer->GenerateUniqueName()));
+                 imperative::NameVarBaseMap outs = {{"Out", {new_out}},
+                                                    {"XShape", {out_xshape}}};
+                 tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
+
+                 return new_out;
+               }
+             }
+
+             // the index is a list
+             if (list_select_flag) {
+               auto select_index = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               auto *idx_tensor = select_index->MutableVar()
+                                      ->GetMutable<framework::LoDTensor>();
+               auto *dev_ctx = platform::DeviceContextPool::Instance().Get(
+                   tracer->ExpectedPlace());
+               TensorFromVector(list_select_idxs, *dev_ctx, idx_tensor);
+
+               imperative::NameVarBaseMap ins = {{"X", {self}},
+                                                 {"Index", {select_index}}};
+               imperative::NameVarBaseMap outs = {{"Out", {out}}};
+               tracer->TraceOp("index_select", ins, outs, {{"dim", 0}});
+             }
+
+             return out;
            })
       .def(
           "_getitem_from_offset",
@@ -1332,20 +1548,26 @@ void BindImperative(py::module *m_ptr) {
 
       )DOC")
       .def("cuda",
-           [](const std::shared_ptr<imperative::VarBase> &self, int device_id,
-              bool blocking) {
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              py::handle &handle, bool blocking) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              PADDLE_THROW(platform::errors::PermissionDenied(
                  "Cannot copy this Tensor to GPU in CPU version Paddle, "
                  "Please recompile or reinstall Paddle with CUDA support."));
 #else
              int device_count = platform::GetCUDADeviceCount();
-             if (device_id == -1) {
+             int device_id = 0;
+             if (handle == py::none()) {
                if (platform::is_gpu_place(self->Place())) {
                  return self;
-               } else {
-                 device_id = 0;
                }
+             } else {
+               PyObject *py_obj = handle.ptr();
+               PADDLE_ENFORCE_EQ(
+                   PyCheckInteger(py_obj), true,
+                   platform::errors::InvalidArgument(
+                       " 'device_id' must be a positive integer"));
+               device_id = py::cast<int>(handle);
              }
              PADDLE_ENFORCE_GE(
                  device_id, 0,
@@ -1369,25 +1591,29 @@ void BindImperative(py::module *m_ptr) {
              }
 #endif
            },
-           py::arg("device_id") = -1, py::arg("blocking") = true, R"DOC(
+           py::arg("device_id") = py::none(), py::arg("blocking") = true, R"DOC(
         Returns a copy of this Tensor in GPU memory.
 
         If this Tensor is already in GPU memory and device_id is default, 
         then no copy is performed and the original Tensor is returned.
         
         Args:
-            device_id(int, optional): The destination GPU device id. Defaults to the current device.
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
             blocking(bool, optional): If False and the source is in pinned memory, the copy will be 
               asynchronous with respect to the host. Otherwise, the argument has no effect. Default: False.
 
         Examples:
             .. code-block:: python
 
+              # required: gpu
               import paddle
               x = paddle.to_tensor(1.0, place=paddle.CPUPlace())
               print(x.place)        # CPUPlace
 
               y = x.cuda()
+              print(y.place)        # CUDAPlace(0)
+            
+              y = x.cuda(None)
               print(y.place)        # CUDAPlace(0)
 
               y = x.cuda(1)

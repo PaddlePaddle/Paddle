@@ -90,6 +90,17 @@ def _update_list(custom_white_list, custom_black_list):
     return _white_list, _black_list
 
 
+def _in_amp_guard():
+    """
+    Judge whether current code block is in `amp_guard` context.
+    """
+    tracer = _dygraph_tracer()
+    if tracer:
+        return tracer._enable_autocast
+    else:
+        return False
+
+
 @signature_safe_contextmanager
 @dygraph_only
 def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):

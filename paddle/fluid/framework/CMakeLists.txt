@@ -17,7 +17,7 @@ function(windows_symbolic TARGET)
     add_custom_command(OUTPUT ${final_path}/.${src}.cu
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
             COMMENT "create hidden file of ${src}.cu")
-    add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
+    add_custom_target(${TARGET} ALL DEPENDS ${final_path}/.${src}.cu)
   endforeach()
 endfunction()
 
@@ -25,6 +25,7 @@ add_subdirectory(ir)
 add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
+add_subdirectory(new_executor)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
@@ -188,8 +189,13 @@ cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 
 cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_vars_inference)
 
+IF(WITH_XPU)
+cc_library(operator SRCS operator.cc DEPS xpu_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
+ELSE()
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
+ENDIF()
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op_registry device_context)
@@ -197,7 +203,7 @@ cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS attribute shape_inference op_info operator glog version)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc process_mesh_desc.cc DEPS attribute shape_inference op_info operator glog version)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 
@@ -405,10 +411,19 @@ configure_file(commit.h.in commit.h)
 # Adapt to custom op mechanism: Include the header files related to the data type
 # to avoid exposing the path of the underlying file
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include)
+include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
 
-if(WITH_ROCM)
-  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+if (WITH_GPU)
+  if (WIN32)
+    windows_symbolic(ext_tensor_cu SRCS ext_tensor.cu PATH ../extension/src)
+    nv_library(custom_tensor SRCS ../extension/src/.ext_tensor.cu DEPS lod_tensor memory enforce)
+    add_dependencies(custom_tensor ext_tensor_cu)
+  else()
+    nv_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
+  endif(WIN32)
+elseif (WITH_ROCM)
+  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
 else()
   cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
 endif()
@@ -422,6 +437,9 @@ else()
   cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
 endif()
 
+#cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
+#cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
+
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
@@ -429,3 +447,5 @@ cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 if(WITH_TESTING AND TEST selected_rows_test)
   set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
 endif()
+
+cc_test(scope_guard_test SRCS scope_guard_test.cc)

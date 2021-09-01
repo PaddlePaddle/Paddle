@@ -115,6 +115,31 @@ class TestBackwardAPI(unittest.TestCase):
 
                     self.assertTrue(np.allclose(x_grad, x_tensor.grad.numpy()))
 
+    def test_backward_accumulator_with_init_grad(self):
+        for dtype in self._dtypes:
+            x = np.random.random([10, ]).astype(dtype)
+            y_grad = np.random.random([10, ]).astype(dtype)
+            z_grad = np.random.random([10, ]).astype(dtype)
+            self._places = [paddle.CPUPlace()]
+            for place in self._places:
+                with dg.guard(place):
+                    x_tensor = paddle.to_tensor(x, stop_gradient=False)
+                    y_tensor = x_tensor**2
+                    z_tensor = y_tensor**3
+
+                    y_grad_tensor = paddle.to_tensor(y_grad)
+                    z_grad_tensor = paddle.to_tensor(z_grad)
+                    paddle.autograd.backward([y_tensor, z_tensor],
+                                             [y_grad_tensor, z_grad_tensor])
+
+                    y = x**2
+                    z = x**3
+                    x_grad = 2 * x_tensor * (
+                        y_grad_tensor + 3 * y_tensor * y_tensor * z_grad_tensor)
+
+                    self.assertTrue(
+                        np.allclose(x_grad.numpy(), x_tensor.grad.numpy()))
+
 
 if __name__ == '__main__':
     unittest.main()

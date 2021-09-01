@@ -84,6 +84,8 @@ class TestDistTraning(unittest.TestCase):
             "mp_degree": self.model_parallel_size,
             "sharding_degree": 2,
         }
+        strategy.tensor_parallel = True
+        strategy.tensor_parallel_configs = {"tensor_parallel_degree": 2}
         fleet.init(is_collective=True, strategy=strategy)
 
     def get_program(self):
