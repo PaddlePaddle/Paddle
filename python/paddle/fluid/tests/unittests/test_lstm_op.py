@@ -307,14 +307,11 @@ class TestLstmOpCase3(TestLstmOp):
         self.lod = [[2, 0, 4]]
 
 
-@skip_check_grad_ci(
-    reason="This unittest is used to check whether the op run correctly "
-    "in inference time, no need to calculate gradient.")
 class TestLstmOpInference(TestLstmOp):
     def set_is_test(self):
         self.is_test = True
 
-    # avoid checking gradient    
+    # avoid checking gradient
     def test_check_grad(self):
         pass
 
