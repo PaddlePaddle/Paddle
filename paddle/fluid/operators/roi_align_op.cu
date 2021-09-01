@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/roi_align_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -23,7 +24,13 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
+#ifdef WITH_NV_JETSON
+int num_thread = 512;
+ChangeThreadNum(context, &num_thread, 256);
+static constexpr int kNumCUDAThreads = num_thread;
+#else
 static constexpr int kNumCUDAThreads = 512;
+#endif
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 static inline int NumBlocks(const int N) {

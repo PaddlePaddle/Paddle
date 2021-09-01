@@ -33,6 +33,18 @@ namespace platform {
 
 inline int DivUp(int a, int b) { return (a + b - 1) / b; }
 
+#ifdef WITH_NV_JETSON
+// The number of threads cannot be assigned 1024 in some cases when the device
+// is nano or tx2
+void ChangeThreadNum(const platform::CUDADeviceContext& context,
+                     int* num_thread, int alternative_num_thread = 512) {
+  if (context.GetComputeCapability() == 53 ||
+      context.GetComputeCapability() == 62) {
+    *num_thread = alternative_num_thread;
+  }
+}
+#endif
+
 struct GpuLaunchConfig {
   dim3 theory_thread_count = dim3(1, 1, 1);
   dim3 thread_per_block = dim3(1, 1, 1);
@@ -63,13 +75,20 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
   const int physical_thread_count =
       std::min(max_physical_threads, theory_thread_count);
 
+  // Get compute_capability
+  const int capability = context.GetComputeCapability();
+
+#ifdef WITH_NV_JETSON
+  if (capability == 53 || capability == 62) {
+    max_threads = 512;
+  }
+#endif
+
   // Need get from device
   const int thread_per_block =
       std::min(max_threads, context.GetMaxThreadsPerBlock());
   const int block_count =
       std::min(DivUp(physical_thread_count, thread_per_block), sm);
-  // Get compute_capability
-  const int capability = context.GetComputeCapability();
 
   GpuLaunchConfig config;
   config.theory_thread_count.x = theory_thread_count;
