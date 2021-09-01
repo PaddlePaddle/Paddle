@@ -101,7 +101,7 @@ class IndexSelectKernel : public framework::OpKernel<T> {
 
     int dim = context.Attr<int>("dim");
     if (dim < 0) {
-      dim += inputs.dims().size();
+      dim += inputs->dims().size();
     }
     const auto& index_type = index->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
