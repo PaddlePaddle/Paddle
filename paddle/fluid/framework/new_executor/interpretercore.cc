@@ -417,11 +417,12 @@ void InterpreterCore::ExecuteInstructionList(
   // are finished.
   aync_thread_pool_->WaitQueueEmpty();
   sync_thread_pool_->WaitQueueEmpty();
-  fetch_context_pool_.Get(place_)->Wait();
 
-  while (op_run_number.load(std::memory_order_acquire) != vec_instr.size()) {
+  while (op_run_number.load() != vec_instr.size()) {
     VLOG(3) << op_run_number.load() << " !=" << vec_instr.size();
   }
+
+  fetch_context_pool_.Get(place_)->Wait();
 
   for (size_t i = 0; i < working_var_ref.size(); ++i) {
     if (working_var_ref[i]->load() != 0) {
@@ -441,9 +442,8 @@ void InterpreterCore::RunInstructionAsync(
   StreamWaitEventOrSync(instr_node);
   // step2: run instruction
   RunInstruction(instr_node);
-  op_run_number->fetch_add(1, std::memory_order_acquire);
-  VLOG(3) << "end to run : " << instr_id << " "
-          << op_run_number->load(std::memory_order_acquire);
+  op_run_number->fetch_add(1);
+  VLOG(3) << "end to run : " << instr_id << " " << op_run_number->load();
   // step3: insert event for out_vars if needed
   RecordEventInstruction(instr_node);
 
@@ -455,16 +455,16 @@ void InterpreterCore::RunInstructionAsync(
   auto& next_instr = instr_node.next_instruction_.all_next_ops_;
 
   for (auto next_i : next_instr) {
-    working_dependecy_count[next_i]->fetch_sub(1, std::memory_order_acquire);
+    working_dependecy_count[next_i]->fetch_sub(1);
     if (working_dependecy_count[next_i]->load() == 0) {
       VLOG(3) << next_i << " is ready in task";
       if (vec_instruction_[next_i].type_ == OpFuncType::kQueueAsync) {
-        aync_thread_pool_->AddTask([&, next_i, is_dry_run]() {
+        aync_thread_pool_->AddTask([&, next_i, op_run_number, is_dry_run]() {
           RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
                               op_run_number, is_dry_run);
         });
       } else {
-        sync_thread_pool_->AddTask([&, next_i, is_dry_run]() {
+        sync_thread_pool_->AddTask([&, next_i, op_run_number, is_dry_run]() {
           RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
                               op_run_number, is_dry_run);
         });
@@ -481,7 +481,7 @@ void InterpreterCore::CheckGC(size_t instr_id,
   auto& var_scope = *global_scope_;
 
   for (auto var_id : gc_check_list) {
-    working_var_ref[var_id]->fetch_sub(1, std::memory_order_acquire);
+    working_var_ref[var_id]->fetch_sub(1);
     VLOG(3) << "var_id " << var_id
             << " ref_count: " << working_var_ref[var_id]->load();
     if (var_scope.vec_meta_info_[var_id].vardesc_ &&
