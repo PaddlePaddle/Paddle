@@ -1702,6 +1702,15 @@ set -x
 }
 
 function parallel_test_base_npu() {
+    # skipping if no NPU related files changed
+    if [ ${SKIL_NPU_TEST:-ON} == "ON" ] ; then
+        npu_cc_files=$(git diff --name-only ${BRANCH} | grep "op_npu.cc" | wc -l)
+        npu_py_files=$(git diff --name-only ${BRANCH} | grep "python/paddle/fluid/tests/unittests/npu" | wc -l)
+        if [ "${npu_cc_files}" -eq 0 ] && [ "${npu_py_files}" -eq 0 ] ; then
+            echo "NO NPU operators files changed, skip NPU unit tests"
+            exit 0
+        fi
+    fi
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/npu
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
