@@ -433,6 +433,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo Build third_party successfully!
 
 set build_times=1
+
 :build_paddle
 :: reset clcache zero stats for collect PR's actual hit rate
 rem clcache.exe -z

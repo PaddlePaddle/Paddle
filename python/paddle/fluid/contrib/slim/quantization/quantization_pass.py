@@ -133,6 +133,7 @@ _op_real_in_out_name = {
     "pad2d": [["X"], ["Out"]],
     "flatten": [["X"], ["Out"]],
     "flatten2": [["X"], ["Out"]],
+    "unsqueeze2": [["X"], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']

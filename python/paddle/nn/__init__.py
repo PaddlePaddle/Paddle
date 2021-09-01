@@ -73,6 +73,7 @@ from .layer.pooling import AvgPool3D  # noqa: F401
 from .layer.pooling import MaxPool1D  # noqa: F401
 from .layer.pooling import MaxPool2D  # noqa: F401
 from .layer.pooling import MaxPool3D  # noqa: F401
+from .layer.pooling import MaxUnPool2D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool1D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool2D  # noqa: F401
 from .layer.pooling import AdaptiveAvgPool3D  # noqa: F401

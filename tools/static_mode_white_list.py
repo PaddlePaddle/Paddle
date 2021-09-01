@@ -333,6 +333,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_mish_op',
     'test_modified_huber_loss_op',
     'test_momentum_op',
+    'test_sparse_momentum_op',
     'test_monitor',
     'test_mse_loss',
     'test_mul_op',
