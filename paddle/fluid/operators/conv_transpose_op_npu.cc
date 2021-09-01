@@ -12,16 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include <string>
-
 #include "paddle/fluid/operators/conv_transpose_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -113,6 +110,5 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 // conv2d
-REGISTER_OP_NPU_KERNEL(
-    conv2d_transpose,
-    ops::Conv2DTransposeNPUKernel<plat::NPUDeviceContext, plat::float16>);
+REGISTER_OP_NPU_KERNEL(conv2d_transpose, ops::Conv2DTransposeNPUKernel<float>,
+                       ops::Conv2DTransposeNPUKernel<plat::float16>);
