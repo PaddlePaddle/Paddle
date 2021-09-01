@@ -65,7 +65,7 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
 
     Tensor shard_size_tensor(in->type());
     shard_size_tensor.mutable_data<T>(framework::DDim({1}), place);
-    FillNpuTensorWithConstant(&shard_size_tensor, shard_size);
+    FillNpuTensorWithConstant(&shard_size_tensor, static_cast<T>(shard_size));
 
     Tensor id_matched(framework::proto::VarType::BOOL);
     id_matched.mutable_data<bool>(in->dims(), place);
@@ -76,23 +76,13 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     Tensor sharding_id(in->type());
     sharding_id.mutable_data<T>(in->dims(), place);
 
-    Tensor shard_id_tensor;
-    if (sizeof(T) == 4) {
-      Tensor shard_id_tensor_int32(framework::proto::VarType::INT32);
-      shard_id_tensor.mutable_data<int>(framework::DDim({1}), place);
-      FillNpuTensorWithConstant(&shard_id_tensor, shard_id);
-      shard_id_tensor.ShareDataWith(shard_id_tensor_int32);
-    } else if (sizeof(T) == 8) {
-      Tensor shard_id_tensor_int64(framework::proto::VarType::INT64);
-      shard_id_tensor.mutable_data<int64_t>(framework::DDim({1}), place);
-      FillNpuTensorWithConstant(&shard_id_tensor,
-                                static_cast<int64_t>(shard_id));
-      shard_id_tensor.ShareDataWith(shard_id_tensor_int64);
-    }
+    Tensor shard_id_tensor(in->type());
+    shard_id_tensor.mutable_data<T>(framework::DDim({1}), place);
+    FillNpuTensorWithConstant(&shard_id_tensor, static_cast<T>(shard_id));
 
     Tensor ignore_tensor(in->type());
     ignore_tensor.mutable_data<T>(in->dims(), place);
-    FillNpuTensorWithConstant(&ignore_tensor, ignore_value);
+    FillNpuTensorWithConstant(&ignore_tensor, static_cast<T>(ignore_value));
     ignore_tensor.Resize(in->dims());
 
     auto stream =
