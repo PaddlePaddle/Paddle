@@ -253,9 +253,11 @@ nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
   for (size_t i = 0; i < axes_.size(); i++) {
     int start = starts_[i];
     int end = ends_[i];
-    ret.d[axes_[i]] = expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+    ret.d[axes_[i]] = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUB,
         *expr_builder.operation(nvinfer1::DimensionOperation::kMIN,
-        *expr_builder.constant(ends_[i]), *in_dims.d[axes_[i]]),
+                                *expr_builder.constant(ends_[i]),
+                                *in_dims.d[axes_[i]]),
         *expr_builder.constant(start));
   }
   return ret;
