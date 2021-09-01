@@ -124,34 +124,35 @@ struct BroadcastConfig {
 template <typename Tx, typename Ty, int NX, int NY, int BlockSize>
 __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
                                          int stride_nx, int stride_ny) {
+  int thread_offset = threadIdx.x * NX;
+
   if (NY == 1 && NX == 1) {
-    dst[0] = static_cast<Ty>(src[threadIdx.x]);
+    dst[0] = static_cast<Ty>(src[thread_offset]);
   } else if (NX == 1) {
-    int dx = threadIdx.x;
 #pragma unroll
     for (int idy = 0; idy < NY; ++idy) {
-      dst[idy] = static_cast<Ty>(src[dx + idy * stride_ny]);
+      dst[idy] = static_cast<Ty>(src[thread_offset + idy * stride_ny]);
     }
   } else if (NY == 1) {
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
-      dst[idx] = static_cast<Ty>(src[idx * stride_nx]);
+      dst[idx] = static_cast<Ty>(src[thread_offset + idx * stride_nx]);
     }
   } else {
-    int dx = threadIdx.x * NX;
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
 #pragma unroll
       for (int idy = 0; idy < NY; ++idy) {
-        dst[idy * NX + idx] =
-            static_cast<Ty>(src[idx * stride_nx + dx + idy * stride_ny]);
+        dst[idy * NX + idx] = static_cast<Ty>(
+            src[thread_offset + idx * stride_nx + idy * stride_ny]);
       }
     }
   }
 }
 
 /**
- * @brief load data from src to dst, src can be 1D data or 2D data. When
+ * @brief load data from src to dst with strid, src can be 1D data or 2D data.
+ * When
  * boundary judgment is required, you need to set a to true, and a is false by
  * default.
  * @typename:
@@ -172,17 +173,17 @@ template <typename Tx, typename Ty, int NX, int NY, int BlockSize,
 __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
                                          int size_nx, int size_ny,
                                          int stride_nx, int stride_ny) {
-  int dx = threadIdx.x * NX;
-  int size = size_nx - dx;
+  int thread_offset = threadIdx.x * NX;
+  int left_size_nx = size_nx - thread_offset;
 
   // Each branch is added for better performance
   if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
     if (IsBoundary) {
-      if (dx < size_nx) {
-        dst[0] = static_cast<Ty>(src[dx]);
+      if (left_size_nx > 0) {
+        dst[0] = static_cast<Ty>(src[thread_offset]);
       }
     } else {
-      dst[0] = static_cast<Ty>(src[dx]);
+      dst[0] = static_cast<Ty>(src[thread_offset]);
     }
   } else if (NX == 1) {  // for NX == 1 and NY != 1
 #pragma unroll
@@ -192,23 +193,23 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
           break;
         }
       }
-      dst[idy] = static_cast<Ty>(src[dx + idy * stride_ny]);
+      dst[idy] = static_cast<Ty>(src[thread_offset + idy * stride_ny]);
     }
   } else if (NY == 1) {  // for NY == 1 and NX != 1
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (IsBoundary) {
-        if (idx >= size) {
+        if (idx >= left_size_nx) {
           break;
         }
       }
-      dst[idx] = static_cast<Ty>(src[idx * stride_nx + dx]);
+      dst[idx] = static_cast<Ty>(src[thread_offset + idx * stride_nx]);
     }
   } else {  // for NX != 1 and NY != 1
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (IsBoundary) {
-        if (idx >= size) {
+        if (idx >= left_size_nx) {
           break;
         }
       }
@@ -219,8 +220,8 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
             break;
           }
         }
-        dst[idy * NX + idx] =
-            static_cast<Ty>(src[idx * stride_nx + dx + idy * stride_ny]);
+        dst[idy * NX + idx] = static_cast<Ty>(
+            src[thread_offset + idx * stride_nx + idy * stride_ny]);
       }
     }
   }
@@ -251,17 +252,17 @@ template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
                                          int num) {
   if (IsBoundary) {  // blockDim.x * NX > num
-    int dx = threadIdx.x * NX;
+    int thread_offset = threadIdx.x * NX;
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
-      if (idx + dx < num) {
-        dst[idx] = src[idx + dx];
+      if (idx + thread_offset < num) {
+        dst[idx] = src[thread_offset + idx];
       }
     }
   } else {  // blockDim,x * NX < num
     const int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
     const int kVectorsPerThread = NX / kVectorSize;
-    int tid = threadIdx.x * kVectorsPerThread;
+    int thread_offset = threadIdx.x * kVectorsPerThread;
 
     using VecType = details::VectorType<T, kVectorSize>;
     const VecType* vec_input = reinterpret_cast<const VecType*>(src);
@@ -269,7 +270,7 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
 
 #pragma unroll
     for (int i = 0; i < kVectorsPerThread; ++i) {
-      vec_temp[i] = vec_input[i + tid];
+      vec_temp[i] = vec_input[thread_offset + i];
 #pragma unroll
       for (int idx = 0; idx < NX; ++idx) {
         dst[idx] = *(reinterpret_cast<T*>(vec_temp) + idx);
@@ -289,39 +290,39 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
  * is 2
  * IsBoundary: whether to make boundary judgment
  * @param：
- * fix: data offset of this block, blockDim.x * blockIdx.x * NX;
+ * block_offset: data offset of this block, blockDim.x * blockIdx.x * NX;
  * config: get the global index in src, attention config was declared in host;
- * num: the num of out
+ * total_num_output: total num of output
  * stride_nx: the stride of cols
  * stride_ny: the stride of rows
  */
 template <typename T, int NX, int NY, int BlockSize, int ShapeSize,
           bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
-    T* dst, const T* __restrict__ src, uint32_t fix,
-    details::BroadcastConfig<ShapeSize> config, int num, int stride_nx,
-    int stride_ny) {
-  uint32_t base_offset = fix + threadIdx.x * NX;
-  uint32_t offset = 0;
+    T* dst, const T* __restrict__ src, uint32_t block_offset,
+    details::BroadcastConfig<ShapeSize> config, int total_num_output,
+    int stride_nx, int stride_ny) {
+  uint32_t thread_offset = block_offset + threadIdx.x * NX;
+  uint32_t index_src = 0;
 
 #pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
 #pragma unroll
     for (uint32_t nx = 0; nx < NX; ++nx) {
-      uint32_t idx = base_offset + ny * stride_ny + nx * stride_nx;
+      uint32_t index_output = thread_offset + ny * stride_ny + nx * stride_nx;
+      index_src = 0;
       if (IsBoundary) {
-        if (idx >= num) {
+        if (index_output >= total_num_output) {
           break;
         }
       }
-      offset = 0;
 #pragma unroll
       for (int i = 0; i < ShapeSize; ++i) {
-        auto fast_divmoder = config.divmoders[i].Divmod(idx);
-        idx = fast_divmoder.val[0];
-        offset += fast_divmoder.val[1] * config.strides[i];
+        auto fast_divmoder = config.divmoders[i].Divmod(index_output);
+        index_output = fast_divmoder.val[0];
+        index_src += fast_divmoder.val[1] * config.strides[i];
       }
-      dst[nx + ny * NX] = src[offset];
+      dst[nx + ny * NX] = src[index_src];
     }
   }
 }
@@ -338,7 +339,7 @@ __device__ __forceinline__ void ReadDataBc(
  * IndexCal: get the global index in src, attention config was declared in host;
  * IsBoundary: whether to make boundary judgment
  * @param：
- * fix: data offset of this block, blockDim.x * blockIdx.x * NX;
+ * block_offset: data offset of this block, blockDim.x * blockIdx.x * NX;
  * index_cal: get the global index in src, attention config was declared in
  * host;
  * size_nx: number of columns to be processed by the current block
@@ -350,27 +351,27 @@ __device__ __forceinline__ void ReadDataBc(
 template <typename T, int NX, int NY, int BlockSize, int ShapeSize,
           typename IndexCal, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataReduce(
-    T* dst, const T* __restrict__ src, int fix, const IndexCal& index_cal,
-    int size_nx, int size_ny, int stride_nx, int stride_ny,
-    bool reduce_last_dim) {
-  int base_offset = fix;
+    T* dst, const T* __restrict__ src, int block_offset,
+    const IndexCal& index_cal, int size_nx, int size_ny, int stride_nx,
+    int stride_ny, bool reduce_last_dim) {
+  int thread_offset = 0;
   if (reduce_last_dim) {
-    base_offset += threadIdx.x;
+    thread_offset = block_offset + threadIdx.x;
   } else {
-    base_offset += threadIdx.y;
+    thread_offset = block_offset + threadIdx.y;
   }
 
   if (NX == 1) {
 #pragma unroll
     for (int ny = 0; ny < NY; ++ny) {
       if (IsBoundary) {
-        if (base_offset >= size_ny) {
+        if (thread_offset >= size_ny) {
           break;
         }
       }
-      uint32_t offset = index_cal(base_offset);
-      dst[ny] = src[offset];
-      base_offset += stride_ny;
+      uint32_t index_src = index_cal(thread_offset);
+      dst[ny] = src[index_src];
+      thread_offset += stride_ny;
     }
   } else {
 #pragma unroll
@@ -387,10 +388,11 @@ __device__ __forceinline__ void ReadDataReduce(
             break;
           }
         }
-        uint32_t offset = index_cal(base_offset);
-        dst[nx + ny * NX] = src[offset];
-        base_offset += stride_ny;
+        uint32_t index_src = index_cal(thread_offset);
+        dst[nx + ny * NX] = src[index_src];
+        thread_offset += stride_ny;
       }
+      thread_offset += stride_nx;
     }
   }
 }
@@ -412,11 +414,11 @@ template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
 __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
                                           int num) {
   if (IsBoundary) {
-    int dx = threadIdx.x * NX;
+    int thread_offset = threadIdx.x * NX;
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
-      if ((idx + dx) < num) {
-        dst[idx + dx] = src[idx];
+      if ((thread_offset + idx) < num) {
+        dst[thread_offset + idx] = src[idx];
       }
     }
   } else {
@@ -424,14 +426,14 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
     const int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
     const int kVectorsPerThread = NX / kVectorSize;
 
-    int dx = threadIdx.x * kVectorsPerThread;
+    int thread_offset = threadIdx.x * kVectorsPerThread;
     using VecType = details::VectorType<T, kVectorSize>;
     VecType* vec_dst = reinterpret_cast<VecType*>(dst);
     VecType vec_temp[kVectorsPerThread];
 #pragma unroll
     for (int idx = 0; idx < kVectorsPerThread; ++idx) {
       vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
-      vec_dst[dx + idx] = vec_temp[idx];
+      vec_dst[thread_offset + idx] = vec_temp[idx];
     }
   }
 }
