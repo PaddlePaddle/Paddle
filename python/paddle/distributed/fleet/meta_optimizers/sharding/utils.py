@@ -372,6 +372,9 @@ def insert_fused_allreduce_ops(block,
                                op_role=OpRole.Backward,
                                use_calc_stream=False,
                                fuse_grad_size_in_MB=32):
+    # sort the allreduce_vars by it's type first,
+    # to reduce the number of fused vars
+    allreduce_vars = sort_allreduce_vars(block, allreduce_vars)
     segments = []
     cur_size = 0.
     last_dtype = None
@@ -427,6 +430,25 @@ def insert_fused_allreduce_ops(block,
                 inputs={'X': fused_var},
                 outputs={'Out': fused_var},
                 attrs={OP_ROLE_KEY: op_role})
+
+
+def sort_allreduce_vars(block, allreduce_vars):
+    # sort the grad param paris by the dtype
+    fp16_vars = []
+    fp32_vars = []
+    other_vars = []
+    for var in allreduce_vars:
+        dtype = block.var(var).dtype
+        if dtype == paddle.float32:
+            fp32_vars.append(var)
+        elif dtype == paddle.float16:
+            fp16_vars.append(var)
+        else:
+            other_vars.append(var)
+    sorted_pairs = fp16_vars
+    sorted_pairs.extend(fp32_vars)
+    sorted_pairs.extend(other_vars)
+    return sorted_pairs
 
 
 def insert_reduce_ops(block,
