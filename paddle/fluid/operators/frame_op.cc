@@ -111,7 +111,7 @@ class FrameOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
     Frame Operator.
 
-    This operator is used to slice frame of input $X$.
+    Frame op slices frames from input sequence $X$.
 
     )DOC");
   }
