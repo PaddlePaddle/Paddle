@@ -24,7 +24,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "NvInferRuntime.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"

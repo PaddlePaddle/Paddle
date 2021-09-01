@@ -511,9 +511,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "slice") {
-      if (desc.HasAttr("decrease_axis")) {
-        return false;
-      }
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
           !desc.HasAttr("ends")) {
         return false;

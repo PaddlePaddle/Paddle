@@ -29,7 +29,6 @@
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"

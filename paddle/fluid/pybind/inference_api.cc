@@ -28,7 +28,6 @@
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"

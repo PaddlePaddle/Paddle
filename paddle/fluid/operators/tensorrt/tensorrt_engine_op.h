@@ -25,7 +25,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
