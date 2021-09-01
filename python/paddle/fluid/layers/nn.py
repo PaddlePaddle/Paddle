@@ -1803,6 +1803,10 @@ def conv3d(input,
 
     l_type = 'conv3d'
     assert param_attr is not False, "param_attr should not be False here."
+    if groups <= 0:
+        raise ValueError(
+            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".
+            format(groups))
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
@@ -1816,6 +1820,10 @@ def conv3d(input,
             "Attr(data_format): %s." % str(data_format))
 
     channel_last = (data_format == "NDHWC")
+    if len(input.shape) != 5:
+        raise ValueError(
+            "input should be 5D tensor, but received input with the shape of {}".
+            format(input.shape))
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
@@ -4243,10 +4251,19 @@ def conv3d_transpose(input,
         raise ValueError(
             "Param(data_format) of Op(fluid.layers.conv3d_transpose) got wrong value: received "
             + data_format + " but only NCDHW or NDHWC supported.")
+    if groups <= 0:
+        raise ValueError(
+            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".
+            format(groups))
+
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
     if not isinstance(input, Variable):
         raise TypeError("Input of conv3d_transpose must be Variable")
+    if len(input.shape) != 5:
+        raise ValueError(
+            "input should be 5D tensor, but received input with the shape of {}".
+            format(input.shape))
     input_channel = input.shape[1] if data_format == 'NCDHW' else input.shape[
         -1]
 
