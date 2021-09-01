@@ -287,8 +287,8 @@ class StridedSliceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({})
         .AsExtra();
     AddAttr<std::vector<int>>("decrease_axis", "(list<int>) decrease_axis")
-        .SetDefault({});
-    .AsExtra();
+        .SetDefault({})
+        .AsExtra();
     AddComment(R"DOC(
 Strided Slice Operator.
 Instead of calling this op directly most users will want to use the
