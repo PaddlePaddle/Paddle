@@ -143,8 +143,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       main_program_(main_prog),
       global_scope_(global_scope),
       d2h_ctx_pool_({place}),
-      h2d_ctx_pool_({place}),
-      fetch_context_pool_({place}) {
+      h2d_ctx_pool_({place}) {
   is_build_ = false;
 
   garbages_.reset(new GarbageQueue());
@@ -340,9 +339,6 @@ void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
       new RuntimeInferShapeContext(*op_base, *instr_node->runtime_ctx_.get()));
 
   auto* dev_ctx = instr_node->dev_ctx_;
-  if (instr_node->kernel_func_.operator_base_->Type() == "fetch_v2") {
-    dev_ctx = fetch_context_pool_.Get(place);
-  }
   Scope scope;
 
   instr_node->execution_ctx_.reset(new ExecutionContext(
@@ -356,12 +352,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   static_cast<const framework::OperatorWithKernel*>(
       instr_node.kernel_func_.operator_base_)
       ->InferShape(instr_node.infershape_ctx_.get());
-
-  if (instr_node.kernel_func_.operator_base_->Type() == "fetch_v2") {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.Get(place_);
-    dev_ctx->Wait();  // TODO(wanghuancoder)
-  }
 
   instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
@@ -715,6 +705,9 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
                                       expected_kernel_key);
         if (!platform::is_same_place(kernel_type_for_var.place_,
                                      expected_kernel_key.place_)) {
+          if (op_base->Type() == "fetch_v2") {
+            op_base->SetAttr("deepcopy", false);
+          }
           // need trans place
           // 1. add var in scope
           // 2. add copy op
