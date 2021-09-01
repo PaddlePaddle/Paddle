@@ -92,8 +92,7 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
             "copy_data": False,
             "set_constant": True,
             "constant": 0.5,
-            "dtype": self.fluid_dtype,
-            "user_defined_size_of_dtype": 2
+            "dtype": self.fluid_dtype
         }
 
     def test_check_output(self):

@@ -200,7 +200,6 @@ message DistributedStrategy {
   optional int32 fuse_grad_size_in_num = 31 [ default = 8 ];
   optional bool calc_comm_same_stream = 32 [ default = false ];
   optional bool asp = 33 [ default = false ];
-  optional bool fuse_grad_merge = 34 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
