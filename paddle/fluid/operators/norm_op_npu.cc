@@ -27,21 +27,6 @@ void CheckAxis(int axis, int rank) {
       -rank, rank - 1, axis));
 }
 
-inline void GetRemainDims(const framework::DDim &dim, int axis,
-                          std::vector<int> *remainVec) {
-  if (axis < 0) axis = dim.size() + axis;
-
-  for (int i = 0; i < axis; ++i) {
-    remainVec->push_back(dim[i]);
-  }
-
-  remainVec->push_back(1);
-
-  for (int i = axis + 1; i < dim.size(); ++i) {
-    remainVec->push_back(dim[i]);
-  }
-}
-
 template <typename DeviceContext, typename T>
 class NormNPUKernel : public framework::OpKernel<T> {
  public:
@@ -57,21 +42,6 @@ class NormNPUKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
     CheckAxis(axis, xdim.size());
     if (axis < 0) axis = xdim.size() + axis;
-
-    if (false) {
-      framework::NPUAttributeMap attr_input_norm;
-      attr_input_norm["axis"] = std::vector<int>({axis});
-      attr_input_norm["eps"] = eps;
-      const auto &runner =
-          NpuOpRunner("L2Normalize", {*in_x}, {*out_norm}, attr_input_norm);
-      auto stream =
-          ctx.template device_context<paddle::platform::NPUDeviceContext>()
-              .stream();
-      runner.Run(stream);
-      NpuOpRunner("Div", {*in_x, *out_norm}, {*out_y}, {}).Run(stream);
-
-      return;
-    }
 
     framework::NPUAttributeMap attr_input_norm;
     attr_input_norm["axes"] = std::vector<int>({axis});
@@ -96,7 +66,6 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto *x = ctx.Input<Tensor>("X");
-    // auto *norm = ctx.Input<framework::Tensor>("Norm");
     auto *y = ctx.Input<framework::Tensor>("Out");
     auto *dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
@@ -106,178 +75,17 @@ class NormGradNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    if (true) {
-      LOG(WARNING) << "!!!!!!!!!!!!!!!!!!!!!!!!!!! here";
+    dx->mutable_data<T>(place);
 
-      dx->mutable_data<T>(place);
-
-      framework::NPUAttributeMap attr_input_norm;
-      attr_input_norm["dim"] = std::vector<int>({axis});
-      attr_input_norm["eps"] = epsilon;
-      // const auto &runner =
-      //     NpuOpRunner("L2NormalizeGrad", {*x, *norm, *dy}, {*dx},
-      //     attr_input_norm);
-      const auto &runner =
-          NpuOpRunner("L2NormalizeGrad", {*x, *y, *dy}, {*dx}, attr_input_norm);
-      auto stream =
-          ctx.template device_context<paddle::platform::NPUDeviceContext>()
-              .stream();
-      runner.Run(stream);
-
-      return;
-    }
-
-    // dx = ( dy/sqrt(sum(x*x)) ) * [1 - x*sum(x) / (sum(x*x) + e)]
-    //    = [dy - dy * x * sum(x) / (sum(x*x) + e)] / sqrt(sum(x*x))
-    //    = [dy - x * sum(x*dy) / (sum(x*x) + e)] / sqrt(sum(x*x))
-
-    std::vector<int> remainVec;
-    GetRemainDims(x->dims(), axis, &remainVec);
-    auto remainDim = framework::make_ddim(remainVec);
-
+    framework::NPUAttributeMap attr_input_norm;
+    attr_input_norm["dim"] = std::vector<int>({axis});
+    attr_input_norm["eps"] = epsilon;
+    const auto &runner =
+        NpuOpRunner("L2NormalizeGrad", {*x, *y, *dy}, {*dx}, attr_input_norm);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-
-    std::vector<int> axes = {axis};
-
-    Tensor x_mul_dy;
-    {
-      x_mul_dy.Resize(x->dims());
-      x_mul_dy.mutable_data<float>(place);
-
-      const auto &runner = NpuOpRunner("Mul", {*x, *dy}, {x_mul_dy}, {});
-      runner.Run(stream);
-    }
-
-    Tensor x_mul_dy_sum;
-    {
-      framework::NPUAttributeMap attr_input = {{"keep_dims", true},
-                                               {"axes", axes}};
-
-      x_mul_dy_sum.Resize(remainDim);
-      x_mul_dy_sum.mutable_data<float>(place);
-
-      const auto &runner =
-          NpuOpRunner("ReduceSumD", {x_mul_dy}, {x_mul_dy_sum}, attr_input);
-      runner.Run(stream);
-    }
-
-    Tensor x_mul_dy_sum_broadcast;
-    {
-      framework::NPUAttributeMap attr_input = {
-          {"shape", framework::vectorize(x->dims())}};
-
-      x_mul_dy_sum_broadcast.Resize(x->dims());
-      x_mul_dy_sum_broadcast.mutable_data<float>(place);
-
-      const auto &runner = NpuOpRunner("BroadcastToD", {x_mul_dy_sum},
-                                       {x_mul_dy_sum_broadcast}, attr_input);
-      runner.Run(stream);
-    }
-
-    Tensor x_square;
-    {
-      x_square.Resize(x->dims());
-      x_square.mutable_data<T>(place);
-
-      const auto &runner = NpuOpRunner("Square", {*x}, {x_square}, {});
-      runner.Run(stream);
-    }
-
-    Tensor x_square_sum;
-    {
-      framework::NPUAttributeMap attr_input = {{"keep_dims", true},
-                                               {"axes", axes}};
-
-      x_square_sum.Resize(remainDim);
-      x_square_sum.mutable_data<T>(place);
-
-      const auto &runner =
-          NpuOpRunner("ReduceSumD", {x_square}, {x_square_sum}, attr_input);
-      runner.Run(stream);
-    }
-
-    Tensor x_square_sum_broadcast;
-    {
-      framework::NPUAttributeMap attr_input = {
-          {"shape", framework::vectorize(x->dims())}};
-
-      x_square_sum_broadcast.Resize(x->dims());
-      x_square_sum_broadcast.mutable_data<T>(place);
-
-      const auto &runner = NpuOpRunner("BroadcastToD", {x_square_sum},
-                                       {x_square_sum_broadcast}, attr_input);
-      runner.Run(stream);
-    }
-
-    // x_square_sum -> x_square_sum_broadcast
-    Tensor x_square_sum_plus_epsilon;
-    {
-      framework::NPUAttributeMap attr_input = {{"value", epsilon}};
-
-      x_square_sum_plus_epsilon.Resize(x->dims());
-      x_square_sum_plus_epsilon.mutable_data<T>(place);
-
-      const auto &runner = NpuOpRunner("Adds", {x_square_sum_broadcast},
-                                       {x_square_sum_plus_epsilon}, attr_input);
-      runner.Run(stream);
-    }
-
-    // x_square_sum -> x_square_sum_broadcast
-    Tensor x_square_sum_sqrt;
-    {
-      x_square_sum_sqrt.Resize(x->dims());
-      x_square_sum_sqrt.mutable_data<T>(place);
-
-      const auto &runner = NpuOpRunner("Sqrt", {x_square_sum_broadcast},
-                                       {x_square_sum_sqrt}, {});
-      runner.Run(stream);
-    }
-
-    // x * sum(x*dy)
-    // x * x_mul_dy_sum
-    Tensor tmp1;
-    {
-      tmp1.Resize(x->dims());
-      tmp1.mutable_data<T>(place);
-
-      const auto &runner = NpuOpRunner("Mul", {*x, x_mul_dy_sum}, {tmp1}, {});
-      runner.Run(stream);
-    }
-
-    // x * sum(x*dy) / (sum(x*x) + e)
-    // tmp1 / x_square_sum_plus_epsilon
-    Tensor tmp2;
-    {
-      tmp2.Resize(x->dims());
-      tmp2.mutable_data<T>(place);
-
-      const auto &runner =
-          NpuOpRunner("Div", {tmp1, x_square_sum_plus_epsilon}, {tmp2}, {});
-      runner.Run(stream);
-    }
-
-    // dy - x * sum(x*dy) / (sum(x*x) + e)
-    // dy - tmp2
-    Tensor tmp3;
-    {
-      tmp3.Resize(x->dims());
-      tmp3.mutable_data<T>(place);
-
-      const auto &runner = NpuOpRunner("Sub", {*dy, tmp2}, {tmp3}, {});
-      runner.Run(stream);
-    }
-
-    // at last, we get dx
-    // tmp3 / x_square_sum_sqrt
-    {
-      dx->mutable_data<T>(place);
-
-      const auto &runner =
-          NpuOpRunner("Div", {tmp3, x_square_sum_sqrt}, {*dx}, {});
-      runner.Run(stream);
-    }
+    runner.Run(stream);
   }
 };
 
