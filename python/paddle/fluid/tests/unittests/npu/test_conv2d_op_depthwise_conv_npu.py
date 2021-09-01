@@ -340,9 +340,6 @@ class TestDepthwiseConvNet(unittest.TestCase):
                       "label": label_np},
                 fetch_list=[prediction, loss])
 
-            #print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-            #        epoch, pred_res[0], loss_res))
-
         return pred_res, loss_res
 
     def test_npu(self):
