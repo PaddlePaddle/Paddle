@@ -201,13 +201,16 @@ void TestTunedDynamic() {
   // check tuned_dynamic_shape
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
+  std::string cache_dir = "tuned_cache";
+  config.SetOptimCacheDir(cache_dir);
+  delete_cache_files(cache_dir);
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.SwitchUseFeedFetchOps(false);
   config.EnableTunedTensorRtDynamicShape(shape_range, true);
   config.EnableTensorRtEngine(1 << 30, batch_size, 0,
                               AnalysisConfig::Precision::kFloat32, true, false);
-  auto predictor = CreatePaddlePredictor(config);
-  check_func(predictor.get());
+  auto test_predictor = CreatePaddlePredictor(config);
+  check_func(test_predictor.get());
 }
 
 TEST(AnalysisPredictor, trt_dynamic) { TestDynamic(true); }
