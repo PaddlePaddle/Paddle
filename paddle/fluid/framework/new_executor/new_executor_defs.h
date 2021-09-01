@@ -70,6 +70,11 @@ struct InstructionInfo {
   std::vector<size_t> dependecy_count_;
 };
 
+enum class OpFuncType {
+  kQueueAsync,  // GPU Kernel or d2h, h2d, send, recv, broadcast
+  kQueueSync,   // CPU kernel, block host
+};
+
 struct Instruction {
   OpKernelFunc kernel_func_;
   std::shared_ptr<RuntimeContext> runtime_ctx_;
@@ -85,11 +90,7 @@ struct Instruction {
   std::vector<EventInter> output_events_;
 
   platform::DeviceContext* dev_ctx_;  // not owned
-};
-
-enum class OpFuncType {
-  kQueueAsync,  // GPU Kernel or d2h, h2d, send, recv, broadcast
-  kQueueSync,   // CPU kernel, block host
+  OpFuncType type_;
 };
 
 struct OpFuncNode {

@@ -68,18 +68,29 @@ class InterpreterCore {
 
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
                const VariableScope& var_scope, const platform::Place& place,
-               std::vector<VariableMetaInfo>& working_var_ref);  // NOLINT
+               std::vector<std::unique_ptr<std::atomic<size_t>>>&
+                   working_var_ref);  // NOLINT
 
   platform::DeviceContext* ParseDeviceContextForInstruction(
       const OpFuncNode& op_func_node, const OperatorBase& op_base);
 
-  void RecordEventInstruction(const Instruction& instruction,
-                              const OpFuncNode& op_func_node);
+  void RecordEventInstruction(const Instruction& instruction);
 
   void WaitOrSync(const std::vector<EventInter>& events,
                   const platform::DeviceContext* dev_ctx);
 
   void StreamWaitEventOrSync(const Instruction& instruction);
+
+  std::vector<std::unique_ptr<std::atomic<size_t>>> PrepareAtomicDeps();
+  std::vector<std::unique_ptr<std::atomic<size_t>>> PrepareAtomicVarRef();
+  void RunInstructionAsync(size_t instr_id,
+                           std::vector<std::unique_ptr<std::atomic<size_t>>>&
+                               working_dependecy_count,
+                           std::vector<std::unique_ptr<std::atomic<size_t>>>&
+                               working_var_ref,  // NOLINT
+                           const VariableScope& var_scope,
+                           const platform::Place& place,
+                           std::atomic<size_t>* op_run_number);
 
   const platform::Place& place_;
   ProgramDesc main_program_;
@@ -107,6 +118,8 @@ class InterpreterCore {
   size_t max_memory_size_;
   size_t cur_memory_size_;
   std::unique_ptr<WorkQueue> gc_queue_;
+  std::unique_ptr<WorkQueue> aync_thread_pool_;
+  std::unique_ptr<WorkQueue> sync_thread_pool_;
 
   platform::DeviceContextPool fetch_context_pool_;
 };

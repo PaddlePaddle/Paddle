@@ -17,6 +17,7 @@
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_gc_helper.h"
+#include "paddle/fluid/framework/new_executor/run_queue.h"
 
 namespace paddle {
 namespace framework {
@@ -151,6 +152,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
   cur_memory_size_ = 0;
   gc_queue_ = CreateSingleThreadedWorkQueue();
+  aync_thread_pool_ = CreateSingleThreadedWorkQueue();
+  sync_thread_pool_ = CreateMultiThreadedWorkQueue(/*num_threads=*/4);
 
   feed_names_ = feed_names;
 
@@ -221,6 +224,7 @@ void InterpreterCore::Convert() {
     temp_inst.kernel_func_.operator_base_ = op_base;
     temp_inst.input_index_ = vec_func_list_[i].input_index;
     temp_inst.output_index_ = vec_func_list_[i].output_index;
+    temp_inst.type_ = vec_func_list_[i].type_;
 
     OpInOutInfo info;
 
@@ -362,66 +366,123 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
 
+std::vector<std::unique_ptr<std::atomic<size_t>>>
+InterpreterCore::PrepareAtomicDeps() {
+  std::vector<std::unique_ptr<std::atomic<size_t>>> working_dependecy_count(
+      dependecy_count_.size());
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    working_dependecy_count[i] =
+        std::make_unique<std::atomic<size_t>>(dependecy_count_[i]);
+  }
+  return std::move(working_dependecy_count);
+}
+
+std::vector<std::unique_ptr<std::atomic<size_t>>>
+InterpreterCore::PrepareAtomicVarRef() {
+  std::vector<std::unique_ptr<std::atomic<size_t>>> working_var_ref(
+      vec_meta_info_.size());
+  for (size_t i = 0; i < vec_meta_info_.size(); ++i) {
+    working_var_ref[i] =
+        std::make_unique<std::atomic<size_t>>(vec_meta_info_[i].var_ref_count_);
+    VLOG(3) << "var_id " << i << " ref: " << vec_meta_info_[i].var_ref_count_;
+  }
+  return std::move(working_var_ref);
+}
+
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr, const VariableScope& var_scope,
     const platform::Place& place) {
-  std::queue<size_t> working_queue;
-  auto working_dependecy_count = dependecy_count_;
+  auto working_dependecy_count = PrepareAtomicDeps();
+  auto working_var_ref = PrepareAtomicVarRef();
+  std::atomic<size_t> op_run_number{0};
+
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      working_queue.push(i);
-    }
-  }
-
-  auto working_var_ref = vec_meta_info_;
-
-  size_t run_op_number = 0;
-  while (!working_queue.empty()) {
-    auto instr_id = working_queue.front();
-    working_queue.pop();
-    auto& instr_node = vec_instr[instr_id];
-    // step1 : stream_wait (non-block host) or sync (block host)
-    StreamWaitEventOrSync(instr_node);
-    // step2: run instruction
-    RunInstruction(instr_node);
-    ++run_op_number;
-    // step3: insert event for out_vars if needed
-    RecordEventInstruction(instr_node, vec_func_list_[instr_id]);
-
-    // step4: update working_queue
-    auto& next_instr = instr_node.next_instruction_.all_next_ops_;
-
-    for (auto next_i : next_instr) {
-      --working_dependecy_count[next_i];
-      if (working_dependecy_count[next_i] == 0) {
-        working_queue.push(next_i);
+      VLOG(3) << i << " is ready";
+      if (vec_instr[i].type_ == OpFuncType::kQueueAsync) {
+        aync_thread_pool_->AddTask([&, i]() {
+          RunInstructionAsync(i, working_dependecy_count, working_var_ref,
+                              var_scope, place, &op_run_number);
+        });
+      } else {
+        sync_thread_pool_->AddTask([&, i]() {
+          RunInstructionAsync(i, working_dependecy_count, working_var_ref,
+                              var_scope, place, &op_run_number);
+        });
       }
     }
-
-    // GC infomation
-    CheckGC(instr_id, instr_node.gc_check_var_list, var_scope, place,
-            working_var_ref);
   }
-
+  aync_thread_pool_->WaitQueueEmpty();
+  sync_thread_pool_->WaitQueueEmpty();
   fetch_context_pool_.Get(place)->Wait();
 
+  while (op_run_number.load(std::memory_order_acquire) != vec_instr.size()) {
+    VLOG(3) << op_run_number.load(std::memory_order_acquire)
+            << " !=" << vec_instr.size();
+  }
+
   for (size_t i = 0; i < working_var_ref.size(); ++i) {
-    if (working_var_ref[i].var_ref_count_ != 0) {
-      std::cerr << " var ref is not zero " << i << std::endl;
+    if (working_var_ref[i]->load() != 0) {
+      std::cerr << " var ref is not zero " << i << " "
+                << working_var_ref[i]->load();
     }
   }
 }
 
-void InterpreterCore::CheckGC(size_t instr_id,
-                              const std::vector<size_t>& gc_check_list,
-                              const VariableScope& var_scope,
-                              const platform::Place& place,
-                              std::vector<VariableMetaInfo>& working_var_ref) {
+void InterpreterCore::RunInstructionAsync(
+    size_t instr_id,
+    std::vector<std::unique_ptr<std::atomic<size_t>>>& working_dependecy_count,
+    std::vector<std::unique_ptr<std::atomic<size_t>>>& working_var_ref,
+    const VariableScope& var_scope, const platform::Place& place,
+    std::atomic<size_t>* op_run_number) {
+  VLOG(3) << "start to run : " << instr_id;
+  auto& instr_node = vec_instruction_[instr_id];
+  // step1 : stream_wait (non-block host) or sync (block host)
+  StreamWaitEventOrSync(instr_node);
+  // step2: run instruction
+  RunInstruction(instr_node);
+  op_run_number->fetch_add(1, std::memory_order_acquire);
+  VLOG(3) << "end to run : " << instr_id << " "
+          << op_run_number->load(std::memory_order_acquire);
+  // step3: insert event for out_vars if needed
+  RecordEventInstruction(instr_node);
+
+  // step4: update working_queue
+  auto& next_instr = instr_node.next_instruction_.all_next_ops_;
+
+  for (auto next_i : next_instr) {
+    working_dependecy_count[next_i]->fetch_sub(1, std::memory_order_acquire);
+    if (working_dependecy_count[next_i]->load() == 0) {
+      VLOG(3) << next_i << " is ready in task";
+      if (vec_instruction_[next_i].type_ == OpFuncType::kQueueAsync) {
+        aync_thread_pool_->AddTask([&, next_i, op_run_number]() {
+          RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
+                              var_scope, place, op_run_number);
+        });
+      } else {
+        sync_thread_pool_->AddTask([&, next_i, op_run_number]() {
+          RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
+                              var_scope, place, op_run_number);
+        });
+      }
+    }
+  }
+  // GC infomation
+  CheckGC(instr_id, instr_node.gc_check_var_list, var_scope, place,
+          working_var_ref);
+}
+
+void InterpreterCore::CheckGC(
+    size_t instr_id, const std::vector<size_t>& gc_check_list,
+    const VariableScope& var_scope, const platform::Place& place,
+    std::vector<std::unique_ptr<std::atomic<size_t>>>& working_var_ref) {
   for (auto var_id : gc_check_list) {
-    --working_var_ref[var_id].var_ref_count_;
+    working_var_ref[var_id]->fetch_sub(1, std::memory_order_acquire);
+    VLOG(3) << "var_id " << var_id
+            << " ref_count: " << working_var_ref[var_id]->load();
     if (var_scope.vec_meta_info_[var_id].vardesc_ &&
         !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
-        working_var_ref[var_id].var_ref_count_ == 0) {
+        working_var_ref[var_id]->load() == 0) {
       Variable* var = var_scope.var_list[var_id];
       if (var->IsType<LoDTensor>()) {
         garbages_->emplace_back(
@@ -843,13 +904,12 @@ platform::DeviceContext* InterpreterCore::ParseDeviceContextForInstruction(
   return dev_ctx;
 }
 
-void InterpreterCore::RecordEventInstruction(const Instruction& instruction,
-                                             const OpFuncNode& op_func_node) {
+void InterpreterCore::RecordEventInstruction(const Instruction& instruction) {
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place_)) return;
 
   for (auto& event : instruction.output_events_) {
-    VLOG(3) << "Record event in out_var_id: " << event.var_id_;
+    // VLOG(3) << "Record event in out_var_id: " << event.var_id_;
     event.event_->Record(instruction.dev_ctx_);
   }
 }
