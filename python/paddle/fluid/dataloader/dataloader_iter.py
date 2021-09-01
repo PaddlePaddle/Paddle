@@ -43,7 +43,6 @@ from .flat import _flatten_batch, _restore_batch
 
 __all__ = ['get_worker_info']
 
-
 # NOTE: fix `terminate called without an active exception`
 # if for loop break and program exit immediately(with no model
 # layers processing) after iterate **the first few data** in
@@ -61,6 +60,7 @@ __all__ = ['get_worker_info']
 # instance and will cause memory leak
 _loader = None
 
+
 def _clear_loader():
     global _loader
     if _loader is not None:
@@ -70,7 +70,9 @@ def _clear_loader():
         except:
             pass
 
+
 CleanupFuncRegistrar.register(_clear_loader)
+
 
 class _DataLoaderIterBase(object):
     """
@@ -207,7 +209,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 # read data from dataset in mini-batch
                 # with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
                 # read data from dataset in mini-batch
-                batch = self._dataset_fetcher.fetch(indices, self._thread_done_event)
+                batch = self._dataset_fetcher.fetch(indices,
+                                                    self._thread_done_event)
             except StopIteration:
                 self._exit_thread_expectedly()
                 return

@@ -43,11 +43,11 @@ class TestDatasetAbstract(unittest.TestCase):
 class TestDatasetWithDiffOutputPlace(unittest.TestCase):
     def get_dataloader(self, num_workers):
         dataset = paddle.vision.datasets.MNIST(
-                mode='test', transform=transforms.Compose([
-                    transforms.CenterCrop(20),
-                    transforms.RandomResizedCrop(14),
-                    transforms.Normalize(),
-                    transforms.ToTensor()]))
+            mode='test',
+            transform=transforms.Compose([
+                transforms.CenterCrop(20), transforms.RandomResizedCrop(14),
+                transforms.Normalize(), transforms.ToTensor()
+            ]))
         loader = paddle.io.DataLoader(
             dataset, batch_size=32, num_workers=num_workers, shuffle=True)
         return loader
