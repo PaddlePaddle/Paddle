@@ -192,11 +192,13 @@ class TeacherStudentSigmoidLossOpMaker
     AddAttr<float>(
         "soft_max_up_bound",
         "fp32, if input > soft_max_up_bound, input will be bound, default 15.0")
-        .SetDefault(15.0);
+        .SetDefault(15.0)
+        .AsExtra();
     AddAttr<float>("soft_max_lower_bound",
                    "fp32, if input < soft_max_lower_bound, input will be "
                    "bound, default -15.0")
-        .SetDefault(-15.0);
+        .SetDefault(-15.0)
+        .AsExtra();
     AddComment(R"DOC(
 TeacherStudentSigmoidLoss Operator.
 
