@@ -496,8 +496,6 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
         output_width, input_width, input_height, ksize_width, ksize_height,
         stride_width, stride_height, pool_divmod, padding_height, padding_width,
         PoolingFunctor<T, PoolProcess>(), exclusive, adaptive, input_grad_data);
-    std::cout << std::endl;
-    std::cout << std::endl;
   }
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
@@ -554,8 +552,6 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
         stride_width, stride_height, pool_divmod, padding_height, padding_width,
         PoolingFunctor<T, PoolProcess>(), exclusive, adaptive, input_grad_data,
         channel_last);
-    std::cout << std::endl;
-    std::cout << std::endl;
   }
 };
 
