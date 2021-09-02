@@ -201,7 +201,7 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
         self.assertTrue((2, 3, 16) == fetch_out[0].shape)
 
 
-class TestStaticFlattenPythonAPI(unittest.TestCase):
+class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
