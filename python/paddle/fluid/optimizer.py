@@ -4938,9 +4938,14 @@ class PipelineOptimizer(object):
                                 self._op_role_key: op_role,
                             })
                         extra_index_info['index'] += 1
+                        prefix_name = name.split('@')[0]
+                        prefix_var = block.var(prefix_name)
+                        is_param = True if isinstance(prefix_var,
+                                                      Parameter) else False
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='send_v2' if not use_mp else 'partial_send',
+                            type='send_v2'
+                            if not use_mp or is_param else 'partial_send',
                             inputs={'X': var},
                             attrs={
                                 self._op_device_key: prev_dev,
@@ -4976,7 +4981,8 @@ class PipelineOptimizer(object):
                             extra_index_info['index'] += 1
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='recv_v2' if not use_mp else 'partial_recv',
+                            type='recv_v2'
+                            if not use_mp or is_param else 'partial_recv',
                             outputs={'Out': [var]},
                             attrs={
                                 'out_shape': var_shape,
@@ -4991,7 +4997,7 @@ class PipelineOptimizer(object):
                                 'id': self.mp_rank,
                             })
                         extra_index_info['index'] += 1
-                        if use_mp:
+                        if use_mp or not is_param:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
                                 type='partial_allgather',
