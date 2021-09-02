@@ -27,6 +27,29 @@ import socket
 from paddle.fluid import core
 from distutils.util import strtobool
 
+import numpy as np
+import os
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import Variable
+from paddle.fluid.framework import OpProtoHolder
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.fluid.framework import _varbase_creator
+from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.data_feeder import check_type
+from paddle.fluid.data_feeder import check_dtype
+from paddle.fluid.layers.tensor import fill_constant
+from paddle.fluid.layers import utils
+from paddle.fluid.dygraph import layers
+from paddle.fluid.dygraph.parallel import prepare_context
+import paddle
+from paddle.distributed.fleet import fleet
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle import _C_ops
+import paddle.fluid.dygraph_utils as dygraph_utils
+
 __all__ = [     #noqa
            'get_host_name_ip',
            'Trainer',
@@ -42,8 +65,111 @@ __all__ = [     #noqa
            'terminate_local_procs',
            'TrainerProc',
            'get_logger',
-           'pull_worker_log'
+           'pull_worker_log',
+           'global_gather'
 ]
+
+def global_gather(x, \
+                  local_count, \
+                  global_count, \
+                  group=None, \
+                  use_calc_stream=True):
+    """
+    Gather data in x to n_expert * world_size exeperts according to
+    local_count and receive tensors from n_expert * world_size experts according
+    to global_count.
+
+    Args:
+        x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
+            should be float16, float32, float64, int32 or int64.
+        local_count (Tensor): Tensor which have n_expert * world_size elements that indicates
+            how many data needed to be received. Every element in the list must be a Tensor whose 
+            data type should be int64.
+        global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
+            how many data needed to be sent. Every element in the list must be a Tensor whose 
+            data type should be int64.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
+    
+    Returns:
+        None.
+    
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import numpy as np
+            import paddle
+            from paddle.distributed import init_parallel_env
+            init_parallel_env()
+            n_expert = 2
+            world_size = 2
+            d_model = 2
+            in_feat = d_model
+            local_input_buf = np.array([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]],\
+                                        dtype=np.float32)
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                local_count = np.array([2, 1, 1, 1])
+                global_count = np.array([2, 1, 1, 1])
+            else:
+                local_count = np.array([1, 1, 2, 1])
+                global_count = np.array([1, 1, 2, 1])
+            input_buf = np.empty(shape=(np.sum(global_count), in_feat), dtype=np.float32)
+            local_input_buf = paddle.to_tensor(local_input_buf, dtype="float32", stop_gradient=False)
+            local_count = paddle.to_tensor(local_count, dtype="int64")
+            global_count = paddle.to_tensor(global_count, dtype="int64")
+            input_buf = paddle.to_tensor(input_buf, dtype="float32", stop_gradient=False)
+            in_feat = paddle.to_tensor(in_feat, dtype="int32")
+            n_expert = paddle.to_tensor(n_expert, dtype="int32")
+            world_size = paddle.to_tensor(world_size, dtype="int32")
+            a = paddle.distributed.utils.global_gather(local_input_buf, local_count, global_count)
+            print(a)
+            # out for rank 0: [[1, 2], [3, 4], [7, 8], [1, 2], [7, 8]]
+            # out for rank 1: [[5, 6], [9, 10], [3, 4], [5, 6], [9, 10]]
+            a.stop_gradient = False
+            c = a * a
+            c.backward()
+            print("local_input_buf.grad", local_input_buf.grad)
+            # out for rank 0: [[2, 4], [6, 8], [10, 12], [14, 16], [18, 20]]
+            # out for rank 1: [[2, 4], [6, 8], [10, 12], [14, 16], [18, 20]]
+    """
+    if group is not None and not group.is_member():
+        return
+
+    ring_id = 0 if group is None else group.id
+    if in_dygraph_mode():
+        return core.ops.global_gather(x, local_count, \
+                                    global_count, \
+                                    'use_calc_stream', use_calc_stream, \
+                                    'ring_id', ring_id)
+    else:
+        op_type = 'global_gather'
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'global_gather')
+
+        check_variable_and_dtype(local_count, 'local_count', ['int64'],
+                                 'global_gather')
+
+        check_variable_and_dtype(global_count, 'global_count', ['int64'],
+                                 'global_gather')
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={
+                'x': [x],
+                'local_count': [local_count],
+                'global_count': [global_count]
+            },
+            outputs={'Out': [out]},
+            attrs={
+                'ring_id': group,
+                'use_calc_stream': use_calc_stream,
+            })
+        return out
+
 
 logger = logging.getLogger("root")
 logger.propagate = False
