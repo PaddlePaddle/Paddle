@@ -474,7 +474,7 @@ class DataParallel(layers.Layer):
                     # 2. start by ``paddle.distributed.launch``
                     # train()
 
-    **Note**:
+    .. note::
         ``PyLayer`` is not supported in DataParallel. To solve problems of this kind, 
         it's recommended to skip gradient synchronization among multiple cards by 'no_sync', 
         and manually implement 'all_reduce' before model optimization. There is an example 
@@ -568,7 +568,7 @@ class DataParallel(layers.Layer):
 
                         opt.step()
                         opt.clear_grad()
-                        
+
     """
 
     def __init__(self,
