@@ -56,7 +56,7 @@ class VocabParallelEmbedding(Layer):
         self._weight_attr = weight_attr
         self._name = name
 
-        if self.is_mp:
+        if self.is_mp and paddle.in_dynamic_mode():
             with get_rng_state_tracker().rng_state():
                 self.weight = self.create_parameter(
                     attr=self._weight_attr,
@@ -121,7 +121,7 @@ class ColumnParallelLinear(Layer):
         self._weight_attr = weight_attr
         self._dtype = self._helper.get_default_dtype()
 
-        if self.is_mp:
+        if self.is_mp and paddle.in_dynamic_mode():
             with get_rng_state_tracker().rng_state():
                 self.weight = self.create_parameter(
                     shape=[in_features, self.output_size_per_partition],
@@ -198,7 +198,7 @@ class RowParallelLinear(Layer):
 
         self.input_size_per_partition = in_features // self.world_size
 
-        if self.is_mp:
+        if self.is_mp and paddle.in_dynamic_mode():
             with get_rng_state_tracker().rng_state():
                 self.weight = self.create_parameter(
                     shape=[self.input_size_per_partition, self.out_features],

@@ -30,6 +30,8 @@ DECLARE_string(tracer_mkldnn_ops_off);
 namespace paddle {
 namespace imperative {
 
+thread_local bool Tracer::has_grad_ = true;
+
 static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
@@ -120,6 +122,17 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
       gc.reset(new framework::CPUGarbageCollector(
           BOOST_GET_CONST(platform::CPUPlace, place), 0));
       VLOG(10) << "Created GarbageCollector at " << place;
+    } else if (platform::is_npu_place(place)) {
+#if defined(PADDLE_WITH_ASCEND_CL)
+      // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
+      gc.reset(new framework::NPUUnsafeFastGarbageCollector(
+          BOOST_GET_CONST(platform::NPUPlace, place), 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use NPU device since it's not compiled with NPU,"
+          "Please recompile or reinstall Paddle with NPU support."));
+#endif
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "Unsupported place for garbage collection"));
@@ -154,8 +167,13 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
-    attr_checker->Check(&attrs, true);
+    attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
   }
+
+  static paddle::framework::AttributeMap empty_attrs_map = {};
+  const paddle::framework::AttributeMap& default_attrs =
+      attr_checker == nullptr ? empty_attrs_map
+                              : attr_checker->GetDefaultAttrMap();
 
   NameVarBaseMap new_ins = ins;
   if (enable_autocast_) {
@@ -179,9 +197,17 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
+    } else if (platform::is_npu_place(place)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      platform::SetNPUDeviceId(
+          BOOST_GET_CONST(platform::NPUPlace, place).device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with NPU if use NPUPlace."));
+#endif
     }
 
-    OpBase::Run(*op, new_ins, outs, attrs, place);
+    OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
     throw std::move(exception);
@@ -204,7 +230,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, new_ins, outs, attrs, place, inplace_map);
+    CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
+                     inplace_map);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }

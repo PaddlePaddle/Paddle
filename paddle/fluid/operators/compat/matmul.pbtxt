@@ -24,6 +24,10 @@ def {
 }
 extra {
   attrs {
+    name: "head_number"
+    type: INT
+  }
+  attrs {
     name: "Scale_out"
     type: FLOAT
   }

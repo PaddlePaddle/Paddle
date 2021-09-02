@@ -59,6 +59,7 @@ def compute_accuracy(pred, gt):
                  'CPU testing is not supported')
 class TestDistTraning(unittest.TestCase):
     def test_static_multiple_gpus(self):
+        paddle.enable_static()
         device = set_device('gpu')
 
         im_shape = (-1, 1, 28, 28)

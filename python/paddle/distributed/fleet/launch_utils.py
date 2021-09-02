@@ -29,6 +29,7 @@ import struct
 
 import paddle
 import paddle.fluid as fluid
+from distutils.util import strtobool
 logger = logging.getLogger("root")
 logger.propagate = False
 
@@ -306,6 +307,17 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
 
 
 def terminate_local_procs(procs):
+    # try to terminate process by group, this happend in multiprocess senario in user process
+    if os.name != 'nt':
+        for p in procs:
+            if p.proc.poll() is None:
+                os.killpg(os.getpgid(p.proc.pid), signal.SIGTERM)
+                if p.log_fn:
+                    p.log_fn.close()
+                logger.info("terminate process group gid:{}".format(p.proc.pid))
+
+        time.sleep(1)
+
     for p in procs:
         if p.proc.poll() is None:
             p.proc.terminate()
@@ -349,7 +361,7 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
         add_argument("name", str, "Jonh", "User name.", parser)
         args = parser.parse_args()
     """
-    type = distutils.util.strtobool if type == bool else type
+    type = strtobool if type == bool else type
     argparser.add_argument(
         "--" + argname,
         default=default,
@@ -516,6 +528,7 @@ def start_local_trainers(cluster,
                 "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log, and detail running logs maybe found in {}/workerlog.0".
                 format(log_dir, log_dir))
         fn = None
+        pre_fn = None if os.name == 'nt' else os.setsid
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))
             if os.path.exists("%s/endpoints.log" % log_dir):
@@ -524,9 +537,10 @@ def start_local_trainers(cluster,
                 f.write("PADDLE_TRAINER_ENDPOINTS: \n")
                 f.write("\n".join(cluster.trainers_endpoints()))
             fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
-            proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
+            proc = subprocess.Popen(
+                cmd, env=current_env, stdout=fn, stderr=fn, preexec_fn=pre_fn)
         else:
-            proc = subprocess.Popen(cmd, env=current_env)
+            proc = subprocess.Popen(cmd, env=current_env, preexec_fn=pre_fn)
 
         tp = TrainerProc()
         tp.proc = proc
@@ -580,19 +594,19 @@ def watch_local_trainers(procs, nranks):
     except KeyboardInterrupt:
         logger.warning("KeyboardInterrupt, exit")
         terminate_local_procs(procs)
-        raise
+        return
     except SystemExit:
         logger.error(
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
             format(nranks, error_rank))
         terminate_local_procs(procs)
-        raise
+        return
     except:
         logger.error(
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
             format(nranks, error_rank))
         terminate_local_procs(procs)
-        raise
+        return
 
     return alive
 
@@ -685,7 +699,7 @@ def get_device_proc_info(args):
         gpus = get_gpus(args.gpus)
         if args.nproc_per_node is not None:
             assert (len(gpus) % int(args.nproc_per_node)) ==0, \
-                "gpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(gpus), arg.nproc_per_node)
+                "gpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(gpus), args.nproc_per_node)
 
             n = int(len(gpus) / int(args.nproc_per_node))
             devices_per_proc = [
@@ -699,7 +713,7 @@ def get_device_proc_info(args):
         xpus = get_xpus(args.xpus)
         if args.nproc_per_node is not None:
             assert (len(xpus) % int(args.nproc_per_node)) == 0, \
-                "xpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(xpus), arg.nproc_per_node)
+                "xpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(xpus), args.nproc_per_node)
 
             n = int(len(xpus) / int(args.nproc_per_node))
             devices_per_proc = [

@@ -337,3 +337,129 @@ TEST(Tensor, FP16) {
   // Tensor holds the wrong type, it holds N6paddle8platform7float16E at
   // [/paddle/Paddle/paddle/fluid/framework/tensor_impl.h:43]
 }
+
+TEST(Tensor, Split) {
+  {
+    framework::Tensor src_tensor;
+    src_tensor.mutable_data<int>(framework::make_ddim({6, 2}),
+                                 platform::CPUPlace());
+    std::vector<framework::Tensor> split_tensor_list = src_tensor.Split(2, 0);
+    ASSERT_EQ(split_tensor_list.size(), 3UL);
+    EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[1].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[2].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[0].dims()[1], 2);
+    EXPECT_EQ(split_tensor_list[1].dims()[1], 2);
+    EXPECT_EQ(split_tensor_list[2].dims()[1], 2);
+
+    uintptr_t src_data_address =
+        reinterpret_cast<uintptr_t>(src_tensor.data<int>());
+    uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
+        src_tensor.mutable_data<int>(src_tensor.dims(), platform::CPUPlace()));
+    EXPECT_EQ(src_data_address, src_mutable_data_address);
+    for (int i = 0; i < 3; ++i) {
+      uintptr_t split_data_address =
+          reinterpret_cast<uintptr_t>(split_tensor_list[i].data<int>());
+      uintptr_t split_mutable_data_address =
+          reinterpret_cast<uintptr_t>(split_tensor_list[i].mutable_data<int>(
+              split_tensor_list[i].dims(), platform::CPUPlace()));
+      EXPECT_EQ(split_data_address, split_mutable_data_address);
+      EXPECT_EQ(src_data_address + 2 * 2 * i * sizeof(int), split_data_address);
+    }
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  {
+    framework::Tensor src_tensor;
+    src_tensor.mutable_data<double>(framework::make_ddim({6, 4}),
+                                    platform::CUDAPlace(0));
+    std::vector<framework::Tensor> split_tensor_list = src_tensor.Split(2, 0);
+    ASSERT_EQ(split_tensor_list.size(), 3UL);
+    EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[1].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[2].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[0].dims()[1], 4);
+    EXPECT_EQ(split_tensor_list[1].dims()[1], 4);
+    EXPECT_EQ(split_tensor_list[2].dims()[1], 4);
+
+    uintptr_t src_data_address =
+        reinterpret_cast<uintptr_t>(src_tensor.data<double>());
+    uintptr_t src_mutable_data_address =
+        reinterpret_cast<uintptr_t>(src_tensor.mutable_data<double>(
+            src_tensor.dims(), platform::CUDAPlace(0)));
+    EXPECT_EQ(src_data_address, src_mutable_data_address);
+    for (int i = 0; i < 3; ++i) {
+      uintptr_t split_data_address =
+          reinterpret_cast<uintptr_t>(split_tensor_list[i].data<double>());
+      uintptr_t split_mutable_data_address =
+          reinterpret_cast<uintptr_t>(split_tensor_list[i].mutable_data<double>(
+              split_tensor_list[i].dims(), platform::CUDAPlace(0)));
+      EXPECT_EQ(split_data_address, split_mutable_data_address);
+      EXPECT_EQ(src_data_address + 2 * 4 * i * sizeof(double),
+                split_data_address);
+    }
+  }
+#endif
+}
+
+TEST(Tensor, Chunk) {
+  {
+    framework::Tensor src_tensor;
+    src_tensor.mutable_data<int>(framework::make_ddim({6, 2}),
+                                 platform::CPUPlace());
+    std::vector<framework::Tensor> split_tensor_list = src_tensor.Chunk(3, 0);
+    ASSERT_EQ(split_tensor_list.size(), 3UL);
+    EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[1].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[2].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[0].dims()[1], 2);
+    EXPECT_EQ(split_tensor_list[1].dims()[1], 2);
+    EXPECT_EQ(split_tensor_list[2].dims()[1], 2);
+
+    uintptr_t src_data_address =
+        reinterpret_cast<uintptr_t>(src_tensor.data<int>());
+    uintptr_t src_mutable_data_address = reinterpret_cast<uintptr_t>(
+        src_tensor.mutable_data<int>(src_tensor.dims(), platform::CPUPlace()));
+    for (int i = 0; i < 3; ++i) {
+      uintptr_t split_data_address =
+          reinterpret_cast<uintptr_t>(split_tensor_list[i].data<int>());
+      uintptr_t split_mutable_data_address =
+          reinterpret_cast<uintptr_t>(split_tensor_list[i].mutable_data<int>(
+              split_tensor_list[i].dims(), platform::CPUPlace()));
+      EXPECT_EQ(src_data_address, src_mutable_data_address);
+      EXPECT_EQ(split_data_address, split_mutable_data_address);
+      EXPECT_EQ(src_data_address + 2 * 2 * i * sizeof(int), split_data_address);
+    }
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  {
+    framework::Tensor src_tensor;
+    src_tensor.mutable_data<double>(framework::make_ddim({6, 4}),
+                                    platform::CUDAPlace(0));
+    std::vector<framework::Tensor> split_tensor_list = src_tensor.Chunk(3, 0);
+    ASSERT_EQ(split_tensor_list.size(), 3UL);
+    EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[1].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[2].dims()[0], 2);
+    EXPECT_EQ(split_tensor_list[0].dims()[1], 4);
+    EXPECT_EQ(split_tensor_list[1].dims()[1], 4);
+    EXPECT_EQ(split_tensor_list[2].dims()[1], 4);
+
+    uintptr_t src_data_address =
+        reinterpret_cast<uintptr_t>(src_tensor.data<double>());
+    uintptr_t src_mutable_data_address =
+        reinterpret_cast<uintptr_t>(src_tensor.mutable_data<double>(
+            src_tensor.dims(), platform::CUDAPlace(0)));
+    EXPECT_EQ(src_data_address, src_mutable_data_address);
+    for (int i = 0; i < 3; ++i) {
+      uintptr_t split_data_address =
+          reinterpret_cast<uintptr_t>(split_tensor_list[i].data<double>());
+      uintptr_t split_mutable_data_address =
+          reinterpret_cast<uintptr_t>(split_tensor_list[i].mutable_data<double>(
+              split_tensor_list[i].dims(), platform::CUDAPlace(0)));
+      EXPECT_EQ(split_data_address, split_mutable_data_address);
+      EXPECT_EQ(src_data_address + 2 * 4 * i * sizeof(double),
+                split_data_address);
+    }
+  }
+#endif
+}

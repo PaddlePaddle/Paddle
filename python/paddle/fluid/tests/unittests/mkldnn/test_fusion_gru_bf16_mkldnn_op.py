@@ -99,13 +99,14 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
         if self.with_bias:
             self.inputs['Bias'] = bias
 
+        h0_bf16 = convert_float_to_uint16(h0_fp32)
+
         if self.with_h0:
             if self.weights_dtype == 'bf16':
                 self.inputs['H0'] = h0_bf16
             elif self.weights_dtype == 'fp32':
                 self.inputs['H0'] = h0_fp32
 
-        h0_bf16 = convert_float_to_uint16(h0_fp32)
         self.outputs = {'Hidden': (hidden, self.lod)}
 
         self.attrs = {

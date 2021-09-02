@@ -44,6 +44,7 @@ from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
+from .linalg import matrix_power  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -54,6 +55,10 @@ from .logic import logical_and  # noqa: F401
 from .logic import logical_not  # noqa: F401
 from .logic import logical_or  # noqa: F401
 from .logic import logical_xor  # noqa: F401
+from .logic import bitwise_and  # noqa: F401
+from .logic import bitwise_or  # noqa: F401
+from .logic import bitwise_xor  # noqa: F401
+from .logic import bitwise_not  # noqa: F401
 from .logic import not_equal  # noqa: F401
 from .logic import allclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
@@ -62,6 +67,7 @@ from .manipulation import cast  # noqa: F401
 from .manipulation import concat  # noqa: F401
 from .manipulation import expand  # noqa: F401
 from .manipulation import broadcast_to  # noqa: F401
+from .manipulation import broadcast_tensors  # noqa: F401
 from .manipulation import expand_as  # noqa: F401
 from .manipulation import tile  # noqa: F401
 from .manipulation import flatten  # noqa: F401
@@ -83,6 +89,7 @@ from .manipulation import squeeze_  # noqa: F401
 from .manipulation import stack  # noqa: F401
 from .manipulation import strided_slice  # noqa: F401
 from .manipulation import unique  # noqa: F401
+from .manipulation import unique_consecutive  # noqa: F401
 from .manipulation import unsqueeze  # noqa: F401
 from .manipulation import unsqueeze_  # noqa: F401
 from .manipulation import unstack  # noqa: F401
@@ -143,6 +150,7 @@ from .math import add  # noqa: F401
 from .math import add_  # noqa: F401
 from .math import subtract  # noqa: F401
 from .math import subtract_  # noqa: F401
+from .math import atan2  # noqa: F401
 from .math import logsumexp  # noqa: F401
 from .math import inverse  # noqa: F401
 from .math import log2  # noqa: F401
@@ -162,14 +170,17 @@ from .math import all  # noqa: F401
 from .math import any  # noqa: F401
 from .math import broadcast_shape  # noqa: F401
 from .math import conj  # noqa: F401
+from .math import trunc  # noqa: F401
 from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
+from .math import diagonal  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
 from .random import normal  # noqa: F401
 from .random import uniform  # noqa: F401
+from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
 from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
@@ -196,6 +207,8 @@ from .array import array_read  # noqa: F401
 from .array import array_write  # noqa: F401
 from .array import create_array  # noqa: F401
 
+from .einsum import einsum  # noqa: F401
+
 #this list used in math_op_patch.py for _binary_creator_
 tensor_method_func  = [ #noqa
            'matmul',
@@ -209,6 +222,7 @@ tensor_method_func  = [ #noqa
            'bmm',
            'histogram',
            'mv',
+           'matrix_power',
            'abs',
            'acos',
            'all',
@@ -323,6 +337,7 @@ tensor_method_func  = [ #noqa
            'strided_slice',
            'transpose',
            'unique',
+           'unique_consecutive',
            'unsqueeze',
            'unsqueeze_',
            'unstack',
@@ -349,5 +364,21 @@ tensor_method_func  = [ #noqa
            'shape',
            'real',
            'imag',
-           'digamma'
+           'digamma',
+           'diagonal'
+           'trunc'
+           'bitwise_and',
+           'bitwise_or',
+           'bitwise_xor',
+           'bitwise_not',
+           'broadcast_tensors',
+           'uniform_',
+]
+
+#this list used in math_op_patch.py for magic_method bind
+magic_method_func = [
+    ('__and__', 'bitwise_and'),
+    ('__or__', 'bitwise_or'),
+    ('__xor__', 'bitwise_xor'),
+    ('__invert__', 'bitwise_not'),
 ]

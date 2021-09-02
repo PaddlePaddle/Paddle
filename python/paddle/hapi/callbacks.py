@@ -126,7 +126,8 @@ class CallbackList(object):
 
 class Callback(object):
     """
-    Base class used to build new callbacks.
+    Base class used to build new callbacks. And new callbacks could also
+    terminate training by setting `model.stop_training=True`.
 
     Examples:
 
@@ -685,7 +686,8 @@ class LRScheduler(Callback):
 
 
 class EarlyStopping(Callback):
-    """Stop training when the given monitor stopped improving during evaluation.
+    """Stop training when the given monitor stopped improving during evaluation
+    by setting `model.stop_training=True`.
     Args:
         monitor(str): Quantity to be monitored. Default: 'loss'.
         mode(str|None): Mode should be one of 'auto', 'min' or 'max'. In 'min'

@@ -31,7 +31,13 @@ class AttrCompat {
   AttrCompat(const std::string& attr_name, OpCompat* op_compat)
       : optional_(false), attr_name_(attr_name), op_compat_(op_compat) {}
 
+  //! Assert the attribute type is `T`.
+  template <typename T>
+  AttrCompat& IsType();
+
   // @{ String-related methods
+  //! Assert the attribute is an string in the `candidates` domain.
+  AttrCompat& IsStringEQ(const std::string& value);
   //! Assert the attribute is an string in the `candidates` domain.
   AttrCompat& IsStringIn(const std::set<std::string>& candidates);
   //! Assert the attribute is a string and match a custom judging function.
@@ -132,7 +138,7 @@ class OpCompat {
   InputOrOutputCompat& AddOutput(const std::string& name);
 
   //! Judge whether an OpDesc match the defined Op compatibility.
-  bool Judge(const OpDesc& op_desc);
+  bool Judge(const OpDesc& op_desc, const std::string& pass_name);
   const std::string& Name() const { return op_name_; }
 
  private:
@@ -140,7 +146,7 @@ class OpCompat {
   std::unordered_map<std::string, AttrCompat> attr_compats_;
   std::unordered_map<std::string, InputOrOutputCompat> input_compats_;
   std::unordered_map<std::string, InputOrOutputCompat> output_compats_;
-  std::unordered_set<std::string> extra_attrs_;
+  std::unordered_set<std::string> attrs_set_;
   bool is_first_judge_ = true;
 };
 
@@ -200,12 +206,19 @@ class OpCompatSensiblePass : public Pass {
   //! Tell the op compatibility of a single Op.
   bool IsCompat(const OpDesc& op_desc) const {
     if (!op_compat_judgers_.count(op_desc.Type())) return false;
-    return op_compat_judgers_.at(op_desc.Type())->Judge(op_desc);
+    return op_compat_judgers_.at(op_desc.Type())->Judge(op_desc, Type());
   }
 
  private:
   std::map<std::string, std::unique_ptr<OpCompat>> op_compat_judgers_;
 };
+
+template <typename T>
+AttrCompat& AttrCompat::IsType() {
+  conditions_.emplace_back(
+      [](const Attribute& attr) -> bool { return attr.type() == typeid(T); });
+  return *this;
+}
 
 template <typename T>
 AttrCompat& AttrCompat::IsNumGT(T v) {

@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
 #endif
 
 namespace paddle {
@@ -30,6 +30,7 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
                                                   platform::CPUPlace,
                                                   const void* src, size_t num) {
   if (UNLIKELY(num == 0)) return;
+  VLOG(4) << "src: " << src << ", dst: " << dst << ", num: " << num;
   std::memcpy(dst, src, num);
 }
 

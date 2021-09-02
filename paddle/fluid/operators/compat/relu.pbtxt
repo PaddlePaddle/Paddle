@@ -9,35 +9,19 @@ def {
 }
 extra {
   attrs {
-    name: "use_mkldnn"
-    type: BOOLEAN
+    name: "X0_threshold"
+    type: FLOAT
   }
   attrs {
-    name: "use_cudnn"
-    type: BOOLEAN
+    name: "X0_threshold"
+    type: FLOAT
   }
   attrs {
-    name: "op_role"
-    type: INT
+    name: "out_threshold"
+    type: FLOAT
   }
   attrs {
-    name: "op_role_var"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_namescope"
-    type: STRING
-  }
-  attrs {
-    name: "op_callstack"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_device"
-    type: STRING
-  }
-  attrs {
-    name: "is_test"
-    type: BOOLEAN
+    name: "Out0_threshold"
+    type: FLOAT
   }
 }

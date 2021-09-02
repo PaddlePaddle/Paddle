@@ -187,6 +187,22 @@ class Tensor {
    */
   Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
 
+  /**
+   * @brief  Return a tensor list of the given tensor.
+   *
+   * @param[in] split_size  The size of tensor to be split along axis.
+   * @param[in] axis        The axis along which to split.
+   */
+  std::vector<Tensor> Split(int64_t split_size, int64_t axis) const;
+
+  /**
+   * @brief  Return a tensor list of the given tensor.
+   *
+   * @param[in] chunks   The number of tensor to be split along axis.
+   * @param[in] axis     The axis along which to split.
+   */
+  std::vector<Tensor> Chunk(int64_t chunks, int64_t axis) const;
+
   const platform::Place& place() const {
     PADDLE_ENFORCE_NOT_NULL(
         holder_,

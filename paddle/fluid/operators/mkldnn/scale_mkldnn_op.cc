@@ -29,32 +29,20 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
-    auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
 
-    float scale = (scale_tensor == nullptr) ? ctx.Attr<float>("scale")
-                                            : (float)*(scale_tensor->data<T>());
-    float bias = ctx.Attr<float>("bias");
-
-    // if bias_after_scale == true
-    //   out = scale*X + bias
-    // else
-    //   out = scale*(X + bias) = scale*X + scale*bias
-
-    if (!bias_after_scale) bias *= scale;
-
-    auto x_tz = framework::vectorize<int64_t>(x->dims());
     bool is_inplaced = x->IsSharedBufferWith(*out);
 
     platform::ActivationMKLDNNHandler<T> handler(
-        x_tz, mkldnn::algorithm::eltwise_linear, scale, bias, x->format(),
-        dev_ctx, ctx.GetPlace(), ctx.InputName("X"), is_inplaced);
+        mkldnn::algorithm::eltwise_linear, ctx, mkldnn_engine, ctx.GetPlace(),
+        x);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
-    auto dst_memory_p = handler.AcquireDstMemory(out);
+    auto dst_memory_p =
+        is_inplaced ? src_memory_p : handler.AcquireDstMemory(out);
     auto activation_p = handler.AcquireForwardPrimitive();
 
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();

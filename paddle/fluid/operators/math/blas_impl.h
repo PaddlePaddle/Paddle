@@ -55,6 +55,15 @@ struct CBlas<int8_t> {
 };
 
 template <>
+struct CBlas<int16_t> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Blas VCOPY do not supported on CPU, please check your code"));
+  }
+};
+
+template <>
 struct CBlas<platform::bfloat16> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
@@ -1032,6 +1041,12 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
     T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
     int64_t strideA, int64_t strideB) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      A, platform::errors::InvalidArgument("Pointer A should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      B, platform::errors::InvalidArgument("Pointer B should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      C, platform::errors::InvalidArgument("Pointer C should not be null."));
 #ifdef PADDLE_WITH_MKLML
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;

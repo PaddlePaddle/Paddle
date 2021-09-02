@@ -19,17 +19,11 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-
-SlicePlugin *CreateSlicePluginDeserialize(const void *buffer, size_t length) {
-  return new SlicePlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("slice_plugin", CreateSlicePluginDeserialize);
 
 template <typename T>
 __global__ void SliceKernel(int num, int dims, const T *input,
@@ -81,25 +75,24 @@ SlicePlugin::~SlicePlugin() {
   cudaFree(offset_temp_data_);
 }
 
-SlicePlugin *SlicePlugin::clone() const {
+SlicePlugin *SlicePlugin::clone() const TRT_NOEXCEPT {
   return new SlicePlugin(starts_, ends_, axes_, with_fp16_);
 }
 
-bool SlicePlugin::supportsFormat(nvinfer1::DataType type,
-                                 nvinfer1::PluginFormat format) const {
+bool SlicePlugin::supportsFormat(
+    nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
   if (with_fp16_) {
     return ((type == nvinfer1::DataType::kFLOAT ||
              type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   } else {
     return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   }
 }
 
-nvinfer1::Dims SlicePlugin::getOutputDimensions(int index,
-                                                const nvinfer1::Dims *inputs,
-                                                int nb_input_dims) {
+nvinfer1::Dims SlicePlugin::getOutputDimensions(
+    int index, const nvinfer1::Dims *inputs, int nb_input_dims) TRT_NOEXCEPT {
   auto in_dims = inputs[0];
   nvinfer1::Dims out_dims = in_dims;
   for (size_t i = 0; i < axes_.size(); i++) {
@@ -111,7 +104,12 @@ nvinfer1::Dims SlicePlugin::getOutputDimensions(int index,
 }
 
 int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
+#if IS_TRT_VERSION_LT(8000)
                          void **outputs, void *workspace, cudaStream_t stream) {
+#else
+                         void *const *outputs, void *workspace,
+                         cudaStream_t stream) TRT_NOEXCEPT {
+#endif
   auto input_dims = getInputDims(0);
 
   // notice input dims is [C, H, W], add input batch dim here
@@ -188,13 +186,13 @@ int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
   return cudaGetLastError() != cudaSuccess;
 }
 
-size_t SlicePlugin::getSerializationSize() {
+size_t SlicePlugin::getSerializationSize() const TRT_NOEXCEPT {
   return getBaseSerializationSize() + SerializedSize(getPluginType()) +
          SerializedSize(starts_) + SerializedSize(ends_) +
          SerializedSize(axes_);
 }
 
-void SlicePlugin::serialize(void *buffer) {
+void SlicePlugin::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, getPluginType());
   serializeBase(buffer);
   SerializeValue(&buffer, starts_);
@@ -223,23 +221,23 @@ SlicePluginDynamic::SlicePluginDynamic(void const *serialData,
   cudaStreamCreate(&copy_stream_);
 }
 
-void SlicePluginDynamic::destroy() {
+void SlicePluginDynamic::destroy() TRT_NOEXCEPT {
   cudaStreamDestroy(copy_stream_);
   cudaEventDestroy(copy_event_);
   cudaFree(offset_temp_data_);
   delete this;
 }
 
-int SlicePluginDynamic::initialize() { return 0; }
+int SlicePluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
-size_t SlicePluginDynamic::getSerializationSize() const {
+size_t SlicePluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   size_t size = SerializedSize(starts_) + SerializedSize(ends_) +
                 SerializedSize(axes_) + SerializedSize(with_fp16_);
 
   return size;
 }
 
-void SlicePluginDynamic::serialize(void *buffer) const {
+void SlicePluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, starts_);
   SerializeValue(&buffer, ends_);
   SerializeValue(&buffer, axes_);
@@ -248,7 +246,7 @@ void SlicePluginDynamic::serialize(void *buffer) const {
 
 nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   auto in_dims = inputs[0];
   nvinfer1::DimsExprs ret = in_dims;
   // start, ends should greater 0
@@ -262,7 +260,7 @@ nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
 
 bool SlicePluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
@@ -290,7 +288,8 @@ bool SlicePluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType SlicePluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
                                   "The Slice Plugin only has one input, so the "
                                   "index value should be 0, but get %d.",
@@ -305,7 +304,8 @@ nvinfer1::DataType SlicePluginDynamic::getOutputDataType(
 int SlicePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
                                 const nvinfer1::PluginTensorDesc *output_desc,
                                 const void *const *inputs, void *const *outputs,
-                                void *workspace, cudaStream_t stream) {
+                                void *workspace,
+                                cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   auto out_dims = output_desc[0].dims;
   auto num_dims = input_dims.nbDims;

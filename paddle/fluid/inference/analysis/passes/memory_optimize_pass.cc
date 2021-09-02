@@ -123,12 +123,27 @@ void MemoryOptimizePass::CollectVarMemorySize(
     }
     return true;
   };
+
+  // MemoryOptimizePass surppose input model is directed acyclic graph
+  // although it's not always the case. so black list is the best compromise
+  // between performance and underlying principle.
+  std::unordered_set<std::string> black_list;
+  for (auto* node : graph_->Nodes()) {
+    if (node->IsVar() &&
+        node->Var()->GetType() ==
+            framework::proto::VarType::Type::VarType_Type_LOD_TENSOR) {
+      if (!valid_var(node)) {
+        black_list.emplace(node->Var()->Name());
+      }
+    }
+  }
+
   // Collect tensors from graph.
   for (auto* node : graph_->Nodes()) {
     if (node->IsVar() &&
         node->Var()->GetType() ==
             framework::proto::VarType::Type::VarType_Type_LOD_TENSOR &&
-        valid_var(node)) {
+        !black_list.count(node->Var()->Name())) {
       // Parameters will not be reused.
       if (node->Var()->Persistable()) continue;
       auto shape = node->Var()->GetShape();

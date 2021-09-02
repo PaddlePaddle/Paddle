@@ -22,9 +22,13 @@ limitations under the License. */
 #elif defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/npu_info.h"
 #endif
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/npu_info.h"
+#endif
 
 namespace paddle {
 namespace platform {
-size_t Alignment(size_t size, const platform::Place &place);
+size_t Alignment(size_t size, const platform::Place &place,
+                 int align_size = -1);
 }  // namespace platform
 }  // namespace paddle

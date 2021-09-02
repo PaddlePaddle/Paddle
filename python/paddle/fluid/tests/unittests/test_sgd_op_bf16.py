@@ -20,8 +20,10 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
-    OpTest, convert_float_to_uint16, convert_uint16_to_float)
+    convert_float_to_uint16, convert_uint16_to_float, OpTest, OpTestTool)
 import paddle
+import paddle.static.amp as amp
+import struct
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
@@ -158,6 +160,13 @@ class TestSparseGradSGDOpBF16Case2(TestSparseGradSGDOpBF16):
         self.grad_row_numel = 16
 
 
+class TestSparseGradSGDOpBF16Case3(TestSparseGradSGDOpBF16):
+    def setup_params(self):
+        self.grad_height = 10
+        self.grad_rows = [0, 4, 7]
+        self.grad_row_numel = 120
+
+
 @unittest.skipIf(not core.supports_bfloat16(),
                  'place does not support BF16 evaluation')
 class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
@@ -194,14 +203,158 @@ class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
         self.check_output(output, reference, atol=5e-3, rtol=1e-1)
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 'place does not support BF16 evaluation')
 class TestSparseGradParamSGDOpBF16Case2(TestSparseGradParamSGDOpBF16):
     def setup_params(self):
         self.grad_height = 14
         self.grad_rows = [1, 4, 12, 7, 8]
         self.grad_row_numel = 16
         self.param_rows = [a for a in range(self.grad_height)]
+
+
+@OpTestTool.skip_if_not_cpu_bf16()
+class TestSGDOpBF16API(unittest.TestCase):
+    def setUp(self):
+        self.sample_count = 20
+        self.value = np.random.random()
+
+        self.ids_shape = (32, 1)
+        self.w_shape = (64, 16)
+        self.y_shape = (32, 16)
+        self.learning_rate = 0.1
+
+        np.random.seed(12345)
+        self._set_initializer()
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+
+    def _fp322bf16(self, val: np.float32):
+        return np.uint16(struct.unpack('<I', struct.pack('<f', val))[0] >> 16)
+
+    def _bf162fp32(self, val: np.uint16):
+        return np.float32(struct.unpack('<f', struct.pack('<I', val << 16))[0])
+
+    def _add_bf16(self, lhs: np.uint16, rhs: np.uint16):
+        return self._fp322bf16(self._bf162fp32(lhs) + self._bf162fp32(rhs))
+
+    def _sub_bf16(self, lhs: np.uint16, rhs: np.uint16):
+        return self._fp322bf16(self._bf162fp32(lhs) - self._bf162fp32(rhs))
+
+    def _mul_bf16(self, lhs: np.uint16, rhs: np.uint16):
+        return self._fp322bf16(self._bf162fp32(lhs) * self._bf162fp32(rhs))
+
+    def _reference(self, data, emb_weight, bf16=False):
+        emb_out_shape = np.array(
+            [self.ids_shape[0], self.w_shape[1]], dtype=np.int64)
+        mean_grad_value = np.float32(1.0) / np.prod(
+            emb_out_shape, dtype=np.float32)
+        if bf16:
+            mean_grad = np.full(
+                emb_out_shape,
+                self._fp322bf16(mean_grad_value),
+                dtype=np.uint16)
+        else:
+            mean_grad = np.full(
+                emb_out_shape, mean_grad_value, dtype=np.float32)
+        # add_grad = 1 * mean_grad
+        out_dtype = np.uint16 if bf16 else np.float32
+        lookup_table_grad = np.zeros(self.w_shape, dtype=out_dtype)
+
+        # indexes may dupplicate
+        if bf16:
+            for i, idx in enumerate(data):
+                idxv = idx[0]
+                for j in range(self.w_shape[1]):
+                    lookup_table_grad[idxv, j] = self._add_bf16(
+                        lookup_table_grad[idxv, j], mean_grad[i, j])
+
+            ref_grad = np.ndarray(shape=emb_weight.shape, dtype=np.uint16)
+            lr_bf16 = self._fp322bf16(self.learning_rate)
+
+            for i, row in enumerate(emb_weight):
+                for j, val in enumerate(row):
+                    ref_grad[i, j] = self._sub_bf16(
+                        val, self._mul_bf16(lr_bf16, lookup_table_grad[i, j]))
+        else:
+            for i, idx in enumerate(data):
+                lookup_table_grad[idx, :] += mean_grad[i]
+            ref_grad = emb_weight - self.learning_rate * lookup_table_grad
+        return ref_grad
+
+    def _check_output(self, actual, reference, bf16=False, atol=0,
+                      rtol=0.15e-2):
+        output = actual if bf16 else convert_uint16_to_float(actual)
+        if bf16:
+            np.testing.assert_allclose(output, reference, atol=atol, rtol=rtol)
+        else:
+            try:
+                print('Compare with FP32 values:')
+                np.testing.assert_allclose(
+                    output, reference, atol=atol, rtol=rtol)
+            except AssertionError as e:
+                print(e)
+
+    def _set_initializer(self):
+        self.initializer = fluid.initializer.Constant(value=self.value)
+
+    def _data_reader(self):
+        for sample in range(self.sample_count):
+            label = -1 * np.random.random(self.y_shape).astype('float32')
+            data = np.random.randint(0, 9, self.ids_shape).astype("int64")
+            yield data, label
+
+    def test_sgd(self):
+        place = fluid.CPUPlace()
+        main = fluid.Program()
+        with fluid.program_guard(main):
+            x = fluid.layers.data(name='X', shape=self.ids_shape, dtype='int64')
+            label = fluid.layers.data(
+                name='Y', shape=self.y_shape, dtype='uint16')
+            emb = fluid.layers.embedding(
+                input=x,
+                size=self.w_shape,
+                param_attr=fluid.ParamAttr(
+                    name="emb_weight", initializer=self.initializer),
+                is_sparse=False,
+                dtype="uint16")  # bfloat16
+            cost = fluid.layers.elementwise_add(emb, label)
+            avg_cost = paddle.mean(cost)
+
+            sgd_optimizer = paddle.optimizer.SGD(
+                learning_rate=self.learning_rate)
+            sgd_optimizer = amp.bf16.decorate_bf16(
+                sgd_optimizer,
+                amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
+                    custom_bf16_list={'lookup_table', }),
+                use_bf16_guard=False,
+                use_pure_bf16=True)
+            sgd_optimizer.minimize(
+                avg_cost, startup_program=fluid.default_startup_program())
+
+            train_reader = paddle.batch(self._data_reader, batch_size=1)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            test_prog = main.clone(for_test=True)
+            sgd_optimizer.amp_init(
+                place, test_program=test_prog, use_bf16_test=True)
+
+            ref_emb = np.full(self.w_shape, self.value, dtype=np.float32)
+            ref_emb_bf16 = np.full(
+                self.w_shape, self._fp322bf16(self.value), dtype=np.uint16)
+            emb_weight = []
+
+            for sample in train_reader():
+                data = sample[0][0]
+                label = sample[0][1]
+                y_bf16 = convert_float_to_uint16(label)
+                emb_weight = exe.run(main,
+                                     feed={'X': data,
+                                           'Y': y_bf16},
+                                     fetch_list=['emb_weight'])
+
+                ref_emb = self._reference(data, ref_emb)
+                ref_emb_bf16 = self._reference(data, ref_emb_bf16, True)
+
+            self._check_output(emb_weight[0], ref_emb_bf16, bf16=True)
+            self._check_output(emb_weight[0], ref_emb)
 
 
 if __name__ == '__main__':

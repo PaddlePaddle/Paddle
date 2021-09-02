@@ -15,12 +15,11 @@
 from __future__ import print_function
 
 import collections
-import gast
+from paddle.utils import gast
 import inspect
 import six
 import textwrap
 import threading
-import warnings
 import weakref
 
 from paddle.fluid import framework
@@ -146,14 +145,13 @@ class CacheKey(object):
     """
     Cached key for ProgramCache.
     """
-
     __slots__ = [
         'function_spec', 'input_args_with_spec', 'input_kwargs_with_spec',
-        'class_instance'
+        'class_instance', 'kwargs'
     ]
 
     def __init__(self, function_spec, input_args_with_spec,
-                 input_kwargs_with_spec, class_instance):
+                 input_kwargs_with_spec, class_instance, **kwargs):
         """
         Initializes a cache key.
 
@@ -162,11 +160,14 @@ class CacheKey(object):
             input_args_with_spec(list[InputSpec]): actual input args with some arguments replaced by InputSpec.
             input_kwargs_with_spec(list[{string:InputSpec}]): actual input kwargs with some arguments replaced by InputSpec.
             class_instance(object): a instance of class `Layer`.
+            **kwargs(dict): manage other arguments used for better scalability
         """
         self.function_spec = function_spec
         self.input_args_with_spec = input_args_with_spec
         self.input_kwargs_with_spec = input_kwargs_with_spec
         self.class_instance = class_instance
+        # NOTE: `kwargs` is usually not considered as basic member for `__hash__`
+        self.kwargs = kwargs
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
@@ -236,13 +237,14 @@ class StaticFunction(object):
 
     """
 
-    def __init__(self, function, input_spec=None):
+    def __init__(self, function, input_spec=None, **kwargs):
         """
         Initializes a `StaticFunction`.
 
         Args:
             function(callable): A function or method that will be converted into static program.
             input_spec(list[InputSpec]): list of InputSpec to specify the `shape/dtype/name` information for each input argument, default None.
+            **kwargs(dict): other arguments like `build_strategy` et.al.
         """
         # save the instance `self` while decorating a method of class.
         if inspect.ismethod(function):
@@ -258,6 +260,7 @@ class StaticFunction(object):
         self._descriptor_cache = weakref.WeakKeyDictionary()
         # Note: Hold a reference to ProgramTranslator for switching `enable_to_static`.
         self._program_trans = ProgramTranslator()
+        self._kwargs = kwargs
 
     def __get__(self, instance, owner):
         """
@@ -314,7 +317,7 @@ class StaticFunction(object):
             # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
             # will show up **only once**. StaticFunction.__call__ will run many times, it is appropriate to
             # display this warning message only once.
-            warnings.warn(
+            logging_utils.warn(
                 "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. If you would like to get static graph output, please call API "
                 "ProgramTranslator.enable(True)")
@@ -396,7 +399,8 @@ class StaticFunction(object):
 
         # 2. generate cache key
         cache_key = CacheKey(self._function_spec, input_args_with_spec,
-                             input_kwargs_with_spec, self._class_instance)
+                             input_kwargs_with_spec, self._class_instance,
+                             **self._kwargs)
 
         # 3. check whether hit the cache or build a new program for the input arguments
         concrete_program, partial_program_layer = self._program_cache[cache_key]
@@ -481,6 +485,10 @@ class StaticFunction(object):
                 # NOTE(chenweihang): we should always translated program based on the `input_spec`
                 # decorated on forward if it is valid
                 desired_input_spec = self._function_spec.input_spec
+                if input_spec is not None:
+                    logging_utils.warn(
+                        "\n\nYou have specified `input_spec` both in function definition (higher priority) and `paddle.jit.save` (will be ignored.)\n\n\t Using: {}\n\n\t Ignore: {}\n".
+                        format(desired_input_spec, input_spec))
 
             has_input_spec = (desired_input_spec is not None)
             if has_input_spec:
@@ -583,7 +591,7 @@ class ConcreteProgram(object):
 
     __slots__ = [
         'inputs', 'outputs', 'main_program', "startup_program", "parameters",
-        "function"
+        "function", 'kwargs'
     ]
 
     def __init__(self,
@@ -592,18 +600,20 @@ class ConcreteProgram(object):
                  parameters,
                  function,
                  main_program,
-                 startup_program=None):
+                 startup_program=None,
+                 **kwargs):
         self.inputs = inputs
         self.outputs = outputs
         self.main_program = main_program
         self.startup_program = startup_program
         self.parameters = parameters
         self.function = function
+        self.kwargs = kwargs
 
     @staticmethod
     @switch_to_static_graph
-    def from_func_spec(func_spec, input_spec, input_kwargs_spec,
-                       class_instance):
+    def from_func_spec(func_spec, input_spec, input_kwargs_spec, class_instance,
+                       **kwargs):
         """
         Builds the main_program with specialized inputs and returns outputs
         of program as fetch_list.
@@ -632,8 +642,8 @@ class ConcreteProgram(object):
                 # 1. Adds `fluid.data` layers for input if needed
                 inputs = func_spec.to_static_inputs_with_spec(input_spec,
                                                               main_program)
-                kwargs = func_spec.to_static_inputs_with_spec(input_kwargs_spec,
-                                                              main_program)
+                _kwargs = func_spec.to_static_inputs_with_spec(
+                    input_kwargs_spec, main_program)
                 if class_instance:
                     inputs = tuple([class_instance] + list(inputs))
 
@@ -646,8 +656,8 @@ class ConcreteProgram(object):
                         class_instance, False)), param_guard(
                             get_buffers(class_instance, False)):
                     try:
-                        if kwargs:
-                            outputs = static_func(*inputs, **kwargs)
+                        if _kwargs:
+                            outputs = static_func(*inputs, **_kwargs)
                         else:
                             outputs = static_func(*inputs)
                     except BaseException as e:
@@ -672,7 +682,8 @@ class ConcreteProgram(object):
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
             main_program=main_program,
-            startup_program=startup_program)
+            startup_program=startup_program,
+            **kwargs)
 
 
 def _extract_indeed_params_buffers(class_instance):
@@ -699,7 +710,8 @@ class ProgramCache(object):
             func_spec=cache_key.function_spec,
             input_spec=cache_key.input_args_with_spec,
             input_kwargs_spec=cache_key.input_kwargs_with_spec,
-            class_instance=cache_key.class_instance)
+            class_instance=cache_key.class_instance,
+            **cache_key.kwargs)
         return concrete_program, partial_program_from(concrete_program)
 
     def __getitem__(self, item):
@@ -886,7 +898,7 @@ class ProgramTranslator(object):
         if not self.enable_to_static:
             # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
             # will show up **only once**.
-            warnings.warn(
+            logging_utils.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. "
                 "Please call ProgramTranslator.enable(True) if you would like to get static output."

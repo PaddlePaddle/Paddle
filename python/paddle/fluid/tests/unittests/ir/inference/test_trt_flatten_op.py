@@ -63,10 +63,10 @@ class TRTFlattenDynamicTest(InferencePassTest):
         self.trt_parameters = TRTFlattenDynamicTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
         self.dynamic_shape_params = TRTFlattenDynamicTest.DynamicShapeParam({
-            'data': [1, 6, 8, 8],
-            'flatten_0.tmp_0': [1, 6 * 8 * 8]
-        }, {'data': [3, 6, 128, 128],
-            'flatten_0.tmp_0': [3, 6 * 128 * 128]}, {
+            'data': [2, 6, 64, 64],
+            'flatten_0.tmp_0': [2, 6 * 64 * 64]
+        }, {'data': [2, 6, 64, 64],
+            'flatten_0.tmp_0': [2, 6 * 64 * 64]}, {
                 'data': [2, 6, 64, 64],
                 'flatten_0.tmp_0': [2, 6 * 64 * 64]
             }, False)

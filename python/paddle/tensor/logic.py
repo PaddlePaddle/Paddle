@@ -16,7 +16,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
 from .. import fluid
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import in_dygraph_mode, Variable
 from ..framework import VarBase as Tensor
 
 # TODO: define logic functions of a tensor  
@@ -27,6 +27,7 @@ from ..fluid.layers import logical_or  # noqa: F401
 from ..fluid.layers import logical_xor  # noqa: F401
 
 from paddle.common_ops_import import core
+from paddle import _C_ops
 
 __all__ = []
 
@@ -60,7 +61,7 @@ def equal_all(x, y, name=None):
           print(result2) # result2 = [False ]
     """
     if in_dygraph_mode():
-        return core.ops.equal_all(x, y)
+        return _C_ops.equal_all(x, y)
 
     helper = LayerHelper("equal_all", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
@@ -123,9 +124,9 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.allclose(x, y, 'rtol',
-                                 str(rtol), 'atol',
-                                 str(atol), 'equal_nan', equal_nan)
+        return _C_ops.allclose(x, y, 'rtol',
+                               str(rtol), 'atol',
+                               str(atol), 'equal_nan', equal_nan)
 
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
@@ -174,7 +175,7 @@ def equal(x, y, name=None):
           print(result1)  # result1 = [True False False]
     """
     if in_dygraph_mode():
-        return core.ops.equal(x, y)
+        return _C_ops.equal(x, y)
 
     check_variable_and_dtype(
         x, "x", ["bool", "float32", "float64", "int32", "int64"], "equal")
@@ -216,7 +217,7 @@ def greater_equal(x, y, name=None):
             print(result1)  # result1 = [True False True]
     """
     if in_dygraph_mode():
-        return core.ops.greater_equal(x, y)
+        return _C_ops.greater_equal(x, y)
 
     check_variable_and_dtype(x, "x",
                              ["bool", "float32", "float64", "int32", "int64"],
@@ -262,7 +263,7 @@ def greater_than(x, y, name=None):
             print(result1)  # result1 = [False False True]
     """
     if in_dygraph_mode():
-        return core.ops.greater_than(x, y)
+        return _C_ops.greater_than(x, y)
 
     check_variable_and_dtype(x, "x",
                              ["bool", "float32", "float64", "int32", "int64"],
@@ -309,7 +310,7 @@ def less_equal(x, y, name=None):
             print(result1)  # result1 = [True True False]
     """
     if in_dygraph_mode():
-        return core.ops.less_equal(x, y)
+        return _C_ops.less_equal(x, y)
 
     check_variable_and_dtype(
         x, "x", ["bool", "float32", "float64", "int32", "int64"], "less_equal")
@@ -352,7 +353,7 @@ def less_than(x, y, name=None):
             print(result1)  # result1 = [False True False]
     """
     if in_dygraph_mode():
-        return core.ops.less_than(x, y)
+        return _C_ops.less_than(x, y)
 
     check_variable_and_dtype(
         x, "x", ["bool", "float32", "float64", "int32", "int64"], "less_than")
@@ -395,7 +396,7 @@ def not_equal(x, y, name=None):
             print(result1)  # result1 = [False True True]
     """
     if in_dygraph_mode():
-        return core.ops.not_equal(x, y)
+        return _C_ops.not_equal(x, y)
 
     check_variable_and_dtype(
         x, "x", ["bool", "float32", "float64", "int32", "int64"], "not_equal")
@@ -437,3 +438,140 @@ def is_tensor(x):
             
     """
     return isinstance(x, Tensor)
+
+
+def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
+    if in_dygraph_mode():
+        op = getattr(_C_ops, op_name)
+        if binary_op:
+            return op(x, y)
+        else:
+            return op(x)
+
+    check_variable_and_dtype(
+        x, "x", ["bool", "uint8", "int8", "int16", "int32", "int64"], op_name)
+    if y is not None:
+        check_variable_and_dtype(
+            y, "y", ["bool", "uint8", "int8", "int16", "int32", "int64"],
+            op_name)
+    if out is not None:
+        check_type(out, "out", Variable, op_name)
+
+    helper = LayerHelper(op_name, **locals())
+    if binary_op:
+        assert x.dtype == y.dtype
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if binary_op:
+        helper.append_op(
+            type=op_name, inputs={"X": x,
+                                  "Y": y}, outputs={"Out": out})
+    else:
+        helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
+
+    return out
+
+
+@templatedoc()
+def bitwise_and(x, y, out=None, name=None):
+    """
+    ${comment}
+    
+    Args:
+        x (Tensor): ${x_comment}
+        y (Tensor): ${y_comment}
+        out(Tensor): ${out_comment}
+
+    Returns:
+        Tensor: ${out_comment}
+        
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            y = paddle.to_tensor([4,  2, -3])
+            res = paddle.bitwise_and(x, y)
+            print(res)  # [0, 2, 1]
+    """
+    return _bitwise_op(
+        op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+@templatedoc()
+def bitwise_or(x, y, out=None, name=None):
+    """
+    ${comment}
+    
+    Args:
+        x (Tensor): ${x_comment}
+        y (Tensor): ${y_comment}
+        out(Tensor): ${out_comment}
+
+    Returns:
+        Tensor: ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            y = paddle.to_tensor([4,  2, -3])
+            res = paddle.bitwise_or(x, y)
+            print(res)  # [-1, -1, -3]
+    """
+    return _bitwise_op(
+        op_name="bitwise_or", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+@templatedoc()
+def bitwise_xor(x, y, out=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x (Tensor): ${x_comment}
+        y (Tensor): ${y_comment}
+        out(Tensor): ${out_comment}
+
+    Returns:
+        Tensor: ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            y = paddle.to_tensor([4,  2, -3])
+            res = paddle.bitwise_xor(x, y)
+            print(res) # [-1, -3, -4]
+    """
+    return _bitwise_op(
+        op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+@templatedoc()
+def bitwise_not(x, out=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(Tensor):  ${x_comment}
+        out(Tensor): ${out_comment}
+    
+    Returns:
+        Tensor: ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            res = paddle.bitwise_not(x)
+            print(res) # [4, 0, -2]
+    """
+
+    return _bitwise_op(
+        op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False)

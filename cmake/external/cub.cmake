@@ -14,27 +14,27 @@
 
 include(ExternalProject)
 
-set(CUB_PREFIX_DIR ${THIRD_PARTY_PATH}/cub)
-set(CUB_SOURCE_DIR ${THIRD_PARTY_PATH}/cub/src/extern_cub)
-set(CUB_REPOSITORY ${GIT_URL}/NVlabs/cub.git)
-set(CUB_TAG        1.8.0)
+# Note(zhouwei): extern_cub  has code __FILE_, If the path of extern_cub is changed, 
+# it will effect about 30+ cu files sccache hit and slow compile speed  on windows. 
+# Therefore, a fixed CUB_PATH will be input to increase the sccache hit rate.
+set(CUB_PATH        "${THIRD_PARTY_PATH}/cub" CACHE STRING "A path setting for external_cub path.")
+set(CUB_PREFIX_DIR  ${CUB_PATH})
 
-cache_third_party(extern_cub
-    REPOSITORY    ${CUB_REPOSITORY}
-    TAG           ${CUB_TAG}
-    DIR           CUB_SOURCE_DIR)
+set(CUB_REPOSITORY  ${GIT_URL}/NVlabs/cub.git)
+set(CUB_TAG         1.8.0)
 
-SET(CUB_INCLUDE_DIR   ${CUB_SOURCE_DIR})
+SET(CUB_INCLUDE_DIR  ${CUB_PREFIX_DIR}/src/extern_cub)
+message("CUB_INCLUDE_DIR is ${CUB_INCLUDE_DIR}")
 include_directories(${CUB_INCLUDE_DIR})
 
 ExternalProject_Add(
   extern_cub
   ${EXTERNAL_PROJECT_LOG_ARGS}
   ${SHALLOW_CLONE}
-  "${CUB_DOWNLOAD_CMD}"
+  GIT_REPOSITORY  ${CUB_REPOSITORY}
+  GIT_TAG         ${CUB_TAG}
   PREFIX          ${CUB_PREFIX_DIR}
-  SOURCE_DIR      ${CUB_SOURCE_DIR}
-  UPDATE_COMMAND ""
+  UPDATE_COMMAND    ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND     ""
   INSTALL_COMMAND   ""

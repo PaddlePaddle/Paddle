@@ -16,9 +16,7 @@ from __future__ import print_function
 
 import math
 import numpy
-import six
 import warnings
-from six.moves import reduce
 
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
@@ -34,6 +32,7 @@ from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, con
 from paddle.utils import deprecated
 
 from .utils import check_shape
+from paddle import _C_ops
 
 __all__ = [
     'create_tensor',
@@ -134,14 +133,9 @@ def create_parameter(shape,
     """
     check_type(shape, 'shape', (list, tuple, numpy.ndarray), 'create_parameter')
     for item in shape:
-        if six.PY2:
-            check_type(item, 'item of shape',
-                       (int, long, numpy.uint8, numpy.int8, numpy.int16,
-                        numpy.int32, numpy.int64), 'create_parameter')
-        else:
-            check_type(item, 'item of shape',
-                       (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
-                        numpy.int64), 'create_parameter')
+        check_type(item, 'item of shape',
+                   (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
+                    numpy.int64), 'create_parameter')
 
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
@@ -194,18 +188,21 @@ def create_global_var(shape,
     check_type(shape, 'shape', (list, tuple, numpy.ndarray),
                'create_global_var')
     for item in shape:
-        if six.PY2:
-            check_type(item, 'item of shape',
-                       (int, long, numpy.uint8, numpy.int8, numpy.int16,
-                        numpy.int32, numpy.int64), 'create_global_var')
-        else:
-            check_type(item, 'item of shape',
-                       (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
-                        numpy.int64), 'create_global_var')
+        check_type(item, 'item of shape',
+                   (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
+                    numpy.int64), 'create_global_var')
 
     check_dtype(dtype, 'dtype', [
-        'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
-        'int64', 'uint8'
+        'bool',
+        'float16',
+        'float32',
+        'float64',
+        'int8',
+        'int16',
+        'int32',
+        'int64',
+        'uint8',
+        'uint16',
     ], 'create_global_var')
 
     helper = LayerHelper("global_var", **locals())
@@ -249,7 +246,7 @@ def cast(x, dtype):
     if in_dygraph_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        out = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        out = _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return out
 
     check_variable_and_dtype(x, 'x', [
@@ -325,7 +322,7 @@ def concat(input, axis=0, name=None):
         if isinstance(axis, Variable):
             axis = axis.numpy()
             axis = axis.item(0)
-        return core.ops.concat(input, 'axis', axis)
+        return _C_ops.concat(input, 'axis', axis)
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
     if not isinstance(input, Variable):
@@ -733,10 +730,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             else:
                 attrs['str_value'] = str(float(value.numpy().item(0)))
 
-        core.ops.fill_constant(out, 'value',
-                               float(value), 'force_cpu', force_cpu, 'dtype',
-                               out.dtype, 'str_value', attrs['str_value'],
-                               'shape', shape)
+        _C_ops.fill_constant(out, 'value',
+                             float(value), 'force_cpu', force_cpu, 'dtype',
+                             out.dtype, 'str_value', attrs['str_value'],
+                             'shape', shape)
         out.stop_gradient = True
         return out
 
@@ -1293,7 +1290,7 @@ def has_inf(x):
 
     """
     if in_dygraph_mode():
-        return core.ops.isinf(x)
+        return _C_ops.isinf(x)
 
     check_type(x, 'x', (Variable), 'has_inf')
     helper = LayerHelper("isinf", **locals())
@@ -1322,7 +1319,7 @@ def has_nan(x):
 
     """
     if in_dygraph_mode():
-        return core.ops.isnan(x)
+        return _C_ops.isnan(x)
 
     check_type(x, 'x', (Variable), 'has_nan')
     helper = LayerHelper("isnan", **locals())
@@ -1415,11 +1412,6 @@ def range(start, end, step, dtype, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    out_shape = None
-    if not isinstance(start, Variable) and not isinstance(
-            end, Variable) and not isinstance(step, Variable):
-        out_shape = [int(math.ceil((end - start) / step))]
-
     if not isinstance(start, Variable):
         with device_guard("cpu"):
             start = fill_constant([1], dtype, start, force_cpu=True)
@@ -1439,7 +1431,12 @@ def range(start, end, step, dtype, name=None):
         step = cast(step, dtype)
 
     if in_dygraph_mode():
-        return core.ops.range(start, end, step)
+        return _C_ops.range(start, end, step)
+
+    out_shape = None
+    if not isinstance(start, Variable) and not isinstance(
+            end, Variable) and not isinstance(step, Variable):
+        out_shape = [int(math.ceil((end - start) / step))]
 
     check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
                 'range/arange')
@@ -1503,8 +1500,8 @@ def linspace(start, stop, num, dtype=None, name=None):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
     if in_dygraph_mode():
-        return core.ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
-                                 dtype)
+        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
+                               dtype)
 
     helper = LayerHelper("linspace", **locals())
 
@@ -1691,8 +1688,8 @@ def eye(num_rows,
         num_columns = num_rows
 
     if in_dygraph_mode():
-        out = core.ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
-                           num_columns)
+        out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
+                         num_columns)
 
     else:
         helper = LayerHelper("eye", **locals())
@@ -1717,8 +1714,8 @@ def eye(num_rows,
         re_shape = re_shape + [num_rows, num_columns]
         expand_times = batch_shape + [1, 1]
         if in_dygraph_mode():
-            out = core.ops.reshape(out, 'shape', re_shape)
-            return core.ops.expand(out, None, 'expand_times', expand_times)
+            out = _C_ops.reshape(out, 'shape', re_shape)
+            return _C_ops.expand(out, None, 'expand_times', expand_times)
 
         if not isinstance(batch_shape, list):
             raise TypeError("batch_shape should be a list")

@@ -22,7 +22,7 @@ from .cifar import Cifar100  # noqa: F401
 from .voc2012 import VOC2012  # noqa: F401
 
 __all__ = [ #noqa
-    'DatasetFolder'
+    'DatasetFolder',
     'ImageFolder',
     'MNIST',
     'FashionMNIST',

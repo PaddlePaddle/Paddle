@@ -18,8 +18,9 @@ import warnings
 import inspect
 
 from .. import core
-from ..framework import Variable, unique_name
+from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
+from .control_flow import array_write, array_length
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -45,6 +46,7 @@ EXPRESSION_MAP = {
     "__rpow__": "A **= B",
     "__floordiv__": "A //B",
     "__mod__": "A % B",
+    "__matmul__": "A @ B",
     "__eq__": "A == B",
     "__ne__": "A != B",
     "__lt__": "A < B",
@@ -181,6 +183,24 @@ def monkey_patch_variable():
         out.stop_gradient = self.stop_gradient
         return out
 
+    @static_only
+    def append(self, var):
+        """
+         **Notes**:
+            **The type variable must be LoD Tensor Array.
+        
+        """
+        if not isinstance(var, Variable):
+            raise TypeError(
+                "Required input var should be Variable, but received {}".format(
+                    type(var)))
+        if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".
+                format(self.type))
+
+        array_write(x=var, i=array_length(self), array=self)
+
     def _scalar_op_(var, scale, bias):
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
@@ -194,6 +214,28 @@ def monkey_patch_variable():
 
     def _neg_(var):
         return _scalar_op_(var, -1.0, 0.0)
+
+    @property
+    def _ndim_(self):
+        """
+        Returns the dimension of current Variable
+
+        Returns:
+            the dimension
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # print the dimension of the Variable
+                print(x.ndim)
+        """
+        return len(self.shape)
 
     def _scalar_add_(var, value):
         return _scalar_op_(var, 1.0, value)
@@ -228,9 +270,9 @@ def monkey_patch_variable():
                 other_var = float(other_var)
                 # division is a special case
                 # NOTE(chenweihang): because we cast tensor to float32 instead float64,
-                # the division result can only guarantee the numerical accuracy of 6 digits 
-                # after the decimal point. The result of numpy calculation is of float64 type, 
-                # so the calculation result here and the calculation result of numpy are 
+                # the division result can only guarantee the numerical accuracy of 6 digits
+                # after the decimal point. The result of numpy calculation is of float64 type,
+                # so the calculation result here and the calculation result of numpy are
                 # different after 6 decimal point. If necessary, we can also use float64 here.
                 # torch's behavior here is consistent with ours
                 if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
@@ -238,7 +280,7 @@ def monkey_patch_variable():
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, * can use this method
                 # NOTE(chentianyu03): / can not use `scale` method，because the result of
-                # `scale` method (self*(1/other_var)) do not exactly equal with the result 
+                # `scale` method (self*(1/other_var)) do not exactly equal with the result
                 # of `elementwise_div` method.
                 if scalar_method is not None:
                     return scalar_method(self, other_var)
@@ -321,6 +363,10 @@ def monkey_patch_variable():
         #   b=-a
         ('__neg__', _neg_),
         ('astype', astype),
+        ('append', append),
+        ('dim', lambda x: len(x.shape)),
+        ('ndimension', lambda x: len(x.shape)),
+        ('ndim', _ndim_),
         ('__add__', _binary_creator_('__add__', 'elementwise_add', False,
                                      _scalar_add_)),
         #  a+b == b+a. Do not need to reverse explicitly
@@ -347,6 +393,8 @@ def monkey_patch_variable():
                                           'elementwise_floordiv', False, None)),
         ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
                                      None)),
+        ('__matmul__', _binary_creator_('__matmul__', "matmul_v2", False,
+                                        None)),
         #  for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
@@ -364,10 +412,13 @@ def monkey_patch_variable():
             setattr(Variable, method_name, method_impl)
     else:
         import paddle.tensor
-        variabel_methods = paddle.tensor.tensor_method_func
-        for method_name in variabel_methods:
+        for method_name in paddle.tensor.tensor_method_func:
             if hasattr(Variable, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(Variable, method_name, method_impl)
+
+        for magic_method, origin_method in paddle.tensor.magic_method_func:
+            impl = getattr(paddle.tensor, origin_method, None)
+            if impl: setattr(Variable, magic_method, impl)
 
     _already_patch_variable = True

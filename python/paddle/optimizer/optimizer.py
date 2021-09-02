@@ -41,6 +41,7 @@ from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 from .lr import LRScheduler
 import copy
+from paddle import _C_ops
 
 __all__ = []
 
@@ -205,7 +206,6 @@ class Optimizer(object):
         self._param_device_map = dict()
         self.clear_gradients = self.clear_grad
         self._default_dict = {
-            'learning_rate': self._learning_rate,
             'weight_decay': self.regularization,
             'grad_clip': self._grad_clip
         }
@@ -286,6 +286,11 @@ class Optimizer(object):
         if isinstance(self._learning_rate, LRScheduler):
             self._learning_rate.set_state_dict(state_dict["LR_Scheduler"])
 
+        # NOTE: exclude learning rate scheduler's state from 
+        # _accumulators_holder.
+        state_dict = state_dict.copy()
+        if "LR_Scheduler" in state_dict:
+            state_dict.pop("LR_Scheduler")
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
@@ -309,11 +314,11 @@ class Optimizer(object):
 
                 assert model_np.shape == load_para_np.shape,  \
                                           "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                                                 item.name, model_np.shape, load_para_np.shape)
+                                                 model_np.name, model_np.shape, load_para_np.shape)
 
                 assert model_np.dtype == load_para_np.dtype, \
                                           "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                                                item.name, model_np.dtype, load_para_np.dtype)
+                                                model_np.name, model_np.dtype, load_para_np.dtype)
 
                 tensor.set(load_para_np, framework._current_expected_place())
 
@@ -910,6 +915,9 @@ class Optimizer(object):
 
         assert regularization_term is not None
 
+        if framework.in_dygraph_mode():
+            return _C_ops.sum([grad, regularization_term])
+
         new_grad = grad
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
             # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
@@ -925,10 +933,7 @@ class Optimizer(object):
 
         inputs = {"X": [grad, regularization_term]}
         outputs = {"Out": [new_grad]}
-        if framework.in_dygraph_mode():
-            new_grad = core.ops.sum([grad, regularization_term])
-        else:
-            grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
+        grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
 
         return new_grad
 
@@ -1184,7 +1189,8 @@ class Optimizer(object):
             else:
                 regularization = weight_decay
             param.regularizer = regularization
-            param.optimize_attr['learning_rate'] = param_group['learning_rate']
+            param.optimize_attr['learning_rate'] = param_group.get(
+                'learning_rate', 1.)
 
         self._param_groups.append(param_group)
 

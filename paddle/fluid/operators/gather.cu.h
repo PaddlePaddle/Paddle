@@ -58,7 +58,7 @@ __global__ void GatherNdCUDAKernel(const T* input, const int* input_dims,
           "The index is out of bounds, "
           "please check whether the dimensions of index and "
           "input meet the requirements. It should "
-          "be less than [%d] and greater or equal to 0, but received [%d]",
+          "be less than [%d] and greater than or equal to 0, but received [%d]",
           input_dims[j], index_value);
       gather_i += (index_value * temp);
       temp *= input_dims[j];
@@ -91,6 +91,7 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                           " the second dimension should be 1."));
   }
 
+  // index size
   int index_size = index.dims()[0];
 
   auto src_dims = src.dims();
@@ -177,6 +178,15 @@ __global__ void GatherGPUKernel(const T* input, const U* index, T* out,
     int next_idx = idx - outer_size * inner_dim_index;
     int index_dim_index = next_idx / outer_dim_size;
     int index_val = index[index_dim_index];
+
+    PADDLE_ENFORCE(
+        index_val >= 0 && index_val < input_index_dim_size,
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater than or equal to 0, but received [%d]",
+        input_index_dim_size, index_val);
+
     int out_dim_index = next_idx - outer_dim_size * index_dim_index;
     int input_index =
         inner_dim_index * (outer_dim_size * input_index_dim_size) +

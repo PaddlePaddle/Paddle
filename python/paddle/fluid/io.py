@@ -1378,7 +1378,7 @@ def save_inference_model(dirname,
     with program_guard(main_program):
         uniq_target_vars = []
         for i, var in enumerate(target_vars):
-            if isinstance(var, Variable):
+            if isinstance(var, Variable) and var.dtype != paddle.bool:
                 var = layers.scale(
                     var, 1., name="save_infer_model/scale_{}".format(i))
             uniq_target_vars.append(var)
@@ -1432,12 +1432,14 @@ def save_inference_model(dirname,
         main_program.desc._set_version()
         paddle.fluid.core.save_op_version_info(main_program.desc)
         with open(model_basename, "wb") as f:
-            f.write(main_program.desc.serialize_to_string())
+            f.write(main_program._remove_training_info()
+                    .desc.serialize_to_string())
     else:
         # TODO(panyx0718): Save more information so that it can also be used
         # for training and more flexible post-processing.
         with open(model_basename + ".main_program", "wb") as f:
-            f.write(main_program.desc.serialize_to_string())
+            f.write(main_program._remove_training_info()
+                    .desc.serialize_to_string())
 
     if program_only:
         warnings.warn(
@@ -1940,8 +1942,7 @@ def _pickle_loads_mac(path, f):
     max_bytes = 2**30
     for _ in range(0, file_size, max_bytes):
         pickle_bytes += f.read(max_bytes)
-    load_result = pickle.loads(pickle_bytes) if six.PY2 else pickle.loads(
-        pickle_bytes, encoding='latin1')
+    load_result = pickle.loads(pickle_bytes, encoding='latin1')
     return load_result
 
 
@@ -2113,8 +2114,7 @@ def load(program, model_path, executor=None, var_list=None):
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             load_dict = _pickle_loads_mac(parameter_file_name, f)
         else:
-            load_dict = pickle.load(f) if six.PY2 else pickle.load(
-                f, encoding='latin1')
+            load_dict = pickle.load(f, encoding='latin1')
         load_dict = _pack_loaded_dict(load_dict)
     for v in parameter_list:
         assert v.name in load_dict, \
@@ -2135,8 +2135,7 @@ def load(program, model_path, executor=None, var_list=None):
                 optimizer_var_list, global_scope(), executor._default_executor)
 
         with open(opt_file_name, 'rb') as f:
-            load_dict = pickle.load(f) if six.PY2 else pickle.load(
-                f, encoding='latin1')
+            load_dict = pickle.load(f, encoding='latin1')
         for v in optimizer_var_list:
             assert v.name in load_dict, \
                 "Can not find [{}] in model file [{}]".format(
@@ -2297,15 +2296,13 @@ def load_program_state(model_path, var_list=None):
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             para_dict = _pickle_loads_mac(parameter_file_name, f)
         else:
-            para_dict = pickle.load(f) if six.PY2 else pickle.load(
-                f, encoding='latin1')
+            para_dict = pickle.load(f, encoding='latin1')
     para_dict = _pack_loaded_dict(para_dict)
 
     opt_file_name = model_prefix + ".pdopt"
     if os.path.exists(opt_file_name):
         with open(opt_file_name, 'rb') as f:
-            opti_dict = pickle.load(f) if six.PY2 else pickle.load(
-                f, encoding='latin1')
+            opti_dict = pickle.load(f, encoding='latin1')
 
         para_dict.update(opti_dict)
 

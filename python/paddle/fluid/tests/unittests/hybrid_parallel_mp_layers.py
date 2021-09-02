@@ -270,8 +270,8 @@ class TestDistTraning(unittest.TestCase):
             np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
 
     def test_parallel_cross_entropy(self):
-        batch_size = 2
-        seq_length = 1
+        batch_size = 8
+        seq_length = 16
         class_size_per_card = 2
         vocab_size = class_size_per_card * self.model_parallel_size
         seed = 1025

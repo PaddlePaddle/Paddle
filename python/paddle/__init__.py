@@ -14,7 +14,7 @@
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
-
+    from paddle.cuda_env import *
 except ImportError:
     import sys
     sys.stderr.write('''Warning with import paddle: you should not
@@ -52,6 +52,7 @@ import paddle.metric  # noqa: F401
 import paddle.regularizer  # noqa: F401
 import paddle.incubate  # noqa: F401
 import paddle.autograd  # noqa: F401
+import paddle.device  # noqa: F401
 
 import paddle.jit  # noqa: F401
 import paddle.amp  # noqa: F401
@@ -98,6 +99,7 @@ from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
+from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
@@ -108,12 +110,17 @@ from .tensor.logic import logical_and  # noqa: F401
 from .tensor.logic import logical_not  # noqa: F401
 from .tensor.logic import logical_or  # noqa: F401
 from .tensor.logic import logical_xor  # noqa: F401
+from .tensor.logic import bitwise_and  # noqa: F401
+from .tensor.logic import bitwise_not  # noqa: F401
+from .tensor.logic import bitwise_or  # noqa: F401
+from .tensor.logic import bitwise_xor  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
 from .tensor.logic import is_tensor  # noqa: F401
 from .tensor.manipulation import cast  # noqa: F401
 from .tensor.manipulation import concat  # noqa: F401
+from .tensor.manipulation import broadcast_tensors  # noqa: F401
 from .tensor.manipulation import expand  # noqa: F401
 from .tensor.manipulation import broadcast_to  # noqa: F401
 from .tensor.manipulation import expand_as  # noqa: F401
@@ -136,6 +143,7 @@ from .tensor.manipulation import squeeze_  # noqa: F401
 from .tensor.manipulation import stack  # noqa: F401
 from .tensor.manipulation import strided_slice  # noqa: F401
 from .tensor.manipulation import unique  # noqa: F401
+from .tensor.manipulation import unique_consecutive  # noqa: F401
 from .tensor.manipulation import unsqueeze  # noqa: F401
 from .tensor.manipulation import unsqueeze_  # noqa: F401
 from .tensor.manipulation import unstack  # noqa: F401
@@ -148,6 +156,7 @@ from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
 from .tensor.math import atan  # noqa: F401
+from .tensor.math import atan2  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
@@ -198,6 +207,7 @@ from .tensor.math import erf  # noqa: F401
 from .tensor.math import addmm  # noqa: F401
 from .tensor.math import clip  # noqa: F401
 from .tensor.math import trace  # noqa: F401
+from .tensor.math import diagonal  # noqa: F401
 from .tensor.math import kron  # noqa: F401
 from .tensor.math import isfinite  # noqa: F401
 from .tensor.math import isinf  # noqa: F401
@@ -205,6 +215,7 @@ from .tensor.math import isnan  # noqa: F401
 from .tensor.math import prod  # noqa: F401
 from .tensor.math import broadcast_shape  # noqa: F401
 from .tensor.math import conj  # noqa: F401
+from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
@@ -228,6 +239,8 @@ from .tensor.search import nonzero  # noqa: F401
 from .tensor.search import sort  # noqa: F401
 
 from .tensor.to_string import set_printoptions  # noqa: F401
+
+from .tensor.einsum import einsum  # noqa: F401
 
 from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
@@ -260,6 +273,7 @@ from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
 from .fluid.framework import is_compiled_with_cuda  # noqa: F401
 from .fluid.framework import is_compiled_with_rocm  # noqa: F401
+from .fluid.framework import disable_signal_handler  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
@@ -275,6 +289,7 @@ from . import callbacks  # noqa: F401
 from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
 from . import hub  # noqa: F401
+from . import linalg  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -370,6 +385,10 @@ __all__ = [  # noqa
            'max',
            'norm',
            'logical_or',
+           'bitwise_and',
+           'bitwise_or',
+           'bitwise_xor',
+           'bitwise_not',
            'mm',
            'flip',
            'histogram',
@@ -411,7 +430,6 @@ __all__ = [  # noqa
            'exp',
            'expm1',
            'bernoulli',
-           'summary',
            'sinh',
            'round',
            'DataParallel',
@@ -425,6 +443,7 @@ __all__ = [  # noqa
            'divide',
            'ceil',
            'atan',
+           'atan2',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -454,6 +473,7 @@ __all__ = [  # noqa
            'randn',
            'strided_slice',
            'unique',
+           'unique_consecutive',
            'set_cuda_rng_state',
            'set_printoptions',
            'std',
@@ -467,10 +487,12 @@ __all__ = [  # noqa
            'enable_static',
            'scatter_nd',
            'set_default_dtype',
+           'disable_signal_handler',
            'expand_as',
            'stack',
            'sqrt',
            'cholesky',
+           'matrix_power',
            'randperm',
            'linspace',
            'reshape',
@@ -490,6 +512,10 @@ __all__ = [  # noqa
            'log10',
            'concat',
            'check_shape',
+           'trunc',
            'digamma',
-           'standard_normal'
+           'standard_normal',
+           'diagonal',
+           'broadcast_tensors',
+           'einsum'
 ]

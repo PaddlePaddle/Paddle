@@ -64,6 +64,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
+    {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
 };
@@ -86,6 +87,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
     {"unique", {"Out", "Index", "Indices", "Counts"}},
+    {"unique_consecutive", {"Out", "Index", "Counts"}},
     {"generate_proposals", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"collect_fpn_proposals", {"FpnRois", "RoisNum"}},
     {"matrix_nms", {"Out", "Index", "RoisNum"}},
@@ -96,6 +98,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
+    {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
@@ -117,15 +120,19 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"sgd", {"ParamOut"}},
     {"adam",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
+    {"adamw",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"average_accumulates",
      {"out_sum_1", "out_sum_2", "out_sum_3", "out_num_accumulates",
       "out_old_num_accumulates", "out_num_updates"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
+    {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},
     {"fill_constant", {"Out"}},
     {"recv_v2", {"Out"}},
+    {"partial_recv", {"Out"}},
     {"matmul", {"Out"}},
     {"c_broadcast", {"Out"}},
     {"c_sync_calc_stream", {"Out"}},
@@ -135,7 +142,6 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"c_reduce_min", {"Out"}},
     {"c_reduce_prod", {"Out"}},
     {"c_reduce", {"Out"}},
-    {"c_allgather", {"Out"}},
     {"c_scatter", {"Out"}},
     {"barrier", {"Out"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
@@ -268,7 +274,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     imperative::GetCurrentTracer()->TraceOp("%s", ins, outs, attrs, {%s});
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
-    return %s;
+    %s
   }
   catch(...) {
     if (tstate) {
@@ -488,13 +494,13 @@ std::string GenerateOpFunctionsBody(
         viwe_input_name, viwe_output_name);
   }
   if (outs_num == 0) {
-    return_str = "Py_None";
+    return_str = "Py_INCREF(Py_None);\n    return Py_None;";
   } else if (outs_num == 1) {
-    return_str = "MakeReturnPyObject(" + return_str + ")";
+    return_str = "return MakeReturnPyObject(" + return_str + ");";
   } else {
-    return_str = "MakeReturnPyObject(" +
+    return_str = "return MakeReturnPyObject(" +
                  paddle::string::Sprintf(RETURN_TUPLE_TEMPLATE, return_str) +
-                 ")";
+                 ");";
   }
   std::string function_args = "";
   if (input_args == "") {

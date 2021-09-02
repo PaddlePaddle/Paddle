@@ -23,6 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
+#if defined(__HIPCC__) || defined(__NVCC__)
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -60,6 +63,27 @@ inline void GetShuffledDim(const DDim& src_dims, DDim* dst_dims,
   }
 }
 
+static inline std::vector<int> GetReduceDim(const std::vector<int>& dims,
+                                            int dim_size, bool reduce_all) {
+  std::vector<int> reduce_dims;
+  if (reduce_all) {
+    reduce_dims.resize(dim_size);
+    int reduce_size = reduce_dims.size();
+    for (int i = 0; i < reduce_size; ++i) {
+      reduce_dims[i] = i;
+    }
+  } else {
+    for (auto e : dims) {
+      PADDLE_ENFORCE_LT(e, dim_size,
+                        paddle::platform::errors::InvalidArgument(
+                            "ReduceOp: invalid axis, when x_dims is %d, "
+                            "axis[i] should less than x_dims, but got %d.",
+                            dim_size, e));
+      reduce_dims.push_back(e >= 0 ? e : e + dim_size);
+    }
+  }
+  return reduce_dims;
+}
 template <typename DeviceContext, typename OutT>
 void GetShuffledInput(const framework::ExecutionContext& context,
                       const Tensor* input, Tensor* shuffled_input,
@@ -308,6 +332,7 @@ class BoolReduceKernel : public framework::OpKernel<OutT> {
     }
   }
 };
+
 template <typename DeviceContext, typename T, typename Functor,
           bool kNoNeedBufferX = false, bool kNoNeedBufferY = false>
 class ReduceGradKernel : public framework::OpKernel<T> {
@@ -507,9 +532,11 @@ class ReduceOp : public framework::OperatorWithKernel {
 #endif
 
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
+                            platform::is_npu_place(ctx.GetPlace()),
+                        true,
                         platform::errors::InvalidArgument(
-                            "float16 can only be used on GPU place"));
+                            "float16 can only be used on GPU or NPU place"));
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -564,7 +591,6 @@ class ReduceGradOp : public framework::OperatorWithKernel {
         (in_dtype >= 0) ? static_cast<framework::proto::VarType::Type>(in_dtype)
                         : OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out"));
-
 #ifdef PADDLE_WITH_MKLDNN
     auto CanMKLDNNReduceGradBeUsed = [&]() {
       auto dx_dims = ctx.Input<Tensor>("X")->dims();
@@ -635,6 +661,33 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
   virtual std::string GetName() const = 0;
   virtual std::string GetOpType() const = 0;
 };
+
+#if defined(__HIPCC__) || defined(__NVCC__)
+template <typename T, template <typename, typename> class ReduceOp>
+class ReduceCudaKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    const Tensor* input = context.Input<Tensor>("X");
+    Tensor* output = context.Output<Tensor>("Out");
+    auto out_dtype = context.Attr<int>("out_dtype");
+    std::vector<int> dims = context.Attr<std::vector<int>>("dim");
+
+    std::vector<int> reduce_dims =
+        GetReduceDim(dims, input->dims().size(), reduce_all);
+
+    gpuStream_t stream = context.cuda_device_context().stream();
+    if (out_dtype >= 0) {
+      framework::VisitDataTypeSmall(
+          static_cast<framework::proto::VarType::Type>(out_dtype),
+          TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
+    } else {
+      TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
+                                              stream);
+    }
+  }
+};
+#endif
 
 }  // namespace operators
 }  // namespace paddle

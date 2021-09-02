@@ -28,8 +28,6 @@ SEED = 2021
 alignment = 512
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAllocContinuousSpace(OpTest):
     def setUp(self):
         self.__class__.use_npu = True
@@ -82,12 +80,9 @@ class TestAllocContinuousSpace(OpTest):
         self.check_output_with_place(
             place=paddle.NPUPlace(0),
             no_check_set=["FusedOutput"],
-            atol=1e-5,
-            check_dygraph=False)
+            atol=1e-5, )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
     def init_attr(self):
         return {
@@ -95,15 +90,15 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
             "set_constant": False,
             "constant": 0.5,
             "use_align": True,
-            "dtype": self.fluid_dtype
+            "dtype": self.fluid_dtype,
+            "user_defined_size_of_dtype": 2
         }
 
     def test_check_output(self):
         self.check_output_with_place(
             place=paddle.NPUPlace(0),
             no_check_set=["FusedOutput"],
-            atol=1e-5,
-            check_dygraph=False)
+            atol=1e-5, )
 
 
 if __name__ == '__main__':

@@ -277,32 +277,73 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 }
 
 void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
-  if (SharedVar()->IsEmpty()) {
-    VLOG(3) << "deep copy Variable from " << src.Name() << " to " << Name();
-    SetPersistable(src.Persistable());
+  if (src.SharedVar()->IsEmpty()) {
+    return;
+  }
+
+  VLOG(3) << "Deep copy Tensor from " << src.Name() << " to " << Name();
+  if (Var().IsInitialized()) {
+    PADDLE_ENFORCE_EQ(DataType(), src.DataType(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different data type with Tensor %s, "
+                          "Tensor Copy cannot be performed!",
+                          Name(), src.Name()));
+    PADDLE_ENFORCE_EQ(Type(), src.Type(),
+                      platform::errors::PreconditionNotMet(
+                          "Tensor %s has different type with Tensor %s, Tensor "
+                          "Copy cannot be performed!",
+                          Name(), src.Name()));
+  } else {
     SetDataType(src.DataType());
     SetType(src.Type());
-    SetOverridedStopGradient(src.OverridedStopGradient());
-    if (!src.SharedVar()->IsEmpty()) {
-      const platform::Place& place = src.Place();
-      if (src.Var().IsType<framework::LoDTensor>()) {
-        auto& src_tensor = src.Var().Get<framework::LoDTensor>();
-        auto* dst_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
-        dst_tensor->set_lod(src_tensor.lod());
-        framework::TensorCopy(src_tensor, place, dst_tensor);
-      } else if (src.Var().IsType<framework::SelectedRows>()) {
-        auto& src_selected_rows = src.Var().Get<framework::SelectedRows>();
-        auto* dst_selected_rows =
-            MutableVar()->GetMutable<framework::SelectedRows>();
-        dst_selected_rows->set_height(src_selected_rows.height());
-        dst_selected_rows->set_rows(src_selected_rows.rows());
-        framework::TensorCopy(src_selected_rows.value(), place,
-                              dst_selected_rows->mutable_value());
-      }
-      if (blocking) {
-        platform::DeviceContextPool::Instance().Get(place)->Wait();
-      }
+    SetPersistable(src.Persistable());
+    InnerSetOverridedStopGradient(src.OverridedStopGradient());
+  }
+
+  platform::Place place = src.Place();
+  if (src.Var().IsType<framework::LoDTensor>()) {
+    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+    auto* dst_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
+    if (dst_tensor && dst_tensor->IsInitialized()) {
+      PADDLE_ENFORCE_EQ(dst_tensor->dims(), src_tensor.dims(),
+                        platform::errors::PreconditionNotMet(
+                            "Tensor %s has different dims with Tensor %s, "
+                            "Tensor Copy cannot be performed!",
+                            Name(), src.Name()));
+      PADDLE_ENFORCE_EQ(dst_tensor->lod(), src_tensor.lod(),
+                        platform::errors::PreconditionNotMet(
+                            "Tensor %s has different dims with Tensor %s, "
+                            "Tensor Copy cannot be performed!",
+                            Name(), src.Name()));
+      place = Place();
+    } else {
+      dst_tensor->set_lod(src_tensor.lod());
+      dst_tensor->Resize(src_tensor.dims());
     }
+    framework::TensorCopy(src_tensor, place, dst_tensor);
+  } else if (src.Var().IsType<framework::SelectedRows>()) {
+    auto& src_selected_rows = src.Var().Get<framework::SelectedRows>();
+    auto* dst_selected_rows =
+        MutableVar()->GetMutable<framework::SelectedRows>();
+    dst_selected_rows->set_height(src_selected_rows.height());
+    dst_selected_rows->set_rows(src_selected_rows.rows());
+
+    auto& src_tensor = src_selected_rows.value();
+    auto* dst_tensor = dst_selected_rows->mutable_value();
+    if (dst_tensor && dst_tensor->IsInitialized()) {
+      PADDLE_ENFORCE_EQ(dst_tensor->dims(), src_tensor.dims(),
+                        platform::errors::PreconditionNotMet(
+                            "Tensor %s has different dims with Tensor %s, "
+                            "Tensor Copy cannot be performed!",
+                            Name(), src.Name()));
+      place = Place();
+    } else {
+      dst_tensor->Resize(src_tensor.dims());
+    }
+    framework::TensorCopy(src_tensor, place, dst_tensor);
+  }
+  if (blocking) {
+    platform::DeviceContextPool::Instance().Get(place)->Wait();
   }
 }
 
@@ -329,6 +370,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const NameVarMap<VarType>& ins,
                           const NameVarMap<VarType>& outs,
                           const framework::AttributeMap& attrs,
+                          const framework::AttributeMap& default_attrs,
                           const platform::Place& place) {
   auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
@@ -336,7 +378,8 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                      "Only support operator with kernel in Dygraph mode."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, outs, attrs);
+    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, outs, attrs,
+                                                           default_attrs);
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
@@ -369,13 +412,14 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
-  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs);
+  auto prepared_op =
+      PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
   auto tmp_ins_ptr =
       PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
   if (tmp_ins_ptr == nullptr) {
-    prepared_op.Run(ins, outs, attrs);
+    prepared_op.Run(ins, outs, attrs, default_attrs);
   } else {
-    prepared_op.Run(*tmp_ins_ptr, outs, attrs);
+    prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
   }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
@@ -395,16 +439,18 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VarBase>& ins,
                  const NameVarMap<VarBase>& outs,
                  const framework::AttributeMap& attrs,
+                 const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, place);
+  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VariableWrapper>& ins,
                  const NameVarMap<VariableWrapper>& outs,
                  const framework::AttributeMap& attrs,
+                 const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, place);
+  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {
@@ -446,15 +492,15 @@ void ClearNoNeedBufferInputs(OpBase* op) {
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const platform::Place& place,
+    const framework::AttributeMap& default_attrs, const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map) {
   const auto& info = op.Info();
   if (!info.dygraph_grad_op_maker_) {
     return nullptr;
   }
 
-  auto grad_node =
-      info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs, inplace_map);
+  auto grad_node = info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs,
+                                               default_attrs, inplace_map);
   if (grad_node && !grad_node->empty()) {
     for (auto& grad_op : *grad_node) {
       grad_op.SetId(OpBase::GenerateUniqueId());

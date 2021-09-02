@@ -27,7 +27,6 @@ import subprocess
 import multiprocessing
 import platform
 import inspect
-import json
 import argparse
 import shutil
 import re
@@ -390,7 +389,7 @@ def execute_samplecode(tfname):
     """
     result = True
     msg = None
-    if platform.python_version()[0] in ["2", "3"]:
+    if platform.python_version()[0] in ["3"]:
         cmd = [sys.executable, tfname]
     else:
         logger.error("Error: fail to parse python version!")
@@ -441,9 +440,10 @@ def get_filenames(full_test=False):
     '''
     global whl_error
     import paddle
+    import paddle.fluid.contrib.slim.quantization
     whl_error = []
     if full_test:
-        get_full_api()
+        get_full_api_from_pr_spec()
     else:
         get_incrementapi()
     all_sample_code_filenames = {}
@@ -513,7 +513,20 @@ def get_full_api_by_walk():
     from print_signatures import get_all_api
     apilist = get_all_api()
     with open(API_DIFF_SPEC_FN, 'w') as f:
-        f.write("\n".join(apilist))
+        f.write("\n".join([ai[0] for ai in apilist]))
+
+
+def get_full_api_from_pr_spec():
+    """
+    get all the apis
+    """
+    global API_PR_SPEC_FN, API_DIFF_SPEC_FN  ## readonly
+    pr_api = get_api_md5(API_PR_SPEC_FN)
+    if len(pr_api):
+        with open(API_DIFF_SPEC_FN, 'w') as f:
+            f.write("\n".join(pr_api.keys()))
+    else:
+        get_full_api_by_walk()
 
 
 def get_incrementapi():
