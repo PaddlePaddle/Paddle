@@ -1620,6 +1620,7 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     Examples:
 
     .. code-block:: python
+        :name: code-example1
 
         # CPU or single GPU
         import paddle
@@ -1642,6 +1643,7 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
         #       [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
 
     .. code-block:: python
+        :name: code-example2
 
         # required: distributed
         # Multi GPU, test_class_center_sample.py
