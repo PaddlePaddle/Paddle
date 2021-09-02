@@ -44,11 +44,12 @@ class SlicePluginTRTTest(InferencePassTest):
             ends = self.params_ends
             slice_out = fluid.layers.slice(
                 data, axes=axes, starts=starts, ends=ends)
+            out = fluid.layers.batch_norm(slice_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("float32"),
         }
-        self.fetch_list = [slice_out]
+        self.fetch_list = [out]
 
     def test_check_output(self):
         use_gpu = [False]
