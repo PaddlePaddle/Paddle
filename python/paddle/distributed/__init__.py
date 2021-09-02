@@ -85,10 +85,4 @@ __all__ = [  # noqa
       "wait",
       "get_rank",
       "ProbabilityEntry",
-      "shard_tensor",
-      "shard_op",
-      "set_shard_mask",
-      "set_offload_device",
-      "set_pipeline_stage",
-      "ProcessMesh",
 ]
