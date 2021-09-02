@@ -249,6 +249,7 @@ def __bootstrap__():
             'npu_config_path',
             'get_host_by_name_time',
             'hccl_check_nan',
+            'min_loss_scaling',
         ]
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
