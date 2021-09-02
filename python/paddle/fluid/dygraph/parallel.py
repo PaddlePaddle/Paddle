@@ -425,7 +425,7 @@ class DataParallel(layers.Layer):
     Returns:
         Layer: The data paralleled module.
 
-    Examples:
+    Examples 1:
 
         .. code-block:: python
             :name: dp-example
@@ -474,15 +474,13 @@ class DataParallel(layers.Layer):
                     # 2. start by ``paddle.distributed.launch``
                     # train()
 
-    """
-    """
     .. note::
         ``PyLayer`` is not supported in DataParallel. To solve problems of this kind, 
         it's recommended to skip gradient synchronization among multiple cards by 'no_sync', 
         and manually implement 'all_reduce' before model optimization. There is an example 
         showing specific implemetation processing.
 
-    Examples:
+    Examples 2:
 
         .. code-block:: python
             :name: dp-pylayer-example
