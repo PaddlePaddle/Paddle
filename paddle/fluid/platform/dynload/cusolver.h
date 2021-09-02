@@ -55,7 +55,13 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
 #if CUDA_VERSION >= 9020
 #define CUSOLVER_ROUTINE_EACH_R1(__macro) \
   __macro(cusolverDnSpotrfBatched);       \
-  __macro(cusolverDnDpotrfBatched);
+  __macro(cusolverDnDpotrfBatched);       \
+  __macro(cusolverDnSgesvdj_bufferSize);  \
+  __macro(cusolverDnDestroyGesvdjInfo);   \
+  __macro(cusolverDnCreateGesvdjInfo);    \
+  __macro(cusolverDnDgesvdj_bufferSize);  \
+  __macro(cusolverDnSgesvdj);             \
+  __macro(cusolverDnDgesvdj);
 
 CUSOLVER_ROUTINE_EACH_R1(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
 #endif

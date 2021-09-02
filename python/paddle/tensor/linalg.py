@@ -1034,6 +1034,70 @@ def mv(x, vec, name=None):
     return out
 
 
+def svd(x, full_matrices=False, name=None):
+    r"""
+    Computes the singular value decomposition of one 
+    matrix or batches of regular matrice.
+    Args:
+        x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
+            where ... is zero or more batch dimensions. N and M can be arbitraty
+            positive number. Note that if x is sigular matrices, the grad is numerical 
+            instability. The data type of x should be float32 or float64. 
+
+        full_matrices(bool): A flag to control the behavor of svd. 
+            If full_matrices = True, svd op will compute full U and V matrics, 
+            which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`.
+            If full_matrices = False, svd op will use a economic method to store U and V. 
+            which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`
+
+    Returns:
+        Tensor: Tensor U, the shape of U is controlled by full_matrices flag.
+        Tensor: Tensor S, the singular value of X. the shape of S is [..., K]
+        Tensor: Tensor VH, the conjugate transpose of V. the shape of V is controlled by full_matrices flag. 
+
+            import numpy as np
+
+            x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
+            x = x.reshape([3, 2])
+            u, s, vt = paddle.linalg.svd(x)
+            print (u)
+            print (s)
+            print (vt)
+
+            #U = [[ 0.27364809, -0.21695147  ],
+            #      [ 0.37892198, -0.87112408 ],
+            #      [ 0.8840446 ,  0.44053933 ]]
+
+            #S = [8.14753743, 0.78589688]
+
+            #VT= [[ 0.51411221,  0.85772294],
+            #     [ 0.85772294, -0.51411221]]
+            
+            # one can verify : U * S * VT = X ;     
+            #                  U * UH = I ; 
+            #                  V * VH = I
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.svd(x, 'full_matrices', full_matrices)
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
+    check_type(full_matrices, 'full_matrices', bool, 'svd')
+    helper = LayerHelper('svd', **locals())
+    u = helper.create_variable_for_type_inference(dtype=x.dtype)
+    vh = helper.create_variable_for_type_inference(dtype=x.dtype)
+    s = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = dict()
+    attrs['full_matrices'] = full_matrices
+    helper.append_op(
+        type='svd',
+        inputs={'X': [x]},
+        outputs={'U': u,
+                 'VH': vh,
+                 'S': s},
+        attr=attrs, )
+    return u, s, vh
+
+
 def matrix_power(x, n, name=None):
     r"""
     Computes the n-th power of a square matrix or a batch of square matrices.

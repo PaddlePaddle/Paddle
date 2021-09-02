@@ -37,7 +37,8 @@ class TensorConfig:
     def __init__(self,
                  shape: [List[int]],
                  dtype: [str]="float32",
-                 data: Optional[np.array]=None):
+                 data: Optional[np.array]=None,
+                 lod: [List[List[int]]]=None):
         '''
         shape: The shape of the tensor.
         dtype: The data type of the tensor.
@@ -46,6 +47,7 @@ class TensorConfig:
         self.shape = shape
         self.dtype = dtype
         self.data = data
+        self.lod = lod
 
 
 class OpConfig:
@@ -137,8 +139,11 @@ def create_fake_model(program_config):
             op_desc._set_attr(name, values)
         for name, values in op_config.outputs.items():
             op_desc.set_output(name, values)
-            var_desc = main_block_desc.var(cpt.to_bytes(name))
-            var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+            for v in values:
+                var_desc = main_block_desc.var(cpt.to_bytes(v))
+                var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+                var_desc.set_dtype(
+                    convert_np_dtype_to_dtype_(tensor_config.dtype))
         op_desc.infer_var_type(main_block_desc)
         op_desc.infer_shape(main_block_desc)
 
@@ -182,13 +187,6 @@ def create_quant_model(model,
          model_filename=model,
          params_filename=params)
     graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
-
-    transform_pass = QuantizationTransformPass(
-        scope=scope,
-        place=place,
-        activation_quantize_type=activation_quantize_type,
-        weight_quantize_type=weight_quantize_type)
-    transform_pass.apply(graph)
 
     out_scale_op_list = [
         "conv2d",
@@ -295,6 +293,13 @@ def create_quant_model(model,
             else:
                 var_names.append(var_name)
         return var_names
+
+    transform_pass = QuantizationTransformPass(
+        scope=scope,
+        place=place,
+        activation_quantize_type=activation_quantize_type,
+        weight_quantize_type=weight_quantize_type)
+    transform_pass.apply(graph)
 
     op_nodes = graph.all_op_nodes()
     for op_node in op_nodes:
