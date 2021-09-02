@@ -628,6 +628,7 @@ def cond(x, p=None, name=None):
             #   [ 1.47595418  2.23646462  1.5701758   0.10497519]]]
             b_cond_2 = paddle.linalg.cond(b, p=2)
             # b_cond_2.numpy()  [3.30064451 2.51976252]
+
     """
 
     def matrix_norm(input, porder=1., axis=None):
@@ -740,26 +741,6 @@ def cond(x, p=None, name=None):
             attrs={'factor': float(1. / porder)})
         return out
 
-    def cond_svd(input):
-        """
-        NOTE:
-            Calculate the singular values of a matrix or batches of matrices.
-        """
-        if in_dygraph_mode():
-            # u, s, vh = _C_ops.svd(x, 'full_matrices', full_matrices)
-            return np.linalg.svd(input, compute_uv=False)
-
-        # block = LayerHelper('svd', **locals())            
-        # u = block.create_variable_for_type_inference(
-        #                 dtype=block.input_dtype())
-        # s = block.create_variable_for_type_inference(
-        #                 dtype=block.input_dtype())
-        # vh = block.create_variable_for_type_inference(
-        #                 dtype=block.input_dtype()) 
-        # block.append_op(type='svd', inputs={'X': [input]}, 
-        #                 outputs={'U': u, 'VH': vh, 'S': s}, attr={'full_matrices':full_matrices})
-        # return s
-
     def svd_norm(input, porder, axis=[-1]):
         """
         NOTE:
@@ -769,11 +750,9 @@ def cond(x, p=None, name=None):
         reduce_all = True if axis is None or axis == [] else False
         keepdim = False
 
-        import paddle
-        array_svd = cond_svd(input)
+        u, s, vh = svd(input, full_matrices=False)
 
         if in_dygraph_mode():
-            s = paddle.to_tensor(array_svd)
             if porder == "nuc":
                 return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
                                          'reduce_all', reduce_all)
@@ -829,7 +808,7 @@ def cond(x, p=None, name=None):
                 attrs={'aixs': axis,
                        'use_mkldnn': False})
             return out
-        if porder == 2:
+        if porder == -2:
             block.append_op(
                 type='elementwise_div',
                 inputs={'X': min_out,

@@ -31,7 +31,7 @@ class API_TestStaticCond(unittest.TestCase):
             input4 = np.random.rand(7, 4, 3).astype('float32')
             input5 = np.random.rand(10, 1, 10).astype('float64')
 
-            for p in ("fro", 1, -1, np.inf, -np.inf):
+            for p in (None, "fro", "nuc", 1, -1, 2, -2, np.inf, -np.inf):
                 for input in (input1, input2, input3):
                     with static.program_guard(static.Program(),
                                               static.Program()):
@@ -43,15 +43,17 @@ class API_TestStaticCond(unittest.TestCase):
                         expected_output = np.linalg.cond(input, p)
                         self.assertTrue(np.allclose(result, expected_output))
 
-            # for p in (None, 2, -2):
-            #     for input in (input4, input5):
-            #         with static.program_guard(static.Program(), static.Program()):
-            #             input_data = static.data("X", shape=input.shape, dtype=input.dtype)
-            #             output = paddle.linalg.cond(input_data, p)
-            #             exe = static.Executor()
-            #             result = exe.run(feed={"X": input}, fetch_list=[output])
-            #             expected_output = np.linalg.cond(input, p)
-            #             self.assertTrue(np.allclose(result, expected_output))
+            for p in (None, 2, -2):
+                for input in (input4, input5):
+                    with static.program_guard(static.Program(),
+                                              static.Program()):
+                        input_data = static.data(
+                            "X", shape=input.shape, dtype=input.dtype)
+                        output = paddle.linalg.cond(input_data, p)
+                        exe = static.Executor()
+                        result = exe.run(feed={"X": input}, fetch_list=[output])
+                        expected_output = np.linalg.cond(input, p)
+                        self.assertTrue(np.allclose(result, expected_output))
 
 
 class API_TestDygraphCond(unittest.TestCase):
