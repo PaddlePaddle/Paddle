@@ -381,5 +381,29 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestAvgPool2DDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        input_NCHW = fluid.layers.data(
+            name="input_NCHW",
+            shape=[2, 3, 5, 5],
+            append_batch_size=False,
+            dtype="float32")
+
+        input_NCHW.persistable = True
+        y = layers.pool2d(input_NCHW, pool_size=2, pool_type="avg")
+        x_arr = np.random.uniform(-1, 1, [2, 3, 5, 5]).astype(np.float32)
+
+        gradient_checker.double_grad_check(
+            [input_NCHW], y, x_init=x_arr, place=place, eps=0.05)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 if __name__ == "__main__":
     unittest.main()
