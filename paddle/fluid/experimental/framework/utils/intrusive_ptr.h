@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <utility>
 #include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace experimental {
@@ -25,7 +26,7 @@ template <typename T>
 class intrusive_ptr {
  public:
   using this_type = intrusive_ptr;
-  constexpr intrusive_ptr() noexcept : px(nullptr) {}
+  constexpr intrusive_ptr() noexcept = default;
 
   ~intrusive_ptr() {
     if (px) {
@@ -37,8 +38,8 @@ class intrusive_ptr {
 
   template <typename U,
             typename = std::enable_if_t<std::is_base_of<T, U>::value>>
-  intrusive_ptr(intrusive_ptr<U>&& rhs) noexcept : px(rhs.px) {
-    rhs.px = nullptr;
+  intrusive_ptr(intrusive_ptr<U>&& rhs) noexcept : px(rhs.get()) {
+    rhs.reset();
   }
 
   void reset() { this_type().swap(*this); }
@@ -56,12 +57,18 @@ class intrusive_ptr {
   }
 
   T& operator*() const {
-    CHECK(px);
+    PADDLE_ENFORCE(
+        px,
+        platform::errors::PreconditionNotMet(
+            "The pointer must be non-null before the dereference operation."));
     return *px;
   }
 
   T* operator->() const {
-    CHECK(px);
+    PADDLE_ENFORCE(
+        px,
+        platform::errors::PreconditionNotMet(
+            "The pointer must be non-null before the dereference operation."));
     return px;
   }
 
@@ -72,7 +79,9 @@ class intrusive_ptr {
   }
 
  private:
-  explicit intrusive_ptr(T* p, bool add_ref = true) : px(p) {
+  template <typename U,
+            typename = std::enable_if_t<std::is_base_of<T, U>::value>>
+  explicit intrusive_ptr(U* p, bool add_ref = true) : px(p) {
     if (px && add_ref) {
       intrusive_ptr_add_ref(px);
     }
@@ -83,7 +92,7 @@ class intrusive_ptr {
   template <typename R>
   friend intrusive_ptr<R> copy_intrusive(const intrusive_ptr<R>&);
 
-  T* px;
+  T* px{nullptr};
 };
 
 template <typename T, typename U>
@@ -109,12 +118,12 @@ inline bool operator!=(const intrusive_ptr<T>& a, U* b) noexcept {
 }
 
 template <typename T, typename U>
-inline bool operator==(T* a, const intrusive_ptr<T>& b) noexcept {
+inline bool operator==(T* a, const intrusive_ptr<U>& b) noexcept {
   return a == b.get();
 }
 
 template <typename T, typename U>
-inline bool operator!=(T* a, const intrusive_ptr<T>& b) noexcept {
+inline bool operator!=(T* a, const intrusive_ptr<U>& b) noexcept {
   return a != b.get();
 }
 

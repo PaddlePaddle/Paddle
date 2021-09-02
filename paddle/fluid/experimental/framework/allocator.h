@@ -21,11 +21,30 @@ namespace paddle {
 namespace experimental {
 namespace framework {
 
+/// \brief Encapsulates strategies for access/addressing, allocation/
+/// deallocation and construction/destruction of objects.
 class Allocator {
  public:
+  /// \brief Default destructor.
   virtual ~Allocator() = default;
-  virtual void* Allocate(size_t n) = 0;
-  virtual void Deallocate(void* ptr, size_t n) = 0;
+
+  /// \brief Allocates storage suitable for an array object of n bytes
+  /// and creates the array, but does not construct array elements.
+  /// May throw exceptions.
+  /// \param bytes_size The number of bytes to allocate.
+  /// \return The first address allocated.
+  virtual void* Allocate(size_t bytes_size) = 0;
+
+  /// \brief Deallocates storage pointed to ptr, which must be a value
+  /// returned by a previous call to allocate that has not been
+  /// invalidated by an intervening call to deallocate. The bytes_size
+  /// must match the value previously passed to allocate.
+  /// \param ptr The first address to deallocate.
+  /// \param bytes_size The number of bytes to deallocate.
+  virtual void Deallocate(void* ptr, size_t bytes_size) = 0;
+
+  /// \brief Get the place value of the allocator and the allocation.
+  /// \return The place value of the allocator and the allocation.
   virtual const platform::Place& place() const = 0;
 };
 
@@ -33,6 +52,7 @@ inline void* Allocate(const std::shared_ptr<Allocator>& a, size_t n) {
   CHECK(a);
   return a->Allocate(n);
 }
+
 }  // namespace framework
 }  // namespace experimental
 }  // namespace paddle

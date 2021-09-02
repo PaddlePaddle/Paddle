@@ -17,6 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/fluid/experimental/framework/data_type.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace experimental {
@@ -42,7 +43,8 @@ size_t SizeOf(DataType data_type) {
     case DataType::INVALID:
       return 0;
   }
-  LOG(FATAL);
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Data type %d is not supported by tensor.", static_cast<int>(data_type)));
 }
 
 }  // namespace framework

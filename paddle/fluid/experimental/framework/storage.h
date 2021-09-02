@@ -27,31 +27,44 @@ namespace paddle {
 namespace experimental {
 namespace framework {
 
-class Storage : public intrusive_ref_counter<Storage> {
+/// \brief The inferface of ontiguous storage used for the dense tensor.
+/// It should be used in conjunction with the intrusive pointer. We prohibit
+/// all default copy operations to ensure the integrity of the package.
+class StorageInterface : public intrusive_ref_counter<StorageInterface> {
  public:
-  explicit Storage(void* data_ptr) noexcept : data_(data_ptr) {}
+  StorageInterface() = default;
+  explicit StorageInterface(void* data_ptr) noexcept : data_(data_ptr) {}
 
+  virtual ~StorageInterface() = default;
+
+  /// \brief Get the mutable data pointer of the storage.
+  /// This function is set to inline to improve performance.
+  /// \return The mutable data pointer of the storage.
   void* data() const noexcept { return data_; }
+
   virtual size_t size() const = 0;
-  virtual Storage* root_storage() = 0;
   virtual const platform::Place& place() const = 0;
-  virtual bool OwnsMemory() const { return true; }
+  virtual bool OwnsMemory() const = 0;
+  virtual void Realloc(size_t n) = 0;
+
+  StorageInterface(const StorageInterface&) = delete;
+  StorageInterface& operator=(const StorageInterface&) = delete;
 
  protected:
-  Storage(const Storage&) = delete;
-  Storage& operator=(const Storage&) = delete;
-  void* const data_;
+  void* data_{nullptr};
 };
 
-class TensorStorage final : public Storage {
+class Storage : public StorageInterface {
  public:
-  TensorStorage(const std::shared_ptr<Allocator>& a, int64_t n)
-      : Storage(Allocate(a, n)), alloc_(a), size_(n) {}
+  explicit Storage(const std::shared_ptr<Allocator>& a) : alloc_(a) {}
+  Storage(const std::shared_ptr<Allocator>& a, size_t size)
+      : StorageInterface(Allocate(a, size)), alloc_(a), size_(size) {}
 
-  ~TensorStorage() { alloc_->Deallocate(data_, size_); }
+  ~Storage() { alloc_->Deallocate(data(), size_); }
+
+  void Realloc(size_t size) override;
 
   size_t size() const noexcept override { return size_; }
-  Storage* root_storage() noexcept override { return this; }
   const platform::Place& place() const override { return alloc_->place(); }
   bool OwnsMemory() const noexcept override { return true; }
   const std::shared_ptr<Allocator>& allocator() const noexcept {
@@ -60,27 +73,27 @@ class TensorStorage final : public Storage {
 
  private:
   const std::shared_ptr<Allocator> alloc_;
-  int64_t size_;
+  int64_t size_{0};
 };
 
-class SubStorage final : public Storage {
+class ExternalStorage : public StorageInterface {
  public:
-  SubStorage(const intrusive_ptr<Storage>& root, int64_t delta, int64_t n)
-      : Storage(static_cast<uint8_t*>(root->data()) + delta),
-        root_(copy_intrusive(root)),
-        size_(n) {
-    CHECK_GT(n, 0);
-    CHECK_LE(static_cast<size_t>(delta + n), root->size());
+  ExternalStorage(void* ptr, size_t size, const platform::Place& place);
+  ExternalStorage(const intrusive_ptr<Storage>& root, size_t delta,
+                  size_t size);
+
+  void Realloc(size_t n) override {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The external shared storage cannot be reallocated."));
   }
 
   size_t size() const noexcept override { return size_; }
-  Storage* root_storage() noexcept override { return root_.get(); }
-  const platform::Place& place() const override { return root_->place(); }
+  const platform::Place& place() const override { return place_; }
   bool OwnsMemory() const noexcept override { return false; }
 
  private:
-  const intrusive_ptr<Storage> root_;
-  int64_t size_;
+  const int64_t size_{0};
+  const platform::Place place_;
 };
 
 }  // namespace framework

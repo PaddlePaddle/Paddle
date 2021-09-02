@@ -30,7 +30,7 @@ void intrusive_ptr_release(const intrusive_ref_counter<DerivedT>* p) noexcept;
 template <typename DerivedT>
 class intrusive_ref_counter {
  public:
-  constexpr intrusive_ref_counter() noexcept : ref_(0) {}
+  constexpr intrusive_ref_counter() noexcept : ref_(1) {}
   virtual ~intrusive_ref_counter() = default;
 
   unsigned int use_count() const noexcept { return ref_.load(); }

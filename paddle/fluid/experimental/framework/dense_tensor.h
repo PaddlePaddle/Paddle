@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "boost/smart_ptr/intrusive_ptr.hpp"
-
 #include "paddle/fluid/experimental/framework/allocator.h"
 #include "paddle/fluid/experimental/framework/data_type.h"
 #include "paddle/fluid/experimental/framework/storage.h"
@@ -28,102 +26,146 @@ namespace framework {
 
 using DDim = paddle::framework::DDim;
 
+/// \brief The meta data of dense tensor. Take the structure type
+/// and use all default operations.
+///
 struct DenseTensorMeta {
   DenseTensorMeta() = default;
-  DenseTensorMeta(DataType type, const DDim& dims) : dims(dims), type(type) {}
-  DenseTensorMeta(DataType type, const DDim& dims, DataLayout layout)
-      : dims(dims), type(type), layout(layout) {}
+  DenseTensorMeta(DataType type, const DDim& dims);
+  DenseTensorMeta(DataType type, const DDim& dims, DataLayout layout);
   DenseTensorMeta(DataType type, const DDim& dims, DataLayout layout,
-                  const std::vector<std::vector<size_t>>& lod)
-      : dims(dims), type(type), layout(layout), lod(lod) {}
+                  const std::vector<std::vector<size_t>>& lod);
 
-  bool valid() const noexcept {
-    bool valid{true};
-    valid = valid && (type != DataType::INVALID);
-    valid = valid && (layout != DataLayout::Undef);
-    valid = valid && (is_scalar || product(dims));
-    return valid;
-  }
+  /// \brief Test whether the metadata is valid. Does not throw exceptions.
+  /// \return Whether the metadata is valid.
+  bool valid() const noexcept;
 
-  bool is_scalar{false};
+  /// During the entire life cycle of a DenseTensor, the following attributes
+  /// marked with `const` are expected to remain unchanged.
+  const bool is_scalar{false};
   DDim dims;
-  DataType type{DataType::FLOAT32};
-  DataLayout layout{DataLayout::NCHW};
+  const DataType type{DataType::FLOAT32};
+  const DataLayout layout{DataLayout::NCHW};
   std::vector<std::vector<size_t>> lod;
 };
 
+/// \brief The Dense tensor store values in a contiguous sequential block
+/// of memory where all values are represented. Tensors or multi-dimensional
+/// arrays are used in math operators.
+/// During the entire life cycle of a DenseTensor, its device type and key
+/// metadata are set unchanged.
 class DenseTensor {
  public:
+  /// \brief Construct a dense tensor and allocate space.
+  /// \param a The allocator used to allocate space.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(const std::shared_ptr<Allocator>& a, const DenseTensorMeta& meta);
+
+  /// \brief Construct a dense tensor and allocate space.
+  /// \param a The allocator used to allocate space.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(const std::shared_ptr<Allocator>& a, DenseTensorMeta&& meta);
+
+  /// \brief Use existing storage space to create dense tensor. This interface
+  /// can be used to deliberately create an uninitialized dense tensor.
+  /// \param storage The existing storage.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(intrusive_ptr<Storage>&& storage, const DenseTensorMeta& meta);
+
+  /// \brief Use existing storage space to create dense tensor. This interface
+  /// can be used to deliberately create an uninitialized dense tensor.
+  /// \param storage The existing storage.
+  /// \param meta The meta data of dense tensor.
+  DenseTensor(intrusive_ptr<Storage>&& storage, DenseTensorMeta&& meta);
+
+  /// \brief Because dense tensor is a kind of container, we give a default
+  /// constructor to use for stl container. But the dense tensor created with
+  /// the default constructor is not practical.
   DenseTensor() = default;
 
-  DenseTensor(const std::shared_ptr<Allocator>& a, const DenseTensorMeta& meta)
-      : meta_(meta),
-        storage_(new TensorStorage(a, SizeOf(data_type()) * numel())) {}
+  /// \brief Because dense tensor is a resource handle, we provide a default
+  /// move constructor to support move semantics.
+  DenseTensor(DenseTensor&& other) = default;
 
-  DenseTensor(const std::shared_ptr<Allocator>& a, DenseTensorMeta&& meta)
-      : meta_(std::move(meta)),
-        storage_(new TensorStorage(a, SizeOf(data_type()) * numel())) {}
-
-  DenseTensor(boost::intrusive_ptr<Storage>&& storage,
-              const DenseTensorMeta& meta)
-      : meta_(meta), storage_(std::move(storage)) {}
-
- public:
+  /// \brief We do not recommend deep copy of dense tensor because of its
+  /// efficiency and complexity across devices. The operation is disabled here.
   DenseTensor(const DenseTensor& other) = delete;
-  DenseTensor(DenseTensor&& other) = delete;
+
+  /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~DenseTensor() = default;
 
  public:
-  int64_t numel() const {
-    if (meta_.is_scalar) {
-      return 1;
-    }
-    return product(meta_.dims);
-  }
+  /// \brief Returns the number of elements contained in tensor.
+  /// \return The number of elements contained in tensor.
+  int64_t numel() const;
+
+  /// \brief Returns the dims of the tensor.
+  /// \return The dims of the tensor.
   const DDim& dims() const noexcept { return meta_.dims; }
+
+  /// \brief Returns the data type of the tensor.
+  /// \return The data type of the tensor.
   DataType data_type() const noexcept { return meta_.type; }
+
+  /// \brief Returns the data layout of the tensor.
+  /// \return The data layout of the tensor.
   DataLayout layout() const noexcept { return meta_.layout; }
+
+  /// \brief Returns the data place of the tensor.
+  /// \return The data place of the tensor.
   const platform::Place& place() const { return storage_->place(); }
-  bool initialized() const noexcept { return storage_; }
-  bool SharesStorageWith(const DenseTensor& b) const {
-    return storage_->root_storage() == b.storage_->root_storage();
-  }
 
-  template <typename T>
-  T* mutable_data(size_t request_bytes) {
-    CHECK(meta_.type == DataTypeTrait<T>::DataType());
-    size_t bytes = numel() * SizeOf(data_type());
-    if (request_bytes) {
-      CHECK_GE(request_bytes, bytes);
-      bytes = request_bytes;
-    }
-    if (storage_->size() < bytes) {
-      CHECK(dynamic_cast<TensorStorage*>(storage_.get()));
-      // storage_.reset(std::make_shared<Storage>(a, bytes));
-    }
-    return reinterpret_cast<T*>(storage_->data());
-  }
+  /// \brief Test whether the metadata is valid.
+  /// \return Whether the metadata is valid.
+  bool valid() const noexcept { return meta_.valid(); }
 
-  template <typename T>
-  const T* data() const {
-    CHECK(meta_.type == DataTypeTrait<T>::DataType());
-    return reinterpret_cast<const T*>(storage_->data());
-  }
+  /// \brief Test whether the storage is allocated.
+  /// return Whether the storage is allocated.
+  bool initialized() const { return storage_->data(); }
 
+  /// \brief Check if storage is shared with other objects.
+  /// \return Whether the storage is shared with other objects.
+  bool SharesStorageWith(const DenseTensor& b) const;
+
+  /// \brief Change the dims information in the metadata, and the corresponding
+  /// memory allocation will occur when the `mutable_data` is called.
+  /// \param dims The new dims of the dense tensor.
   void Resize(const DDim& dims) noexcept { meta_.dims = dims; }
 
+  /// \brief Returns the actual storage size occupied by tensor, may be larger
+  /// than its shape dims.
+  /// \return The actual storage size occupied by tensor.
   size_t memory_size() const { return storage_->size(); }
 
-  void check_memory_size() const {
-    size_t bytes = numel() * SizeOf(data_type());
-    CHECK_GE(memory_size(), bytes);
-  }
+  /// \brief Check that the storage area is large enough to hold the data of the
+  /// metadata size, and throw an exception if the conditions are not met.
+  void check_memory_size() const;
 
-  boost::intrusive_ptr<Storage> release() { return std::move(storage_); }
+  /// \brief Release the storage area for other purposes. Because of the
+  /// destruction of encapsulation, we do not support two dense tensors directly
+  /// sharing the same intrusive pointer.
+  /// \return The rvalue of instrusize pointer releated to the released storage.
+  intrusive_ptr<StorageInterface> release() { return std::move(storage_); }
+
+  /// \brief Get the mutable data pointer value of type T.
+  /// Memory allocation may occur when calling this interface:
+  /// 1. When the storage size is not enough to meet the current shape of the
+  /// data.
+  /// 2. When more request_bytes parameters are used to reserve the data
+  /// storage.
+  /// param request_bytes The bytes to reserve the data storage.
+  /// \return The mutable data pointer value of type T.
+  template <typename T>
+  T* mutable_data(size_t request_bytes = 0);
+
+  /// \brief Get the const data pointer value of type T.
+  /// \return The const data pointer value of type T.
+  template <typename T>
+  const T* data() const;
 
  private:
   DenseTensorMeta meta_;
-  boost::intrusive_ptr<Storage> storage_;
+  intrusive_ptr<StorageInterface> storage_;
 };
 
 }  // namespace framework

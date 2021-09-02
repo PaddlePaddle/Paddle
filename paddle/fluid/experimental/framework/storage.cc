@@ -13,3 +13,32 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/experimental/framework/storage.h"
+
+namespace paddle {
+namespace experimental {
+namespace framework {
+
+void Storage::Realloc(size_t size) {
+  alloc_->Deallocate(data(), size_);
+  size_ = size;
+  data_ = alloc_->Allocate(size_);
+}
+
+ExternalStorage::ExternalStorage(void* ptr, size_t size,
+                                 const platform::Place& place)
+    : StorageInterface(ptr), size_(size), place_(place) {}
+
+ExternalStorage::ExternalStorage(const intrusive_ptr<Storage>& root,
+                                 size_t delta, size_t size)
+    : StorageInterface(static_cast<uint8_t*>(root->data()) + delta),
+      size_(size),
+      place_(root->place()) {
+  PADDLE_ENFORCE_LE(
+      static_cast<size_t>(delta + size), root->size(),
+      platform::errors::InvalidArgument("The size of the external storage does "
+                                        "not meet the metadata requirements."));
+}
+
+}  // namespace framework
+}  // namespace experimental
+}  // namespace paddle
