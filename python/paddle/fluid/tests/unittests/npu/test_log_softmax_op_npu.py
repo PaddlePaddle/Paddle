@@ -22,7 +22,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.nn.functional as F
-from test_log_softmax import ref_log_softmax, test_log_softmax
+from test_log_softmax import ref_log_softmax, ref_log_softmax_grad
 paddle.enable_static()
 np.random.seed(10)
 
