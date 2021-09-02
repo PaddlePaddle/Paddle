@@ -193,7 +193,7 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
                                ops::FetchV2Kernel, plat::float16,
                                ops::FetchV2Kernel);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(fetch_v2, float, ops::FetchV2Kernel, double,
                                 ops::FetchV2Kernel, int, ops::FetchV2Kernel,
                                 int64_t, ops::FetchV2Kernel, bool,
