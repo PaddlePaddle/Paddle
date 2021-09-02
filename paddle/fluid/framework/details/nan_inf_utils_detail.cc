@@ -429,6 +429,9 @@ void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
                                  const platform::Place& place) {
   if (!platform::is_npu_place(place)) return;
 
+  std::call_once(white_list_init_flag, InitWhiteListFormEnv);
+  if (IsSkipOp(op)) return;
+
   auto* dev_ctx = reinterpret_cast<platform::NPUDeviceContext*>(
       platform::DeviceContextPool::Instance().Get(place));
   auto stream = dev_ctx->stream();
