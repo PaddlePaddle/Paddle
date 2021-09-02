@@ -24,13 +24,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-#ifdef WITH_NV_JETSON
-int num_thread = 512;
-platform::ChangeThreadNum(context, &num_thread, 256);
-static constexpr int kNumCUDAThreads = num_thread;
-#else
 static constexpr int kNumCUDAThreads = 512;
-#endif
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 static inline int NumBlocks(const int N) {
@@ -268,7 +262,9 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
     int output_size = out->numel();
     int blocks = NumBlocks(output_size);
     int threads = kNumCUDAThreads;
-
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(ctx.cuda_device_context(), &threads, 256);
+#endif
     Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({rois_num});
     auto cplace = platform::CPUPlace();

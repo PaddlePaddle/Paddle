@@ -69,8 +69,8 @@ struct ForRange<CUDADeviceContext> {
 #elif WITH_NV_JETSON
     // JETSON_NANO will throw core dump when threads > 128
     int num_thread = 256;
-    platform::ChangeThreadNum(context, &num_thread, 128);
-    constexpr int num_threads = num_thread;
+    platform::ChangeThreadNum(dev_ctx_, &num_thread, 128);
+    const int num_threads = num_thread;
 #else
     constexpr int num_threads = 1024;
 #endif

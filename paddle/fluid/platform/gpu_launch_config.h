@@ -36,8 +36,8 @@ inline int DivUp(int a, int b) { return (a + b - 1) / b; }
 #ifdef WITH_NV_JETSON
 // The number of threads cannot be assigned 1024 in some cases when the device
 // is nano or tx2
-void ChangeThreadNum(const platform::CUDADeviceContext& context,
-                     int* num_thread, int alternative_num_thread = 512) {
+inline void ChangeThreadNum(const platform::CUDADeviceContext& context,
+                            int* num_thread, int alternative_num_thread = 512) {
   if (context.GetComputeCapability() == 53 ||
       context.GetComputeCapability() == 62) {
     *num_thread = alternative_num_thread;

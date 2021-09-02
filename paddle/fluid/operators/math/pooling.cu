@@ -257,7 +257,8 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   int nthreads = batch_size * output_channels * output_height * output_width;
   int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-  platform::ChangeThreadNum(context, &thread_num);
+  // platform::ChangeThreadNum(context, &thread_num);
+  thread_num = 512;
 #endif
   int blocks = (nthreads + thread_num - 1) / thread_num;
   dim3 threads(thread_num, 1);
