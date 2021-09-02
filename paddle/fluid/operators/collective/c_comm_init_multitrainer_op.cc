@@ -49,7 +49,8 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     auto var = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::InvalidArgument("Input X must be provided."));
 #if defined(PADDLE_WITH_NCCL)
     ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
@@ -59,24 +60,25 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
 
     std::vector<int> devices = Attr<std::vector<int>>("devices");
     VLOG(0) << "111yxf11dev: ";
-      for (auto dev : devices) {
-        VLOG(0) << "dev: " << dev;
-      }
-      VLOG(0) << "11yxf22dev: ";
-    
+    for (auto dev : devices) {
+      VLOG(0) << "dev: " << dev;
+    }
+    VLOG(0) << "11yxf22dev: ";
+
     if (devices.empty()) {
       VLOG(0) << "11yxf0000dev: ";
       devices = platform::GetSelectedDevices();
     }
     VLOG(0) << "yxf11dev: ";
-      for (auto dev : devices) {
-        VLOG(0) << "dev: " << dev;
-      }
-      VLOG(0) << "yxf22dev: ";
+    for (auto dev : devices) {
+      VLOG(0) << "dev: " << dev;
+    }
+    VLOG(0) << "yxf22dev: ";
     platform::NCCLCommContext::Instance().CreateNCCLCommMultiTrainer(
         devices, nccl_id, ntrainers, train_id, rid);
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "PaddlePaddle should compile with GPU."));
 #endif
   }
 };

@@ -143,7 +143,10 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
 void NCCLCommContext::CreateNCCLCommMultiTrainer(
     const std::vector<int>& dev_ids, ncclUniqueId* nccl_id, int ntrainers,
     int train_id, int ring_id) {
-  PADDLE_ENFORCE_GT(dev_ids.size(), 0);
+  PADDLE_ENFORCE_GT(
+      dev_ids.size(), 0,
+      paddle::platform::errors::InvalidArgument(
+          "dev ids = [%d], it should greater than 0.", dev_ids.size()));
   const int kDevices = dev_ids.size();
   VLOG(3) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
@@ -161,6 +164,10 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
     VLOG(3) << "nccl group end seccessss";
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0);
+  PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0,
+                    platform::errors::InvalidArgument(
+                        "comm_map_ of ring_id: %s should be 0. %s is provided",
+                        ring_id, comm_map_.count(ring_id)));
   for (int i = 0; i < kDevices; ++i) {
     AssignNCCLComm(comms[i], kDevices * ntrainers, train_id * kDevices + i,
                    dev_ids[i], ring_id);

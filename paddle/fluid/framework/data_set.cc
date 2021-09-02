@@ -316,8 +316,9 @@ static int compute_thread_batch_nccl(
     int need_ins_num = thread_max_batch_num * thr_num;
     // data is too less
     if ((int64_t)need_ins_num > total_instance_num) {
-      LOG(FATAL) << "error instance num:[" << total_instance_num
-                 << "] less need ins num:[" << need_ins_num << "]";
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "error instance num:[%d] less need ins num:[%d]", total_instance_num,
+          need_ins_num));
       return thread_avg_batch_num;
     }
 
@@ -383,8 +384,6 @@ void DatasetImpl<T>::SetHeterPs(bool enable_heterps) {
     }
   }
 }
-
-
 
 // load data into memory, Dataset hold this memory,
 // which will later be fed into readers' channel
