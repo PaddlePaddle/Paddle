@@ -34,7 +34,7 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The ring_id (%d) for global gather op must be non-negative.",
             ring_id));
-    // int in_feat = ctx->Attrs().Get<int>("in_feat");
+
     framework::DDim out_dims = framework::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);
   }
@@ -60,13 +60,6 @@ class GlobalGatherOpMaker : public framework::OpProtoAndCheckerMaker {
              "indicates"
              "how many data needed to be sent.");
     AddOutput("Out", "(Tensor) the result of alltoall.");
-    // AddAttr<int>("in_feat", "(int default 0) The feature shape of the x.")
-    //     .SetDefault(0);
-    // AddAttr<int>("n_expert", "(int default 1) The number of experts in every
-    // rank.")
-    //     .SetDefault(1);
-    // AddAttr<int>("world_size", "(int default 1) The number of rank.")
-    //     .SetDefault(1);
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<bool>(
