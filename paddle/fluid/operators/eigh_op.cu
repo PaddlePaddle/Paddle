@@ -171,14 +171,6 @@ class EighGPUKernel : public framework::OpKernel<T> {
       auto value_data = out_value + i * values_stride;
       // Evd(dev_ctx, jobz, uplo, n, vector_data, lda, value_data, d_work,
       // lwork, info_ptr);
-      // check the info
-      // std::vector<T> error_info;
-      // error_info.resize(4);
-      // memory::Copy(platform::CPUPlace(), error_info.data(),
-      //              BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-      //              out_vector, sizeof(T) * 4, dev_ctx.stream());
-      // std::cout << error_info[0] << "\t" << error_info[1] << "\t" <<
-      // error_info[2] << error_info[3] << "\n";
       auto handle = dev_ctx.cusolver_dn_handle();
       computeValues<T, ValueType>(handle, jobz, uplo, n, vector_data, lda,
                                   value_data, d_work, lwork, info_ptr);

@@ -48,7 +48,7 @@ class EighOp : public framework::OperatorWithKernel {
         input_dim[rank - 2], input_dim[rank - 1],
         platform::errors::InvalidArgument(
             "The inner-most 2 dimensions of Input(X) all should be symmetric "
-            "positive-definite matrices and have the same size. But received "
+            "Input matrices and have the same size. But received "
             "X's shape[-2] = %d and shape[-1] = %d.",
             input_dim[rank - 2], input_dim[rank - 1]));
 
@@ -67,21 +67,26 @@ class EighOp : public framework::OperatorWithKernel {
 class EignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "Hermitian or real symmetric matrices whose eigenvalues and "
-             "eigenvectors are to be computed ");
+    AddInput(
+        "X",
+        "(Tensor), Hermitian or real symmetric matrices whose eigenvalues and "
+        "eigenvectors are to be computed. Its shape should be [*, M, M] where "
+        "* "
+        "is zero or more batch dimensions,and matrices on the inner-most 2 "
+        "dimensions"
+        "all should be symmetric");
     AddOutput("OutValue",
-              "The eigenvalues in ascending order, "
+              "(Tensor), The eigenvalues in ascending order, "
               "each repeated according to its multiplicity.");
-    AddOutput(
-        "OutVector",
-        "The column v[:, i] is the normalized eigenvector corresponding to the,"
-        "eigenvalue w[i]. Will return a matrix object if a is a matrix "
-        "object.");
-    AddAttr<std::string>(
-        "UPLO",
-        "the lower triangular part of a (‘L’, default) or the upper "
-        "triangular part (‘U’)")
+    AddOutput("OutVector",
+              "(Tensor), The column v[:, i] is the normalized eigenvector "
+              "corresponding to the,"
+              "eigenvalue w[i]. Will return a matrix object if a is a matrix "
+              "object.");
+    AddAttr<std::string>("UPLO",
+                         "(string, default L), the lower triangular part of a "
+                         "(‘L’, default) or the upper "
+                         "triangular part (‘U’)")
         .SetDefault("L");
     AddComment(R"DOC(
 Eigh Operator.

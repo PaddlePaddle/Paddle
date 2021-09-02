@@ -21,8 +21,10 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -30,20 +32,26 @@ namespace paddle {
 namespace operators {
 namespace math {
 using Tensor = framework::Tensor;
-using InTensors = std::vector<const Tensor*>;
-using OutTensors = std::vector<Tensor*>;
-using Shape = std::vector<int>;
-using OpName = std::string;
+
+template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename ValueType>
 void BatchEigenvalues(ValueType* x_data, ValueType* eigenvalues_data,
                       ValueType* eigenvectors_data, int batches, int rows,
-                      int cols, int k) {
+                      int cols) {
+  using EigenMatrix =
+      Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+  using InputMatrixMap = Eigen::Map<const EigenMatrix>;
+
   int stride = rows * cols;
   for (int i = 0; i < batches; i++) {
-    auto m = Eigen::Map<Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic,
-                                      Eigen::RowMajor>>(x_data + i * stride,
-                                                        rows, cols);
+    auto m = InputMatrixMap(x_data + i * stride, rows, cols);
+
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix<
         ValueType, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
         eigen_solver(m);
@@ -65,15 +73,18 @@ void BatchEigenvalues(ValueType* x_data, ValueType* eigenvalues_data,
 
 template <typename T, typename ValueType>
 void BatchComplexValues(T* x_data, ValueType* eigenvalues_data,
-                        T* eigenvectors_data, int batches, int rows, int cols,
-                        int k) {
+                        T* eigenvectors_data, int batches, int rows, int cols) {
+  using EigenMatrix = Eigen::Matrix<std::complex<ValueType>, Eigen::Dynamic,
+                                    Eigen::Dynamic, Eigen::RowMajor>;
+  using InputMatrixMap = Eigen::Map<const EigenMatrix>;
+
   std::complex<ValueType>* input =
       reinterpret_cast<std::complex<ValueType>*>(x_data);
+
   int stride = rows * cols;
   for (int i = 0; i < batches; i++) {
-    auto m = Eigen::Map<Eigen::Matrix<std::complex<ValueType>, Eigen::Dynamic,
-                                      Eigen::Dynamic, Eigen::RowMajor>>(
-        input + i * stride, rows, cols);
+    auto m = InputMatrixMap(input + i * stride, rows, cols);
+
     Eigen::SelfAdjointEigenSolver<
         Eigen::Matrix<std::complex<ValueType>, Eigen::Dynamic, Eigen::Dynamic,
                       Eigen::RowMajor>>
@@ -95,25 +106,6 @@ void BatchComplexValues(T* x_data, ValueType* eigenvalues_data,
            eigenvectors.size() * sizeof(T));
   }
 }
-
-template <typename T>
-struct TransposeFunctor {
-  TransposeFunctor(const T* input, T* output, int64_t numel, int64_t rows,
-                   int64_t cols)
-      : input_(input), output_(output), numel_(numel), rows(rows), cols(cols) {}
-
-  HOSTDEVICE void operator()(int64_t idx) const {
-    int64_t batch_num = idx % (rows * cols) * (rows * cols);
-    int64_t out_idx =
-        (idx - batch_num) % cols * rows + (idx - batch_num) / cols;
-    output_[out_idx] = input_[idx];
-  }
-  const T* input_;
-  T* output_;
-  int64_t numel_;
-  int64_t rows;
-  int64_t cols;
-};
 
 template <typename T, typename ValueType>
 struct DiagAndCopyFunctor {
@@ -149,77 +141,15 @@ struct DiagAndCopyFunctor {
   T* output_;
 };
 
-/*
-template <typename T>
-struct DiagFillFunctor {
-  DiagFillFunctor(const T input, T * output, int64_t diag_number)
-      : input_(input), output_(output), numel_(diag_number) {}
-  HOSTDEVICE void operator()(int64_t idx) const {
-    int64_t outer_batch_id = idx  / (numel_) * (numel_ * numel_) ;
-    int64_t inner_batch_id = (idx  %  numel_) * (numel_ + 1) ;
-    int64_t out_idx = outer_batch_id + inner_batch_id ;
-    output_[out_idx] = input_;
-  }
-  const T input_;
-  T* output_;
-  int64_t numel_;
-  float exp ;
-};
-*/
-
-static Shape _get_broadcast_shape(InTensors ins) {
-  // TODO(xiongkun03) check the operators and output
-  auto x_dim = ins[0]->dims();
-  auto y_dim = ins[1]->dims();
-  Shape ret = (x_dim.size() > y_dim.size() ? framework::vectorize<int>(x_dim)
-                                           : framework::vectorize<int>(y_dim));
-  int rank = std::min(x_dim.size(), y_dim.size());
-  int rx = x_dim.size();
-  int ry = y_dim.size();
-  int rr = ret.size();
-  for (int i = 1; i <= rank; ++i) {
-    if (x_dim[rx - i] == y_dim[ry - i]) {
-      ret[rr - i] = x_dim[rx - i];
-      continue;
-    }
-    if (x_dim[rx - i] == 1) {
-      ret[rr - i] = y_dim[ry - i];
-      continue;
-    }
-    if (y_dim[ry - i] == 1) {
-      ret[rr - i] = x_dim[rx - i];
-      continue;
-    }
-    PADDLE_ENFORCE_EQ(
-        0, 1,
-        platform::errors::InvalidArgument(
-            "Wrong Input Shape in broadcast operator: "
-            "Input(X)'s shape must follow the broadcast rule with Input(Y)'s "
-            "shape, but received [%s] (X) vs [%s] (Y).",
-            x_dim, y_dim));
-  }
-  return ret;
-}
-
 template <typename DeviceContext, typename T, typename ValueType>
 struct DeviceIndependenceTensorOperations {
-  // 1. Device Indenpendence, Kernel Reuse
-  // 2. Tensor is always the input and output
-  // 3. output Tensor is alway allocated
-  // 4. Basic Tensor operator is supported
-  // 5. The Reused Operator Kernel should only be considered as
-  //    a wrap function
-  using NameInTensorMap =
-      std::map<std::string, std::vector<const framework::Tensor*>>;
-  using NameOutTensor = std::vector<std::string>;
-
   explicit DeviceIndependenceTensorOperations(
       const framework::ExecutionContext& context)
       : context(context) {}
 
-  Tensor diag_copy(const int m, const int n, const int num_lower_diags,
-                   const int num_upper_diags, const Tensor& scale,
-                   const Tensor& input) {
+  Tensor DiagFill(const int m, const int n, const int num_lower_diags,
+                  const int num_upper_diags, const Tensor& scale,
+                  const Tensor& input) {
     Tensor out;
     auto for_range = GetForRange(input.numel());
     DiagAndCopyFunctor<T, ValueType> diag_and_copy_functor(
@@ -229,137 +159,112 @@ struct DeviceIndependenceTensorOperations {
     return out;
   }
 
-  // void copy(const Tensor &input, Tensor& output){
-  //   auto& dev_ctx = context.template device_context<DeviceContext>();
-  //   paddle::framework::TensorCopy(
-  //       input, input->place(), dev_ctx,
-  //       output);  // copy input data to temp data
-
-  // }
-  /*
-  void matmul(const framework::Tensor& mat_a, bool trans_a,
-            const framework::Tensor& mat_b, bool trans_b,
-            framework::Tensor* mat_out){
-      auto blas = GetBlas() ;
-      check_output(* mat_out) ;
-      blas.MatMul(mat_a, trans_a, mat_b, trans_b, mat_out) ;
+  Tensor Matmul(const Tensor& mat_a, const Tensor& mat_b) {
+    Tensor out;
+    out.mutable_data<T>(mat_a.dims(), context.GetPlace());
+    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto no_trans_desc = math::CreateMatrixDescriptor(mat_a.dims(), 0, false);
+    blas.MatMul(mat_a, no_trans_desc, mat_b, no_trans_desc, T(1), &out, T(0));
+    return out;
   }
-  */
-  // upper
-  // Tensor triu_(const Tensor& x) {
-  //   Shape out_shape = framework::vectorize<int>(x.dims());
-  //   framework::AttributeMap attrs;
-  //   attrs["diagonal"] = 0;
-  //   attrs["lower"] = false;
-  //   NameInTensorMap inputs({{"X", {&x}}});
-  //   return _CreateOpRunAndReturnTensor("tril_triu", inputs, attrs,
-  //   out_shape);
-  // }
 
-  // // lower
-  // Tensor tril_(const Tensor& x) {
-  //   Shape out_shape = framework::vectorize<int>(x.dims());
-  //   framework::AttributeMap attrs;
-  //   attrs["diagonal"] = 0;
-  //   attrs["lower"] = true;
-  //   NameInTensorMap inputs({{"X", {&x}}});
-  //   return _CreateOpRunAndReturnTensor("tril_triu", inputs, attrs,
-  //   out_shape);
-  // }
-
-  framework::Tensor matmul(const framework::Tensor& mat_a,
-                           const framework::Tensor& mat_b, bool trans_a = false,
-                           bool trans_b = false) {
-    framework::AttributeMap attrs;
-    attrs["trans_x"] = trans_a;
-    attrs["trans_y"] = trans_b;
-    NameInTensorMap inputs({{"X", {&mat_a}}, {"Y", {&mat_b}}});
-    auto a_dim = mat_a.dims();
-    auto b_dim = mat_b.dims();
-    Shape x_vec = framework::vectorize<int>(a_dim);
-    x_vec[x_vec.size() - 2] = a_dim[a_dim.size() - (trans_a ? 1 : 2)];
-    x_vec[x_vec.size() - 1] = b_dim[b_dim.size() - (trans_b ? 2 : 1)];
-    return _CreateOpRunAndReturnTensor("matmul_v2", inputs, attrs, x_vec);
-  }
   // transpose the last two dimision
-  framework::Tensor transpose(const framework::Tensor& x) {
-    // PADDLE_ENFORCE_EQ(0, 1, "The Function Still have bugs, use
-    // matmul(transpose=True)") ;
-    framework::Tensor out;
-    auto x_dim = x.dims();
-    auto x_vec = framework::vectorize<int>(x_dim);
-    int rank = x_vec.size();
-    std::swap(x_vec[rank - 1], x_vec[rank - 2]);
-    Shape out_shape = x_vec;
-    std::vector<int> axis(rank);
-    for (int i = 0; i < rank; ++i) {
-      axis[i] = i;
+  Tensor Transpose(const Tensor& x) {
+    Tensor out;
+    auto& dims = x.dims();
+    out.mutable_data<T>(dims, context.GetPlace());
+    std::vector<int> axis(dims.size() - 2);
+    std::iota(axis.begin(), axis.end(), 0);
+    axis.insert(axis.end(), {dims.size() - 1, dims.size() - 2});
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    TransCompute<DeviceContext, T>(dims.size(), dev_ctx, x, &out, axis);
+    return out;
+  }
+
+  Tensor Conj(const Tensor& x) {
+    Tensor out;
+    auto* out_data = out.mutable_data<T>(x.dims(), context.GetPlace());
+    auto* x_data = x.data<T>();
+    auto for_range = GetForRange(x.numel());
+    math::ConjFunctor<T> functor(x_data, x.numel(), out_data);
+    for_range(functor);
+    return out;
+  }
+
+  Tensor Mul(const Tensor& x, float a) {
+    Tensor out;
+    out.mutable_data<T>(x.dims(), context.GetPlace());
+    auto x_vector = EigenVector<T>::Flatten(x);
+    auto out_vector = EigenVector<T>::Flatten(out);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    out_vector.device(place) = x_vector * static_cast<T>(a);
+    return out;
+  }
+
+  Tensor Div(const Tensor& x, const Tensor& y) {
+    Tensor out;
+    out.mutable_data<T>(x.dims(), context.GetPlace());
+    auto x_vector = EigenVector<T>::Flatten(x);
+    auto y_vector = EigenVector<ValueType>::Flatten(y);
+    auto out_vector = EigenVector<T>::Flatten(out);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    out_vector.device(place) = x_vector / y_vector;
+    return out;
+  }
+
+  Tensor Sub(const Tensor& x, const Tensor& y) {
+    Tensor out;
+    out.mutable_data<T>(x.dims(), context.GetPlace());
+    auto x_vector = EigenVector<T>::Flatten(x);
+    auto y_vector = EigenVector<T>::Flatten(y);
+    auto out_vector = EigenVector<T>::Flatten(out);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    out_vector.device(place) = x_vector - y_vector;
+    return out;
+  }
+
+  Tensor SubBroadcast(const Tensor& x, const Tensor& y, int batch_size, int m) {
+    Tensor out;
+    auto& dims = x.dims();
+    std::vector<int> vec_dim;
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    if (batch_size > 1) {
+      vec_dim.push_back(batch_size);
+      vec_dim.push_back(dims[dims.size() - 1]);
+      vec_dim.push_back(dims[dims.size() - 1]);
+      out.mutable_data<ValueType>(framework::make_ddim(vec_dim),
+                                  context.GetPlace());
+      auto x_tensor = EigenTensor<ValueType, 3>::From(x);
+      auto y_tensor = EigenTensor<ValueType, 3>::From(y);
+      auto out_tensor = EigenTensor<ValueType, 3>::From(out);
+      Eigen::DSizes<int, 3> a_bcast_dims(1, m, 1);
+      Eigen::DSizes<int, 3> b_bcast_dims(1, 1, m);
+      out_tensor.device(place) =
+          x_tensor.broadcast(a_bcast_dims) - y_tensor.broadcast(b_bcast_dims);
+    } else {
+      vec_dim.push_back(dims[dims.size() - 1]);
+      vec_dim.push_back(dims[dims.size() - 1]);
+      out.mutable_data<ValueType>(framework::make_ddim(vec_dim),
+                                  context.GetPlace());
+      auto x_tensor = EigenTensor<ValueType, 2>::From(x);
+      auto y_tensor = EigenTensor<ValueType, 2>::From(y);
+      auto out_tensor = EigenTensor<ValueType, 2>::From(out);
+      Eigen::DSizes<int, 2> a_bcast_dims(m, 1);
+      Eigen::DSizes<int, 2> b_bcast_dims(1, m);
+      out_tensor.device(place) =
+          x_tensor.broadcast(a_bcast_dims) - y_tensor.broadcast(b_bcast_dims);
     }
-    std::swap(axis[rank - 1], axis[rank - 2]);
-    framework::AttributeMap attrs;
-    attrs["axis"] = axis;
-    NameInTensorMap inputs({{"X", {&x}}});
-    return _CreateOpRunAndReturnTensor("transpose2", inputs, attrs, out_shape,
-                                       {"Out", "XShape"});
+    return out;
   }
 
-  framework::Tensor conj_(const framework::Tensor& x) {
-    // InTensors ins({&x});
-    Shape out_shape = framework::vectorize<int>(x.dims());
-    framework::AttributeMap attrs;
-    NameInTensorMap inputs({{"X", {&x}}});
-    return _CreateOpRunAndReturnTensor("conj", inputs, attrs, out_shape);
-  }
-
-  framework::Tensor add(const framework::Tensor& x,
-                        const framework::Tensor& y) {
-    InTensors ins({&x, &y});
-    framework::AttributeMap attrs;
-    attrs["axis"] = -1;
-    Shape out_shape = _get_broadcast_shape({&x, &y});
-    NameInTensorMap inputs({{"X", {&x}}, {"Y", {&y}}});
-    return _CreateOpRunAndReturnTensor("elementwise_add", inputs, attrs,
-                                       out_shape);
-  }
-
-  framework::Tensor mul(const framework::Tensor& x,
-                        const framework::Tensor& y) {
-    InTensors ins({&x, &y});
-    framework::AttributeMap attrs;
-    attrs["axis"] = -1;
-    Shape out_shape = _get_broadcast_shape({&x, &y});
-    NameInTensorMap inputs({{"X", {&x}}, {"Y", {&y}}});
-    return _CreateOpRunAndReturnTensor("elementwise_mul", inputs, attrs,
-                                       out_shape);
-  }
-
-  framework::Tensor div(const framework::Tensor& x,
-                        const framework::Tensor& y) {
-    InTensors ins({&x, &y});
-    framework::AttributeMap attrs;
-    attrs["axis"] = -1;
-    Shape out_shape = _get_broadcast_shape({&x, &y});
-    NameInTensorMap inputs({{"X", {&x}}, {"Y", {&y}}});
-    return _CreateOpRunAndReturnTensor("elementwise_div", inputs, attrs,
-                                       out_shape);
-  }
-
-  framework::Tensor sub(const framework::Tensor& x,
-                        const framework::Tensor& y) {
-    InTensors ins({&x, &y});
-    framework::AttributeMap attrs;
-    attrs["axis"] = -1;
-    Shape out_shape = _get_broadcast_shape({&x, &y});
-    NameInTensorMap inputs({{"X", {&x}}, {"Y", {&y}}});
-    return _CreateOpRunAndReturnTensor("elementwise_sub", inputs, attrs,
-                                       out_shape);
-  }
-
-  const framework::Tensor unsqueeze(const framework::Tensor& x, int axis = 0) {
-    // don't copy data, only change the dims
+  const Tensor Unsqueeze(const framework::Tensor& x, int axis = 0) {
     framework::Tensor out;
     out.ShareDataWith(x);
-    Shape out_shape = framework::vectorize<int>(x.dims());
+    std::vector<int> out_shape = framework::vectorize<int>(x.dims());
     if (axis >= 0) {
       auto index = (out_shape.begin() + axis);
       out_shape.insert(index, 1);
@@ -371,73 +276,12 @@ struct DeviceIndependenceTensorOperations {
     return out;
   }
 
-  framework::Tensor zeros(Shape shape, framework::proto::VarType::Type dtype,
-                          float fill_value) {
-    framework::AttributeMap attrs;
-    attrs["dtype"] = dtype;
-    attrs["shape"] = shape;
-    attrs["value"] = fill_value;
-    NameInTensorMap inputs({});
-    return _CreateOpRunAndReturnTensor("fill_constant", inputs, attrs, shape);
-  }
-
  private:
   const framework::ExecutionContext& context;
 
-  void check_output(const framework::Tensor& output) {
-    assert(output.IsInitialized() == true);
-  }
-  BlasT<DeviceContext, T> GetBlas() {
-    return math::GetBlas<DeviceContext, T>(context);
-  }
   platform::ForRange<DeviceContext> GetForRange(int numel) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     return platform::ForRange<DeviceContext>(dev_ctx, numel);
-  }
-
-  framework::Tensor _CreateOpRunAndReturnTensor(
-      const std::string& type, const NameInTensorMap& inputs,
-      const framework::AttributeMap& attrs, Shape out_shape,
-      NameOutTensor out_str = {"Out"}) {
-    // varialble set dims must be LoDTensor / SelectedRowTensor
-    framework::Scope& local_scope = context.scope().NewScope();
-
-    framework::VariableNameMap op_outputs;
-    for (auto out_name : out_str) {
-      local_scope.Var("tmp_" + out_name)->GetMutable<framework::LoDTensor>();
-      op_outputs[out_name].emplace_back("tmp_" + out_name);
-    }
-    auto out_var = local_scope.Var("tmp_Out");  // return the Out
-    // create Out Tensor and allocat memory
-    out_var->GetMutable<framework::LoDTensor>()->mutable_data<T>(
-        framework::make_ddim(out_shape), context.GetPlace());
-    // framework::make_ddim(out_shape)
-    framework::VariableNameMap op_inputs;
-    int counter = 0;
-    for (auto item : inputs) {
-      std::string name = item.first;
-      auto vec = item.second;
-      std::vector<std::string> name_vector;
-      for (auto vec_i : vec) {
-        // create score variable and reset the tensor.
-        std::string _name = "tmp" + std::to_string(counter++);
-        auto in_var = local_scope.Var(_name);  // create
-        framework::LoDTensor tmp_tns;
-        tmp_tns.ShareDataWith(*vec_i);  // tensor -> lodtensor
-        (*in_var->GetMutable<framework::LoDTensor>()) =
-            tmp_tns;  // initialize and set value
-        name_vector.emplace_back(_name);
-      }
-      op_inputs[name] = name_vector;
-    }
-    auto op =
-        framework::OpRegistry::CreateOp(type, op_inputs, op_outputs, attrs);
-    op->Run(local_scope, context.GetPlace());
-    framework::Tensor out;
-    out.ShareDataWith(*(out_var->GetMutable<framework::LoDTensor>()));
-    out.Resize(framework::make_ddim(out_shape));
-    context.scope().DeleteScope(&local_scope);
-    return out;
   }
 };
 }  // namespace math
