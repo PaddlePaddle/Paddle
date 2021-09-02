@@ -137,7 +137,7 @@ static void VisitDataType(framework::proto::VarType::Type type,
         "The recieved values data type %s can not meet "
         "inputrequirements.Because the given values data type of searchsorted "
         "operators must be float32, float64, int32 or int64. Please input "
-        "appropriate sorted_sequence again！",
+        "appropriate sorted_sequence again! ",
         framework::DataTypeToString(type)));
   }
 }

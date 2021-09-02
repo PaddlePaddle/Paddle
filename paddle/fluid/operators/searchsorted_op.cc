@@ -60,7 +60,7 @@ class SearchSortedOp : public framework::OperatorWithKernel {
               "dimensions of sorted_sequence tensor "
               "and input values tensor must "
               "match. Please input appropriate sorted_sequence and values "
-              "again！",
+              "again! ",
               sequences_dims, values_dims));
     }
 
@@ -72,7 +72,7 @@ class SearchSortedOp : public framework::OperatorWithKernel {
               "The size of sorted_sequence %d exceed the maximum limit "
               "d%. Because the size of sorted_sequence should be less than the "
               "output maximum value for int32 bit. Please set appropriate "
-              "sorted_sequence to meet this requirement！",
+              "sorted_sequence to meet this requirement! ",
               sequences_dims[sequences_dims.size() - 1],
               std::numeric_limits<int>::max()));
     }
