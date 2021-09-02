@@ -16,6 +16,8 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/operators/math/padding.h"
+#include "paddle/fluid/framework/data_type_transform.h"
 
 namespace paddle {
 namespace operators {
@@ -80,6 +82,20 @@ inline bool has_complex_output(FFTTransformType type) {
   }
   PADDLE_THROW(platform::errors::InvalidArgument("Unknown FFTTransformType"));
 }
+
+// template <typename DeviceContext, typename T>
+// void fill_tensor(const Tensor* in, int64_t axes, int64_t begin, int64_t end, T value) {
+//   framework::DDim shape = in->dims();
+//   eigen_in = framework::EigenVector<T>::Flatten(*in);
+//   eigin_in.setZero();
+
+
+//   framework::Tensor* out;
+//   paddle::operators::Slice<DeviceContext, T, D>(ctx, in, out, begin, end, axes);
+
+//   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+//   EigenConstant<std::decay_t<decltype(place)>, T, out->dims().size()>::Eval(place, out, value);  
+// }
 
 template <typename DeviceContext, typename Ti, typename To>
 struct FFTC2CFunctor {
@@ -173,18 +189,41 @@ class FFTR2CGradKernel : public framework::OpKernel<T> {
     using C = paddle::platform::complex<T>;
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
-    auto axes = ctx.Attr<std::vector<int64_t>>("axes");
+    const auto axes = ctx.Attr<std::vector<int64_t>>("axes");
     const std::string& norm_str = ctx.Attr<std::string>("normalization");
     const bool forward = ctx.Attr<bool>("forward");
+    const bool onesided = ctx.Attr<bool>("onesided");
 
     const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
+    framework::Tensor complex_dx;
+    complex_dx.mutable_data<C>(dx->dims(), ctx.GetPlace());
 
-    dx->mutable_data<C>(ctx.GetPlace());
     auto normalization = get_norm_from_string(norm_str, forward);
+    VLOG(5) << "[FFT][R2C][GRAD]" << "Exec FFTR2CGradKernel(onesided="<<onesided <<")";
+    FFTC2CFunctor<DeviceContext, C, C> fft_c2c_func;
+    
+    if (!onesided) {
+      fft_c2c_func(dev_ctx, dy, dx, axes, normalization, !forward);
+    } else {
+      framework::Tensor full_dy;
+      full_dy.mutable_data<C>(dx->dims(), ctx.GetPlace());
 
-    FFTC2RFunctor<DeviceContext, C, T> fft_c2r_func;
-    fft_c2r_func(dev_ctx, dy, dx, axes, normalization, forward);
+      auto last_dim = axes.back();
+      VLOG(5) << "last dim";
+      auto start = dy->dims().at(last_dim);
+      auto end = full_dy.dims().at(last_dim);
+      auto zero_length = static_cast<int>(end - start);
+      auto rank = dy->dims().size();
+
+      std::vector<int> pads(rank * 2, 0);
+      pads[last_dim*2+1] = zero_length;
+
+      paddle::operators::math::PaddingFunctor<DeviceContext, C>(rank, ctx, pads, static_cast<C>(0), *dy, &full_dy);
+      fft_c2c_func(dev_ctx, &full_dy, &complex_dx, axes, normalization, !forward);
+    }
+    framework::TransComplexToReal(dx->type(), complex_dx.type(), complex_dx, dx);
   }
 };
 
@@ -230,5 +269,7 @@ class FFTC2RGradKernel : public framework::OpKernel<T> {
     fft_r2c_func(dev_ctx, dy, dx, axes, normalization, forward, onesided);
   }
 };
+
+
 }  // namespace operators
 }  // namespace paddle

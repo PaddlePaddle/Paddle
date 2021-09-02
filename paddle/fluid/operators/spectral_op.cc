@@ -184,6 +184,7 @@ class FFTR2CGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("fft_r2c_grad");
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
@@ -204,19 +205,7 @@ class FFTR2CGradOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Output(%s) of FFTR2CGradOp should not be null.", "DX"));
     auto x_grad_name = framework::GradVarName("X");
-    auto out_grad_name = framework::GradVarName("Out");
-    const bool onesided = ctx->Attrs().Get<bool>("onesided");
-    const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
-    if (!onesided) {
-      ctx->ShareDim(out_grad_name, /*->*/ x_grad_name);  //
-    } else {
-      const auto out_grad_dim = ctx->GetInputDim(out_grad_name);
-      framework::DDim x_grad_dim(out_grad_dim);
-      const int64_t last_fft_axis = axes.back();
-      const int64_t last_fft_dim_size = x_grad_dim.at(last_fft_axis);
-      x_grad_dim.at(last_fft_axis) = (last_fft_dim_size - 1) * 2;
-      ctx->SetOutputDim(x_grad_name, x_grad_dim);
-    }
+    ctx->ShareDim("X", /*->*/ x_grad_name);  //
   }
 
  protected:
@@ -355,6 +344,9 @@ T compute_factor(int64_t size, FFTNormMode normalization) {
   PADDLE_THROW("Unsupported normalization type");
 }
 
+void fill_with_conjugate_symetry_cpu(const Tensor& input, const std::vector<int64_t>& axes) {
+
+}
 ////////////////// Functors
 #if defined(PADDLE_WITH_ONEMKL)
 
@@ -833,7 +825,14 @@ template <typename Ti, typename To>
 struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward, bool onesided) {}
+                  FFTNormMode normalization, bool forward, bool onesided) {
+    VLOG(5) << "[FFT][R2C][CPU][MKL]:" << "Exec FFTR2CFunctor(onsided=" << onesided << ", forward=" << forward <<")";
+    exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, x, out, axes,
+                                                 normalization, forward);
+    if (!onesided) {
+      fill_with_conjugate_symetry_cpu(*out, axes);
+    }
+  }
 };
 
 template <typename Ti, typename To>
