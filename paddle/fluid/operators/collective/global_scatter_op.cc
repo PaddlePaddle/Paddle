@@ -34,8 +34,7 @@ class GlobalScatterOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The ring_id (%d) for global scatter op must be non-negative.",
             ring_id));
-    // int in_feat = ctx->Attrs().Get<int>("in_feat");
-    // VLOG(0) << "scatter in_feat " << in_feat;
+
     framework::DDim out_dims = framework::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);
   }
@@ -60,13 +59,6 @@ class GlobalScatterOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) Tensor which have n_expert * world_size elements that "
              "indicates"
              "how many data needed to be received.");
-    // AddAttr<int>("in_feat", "(int default 0) The feature shape of the x.")
-    //     .SetDefault(0);
-    // AddAttr<int>("n_expert", "(int default 1) The number of experts in every
-    // rank.")
-    //     .SetDefault(1);
-    // AddAttr<int>("world_size", "(int default 1) The number of rank.")
-    //     .SetDefault(1);
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<bool>(
@@ -97,7 +89,6 @@ class GlobalScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput("global_count", this->Input("global_count"));
     retv->SetOutput("Out", this->InputGrad("x"));
     retv->SetAttrMap(this->Attrs());
-    // retv->SetAttr("in_feat", retv->GetAttr("in_feat"));
   }
 };
 

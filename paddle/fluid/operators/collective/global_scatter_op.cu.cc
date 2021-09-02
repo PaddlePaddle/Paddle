@@ -27,13 +27,9 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
 #if NCCL_VERSION_CODE >= 2703
-    VLOG(0) << "scatter start";
     auto x = ctx.Input<framework::LoDTensor>("x");
     auto local_count = ctx.Input<framework::LoDTensor>("local_count");
     auto global_count = ctx.Input<framework::LoDTensor>("global_count");
-    // auto in_feat = static_cast<int>(ctx.Attr<int>("in_feat"));
-    // auto n_expert = static_cast<int>(ctx.Attr<int>("n_expert"));
-    // auto world_size = static_cast<int>(ctx.Attr<int>("world_size"));
     auto out = ctx.Output<framework::LoDTensor>("Out");
 
     framework::Tensor cpu_local_count;
@@ -101,7 +97,6 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
       }
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-      VLOG(0) << "scatter end";
     }
 
 #else
