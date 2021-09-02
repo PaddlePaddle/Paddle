@@ -166,6 +166,25 @@ void DownpourWorker::DumpParam(const int batch_id) {
   }
 }
 
+void DownpourWorker::DumpParam(std::ostringstream& os) {
+  for (auto& param : dump_param_) {
+    Variable* var = thread_scope_->FindVar(param);
+    if (var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    int64_t len = tensor->numel();
+    std::string tensor_str;
+    try {
+      tensor_str = PrintLodTensor(tensor, 0, len);
+    } catch (std::exception& e) {
+      LOG(WARNING) << "catch exception, param:" << param;
+      continue;
+    }
+    os << "\t" << param << ":" << len << tensor_str;
+  }
+}
+
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   if (no_cvm_) {
     return;
@@ -982,7 +1001,7 @@ void DownpourWorker::TrainFiles() {
     }
     if (need_dump_field_) {
       size_t batch_size = device_reader_->GetCurBatchSize();
-      std::vector<std::string> ars(batch_size);
+      std::vector<std::ostringstream> ars(batch_size);
       for (auto& ar : ars) {
         ar.clear();
       }
@@ -1023,9 +1042,6 @@ void DownpourWorker::TrainFiles() {
         }
 
         writer_ << ars[i].str();
-      }
-      if (need_dump_param_ && thread_id_ == 0) {
-        DumpParam(batch_cnt);
       }
     }
 
