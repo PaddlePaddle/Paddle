@@ -22,48 +22,75 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
 
-/**
- * get 1D threads and blocks
- */
-template <int VecSize = 4>
-inline std::pair<uint32_t, uint32_t> Get1DThreadsAndBlocks(
-    const platform::CUDADeviceContext &ctx, const uint64_t n) {
-  const uint64_t tmp_n = n / VecSize;
-  int threads = std::max(
-      (uint64_t)32, std::min(tmp_n, (uint64_t)ctx.GetMaxThreadsPerBlock()));
-  int blocks = std::max((uint64_t)1, (tmp_n + threads - 1) / threads);
-  return std::pair<uint32_t, uint32_t>{threads, blocks};
-}
+#define MAX_CACHE_BYTES 16
 
 /**
  * get the threads for fused_residual_dropout_bias:
  * 1D blocks: blockDim.x = cols
  * 2D grids: gridDim.y = rows
  */
-template <int VecSize = 4>
-inline std::pair<dim3, dim3> Get1DBlocksAnd2DGrids(
+inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
     const platform::CUDADeviceContext &ctx, const uint32_t rows,
-    const uint32_t cols) {
+    const uint32_t cols, const int VecSize) {
   const uint32_t tmp_cols = cols / VecSize;
   int threads = std::max(
       (uint32_t)32, std::min(tmp_cols, (uint32_t)ctx.GetMaxThreadsPerBlock()));
   int blocks_x = std::max((uint32_t)1, (tmp_cols + threads - 1) / threads);
   int blocks_y = std::max((uint32_t)1, rows);
-  dim3 block_dim(threads, 1, 1);
-  dim3 grid_dim(blocks_x, blocks_y, 1);
-  return std::pair<dim3, dim3>{block_dim, grid_dim};
+  platform::GpuLaunchConfig config;
+  config.block_per_grid.x = blocks_x;
+  config.block_per_grid.y = blocks_y;
+  config.thread_per_block.x = threads;
+  return config;
 }
 
-// aligned vector generates vectorized load/store on CUDA
-template <typename T, int VecSize>
-struct alignas(sizeof(T) * VecSize) AlignedVector {
-  T val[VecSize];
-};
+__forceinline__ __device__ void Rand1(curandStatePhilox4_32_10_t *state,
+                                      float *data) {
+  data[0] = curand_uniform(state);
+}
+
+__forceinline__ __device__ void Rand2(curandStatePhilox4_32_10_t *state,
+                                      float *data) {
+  data[0] = curand_uniform(state);
+  data[1] = curand_uniform(state);
+}
+
+__forceinline__ __device__ void Rand4(curandStatePhilox4_32_10_t *state,
+                                      float *data) {
+  float4 rand4 = curand_uniform4(state);
+  data[0] = rand4.x;
+  data[1] = rand4.y;
+  data[2] = rand4.w;
+  data[3] = rand4.z;
+}
+
+__forceinline__ __device__ void Rand8(curandStatePhilox4_32_10_t *state,
+                                      float *data) {
+  Rand4(state, data);
+  Rand4(state, data + 4);
+}
+
+__forceinline__ __device__ void RandVec(curandStatePhilox4_32_10_t *state,
+                                        float *data, const int VecSize) {
+  if (VecSize == 1) {
+    Rand1(state, data);
+  } else if (VecSize == 2) {
+    Rand2(state, data);
+  } else if (VecSize == 4) {
+    Rand4(state, data);
+  } else if (VecSize == 8) {
+    Rand8(state, data);
+  } else {
+    return;
+  }
+}
 
 }  // namespace operators
 }  // namespace paddle

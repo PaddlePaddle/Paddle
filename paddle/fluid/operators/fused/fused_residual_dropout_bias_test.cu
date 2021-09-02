@@ -39,7 +39,7 @@ struct TestFusedResidualDropoutBias {
   float dropout_prob;
   bool is_upscale_in_train;
   bool is_test;  // default false,  Set to true for inference only
-  bool hasbias = true;
+  bool has_bias = true;
   framework::Tensor src, residual, bias, out, mask;
   framework::Tensor dsrc, dbias;
 
@@ -57,10 +57,10 @@ struct TestFusedResidualDropoutBias {
     dropout_prob = 0.0;
     is_upscale_in_train = false;
     is_test = false;
-    hasbias = true;
+    has_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    auto device_ctx = pool.Get(place);
+    ctx = reinterpret_cast<platform::CUDADeviceContext *>(device_ctx);
   }
 
   TestFusedResidualDropoutBias(int rows_, int cols_, uint64_t seed_ = 0,
@@ -73,10 +73,10 @@ struct TestFusedResidualDropoutBias {
     dropout_prob = dropout_prob_;
     is_upscale_in_train = is_upscale_in_train_;
     is_test = is_test_;
-    hasbias = true;
+    has_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    auto device_ctx = pool.Get(place);
+    ctx = reinterpret_cast<platform::CUDADeviceContext *>(device_ctx);
   }
 
   ~TestFusedResidualDropoutBias() {}
@@ -108,7 +108,7 @@ struct TestFusedResidualDropoutBias {
     src.Resize({rows, cols});
     framework::TensorFromVector<T>(residual_vec, *ctx, &residual);
     residual.Resize({rows, cols});
-    if (hasbias) {
+    if (has_bias) {
       framework::TensorFromVector<T>(bias_vec, *ctx, &bias);
       bias.Resize({cols});
     }
@@ -121,7 +121,7 @@ struct TestFusedResidualDropoutBias {
       dsrc.Resize({rows, cols});
       dsrc.mutable_data<T>(place);
 
-      if (hasbias) {
+      if (has_bias) {
         dbias.Resize({cols});
         dbias.mutable_data<T>(place);
       }
@@ -130,7 +130,7 @@ struct TestFusedResidualDropoutBias {
 
   void BaseForward() {
     std::vector<T> out1(rows * cols), out2(rows * cols);
-    if (hasbias) {
+    if (has_bias) {
       // add bias
       for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -167,15 +167,16 @@ struct TestFusedResidualDropoutBias {
   }
 
   void FusedForward() {
-    auto threads = paddle::operators::Get1DBlocksAnd2DGrids(
-        *ctx, (uint64_t)rows, (uint64_t)cols);
-    const int VecSize = 4;
-    const int increment =
-        ((cols - 1) / (threads.first.x * threads.second.x * VecSize) + 1) *
-        VecSize;
+    const int VecSize = MAX_CACHE_BYTES / sizeof(T);
+    auto config = paddle::operators::Get1DBlocksAnd2DGrids(
+        *ctx, (uint64_t)rows, (uint64_t)cols, VecSize);
+    const int increment = ((cols - 1) / (config.thread_per_block.x *
+                                         config.block_per_grid.x * VecSize) +
+                           1) *
+                          VecSize;
 
     T *bias_ptr = nullptr;
-    if (hasbias) {
+    if (has_bias) {
       bias_ptr = bias.data<T>();
     }
     paddle::operators::LaunchResidualDropoutBias<T, uint8_t>(
@@ -191,7 +192,7 @@ struct TestFusedResidualDropoutBias {
     }
 
     T *bias_ptr = nullptr;
-    if (hasbias) {
+    if (has_bias) {
       bias_ptr = dbias.data<T>();
     }
     paddle::operators::LaunchResidualDropoutBiasGrad<T, uint8_t>(
@@ -237,7 +238,7 @@ struct TestFusedResidualDropoutBias {
       EXPECT_LT(std::abs(_dsrc[i] - correct_dsrc[i]), diff);
     }
 
-    if (hasbias) {
+    if (has_bias) {
       std::vector<T> _dbias(cols);
       framework::TensorToVector(dbias, *ctx, &_dbias);
       ctx->Wait();
@@ -248,60 +249,42 @@ struct TestFusedResidualDropoutBias {
   }
 };
 
-TEST(FusedDropout, GPUFusedResidualDropoutBias) {
+// test the shape and bias
+template <typename T>
+static void BaseTest(const bool is_fp16 = false) {
   const int rows = 16;
-  const int cols = 16;
-  TestFusedResidualDropoutBias<float> test(rows, cols);
-  test.Run();
-  test.CheckOut(static_cast<float>(1e-5));
-  test.CheckGrad(static_cast<float>(1e-5));
+  std::vector<int> cols_list = {16, 17};
+  bool has_bias[2] = {true, false};
+  T default_diff = static_cast<T>(1e-5);
+  if (is_fp16) {
+    default_diff = static_cast<T>(1e-2);
+  }
+  for (int i = 0; i < cols_list.size(); i++) {
+    for (int j = 0; j < 2; j++) {
+      TestFusedResidualDropoutBias<T> test(rows, cols_list[i]);
+      test.has_bias = has_bias[j];
+      test.Run();
+      test.CheckOut(default_diff);
+      if (!is_fp16) {
+        test.CheckGrad(default_diff);
+      }
+    }
+  }
 }
 
-TEST(FusedDropout, GPUFusedResidualDropoutBiasDouble) {
-  const int rows = 16;
-  const int cols = 16;
-  TestFusedResidualDropoutBias<double> test(rows, cols);
-  test.Run();
-  test.CheckOut(static_cast<double>(1e-5));
-  test.CheckGrad(static_cast<double>(1e-5));
-}
+TEST(FusedDropout, GPUFusedResidualDropoutBias) { BaseTest<float>(); }
+
+TEST(FusedDropout, GPUFusedResidualDropoutBiasDouble) { BaseTest<double>(); }
 
 // test fp16, For inference, check_grad is not required. ref: testdropout_op.py
 TEST(FusedDropout, GPUFusedResidualDropoutBiasFp16) {
-  const int rows = 16;
-  const int cols = 16;
-  TestFusedResidualDropoutBias<platform::float16> test(rows, cols);
-  test.Run();
-  test.CheckOut(static_cast<platform::float16>(1e-2));
+  BaseTest<platform::float16>(true);
 }
 
-// test no bias and cols % 4 == 0
-TEST(FusedDropout, GPUFusedResidualDropoutBiasNoBias) {
-  const int rows = 16;
-  const int cols = 16;
-  TestFusedResidualDropoutBias<float> test(rows, cols);
-  test.hasbias = false;
-  test.Run();
-  test.CheckOut(static_cast<float>(1e-5));
-  test.CheckGrad(static_cast<float>(1e-5));
-}
-
-// test no bias and cols % 4 != 0
-TEST(FusedDropout, GPUFusedResidualDropoutBiasNoBias2) {
-  const int rows = 16;
-  const int cols = 17;
-  TestFusedResidualDropoutBias<float> test(rows, cols);
-  test.hasbias = false;
-  test.Run();
-  test.CheckOut(static_cast<float>(1e-5));
-  test.CheckGrad(static_cast<float>(1e-5));
-}
-
-// test add bias and cols % 4 != 0
 TEST(FusedDropout, GPUFusedResidualDropoutBias2) {
   const int rows = 16;
-  const int cols = 17;
-  TestFusedResidualDropoutBias<float> test(rows, cols);
+  const int cols = 16;
+  TestFusedResidualDropoutBias<float> test(rows, cols, 0, 1.0, false, false);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-5));
@@ -310,7 +293,7 @@ TEST(FusedDropout, GPUFusedResidualDropoutBias2) {
 TEST(FusedDropout, GPUFusedResidualDropoutBias3) {
   const int rows = 16;
   const int cols = 16;
-  TestFusedResidualDropoutBias<float> test(rows, cols, 0, 1.0, false, false);
+  TestFusedResidualDropoutBias<float> test(rows, cols, 0, 1.0, true, false);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-5));
@@ -319,31 +302,13 @@ TEST(FusedDropout, GPUFusedResidualDropoutBias3) {
 TEST(FusedDropout, GPUFusedResidualDropoutBias4) {
   const int rows = 16;
   const int cols = 16;
-  TestFusedResidualDropoutBias<float> test(rows, cols, 0, 1.0, false, false);
-  test.Run();
-  test.CheckOut(static_cast<float>(1e-5));
-  test.CheckGrad(static_cast<float>(1e-5));
-}
-
-TEST(FusedDropout, GPUFusedResidualDropoutBias5) {
-  const int rows = 16;
-  const int cols = 16;
-  TestFusedResidualDropoutBias<float> test(rows, cols, 0, 1.0, true, false);
-  test.Run();
-  test.CheckOut(static_cast<float>(1e-5));
-  test.CheckGrad(static_cast<float>(1e-5));
-}
-
-TEST(FusedDropout, GPUFusedResidualDropoutBias6) {
-  const int rows = 16;
-  const int cols = 16;
   TestFusedResidualDropoutBias<float> test(rows, cols, 0, 0.35, true, true);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-5));
 }
 
-TEST(FusedDropout, GPUFusedResidualDropoutBias7) {
+TEST(FusedDropout, GPUFusedResidualDropoutBias5) {
   const int rows = 16;
   const int cols = 16;
   TestFusedResidualDropoutBias<float> test(rows, cols, 125, 0.0, false, false);
