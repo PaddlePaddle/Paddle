@@ -20,7 +20,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-template <typename T, size_t N>
+template <typename T, unsigned N>
 static std::vector<T> ToStdVector(const paddle::SmallVector<T, N> &vec) {
   std::vector<T> std_vec;
   std_vec.reserve(vec.size());
@@ -31,7 +31,7 @@ static std::vector<T> ToStdVector(const paddle::SmallVector<T, N> &vec) {
 }
 
 template <size_t N>
-void InlinedVectorCheck(size_t n) {
+void SmallVectorCheck(size_t n) {
   std::srand(std::time(nullptr));
 
   std::vector<int> std_vec;
@@ -65,13 +65,13 @@ void InlinedVectorCheck(size_t n) {
   CHECK_EQ(vec.size(), static_cast<size_t>(0));
 }
 
-TEST(inlined_vector, inlined_vector) {
+TEST(samll_vector, small_vector) {
   for (size_t i = 0; i < 20; ++i) {
-    InlinedVectorCheck<1>(i);
-    InlinedVectorCheck<10>(i);
-    InlinedVectorCheck<15>(i);
-    InlinedVectorCheck<20>(i);
-    InlinedVectorCheck<21>(i);
-    InlinedVectorCheck<25>(i);
+    SmallVectorCheck<1>(i);
+    SmallVectorCheck<10>(i);
+    SmallVectorCheck<15>(i);
+    SmallVectorCheck<20>(i);
+    SmallVectorCheck<21>(i);
+    SmallVectorCheck<25>(i);
   }
 }
