@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle_infer_declare.h"  // NOLINT
 
 namespace paddle_infer {
@@ -36,6 +37,7 @@ enum DataType {
   UINT8,
   INT8,
   FLOAT16,
+  STRINGS,
   // TODO(Superjomn) support more data types if needed.
 };
 
@@ -56,6 +58,7 @@ class PD_INFER_DECL Tensor {
   /// Reshape must be called before calling mutable_data() or copy_from_cpu()
   /// \param shape The shape to set.
   void Reshape(const std::vector<int>& shape);
+  void Reshape(const std::size_t shape);
 
   /// \brief Get the memory pointer in CPU or GPU with specific data type.
   /// Please Reshape the tensor first before call this.
@@ -63,6 +66,7 @@ class PD_INFER_DECL Tensor {
   /// \param place The place of the tensor.
   template <typename T>
   T* mutable_data(PlaceType place);
+  paddle::framework::STRINGS* mutable_data();
 
   /// \brief Get the memory pointer directly.
   /// It's usually used to get the output data pointer.
@@ -77,6 +81,7 @@ class PD_INFER_DECL Tensor {
   /// \param data The pointer of the data, from which the tensor will copy.
   template <typename T>
   void CopyFromCpu(const T* data);
+  void CopyFromCpu(const paddle::framework::STRINGS* data);
 
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
@@ -122,7 +127,10 @@ class PD_INFER_DECL Tensor {
 
  protected:
   explicit Tensor(void* scope);
+
+  template <typename T>
   void* FindTensor() const;
+
   void SetPlace(PlaceType place, int device = -1);
   void SetName(const std::string& name);
 

@@ -204,7 +204,6 @@ struct VarTypeTrait {
 
 // Users should set some of variable type ids to be what is defined in
 // framework.proto below
-REG_PROTO_VAR_TYPE_TRAIT(STRINGS, proto::VarType::STRINGS);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
@@ -217,6 +216,7 @@ REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
 REG_PROTO_VAR_TYPE_TRAIT(STRING_MAP, proto::VarType::STRING_MAP);
+REG_PROTO_VAR_TYPE_TRAIT(STRINGS, proto::VarType::STRINGS);
 
 /** End of variable type registration */
 
