@@ -4785,6 +4785,7 @@ class PipelineOptimizer(object):
                 # skip data var
                 if var.is_data: continue
                 prev_device = None
+
                 prev_op = self._find_prev_op(index, var_name)
                 if prev_op is None:
                     if var_name not in self._param_device_map:
