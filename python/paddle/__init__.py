@@ -100,7 +100,6 @@ from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
 from .tensor.linalg import matrix_power  # noqa: F401
-from .tensor.linalg import svd  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
@@ -494,7 +493,6 @@ __all__ = [  # noqa
            'sqrt',
            'cholesky',
            'matrix_power',
-           'svd',
            'randperm',
            'linspace',
            'reshape',

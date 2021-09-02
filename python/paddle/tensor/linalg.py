@@ -964,27 +964,29 @@ def svd(x, full_matrices=False, name=None):
         Tensor: Tensor S, the singular value of X. the shape of S is [..., K]
         Tensor: Tensor VH, the conjugate transpose of V. the shape of V is controlled by full_matrices flag. 
 
+    Examples:
+        .. code-block:: python
+
+            import paddle
             import numpy as np
 
             x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
             x = x.reshape([3, 2])
             u, s, vt = paddle.linalg.svd(x)
             print (u)
-            print (s)
-            print (vt)
-
             #U = [[ 0.27364809, -0.21695147  ],
             #      [ 0.37892198, -0.87112408 ],
             #      [ 0.8840446 ,  0.44053933 ]]
 
+            print (s)
             #S = [8.14753743, 0.78589688]
-
+            print (vt)
             #VT= [[ 0.51411221,  0.85772294],
             #     [ 0.85772294, -0.51411221]]
             
-            # one can verify : U * S * VT = X ;     
-            #                  U * UH = I ; 
-            #                  V * VH = I
+            # one can verify : U * S * VT == X
+            #                  U * UH == I 
+            #                  V * VH == I
     """
 
     if in_dygraph_mode():
