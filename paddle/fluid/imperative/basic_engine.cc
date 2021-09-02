@@ -383,6 +383,9 @@ void BasicEngine::Execute() {
               }
             }
           }
+          if (!in_tensor) {
+            continue;
+          }
           for (auto& p : cur_op.GetOutsMap()) {
             if (p.first == pair.second) {
               if (p.second.size() > 0 && p.second[0]) {
