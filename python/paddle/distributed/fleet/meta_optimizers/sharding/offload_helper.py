@@ -122,9 +122,6 @@ class OffloadHelper(object):
         for idx, op in enumerate(block.ops):
             if is_optimizer_op(op):
                 break
-            # TODO (Yuang Liu): tmp solution for fuse_grad_merge + optimize_cast
-            if not offload and op.type == 'coalesce_tensor':
-                continue
             for input_name in op.desc.input_arg_names():
                 if input_name not in param_to_idx:
                     continue
