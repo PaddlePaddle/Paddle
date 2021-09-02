@@ -544,7 +544,7 @@ def monkey_patch_varbase():
         return array
 
     def contain_tensor(item):
-        if not isinstance(item, tuple):
+        if not isinstance(item, (tuple, list)):
             item = [item]
 
         for slice_item in item:
@@ -588,18 +588,39 @@ def monkey_patch_varbase():
 
     def __setitem__(self, item, value):
         def contain_tensor_or_list(item):
-            if not isinstance(item, tuple):
+            if not isinstance(item, (tuple, list)):
                 item = [item]
 
             for slice_item in item:
-                if isinstance(slice_item, list):
+                if isinstance(slice_item, (list, tuple)):
                     return True
                 elif isinstance(slice_item, Variable):
                     return True
 
             return False
 
-        if contain_tensor_or_list(item):
+        def is_combine_index(item):
+            var_type = None
+            item_type = None
+            if isinstance(item, (tuple, list)):
+                for slice_item in item:
+                    if item_type is None:
+                        item_type = type(slice_item)
+                    else:
+                        if type(slice_item) != item_type:
+                            return True
+
+                    if isinstance(slice_item, Variable):
+                        if var_type is None:
+                            var_type = slice_item.dtype
+                        else:
+                            if var_type != slice_item.dtype:
+                                return True
+                return False
+
+            return False
+
+        if contain_tensor_or_list(item) and not is_combine_index(item):
             # To reuse code with static graph,
             # Call _setitem_impl_ when item contains tensor or list.
             return _setitem_impl_(self, item, value)
