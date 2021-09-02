@@ -48,8 +48,7 @@ class AutoScanTest(unittest.TestCase):
         self.skip_cases = []
 
     @abc.abstractmethod
-    def sample_program_configs(
-            self) -> (List[ProgramConfig], List[Dict[str, Any]]):
+    def sample_program_configs(self) -> List[ProgramConfig]:
         '''
         Generate all config with the combination of different Input tensor shape and
         different Attr values.
@@ -57,8 +56,7 @@ class AutoScanTest(unittest.TestCase):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def sample_predictor_configs(
-            self, attrs: List[Dict[str, Any]]) -> List[paddle_infer.Config]:
+    def sample_predictor_configs(self) -> List[paddle_infer.Config]:
         raise NotImplementedError
 
     @abc.abstractmethod
