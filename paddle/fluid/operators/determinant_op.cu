@@ -23,30 +23,6 @@ using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
 
 template <typename T>
-void Determinant(const Tensor& input, const framework::ExecutionContext ctx, int rank, int batch_count, Tensor* output) {
-    std::vector<T> input_vec;
-    std::vector<float> output_vec;
-    framework::TensorToVector(input, ctx.device_context(),&input_vec);
-    for (int i = 0; i < batch_count; ++i) {  // maybe can be parallel
-      auto begin_idx = input_vec.begin() + i * rank * rank;
-      auto end_idx = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<T> sub_vec(begin_idx,
-                             end_idx);  // get every square matrix data
-      Eigen::MatrixXf matrix(rank, rank);
-      for (int i = 0; i < rank; ++i) {
-        for (int j = 0; j < rank; ++j) {
-          matrix(i, j) = sub_vec[rank * i + j];
-        }
-      }
-      VLOG(2) << "det value: " << matrix.determinant();
-      VLOG(2) << "matrix val: " << matrix;
-      output_vec.push_back(matrix.determinant());
-    }
-    framework::TensorFromVector(output_vec, output);
-}
-
-
-template <typename T>
 __global__ void DeterminantGrad(const size_t numel, T* out) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid < numel) {
@@ -78,7 +54,7 @@ class DeterminantCUDAKernel : public framework::OpKernel<T> {
     }
 
     auto rank = input_dim[input_dim_size - 1];
-    Determinant<T>(*input, context, rank, batch_count, output);
+    DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     auto output_dims = framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
     output->Resize(output_dims);
   }
@@ -105,36 +81,6 @@ class DeterminantGradCUDAKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-void SlogDeterminant(const Tensor& input, const framework::ExecutionContext ctx, int rank, int batch_count,
-  Tensor* output) {
-    std::vector<T> input_vec;
-    std::vector<float> sin_vec;
-    std::vector<float> log_vec;
-    std::vector<float> output_vec;
-    framework::TensorToVector(input, ctx.device_context(), &input_vec);
-    for (int i = 0; i < batch_count; ++i) {  // maybe can be parallel
-      auto begin_idx = input_vec.begin() + i * rank * rank;
-      auto end_idx = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<T> sub_vec(begin_idx,
-                             end_idx);  // get every square matrix data
-      Eigen::MatrixXf matrix(rank, rank);
-      for (int i = 0; i < rank; ++i) {
-        for (int j = 0; j < rank; ++j) {
-          matrix(i, j) = sub_vec[rank * i + j];
-        }
-      }
-      VLOG(2) << "det value: " << matrix.determinant();
-      VLOG(2) << "matrix val: " << matrix;
-      sin_vec.push_back(sign(matrix.determinant()));
-      log_vec.push_back(log(matrix.determinant()));
-    }
-    // merge sin_vec and log_vec as final output_vec
-    output_vec.insert(output_vec.end(), sin_vec.begin(), sin_vec.end());
-    output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
-    framework::TensorFromVector(output_vec, output);
-  }
-
-template <typename T>
 class SlogDeterminantCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -159,7 +105,7 @@ class SlogDeterminantCUDAKernel : public framework::OpKernel<T> {
     }
 
     auto rank = input_dim[input_dim_size - 1];
-    SlogDeterminant<T>(*input, context, rank, batch_count, output);
+    SlogDeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
     output_dim_vec.insert(output_dim_vec.begin(), 2); // make the output dims as same as numpy
     auto output_dims = framework::make_ddim(output_dim_vec);

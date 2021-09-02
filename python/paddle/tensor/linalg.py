@@ -14,7 +14,7 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid.framework import in_dygraph_mode, _varbase_creator
 
 from ..fluid.layers import transpose  # noqa: F401
