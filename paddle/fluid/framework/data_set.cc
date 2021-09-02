@@ -284,7 +284,7 @@ static int compute_thread_batch_nccl(
   // split data avg by thread num
   compute_batch_num(total_instance_num, minibatch_size, thr_num, &offset);
   thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);
-
+#ifdef PADDLE_WITH_GLOO
   auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
   if (!gloo_wrapper->IsInitialized()) {
     VLOG(0) << "GLOO is not inited";
@@ -302,7 +302,7 @@ static int compute_thread_batch_nccl(
     int thread_max_batch_num = thread_max_batch_num_vec[0];
     int64_t sum_total_ins_num = sum_total_ins_num_vec[0];
     int diff_batch_num = thread_max_batch_num - thread_avg_batch_num;
-    VLOG(3) << "##########diff batch num: " << diff_batch_num
+    VLOG(3) << "diff batch num: " << diff_batch_num
             << " thread max batch num: " << thread_max_batch_num
             << " thread avg batch num: " << thread_avg_batch_num;
     if (diff_batch_num == 0) {
@@ -348,7 +348,12 @@ static int compute_thread_batch_nccl(
                  << total_instance_num << ", batch num " << offset.size()
                  << ", thread avg batch num " << thread_avg_batch_num;
   }
+#else
+        PADDLE_THROW(
+            platform::errors::Unavailable("dataset compute nccl batch number need compile with GLOO"));
+#endif
   return thread_avg_batch_num;
+
 }
 
 template <typename T>
