@@ -552,10 +552,8 @@ void Pool3dOpMaker::Make() {
       "(bool) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used. Default False")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("use_mkldnn",
-                "(bool) Only used in mkldnn kernel. Default False")
+      .SetDefault(false) AddAttr<bool>(
+          "use_mkldnn", "(bool) Only used in mkldnn kernel. Default False")
       .SetDefault(false)
       .AsExtra();
   AddAttr<std::string>(
