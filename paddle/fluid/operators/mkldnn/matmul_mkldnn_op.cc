@@ -178,7 +178,8 @@ class MatMulMKLDNNHandler
   }
 
  public:
-  void Execute(paddle::framework::Tensor* x, paddle::framework::Tensor* y,
+  void Execute(const paddle::framework::Tensor* x,
+               const paddle::framework::Tensor* y,
                paddle::framework::Tensor* out) {
     const auto src_memory_p = this->AcquireSrcMemory(x);
     const auto weights_memory_p = this->AcquireWeightsMemory(y);
