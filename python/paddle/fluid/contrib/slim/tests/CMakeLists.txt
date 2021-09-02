@@ -100,7 +100,7 @@ function(inference_quant2_int8_lstm_model_test target fp32_model dataset_path)
             ARGS --fp32_model ${fp32_model}
                  --infer_data ${dataset_path}
                  --num_threads 4
-                 --mkldnn_cache_capacity 0
+                 --mkldnn_cache_capacity 100
                  --warmup_iter 100
                  --warmup_batch_size 1
                  --acc_diff_threshold 0.11)
