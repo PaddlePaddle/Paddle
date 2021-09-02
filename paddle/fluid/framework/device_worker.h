@@ -226,6 +226,7 @@ class DownpourWorker : public HogwildWorker {
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
+  void DumpParam(std::ostringstream& os);
   virtual void DumpParam(const int batch_id);
 
   DownpourWorkerParameter param_;
