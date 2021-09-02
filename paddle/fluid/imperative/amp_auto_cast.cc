@@ -251,5 +251,26 @@ NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
   return new_ins;
 }
 
+// new
+NameVarBaseMap CastPureFp16Inputs1(const std::string& op_type,
+                                   const NameVarBaseMap& ins) {
+  NameVarBaseMap new_ins(ins);
+  auto dst_type = framework::proto::VarType::FP16;
+  if (AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(op_type) ||
+      AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+    dst_type = framework::proto::VarType::FP32;
+  }
+  for (auto& pair : new_ins) {
+    VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+            << GetDtypeStr(*pair.second.cbegin()) << " to "
+            << framework::DataTypeToString(dst_type);
+    for (auto& var : pair.second) {
+      var = (dst_type == framework::proto::VarType::FP32 ? CastToFP32(var)
+                                                         : CastToFP16(var));
+    }
+  }
+  return new_ins;
+}
+
 }  // namespace imperative
 }  // namespace paddle

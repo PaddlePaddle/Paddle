@@ -99,5 +99,8 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
 NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
                                   const NameVarBaseMap& ins);
 
+NameVarBaseMap CastPureFp16Inputs1(const std::string& op_type,
+                                   const NameVarBaseMap& ins);
+
 }  // namespace imperative
 }  // namespace paddle

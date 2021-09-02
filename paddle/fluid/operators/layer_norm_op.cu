@@ -57,14 +57,13 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
     auto *mean = ctx.Output<Tensor>("Mean");
     auto *var = ctx.Output<Tensor>("Variance");
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-
     const auto x_dims = x->dims();
     auto *x_data = x->data<T>();
     auto *y_data = y->mutable_data<T>(ctx.GetPlace());
     auto *mean_data = mean->mutable_data<U>(ctx.GetPlace());
     auto *var_data = var->mutable_data<U>(ctx.GetPlace());
-    auto *scale_data = (scale == nullptr ? nullptr : scale->data<U>());
-    auto *bias_data = (bias == nullptr ? nullptr : bias->data<U>());
+    auto *scale_data = (scale == nullptr ? nullptr : scale->data<T>());
+    auto *bias_data = (bias == nullptr ? nullptr : bias->data<T>());
 
     auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
     int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
@@ -109,12 +108,12 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
     auto *mean_data = mean->data<U>();
     auto *var_data = var->data<U>();
 
-    auto *scale_data = (scale == nullptr ? nullptr : scale->data<U>());
+    auto *scale_data = (scale == nullptr ? nullptr : scale->data<T>());
     auto *d_scale_data =
         (d_scale == nullptr ? nullptr
-                            : d_scale->mutable_data<U>(ctx.GetPlace()));
+                            : d_scale->mutable_data<T>(ctx.GetPlace()));
     auto *d_bias_data =
-        (d_bias == nullptr ? nullptr : d_bias->mutable_data<U>(ctx.GetPlace()));
+        (d_bias == nullptr ? nullptr : d_bias->mutable_data<T>(ctx.GetPlace()));
     auto *d_x_data =
         (d_x == nullptr ? nullptr : d_x->mutable_data<T>(ctx.GetPlace()));
 

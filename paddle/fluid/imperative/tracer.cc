@@ -183,7 +183,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     } else {
       // new
       VLOG(5) << "Pure fp16 run operator: " << type;
-      new_ins = CastPureFp16Inputs(type, ins);
+      new_ins = CastPureFp16Inputs1(type, ins);
     }
   }
 

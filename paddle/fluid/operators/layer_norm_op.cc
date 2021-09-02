@@ -109,6 +109,9 @@ class LayerNormOp : public framework::OperatorWithKernel {
     if (input_data_type == framework::proto::VarType::FP64) {
       ln_param_type = framework::proto::VarType::FP64;
     }
+    if (input_data_type == framework::proto::VarType::FP16) {
+      ln_param_type = framework::proto::VarType::FP16;
+    }
     if (ctx.HasInput("Scale")) {
       PADDLE_ENFORCE_EQ(ln_param_type, ctx.Input<Tensor>("Scale")->type(),
                         platform::errors::InvalidArgument(

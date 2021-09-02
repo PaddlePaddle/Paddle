@@ -154,8 +154,13 @@ def fp16_initialize(enable_pure_fp16, models, optimizers):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             if len(layer._sub_layers) is 0:
+                '''
                 if (layer._dtype is 'float16') or isinstance(layer, (
                         paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
+                    continue
+                layer.to(dtype='float16')
+                '''
+                if (layer._dtype is 'float16'):
                     continue
                 layer.to(dtype='float16')
 
