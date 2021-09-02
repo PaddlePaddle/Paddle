@@ -264,21 +264,11 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
-<<<<<<< HEAD
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'square',
-            'reduce_sum', 'square', 'reduce_sum', 'square', 'reduce_sum', 'sum',
-            'c_allreduce_sum', 'sum', 'c_allreduce_sum', 'sqrt',
-            'fill_constant', 'elementwise_max', 'elementwise_div', 'cast',
-            'cast', 'cast', 'elementwise_mul', 'cast', 'cast',
-            'elementwise_mul', 'cast', 'elementwise_mul', 'momentum',
-            'momentum', 'momentum'
-=======
             'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
             'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm', 'sum',
             'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
             'elementwise_div', 'elementwise_mul', 'elementwise_mul',
             'elementwise_mul', 'momentum', 'momentum', 'momentum'
->>>>>>> a622b7017a4f5e361c8d73e5f8a0c065fdc84553
         ])
 
     def test_sharding_clone_for_test(self):
