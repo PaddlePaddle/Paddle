@@ -483,5 +483,71 @@ class TestFunctionalConv3DTransposeErrorCase9(
         self.data_format = "NCDHW"
 
 
+class TestFunctionalConv3DTransposeErrorCase10(
+        TestFunctionalConv3DTransposeError):
+    def setUp(self):
+        self.input = []
+        self.filter = []
+        self.bias = None
+        self.padding = 0
+        self.stride = 1
+        self.dilation = 1
+        self.groups = 1
+        self.data_format = "NCDHW"
+
+    def dygraph_case(self):
+        with dg.guard():
+            x = dg.to_variable(self.input, dtype=paddle.float32)
+            w = dg.to_variable(self.filter, dtype=paddle.float32)
+            b = None if self.bias is None else dg.to_variable(
+                self.bias, dtype=paddle.float32)
+            y = F.conv3d(
+                x,
+                w,
+                b,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format)
+
+    def test_exception(self):
+        with self.assertRaises(ValueError):
+            self.dygraph_case()
+
+
+class TestFunctionalConv3DTransposeErrorCase11(
+        TestFunctionalConv3DTransposeError):
+    def setUp(self):
+        self.input = np.random.randn(1, 3, 3, 3, 3)
+        self.filter = np.random.randn(3, 3, 1, 1, 1)
+        self.bias = None
+        self.padding = 0
+        self.stride = 1
+        self.dilation = 1
+        self.groups = 0
+        self.data_format = "NCDHW"
+
+    def dygraph_case(self):
+        with dg.guard():
+            x = dg.to_variable(self.input, dtype=paddle.float32)
+            w = dg.to_variable(self.filter, dtype=paddle.float32)
+            b = None if self.bias is None else dg.to_variable(
+                self.bias, dtype=paddle.float32)
+            y = F.conv3d(
+                x,
+                w,
+                b,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format)
+
+    def test_exception(self):
+        with self.assertRaises(ValueError):
+            self.dygraph_case()
+
+
 if __name__ == "__main__":
     unittest.main()
