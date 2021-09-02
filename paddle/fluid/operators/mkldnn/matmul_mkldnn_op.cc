@@ -214,8 +214,8 @@ class MatMulMKLDNNHandler
     }
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(
+    out->set_layout(paddle::framework::DataLayout::kMKLDNN);
+    out->set_format(paddle::platform::GetMKLDNNFormat(
         dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims()))));
   }
 
