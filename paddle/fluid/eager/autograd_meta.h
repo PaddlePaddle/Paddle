@@ -77,26 +77,26 @@ class AutogradMeta : public AbstractAutogradMeta {
   const pt::Tensor& Grad() const { return grad_; }
 
   pt::Tensor& MutableGrad() { return grad_; }
-  
+
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(grad_node.get(),
                             "Should Not set NULL as GradNode pointer!");
     grad_node_ = grad_node;
   }
-  
+
   std::shared_ptr<GradNodeBase> GetMutableGradNode() const {
     return grad_node_;
   }
 
   GradNodeBase* GradNode() const { return grad_node_.get(); }
-  
+
   void SetOutRank(size_t rank) { output_rank_ = rank; }
 
   size_t OutRank() const { return output_rank_; }
 
   bool IsInitialized() { return !grad_node_.get(); }
 
-  int StopGradient() const { return stop_gradient_ != 0; }
+  bool StopGradient() const { return stop_gradient_ != 0; }
 
   int NumericStopGradient() const { return stop_gradient_; }
 
@@ -162,10 +162,13 @@ class EagerUtils {
   // Then it's treated as a leaf tensor
   static bool IsLeafTensor(pt::Tensor& target);
 
-  static void SetHistoryForTensor(pt::Tensor& target, const std::shared_ptr<GradNodeBase>& grad_node);
-  
-  static pt::Tensor CreateTensorWithValue(const pt::DDim& ddim, const pt::Backend& backend,
-                                          const pt::DataType& dtype, const pt::DataLayout& layout,
+  static void SetHistoryForTensor(
+      pt::Tensor& target, const std::shared_ptr<GradNodeBase>& grad_node);
+
+  static pt::Tensor CreateTensorWithValue(const pt::DDim& ddim,
+                                          const pt::Backend& backend,
+                                          const pt::DataType& dtype,
+                                          const pt::DataLayout& layout,
                                           double value, bool is_leaf = true);
 };
 

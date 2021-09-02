@@ -45,6 +45,8 @@ __all__ = [
     'Program',
     'default_startup_program',
     'default_main_program',
+    'eager_guard',
+    'in_eager_mode',
     'program_guard',
     'name_scope',
     'cuda_places',
@@ -5938,6 +5940,23 @@ class ParamBase(core.VarBase):
         return new_param
 
     __repr__ = __str__
+
+
+_eager_mode_ = False
+
+
+@signature_safe_contextmanager
+def eager_guard():
+    global _eager_mode_
+    _eager_mode_ = True
+    try:
+        yield
+    finally:
+        _eager_mode_ = False
+
+
+def in_eager_mode():
+    return _eager_mode_
 
 
 # program is a global instance.
