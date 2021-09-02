@@ -19,7 +19,7 @@
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
 #ifdef PADDLE_WITH_GLOO
-// #include <gloo/broadcast.h>
+#include <gloo/broadcast.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
