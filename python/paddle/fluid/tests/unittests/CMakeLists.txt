@@ -112,6 +112,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_alltoall_api)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_global_scatter)
     LIST(REMOVE_ITEM TEST_OPS test_collective_sendrecv_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_wait)
     LIST(REMOVE_ITEM TEST_OPS test_memcpy_op)
@@ -963,6 +964,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
             test_collective_broadcast_api
             test_collective_allgather_api
             test_collective_alltoall_api
+            test_collective_global_scatter
             PROPERTIES LABELS "RUN_TYPE=DIST")
     endif()
     set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
