@@ -26,7 +26,7 @@ namespace math {
 
 struct FastDivModOfPool {
  public:
-  platform::FastDivMod c;
+  platform::FastDivMod channel;
   platform::FastDivMod input_w;
   platform::FastDivMod input_h;
   platform::FastDivMod ksize_w;
@@ -38,7 +38,7 @@ struct FastDivModOfPool {
                               const int input_height, const int ksize_width,
                               const int ksize_height, const int stride_width,
                               const int stride_height) {
-    c = platform::FastDivMod(channels);
+    channel = platform::FastDivMod(channels);
     input_w = platform::FastDivMod(input_width);
     input_h = platform::FastDivMod(input_height);
     ksize_w = platform::FastDivMod(ksize_width);
@@ -67,6 +67,7 @@ struct PoolingFunctor<T, PoolProcess,
                                     const T* __restrict__ output_grad,
                                     T* __restrict__ gradient, int pool_size,
                                     int index) const {
+    printf("AVG_Pooling2D\n");
     *gradient += static_cast<T>(1.0f / pool_size) * output_grad[index];
   }
 };
@@ -172,15 +173,15 @@ __global__ void KernelPool2DGrad(
       auto input_width_divmod = divmods.input_w.Divmod(index);
       auto input_height_divmod =
           divmods.input_h.Divmod(input_width_divmod.val[0]);
-      auto channel_divmod = divmods.c.Divmod(input_height_divmod.val[0]);
+      auto channel_divmod = divmods.channel.Divmod(input_height_divmod.val[0]);
       w_offset = input_width_divmod.val[1] + padding_width;
       h_offset = input_height_divmod.val[1] + padding_height;
       offsetC = channel_divmod.val[1];
       batch_idx = channel_divmod.val[0];
-      output_stride = (batch_idx * divmods.c.divisor + offsetC) *
+      output_stride = (batch_idx * divmods.channel.divisor + offsetC) *
                       output_height * output_width;
     } else { /* NHWC */
-      auto c_divmod = divmods.c.Divmod(index);
+      auto c_divmod = divmods.channel.Divmod(index);
       auto input_width_divmod = divmods.input_w.Divmod(c_divmod.val[0]);
       auto input_height_divmod =
           divmods.input_h.Divmod(input_width_divmod.val[0]);
@@ -189,7 +190,7 @@ __global__ void KernelPool2DGrad(
       h_offset = input_height_divmod.val[1] + padding_height;
       batch_idx = input_height_divmod.val[0];
       output_stride =
-          batch_idx * output_height * output_width * divmods.c.divisor;
+          batch_idx * output_height * output_width * divmods.channel.divisor;
     }
     output_data += output_stride;
     output_grad += output_stride;
@@ -213,8 +214,9 @@ __global__ void KernelPool2DGrad(
                                 : ksize_h_divmod.val[0];
           int pool_size = tmp_height * tmp_width;
           int tmp_idx = ph * output_width + pw;
-          int output_sub_idx =
-              channel_last ? tmp_idx * divmods.c.divisor + offsetC : tmp_idx;
+          int output_sub_idx = channel_last
+                                   ? tmp_idx * divmods.channel.divisor + offsetC
+                                   : tmp_idx;
 
           func(input, output_data, output_grad, &gradient, pool_size,
                output_sub_idx);
@@ -239,8 +241,9 @@ __global__ void KernelPool2DGrad(
           int pool_size = exclusive ? (hend - hstart) * (wend - wstart)
                                     : ksize_height * ksize_width;
           int tmp_idx = ph * output_width + pw;
-          int output_sub_idx =
-              channel_last ? tmp_idx * divmods.c.divisor + offsetC : tmp_idx;
+          int output_sub_idx = channel_last
+                                   ? tmp_idx * divmod.channel.divisor + offsetC
+                                   : tmp_idx;
 
           func(input, output_data, output_grad, &gradient, pool_size,
                output_sub_idx);
