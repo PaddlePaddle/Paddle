@@ -24,6 +24,8 @@ import paddle.fluid as fluid
 paddle.enable_static()
 
 
+#the unittest of multi_dot
+#compare the result of paddle multi_dot and numpy multi_dot
 class TestMultiDotOp(OpTest):
     def setUp(self):
         self.op_type = "multi_dot"
@@ -45,11 +47,6 @@ class TestMultiDotOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['x0'], 'Out')
         self.check_grad(['x1'], 'Out')
-
-
-class TestMultiDotOpDouble(TestMultiDotOp):
-    def get_dtype(self):
-        return "float64"
 
 
 #(A*B)*C
@@ -109,7 +106,7 @@ class TestMultiDotOpFirst1D(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
 
-class TestMultiDotOp3MatFirst1D(TestMultiDotOp):
+class TestMultiDotOp3MatFirst1D(TestMultiDotOp3Mat):
     def get_inputs_and_outputs(self):
         self.A = np.random.random((4)).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
@@ -117,13 +114,8 @@ class TestMultiDotOp3MatFirst1D(TestMultiDotOp):
         self.inputs = {'X': [('x0', self.A), ('x1', self.B), ('x2', self.C)]}
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
-    def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
 
-
-class TestMultiDotOp4MatFirst1D(TestMultiDotOp):
+class TestMultiDotOp4MatFirst1D(TestMultiDotOp4Mat):
     def get_inputs_and_outputs(self):
         self.A = np.random.random((4)).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
@@ -135,12 +127,6 @@ class TestMultiDotOp4MatFirst1D(TestMultiDotOp):
         }
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
-    def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
-        self.check_grad(['x3'], 'Out')
-
 
 class TestMultiDotOpLast1D(TestMultiDotOp):
     def get_inputs_and_outputs(self):
@@ -150,7 +136,7 @@ class TestMultiDotOpLast1D(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
 
-class TestMultiDotOp3MatLast1D(TestMultiDotOp):
+class TestMultiDotOp3MatLast1D(TestMultiDotOp3Mat):
     def get_inputs_and_outputs(self):
         self.A = np.random.random((2, 4)).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
@@ -164,7 +150,7 @@ class TestMultiDotOp3MatLast1D(TestMultiDotOp):
         self.check_grad(['x2'], 'Out')
 
 
-class TestMultiDotOp4MatLast1D(TestMultiDotOp):
+class TestMultiDotOp4MatLast1D(TestMultiDotOp4Mat):
     def get_inputs_and_outputs(self):
         self.A = np.random.random((2, 3)).astype(self.dtype)
         self.B = np.random.random((3, 2)).astype(self.dtype)
@@ -176,12 +162,6 @@ class TestMultiDotOp4MatLast1D(TestMultiDotOp):
         }
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
-    def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
-        self.check_grad(['x3'], 'Out')
-
 
 class TestMultiDotOpFirstAndLast1D(TestMultiDotOp):
     def get_inputs_and_outputs(self):
@@ -191,7 +171,7 @@ class TestMultiDotOpFirstAndLast1D(TestMultiDotOp):
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
 
-class TestMultiDotOp3MatFirstAndLast1D(TestMultiDotOp):
+class TestMultiDotOp3MatFirstAndLast1D(TestMultiDotOp3Mat):
     def get_inputs_and_outputs(self):
         self.A = np.random.random((6, )).astype(self.dtype)
         self.B = np.random.random((6, 4)).astype(self.dtype)
@@ -199,13 +179,8 @@ class TestMultiDotOp3MatFirstAndLast1D(TestMultiDotOp):
         self.inputs = {'X': [('x0', self.A), ('x1', self.B), ('x2', self.C)]}
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
-    def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
 
-
-class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp):
+class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp4Mat):
     def get_inputs_and_outputs(self):
         self.A = np.random.random((3, )).astype(self.dtype)
         self.B = np.random.random((3, 4)).astype(self.dtype)
@@ -216,12 +191,6 @@ class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp):
             [('x0', self.A), ('x1', self.B), ('x2', self.C), ('x3', self.D)]
         }
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
-
-    def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
-        self.check_grad(['x3'], 'Out')
 
 
 #####python API test#######
@@ -258,7 +227,7 @@ class TestMultiDotOpError(unittest.TestCase):
             self.assertRaises(ValueError, paddle.multi_dot, [x5, x6, x7])
 
 
-class API_TestMultiDot(unittest.TestCase):
+class APITestMultiDot(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
             x0 = fluid.data(name='x0', shape=[3, 2], dtype="float64")

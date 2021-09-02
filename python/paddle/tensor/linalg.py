@@ -1014,18 +1014,19 @@ def matrix_power(x, n, name=None):
 
 def multi_dot(x, name=None):
     """
-    Compute the dot product of tow or more matrix in a single function call, while automatically selecting the fastest evaluation order.
+    Multi_dot is an operator that calculates multiple matrix multiplications.
 
     Supports inputs of float, double and float16 dtypes. This function does not support batched inputs.
 
-    Every tensor in x must be 2D, except for the first and last which may be 1D. if the first tensor is a 1D vector of shape(n, ) it is treated as row vector of shape(1, n), similarly if the last tensor is a 1D vector of shape(n, ), it is treated as a column vector of shape(n, 1).
-    If the first and last tensors are matrices, the output will be a matrix. However, if either is a 1D vector, then the output will be a 1D vector.
+    The input tensor in [x] must be 2D except for the first and last can be 1D. If the first tensor is a 1D vector of shape(n, ) it is treated as row vector of shape(1, n), similarly if the last tensor is a 1D vector of shape(n, ), it is treated as a column vector of shape(n, 1).
 
-    The cost of multiplying two matrices with shapes (a, b) and (b, c) is a * b * c. Given matrices A, B, C with shapes (10, 100), (100, 5), (5, 50) respectively, we can calculate the cost of different multiplication orders as follows:
-    - Cost((AB)C) = 10x100x5 + 10x5x50 = 7500
-    - Cost(A(BC)) = 10x100x50 + 100x5x50 = 75000
+    If the first and last tensor are 2D matrix, then the output is also 2D matrix, otherwise the output is a 1D vector.
 
-    In this case, multiplying A and B first followed by C is 10 times faster.
+    Multi_dot will select the lowest cost multiplication order for calculation. The cost of multiplying two matrices with shapes (a, b) and (b, c) is a * b * c. Given matrices A, B, C with shapes (20, 5), (5, 100), (100, 10) respectively, we can calculate the cost of different multiplication orders as follows:
+    - Cost((AB)C) = 20x5x100 + 20x100x10 = 30000
+    - Cost(A(BC)) = 5x100x10 + 20x5x10 = 6000
+
+    In this case, multiplying B and C first, then multiply A, which is 5 times faster than sequential calculation.
 
     Args:
         x ([Tensor]): The input tensors which is a list Tensor.
@@ -1061,6 +1062,7 @@ def multi_dot(x, name=None):
         C = paddle.to_tensor(C_data)
         out = paddle.multi_dot([A, B, C])
         print(out.numpy().shape)
+        # [10, 7]
 
     """
     if in_dygraph_mode():

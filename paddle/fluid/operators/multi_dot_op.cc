@@ -114,7 +114,10 @@ inline framework::Tensor MatMul(const framework::ExecutionContext& ctx,
 }
 
 /**
- * @brief multi matrix dot by a chain order
+ * @brief Recursively calculate matrix multiplication according to the optimal
+ * order
+ * Let k = order[i,j], then ins[i...j] = ins[i...k] * ins[k+1 ...j]
+ *
  * @param
  * ins: the input tensors
  * ins_dims: the shape of ins after reshape
@@ -164,15 +167,19 @@ inline framework::Tensor MatChainMul(
 std::vector<uint64_t> GetOrder(const std::vector<const framework::Tensor*>& ins,
                                const std::vector<framework::DDim>& ins_dims) {
   auto n = ins.size();
+  // p: save the ins shape, the ins[i] shape is (p[i], p[i+1])
   std::vector<uint64_t> p(n + 1);
   for (uint64_t i = 0; i < n; i++) {
     p[i] = ins_dims[i][0];
   }
   p[n] = ins_dims[n - 1][1];
 
+  // m[i, j]: save the lowest cost for multiplying ins[i...j]
   std::vector<uint64_t> m(n * n, 0);
+  // define ins[i...j] means multiplying matrices from ins[i] to ins[j]
+  // order[i, j] = k, this means that ins[i...k] and ins[k...j] fist and then
+  // multiply the resulting matrices is the optimal order for ins[i...j]
   std::vector<uint64_t> order(n * n);
-
   for (uint64_t l = 1; l < n; l++) {
     for (uint64_t i = 0; i < n - l; i++) {
       auto j = i + l;
@@ -292,6 +299,12 @@ class MultiDotOp : public framework::OperatorWithKernel {
   }
 };
 
+/**
+ * 1. there are only 2 matrices: direct matrix multiplication A*B
+ * 2. there are only 3 matrices: calculate the cost of (A*B)*C and A*(B*C),
+ *  choose the least cost order for calculation
+ * 3. more than 3 matrices: call MultiDotMatChainOrder
+ */
 template <typename DeviceContext, typename T>
 class MultiDotKernel : public framework::OpKernel<T> {
  public:
