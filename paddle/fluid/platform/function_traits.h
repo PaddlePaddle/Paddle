@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <tuple>
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace platform {
@@ -27,12 +28,55 @@ struct FunctionTraits<ReturnType (ClassType::*)(Args...) const> {
   typedef ReturnType result_type;
 
   template <size_t i>
-  struct arg {
-    typedef typename std::tuple_element<i, std::tuple<Args...>>::type type;
+  struct Arg {
+    typedef typename std::tuple_element<i, std::tuple<Args...>>::type Type;
   };
 
   static const size_t arity = sizeof...(Args);
 };
+
+namespace details {
+
+template <int Arity, typename InT, typename OutT, typename Functor>
+struct ApplyImpl {
+  HOSTDEVICE inline OutT operator()(Functor func, InT args[]);
+};
+
+template <typename InT, typename OutT, typename Functor>
+struct ApplyImpl<1, InT, OutT, Functor> {
+  using Traits = FunctionTraits<Functor>;
+  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
+    if (std::is_pointer<typename Traits::template Arg<0>::Type>::value) {
+      return func(args);
+    }
+    return func(args[0]);
+  }
+};
+
+template <typename InT, typename OutT, typename Functor>
+struct ApplyImpl<2, InT, OutT, Functor> {
+  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
+    return func(args[0], args[1]);
+  }
+};
+
+template <typename InT, typename OutT, typename Functor>
+struct ApplyImpl<3, InT, OutT, Functor> {
+  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
+    return func(args[0], args[1], args[2]);
+  }
+};
+
+}  // namespace details
+
+template <typename InT, typename OutT, typename Functor>
+HOSTDEVICE inline OutT Apply(Functor func, InT args[]) {
+  using Traits = FunctionTraits<Functor>;
+  static_assert(Traits::arity < 4,
+                "Only functor whose's arity less than 4 is suuported.");
+
+  return details::ApplyImpl<Traits::arity, InT, OutT, Functor>()(func, args);
+}
 
 }  // namespace platform
 }  // namespace paddle
