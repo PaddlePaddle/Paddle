@@ -847,8 +847,10 @@ void MultiSlotDataFeed::PutToFeedVec(
                        total_instance * sizeof(int64_t));
     }
 
-    LoD data_lod{offset};
-    feed_vec_[i]->set_lod(data_lod);
+    if (!use_slots_is_dense_[i]) {
+      LoD data_lod{offset};
+      feed_vec_[i]->set_lod(data_lod);
+    }
     if (use_slots_is_dense_[i]) {
       if (inductive_shape_index_[i] != -1) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
@@ -1206,8 +1208,10 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     }
     auto& slot_offset = offset_[i];
     if (this->input_type_ == 0) {
-      LoD data_lod{slot_offset};
-      feed_vec_[i]->set_lod(data_lod);
+      if (!use_slots_is_dense_[i]) {
+        LoD data_lod{slot_offset};
+        feed_vec_[i]->set_lod(data_lod);
+      }
     } else if (this->input_type_ == 1) {
       if (!use_slots_is_dense_[i]) {
         std::vector<size_t> tmp_offset;

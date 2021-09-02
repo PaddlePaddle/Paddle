@@ -1,4 +1,5 @@
-file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
+file(GLOB TEST_OPS RELATIVE
+"${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FLAGS_memory_fraction_of_eager_deletion=1.0)
 set(dist_ENVS http_proxy="" https_proxy="")
@@ -23,11 +24,14 @@ list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_unused_variables)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_control_flow)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_no_sync)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_no_sync_gradient_check)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_pipeline_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_tensor_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sharding_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mp_layers)
+list(APPEND DIST_TEST_OPS test_parallel_class_center_sample)
 list(APPEND DIST_TEST_OPS test_parallel_margin_cross_entropy)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
@@ -111,6 +115,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_memcpy_op)
     LIST(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
+    LIST(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
 endif()
 
 if(WIN32)
@@ -142,6 +147,7 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_ps)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_utils)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_cpu_barrier_with_gloo)
 
     # TODO: Fix these unittests failed on Windows
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
@@ -187,6 +193,8 @@ if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sync_batch_norm)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_control_flow)
+    list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_no_sync)
+    list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_no_sync_gradient_check)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_pipeline_parallel)
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_tensor_parallel)
@@ -196,6 +204,7 @@ if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     LIST(REMOVE_ITEM TEST_OPS test_mixed_precision)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_base_single)
     LIST(REMOVE_ITEM TEST_OPS test_dygraph_recompute)
+    list(REMOVE_ITEM TEST_OPS test_parallel_class_center_sample)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_margin_cross_entropy)
 elseif(WITH_GPU)
     if (${CUDNN_VERSION} VERSION_LESS 7100)
@@ -270,22 +279,31 @@ function(py_test_modules TARGET_NAME)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
-        add_test(NAME ${TARGET_NAME}
-                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-                COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-                ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    elseif(WITH_ASCEND_CL)
-        # AscendCL need to include ascend toolkit python path, or ACL error will be thrown when running ctest
-        add_test(NAME ${TARGET_NAME}
-                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH} ${py_test_modules_ENVS}
-                ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+        if(WITH_ASCEND_CL)
+            add_test(NAME ${TARGET_NAME}
+                    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH} ${py_test_modules_ENVS}
+                    COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+                    ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+        else()
+            add_test(NAME ${TARGET_NAME}
+                    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+                    COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+                    ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+        endif()
     else()
-        add_test(NAME ${TARGET_NAME}
-                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
-                ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+        if(WITH_ASCEND_CL)
+            add_test(NAME ${TARGET_NAME}
+                    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH} ${py_test_modules_ENVS}
+                    ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+        else()
+            add_test(NAME ${TARGET_NAME}
+                    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+                    ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+        endif()
     endif()
 
     if (py_test_modules_SERIAL)
@@ -736,6 +754,7 @@ endif()
 
 if (WITH_DISTRIBUTE AND NOT WIN32)
     set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_collective_cpu_barrier_with_gloo PROPERTIES TIMEOUT 40)
 endif()
 
 if (WITH_DISTRIBUTE)
@@ -904,10 +923,13 @@ if(WITH_DISTRIBUTE AND WITH_GPU AND WITH_NCCL)
     set_tests_properties(test_parallel_dygraph_dataparallel PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_unused_variables PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_control_flow PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_parallel_dygraph_no_sync PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_parallel_dygraph_no_sync_gradient_check PROPERTIES TIMEOUT 30)
     set_tests_properties(test_parallel_dygraph_pipeline_parallel PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_tensor_parallel PROPERTIES TIMEOUT 200)
     set_tests_properties(test_parallel_dygraph_sharding_parallel PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_dygraph_mp_layers PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_parallel_class_center_sample PROPERTIES TIMEOUT 120)
     set_tests_properties(test_parallel_margin_cross_entropy PROPERTIES TIMEOUT 120)
     if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
         set_tests_properties(test_parallel_dygraph_sparse_embedding PROPERTIES TIMEOUT 120)
