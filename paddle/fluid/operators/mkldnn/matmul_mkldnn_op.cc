@@ -462,21 +462,17 @@ static void ExecuteMatMul(const ExecutionContext& ctx) {
       ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
 
   if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
-    // Lets create Handler here for fp32 (extend to int8 and bf16)
-    MatMulMKLDNNHandler<XT, YT, float> handler(dev_ctx.GetEngine(), ctx, alpha)
+    MatMulMKLDNNHandler<XT, YT, float>(dev_ctx.GetEngine(), ctx, alpha)
         .Execute(x, y, out);
-
   } else if (is_bfloat16) {
-    // Lets create Handler here for fp32 (extend to int8 and bf16)
-    MatMulMKLDNNHandler<XT, YT, paddle::platform::bfloat16>
-        handler(dev_ctx.GetEngine(), ctx, alpha).Execute(x, y, out);
+    MatMulMKLDNNHandler<XT, YT, paddle::platform::bfloat16>(dev_ctx.GetEngine(),
+                                                            ctx, alpha)
+        .Execute(x, y, out);
   } else if (fuse_relu) {
-    // Lets create Handler here for fp32 (extend to int8 and bf16)
-    MatMulMKLDNNHandler<XT, YT, uint8_t>
-        handler(dev_ctx.GetEngine(), ctx, alpha).Execute(x, y, out);
+    MatMulMKLDNNHandler<XT, YT, uint8_t>(dev_ctx.GetEngine(), ctx, alpha)
+        .Execute(x, y, out);
   } else {
-    // Lets create Handler here for fp32 (extend to int8 and bf16)
-    MatMulMKLDNNHandler<XT, YT, int8_t> handler(dev_ctx.GetEngine(), ctx, alpha)
+    MatMulMKLDNNHandler<XT, YT, int8_t>(dev_ctx.GetEngine(), ctx, alpha)
         .Execute(x, y, out);
   }
 }
