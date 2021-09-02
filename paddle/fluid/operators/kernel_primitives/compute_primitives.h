@@ -21,7 +21,7 @@
 #include <hip/hip_fp16.h>
 #endif
 
-#include <algorithm>
+// #include <algorithm>
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -38,7 +38,7 @@ constexpr int kMaxThread = 128;
 constexpr int kWarpSize = 32;
 #endif
 
-enum ReduceMode { GlobalMode, LocalMode };
+enum ReduceMode { kGlobalMode, kLocalMode };
 
 template <typename T>
 class MPTypeTrait {
@@ -52,6 +52,10 @@ class MPTypeTrait<platform::float16> {
   using Type = float;
 };
 
+/**
+ * @brief will be used in BlockYReduce, get the index of reduce_num in shared
+ * memory
+ */
 __device__ __forceinline__ int SharedMemoryIndex(int index) {
   return (threadIdx.y + index) * blockDim.x + threadIdx.x;
 }
@@ -75,6 +79,10 @@ __device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
  * res0  res1  res2  res3     ---->2. Store result of each warp to shared memory
  *   \    \    /     /        ---->3. Load the result above from shared memory
  *        res                         to warp0 and process the second WarpReduce
+ */
+
+/**
+ * @brief BlockXReduce reduce along blockDim.x
  */
 template <typename T, typename ReduceOp>
 __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
@@ -105,6 +113,9 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
   return val;
 }
 
+/**
+ * @brief BlockYReduce reduce along blockDim.y
+ */
 template <typename T, typename ReduceOp>
 __device__ __forceinline__ T BlockYReduce(T val, ReduceOp reducer) {
   __shared__ T shared_memory[details::kMaxThread];
@@ -125,13 +136,14 @@ __device__ __forceinline__ T BlockYReduce(T val, ReduceOp reducer) {
 /*************************** Compute Function****************************/
 
 /**
- * @brief compute functor for elementwise_two, in1 and in2 has the same shape
+ * @brief binary function, in1 and in2 have same shape
  * @param：
- * T : the type of in1 and in2
- * NX: the row of in1 and in2
- * NY: the col of in1 and in2
- * BlockSize: the strid of col
- * OpFunc: compute functor eg: ADD, SUB, XOR, OR, MUL
+ * T: data type of in1, in2
+ * OutT: data type of out
+ * NX: the cols of in1, in2
+ * NY: the rows of in1, in2
+ * BlockSize: the config of this device
+ * OpFunc: compute functor eg: in1 + in2, in1 - in2
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
@@ -148,12 +160,14 @@ __device__ __forceinline__ void ElementwiseBinary(OutT* out, const T* in1,
 }
 
 /**
- * @brief eg: a * b + c, in1 in2, in3 and out has the same shape
+ * @brief ternary function, in1, in2 and in3 have same shape
  * @param：
- * T : the type of in1 and in2, in3
- * NX: the row of in1, in2 and in3
- * NY: the col of in1, in2 and in3
- * BlockSize: the strid of col
+ * T: data type of in1, in2, in3
+ * OutT: data type of out
+ * NX: the cols of in1, in2
+ * NY: the rows of in1, in2
+ * BlockSize: the config of this device
+ * OpFunc: compute functor eg: out = in1 * in2 + in3
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
@@ -171,13 +185,15 @@ __device__ __forceinline__ void ElementwiseTernary(OutT* out, const T* in1,
 }
 
 /**
- * @brief compute functor for elementwise_two, in1 is [1, NY], in2 is [NX, NY]
+ * @brief cycle binary function, in1's shape size is [1, NX], in2's shape size
+ * is [NY, NX], out's shape size is [NY, NX]
  * @param：
- * T : the type of in1 and in2
- * NX: the row of in1 and in2
- * NY: the col of in2
- * BlockSize: the strid of col
- * OpFunc: compute functor eg: ADD, SUB, XOR, OR, MUL
+ * T: data type of in1, in2
+ * OutT: data type of out
+ * NX: the cols of in1, in2
+ * NY: the rows of in1, in2
+ * BlockSize: the config of this device
+ * OpFunc: compute functor eg: in1 + in2, in1 - in2
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
@@ -194,13 +210,14 @@ __device__ __forceinline__ void CycleBinary(OutT* out, const T* in1,
 }
 
 /**
- * @brief compute functor for unary, in1 is [NX, NY]
+ * @brief unary function
  * @param：
- * T : the type of in
- * NX: the row of in
- * NY: the col of in
- * BlockSize: the strid of col
- * OpFunc: compute functor eg: relu, sigmoid, exp
+ * T: data type of in
+ * OutT: data type of out
+ * NX: the cols of in
+ * NY: the rows of in
+ * BlockSize: the config of this device
+ * OpFunc: compute functor eg: relu, exp
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
@@ -212,29 +229,49 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out, const T* in,
   }
 }
 
-// in[NY][NX] -> in[NY]
+/**
+ * @brief reduce function, in's shape size is [NX, NY].
+ * If ReduceMode == kLocalMode then reduce NX, the shape of out is [NY, 1],
+ * if ReduceMode == kGlobalMode then reduce between different threads, the
+ * shape of out is [NY, NX]. If reduce_last_dim is false and reduce_num was
+ * split, BlockYReduce will be called. If reduce_last_dim is true and
+ * reduce_num was split, BlockXReduce will be called
+ * @typename：
+ * T: data type of in
+ * NX: the cols of in
+ * NY: the rows of in
+ * BlockSize: the config of this device
+ * OpFunc: reduce functor, eg: CustomSum, CustomMean in reduce_functor_op.h
+ * @param:
+ * reducer: reduce functor, eg: CustomSum<T>()
+ * reduce_last_dim: if in's last dim need to be reduce then reduce_last_dim =
+ * true
+ */
 template <typename T, int NX, int NY, int BlockSize, class OpFunc,
-          int ReduceMode>
+          details::ReduceMode Mode>
 __device__ __forceinline__ void Reduce(T* out, const T* in, OpFunc reducer,
-                                       bool reduce_lastDim) {
-  if (ReduceMode == details::ReduceMode::GlobalMode) {
-    bool block_reduce_y = (!reduce_lastDim) && (blockDim.y > 1);
-    // blockYReduce
+                                       bool reduce_last_dim) {
+  int block_index = blockDim.y;
+
+  if (Mode == details::ReduceMode::kGlobalMode) {
+    bool block_reduce_y = (!reduce_last_dim) && (block_index > 1);
+    // when reduce is not required for the last dim, and reduce num has been
+    // split into multiple threads
     if (block_reduce_y) {
 #pragma unroll
-      for (int i = 0; i < NY; i++) {
+      for (int i = 0; i < NY * NX; i++) {  // reduce along blockdim.y
         out[i] = details::BlockYReduce<T, OpFunc>(out[i], reducer);
       }
     }
 
-    // blockXReduce
-    if (reduce_lastDim) {
+    // when last dimension need to be reduced
+    if (reduce_last_dim) {
 #pragma unroll
-      for (int i = 0; i < NY; i++) {
+      for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.x
         out[i] = details::BlockXReduce<T, OpFunc>(out[i], reducer);
       }
     }
-  } else {  // else  LocalMode
+  } else {  // else  kLocalMode
 #pragma unroll
     for (int i = 0; i < NY; ++i) {
 #pragma unroll
