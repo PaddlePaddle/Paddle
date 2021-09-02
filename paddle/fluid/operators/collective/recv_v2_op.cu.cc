@@ -39,7 +39,6 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         peer, 0,
         platform::errors::InvalidArgument(
             "The peer (%d) for recv_v2 op must be non-negative.", peer));
-    auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
 
     gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
@@ -66,8 +65,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       auto out_array = out_var->GetMutable<framework::LoDTensorArray>();
       for (size_t idx = 0; idx < out_array->size(); ++idx) {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
-        auto out_dims = framework::make_ddim(out_shape);
         auto out = &out_array->at(idx);
+        auto out_dims = out->dims();
         out->mutable_data<T>(out_dims, place, 0);
         auto numel = out->numel();
         PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
@@ -78,6 +77,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       return;
     }
 
+    auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     auto out_dims = out->dims();
     auto numel = out->numel();
