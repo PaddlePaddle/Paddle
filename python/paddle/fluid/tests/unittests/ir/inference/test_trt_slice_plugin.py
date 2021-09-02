@@ -85,21 +85,5 @@ class SlicePluginTRTTestFp16(SlicePluginTRTTest):
         self.enable_trt = True
 
 
-class SlicePluginTRTDynamicTest(SlicePluginTRTTest):
-    def setUpSliceParams(self):
-        self.params_axes = [1, 3]
-        self.params_starts = [0, 1]
-        self.params_ends = [2, 3]
-
-    def setUpTensorRTParams(self):
-        self.trt_parameters = SlicePluginTRTDynamicTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
-        self.enable_trt = True
-        self.dynamic_shape_params = SlicePluginTRTDynamicTest.DynamicShapeParam(
-            {
-                'data': [1, 1, 1, 1]
-            }, {'data': [8, 8, 8, 8]}, {'data': [8, 8, 8, 8]}, False)
-
-
 if __name__ == "__main__":
     unittest.main()
