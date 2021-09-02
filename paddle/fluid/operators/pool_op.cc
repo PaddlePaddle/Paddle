@@ -554,8 +554,7 @@ void Pool3dOpMaker::Make() {
       "the floor function will be used. Default False")
       .SetDefault(false) AddAttr<bool>(
           "use_mkldnn", "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false)
-      .AsExtra();
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCDHW) Only used in "
