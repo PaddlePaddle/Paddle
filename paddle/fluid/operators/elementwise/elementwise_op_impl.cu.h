@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3 };
+enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kUnknown = -1 };
 
 /*
 * According to NVIDIA, if number of threads per block is 64/128/256/512,
@@ -70,13 +70,12 @@ int GetVectorizedSizeForTensors(
   return vec_size;
 }
 
-template <typename InT, typename OutT, int VecSize, typename Functor>
+template <typename InT, typename OutT, int VecSize, int Arity>
 struct ElementwiseArgsWrapper {
   using InVecType = platform::CudaAlignedVector<InT, VecSize>;
   using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
-  using Traits = platform::FunctionTraits<Functor>;
 
-  const InT *__restrict__ in_data[Traits::arity];
+  const InT *__restrict__ in_data[Arity];
   OutT *out_data;
   uint32_t scalar_cal_offset;
 
@@ -85,7 +84,7 @@ struct ElementwiseArgsWrapper {
       std::vector<framework::Tensor *> *outs, uint32_t scalar_cal_offset)
       : scalar_cal_offset(scalar_cal_offset) {
 #pragma unroll
-    for (int i = 0; i < Traits::arity; ++i) {
+    for (int i = 0; i < Arity; ++i) {
       in_data[i] = ins[i]->data<InT>();
     }
     out_data = (*outs)[0]->data<OutT>();
@@ -93,7 +92,7 @@ struct ElementwiseArgsWrapper {
 
   inline __device__ void LoadVectorizedData(InVecType vec_args[], int tid) {
 #pragma unroll
-    for (int i = 0; i < Traits::arity; ++i) {
+    for (int i = 0; i < Arity; ++i) {
       const InVecType *in_vec_data =
           reinterpret_cast<const InVecType *>(in_data[i]);
       vec_args[i] = in_vec_data[tid];
@@ -102,7 +101,7 @@ struct ElementwiseArgsWrapper {
 
   inline __device__ void LoadScalarizedData(InT args[], int tid) {
 #pragma unroll
-    for (int i = 0; i < Traits::arity; ++i) {
+    for (int i = 0; i < Arity; ++i) {
       args[i] = in_data[i][tid + scalar_cal_offset];
     }
   }
@@ -117,29 +116,28 @@ struct ElementwiseArgsWrapper {
   }
 };
 
-template <typename InT, typename OutT, int VecSize, typename Functor>
+template <typename InT, typename OutT, int VecSize, int Arity, typename Functor>
 __device__ inline void VectorizedKernelImpl(
-    ElementwiseArgsWrapper<InT, OutT, VecSize, Functor> wrapper, Functor func,
+    ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> wrapper, Functor func,
     int tid) {
-  using Traits = platform::FunctionTraits<Functor>;
   using InVecType = platform::CudaAlignedVector<InT, VecSize>;
   using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
 
-  InVecType ins_vec[Traits::arity];
+  InVecType ins_vec[Arity];
   OutVecType out_vec;
 
-  InT *ins_ptr[Traits::arity];
+  InT *ins_ptr[Arity];
 #pragma unroll
-  for (int i = 0; i < Traits::arity; ++i) {
+  for (int i = 0; i < Arity; ++i) {
     ins_ptr[i] = reinterpret_cast<InT *>(&(ins_vec[i]));
   }
   wrapper.LoadVectorizedData(ins_vec, tid);
 
 #pragma unroll
   for (int i = 0; i < VecSize; ++i) {
-    InT ins[Traits::arity];
+    InT ins[Arity];
 #pragma unroll
-    for (int j = 0; j < Traits::arity; ++j) {
+    for (int j = 0; j < Arity; ++j) {
       ins[j] = ins_ptr[j][i];
     }
     out_vec.val[i] = platform::Apply<InT, OutT, Functor>(func, ins);
@@ -148,38 +146,38 @@ __device__ inline void VectorizedKernelImpl(
   wrapper.StoreVectorizedData(out_vec, tid);
 }
 
-template <typename InT, typename OutT, int VecSize, typename Functor>
+template <typename InT, typename OutT, int VecSize, int Arity, typename Functor>
 __device__ inline void ScalarKernelImpl(
-    ElementwiseArgsWrapper<InT, OutT, VecSize, Functor> wrapper, Functor func,
+    ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> wrapper, Functor func,
     int tid) {
-  using Traits = platform::FunctionTraits<Functor>;
-  InT ins[Traits::arity];
+  InT ins[Arity];
   wrapper.LoadScalarizedData(ins, tid);
   OutT out = platform::Apply<InT, OutT, Functor>(func, ins);
   wrapper.StoreScalarizedData(out, tid);
 }
 
-template <typename InT, typename OutT, int VecSize, typename Functor>
+template <typename InT, typename OutT, int VecSize, int Arity, typename Functor>
 __global__ void VectorizedKernel(
-    ElementwiseArgsWrapper<InT, OutT, VecSize, Functor> wrapper, int main_tid,
+    ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> wrapper, int main_tid,
     int tail_tid, Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (tid < main_tid) {
-    VectorizedKernelImpl<InT, OutT, VecSize, Functor>(wrapper, func, tid);
+    VectorizedKernelImpl<InT, OutT, VecSize, Arity, Functor>(wrapper, func,
+                                                             tid);
   }
   if (tid < tail_tid) {
-    ScalarKernelImpl<InT, OutT, VecSize, Functor>(wrapper, func, tid);
+    ScalarKernelImpl<InT, OutT, VecSize, Arity, Functor>(wrapper, func, tid);
   }
 }
 
-template <typename InT, typename OutT, typename Functor>
+template <typename InT, typename OutT, int Arity, typename Functor>
 __global__ void ScalarKernel(
-    ElementwiseArgsWrapper<InT, OutT, 1, Functor> wrapper, int numel,
+    ElementwiseArgsWrapper<InT, OutT, 1, Arity> wrapper, int numel,
     Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < numel) {
-    ScalarKernelImpl<InT, OutT, 1, Functor>(wrapper, func, tid);
+    ScalarKernelImpl<InT, OutT, 1, Arity, Functor>(wrapper, func, tid);
   }
 }
 
@@ -194,12 +192,14 @@ void LaunchSameDimsElementwiseCudaKernel(
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, Functor func) {
   using Traits = platform::FunctionTraits<TestFunctor<InT>>;
-  PADDLE_ENFORCE_EQ(ins.size(), Traits::arity,
+  const int kArity =
+      (ET == ElementwiseType::kUnknown) ? Traits::arity : static_cast<int>(ET);
+  PADDLE_ENFORCE_EQ(ins.size(), kArity,
                     platform::errors::InvalidArgument(
                         "The number of inputs is expected to be equal to the "
                         "arity of functor. But recieved: the number of inputs "
                         "is %d, the arity of functor is %d.",
-                        ins.size(), Traits::arity));
+                        ins.size(), kArity));
 
   // calculate the max vec_size for all ins and outs
   auto numel = ins[0]->numel();
@@ -217,25 +217,24 @@ void LaunchSameDimsElementwiseCudaKernel(
   auto test_func = TestFunctor<InT>();
   switch (vec_size) {
     case 4: {
-      auto wrapper = ElementwiseArgsWrapper<InT, InT, 4, TestFunctor<InT>>(
-          ins, outs, vec_len);
-      VectorizedKernel<InT, InT, 4,
+      auto wrapper =
+          ElementwiseArgsWrapper<InT, InT, 4, kArity>(ins, outs, vec_len);
+      VectorizedKernel<InT, InT, 4, kArity,
                        TestFunctor<InT>><<<grid_size, block_size, 0, stream>>>(
           wrapper, main_tid, tail_tid, test_func);
       break;
     }
     case 2: {
-      auto wrapper = ElementwiseArgsWrapper<InT, InT, 2, TestFunctor<InT>>(
-          ins, outs, vec_len);
-      VectorizedKernel<InT, InT, 2,
+      auto wrapper =
+          ElementwiseArgsWrapper<InT, InT, 2, kArity>(ins, outs, vec_len);
+      VectorizedKernel<InT, InT, 2, kArity,
                        TestFunctor<InT>><<<grid_size, block_size, 0, stream>>>(
           wrapper, main_tid, tail_tid, test_func);
       break;
     }
     case 1: {
-      auto wrapper =
-          ElementwiseArgsWrapper<InT, InT, 1, TestFunctor<InT>>(ins, outs, 0);
-      ScalarKernel<InT, InT,
+      auto wrapper = ElementwiseArgsWrapper<InT, InT, 1, kArity>(ins, outs, 0);
+      ScalarKernel<InT, InT, kArity,
                    TestFunctor<InT>><<<grid_size, block_size, 0, stream>>>(
           wrapper, numel, test_func);
       break;
