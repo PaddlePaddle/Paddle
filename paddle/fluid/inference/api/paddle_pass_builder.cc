@@ -137,6 +137,8 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_eltwiseadd_bn_fuse_pass",              //
         "embedding_eltwise_layernorm_fuse_pass",     //
         "multihead_matmul_fuse_pass_v2",             //
+        "multihead_matmul_fuse_pass_v3",             //
+        "skip_layernorm_fuse_pass",                  //
         "squeeze2_matmul_fuse_pass",                 //
         "reshape2_matmul_fuse_pass",                 //
         "flatten2_matmul_fuse_pass",                 //
