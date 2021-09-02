@@ -192,7 +192,8 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  bool use_cudnn =
+      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -505,7 +506,8 @@ void ConvTransposeOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  bool use_cudnn =
+      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
@@ -605,7 +607,8 @@ void ConvTransposeOpDoubleGrad::InferShape(
 
 framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  bool use_cudnn =
+      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
