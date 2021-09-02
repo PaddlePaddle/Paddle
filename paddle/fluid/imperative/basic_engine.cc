@@ -314,6 +314,17 @@ static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
   return tmp_ins_ptr;
 }
 
+bool IsInputCanInplace(const std::shared_ptr<VariableWrapper>& var) {
+  auto* inner_var = var->MutableVar();
+  if (inner_var->IsInitialized() && inner_var->IsType<framework::LoDTensor>()) {
+    auto tensor = inner_var->GetMutable<framework::LoDTensor>();
+    if (tensor->IsInitialized()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void BasicEngine::Execute() {
   if (init_nodes_.empty()) {
     return;
@@ -347,6 +358,47 @@ void BasicEngine::Execute() {
       // Step 1: Run Backward OP
       auto& bwd_ins = cur_op.GetInsMap();
       auto& bwd_outs = cur_op.GetOutsMap();
+
+      auto& infer_inplace = paddle::framework::OpInfoMap::Instance()
+                                .Get(cur_op.Type())
+                                .infer_inplace_;
+
+      if (infer_inplace) {
+        auto in_to_outs = infer_inplace(true);
+        for (auto& pair : in_to_outs) {
+          framework::LoDTensor *in_tensor = nullptr, *out_tensor = nullptr;
+          for (auto& p : cur_op.GetInsMap()) {
+            if (p.first == pair.first) {
+              // has at least one var
+              if (p.second.size() > 0 && p.second[0]) {
+                auto& in_var = p.second[0];
+                VLOG(10) << p.first << " use_count: " << in_var.use_count();
+                // the refcount of var to be inplaced should be 1
+                if (in_var.use_count() == 1) {
+                  if (IsInputCanInplace(in_var)) {
+                    in_tensor = in_var->MutableVar()
+                                    ->GetMutable<framework::LoDTensor>();
+                  }
+                }
+              }
+            }
+          }
+          for (auto& p : cur_op.GetOutsMap()) {
+            if (p.first == pair.second) {
+              if (p.second.size() > 0 && p.second[0]) {
+                auto& out_var = p.second[0];
+                if (out_var->Type() == framework::proto::VarType::LOD_TENSOR) {
+                  out_tensor =
+                      out_var->MutableVar()->GetMutable<framework::LoDTensor>();
+                }
+              }
+            }
+          }
+          out_tensor->ShareBufferWith(*in_tensor);
+          VLOG(4) << "Inplace performed in op " << cur_op.Type() << ": "
+                  << pair.second << " -> " << pair.first;
+        }
+      }
 
       /**
        * [ Why need temporary outputs here? ]
