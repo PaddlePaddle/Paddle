@@ -207,17 +207,12 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
 
     def test_static_api(self):
         paddle.enable_static()
-        np_x = np.random.rand(2, 3, 4, 4).astype('float32')
-
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, paddle.static.Program()):
             x = paddle.static.data(
                 name="x", shape=[-1, 3, -1, -1], dtype='float32')
             out = self.execute_api(x, start_axis=2, stop_axis=3)
-
-        exe = paddle.static.Executor(place=paddle.CPUPlace())
-        fetch_out = exe.run(main_prog, feed={"x": np_x}, fetch_list=[out])
-        self.assertTrue((2, 3, 16) == fetch_out[0].shape)
+        self.assertTrue((-1, 3, -1) == out.shape)
 
 
 class TestStaticInplaceFlattenPythonAPI(TestStaticFlattenPythonAPI):
