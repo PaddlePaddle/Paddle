@@ -93,15 +93,16 @@ function(inference_quant2_int8_nlp_test target quant_model_dir fp32_model_dir da
 endfunction()
 
 function(inference_quant2_int8_lstm_model_test target fp32_model dataset_path)
-    py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/ptq_int8_lstm_model.py"
+    py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/quant2_int8_lstm_model.py"
             ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  FLAGS_use_mkldnn=true
             ARGS --fp32_model ${fp32_model}
                  --infer_data ${dataset_path}
-                 --num_threads 1
+                 --num_threads 4
+                 --mkldnn_cache_capacity 0
                  --warmup_iter 100
-				 --warmup_batch_size 1
+                 --warmup_batch_size 1
                  --acc_diff_threshold 0.11)
 endfunction()
 

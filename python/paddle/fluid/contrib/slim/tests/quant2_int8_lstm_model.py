@@ -44,6 +44,12 @@ def parse_args():
         type=float,
         default=0.01,
         help='Accepted accuracy difference threshold.')
+    parser.add_argument(
+        '--mkldnn_cache_capacity',
+        type=int,
+        default=0,
+        help='Mkldnn cache capacity. The default value in Python API is 15, which can slow down int8 models. Default 0 means unlimited cache.'
+    )
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
@@ -88,6 +94,7 @@ class TestLstmModelPTQ(unittest.TestCase):
     def set_config(self,
                    model_path,
                    num_threads,
+                   mkldnn_cache_capacity,
                    warmup_batch_size,
                    warmup_data=None,
                    enable_int8=False):
@@ -96,8 +103,10 @@ class TestLstmModelPTQ(unittest.TestCase):
         config.switch_use_feed_fetch_ops(True)
         config.switch_ir_optim(True)
         config.set_cpu_math_library_num_threads(num_threads)
+        # This pass to work properly, must be added before fc_fuse_pass
+        config.pass_builder().insert_pass(5, "fc_lstm_fuse_pass")
         config.enable_mkldnn()
-        config.set_mkldnn_cache_capacity(0)
+        config.set_mkldnn_cache_capacity(mkldnn_cache_capacity)
         if enable_int8:
             config.enable_quantizer()
             config.quantizer_config().set_quant_data(warmup_data)
@@ -108,6 +117,7 @@ class TestLstmModelPTQ(unittest.TestCase):
                     model_path,
                     data_path,
                     num_threads,
+                    mkldnn_cache_capacity,
                     warmup_iter,
                     warmup_batch_size,
                     enable_ptq_int8=False):
@@ -115,8 +125,9 @@ class TestLstmModelPTQ(unittest.TestCase):
         warmup_data, inputs = self.get_warmup_tensor(data_path, place,
                                                      warmup_batch_size)
         warmup_data = [item[0] for item in warmup_data]
-        config = self.set_config(model_path, num_threads, warmup_batch_size,
-                                 warmup_data, enable_ptq_int8)
+        config = self.set_config(model_path, num_threads, mkldnn_cache_capacity,
+                                 warmup_batch_size, warmup_data,
+                                 enable_ptq_int8)
 
         predictor = create_paddle_predictor(config)
         data = [item[0] for item in inputs]
@@ -175,17 +186,18 @@ class TestLstmModelPTQ(unittest.TestCase):
         infer_data = test_case_args.infer_data
         assert infer_data, 'The dataset path cannot be empty. Please, use the --infer_data option.'
         num_threads = test_case_args.num_threads
+        mkldnn_cache_capacity = test_case_args.mkldnn_cache_capacity
         warmup_iter = test_case_args.warmup_iter
         warmup_batch_size = test_case_args.warmup_batch_size
         acc_diff_threshold = test_case_args.acc_diff_threshold
 
         (fp32_hx_acc, fp32_ctc_acc, fp32_fps) = self.run_program(
-            fp32_model, infer_data, num_threads, warmup_iter, warmup_batch_size,
-            False)
+            fp32_model, infer_data, num_threads, mkldnn_cache_capacity,
+            warmup_iter, warmup_batch_size, False)
 
         (int8_hx_acc, int8_ctc_acc, int8_fps) = self.run_program(
-            fp32_model, infer_data, num_threads, warmup_iter, warmup_batch_size,
-            True)
+            fp32_model, infer_data, num_threads, mkldnn_cache_capacity,
+            warmup_iter, warmup_batch_size, True)
 
         print("FP32: fps {0}, hx_acc {1}, ctc_acc {2}.".format(
             fp32_fps, fp32_hx_acc, fp32_ctc_acc))
