@@ -75,8 +75,9 @@ static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
 
 // get blockDim for reduceLastDim and reduceAny
 static inline int GetBlockDim(int block_dim) {
-  return block_dim >= kps::details::kMaxThread ? kps::details::kMaxThread
-                                               : GetLastPow2(block_dim);
+  return block_dim >= kps::details::kReduceMaxThread
+             ? kps::details::kReduceMaxThread
+             : GetLastPow2(block_dim);
 }
 
 // check reduce rand is valid
@@ -339,7 +340,7 @@ struct ReduceConfig {
   void SetBlockDimForReduceAny(dim3* block_dim, dim3* grid_dim) {
     constexpr int min_reduce_num_per_thread = 16;
     constexpr int max_reduce_num_per_thread = 256;
-    constexpr int max_num_threads = kps::details::kMaxThread;
+    constexpr int max_num_threads = kps::details::kReduceMaxThread;
 
     // set block size.
     // 1. If reduce_last_dim == true, all the threads whose threadIdx.y are same
