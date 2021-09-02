@@ -22,6 +22,7 @@ __all__ = [
     'Event',
     'current_stream',
     'synchronize',
+    'device_count',
 ]
 
 
@@ -94,3 +95,25 @@ def synchronize(device=None):
             raise ValueError("device type must be int or paddle.CUDAPlace")
 
     return core._device_synchronize(device_id)
+
+
+def device_count():
+    '''
+    Return the number of GPUs available.
+    
+    Returns:
+        int: the number of GPUs available.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.device.cuda.device_count()
+
+    '''
+
+    num_gpus = core.get_cuda_device_count() if hasattr(
+        core, 'get_cuda_device_count') else 0
+
+    return num_gpus

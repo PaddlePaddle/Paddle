@@ -48,6 +48,12 @@ class TransposeOp : public framework::OperatorWithKernel {
 
     std::vector<int> count(axis_size, 0);
     for (size_t i = 0; i < axis_size; i++) {
+      PADDLE_ENFORCE_GE(axis[i], 0,
+                        platform::errors::InvalidArgument(
+                            "The axis should be greater than or equal to 0."
+                            "But received %d of axis[%d]",
+                            axis[i], i));
+
       PADDLE_ENFORCE_EQ(
           axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1, true,
           platform::errors::InvalidArgument(

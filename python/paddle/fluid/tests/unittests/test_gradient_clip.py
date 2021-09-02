@@ -56,6 +56,7 @@ class TestGradientClip(unittest.TestCase):
         self.BATCH_SIZE = 2
         reader = fake_imdb_reader(self.word_dict_len, self.BATCH_SIZE * 100)
         self.train_data = paddle.batch(reader, batch_size=self.BATCH_SIZE)
+        self.clip_gradient = lambda x: None
         self.init()
 
     def init(self):
@@ -66,9 +67,6 @@ class TestGradientClip(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         return places
-
-    def clip_gradient(self, params_grads):
-        pass
 
     def check_clip_result(self, out, out_clip):
         pass
@@ -132,7 +130,6 @@ class TestGradientClip(unittest.TestCase):
         data = next(self.train_data())
         val = exe.run(prog, feed=feeder.feed(data), fetch_list=[cost])[0]
         self.assertEqual((1, ), val.shape)
-        print(val)
         self.assertFalse(np.isnan(val))
 
     def backward_and_optimize(self, cost):
@@ -142,11 +139,6 @@ class TestGradientClip(unittest.TestCase):
 class TestGradientClipByGlobalNorm(TestGradientClip):
     def init(self):
         self.clip_norm = 0.2
-
-    def clip_gradient(self, params_grads):
-        clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=self.clip_norm)
-        print(clip)
-        return clip(params_grads)
 
     def check_clip_result(self, out, out_clip):
         global_norm = 0
@@ -179,7 +171,6 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
     def test_new_gradient_clip(self):
         def func(params_grads):
             clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=self.clip_norm)
-            print(clip)
             return clip(params_grads)
 
         self.clip_gradient = func
@@ -236,11 +227,6 @@ class TestGradientClipByNorm(TestGradientClip):
     def init(self):
         self.clip_norm = 0.2
 
-    def clip_gradient(self, params_grads):
-        clip = fluid.clip.GradientClipByNorm(clip_norm=self.clip_norm)
-        print(clip)
-        return clip(params_grads)
-
     def check_clip_result(self, out, out_clip):
         for u, v in zip(out, out_clip):
             norm = np.sqrt(np.sum(np.power(u, 2)))
@@ -253,6 +239,11 @@ class TestGradientClipByNorm(TestGradientClip):
 
     # test whether the ouput is right when use grad_clip
     def test_gradient_clip(self):
+        def func(params_grads):
+            clip = fluid.clip.GradientClipByNorm(clip_norm=self.clip_norm)
+            return clip(params_grads)
+
+        self.clip_gradient = func
         self.check_gradient_clip(fluid.CPUPlace())
 
     # if grad is None or not need clip
@@ -280,11 +271,6 @@ class TestGradientClipByValue(TestGradientClip):
         self.max = 0.2
         self.min = 0.1
 
-    def clip_gradient(self, params_grads):
-        clip = fluid.clip.GradientClipByValue(max=self.max, min=self.min)
-        print(clip)
-        return clip(params_grads)
-
     def check_clip_result(self, out, out_clip):
         for i, v in enumerate(out):
             out[i] = np.clip(v, self.min, self.max)
@@ -297,6 +283,11 @@ class TestGradientClipByValue(TestGradientClip):
 
     # test whether the ouput is right when use grad_clip
     def test_gradient_clip(self):
+        def func(params_grads):
+            clip = fluid.clip.GradientClipByValue(max=self.max, min=self.min)
+            return clip(params_grads)
+
+        self.clip_gradient = func
         self.check_gradient_clip(fluid.CPUPlace())
 
     # if grad is None or not need clip

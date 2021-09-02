@@ -93,10 +93,14 @@ DEFINE_string(selected_npus, "",
               "This option is useful when doing multi process training and "
               "each process have only one device (NPU). If you want to use "
               "all visible devices, set this to empty string.");
+DEFINE_bool(hccl_check_nan, false,
+            "Check Nan in tensor before hccl_allreduce_sum otherwise it'll "
+            "core when meets Nan value");
 DEFINE_string(
     npu_config_path, "",
     "The absolute path of configuration json file, like: /tmp/config.json. "
     "If proveided, it will be passed to aclInit().");
+DEFINE_int32(min_loss_scaling, 1, "set minmum loss scaling value!");
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
