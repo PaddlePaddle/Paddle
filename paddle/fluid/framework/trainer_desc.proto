@@ -52,6 +52,7 @@ message TrainerDesc {
 
   optional string user_define_dump_filename = 24;
   optional bool scale_sparse_gradient_with_batch_size = 25 [ default = true ];
+  optional float dump_prob = 26 [ default = 1.0 ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;

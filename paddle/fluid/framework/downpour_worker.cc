@@ -78,6 +78,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   use_cvm_ = desc.use_cvm();
   // for sparse value accessor, embedding only
   no_cvm_ = desc.no_cvm();
+  dump_prob_ = desc.dump_prob();
   scale_sparse_gradient_with_batch_size_ =
       desc.scale_sparse_gradient_with_batch_size();
   scale_datanorm_ = desc.scale_datanorm();

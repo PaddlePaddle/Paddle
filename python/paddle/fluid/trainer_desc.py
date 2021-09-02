@@ -131,6 +131,9 @@ class TrainerDesc(object):
         for loss in loss_names:
             self.proto_desc.loss_names.append(loss)
 
+    def _set_dump_prob(self, dump_prob):
+        self.proto_desc.dump_prob = dump_prob
+
     def _set_adjust_ins_weight(self, config_dict):
         self.proto_desc.adjust_ins_weight_config.need_adjust = \
                 config_dict.get("need_adjust", False)
