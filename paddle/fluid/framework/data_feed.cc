@@ -1108,7 +1108,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     // LoD data_lod{slot_offset};
     // feed_vec_[i]->set_lod(data_lod);
     if (!use_slots_is_dense_[i]) {
-      LoD data_lod{offset};
+      LoD data_lod{slot_offset};
       feed_vec_[i]->set_lod(data_lod);
     }
     if (use_slots_is_dense_[i]) {
