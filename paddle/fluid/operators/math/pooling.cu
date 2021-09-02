@@ -165,8 +165,8 @@ __global__ void KernelPool2DGrad(
     T gradient = static_cast<T>(0);
     T input = input_data[index];
     int w_offset, h_offset, offsetC, batch_idx;
-    int phstart, phend;
-    int pwstart, pwend;
+    int phstart, phend, pwstart, pwend;
+    int output_stride;
 
     if (!channel_last) { /* NCHW */
       auto input_width_divmod = divmods.input_w.Divmod(index);
@@ -177,6 +177,8 @@ __global__ void KernelPool2DGrad(
       h_offset = input_height_divmod.val[1] + padding_height;
       offsetC = channel_divmod.val[1];
       batch_idx = channel_divmod.val[0];
+      output_stride = (batch_idx * divmods.c.divisor + offsetC) *
+                      output_height * output_width;
     } else { /* NHWC */
       auto c_divmod = divmods.c.Divmod(index);
       auto input_width_divmod = divmods.input_w.Divmod(c_divmod.val[0]);
@@ -186,7 +188,11 @@ __global__ void KernelPool2DGrad(
       w_offset = input_width_divmod.val[1] + padding_width;
       h_offset = input_height_divmod.val[1] + padding_height;
       batch_idx = input_height_divmod.val[0];
+      output_stride =
+          batch_idx * output_height * output_width * divmods.c.divisor;
     }
+    output_data += output_stride;
+    output_grad += output_stride;
 
     if (adaptive) {
       auto tmp_phend = divmods.input_h.Divmod((h_offset + 1) * output_height);
@@ -195,14 +201,6 @@ __global__ void KernelPool2DGrad(
       pwstart = divmods.input_w.Div(w_offset * output_width);
       phend = tmp_phend.val[1] > 0 ? tmp_phend.val[0] + 1 : tmp_phend.val[0];
       pwend = tmp_pwend.val[1] > 0 ? tmp_pwend.val[0] + 1 : tmp_pwend.val[0];
-
-      int output_stride =
-          channel_last
-              ? batch_idx * output_height * output_width * divmods.c.divisor
-              : (batch_idx * divmods.c.divisor + offsetC) * output_height *
-                    output_width;
-      output_data += output_stride;
-      output_grad += output_stride;
 
       for (int ph = phstart; ph < phend; ++ph) {
         for (int pw = pwstart; pw < pwend; ++pw) {
@@ -229,14 +227,6 @@ __global__ void KernelPool2DGrad(
       pwstart = (w_offset < ksize_width) ? 0 : stride_width_div + 1;
       phend = min(divmods.stride_h.Div(h_offset) + 1, output_height);
       pwend = min(divmods.stride_w.Div(w_offset) + 1, output_width);
-
-      int output_stride =
-          channel_last
-              ? batch_idx * output_height * output_width * divmods.c.divisor
-              : (batch_idx * divmods.c.divisor + offsetC) * output_height *
-                    output_width;
-      output_data += output_stride;
-      output_grad += output_stride;
 
       for (int ph = phstart; ph < phend; ++ph) {
         for (int pw = pwstart; pw < pwend; ++pw) {
