@@ -396,7 +396,7 @@ void InterpreterCore::ExecuteInstructionList(
       }
     }
   }
-  // TODO(Aurelius84): [ Why we need a while_loop to check op_run_number ?]
+  // TODO(Aurelius84): [ Why we need a while_loop to check op_run_number ? ]
   // Because two WorkQueue can't communicate with each other, it will lead that
   // even though we called WaitQueueEmpty(), it still can't guarantee all ops
   // are finished.
@@ -425,6 +425,7 @@ void InterpreterCore::RunInstructionAsync(
   RunInstruction(instr_node);
   RecordEventInstruction(instr_node);
   op_run_number->fetch_add(1);
+  VLOG(3) << "end to run instr_id: " << instr_id;
 
   if (is_dry_run) {
     profiler_.ParseMemoryInfo(global_scope_->var_list);
