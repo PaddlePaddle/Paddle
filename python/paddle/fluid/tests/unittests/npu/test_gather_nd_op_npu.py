@@ -229,7 +229,7 @@ def test_class6(op_type, typename):
 
 def test_class7(op_type, typename):
     class TestGatherNdOpWithHighRankDiff(OpTest):
-        #Both Index and X have high rank, and Rank(Index) < Rank(X)
+        #Both Index and X have high rank, Rank(Index) < Rank(X)
 
         def setUp(self):
             self.set_npu()
