@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include <time.h>
 #include "glog/logging.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -192,7 +193,9 @@ CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
   std::cout << ">>>>>>>>>>>>>1>>>\n";
   Eigen::ThreadPool pool(20 /* number of threads in pool */);
-  //   // Create the Eigen ThreadPoolDevice.
+  for (int i = 0; i < 20; i++) {
+    eigen_cpu_devices_.push_back(new Eigen::ThreadPoolDevice(&pool, 20));
+  }
   pool_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20));
   // // pool_device_ = new Eigen::ThreadPoolDevice(&pool, 20);
   // Eigen::ThreadPoolDevice* d = pool_device_.get();
@@ -207,7 +210,14 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 }
 
 Eigen::ThreadPoolDevice* CPUDeviceContext::pool_device() const {
-  return pool_device_.get();
+  // std::cout << "pool: " << pool_device_.get();
+  // Eigen::ThreadPool pool(20 /* number of threads in pool */);
+  // pool_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20));
+  // srand((unsigned)time(NULL));
+  int a = 0;
+  int b = 19;
+  // int index = (rand() % (b - a + 1)) + a;
+  return eigen_cpu_devices_[1];
   // std::cout << ">>>>>>>2>>>>>>>>>\n";
   // const int parallelism = std::max<int>(
   //     1,
