@@ -214,6 +214,20 @@ class MatMulMKLDNNHandler
     astream.wait();
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireDstMemory(
+      paddle::framework::Tensor* output) {
+    // We cannot use base AcquireDstMemory as it makes an allocation request
+    // base on DST memory primitive size. This is fine in general, but in MatMul
+    // we have primitive that covers only one batch of Data and then shift
+    // pointer for every new batch. Hence Tensor size is bigger that dst memory
+    // primitive size. So would we request less memory that is there and it
+    // triggers an
+    // assertion.  So as there is no 'any' format here we can leave default size
+    // of Tensor as computed in ComputeInferShape
+    OT* ptr = output->mutable_data<OT>(this->place_);
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
+  }
+
  private:
   struct MatMulDims {
     const memory::dims x_dims, y_dims, out_dims, x_strides, y_strides,
@@ -368,20 +382,6 @@ class MatMulMKLDNNHandler
 
   std::tuple<uint32_t, uint32_t, uint32_t> GetOffsets() const {
     return std::make_tuple(x_offset_, y_offset_, out_offset_);
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDstMemory(
-      paddle::framework::Tensor* output) {
-    // We cannot use base AcquireDstMemory as it makes an allocation request
-    // base on DST memory primitive size. This is fine in general, but in MatMul
-    // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence Tensor size is bigger that dst memory
-    // primitive size. So would we request less memory that is there and it
-    // triggers an
-    // assertion.  So as there is no 'any' format here we can leave default size
-    // of Tensor as computed in ComputeInferShape
-    OT* ptr = output->mutable_data<OT>(this->place_);
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 
  private:
