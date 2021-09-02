@@ -74,17 +74,6 @@ class PoolOpGrad : public framework::OperatorWithKernel {
 };
 
 
-class PoolOpGradGrad : public PoolOp{
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  using PoolOp::InferShape;
-
- protected:
-  using PoolOp::GetExpectedKernelType;
-  using PoolOp::GetKernelTypeForVar;
-};
-
-
 class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
@@ -379,7 +368,7 @@ class PoolGradGradKernel : public PoolKernel<DeviceContext, T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Pool op grad grad only supports avgpool."));
     }
-    else PoolKernel::Compute(context);
+    else PoolKernel<DeviceContext, T>::Compute(context);
   }
 };
 

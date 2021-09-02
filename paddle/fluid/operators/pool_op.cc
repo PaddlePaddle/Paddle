@@ -699,6 +699,7 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad,
                   ops::Pool2dOpGradGradMaker<paddle::framework::OpDesc>,
                   ops::Pool2dOpGradGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(pool2d_grad_grad, ops::PoolOp);
 
 REGISTER_OP_CPU_KERNEL(
     pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
