@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
-
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 namespace paddle {
@@ -202,6 +201,7 @@ void BindVarDsec(pybind11::module *m) {
       .def("attr_names", &pd::VarDesc::AttrNames)
       .def("_set_attr", &pd::VarDesc::SetAttr)
       .def("remove_attr", &pd::VarDesc::RemoveAttr)
+      .def("id", &pd::VarDesc::Id)
       .def("attr", &pd::VarDesc::GetAttr);
 
   pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
@@ -294,6 +294,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
       .def("block", [](pd::OpDesc &self) { return self.Block(); },
            pybind11::return_value_policy::reference)
+      .def("id", &pd::OpDesc::Id)
       .def("inputs", &pd::OpDesc::Inputs)
       .def("outputs", &pd::OpDesc::Outputs);
 }
