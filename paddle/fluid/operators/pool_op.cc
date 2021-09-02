@@ -464,7 +464,6 @@ Example:
 )DOC");
 }
 
-
 template <typename T>
 class Pool2dOpGradGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -478,7 +477,6 @@ class Pool2dOpGradGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetAttrMap(this->Attrs());
   }
 };
-
 
 class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:

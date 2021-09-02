@@ -506,15 +506,16 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class PoolCUDNNGradGradOpKernel : public PoolCUDNNOpKernel<T>{
+class PoolCUDNNGradGradOpKernel : public PoolCUDNNOpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override{
+  void Compute(const framework::ExecutionContext &ctx) const override {
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
     if (pooling_type == "max") {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Pool op grad grad only supports avgpool."));
+    } else {
+      PoolCUDNNOpKernel<T>::Compute(ctx);
     }
-    else PoolCUDNNOpKernel<T>::Compute(ctx);
   }
 };
 
