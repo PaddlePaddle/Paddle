@@ -70,7 +70,7 @@ class TestFlattenOpSixDims(TestFlattenOp):
         self.new_shape = (36, 16)
 
 
-class TestStaticFlattenPythonAPI(unittest.TestCase):
+class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
     def execute_api(self, x, axis=1):
         return fluid.layers.flatten(x, axis=axis)
 
