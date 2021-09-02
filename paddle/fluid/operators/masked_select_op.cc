@@ -43,13 +43,15 @@ class MaskedSelectOp : public framework::OperatorWithKernel {
 class MaskedSelectOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input tensor.");
+    AddInput("X", "The input tensor.").AsPrimitive();
     AddInput("Mask",
-             "The mask of Input Tensor to be selected which is a bool Tensor.");
+             "The mask of Input Tensor to be selected which is a bool Tensor.")
+        .AsPrimitive();
     AddOutput(
         "Y",
         "The returned tensor, the data type "
-        "is same as input, will be on the same device with the input Tensor.");
+        "is same as input, will be on the same device with the input Tensor.")
+        .AsPrimitive();
     AddComment(R"DOC(
 Size Operator.
 
