@@ -1703,13 +1703,11 @@ set -x
 
 function parallel_test_base_npu() {
     # skipping if no NPU related files changed
-    if [ ${SKIL_NPU_TEST:-ON} == "ON" ] ; then
-        git remote -vv
-        git branch -vv
-        git diff --name-only $BRANCH
-        git diff --name-only upstream/$BRANCH
-        npu_cc_changes=$(git diff --name-only upstream/$BRANCH | grep "op_npu.cc" || true)
-        npu_py_changes=$(git diff --name-only upstream/$BRANCH | grep "op_npu.py" || true)
+    if [ ${SKIP_NPU_TEST:-ON} == "ON" ] ; then
+        fetch_upstream_develop_if_not_exist
+        git diff --name-only remotes/upstream/$BRANCH
+        npu_cc_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.cc" || true)
+        npu_py_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.py" || true)
         if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] ; then
             echo "NO NPU operators files changed, skip NPU unit tests!"
             exit 0
