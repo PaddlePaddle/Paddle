@@ -31,10 +31,10 @@ enum class FFTNormMode : int64_t {
 FFTNormMode get_norm_from_string(const std::string& norm, bool forward);
 
 // Enum representing the FFT type
-enum class FFTTransformType : int8_t {
-  C2C,  // Complex-to-complex
-  R2C,  // Real-to-complex
-  C2R,  // Complex-to-real
+enum class FFTTransformType : int64_t {
+  C2C = 0,  // Complex-to-complex
+  R2C,      // Real-to-complex
+  C2R,      // Complex-to-real
 };
 
 // Create transform type enum from bools representing if input and output are
@@ -99,7 +99,7 @@ template <typename DeviceContext, typename Ti, typename To>
 struct FFTC2RFunctor {
   void operator()(const DeviceContext& ctx, const Tensor* X, Tensor* out,
                   const std::vector<int64_t>& axes, FFTNormMode normalization,
-                  bool forward, bool onesided);
+                  bool forward);
 };
 
 template <typename DeviceContext, typename T>
