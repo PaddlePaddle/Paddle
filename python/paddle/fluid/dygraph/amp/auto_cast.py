@@ -297,17 +297,6 @@ def amp_guard(enable=True,
 
         models, optimizers = fp16_initialize(enable_pure_fp16, models,
                                              optimizers)
-        '''
-        if isinstance(models, paddle.nn.Layer) and isinstance(
-                optimizers,
-            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
-            model, optimizer = fp16_initialize(enable_pure_fp16, models,
-                                               optimizers)
-        else:
-            raise ValueError(
-                "Current train mode is pure fp16, model and optimizer should be paddle.nn.Layer and (paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer), but receive {} and {}.".
-                format(type(model), type(optimizer)))
-        '''
 
     # use default white_list and black_list if no custom lists provided
     _white_list = WHITE_LIST
