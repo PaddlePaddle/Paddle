@@ -4654,15 +4654,22 @@ class PipelineOptimizer(object):
                     op.type == 'elementwise_div'):
                 device = f"{self._device}:all"
             op._set_attr(self._op_device_key, device)
-        elif self._is_weight_decay_op(op) and op.type == 'scale':
-            # set AdamW decay_coeff to device:all
-            op._set_attr(self._op_device_key, f"{self._device}:all")
         elif op.type == "alloc_float_status" or op.type == "clear_float_status":
             op._set_attr(self._op_device_key, f"{self._device}:all")
+            # NOTE(wangxi): NPU should only clear the float status
+            # once at each batch step
+            op._set_attr(self._op_role_key, self._op_role.LRSched)
+
+            float_status_name = op.output_arg_names[0]
+            float_status_var = block.var(float_status_name)
+            # FIXME(wangxi): pipeline lr schedule will exec on sub_scope(0)
+            # while update will exec on sub_scope(last_micro_step), should
+            # set persistable to use global scope
+            float_status_var.persistable = True
         else:
             other_known_ops = [
                 'update_loss_scaling', 'reduce_any', 'concat', 'sum',
-                'check_finite_and_unscale', 'alloc_float_status', 'memcpy'
+                'check_finite_and_unscale', 'memcpy'
             ]
             assert op.type in other_known_ops, "For other ops without " \
                 "op_device set, they must be one of {}, but it " \
@@ -5316,7 +5323,13 @@ class PipelineOptimizer(object):
                     "copy_data": False,
                     "use_align": True,
                     "dtype": grads[0].dtype,
-                    self._op_role_key: self._op_role.Backward
+                    self._op_role_key: self._op_role.Backward,
+                    # On npu, the nan/inf check login is different with gpu.
+                    # If there are some not initialized sections in the fused var,
+                    # and the value in those sections are nan/inf, it will trigger the nan/inf check.
+                    # To avoid these problematic triggers, set constant is needed for npu
+                    "set_constant": core.is_compiled_with_npu(),
+                    "constant": float(0.0),
                 })
             offset += 1
             # For the gradient_merged_fused_var, given a init value during the coalesce op
