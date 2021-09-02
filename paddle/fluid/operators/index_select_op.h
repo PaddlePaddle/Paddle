@@ -69,6 +69,7 @@ void IndexSelectInner(const framework::ExecutionContext& context,
             "value.",
             input_dim[dim], index_data[i]));
   }
+
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
