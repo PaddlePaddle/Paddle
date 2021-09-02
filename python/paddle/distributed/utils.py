@@ -138,6 +138,7 @@ def global_scatter(x, \
         return
 
     ring_id = 0 if group is None else group.id
+
     if in_dygraph_mode():
         return core.ops.global_scatter(x, local_count, \
                                     global_count,  \
