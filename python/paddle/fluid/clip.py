@@ -522,7 +522,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     x=max_global_norm,
                     y=layers.elementwise_max(
                         x=max_global_norm, y=global_norm_var))
-
+            print("scale_var>>>>>>>>>>>>>>>:")
+            print(scale_var)
             param_new_grad_name_dict = dict()
             for p, g in params_grads:
                 if g is None:
@@ -535,12 +536,27 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
                     # inplace
                     if g.dtype == core.VarDesc.VarType.FP16:
-                        scale_var = scale_var.astype('float16')
-                    p.block.append_op(
-                        type='elementwise_mul',
-                        inputs={'X': g,
-                                'Y': scale_var},
-                        outputs={'Out': g})
+                        scale_var_fp16 = scale_var.astype('float16')
+                        print(">>>>>DEBUG:g.dtype>>>>>>:")
+                        print(g.dtype)
+                        print("scale_va11111r>>>>>>>>>>>>>>>:")
+                        print(scale_var)
+                        print(scale_var_fp16.dtype)
+                        print(scale_var_fp16)
+                        print(">>>>>DEBUG:End>>>>>>:")
+                        p.block.append_op(
+                            type='elementwise_mul',
+                            inputs={'X': g,
+                                    'Y': scale_var_fp16},
+                            outputs={'Out': g})
+                    else:
+                        p.block.append_op(
+                            type='elementwise_mul',
+                            inputs={'X': g,
+                                    'Y': scale_var},
+                            outputs={'Out': g})
+                            
+                            
                 param_new_grad_name_dict[p.name] = g.name
                 params_and_grads.append((p, g))
 
