@@ -201,6 +201,20 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
         self.assertTrue((2, 3, 16) == fetch_out[0].shape)
 
 
+class TestStaticFlattenPythonAPI(unittest.TestCase):
+    def execute_api(self, x, start_axis=0, stop_axis=-1):
+        return paddle.flatten(x, start_axis, stop_axis)
+
+    def test_static_api(self):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
+            x = paddle.static.data(
+                name="x", shape=[-1, 3, -1, -1], dtype='float32')
+            out = self.execute_api(x, start_axis=2, stop_axis=3)
+        self.assertTrue((-1, 3, -1) == out.shape)
+
+
 class TestStaticInplaceFlattenPythonAPI(TestStaticFlattenPythonAPI):
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return x.flatten_(start_axis, stop_axis)
