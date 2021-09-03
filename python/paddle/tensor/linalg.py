@@ -546,19 +546,19 @@ def dist(x, y, p=2):
 def cond(x, p=None, name=None):
     """
 
-    Computes the condition number of a matrix or batches of matrices with respect to a matrix norm.
+    Computes the condition number of a matrix or batches of matrices with respect to a matrix norm ``p``.
 
     Args:
-        x (Tensor): The input tensor could be tensor of shape (*, m, n) where * is zero or more batch dimensions 
-            for p in (2, -2), or of shape (*, n, n) where every matrix is invertible for p in (‘fro’, ‘nuc’, inf, 
-            -inf, 1, -1). And the input data type could be float32 or float64.
+        x (Tensor): The input tensor could be tensor of shape ``(*, m, n)`` where ``*`` is zero or more batch dimensions 
+            for ``p`` in ``(2, -2)``, or of shape ``(*, n, n)`` where every matrix is invertible for any supported ``p``. 
+            And the input data type could be ``float32`` or ``float64``.
         p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `1`, `-1`, `2`, `-2`,
-            `inf`, `-inf`. Default value is None, meaning that the order of the norm is `2`.
-        name (str, optional): The default value is None. Normally there is no need for
+            `inf`, `-inf`. Default value is `None`, meaning that the order of the norm is `2`.
+        name (str, optional): The default value is `None`. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: computing results of condition number, its data type is the same as input Tensor.
+        Tensor: computing results of condition number, its data type is the same as input Tensor ``x``.
 
     Examples:
         .. code-block:: python
