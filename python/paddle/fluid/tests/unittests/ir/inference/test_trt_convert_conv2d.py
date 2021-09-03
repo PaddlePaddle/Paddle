@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
@@ -33,6 +34,9 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         # groups restriction.
         if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[
                 1] * attrs[0]['groups']:
+            return False
+        
+        if len(inputs['input_data'].shape) != 4 or len(inputs['input_data'].shape) != 5:
             return False
 
         # others restriction, todo.
@@ -182,25 +186,16 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
     def add_skip_trt_case(self):
         # TODO(wilber): This is just the example to illustrate the skip usage.
         def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['groups'] == 2:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.ALGO_WRONG,
-            "Need to repair the case: ......TODO, just for the example")
-
-        def teller2(program_config, predictor_config):
             if len(program_config.ops[0].attrs['paddings']) == 4:
                 return True
             return False
 
         self.add_skip_case(
-            teller2, SkipReasons.TRT_NOT_IMPLEMENTED,
+            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
             "NOT Implemented: we need to add support in the future ....TODO, just for the example"
         )
 
-        def teller3(program_config, predictor_config):
+        def teller2(program_config, predictor_config):
             if (
                     program_config.ops[0].attrs['dilations'][0] == 1 and
                     program_config.ops[0].attrs['dilations'][0] == 2
@@ -208,7 +203,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                 return True
             return False
 
-        self.add_skip_case(teller3, SkipReasons.TRT_NOT_SUPPORT,
+        self.add_skip_case(teller2, SkipReasons.TRT_NOT_SUPPORT,
                            "TODO, just for the example")
 
         def teller4(program_config, predictor_config):

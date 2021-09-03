@@ -210,11 +210,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 for skip_info in self.skip_cases:
                     if skip_info[0](prog_config, pred_config):
                         skip_flag = True
-                        if skip_info[1] == SkipReasons.ALGO_WRONG:
-                            self.skip_log("[ALGO_WRONG] " + skip_info[
-                                2] + ' ' + repr(prog_config) + ' vs ' + self.
-                                          inference_config_str(pred_config))
-                        elif skip_info[1] == SkipReasons.TRT_NOT_IMPLEMENTED:
+                        if skip_info[1] == SkipReasons.TRT_NOT_IMPLEMENTED:
                             self.skip_log("[TRT_NOT_IMPLEMENTED] " + skip_info[
                                 2] + ' ' + repr(prog_config) + ' vs ' + self.
                                           inference_config_str(pred_config))
