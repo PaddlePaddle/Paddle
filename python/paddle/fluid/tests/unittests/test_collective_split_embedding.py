@@ -27,6 +27,7 @@ class TestParallelEmbeddingAPI(TestDistBase):
         pass
 
     def test_parallel_embedding(self):
+        ## Unified split embedding.
         self.check_with_place("parallel_embedding_api.py", "parallel_embedding",
                               "nccl")
 
