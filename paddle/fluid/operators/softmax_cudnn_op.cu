@@ -40,7 +40,6 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
-    // auto* dx_data = dx->data<T>();
 
     int input_axis = ctx.Attr<int>("axis");
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
