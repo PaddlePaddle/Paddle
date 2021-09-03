@@ -222,8 +222,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
                             pass
                         else:
                             raise NotImplementedError
-                if skip_flag:
-                    continue
+                #if skip_flag:
+                    # The correct result should be obtained here, but the
+                    # tensorrt subgraph is not established.
 
                 try:
                     results.append(
