@@ -151,9 +151,12 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
              "It is applied to the output.")
         .AsDispensable();
     AddOutput("Y", "Result after normalization.");
-    AddOutput("Mean", "Mean of the current mini batch.").AsIntermediate();
+    AddOutput("Mean", "Mean of the current mini batch.")
+        .AsIntermediate()
+        .AsExtra();
     AddOutput("Variance", "Variance of the current mini batch.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
 
     AddAttr<float>("epsilon",
                    "Constant for numerical stability [default 1e-5].")
