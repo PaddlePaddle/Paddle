@@ -200,7 +200,7 @@ class MatMulMKLDNNHandler
     void* y_ptr = weights_memory_p->get_data_handle();
     void* out_ptr = dst_memory_p->get_data_handle();
     auto offsets = this->GetOffsets();
-    for (uint16_t i = 0; i < this->GetBatchSize(); i++) {
+    for (uint16_t i = 0; i < this->GetBatchSize(); ++i) {
       src_memory_p->set_data_handle(x_ptr);
       weights_memory_p->set_data_handle(y_ptr);
       dst_memory_p->set_data_handle(out_ptr);
