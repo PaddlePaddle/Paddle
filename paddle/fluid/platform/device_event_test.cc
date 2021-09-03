@@ -87,6 +87,6 @@ TEST(DeviceEvent, CPU) {
 
   // test for Record again
   event.Record(context);
-  bool status = event.Query();
+  status = event.Query();
   ASSERT_EQ(status, false);  // SCHEDULED
 }
