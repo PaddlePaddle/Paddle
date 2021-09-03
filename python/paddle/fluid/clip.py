@@ -496,11 +496,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         sum_square_list_fp16.append(sum_square)
                     elif sum_square.dtype == core.VarDesc.VarType.FP32:
                         sum_square_list_fp32.append(sum_square)
-
-                    sum_square_list.append(sum_square)
+                    else:
+                        sum_square_list.append(sum_square)
 
             # all parameters have been filterd out
-            if len(sum_square_list) == 0:
+            if len(sum_square_list) + len(sum_square_list_fp16) + len(
+                    sum_square_list_fp32) == 0:
                 return params_grads
 
             with p.block.program._optimized_guard([p, g]):
@@ -512,6 +513,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 if len(sum_square_list_fp32) > 0:
                     global_norm_var_fp32 = layers.sums(sum_square_list_fp32)
                     global_norm_var.append(global_norm_var_fp32)
+                if len(sum_square_list) > 0:
+                    global_norm_var_other_dtype = layers.sums(sum_square_list)
+                    global_norm_var.append(global_norm_var_other_dtype)
                 global_norm_var = layers.sums(global_norm_var)
                 global_norm_var = layers.sqrt(x=global_norm_var)
                 max_global_norm = layers.fill_constant(
@@ -522,8 +526,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     x=max_global_norm,
                     y=layers.elementwise_max(
                         x=max_global_norm, y=global_norm_var))
-            print("scale_var>>>>>>>>>>>>>>>:")
-            print(scale_var)
             param_new_grad_name_dict = dict()
             for p, g in params_grads:
                 if g is None:
@@ -537,13 +539,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     # inplace
                     if g.dtype == core.VarDesc.VarType.FP16:
                         scale_var_fp16 = scale_var.astype('float16')
-                        print(">>>>>DEBUG:g.dtype>>>>>>:")
-                        print(g.dtype)
-                        print("scale_va11111r>>>>>>>>>>>>>>>:")
-                        print(scale_var)
-                        print(scale_var_fp16.dtype)
-                        print(scale_var_fp16)
-                        print(">>>>>DEBUG:End>>>>>>:")
                         p.block.append_op(
                             type='elementwise_mul',
                             inputs={'X': g,
@@ -555,8 +550,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                             inputs={'X': g,
                                     'Y': scale_var},
                             outputs={'Out': g})
-                            
-                            
+
                 param_new_grad_name_dict[p.name] = g.name
                 params_and_grads.append((p, g))
 
