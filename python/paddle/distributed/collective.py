@@ -1403,28 +1403,17 @@ def split(x,
             "but received vocabulary={} num_partitions={}".format(size[0], num_partitions)
 
         per_part_size = size[0] // num_partitions
-        if core.is_compiled_with_npu():
-            emb_out = _parallel_embedding_npu(
-                x,
-                per_part_size,
-                size,
-                weight_attr,
-                inner_rank,
-                num_partitions,
-                name,
-                group=None)
-            return emb_out
-        else:
-            emb_out = _parallel_embedding(
-                x,
-                per_part_size,
-                size,
-                weight_attr,
-                inner_rank,
-                num_partitions,
-                name,
-                group=None)
-            return emb_out
+        ## FIXME(baiyangfan) Unified NPU\GPU embedding.
+        emb_out = _parallel_embedding(
+            x,
+            per_part_size,
+            size,
+            weight_attr,
+            inner_rank,
+            num_partitions,
+            name,
+            group=None)
+        return emb_out
     else:
         should_split = False
         if axis == 0:
