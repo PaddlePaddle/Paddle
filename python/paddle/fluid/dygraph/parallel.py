@@ -474,6 +474,7 @@ class DataParallel(layers.Layer):
                     # 2. start by ``paddle.distributed.launch``
                     # train()
 
+
     .. note::
         ``PyLayer`` is not supported in DataParallel. To solve problems of this kind, 
         it's recommended to skip gradient synchronization among multiple cards by 'no_sync', 
