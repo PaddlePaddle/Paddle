@@ -234,6 +234,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       }
       case framework::proto::VarType::FP32: {
         VLOG(4) << "prepare to FoundNanInf";
+        // NOTE: performance relating, DO NOT REMOVE!
         found_nan = ContainsNan(*dev_ctx, dev_ctx->stream(), in);
         VLOG(4) << "check_numerics:" << found_nan;
         break;
