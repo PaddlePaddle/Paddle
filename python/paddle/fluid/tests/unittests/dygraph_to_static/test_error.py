@@ -218,7 +218,10 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
             ['File "{}", line 35, in func_error_in_compile_time'.format(self.filepath),
              'inner_func()',
              'File "{}", line 28, in inner_func'.format(self.filepath),
+             'def inner_func():',
              'fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+             '<--- HERE',
+             'return',
              ]
 
     def set_func_call(self):
@@ -242,7 +245,11 @@ class TestErrorStaticLayerCallInCompiletime_2(
         self.expected_message = \
             [
              'File "{}", line 46, in func_error_in_compile_time_2'.format(self.filepath),
-             'x = fluid.layers.reshape(x, shape=[1, 2])'
+             'def func_error_in_compile_time_2(x):',
+             'x = fluid.dygraph.to_variable(x)',
+             'x = fluid.layers.reshape(x, shape=[1, 2])',
+             '<--- HERE',
+             'return x'
              ]
 
 
@@ -261,7 +268,10 @@ class TestErrorStaticLayerCallInCompiletime_3(
     def set_message(self):
         self.expected_message = \
             ['File "{}", line 91, in forward'.format(self.filepath),
+             '@paddle.jit.to_static',
+             'def forward(self):',
              'self.test_func()',
+             '<--- HERE'
              ]
 
     def set_func_call(self):
@@ -318,7 +328,12 @@ class TestJitSaveInCompiletime(TestErrorBase):
     def set_message(self):
         self.expected_message = \
             ['File "{}", line 80, in forward'.format(self.filepath),
-             'fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+             'def forward(self, x):',
+             'y = self._linear(x)',
+             'z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+             '<--- HERE',
+             'out = fluid.layers.mean(y[z])',
+             'return out'
              ]
 
     def set_func_call(self):
@@ -329,7 +344,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
         self._test_raise_new_exception()
 
 
-# Situation 4: NotImplementedError
+# # Situation 4: NotImplementedError
 class TestErrorInOther(unittest.TestCase):
     def test(self):
         paddle.disable_static()
