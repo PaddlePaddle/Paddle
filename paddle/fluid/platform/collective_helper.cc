@@ -163,6 +163,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupEnd());
     VLOG(3) << "nccl group end seccessss";
   }
+  PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0);
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0,
                     platform::errors::InvalidArgument(
                         "comm_map_ of ring_id: %s should be 0. %s is provided",

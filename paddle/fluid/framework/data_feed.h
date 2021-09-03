@@ -167,7 +167,7 @@ class DLManager {
   }
 
   paddle::framework::CustomParser* Load(const std::string& name,
-                                        std::vector<SlotConf>& conf) {
+                                        const std::vector<SlotConf>& conf) {
 #ifdef _LINUX
     std::lock_guard<std::mutex> lock(mutex_);
     DLHandle handle;
@@ -195,7 +195,7 @@ class DLManager {
   }
 
   paddle::framework::CustomParser* ReLoad(const std::string& name,
-                                          std::vector<SlotConf>& conf) {
+                                          const std::vector<SlotConf>& conf) {
     Close(name);
     return Load(name, conf);
   }

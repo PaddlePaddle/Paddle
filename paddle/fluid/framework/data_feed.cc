@@ -300,7 +300,7 @@ int InMemoryDataFeed<T>::Next() {
               << ", consume_channel_ size=" << consume_channel_->Size()
               << ", thread_id=" << thread_id_;
     }
-    } else {
+  } else {
     VLOG(3) << "#015 enable heter NEXT: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size();
     if (offset_index_ >= batch_offsets_.size()) {

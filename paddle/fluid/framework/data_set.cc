@@ -349,11 +349,10 @@ static int compute_thread_batch_nccl(
                  << ", thread avg batch num " << thread_avg_batch_num;
   }
 #else
-        PADDLE_THROW(
-            platform::errors::Unavailable("dataset compute nccl batch number need compile with GLOO"));
+  PADDLE_THROW(platform::errors::Unavailable(
+      "dataset compute nccl batch number need compile with GLOO"));
 #endif
   return thread_avg_batch_num;
-
 }
 
 template <typename T>
@@ -390,8 +389,8 @@ void DatasetImpl<T>::SetHeterPs(bool enable_heterps) {
     }
   }
 #else
-        PADDLE_THROW(
-            platform::errors::Unavailable("dataset set heterps need compile with GLOO"));
+  PADDLE_THROW(platform::errors::Unavailable(
+      "dataset set heterps need compile with GLOO"));
 #endif
   return;
 }

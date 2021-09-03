@@ -146,7 +146,7 @@ class Dataset {
   // set fleet send sleep seconds
   virtual void SetFleetSendSleepSeconds(int seconds) = 0;
   virtual void SetHeterPs(bool enable_heterps) = 0;
- 
+
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg) = 0;

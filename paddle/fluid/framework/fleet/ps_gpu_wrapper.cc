@@ -138,50 +138,18 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
   timeline.Start();
   auto ptl_func = [this, &local_keys, &local_ptr, &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
-  int32_t status = -1;
+    int32_t status = -1;
 #ifdef PADDLE_WITH_PSLIB
-    //auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+    // auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
     //    reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
     //    local_keys[i].data(), key_size);
     int32_t cnt = 0;
     while (true) {
       auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
-        reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
-        local_keys[i].data(), key_size);
+          reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
+          local_keys[i].data(), key_size);
       bool flag = true;
-      
-      tt.wait();
-      
-      try {
-        status = tt.get();
-      } catch (const std::future_error& e) {
-        VLOG(0) << "Caught a future_error with code" << e.code()
-                << ", Message:" << e.what();
-      }
-      if (status != 0) {
-        VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
-        sleep(sleep_seconds_before_fail_exit_);
-        flag = false;
-        cnt++;
-      }
-      if (cnt > 3) {
-        VLOG(0) << "fleet pull sparse failed, retry 3 times";
-        exit(-1);
-      }
-      
-      if (flag) {
-        break;
-      }
-    }
-#endif
-#ifdef PADDLE_WITH_PSCORE
-    int32_t cnt = 0;
-    while (true) {
-      auto tt = fleet_ptr->_worker_ptr->pull_sparse_ptr(
-        reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
-        local_keys[i].data(), key_size);
-      bool flag = true;
-      
+
       tt.wait();
 
       try {
@@ -200,7 +168,39 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
         VLOG(0) << "fleet pull sparse failed, retry 3 times";
         exit(-1);
       }
-      
+
+      if (flag) {
+        break;
+      }
+    }
+#endif
+#ifdef PADDLE_WITH_PSCORE
+    int32_t cnt = 0;
+    while (true) {
+      auto tt = fleet_ptr->_worker_ptr->pull_sparse_ptr(
+          reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
+          local_keys[i].data(), key_size);
+      bool flag = true;
+
+      tt.wait();
+
+      try {
+        status = tt.get();
+      } catch (const std::future_error& e) {
+        VLOG(0) << "Caught a future_error with code" << e.code()
+                << ", Message:" << e.what();
+      }
+      if (status != 0) {
+        VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(sleep_seconds_before_fail_exit_);
+        flag = false;
+        cnt++;
+      }
+      if (cnt > 3) {
+        VLOG(0) << "fleet pull sparse failed, retry 3 times";
+        exit(-1);
+      }
+
       if (flag) {
         break;
       }

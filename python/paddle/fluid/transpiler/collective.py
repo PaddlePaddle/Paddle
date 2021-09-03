@@ -169,15 +169,15 @@ class Collective(object):
                     })
             else:
                 block.append_op(
-                type='c_comm_init_multitrainer',
-                inputs={'X': nccl_id_var},
-                outputs={},
-                attrs={
-                    'ntrainers': nranks,
-                    'trainer_id': rank,
-                    'ring_id': ring_id,
-                    self.op_role_key: OpRole.Forward
-                })
+                    type='c_comm_init_multitrainer',
+                    inputs={'X': nccl_id_var},
+                    outputs={},
+                    attrs={
+                        'ntrainers': nranks,
+                        'trainer_id': rank,
+                        'ring_id': ring_id,
+                        self.op_role_key: OpRole.Forward
+                    })
 
     def _broadcast_params(self):
         block = self.startup_program.global_block()
@@ -439,9 +439,9 @@ class MultiThread(GradAllReduce):
             print("total endpoints: ", self.endpoints)
             print("rank: %d, ring_id: %d" % (self.rank, self.nrings))
             for ring_id in range(self.nrings):
-                self._init_communicator(self.startup_program,
-                                        self.current_endpoint, self.endpoints,
-                                        self.rank, ring_id, self.wait_port, True)
+                self._init_communicator(
+                    self.startup_program, self.current_endpoint, self.endpoints,
+                    self.rank, ring_id, self.wait_port, True)
 
         else:
             print("begin to _transpile_startup_program for single-node")
