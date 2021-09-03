@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/resnet/resnet_unit_op.h"
+#include "paddle/fluid/operators/fused/resnet_unit_op.h"
 
 namespace paddle {
 namespace operators {
@@ -21,12 +21,16 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
   // check input
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ResNetUnitOp");
   OP_INOUT_CHECK(ctx->HasInput("FilterX"), "Input", "FilterX", "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasInput("ScaleX"), "Input", "ScaleX", "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasInput("BiasX"), "Input", "BiasX", "ResNetUnitOp");
   if (ctx->Attrs().Get<bool>("fused_add")) {
     OP_INOUT_CHECK(ctx->HasInput("Z"), "Input", "Z", "ResNetUnitOp");
   }
   if (ctx->Attrs().Get<bool>("has_shortcut")) {
     OP_INOUT_CHECK(ctx->HasInput("FilterZ"), "Input", "FilterZ",
                    "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasInput("ScaleZ"), "Input", "ScaleZ", "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasInput("BiasZ"), "Input", "BiasZ", "ResNetUnitOp");
   }
 
   // check output
@@ -38,15 +42,14 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
   const auto w_dims = ctx->GetInputDim("FilterX");
   int batch = x_dims[0];
   int output_channel = w_dims[0];
-  int input_channel = w_dims[1];
   int filter_size = w_dims[2];
   int stride = ctx->Attrs().Get<int>("stride");
   int pad = ctx->Attrs().Get<int>("pad");
-  int out_h = (x_dims[2] + pad - filter_size) / stride + 1;
-  int out_w = (x_dims[3] + pad - filter_size) / stride + 1;
-  std::vector<int> out_shape = {batch, output_channel, out_h, out_w};
+  int out_h = (x_dims[1] + pad * 2 - filter_size) / stride + 1;
+  int out_w = (x_dims[2] + pad * 2 - filter_size) / stride + 1;
+  std::vector<int> out_shape = {batch, out_h, out_w, output_channel};
   // shape of bitmask
-  int C = input_channel;
+  int C = output_channel;
   int64_t NHW = std::accumulate(out_shape.begin(), out_shape.end(), 1,
                                 std::multiplies<int>()) /
                 output_channel;
@@ -54,21 +57,12 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
   int32_t NHW_int32Elems = (NHW + 31) & ~31;
   std::vector<int> bitmask_shape = {NHW_int32Elems, C_int32Elems, 1};
 
-  // debug info
-  printf("=====x_shape: %ld, %ld, %ld, %ld\n", x_dims[0], x_dims[1], x_dims[2],
-         x_dims[3]);
-  printf("=====w_shape: %ld, %ld, %ld, %ld\n", w_dims[0], w_dims[1], w_dims[2],
-         w_dims[3]);
-  printf("=========pad: %d, stride: %d\n", pad, stride);
-  printf("=========C_int32Elems: %d, NHW_int32Elems: %d\n", C_int32Elems,
-         NHW_int32Elems);
-
   auto y_dims = framework::make_ddim(out_shape);
   auto bitmask_dims = framework::make_ddim(bitmask_shape);
-  auto bn_param_dims = framework::make_ddim({1, output_channel, 1, 1});
+  auto bn_param_dims = framework::make_ddim({1, 1, 1, output_channel});
   ctx->SetOutputDim("Y", y_dims);
   ctx->SetOutputDim("BitMask", bitmask_dims);
-  ctx->SetOutputDim("ConvX", bn_param_dims);
+  ctx->SetOutputDim("ConvX", y_dims);
   ctx->SetOutputDim("SumX", bn_param_dims);
   ctx->SetOutputDim("SqSumX", bn_param_dims);
   ctx->SetOutputDim("SavedMeanX", bn_param_dims);
@@ -78,7 +72,7 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
   ctx->SetOutputDim("EqScaleX", bn_param_dims);
   ctx->SetOutputDim("EqBiasX", bn_param_dims);
   if (ctx->Attrs().Get<bool>("has_shortcut")) {
-    ctx->SetOutputDim("ConvZ", bn_param_dims);
+    ctx->SetOutputDim("ConvZ", y_dims);
     ctx->SetOutputDim("SumZ", bn_param_dims);
     ctx->SetOutputDim("SqSumZ", bn_param_dims);
     ctx->SetOutputDim("SavedMeanZ", bn_param_dims);
@@ -102,8 +96,12 @@ framework::OpKernelType ResNetUnitOp::GetExpectedKernelType(
 void ResNetUnitOpMaker::Make() {
   AddInput("X", "The input 1 tensor");
   AddInput("FilterX", "The filter tensor of input 1");
+  AddInput("ScaleX", "The bn scale tensor of input 1");
+  AddInput("BiasX", "The bn bias tensor of input 1");
   AddInput("Z", "The input 2 tensor");
   AddInput("FilterZ", "The filter tensor of input 2");
+  AddInput("ScaleZ", "The bn scale tensor of input 2");
+  AddInput("BiasZ", "The bn bias tensor of input 2");
   AddOutput("Y", "The result of the resnet unit");
   AddOutput("BitMask", "The bitmask");
   AddOutput("ConvX", "The output of x after conv");
@@ -124,7 +122,7 @@ void ResNetUnitOpMaker::Make() {
   AddOutput("RunningVarZ", "The output of running var of z");
   AddOutput("EqScaleZ", "The output of equiv scale of z");
   AddOutput("EqBiasZ", "The output of equiv bias of z");
-  AddAttr<int>("elem_count", "");
+  AddAttr<int>("ele_count", "");
   AddAttr<int>("stride", "").SetDefault(1);
   AddAttr<int>("pad", "").SetDefault(0);
   AddAttr<int>("dilate", "").SetDefault(1);
@@ -136,7 +134,7 @@ void ResNetUnitOpMaker::Make() {
   AddAttr<bool>("fused_add", "").SetDefault(false);
   AddAttr<bool>("has_shortcut", "").SetDefault(false);
   AddAttr<std::string>("act_type", "The activation type to be fused.")
-      .SetDefault("");
+      .SetDefault("relu");
   AddComment(R"DOC(
 ****TODO****.
 )DOC");

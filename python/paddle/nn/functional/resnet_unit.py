@@ -36,9 +36,9 @@ from paddle import _C_ops
 __all__ = []
 
 
-def resnet_unit(x, filter_x, z, filter_z, ele_count, stride, padding, dilation,
-                groups, momentum, eps, conv_format, bn_format, fused_add,
-                has_shortcut, act):
+def resnet_unit(x, filter_x, scale_x, bias_x, z, filter_z, scale_z, bias_z,
+                ele_count, stride, padding, dilation, groups, momentum, eps,
+                conv_format, bn_format, fused_add, has_shortcut, act):
 
     if fluid.framework.in_dygraph_mode():
         attrs = ('ele_count', ele_count, 'stride', stride, 'pad', padding,
@@ -46,8 +46,8 @@ def resnet_unit(x, filter_x, z, filter_z, ele_count, stride, padding, dilation,
                  'epsilon', eps, 'conv_format', conv_format, 'bn_format',
                  bn_format, 'fused_add', fused_add, 'has_shortcut',
                  has_shortcut, 'act', act)
-        out_list = getattr(_C_ops, 'resnet_unit')(x, filter_x, z, filter_z,
-                                                  *attrs)
+        out_list = getattr(_C_ops, 'resnet_unit')(
+            x, filter_x, scale_x, bias_x, z, filter_z, scale_z, bias_z, *attrs)
         out = out_list[0]
     else:
         helper = LayerHelper('resnet_unit', **locals())
@@ -87,7 +87,16 @@ def resnet_unit(x, filter_x, z, filter_z, ele_count, stride, padding, dilation,
         eq_bias_z = helper.create_variable_for_type_inference(
             z.dtype) if has_shortcut else None
 
-        inputs = {'X': x, 'FilterX': filter_x, 'Z': z, 'FilterZ': filter_z}
+        inputs = {
+            'X': x,
+            'FilterX': filter_x,
+            'ScaleX': scale_x,
+            'BiasX': bias_x,
+            'Z': z,
+            'FilterZ': filter_z,
+            'ScaleZ': scale_z,
+            'BiasZ': bias_z
+        }
 
         attrs = {
             'ele_count': ele_count,

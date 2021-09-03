@@ -52,11 +52,15 @@ class ResNetUnit(Layer):
                  eps=1e-5,
                  conv_format='NHWC',
                  bn_format='NHWC',
-                 act=None,
+                 act='relu',
                  fused_add=False,
                  has_shortcut=False,
                  filter_x_attr=None,
+                 scale_x_attr=None,
+                 bias_x_attr=None,
                  filter_z_attr=None,
+                 scale_z_attr=None,
+                 bias_z_attr=None,
                  name=None):
         super(ResNetUnit, self).__init__()
         self._in_channels = num_channels
@@ -75,7 +79,11 @@ class ResNetUnit(Layer):
         self._fused_add = fused_add
         self._has_shortcut = has_shortcut
         self._filter_x_attr = filter_x_attr
+        self._scale_x_attr = scale_x_attr
+        self._bias_x_attr = bias_x_attr
         self._filter_z_attr = filter_z_attr
+        self._scale_z_attr = scale_z_attr
+        self._bias_z_attr = bias_z_attr
 
         # check format
         valid_format = {'NHWC'}
@@ -94,31 +102,55 @@ class ResNetUnit(Layer):
             return I.Normal(0.0, std)
 
         # initial filter
-        filter_shape = [num_filters, num_channels, filter_size, filter_size]
+        bn_param_dtype = fluid.core.VarDesc.VarType.FP32
+        bn_param_shape = [1, 1, 1, num_filters]
+        filter_shape = [num_filters, filter_size, filter_size, num_channels]
         self.filter_x = self.create_parameter(
             shape=filter_shape,
             attr=self._filter_x_attr,
             default_initializer=_get_default_param_initializer()).astype(
                 np.float16)
+        self.scale_x = self.create_parameter(
+            shape=bn_param_shape,
+            attr=self._scale_x_attr,
+            dtype=bn_param_dtype,
+            default_initializer=I.Constant(1.0))
+        self.bias_x = self.create_parameter(
+            shape=bn_param_shape,
+            attr=self._bias_x_attr,
+            dtype=bn_param_dtype,
+            is_bias=True)
         if has_shortcut:
             self.filter_z = self.create_parameter(
                 shape=filter_shape,
                 attr=self._filter_z_attr,
                 default_initializer=_get_default_param_initializer()).astype(
                     np.float16)
+            self.scale_z = self.create_parameter(
+                shape=bn_param_shape,
+                attr=self._scale_z_attr,
+                dtype=bn_param_dtype,
+                default_initializer=I.Constant(1.0))
+            self.bias_z = self.create_parameter(
+                shape=bn_param_shape,
+                attr=self._bias_z_attr,
+                dtype=bn_param_dtype,
+                is_bias=True)
         else:
             self.filter_z = self.filter_x
+            self.scale_z = self.scale_x
+            self.bias_z = self.bias_x
 
     def forward(self, x, z=None):
-        print("-------")
-        if self._fused_add and z == None:
+        if self._fused_add and z is None:
             raise ValueError("z can not be None")
-        if self._fused_add == False:
+        if self._fused_add is False:
             z = x
 
-        out = F.resnet_unit(x, self.filter_x, z, self.filter_z, self._ele_count,
-                            self._stride, self._padding, self._dilation,
-                            self._groups, self._momentum, self._eps,
-                            self._conv_format, self._bn_format, self._fused_add,
-                            self._has_shortcut, self._act)
+        out = F.resnet_unit(x, self.filter_x, self.scale_x, self.bias_x, z,
+                            self.filter_z, self.scale_z, self.bias_z,
+                            self._ele_count, self._stride, self._padding,
+                            self._dilation, self._groups, self._momentum,
+                            self._eps, self._conv_format, self._bn_format,
+                            self._fused_add, self._has_shortcut, self._act)
         return out

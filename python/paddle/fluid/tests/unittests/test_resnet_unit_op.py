@@ -14,12 +14,16 @@
 
 from __future__ import print_function
 
+import random
+import sys
 import unittest
 import numpy as np
-from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.nn as nn
+from op_test import OpTest
 
 paddle.enable_static()
 
@@ -58,43 +62,25 @@ class TestResNetUnitAPI(unittest.TestCase):
                             use_cuda,
                             seed=1):
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-            conv1_1 = fluid.layers.conv2d(
-                input=x,
-                filter_size=3,
+            x = fluid.layers.data(name='x', shape=[2, 8, 8, 8], dtype='float16')
+            y = fluid.layers.data(
+                name="y", shape=[2, 32, 8, 8], dtype='float16')
+            z = x
+            resnet_unit = nn.ResNetUnit(
+                num_channels=8,
                 num_filters=32,
+                filter_size=1,
                 stride=1,
-                padding=1,
-                act=None,
-                param_attr=self.conv_param_attr1,
-                bias_attr=False,
-                data_format='NHWC')
-            conv1_2 = fluid.layers.conv2d(
-                input=x,
-                filter_size=3,
-                num_filters=32,
-                stride=1,
-                padding=1,
-                act=None,
-                param_attr=self.conv_param_attr2,
-                bias_attr=False,
-                data_format='NHWC')
-            bn = fluid.layers.batch_norm(
-                input=conv1_1,
-                param_attr=self.bn_param_attr1,
-                bias_attr=self.bn_bias_attr1,
-                act=None,
-                data_layout='NHWC')
-            fused_bn_add_act = fluid.contrib.layers.fused_bn_add_act(
-                conv1_2,
-                bn,
-                param_attr=self.bn_param_attr2,
-                bias_attr=self.bn_bias_attr2)
-            prediction = fluid.layers.fc(input=fused_bn_add_act,
-                                         size=10,
-                                         act='softmax',
-                                         param_attr=self.fc_param_attr)
+                ele_count=128,
+                fused_add=True,
+                has_shortcut=True,
+                filter_x_attr=self.conv_param_attr1,
+                scale_x_attr=self.bn_param_attr1,
+                bias_x_attr=self.bn_bias_attr1,
+                filter_z_attr=self.conv_param_attr2,
+                scale_z_attr=self.bn_param_attr2,
+                bias_z_attr=self.bn_bias_attr2)
+            prediction = resnet_unit(x, z)
             loss = fluid.layers.cross_entropy(input=prediction, label=y)
             loss = fluid.layers.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
@@ -102,7 +88,7 @@ class TestResNetUnitAPI(unittest.TestCase):
                 sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
             sgd.minimize(loss)
 
-        return x, y, loss
+        return loss
 
     def build_origin_program(self,
                              main_program,
@@ -110,12 +96,13 @@ class TestResNetUnitAPI(unittest.TestCase):
                              use_cuda,
                              seed=1):
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[1, 4, 8, 8], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[1, 6, 6, 6], dtype='int64')
+            x = fluid.layers.data(name='x', shape=[2, 8, 8, 8], dtype='float16')
+            y = fluid.layers.data(
+                name="y", shape=[2, 32, 8, 8], dtype='float16')
             conv1_1 = fluid.layers.conv2d(
                 input=x,
-                filter_size=3,
-                num_filters=6,
+                filter_size=1,
+                num_filters=32,
                 stride=1,
                 padding=0,
                 act=None,
@@ -123,11 +110,15 @@ class TestResNetUnitAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC')
             bn1 = fluid.layers.batch_norm(
-                input=conv1_1, act=None, data_layout='NHWC')
+                input=conv1_1,
+                param_attr=self.bn_param_attr1,
+                bias_attr=self.bn_bias_attr1,
+                act=None,
+                data_layout='NHWC')
             conv1_2 = fluid.layers.conv2d(
                 input=x,
-                filter_size=3,
-                num_filters=6,
+                filter_size=1,
+                num_filters=32,
                 stride=1,
                 padding=0,
                 act=None,
@@ -135,13 +126,13 @@ class TestResNetUnitAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC')
             bn2 = fluid.layers.batch_norm(
-                input=conv1_2, act=None, data_layout='NHWC')
+                input=conv1_2,
+                param_attr=self.bn_param_attr2,
+                bias_attr=self.bn_bias_attr2,
+                act=None,
+                data_layout='NHWC')
             out = bn1 + bn2
-            out = fluid.layers.relu(out)
-            prediction = fluid.layers.fc(input=out,
-                                         size=10,
-                                         act='softmax',
-                                         param_attr=self.fc_param_attr)
+            prediction = fluid.layers.relu(out)
             loss = fluid.layers.cross_entropy(input=prediction, label=y)
             loss = fluid.layers.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
@@ -155,18 +146,15 @@ class TestResNetUnitAPI(unittest.TestCase):
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
         iters = 5
-        batch_size = 16
 
-        # build_fused_program: turn on fuse_bn_add_act_ops
+        exe = fluid.Executor(place)
+        # build_fused_program: turn on resnet_unit_op
         main_program = fluid.Program()
         startup_program = fluid.Program()
-        loss = self.build_origin_program(main_program, startup_program,
-                                         use_cuda)
+        loss = self.build_fused_program(main_program, startup_program, use_cuda)
         build_strategy_fused = fluid.BuildStrategy()
-        build_strategy_fused.fuse_bn_add_act_ops = True
-        binary_fused = fluid.CompiledProgram(main_program).with_data_parallel(
+        fused = fluid.CompiledProgram(main_program).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy_fused)
-        exe = fluid.Executor(place)
         loss_vals_fused = []
         x_data = []
         y_data = []
@@ -174,27 +162,26 @@ class TestResNetUnitAPI(unittest.TestCase):
         with fluid.scope_guard(scope):
             exe.run(startup_program)
             for _ in range(iters):
-                x = np.random.random((batch_size, 1, 28, 28)).astype("float32")
-                y = np.random.random((batch_size, 1)).astype("int64")
+                x = np.random.random((2, 8, 8, 8)).astype("float16")
+                y = np.random.random((2, 32, 8, 8)).astype("float16")
                 x_data.append(x)
                 y_data.append(y)
-                loss_v = exe.run(binary_fused,
+                loss_v = exe.run(fused,
                                  feed={"x": x,
                                        "y": y},
                                  fetch_list=[loss])
                 loss_vals_fused.append(loss_v[0][0])
 
-        # build_origin_program: turn off fused_bn_act_ops
+        # build_origin_program: turn off resnet_unit_op
         build_strategy = fluid.BuildStrategy()
-        build_strategy.fuse_bn_add_act_ops = False
-        binary = fluid.CompiledProgram(main_program).with_data_parallel(
+        origin = fluid.CompiledProgram(main_program).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy_fused)
         loss_vals = []
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
             for i in range(iters):
-                loss_v = exe.run(binary,
+                loss_v = exe.run(origin,
                                  feed={"x": x_data[i],
                                        "y": y_data[i]},
                                  fetch_list=[loss])
@@ -204,28 +191,9 @@ class TestResNetUnitAPI(unittest.TestCase):
         for i in range(iters):
             self.assertAlmostEqual(loss_vals[i], loss_vals_fused[i], delta=1e-5)
 
-    def test_fuse_bn_add_act(self):
+    def test_resnet_unit(self):
         place = fluid.CUDAPlace(0)
         self.check(place, use_cuda=True)
-
-    def test_fuse_bn_add_act_API(self):
-        # build_fused_program: use fused_bn_add_act python API
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        place = fluid.CUDAPlace(0)
-        x, y, loss = self.build_fused_program(
-            main_program, startup_program, use_cuda=True)
-        exe = fluid.Executor(place)
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            exe.run(startup_program)
-            for _ in range(5):
-                x = np.random.random((4, 1, 28, 28)).astype("float32")
-                y = np.random.random((4, 1)).astype("int64")
-                loss_v = exe.run(main_program,
-                                 feed={"x": x,
-                                       "y": y},
-                                 fetch_list=[loss])
 
 
 if __name__ == '__main__':
