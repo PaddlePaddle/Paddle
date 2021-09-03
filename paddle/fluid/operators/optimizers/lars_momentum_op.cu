@@ -18,10 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 
-#ifdef __NVCC__
-#include <cooperative_groups.h>
-#endif
-
 #ifdef __HIPCC__
 #define LARS_BLOCK_SIZE 256
 #else
@@ -43,58 +39,13 @@ __device__ __forceinline__ double fma_root(double x, double y, double z) {
   return fma(x, y, z);
 }
 
-#if CUDA_VERSION >= 9000
 template <typename T, typename MT>
-__device__ inline MT L2NormCalculation(
-    const cooperative_groups::grid_group& cg, const T* __restrict__ data,
-    MT* tmp_buffer, int tid, const int repeat_times, const int grid_stride,
-    const int64_t numel, const MT rescale_grad = static_cast<MT>(1)) {
-  MT rescale_grad_pow = rescale_grad * rescale_grad;
-  __shared__ MT s_buffer;
-  s_buffer = static_cast<MT>(0);
-
-  MT tmp_val = static_cast<MT>(0);
-  if (repeat_times == 1) {
-    if (tid < numel) {
-      tmp_val = static_cast<MT>(data[tid]);
-    }
-    s_buffer += math::blockReduceSum<MT>(tmp_val * tmp_val, FINAL_MASK);
-  } else {
-    for (int i = 0; i < repeat_times - 1; ++i) {
-      if (tid < numel) {
-        tmp_val = static_cast<MT>(data[tid]);
-      }
-      tid += grid_stride;
-      s_buffer += math::blockReduceSum<MT>(tmp_val * tmp_val, FINAL_MASK);
-      __syncthreads();
-    }
-    MT val = static_cast<MT>(0);
-    if (tid < numel) {
-      val = static_cast<MT>(data[tid]);
-    }
-    s_buffer += math::blockReduceSum<MT>(val * val, FINAL_MASK);
-  }
-  __syncthreads();
-
-  if (threadIdx.x == 0) {
-    tmp_buffer[blockIdx.x] = s_buffer;
-  }
-  // Grid sync for completely writring partial result back to gloabl memory
-  cg.sync();
-  MT val = threadIdx.x < gridDim.x ? tmp_buffer[threadIdx.x] : 0;
-  MT result = math::blockReduceSum<MT>(val, FINAL_MASK);
-  return square_root(rescale_grad_pow * result);
-}
-#endif
-
-template <typename T, typename MT>
-__device__ inline void LarsUpdateMP(const T* __restrict__ g,
-                                    const MT* __restrict__ v, T* p_out,
-                                    MT* v_out, const MT* __restrict__ master_p,
-                                    MT* __restrict__ master_p_out, const MT mu,
-                                    MT local_lr, const MT lars_weight_decay,
-                                    const MT rescale_grad, const int tid,
-                                    const int grid_stride, const int numel) {
+__device__ inline void VectorizeLarsUpdateMP(
+    const T* __restrict__ g, const MT* __restrict__ v, T* __restrict__ p_out,
+    MT* __restrict__ v_out, const MT* __restrict__ master_p,
+    MT* __restrict__ master_p_out, const MT mu, MT local_lr,
+    const MT lars_weight_decay, const MT rescale_grad, const int tid,
+    const int grid_stride, const int numel) {
   // As for multiple-precision, type T and MT cannot be more than fp16 or fp32,
   // Then, the maximum data IO size could be set to 4.
   using VecType = platform::CudaAlignedVector<T, 4>;
@@ -102,40 +53,32 @@ __device__ inline void LarsUpdateMP(const T* __restrict__ g,
   int main = numel >> 2;
   int tail_offset = main << 2;
 
-  const VecType* g_4 = reinterpret_cast<const VecType*>(g);
-  const VecMType* v_4 = reinterpret_cast<const VecMType*>(v);
-  const VecMType* master_p_4 = reinterpret_cast<const VecMType*>(master_p);
-  VecType* p_out_4 = reinterpret_cast<VecType*>(p_out);
-  VecMType* v_out_4 = reinterpret_cast<VecMType*>(v_out);
-  VecMType* master_p_out_4 = reinterpret_cast<VecMType*>(master_p_out);
+  const VecType* g_vec = reinterpret_cast<const VecType*>(g);
+  const VecMType* v_vec = reinterpret_cast<const VecMType*>(v);
+  const VecMType* master_p_vec = reinterpret_cast<const VecMType*>(master_p);
+  VecType* p_out_vec = reinterpret_cast<VecType*>(p_out);
+  VecMType* v_out_vec = reinterpret_cast<VecMType*>(v_out);
+  VecMType* master_p_out_vec = reinterpret_cast<VecMType*>(master_p_out);
 
-  for (int i = tid; i < main; i += LARS_BLOCK_SIZE * gridDim.x) {
-    VecType p_out_tmp;
-    VecMType grad_tmp, v_new_tmp, master_p_new_tmp;
+  for (int i = tid; i < main; i += grid_stride) {
+    VecType p_out;
+    VecMType grad, v_new, p_new;
 
-    VecType g_tmp = g_4[i];
-    VecMType v_tmp = v_4[i];
-    VecMType p_tmp = master_p_4[i];
-    T* g_data = reinterpret_cast<T*>(&g_tmp);
-    T* p_out_data = reinterpret_cast<T*>(&p_out_tmp);
-    MT* v_data = reinterpret_cast<MT*>(&v_tmp);
-    MT* p_data = reinterpret_cast<MT*>(&p_tmp);
-    MT* grad = reinterpret_cast<MT*>(&grad_tmp);
-    MT* v_new = reinterpret_cast<MT*>(&v_new_tmp);
-    MT* p_new = reinterpret_cast<MT*>(&master_p_new_tmp);
-
+    VecType g_data = g_vec[i];
+    VecMType v_data = v_vec[i];
+    VecMType p_data = master_p_vec[i];
 #pragma unroll
     for (int j = 0; j < 4; ++j) {
-      grad[j] = static_cast<MT>(g_data[j]) * rescale_grad;
-      v_new[j] =
-          fma_root(v_data[j], mu,
-                   local_lr * fma_root(lars_weight_decay, p_data[j], grad[j]));
-      p_new[j] = p_data[j] - v_new[j];
-      p_out_data[j] = static_cast<T>(p_new[j]);
+      grad.val[j] = static_cast<MT>(g_data.val[j]) * rescale_grad;
+      v_new.val[j] = fma_root(
+          v_data.val[j], mu,
+          local_lr * fma_root(lars_weight_decay, p_data.val[j], grad.val[j]));
+      p_new.val[j] = p_data.val[j] - v_new.val[j];
+      p_out.val[j] = static_cast<T>(p_new.val[j]);
     }
-    v_out_4[i] = v_new_tmp;
-    p_out_4[i] = p_out_tmp;
-    master_p_out_4[i] = master_p_new_tmp;
+    v_out_vec[i] = v_new;
+    p_out_vec[i] = p_out;
+    master_p_out_vec[i] = p_new;
   }
 
   for (int i = tid + tail_offset; i < numel; i += grid_stride) {
@@ -150,27 +93,122 @@ __device__ inline void LarsUpdateMP(const T* __restrict__ g,
   }
 }
 
+template <typename MT, int VesSize>
+__device__ inline void VectorizeLarsUpdate(
+    const MT* __restrict__ g, const MT* __restrict__ v, MT* __restrict__ p_out,
+    MT* __restrict__ v_out, const MT* __restrict__ p, const MT mu, MT local_lr,
+    const MT lars_weight_decay, const MT rescale_grad, const int tid,
+    const int grid_stride, const int numel) {
+  using VecType = platform::CudaAlignedVector<MT, VesSize>;
+  int main = numel >> (VesSize >> 1);
+  int tail_offset = main << (VesSize >> 1);
+
+  const VecType* g_vec = reinterpret_cast<const VecType*>(g);
+  const VecType* v_vec = reinterpret_cast<const VecType*>(v);
+  const VecType* p_vec = reinterpret_cast<const VecType*>(p);
+  VecType* p_out_vec = reinterpret_cast<VecType*>(p_out);
+  VecType* v_out_vec = reinterpret_cast<VecType*>(v_out);
+
+  for (int i = tid; i < main; i += grid_stride) {
+    VecType grad, v_new, p_new;
+    VecType g_data = g_vec[i];
+    VecType v_data = v_vec[i];
+    VecType p_data = p_vec[i];
+
+#pragma unroll
+    for (int j = 0; j < VesSize; ++j) {
+      grad.val[j] = g_data.val[j] * rescale_grad;
+      v_new.val[j] = fma_root(
+          v_data.val[j], mu,
+          local_lr * fma_root(lars_weight_decay, p_data.val[j], grad.val[j]));
+      p_new.val[j] = p_data.val[j] - v_new.val[j];
+    }
+    v_out_vec[i] = v_new;
+    p_out_vec[i] = p_new;
+  }
+
+  for (int i = tid + tail_offset; i < numel; i += grid_stride) {
+    MT grad = g[i] * rescale_grad;
+    MT param = p[i];
+    MT v_new =
+        fma_root(v[i], mu, local_lr * fma_root(lars_weight_decay, param, grad));
+    v_out[i] = v_new;
+    p_out[i] = param - v_new;
+  }
+}
+
+template <typename T, typename MT>
+__global__ void L2NormKernel(const T* __restrict__ p_data,
+                             const T* __restrict__ g_data,
+                             MT* __restrict__ p_tmp_buffer,
+                             MT* __restrict__ g_tmp_buffer,
+                             const int64_t repeat_times, const int64_t numel) {
+  int tid = threadIdx.x + blockDim.x * blockIdx.x;
+  int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
+  __shared__ MT s_buffer[2];
+  s_buffer[0] = static_cast<MT>(0);
+  s_buffer[1] = static_cast<MT>(0);
+  MT p_tmp_val = static_cast<MT>(0);
+  MT g_tmp_val = static_cast<MT>(0);
+
+  if (repeat_times == 1) {
+    if (tid < numel) {
+      p_tmp_val = static_cast<MT>(p_data[tid]);
+      g_tmp_val = static_cast<MT>(g_data[tid]);
+    }
+    s_buffer[0] += math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
+    s_buffer[1] += math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
+  } else {
+    // To avoid occupy too much temp buffer.
+    for (int i = 0; i < repeat_times - 1; ++i) {
+      if (tid < numel) {
+        p_tmp_val = static_cast<MT>(p_data[tid]);
+        g_tmp_val = static_cast<MT>(g_data[tid]);
+      }
+      tid += grid_stride;
+      s_buffer[0] +=
+          math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
+      s_buffer[1] +=
+          math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
+      __syncthreads();
+    }
+    MT p_val = static_cast<MT>(0);
+    MT g_val = static_cast<MT>(0);
+    if (tid < numel) {
+      p_val = static_cast<MT>(p_data[tid]);
+      g_val = static_cast<MT>(g_data[tid]);
+    }
+    s_buffer[0] += math::blockReduceSum<MT>(p_val * p_val, FINAL_MASK);
+    s_buffer[1] += math::blockReduceSum<MT>(g_val * g_val, FINAL_MASK);
+  }
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    p_tmp_buffer[blockIdx.x] = s_buffer[0];
+    g_tmp_buffer[blockIdx.x] = s_buffer[1];
+  }
+}
+
 template <typename T, typename MT>
 __global__ void MomentumLarsKernel(
     const T* __restrict__ p, const T* __restrict__ g, const MT* __restrict__ v,
-    T* p_out, MT* v_out, const MT* __restrict__ master_p,
-    MT* __restrict__ master_p_out, const MT* __restrict__ learning_rate,
-    MT* __restrict__ tmp_buffer, MT* __restrict__ tmp_buffer_2, const MT mu,
-    const MT lars_coeff, const MT lars_weight_decay, const MT epsilon,
-    const MT rescale_grad, const int64_t numel) {
+    T* __restrict__ p_out, MT* __restrict__ v_out,
+    const MT* __restrict__ master_p, MT* __restrict__ master_p_out,
+    const MT* __restrict__ learning_rate, MT* __restrict__ p_tmp_buffer,
+    MT* __restrict__ g_tmp_buffer, const MT mu, const MT lars_coeff,
+    const MT lars_weight_decay, const MT epsilon, const MT rescale_grad,
+    const int thresh, const int64_t numel) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
-#if CUDA_VERSION >= 9000
-  const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
-  const int repeat_times = (numel + grid_stride - 1) / grid_stride;
-  MT p_n = L2NormCalculation<T, MT>(cg, p, tmp_buffer, tid, repeat_times,
-                                    grid_stride, numel);
-  MT g_n = L2NormCalculation<T, MT>(cg, g, tmp_buffer, tid, repeat_times,
-                                    grid_stride, numel, rescale_grad);
-#else
-  const MT p_n = tmp_buffer[0];
-  const MT g_n = tmp_buffer_2[0];
-#endif
+  int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
+  MT rescale_grad_pow = rescale_grad * rescale_grad;
+
+  MT p_val = threadIdx.x < thresh ? p_tmp_buffer[threadIdx.x] : 0;
+  MT g_val = threadIdx.x < thresh ? g_tmp_buffer[threadIdx.x] : 0;
+  __syncthreads();
+  MT p_n = square_root(math::blockReduceSum<MT>(p_val, FINAL_MASK));
+  MT g_n = square_root(rescale_grad_pow *
+                       math::blockReduceSum<MT>(g_val, FINAL_MASK));
+
   const MT lr = learning_rate[0];
   MT local_lr = lr;
   if (lars_weight_decay > static_cast<MT>(0) && p_n > static_cast<MT>(0) &&
@@ -180,18 +218,20 @@ __global__ void MomentumLarsKernel(
   }
 
   if (master_p) {
-    LarsUpdateMP<T, MT>(g, v, p_out, v_out, master_p, master_p_out, mu,
-                        local_lr, lars_weight_decay, rescale_grad, tid,
-                        grid_stride, numel);
+    VectorizeLarsUpdateMP<T, MT>(g, v, p_out, v_out, master_p, master_p_out, mu,
+                                 local_lr, lars_weight_decay, rescale_grad, tid,
+                                 grid_stride, numel);
   } else {
-    for (int i = tid; i < numel; i += grid_stride) {
-      MT grad = static_cast<MT>(g[i]) * rescale_grad;
-      MT param = static_cast<MT>(p[i]);
-      MT v_new = fma_root(v[i], mu,
-                          local_lr * fma_root(lars_weight_decay, param, grad));
-      MT p_new = param - v_new;
-      v_out[i] = v_new;
-      p_out[i] = static_cast<T>(p_new);
+    if (sizeof(T) < 64) {
+      VectorizeLarsUpdate<MT, 4>(
+          reinterpret_cast<const MT*>(g), v, reinterpret_cast<MT*>(p_out),
+          v_out, reinterpret_cast<const MT*>(p), mu, local_lr,
+          lars_weight_decay, rescale_grad, tid, grid_stride, numel);
+    } else {
+      VectorizeLarsUpdate<MT, 2>(
+          reinterpret_cast<const MT*>(g), v, reinterpret_cast<MT*>(p_out),
+          v_out, reinterpret_cast<const MT*>(p), mu, local_lr,
+          lars_weight_decay, rescale_grad, tid, grid_stride, numel);
     }
   }
 }
@@ -215,6 +255,16 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     auto velocity = ctx.Input<framework::LoDTensor>("Velocity");
     auto grad = ctx.Input<framework::LoDTensor>("Grad");
     auto learning_rate = ctx.Input<framework::LoDTensor>("LearningRate");
+    auto& cuda_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+
+    int64_t numel = param->numel();
+    int grid_norm = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
+
+    // Determine to read 4 fp16 or float data once, but 2 double data once.
+    int grid_lars =
+        sizeof(T) < 64
+            ? (numel + (LARS_BLOCK_SIZE << 2) - 1) / (LARS_BLOCK_SIZE << 2)
+            : (numel + (LARS_BLOCK_SIZE << 1) - 1) / (LARS_BLOCK_SIZE << 1);
 
     const framework::Tensor* master_param = nullptr;
     framework::Tensor* master_param_out = nullptr;
@@ -234,9 +284,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
       master_p = master_param->data<MT>();
       master_p_out = master_param_out->mutable_data<MT>(ctx.GetPlace());
     }
-    T* p_out = param_out->mutable_data<T>(ctx.GetPlace());
-    MT* v_out = velocity_out->mutable_data<MT>(ctx.GetPlace());
-
     MT mu = static_cast<MT>(ctx.Attr<float>("mu"));
     MT lars_coeff = static_cast<MT>(ctx.Attr<float>("lars_coeff"));
     MT lars_weight_decay =
@@ -248,89 +295,39 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     auto* g = grad->data<T>();
     auto* v = velocity->data<MT>();
     auto* lr = learning_rate->data<MT>();
-    int64_t numel = param->numel();
-    int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    T* p_out = param_out->mutable_data<T>(ctx.GetPlace());
+    MT* v_out = velocity_out->mutable_data<MT>(ctx.GetPlace());
 
-#if CUDA_VERSION >= 9000
     /*
     Once model trainning with lars optimizer, whose principal implementation
     is achieved by following two steps:
       1. Figure out the L2 norm statistic result of grad data and param data.
       2. Update param and velocity data with usage of L2 norm statistic result.
-
     Orignally, these two steps were fulfilled by respective eigen function and
     cuda kernel, however the overhead of eigen function occupied much ratio in
-    total, consequently affect the performance of lars op, make it necessary
-    to combine 2 steps into one cuda kernel.
-    Since the step1 is l2 norm statistic, grid level reduce is needed. To
-    achieve this and continuous calculation of step 2 in only one global
-    lanuch, essential basis is to control all grid-threads while running. Apart
-    from normal lanuch form, cuda9.0 provides `cudaLaunchCooperativeKernel`
-    api :
-      - The thread quantity shall equal to pyhsical SM limited threads
-      - Launches a device function where thread blocks can cooperate and
-        synchronize as they execute.
+    total, consequently affect the performance of lars op, make it necessary to
+    replace the eigen with cuda kernel.
     */
-    // Figure out how many blocks can be active in each sm.
-    int num_blocks_per_sm = 0;
-    cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm,
-                                                  MomentumLarsKernel<T, MT>,
-                                                  LARS_BLOCK_SIZE, sizeof(MT));
-    int sm_num = dev_ctx.GetSMCount();
-    int grid_real = std::min(sm_num * num_blocks_per_sm, grid);
-    framework::Tensor tmp_buffer_t =
-        ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>({grid_real},
-                                                               dev_ctx);
-    auto* tmp_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
-    MT* tmp_buffer_2 = nullptr;
+    grid_norm = std::min(grid_norm, LARS_BLOCK_SIZE);
 
-    // Uniform kernel parameter for cudaLaunchCooperativeKernel
-    void* cuda_param[] = {
-        reinterpret_cast<void*>(&p),
-        reinterpret_cast<void*>(&g),
-        reinterpret_cast<void*>(&v),
-        reinterpret_cast<void*>(&p_out),
-        reinterpret_cast<void*>(&v_out),
-        reinterpret_cast<void*>(&master_p),
-        reinterpret_cast<void*>(&master_p_out),
-        reinterpret_cast<void*>(&lr),
-        reinterpret_cast<void*>(&tmp_buffer),
-        reinterpret_cast<void*>(&tmp_buffer_2),  // Just a placeholder
-        reinterpret_cast<void*>(&mu),
-        reinterpret_cast<void*>(&lars_coeff),
-        reinterpret_cast<void*>(&lars_weight_decay),
-        reinterpret_cast<void*>(&epsilon),
-        reinterpret_cast<void*>(&rescale_grad),
-        reinterpret_cast<void*>(&numel),
-    };
-    // Lanuch all sm theads.
-    cudaLaunchCooperativeKernel(
-        reinterpret_cast<void*>(MomentumLarsKernel<T, MT>), grid_real,
-        LARS_BLOCK_SIZE, cuda_param, 0, dev_ctx.stream());
-#else
-    auto eigen_p = framework::EigenVector<T>::Flatten(*param);
-    auto eigen_g = framework::EigenVector<T>::Flatten(*grad);
-    // calculate norms using eigein and launch the kernel.
-    framework::Tensor p_norm_t =
-        ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>({1}, dev_ctx);
-    framework::Tensor g_norm_t =
-        ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>({1}, dev_ctx);
-    auto* p_norm_data = p_norm_t.mutable_data<MT>(ctx.GetPlace());
-    auto* g_norm_data = g_norm_t.mutable_data<MT>(ctx.GetPlace());
-    auto ep_norm = framework::EigenScalar<MT>::From(p_norm_t);
-    auto eg_norm = framework::EigenScalar<MT>::From(g_norm_t);
-    auto* place = dev_ctx.eigen_device();
-    // eigen unsupport fp16 l2-norm
-    ep_norm.device(*place) = eigen_p.template cast<MT>().square().sum().sqrt();
-    eg_norm.device(*place) =
-        (eigen_g.template cast<MT>() * rescale_grad).square().sum().sqrt();
+    // Allocate temp buffer for L2 norm kernel.
+    framework::Tensor p_buffer_t =
+        ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>({grid_norm << 1},
+                                                               cuda_ctx);
+    auto* p_tmp_buffer = p_buffer_t.mutable_data<MT>(ctx.GetPlace());
+    auto* g_tmp_buffer = p_tmp_buffer + grid_norm;
 
-    MomentumLarsKernel<T, MT><<<grid, LARS_BLOCK_SIZE, 0, dev_ctx.stream()>>>(
-        p, g, v, p_out, v_out, master_p, master_p_out, lr, p_norm_data,
-        g_norm_data, mu, lars_coeff, lars_weight_decay, epsilon, rescale_grad,
-        numel);
-#endif
+    const int grid_stride = LARS_BLOCK_SIZE * grid_norm;
+    const int repeat_times = (numel + grid_stride - 1) / grid_stride;
+
+    L2NormKernel<T, MT><<<grid_norm, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
+        p, g, p_tmp_buffer, g_tmp_buffer, repeat_times, numel);
+
+    MomentumLarsKernel<
+        T, MT><<<grid_lars, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
+        p, g, v, p_out, v_out, master_p, master_p_out, lr, p_tmp_buffer,
+        g_tmp_buffer, mu, lars_coeff, lars_weight_decay, epsilon, rescale_grad,
+        grid_norm, numel);
   }
 };
 
