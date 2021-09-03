@@ -119,14 +119,16 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
         "tensor's axes according to the values given.");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "data_format",
         "(string, default NCHW) Only used in "
         "An optional string from: \"NHWC\", \"NCHW\". "
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout");
+        .SetDefault("AnyLayout")
+        .AsExtra();
     AddAttr<bool>(
         "use_quantizer",
         "(bool, default false) "
@@ -262,7 +264,9 @@ class Transpose2OpMaker : public TransposeOpMaker {
  public:
   void Make() override {
     TransposeOpMaker::Make();
-    AddOutput("XShape", "(Tensor)The output tensor.").AsIntermediate();
+    AddOutput("XShape", "(Tensor)The output tensor.")
+        .AsIntermediate()
+        .AsExtra();
   }
 };
 
