@@ -34,8 +34,11 @@ black_list = [
     'test_sgd_op_bf16',
     'test_warpctc_op',
     # sync op
-    'test_sync_batch_norm_op',
-    # diff<1E-5,it's right
+    'test_sync_batch_norm_op'
+]
+
+op_diff_list = [
+    # diff<1E-7,it's right
     'test_elementwise_mul_op'
 ]
 
@@ -144,6 +147,17 @@ def get_op_list(op_list_file='list_op.txt'):
     return op_list
 
 
+def set_diff_value(file, atol="1e-5", inplace_atol="1e-7"):
+    """
+    :param file: refer to op_test.py
+    :param atol: refer to op_test.py
+    :param inplace_atol: 
+    :return:
+    """
+    os.system("sed -i 's/self.check_output(/self\.check_output\(atol=" + atol +
+              ",inplace_atol=" + inplace_atol + ",/g\' " + file)
+
+
 def change_op_file(start=0, end=0, op_list_file='list_op.txt', path='.'):
     """
     :param start:
@@ -169,6 +183,10 @@ def change_op_file(start=0, end=0, op_list_file='list_op.txt', path='.'):
         # change file
         add_import_skip_return(file_with_path, pattern_import, pattern_skip,
                                pattern_return)
+        # op_diff
+        if item in op_diff_list:
+            set_diff_value(file_with_path)
+
         file_path.clear()
 
 
