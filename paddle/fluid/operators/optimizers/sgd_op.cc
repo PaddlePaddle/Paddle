@@ -84,7 +84,6 @@ class SGDOp : public framework::OperatorWithKernel {
       bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
                                   grad_var->IsType<framework::LoDTensor>();
 
-      // if (dense_param_sparse_grad)
       if (dense_param_sparse_grad || dense_param_and_grad)
         return framework::OpKernelType(data_type, ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,

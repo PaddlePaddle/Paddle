@@ -26,6 +26,10 @@ namespace operators {
 template <typename T>
 class OneDNNAXPYHandler {
  public:
+  OneDNNAXPYHandler(OneDNNAXPYHandler&) = delete;
+  OneDNNAXPYHandler(OneDNNAXPYHandler&&) = delete;
+  OneDNNAXPYHandler& operator=(OneDNNAXPYHandler&) = delete;
+  OneDNNAXPYHandler& operator=(OneDNNAXPYHandler&&) = delete;
   ///
   /// @brief      Constructor.
   ///
@@ -39,15 +43,16 @@ class OneDNNAXPYHandler {
   /// @param[in]  x     The pointer to input X tensor data.
   /// @param[out] y     The pointer to output Y tensor data.
   ///
-  void operator()(const T *x, T *y);
+  void operator()(const T* x, T* y);
 
  private:
+  OneDNNAXPYHandler() = delete;
   // (arogowie-intel) Private implementation idiom to hide dependency
   // on OneDNN headers.
   class Impl;
   // We need custom deleter, since the compiler is unable to parameterize
   // an allocator's default deleter due to incomple type.
-  std::unique_ptr<Impl, void (*)(Impl *)> pimpl_;
+  std::unique_ptr<Impl, void (*)(Impl*)> pimpl_;
 };
 
 }  // namespace operators
