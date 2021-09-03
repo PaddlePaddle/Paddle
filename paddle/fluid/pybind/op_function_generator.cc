@@ -241,6 +241,11 @@ const char* HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT = R"(
       HandleViewBetweenInputAndOutput(ins["%s"][0], outs["%s"][0]);
     })";
 
+const char* HANDLE_STOP_GRADIENT_IN_INPLACE_VAR =
+R"(
+    HandleStopGradientInInplaceVar(%s, ins);
+)";
+
 const char* INPLACE_DUPLICABLE_INPUT = R"([0])";
 
 const char* INPLACE_LEAF_ERROR_MESSAGE = R"(Leaf Var (%s) that doesn't stop gradient can't use inplace strategy.)";
@@ -329,6 +334,7 @@ std::string GenerateOpFunctionsBody(
   std::string ins_cast_str = "";
   std::string view_strategy_str = "";
   std::string inplace_strategy_str = "";
+  std::string inplace_update_stop_gradient = "";
   for (auto& input : op_proto->inputs()) {
     auto& in_name = input.name();
     // skip those dispensable inputs, like ResidualData in conv2d
@@ -439,6 +445,11 @@ std::string GenerateOpFunctionsBody(
         inplace_input_name += INPLACE_DUPLICABLE_INPUT;
       }
 
+      // Update `stop_gradient` of the inplace var to `false` if
+      // `stop_gradient` of the variable in the inputs is `false`.
+      inplace_update_stop_gradient += paddle::string::Sprintf(
+          HANDLE_STOP_GRADIENT_IN_INPLACE_VAR, inplace_input_name);
+
       // Leaf Var that doesn't stop gradient can't use inplace strategy.
       // Increase inplace_version.
       inplace_strategy_str += paddle::string::Sprintf(
@@ -514,7 +525,7 @@ std::string GenerateOpFunctionsBody(
       OP_FUNCTION_TEMPLATE, func_name, ins_cast_str, op_type, input_args_num,
       inplace_strategy_str, outs_initializer, ins_initializer,
       ins_initializer_with_null + outs_initializer_with_null +
-          view_strategy_str,
+          view_strategy_str + inplace_update_stop_gradient,
       op_type, inplace_mapping_str, return_str);
 
   return op_function_str;

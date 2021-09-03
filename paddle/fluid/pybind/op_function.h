@@ -197,6 +197,26 @@ static inline void HandleViewBetweenInputAndOutput(
   }
 }
 
+static inline void HandleStopGradientInInplaceVar(
+    const std::shared_ptr<imperative::VarBase>& inplace_var,
+    const imperative::NameVarBaseMap& ins) {
+  bool find_grad = false;
+  for (const auto& name_pair : ins) {
+    for (const auto& var_base : name_pair.second) {
+      if (!var_base->OverridedStopGradient()) {
+        VLOG(4) << "Set Inplace Var(" << inplace_var->Name()
+                << ")'s stop_gradient as false.";
+        inplace_var->SetOverridedStopGradient(false);
+        find_grad = true;
+        break;
+      }
+    }
+    if (find_grad) {
+      break;
+    }
+  }
+}
+
 extern PyTypeObject* g_varbase_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_blockdesc_pytype;
@@ -314,7 +334,7 @@ static inline void CastPyArg2AttrString(
     Py_ssize_t size;
     const char* data;
     data = PyUnicode_AsUTF8AndSize(obj, &size);
-    attrs[key] = std::string(data, (size_t)size);
+    attrs[key] = std::string(data, static_cast<size_t>(size));
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -674,7 +694,7 @@ static inline void CastPyArg2AttrStrings(
         Py_ssize_t size;
         const char* data;
         data = PyUnicode_AsUTF8AndSize(item, &size);
-        value.emplace_back(std::string(data, (size_t)size));
+        value.emplace_back(std::string(data, static_cast<size_t>(size)));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
@@ -737,7 +757,7 @@ static inline void ConstructAttrMapFromPyArgs(
           op_type, arg_pos, ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
     }
 
-    std::string key(key_ptr, (size_t)key_len);
+    std::string key(key_ptr, static_cast<size_t>(key_len));
     auto iter = attr_type_map->find(key);
     if (iter == attr_type_map->end()) {
       continue;
