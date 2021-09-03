@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/capi_exp/pd_config.h"
+
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/capi_exp/pd_types.h"
 #include "paddle/fluid/inference/capi_exp/utils_internal.h"
@@ -129,10 +130,11 @@ PD_Bool PD_ConfigUseGpu(__pd_keep PD_Config* pd_config) {
 void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
                         int32_t l3_workspace_size, PD_Bool locked,
                         PD_Bool autotune, const char* autotune_file,
-                        const char* precision, PD_Bool adaptive_seqlen) {
+                        const char* precision, PD_Bool adaptive_seqlen,
+                        int device_id) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableXpu(l3_workspace_size, locked, autotune, autotune_file,
-                    precision, adaptive_seqlen);
+                    precision, adaptive_seqlen, device_id);
 }
 
 void PD_ConfigEnableNpu(__pd_keep PD_Config* pd_config, int32_t device_id) {

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <string>
+
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
@@ -103,7 +104,7 @@ void AnalysisConfig::DisableFCPadding() {
 void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
                                bool autotune, const std::string &autotune_file,
                                const std::string &precision,
-                               bool adaptive_seqlen) {
+                               bool adaptive_seqlen, int device_id) {
   use_xpu_ = true;
   xpu_l3_workspace_size_ = l3_workspace_size;
   xpu_locked_ = locked;
@@ -111,6 +112,7 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
   xpu_autotune_file_ = autotune_file;
   xpu_precision_ = precision;
   xpu_adaptive_seqlen_ = adaptive_seqlen;
+  xpu_device_id_ = device_id;
   Update();
 }
 

@@ -169,8 +169,9 @@ func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
 /// \param autotune_file Specify the path of the autotune file. If autotune_file is specified, the algorithm specified in the file will be used and autotune will not be performed again.
 /// \param precision Calculation accuracy of multi_encoder
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
+/// \param deviceId the XPU card to use.
 ///
-func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool) {
+func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool, deviceId int32) {
 	cAutotuneFile := C.CString(autotuneFile)
 	cPrecision := C.CString(precision)
 	defer func() {
@@ -178,7 +179,7 @@ func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune boo
 		C.free(unsafe.Pointer(cPrecision))
 	}()
 	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize), cvtGoBoolToPD(locked), cvtGoBoolToPD(autotune),
-		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen))
+		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen), C.int32_t(deviceId))
 }
 
 ///

@@ -171,11 +171,12 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseGpu(
 ///       file will be used and autotune will not be performed again.
 /// \param precision Calculation accuracy of multi_encoder
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
+/// \param device_id device_id the XPU card to use.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     __pd_keep PD_Config* pd_config, int32_t l3_workspace_size, PD_Bool locked,
     PD_Bool autotune, const char* autotune_file, const char* precision,
-    PD_Bool adaptive_seqlen);
+    PD_Bool adaptive_seqlen, int32_t device_id);
 ///
 /// \brief Turn on NPU.
 ///

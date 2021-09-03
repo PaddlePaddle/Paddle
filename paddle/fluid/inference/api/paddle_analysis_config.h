@@ -197,11 +197,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///       file will be used and autotune will not be performed again.
   /// \param precision Calculation accuracy of multi_encoder
   /// \param adaptive_seqlen Is the input of multi_encoder variable length
+  /// \param device_id device_id the XPU card to use (default is 0).
   ///
   void EnableXpu(int l3_workspace_size = 0xfffc00, bool locked = false,
                  bool autotune = true, const std::string& autotune_file = "",
                  const std::string& precision = "int16",
-                 bool adaptive_seqlen = false);
+                 bool adaptive_seqlen = false, int device_id = 0);
   ///
   /// \brief Turn on NPU.
   ///
