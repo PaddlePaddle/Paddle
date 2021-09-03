@@ -284,11 +284,9 @@ class StridedSliceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<int>>(
         "infer_flags", "(list<int>) Flags of inferring dims in attributes.")
-        .SetDefault({})
-        .AsExtra();
+        .SetDefault({});
     AddAttr<std::vector<int>>("decrease_axis", "(list<int>) decrease_axis")
-        .SetDefault({})
-        .AsExtra();
+        .SetDefault({});
     AddComment(R"DOC(
 Strided Slice Operator.
 Instead of calling this op directly most users will want to use the
