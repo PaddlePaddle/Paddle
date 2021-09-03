@@ -20,9 +20,66 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/operators/npu_op_runner.h"
+#endif
 
 namespace paddle {
 namespace operators {
+
+template <typename DeviceContext>
+struct FillConstantVisitor {
+  FillConstantVisitor(const DeviceContext &dev_ctx,
+                      framework::LoDTensor *tensor, const float value,
+                      framework::proto::VarType::Type dtype,
+                      const framework::ExecutionContext &context)
+      : dev_ctx_(dev_ctx),
+        tensor_(tensor),
+        value_(value),
+        dtype_(dtype),
+        context_(context) {}
+
+  template <typename T>
+  void apply(typename std::enable_if<std::is_same<T, int8_t>::value ||
+                                     std::is_same<T, int16_t>::value>::type * =
+                 nullptr) const {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Not support data type for set_constant attr"));
+  }
+
+  template <typename T>
+  void apply(typename std::enable_if<!(std::is_same<T, int8_t>::value ||
+                                       std::is_same<T, int16_t>::value)>::type
+                 * = nullptr) const {
+#ifdef PADDLE_WITH_ASCEND_CL
+    if (platform::is_npu_place(dev_ctx_.GetPlace())) {
+      Tensor tensor_tmp(dtype_);
+      tensor_tmp.mutable_data<T>({1}, context_.GetPlace());
+      FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value_));
+
+      const auto &runner =
+          NpuOpRunner("FillD", {tensor_tmp}, {*tensor_},
+                      {{"dims", framework::vectorize(tensor_->dims())}});
+      auto stream =
+          context_.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+      runner.Run(stream);
+    } else {
+      math::SetConstant<DeviceContext, T> set_constant;
+      set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
+    }
+#else
+    math::SetConstant<DeviceContext, T> set_constant;
+    set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
+#endif
+  }
+
+  const DeviceContext &dev_ctx_;
+  framework::LoDTensor *tensor_;
+  float value_;
+  framework::proto::VarType::Type dtype_;
+  const framework::ExecutionContext &context_;
+};
 
 template <typename DeviceContext, typename T>
 class CoalesceTensorOpKernel : public framework::OpKernel<T> {
