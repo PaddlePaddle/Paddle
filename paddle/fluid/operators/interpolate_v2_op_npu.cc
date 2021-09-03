@@ -157,16 +157,17 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
             .stream();
 
     NpuOpRunner runner;
-    // To-do(qili93): need to support bilineare, try ResizeD
-    if ("nearest" == interp_method) {
-      runner.SetType("ResizeNearestNeighborV2")
-          .AddInput(*input)
-          .AddInput(std::vector<int32_t>{out_h, out_w})
-          .AddOutput(*output)
-          .AddAttr("align_corners", align_corners)
-          .AddAttr("half_pixel_centers", false);
+    if ("bilinear" == interp_method) {
+      runner.SetType("ResizeBilinearV2");
+    } else if ("nearest" == interp_method) {
+      runner.SetType("ResizeNearestNeighborV2");
     }
-    runner.Run(stream);
+    runner.AddInput(*input)
+        .AddInput(std::vector<int32_t>{out_h, out_w})
+        .AddOutput(*output)
+        .AddAttr("align_corners", align_corners)
+        .AddAttr("half_pixel_centers", false)
+        .Run(stream);
   }
 };
 
@@ -302,8 +303,14 @@ class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
             .stream();
 
     NpuOpRunner runner;
-    // To-do(qili93): need to support bilineare, try ResizeGradD
-    if ("nearest" == interp_method) {
+    if ("bilinear" == interp_method) {
+      runner.SetType("ResizeBilinearV2Grad")
+          .AddInput(*output_grad)
+          .AddInput(*input)
+          .AddOutput(*input_grad)
+          .AddAttr("align_corners", align_corners)
+          .AddAttr("half_pixel_centers", false);
+    } else if ("nearest" == interp_method) {
       runner.SetType("ResizeNearestNeighborV2Grad")
           .AddInput(*output_grad)
           .AddInput(std::vector<int32_t>{in_h, in_w})
@@ -328,5 +335,15 @@ REGISTER_OP_NPU_KERNEL(
 
 REGISTER_OP_NPU_KERNEL(
     nearest_interp_v2_grad,
+    ops::InterpolateV2NPUGradKernel<plat::NPUDeviceContext, float>,
+    ops::InterpolateV2NPUGradKernel<plat::NPUDeviceContext, plat::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    bilinear_interp_v2,
+    ops::InterpolateV2NPUKernel<plat::NPUDeviceContext, float>,
+    ops::InterpolateV2NPUKernel<plat::NPUDeviceContext, plat::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    bilinear_interp_v2_grad,
     ops::InterpolateV2NPUGradKernel<plat::NPUDeviceContext, float>,
     ops::InterpolateV2NPUGradKernel<plat::NPUDeviceContext, plat::float16>);
