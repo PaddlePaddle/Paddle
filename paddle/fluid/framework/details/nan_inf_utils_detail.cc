@@ -414,6 +414,21 @@ void CheckVarHasNanOrInf(const std::string& op_type,
   CheckVarHasNanOrInf(op_type, var_name, var, place);
 }
 
+bool IsSkipOp(const framework::OperatorBase& op) {
+  if (op_type_nan_inf_white_list().count(op.Type()) != 0) return true;
+
+  int op_role = op.template Attr<int>(
+      framework::OpProtoAndCheckerMaker::OpRoleAttrName());
+
+  // kForward=0, can't filter
+  if (op_role == static_cast<int>(framework::OpRole::kForward)) {
+    op_role = FORWARD;
+  }
+  if (op_role_nan_inf_white_list & op_role) return true;
+
+  return false;
+}
+
 #ifdef PADDLE_WITH_ASCEND_CL
 using NpuOpRunner = paddle::operators::NpuOpRunner;
 
@@ -541,21 +556,6 @@ static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
                     "Operator %s contains Nan/Inf.", op.DebugStringEx(&scope)));
 }
 #endif
-
-bool IsSkipOp(const framework::OperatorBase& op) {
-  if (op_type_nan_inf_white_list().count(op.Type()) != 0) return true;
-
-  int op_role = op.template Attr<int>(
-      framework::OpProtoAndCheckerMaker::OpRoleAttrName());
-
-  // kForward=0, can't filter
-  if (op_role == static_cast<int>(framework::OpRole::kForward)) {
-    op_role = FORWARD;
-  }
-  if (op_role_nan_inf_white_list & op_role) return true;
-
-  return false;
-}
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
                         const framework::Scope& exec_scope,
