@@ -69,10 +69,11 @@ __all__ = [     #noqa
            'global_gather'
 ]
 
-def global_gather(x, \
-                  local_count, \
-                  global_count, \
-                  group=None, \
+
+def global_gather(x,
+                  local_count,
+                  global_count,
+                  group=None,
                   use_calc_stream=True):
     """
     Gather data in x to n_expert * world_size exeperts according to

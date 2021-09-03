@@ -22,7 +22,7 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("x"), "Input", "x", "GlobalGather");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GlobalGather");
     OP_INOUT_CHECK(ctx->HasInput("local_count"), "Input", "local_count",
                    "GlobalGather");
     OP_INOUT_CHECK(ctx->HasInput("global_count"), "Input", "global_count",
@@ -34,7 +34,14 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The ring_id (%d) for global gather op must be non-negative.",
             ring_id));
-
+    auto input_dims = ctx->GetInputDim("X");
+    auto ndim_input = input_dims.size();
+    // dim check
+    PADDLE_ENFORCE_EQ(ndim_input, 2,
+                      platform::errors::InvalidArgument(
+                          "The input tensor's dimension must be 2. "
+                          "But received input's dimension = [%s].",
+                          ndim_input));
     framework::DDim out_dims = framework::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);
   }
@@ -43,23 +50,23 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "x"), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
 class GlobalGatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("x", "(Tensor) tensor send.");
+    AddInput("X", "(Tensor) tensor send.");
     AddInput("local_count",
-             "(Tensor) Tensor which have n_expert * world_size elements that "
+             "(Tensor) Tensor which has n_expert * world_size elements that "
              "indicates"
-             "how many data needed to be received.");
+             "how many data needed to be received from each expert.");
     AddInput("global_count",
-             "(Tensor) Tensor which have n_expert * world_size elements that "
+             "(Tensor) Tensor which has n_expert * world_size elements that "
              "indicates"
-             "how many data needed to be sent.");
-    AddOutput("Out", "(Tensor) the result of alltoall.");
+             "how many data needed to be sent to each expert.");
+    AddOutput("Out", "(Tensor) the result of global_gather.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<bool>(
@@ -68,7 +75,7 @@ class GlobalGatherOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(R"DOC(
 Global Gather Operator
-Gather data in x to n_expert * world_size exeperts according to
+Gather data in X to n_expert * world_size exeperts according to
 local_count and receive tensors from n_expert * world_size experts according
 to global_count.
 )DOC");
@@ -83,10 +90,10 @@ class GlobalGatherOpGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("global_scatter");
-    retv->SetInput("x", this->OutputGrad("Out"));
+    retv->SetInput("X", this->OutputGrad("Out"));
     retv->SetInput("local_count", this->Input("local_count"));
     retv->SetInput("global_count", this->Input("global_count"));
-    retv->SetOutput("Out", this->InputGrad("x"));
+    retv->SetOutput("Out", this->InputGrad("X"));
     retv->SetAttrMap(this->Attrs());
   }
 };
